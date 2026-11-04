@@ -23,21 +23,21 @@
   "hall": "75c1b822b2951c2739a377f782ad507191b8acab5aefed9ca2e7aabe70c7ea88"
  },
  "example": "01_Fe2VAl09Si01",
- "start_sliders": {
+ "start_values": {
   "dpb_see": {
-   "mass": 157,
-   "band_gap": 554,
-   "fermi": 1170
+   "m_eff": 1.57,
+   "band_gap_k": 554,
+   "fermi_energy_k": 1170
   },
   "dpb_res": {
-   "mass": 157,
-   "band_gap": 554,
-   "fermi": 1170
+   "m_eff": 1.57,
+   "band_gap_k": 554,
+   "fermi_energy_k": 1170
   },
   "dpb_hall": {
-   "mass": 157,
-   "band_gap": 554,
-   "fermi": 1170
+   "m_eff": 1.57,
+   "band_gap_k": 554,
+   "fermi_energy_k": 1170
   }
  },
  "runs": [
@@ -710,6 +710,8 @@
    "warnings": [],
    "printed_error": null,
    "stopped_by": null,
+   "iterations": null,
+   "stop_path": null,
    "calls": [
     {
      "function": "spb_see_fit",
@@ -1699,6 +1701,8 @@
    ],
    "printed_error": null,
    "stopped_by": null,
+   "iterations": null,
+   "stop_path": null,
    "calls": [
     {
      "function": "spb_see_res_fit",
@@ -2830,6 +2834,8 @@
    ],
    "printed_error": null,
    "stopped_by": null,
+   "iterations": null,
+   "stop_path": null,
    "calls": [
     {
      "function": "spb_see_res_fit",
@@ -3961,6 +3967,8 @@
    ],
    "printed_error": null,
    "stopped_by": null,
+   "iterations": null,
+   "stop_path": null,
    "calls": [
     {
      "function": "spb_see_res_fit",
@@ -4979,6 +4987,8 @@
    "warnings": [],
    "printed_error": "'MainWindow' object has no attribute 'fermi_slider_spb'",
    "stopped_by": null,
+   "iterations": null,
+   "stop_path": null,
    "calls": []
   },
   {
@@ -5652,6 +5662,8 @@
    "warnings": [],
    "printed_error": "'MainWindow' object has no attribute 'fermi_slider_spb'",
    "stopped_by": null,
+   "iterations": null,
+   "stop_path": null,
    "calls": []
   },
   {
@@ -6325,6 +6337,8 @@
    "warnings": [],
    "printed_error": "'MainWindow' object has no attribute 'fermi_slider_spb'",
    "stopped_by": null,
+   "iterations": null,
+   "stop_path": null,
    "calls": []
   },
   {
@@ -7002,6 +7016,8 @@
    "warnings": [],
    "printed_error": null,
    "stopped_by": null,
+   "iterations": null,
+   "stop_path": null,
    "calls": [
     {
      "function": "dpb_see_fit",
@@ -8014,6 +8030,8 @@
    "warnings": [],
    "printed_error": null,
    "stopped_by": "accuracy",
+   "iterations": 2,
+   "stop_path": "all_band_and_first_scattering",
    "calls": [
     {
      "function": "dpb_see_res_fit",
@@ -9184,6 +9202,8 @@
    "warnings": [],
    "printed_error": null,
    "stopped_by": "accuracy",
+   "iterations": 3,
+   "stop_path": "all_band_and_first_scattering",
    "calls": [
     {
      "function": "dpb_see_res_fit",
@@ -10354,6 +10374,8 @@
    "warnings": [],
    "printed_error": null,
    "stopped_by": "accuracy",
+   "iterations": 2,
+   "stop_path": "c_and_d_only",
    "calls": [
     {
      "function": "dpb_see_res_fit",
@@ -11630,6 +11652,8 @@
    "warnings": [],
    "printed_error": null,
    "stopped_by": "accuracy",
+   "iterations": 2,
+   "stop_path": "all_band_and_first_scattering",
    "calls": [
     {
      "function": "dpb_see_res_hall_fit",
@@ -12802,6 +12826,8 @@
    "warnings": [],
    "printed_error": "Initial guess is outside of provided bounds",
    "stopped_by": null,
+   "iterations": null,
+   "stop_path": null,
    "calls": [
     {
      "function": "dpb_see_res_hall_fit",
@@ -13948,6 +13974,8 @@
    "warnings": [],
    "printed_error": null,
    "stopped_by": "accuracy",
+   "iterations": 2,
+   "stop_path": "c_and_d_only",
    "calls": [
     {
      "function": "dpb_see_res_hall_fit",
@@ -14672,6 +14700,8 @@
   ],
   "printed_error": null,
   "stopped_by": "accuracy",
+  "iterations": 3,
+  "stop_path": "all_band_and_first_scattering",
   "calls": [
    {
     "function": "dpb_see_res_hall_fit",

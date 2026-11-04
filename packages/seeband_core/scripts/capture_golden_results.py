@@ -13,6 +13,7 @@ import io
 import json
 import os
 import platform
+import re
 import subprocess
 import sys
 import warnings
@@ -62,6 +63,16 @@ class RecordingCalculator:
     def __init__(self, target: Any) -> None:
         self._target = target
         self.calls: list[dict[str, Any]] = []
+        # The loop has two stop checks, and only their argument counts tell them apart.
+        self.accuracy_checks: list[tuple[int, bool]] = []
+        original = target.is_accuracy_reached
+
+        def watched(threshold: float, *errors: float) -> bool:
+            reached = bool(original(threshold, *errors))
+            self.accuracy_checks.append((len(errors), reached))
+            return reached
+
+        target.is_accuracy_reached = watched
 
     def __getattr__(self, name: str) -> Any:
         method = getattr(self._target, name)
@@ -90,6 +101,7 @@ class RecordingCalculator:
 def run_fit(desktop: Any, window: Any, recorder: RecordingCalculator, thread_name: str) -> Any:
     """Run a fit thread's body synchronously, so the calls and result are captured in order."""
     recorder.calls.clear()
+    recorder.accuracy_checks.clear()
     outcome: dict[str, Any] = {}
     thread = getattr(desktop, thread_name)(window)
     thread.updateGUI.connect(lambda *values: outcome.update(emitted=plain(list(values))))
@@ -114,17 +126,30 @@ def run_fit(desktop: Any, window: Any, recorder: RecordingCalculator, thread_nam
         if "Accuracy reached." in log
         else None
     )
+    iterations = re.findall(r"It took (\d+) iterations", log)
+    outcome["iterations"] = int(iterations[-1]) if iterations else None
+    outcome["stop_path"] = stop_path(recorder.accuracy_checks)
     outcome["calls"] = copy.deepcopy(recorder.calls)
     return outcome
+
+
+def stop_path(checks: list[tuple[int, bool]]) -> str | None:
+    """Name the check that ended the loop: fit_module.py:470 and :933, or :474 and :937."""
+    for count, reached in reversed(checks):
+        if reached:
+            return "all_band_and_first_scattering" if count == 5 else "c_and_d_only"
+    return None
 
 
 def summarise(outcome: dict[str, Any]) -> str:
     if "error_signal" not in outcome:
         return "ok"
     failed = [call["function"] for call in outcome["calls"] if "error" in call]
-    if not failed:
-        return "fails_before_calculation"
-    return "fails_in_" + failed[-1]
+    if failed:
+        return "fails_in_" + failed[-1]
+    if outcome["calls"]:
+        return "fails_after_" + outcome["calls"][-1]["function"]
+    return "fails_before_calculation"
 
 
 def capture_example(
@@ -149,11 +174,11 @@ def capture_example(
 
     result: dict[str, Any] = {
         "example": example,
-        "start_sliders": {
+        "start_values": {
             suffix: {
-                "mass": getattr(window, f"mass_slider_{suffix}").value(),
-                "band_gap": getattr(window, f"bandgap_slider_{suffix}").value(),
-                "fermi": getattr(window, f"fermi_slider_{suffix}").value(),
+                "m_eff": getattr(window, f"mass_slider_{suffix}").value() / 100.0,
+                "band_gap_k": getattr(window, f"bandgap_slider_{suffix}").value(),
+                "fermi_energy_k": getattr(window, f"fermi_slider_{suffix}").value(),
             }
             for suffix in ("dpb_see", "dpb_res", "dpb_hall")
         },
