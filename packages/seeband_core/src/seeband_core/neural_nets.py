@@ -17,10 +17,36 @@ NET_RANGES_K = ((300, 800), (400, 700), (300, 600), (200, 500), (100, 400))
 NET_INPUT_POINTS = 7
 LAYER_COUNT = 4
 LEAKY_RELU_SLOPE = np.float32(0.1)
+# The rational approximation that TensorFlow uses for tanh, through Eigen. np.tanh rounds
+# differently and reaches 1 only at about 10, where this reaches it at about 7.906.
+TANH_CLIP = np.float32(7.90531110763549805)
+TANH_NUMERATOR = tuple(
+    np.float32(coefficient)
+    for coefficient in (
+        -2.76076847742355e-16,
+        2.00018790482477e-13,
+        -8.60467152213735e-11,
+        5.12229709037114e-08,
+        1.48572235717979e-05,
+        6.37261928875436e-04,
+        4.89352455891786e-03,
+    )
+)
+TANH_DENOMINATOR = tuple(
+    np.float32(coefficient)
+    for coefficient in (
+        1.19825839466702e-06,
+        1.18534705686654e-04,
+        2.26843463243900e-03,
+        4.89352518554385e-03,
+    )
+)
 
 
 @dataclass(frozen=True)
 class NeuralNetGuess:
+    """The chosen net's range and prediction. Band gap and Fermi energy are in K."""
+
     range_k: tuple[int, int]
     m_eff: float
     band_gap_k: float
@@ -36,6 +62,7 @@ class NoNeuralNet:
 
 
 def select_range(temperature_k: np.ndarray) -> tuple[int, int] | None:
+    """Return the first net range spanned by the first and last rows, or None."""
     for low_k, high_k in NET_RANGES_K:
         if temperature_k[0] <= low_k and temperature_k[-1] >= high_k:
             return low_k, high_k
@@ -45,6 +72,7 @@ def select_range(temperature_k: np.ndarray) -> tuple[int, int] | None:
 def interpolate_seebeck(
     temperature_k: np.ndarray, seebeck_v_per_k: np.ndarray, range_k: tuple[int, int]
 ) -> np.ndarray:
+    """Return Seebeck in V/K at the net's input points, from a polynomial fit of the data."""
     fit = data_processing.fit_data(np.column_stack((temperature_k, seebeck_v_per_k)))
     if fit is None:
         raise ValueError("The Seebeck data could not be fitted")
@@ -67,10 +95,28 @@ def network_input(interpolated_v_per_k: np.ndarray) -> np.ndarray:
 @lru_cache(maxsize=len(NET_RANGES_K))
 def _load_layers(range_k: tuple[int, int]) -> tuple[tuple[np.ndarray, np.ndarray], ...]:
     path = resources.files("seeband_core") / "data" / "neural_nets"
+    layers = []
     with (path / f"net_{range_k[0]}_{range_k[1]}.npz").open("rb") as file, np.load(file) as weights:
-        return tuple(
-            (weights[f"kernel_{index}"], weights[f"bias_{index}"]) for index in range(LAYER_COUNT)
-        )
+        for index in range(LAYER_COUNT):
+            kernel, bias = weights[f"kernel_{index}"], weights[f"bias_{index}"]
+            # The cache shares these arrays between calls.
+            kernel.flags.writeable = False
+            bias.flags.writeable = False
+            layers.append((kernel, bias))
+    return tuple(layers)
+
+
+def _tanh(values: np.ndarray) -> np.ndarray:
+    clipped = np.clip(values, -TANH_CLIP, TANH_CLIP)
+    squared = clipped * clipped
+    numerator = TANH_NUMERATOR[0]
+    for coefficient in TANH_NUMERATOR[1:]:
+        numerator = numerator * squared + coefficient
+    denominator = TANH_DENOMINATOR[0]
+    for coefficient in TANH_DENOMINATOR[1:]:
+        denominator = denominator * squared + coefficient
+    result: np.ndarray = numerator * clipped / denominator
+    return result
 
 
 def run_network(range_k: tuple[int, int], input_mv_per_k: np.ndarray) -> np.ndarray:
@@ -81,8 +127,11 @@ def run_network(range_k: tuple[int, int], input_mv_per_k: np.ndarray) -> np.ndar
         values = values @ kernel + bias
         values = np.where(values >= 0, values, LEAKY_RELU_SLOPE * values)
     kernel, bias = layers[-1]
-    output: np.ndarray = np.tanh(values @ kernel + bias)
-    return output
+    # A plain sum in row order rounds like TensorFlow for this layer, and @ does not.
+    total = np.zeros(kernel.shape[1], dtype=np.float32)
+    for value, row in zip(values, kernel, strict=True):
+        total = total + value * row
+    return _tanh(total + bias)
 
 
 def _inverse_softsign(y: np.float64, shift: float, factor: float) -> np.float64:
@@ -104,6 +153,7 @@ def reverse_normalisation(output: np.ndarray) -> tuple[np.float64, np.float64, n
 def transform_prediction(
     interpolated_v_per_k: np.ndarray, reversed_norm: tuple[np.float64, np.float64, np.float64]
 ) -> tuple[np.float64, np.float64, np.float64]:
+    """Convert back for negative Seebeck, where the net saw the sign flipped."""
     if _seebeck_is_positive(interpolated_v_per_k):
         return reversed_norm
     mass, gap_k, fermi_energy_k = reversed_norm
@@ -113,6 +163,7 @@ def transform_prediction(
 def predict_band_parameters(
     temperature_k: np.ndarray, seebeck_v_per_k: np.ndarray
 ) -> NeuralNetGuess | NoNeuralNet:
+    """Predict DPB start values. Non-finite values can come back in a guess, as on the desktop."""
     range_k = select_range(temperature_k)
     if range_k is None:
         return NoNeuralNet(float(temperature_k[0]), float(temperature_k[-1]))

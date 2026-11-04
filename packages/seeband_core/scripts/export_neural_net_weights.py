@@ -60,7 +60,7 @@ def main() -> None:
 
     arguments.output.mkdir(parents=True, exist_ok=True)
     for name in NET_NAMES:
-        models = arguments.desktop / "models"
+        models = arguments.desktop / "Models"
         text = (models / f"model_{name}_architecture.json").read_text(encoding="utf-8")
         arrays = {}
         with h5py.File(models / f"model_{name}_weights.h5", "r") as weights:

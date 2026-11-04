@@ -50,20 +50,24 @@ The files were saved with Keras 2.9, and these references were captured with Ten
 
 `seeband_core.neural_nets` runs the same nets with numpy, and `tests/test_neural_nets.py` compares each step with these references. It returns `NeuralNetGuess`, with the chosen range and the prediction, or `NoNeuralNet`.
 
-| Step                                                      | Rule                                                             | Largest difference on one Mac                               |
-| --------------------------------------------------------- | ---------------------------------------------------------------- | ----------------------------------------------------------- |
-| Interpolated Seebeck and network input                    | relative difference of at most 1e-9                              | 4.2e-15                                                     |
-| Network output                                            | absolute difference of at most 5e-7                              | 1.2e-7, about one float32 step                              |
-| `reversed_norm` and `prediction` from the recorded output | relative difference of at most 1e-12                             | exact                                                       |
-| Final prediction                                          | relative difference of at most 1e-5, plus 1e-3 in absolute terms | m_eff 2.4e-6, band gap 0.056 K on 52464 K, 5e-4 K on -3.4 K |
+| Step                                   | Rule                                 | Largest difference on one Mac |
+| -------------------------------------- | ------------------------------------ | ----------------------------- |
+| Interpolated Seebeck and network input | relative difference of at most 1e-9  | 4.2e-15                       |
+| Network output                         | exactly equal                        | none                          |
+| Final prediction                       | relative difference of at most 1e-12 | none beyond the rule          |
 
-The output is rounded in float32, and the inverse transform enlarges this as the output nears 1. That is why the final prediction needs a wider rule than the output. The desktop's slider rounding and limits are not part of this module.
+The output matches because the port rounds as TensorFlow does. It uses TensorFlow's own approximation of tanh, and sums the last layer in row order. `np.tanh` and `@` in the last layer gave differences of up to 2e-6, and reached an output of 1 at a different value.
+
+Beyond the 10 cases here, an independent review recorded 2776 network outputs from the real desktop nets with TensorFlow 2.15.1, on random, extreme and example-shaped inputs. The port's forward pass gave all of them exactly, from the recorded inputs, on one Mac on Apple Silicon. TensorFlow on x86 and the original Keras 2.9 were not tested.
 
 The port keeps the desktop's behaviour:
 
 - It chooses a net from the first and last rows, which P9 fixes.
-- An output of exactly 1 gives infinity, not an error.
 - It computes the inverse transform in float64, as the desktop does with numpy 1.26. With numpy 2, the desktop's expressions would stay in float32, so the port converts explicitly.
+- Non-finite values come back in a normal `NeuralNetGuess`. An output of exactly 1 gives infinity. With negative Seebeck, outputs of 1 give m_eff = 0, an infinite gap and a Fermi energy of NaN. NaN in the Seebeck data gives NaN. The API must handle these, because they are not valid JSON numbers.
+- The sign of Seebeck follows the mean of the first three interpolated values, so a mean near 0 can follow numerical noise.
+
+The desktop's slider rounding and limits are not part of this module, and a later task needs them. Its slider code raises `OverflowError` on an infinite prediction.
 
 One difference: if the Seebeck fit fails, the port raises `ValueError`, while the desktop fails later with `TypeError`.
 
