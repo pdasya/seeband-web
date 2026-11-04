@@ -44,4 +44,35 @@ uv pip install --python ../seeband-tf-env/bin/python tensorflow==2.15.1 numpy==1
 
 The fixture is excluded from Prettier and holds the exact script output, so any change to a number shows in the diff. Two runs gave byte-identical files with the versions recorded in the fixture.
 
-The files were saved with Keras 2.9, and these references were captured with TensorFlow 2.15.1 and Keras 2.15.0 on one Mac on Apple Silicon. A one-off numpy forward pass from the weight files differed from these outputs by at most 1.2e-7. The numpy port makes this check repeatable. The original 2.9 environment was not tested, and the desktop GUI was not run: slider rounding and limits are reproduced from `NeuralNetPredictionThread`.
+The files were saved with Keras 2.9, and these references were captured with TensorFlow 2.15.1 and Keras 2.15.0 on one Mac on Apple Silicon. The original 2.9 environment was not tested, and the desktop GUI was not run: slider rounding and limits are reproduced from `NeuralNetPredictionThread`.
+
+## Numpy port
+
+`seeband_core.neural_nets` runs the same nets with numpy, and `tests/test_neural_nets.py` compares each step with these references. It returns `NeuralNetGuess`, with the chosen range and the prediction, or `NoNeuralNet`.
+
+| Step                                                      | Rule                                                             | Largest difference on one Mac                               |
+| --------------------------------------------------------- | ---------------------------------------------------------------- | ----------------------------------------------------------- |
+| Interpolated Seebeck and network input                    | relative difference of at most 1e-9                              | 4.2e-15                                                     |
+| Network output                                            | absolute difference of at most 5e-7                              | 1.2e-7, about one float32 step                              |
+| `reversed_norm` and `prediction` from the recorded output | relative difference of at most 1e-12                             | exact                                                       |
+| Final prediction                                          | relative difference of at most 1e-5, plus 1e-3 in absolute terms | m_eff 2.4e-6, band gap 0.056 K on 52464 K, 5e-4 K on -3.4 K |
+
+The output is rounded in float32, and the inverse transform enlarges this as the output nears 1. That is why the final prediction needs a wider rule than the output. The desktop's slider rounding and limits are not part of this module.
+
+The port keeps the desktop's behaviour:
+
+- It chooses a net from the first and last rows, which P9 fixes.
+- An output of exactly 1 gives infinity, not an error.
+- It computes the inverse transform in float64, as the desktop does with numpy 1.26. With numpy 2, the desktop's expressions would stay in float32, so the port converts explicitly.
+
+One difference: if the Seebeck fit fails, the port raises `ValueError`, while the desktop fails later with `TypeError`.
+
+## Exporting the weights
+
+`src/seeband_core/data/neural_nets/` holds one `.npz` file per net, exported from the desktop's H5 files. The script stops if a net differs from the expected layers: 7 inputs, dense layers of 16, 16, 8 and 3 units, LeakyReLU with slope 0.1, and tanh at the output. Two runs gave byte-identical files, and `test_weights_are_unchanged` pins their hashes. Run this with the same environment and checkout as above:
+
+```sh
+../seeband-tf-env/bin/python packages/seeband_core/scripts/export_neural_net_weights.py \
+  --desktop ../SeeBand \
+  --output packages/seeband_core/src/seeband_core/data/neural_nets
+```
