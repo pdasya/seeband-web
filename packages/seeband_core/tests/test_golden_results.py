@@ -44,9 +44,9 @@ WINDOW = {"dpb_s": "dpb_see", "dpb_s_rho": "dpb_res", "dpb_s_rho_rh": "dpb_hall"
 # PINNED-START
 # Copied from the capture to detect accidental changes. These are not an independent reference.
 FILE_SHA256: dict[str, str] = {
-    "01_Fe2VAl09Si01": "5729a798b9684a497878c971ceb5b43fbf507ec73ec797a3f0d9f6671431171b",
-    "02_SiP": "b73b0ad43f0e8a840b3b0f8bd3f71346654d0bb46cda396ddfb55c3b650a563d",
-    "03_AWI32_SI": "66b19d71be80fac7b9d9f5932ee9b1bffe7dda9a8c8dc644df7a664750328be9",
+    "01_Fe2VAl09Si01": "0e18fbf0af37f5ceb4a4a7b6e3e6aff188cce017ec70986a55001204e4954cff",
+    "02_SiP": "479fe4890928ac8a3695a5f469ec39848af40a27dfda9c27abc8474a6d6ef1c4",
+    "03_AWI32_SI": "98ba3f82d5c4b2356853a329e1a87302258c786449bed898182be510f3549a89",
 }
 PINNED: dict[str, dict[tuple[str, str | None], list[float]]] = {
     "01_Fe2VAl09Si01": {

@@ -46,6 +46,16 @@ MODES = [
 ]
 
 
+GRAPH_WINDOWS = {
+    "spb_s": "AddGraphsWinSpbSee",
+    "spb_s_rho": "AddGraphsWinSpbRes",
+    "spb_s_rho_rh": "AddGraphsWinSpbHall",
+    "dpb_s": "AddGraphsWinDpbSee",
+    "dpb_s_rho": "AddGraphsWinDpbRes",
+    "dpb_s_rho_rh": "AddGraphsWinDpbHall",
+}
+
+
 def plain(value: Any) -> Any:
     """Convert numpy values to JSON types without changing any number."""
     if hasattr(value, "tolist"):
@@ -133,6 +143,32 @@ def run_fit(desktop: Any, window: Any, recorder: RecordingCalculator, thread_nam
     return outcome
 
 
+def press_graph_buttons(
+    desktop: Any, window: Any, recorder: RecordingCalculator, mode: str
+) -> list[dict[str, Any]]:
+    """Press every button of the mode's real graph window, as a user would after a fit."""
+    graphs = getattr(desktop, GRAPH_WINDOWS[mode])(window)
+    buttons = sorted(
+        name
+        for name in dir(graphs)
+        if name.startswith("plot_") and name.endswith("_button_clicked")
+    )
+    pressed = []
+    for button in buttons:
+        recorder.calls.clear()
+        entry: dict[str, Any] = {"button": button}
+        with warnings.catch_warnings(), contextlib.redirect_stdout(io.StringIO()):
+            warnings.simplefilter("ignore")
+            try:
+                getattr(graphs, button)()
+            except Exception as error:
+                entry["error"] = f"{type(error).__name__}: {error}"
+        entry["calls"] = copy.deepcopy(recorder.calls)
+        pressed.append(entry)
+    graphs.close()
+    return pressed
+
+
 def stop_path(checks: list[tuple[int, bool]]) -> str | None:
     """Name the check that ended the loop: fit_module.py:470 and :933, or :474 and :937."""
     for count, reached in reversed(checks):
@@ -193,12 +229,14 @@ def capture_example(
                 getattr(window, handler)()
             manual = copy.deepcopy(recorder.calls)
             outcome = run_fit(desktop, window, recorder, thread_name)
+            graphs = press_graph_buttons(desktop, window, recorder, mode)
             result["runs"].append(
                 {
                     "mode": mode,
                     "scattering": scattering,
                     "status": summarise(outcome),
                     "manual_curve_calls": manual,
+                    "graph_buttons": graphs,
                     **outcome,
                 }
             )
