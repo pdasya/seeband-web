@@ -56,9 +56,9 @@ The files were saved with Keras 2.9, and these references were captured with Ten
 | Network output                         | exactly equal                        | none                          |
 | Final prediction                       | relative difference of at most 1e-12 | none beyond the rule          |
 
-The output matches because the port rounds as TensorFlow does. It uses TensorFlow's own approximation of tanh, and sums the last layer in row order. `np.tanh` and `@` in the last layer gave differences of up to 2e-6, and reached an output of 1 at a different value.
+The output matches because the port rounds as TensorFlow did on that Mac. It uses TensorFlow's own approximation of tanh, and sums each layer in row order, with the rounding that matches: after each multiply and add together in the hidden layers, and after each one separately in the last layer. It does not use `@`, because that goes through BLAS. With `@`, exact comparison passed in one Linux CI run and failed in the next on the same code, with differences of a few 1e-7. `np.tanh` also reaches an output of 1 at about 10 instead of about 7.906.
 
-Beyond the 10 cases here, an independent review recorded 2776 network outputs from the real desktop nets with TensorFlow 2.15.1, on random, extreme and example-shaped inputs. The port's forward pass gave all of them exactly, from the recorded inputs, on one Mac on Apple Silicon. TensorFlow on x86 and the original Keras 2.9 were not tested.
+Beyond the 10 cases here, an independent review recorded 2776 network outputs from the real desktop nets with TensorFlow 2.15.1, on random, extreme and example-shaped inputs. The port's forward pass gave all of them exactly, from the recorded inputs, on one Mac on Apple Silicon. TensorFlow on x86 and the original Keras 2.9 were not tested, so this shows a match with the recorded desktop results, not with TensorFlow on every machine.
 
 The port keeps the desktop's behaviour:
 

@@ -119,19 +119,36 @@ def _tanh(values: np.ndarray) -> np.ndarray:
     return result
 
 
-def run_network(range_k: tuple[int, int], input_mv_per_k: np.ndarray) -> np.ndarray:
-    """Return the normalised output of a net, in float32 like the desktop's."""
-    values = input_mv_per_k.astype(np.float32)
-    layers = _load_layers(range_k)
-    for kernel, bias in layers[:-1]:
-        values = values @ kernel + bias
-        values = np.where(values >= 0, values, LEAKY_RELU_SLOPE * values)
-    kernel, bias = layers[-1]
-    # A plain sum in row order rounds like TensorFlow for this layer, and @ does not.
+def _sum_with_fused_rounding(values: np.ndarray, kernel: np.ndarray) -> np.ndarray:
+    """Round to float32 only after each multiply and add together."""
+    total = np.zeros(kernel.shape[1], dtype=np.float32)
+    for value, row in zip(values, kernel, strict=True):
+        exact = total.astype(np.float64) + np.float64(value) * row.astype(np.float64)
+        total = exact.astype(np.float32)
+    return total
+
+
+def _sum_with_separate_rounding(values: np.ndarray, kernel: np.ndarray) -> np.ndarray:
+    """Round to float32 after each multiply and after each add."""
     total = np.zeros(kernel.shape[1], dtype=np.float32)
     for value, row in zip(values, kernel, strict=True):
         total = total + value * row
-    return _tanh(total + bias)
+    return total
+
+
+def run_network(range_k: tuple[int, int], input_mv_per_k: np.ndarray) -> np.ndarray:
+    """Return the normalised output of a net, in float32 like the desktop's.
+
+    These sums reproduce TensorFlow's rounding, as recorded on one Mac. The @ operator goes through
+    BLAS, whose rounding changes with the machine, so results here would too.
+    """
+    values = input_mv_per_k.astype(np.float32)
+    layers = _load_layers(range_k)
+    for kernel, bias in layers[:-1]:
+        values = _sum_with_fused_rounding(values, kernel) + bias
+        values = np.where(values >= 0, values, LEAKY_RELU_SLOPE * values)
+    kernel, bias = layers[-1]
+    return _tanh(_sum_with_separate_rounding(values, kernel) + bias)
 
 
 def _inverse_softsign(y: np.float64, shift: float, factor: float) -> np.float64:
