@@ -2,3 +2,4 @@ pnpm-lock.yaml
 uv.lock
 .claude/skills/vercel-composition-patterns/
 .venv/
+packages/seeband_core/tests/fixtures/neural_net_references.json
