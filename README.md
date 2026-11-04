@@ -29,6 +29,8 @@ uv sync
 pnpm check
 ```
 
+GitHub Actions runs the same checks on every pull request and on pushes to `main`.
+
 ## Claude Code
 
 Plugins are enabled for this repository in `.claude/settings.json`, but each person installs them once:
