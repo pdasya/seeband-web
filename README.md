@@ -1,6 +1,16 @@
 # seeband-web
 
-Web version of the SeeBand desktop application, in progress. See the pinned Roadmap issue for the plan.
+Web version of [SeeBand](https://github.com/xAngelswordx/SeeBand), a desktop application by Michael Parzer and Alexander Riss for fitting parabolic band models to the temperature dependence of the Seebeck coefficient, resistivity and Hall coefficient.
+
+The project is in progress, and there is no working application yet. See the [Roadmap](https://github.com/pdasya/seeband-web/issues/90) for the plan.
+
+## Architecture
+
+Calculations run only on the server. The React client shows data and results, and FastAPI is a thin layer over the `seeband_core` calculation package. Public pages are static HTML built with Astro. Everything runs in Docker Compose on one VM.
+
+## Source documents
+
+The [project overview](https://claude.ai/artifact/5WDV9nBj7G9vXTihrtkGmd) and [design](https://claude.ai/artifact/LnPAS7rxCdM2YDrgJhfBny) are private for now, so outside readers may not be able to open them.
 
 ## Repository
 
@@ -30,6 +40,14 @@ pnpm check
 ```
 
 GitHub Actions runs the same checks on every pull request and on pushes to `main`.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for branch, commit and pull request rules.
+
+## License
+
+[MIT](LICENSE). Code ported from SeeBand stays under its original license, reproduced in [NOTICE](NOTICE).
 
 ## Claude Code
 

@@ -8,6 +8,7 @@ Web version of the SeeBand desktop application. Calculations run only on the ser
 - JavaScript and TypeScript: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm format`
 - Python: `pnpm check:py`
 - First setup: see `README.md`
+- Branch, commit and pull request rules: see `CONTRIBUTING.md`
 
 ## Rules linters cannot check
 
