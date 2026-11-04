@@ -1,0 +1,1402 @@
+{
+  "description": "What the SeeBand desktop application passes to its calculations, per model and fit mode. Input for model descriptions in C8. Do not edit by hand without checking the cited source.",
+  "source": {
+    "repository": "https://github.com/xAngelswordx/SeeBand",
+    "commit": "803b0e7a425a0a3f4f59688df77e3ad283ca49a1"
+  },
+  "scale_rules": {
+    "display": "display value = slider * display_scale",
+    "fit": "fit start value = slider * fit_scale",
+    "calc": "value passed to the curve calculation = slider * calc_scale",
+    "line_edit": "slider = typed value * line_edit.scale"
+  },
+  "fit_range": {
+    "default_min_k": 50,
+    "default_max_k": 800,
+    "shared_between_windows": true,
+    "source": ["seeband.py:40", "seeband.py:41"]
+  },
+  "curve_points": {
+    "count": 50,
+    "source": ["seeband.py:3499"]
+  },
+  "modes": [
+    {
+      "id": "spb_s",
+      "model": "SPB",
+      "fit_mode": "S",
+      "status": "working",
+      "fit_function": "spb_see_fit",
+      "calc_function": "spb_see_calc",
+      "fit_call": ["seeband.py:4862"],
+      "iteration": {
+        "kind": "single_pass",
+        "source": ["modules/fit_module.py:64"]
+      },
+      "maxfev": {
+        "see": 1000,
+        "source": ["modules/fit_module.py:64"]
+      },
+      "scattering": null,
+      "degeneracy": null,
+      "parameters": [
+        {
+          "name": "band_mass",
+          "meaning": "band mass, sign sets the carrier type",
+          "unit": "m_e",
+          "role": "fixed",
+          "scattering": ["acPh", "dis", "acPhDis"],
+          "slider": {
+            "widget": "mass_slider_spb_see",
+            "min": -300,
+            "max": 300,
+            "step": 1,
+            "default": 101,
+            "source": "seeband.py:616"
+          },
+          "line_edit": {
+            "scale": 100,
+            "source": "seeband.py:3703"
+          },
+          "display_scale": 0.01,
+          "fit_scale": 0.01,
+          "calc_scale": 0.01,
+          "fit_start_source": ["seeband.py:4862"],
+          "fit_bounds": null,
+          "calc_source": ["seeband.py:3499"]
+        },
+        {
+          "name": "fermi_energy",
+          "meaning": "Fermi energy at T = 0",
+          "unit": "K",
+          "role": "fitted",
+          "scattering": ["acPh", "dis", "acPhDis"],
+          "slider": {
+            "widget": "fermi_slider_spb_see",
+            "min": -3000,
+            "max": 3000,
+            "step": 1,
+            "default": 100,
+            "source": "seeband.py:639"
+          },
+          "line_edit": {
+            "scale": 1,
+            "source": "seeband.py:3705"
+          },
+          "display_scale": 1,
+          "fit_scale": 1,
+          "calc_scale": 1,
+          "fit_start_source": ["seeband.py:4859"],
+          "fit_bounds": {
+            "lower": -3000,
+            "upper": 3000,
+            "source": ["seeband.py:4860", "seeband.py:4861"]
+          },
+          "calc_source": ["seeband.py:3499"]
+        }
+      ]
+    },
+    {
+      "id": "spb_s_rho",
+      "model": "SPB",
+      "fit_mode": "S+rho",
+      "status": "working",
+      "fit_function": "spb_see_res_fit",
+      "calc_function": "spb_see_res_calc",
+      "fit_call": ["seeband.py:4896"],
+      "iteration": {
+        "kind": "single_pass",
+        "source": ["modules/fit_module.py:213", "modules/fit_module.py:231"]
+      },
+      "maxfev": {
+        "see": 1000,
+        "rho": 50000,
+        "source": [
+          "modules/fit_module.py:213",
+          "modules/fit_module.py:231",
+          "modules/fit_module.py:235",
+          "modules/fit_module.py:239"
+        ]
+      },
+      "scattering": {
+        "options": ["acPh", "dis", "acPhDis"],
+        "default": "acPh",
+        "source": ["seeband.py:942", "seeband.py:945"]
+      },
+      "degeneracy": null,
+      "parameters": [
+        {
+          "name": "band_mass",
+          "meaning": "band mass, sign sets the carrier type",
+          "unit": "m_e",
+          "role": "fixed",
+          "scattering": ["acPh", "dis", "acPhDis"],
+          "slider": {
+            "widget": "mass_slider_spb_res",
+            "min": -300,
+            "max": 300,
+            "step": 1,
+            "default": -100,
+            "source": "seeband.py:825"
+          },
+          "line_edit": {
+            "scale": 100,
+            "source": "seeband.py:3720"
+          },
+          "display_scale": 0.01,
+          "fit_scale": 0.01,
+          "calc_scale": 0.01,
+          "fit_start_source": ["seeband.py:4897"],
+          "fit_bounds": null,
+          "calc_source": ["seeband.py:3526"]
+        },
+        {
+          "name": "fermi_energy",
+          "meaning": "Fermi energy at T = 0",
+          "unit": "K",
+          "role": "fitted",
+          "scattering": ["acPh", "dis", "acPhDis"],
+          "slider": {
+            "widget": "fermi_slider_spb_res",
+            "min": -3000,
+            "max": 3000,
+            "step": 1,
+            "default": -100,
+            "source": "seeband.py:846"
+          },
+          "line_edit": {
+            "scale": 1,
+            "source": "seeband.py:3723"
+          },
+          "display_scale": 1,
+          "fit_scale": 1,
+          "calc_scale": 1,
+          "fit_start_source": ["seeband.py:4890"],
+          "fit_bounds": {
+            "lower": -3000,
+            "upper": 3000,
+            "source": ["seeband.py:4891"]
+          },
+          "calc_source": ["seeband.py:3526"]
+        },
+        {
+          "name": "A",
+          "meaning": "tau_ph,1, acoustic phonon scale of band 1",
+          "unit": null,
+          "role": "fitted",
+          "scattering": ["acPh", "acPhDis"],
+          "slider": {
+            "widget": "para_A_slider_spb_res",
+            "min": 0,
+            "max": 1000000,
+            "step": 1000,
+            "default": 40000,
+            "source": "seeband.py:866"
+          },
+          "line_edit": {
+            "scale": 1,
+            "source": "seeband.py:3725"
+          },
+          "display_scale": 1,
+          "fit_scale": 1,
+          "calc_scale": 1,
+          "fit_start_source": ["seeband.py:4892"],
+          "fit_bounds": {
+            "lower": 1,
+            "upper": 10000000.0,
+            "source": ["seeband.py:812", "seeband.py:813"]
+          },
+          "calc_source": ["seeband.py:3526"]
+        },
+        {
+          "name": "C",
+          "meaning": "tau_ph,1 / tau_dis,1 at 300 K",
+          "unit": "dimensionless",
+          "role": "fitted",
+          "scattering": ["acPhDis"],
+          "slider": {
+            "widget": "para_C_slider_spb_res",
+            "min": 0,
+            "max": 300,
+            "step": 1,
+            "default": 100,
+            "source": "seeband.py:888"
+          },
+          "line_edit": {
+            "scale": 100,
+            "source": "seeband.py:3726"
+          },
+          "display_scale": 0.01,
+          "fit_scale": 1,
+          "calc_scale": 1,
+          "fit_start_source": ["seeband.py:4892"],
+          "fit_bounds": {
+            "lower": 0.001,
+            "upper": 1000,
+            "source": ["seeband.py:814", "seeband.py:815"]
+          },
+          "calc_source": ["seeband.py:3526"],
+          "internal_fit_factor": {
+            "factor": 300,
+            "source": ["modules/fit_module.py:204"]
+          },
+          "internal_calc_factor": {
+            "factor": 300,
+            "source": ["modules/fit_module.py:1483"]
+          }
+        },
+        {
+          "name": "F",
+          "meaning": "tau_dis,1, disorder scale of band 1",
+          "unit": null,
+          "role": "fitted",
+          "scattering": ["dis"],
+          "slider": {
+            "widget": "para_F_slider_spb_res",
+            "min": 0,
+            "max": 100000,
+            "step": 100,
+            "default": 4000,
+            "source": "seeband.py:915"
+          },
+          "line_edit": {
+            "scale": 1,
+            "source": "seeband.py:3727"
+          },
+          "display_scale": 1,
+          "fit_scale": 1,
+          "calc_scale": 1,
+          "fit_start_source": ["seeband.py:4892"],
+          "fit_bounds": {
+            "lower": 1,
+            "upper": 10000000.0,
+            "source": ["seeband.py:816", "seeband.py:817"]
+          },
+          "calc_source": ["seeband.py:3526"]
+        }
+      ]
+    },
+    {
+      "id": "spb_s_rho_rh",
+      "model": "SPB",
+      "fit_mode": "S+rho+R_H",
+      "status": "fails_on_desktop",
+      "status_reason": "D2",
+      "fit_function": "spb_see_res_hall_fit",
+      "calc_function": "spb_see_res_hall_calc",
+      "fit_call": ["seeband.py:4933"],
+      "iteration": {
+        "kind": "single_pass",
+        "source": ["modules/fit_module.py:638", "modules/fit_module.py:656"]
+      },
+      "maxfev": {
+        "see": 1000,
+        "rho": 50000,
+        "hall": 5000,
+        "source": [
+          "modules/fit_module.py:638",
+          "modules/fit_module.py:656",
+          "modules/fit_module.py:660",
+          "modules/fit_module.py:664",
+          "modules/fit_module.py:685"
+        ]
+      },
+      "scattering": {
+        "options": ["acPh", "dis", "acPhDis"],
+        "default": "acPh",
+        "source": ["seeband.py:1271", "seeband.py:1274"]
+      },
+      "degeneracy": null,
+      "parameters": [
+        {
+          "name": "band_mass",
+          "meaning": "band mass, sign sets the carrier type",
+          "unit": "m_e",
+          "role": "fitted",
+          "scattering": ["acPh", "dis", "acPhDis"],
+          "slider": {
+            "widget": "mass_slider_spb_hall",
+            "min": -300,
+            "max": 300,
+            "step": 1,
+            "default": 100,
+            "source": "seeband.py:1151"
+          },
+          "line_edit": {
+            "scale": 100,
+            "source": "seeband.py:3746"
+          },
+          "display_scale": 0.01,
+          "fit_scale": 1,
+          "calc_scale": 0.01,
+          "fit_start_source": ["seeband.py:4930"],
+          "fit_bounds": {
+            "lower": -300,
+            "upper": 300,
+            "source": ["seeband.py:4931"]
+          },
+          "calc_source": ["seeband.py:3558"]
+        },
+        {
+          "name": "fermi_energy",
+          "meaning": "Fermi energy at T = 0",
+          "unit": "K",
+          "role": "fitted",
+          "scattering": ["acPh", "dis", "acPhDis"],
+          "slider": {
+            "widget": "fermi_slider_spb_hall",
+            "min": -3000,
+            "max": 3000,
+            "step": 1,
+            "default": 100,
+            "source": "seeband.py:1172"
+          },
+          "line_edit": {
+            "scale": 1,
+            "source": "seeband.py:3749"
+          },
+          "display_scale": 1,
+          "fit_scale": 1,
+          "calc_scale": 1,
+          "fit_start_source": ["seeband.py:4925"],
+          "fit_bounds": {
+            "lower": -3000,
+            "upper": 3000,
+            "source": ["seeband.py:4926"]
+          },
+          "calc_source": ["seeband.py:3558"]
+        },
+        {
+          "name": "A",
+          "meaning": "tau_ph,1, acoustic phonon scale of band 1",
+          "unit": null,
+          "role": "fitted",
+          "scattering": ["acPh", "acPhDis"],
+          "slider": {
+            "widget": "para_A_slider_spb_hall",
+            "min": 0,
+            "max": 1000000,
+            "step": 1000,
+            "default": 40000,
+            "source": "seeband.py:1192"
+          },
+          "line_edit": {
+            "scale": 1,
+            "source": "seeband.py:3751"
+          },
+          "display_scale": 1,
+          "fit_scale": 1,
+          "calc_scale": 1,
+          "fit_start_source": ["seeband.py:4927"],
+          "fit_bounds": {
+            "lower": 1,
+            "upper": 10000000.0,
+            "source": ["seeband.py:1136", "seeband.py:1137"]
+          },
+          "calc_source": ["seeband.py:3558"]
+        },
+        {
+          "name": "C",
+          "meaning": "tau_ph,1 / tau_dis,1 at 300 K",
+          "unit": "dimensionless",
+          "role": "fitted",
+          "scattering": ["acPhDis"],
+          "slider": {
+            "widget": "para_C_slider_spb_hall",
+            "min": 0,
+            "max": 300,
+            "step": 1,
+            "default": 100,
+            "source": "seeband.py:1214"
+          },
+          "line_edit": {
+            "scale": 100,
+            "source": "seeband.py:3752"
+          },
+          "display_scale": 0.01,
+          "fit_scale": 1,
+          "calc_scale": 300,
+          "fit_start_source": ["seeband.py:4927"],
+          "fit_bounds": {
+            "lower": 0.001,
+            "upper": 1000,
+            "source": ["seeband.py:1138", "seeband.py:1139"]
+          },
+          "calc_source": ["seeband.py:3558"],
+          "internal_fit_factor": {
+            "factor": 300,
+            "source": ["modules/fit_module.py:631"]
+          },
+          "internal_calc_factor": {
+            "factor": 300,
+            "source": ["modules/fit_module.py:1617"]
+          }
+        },
+        {
+          "name": "F",
+          "meaning": "tau_dis,1, disorder scale of band 1",
+          "unit": null,
+          "role": "fitted",
+          "scattering": ["dis"],
+          "slider": {
+            "widget": "para_F_slider_spb_hall",
+            "min": 0,
+            "max": 100000,
+            "step": 100,
+            "default": 4000,
+            "source": "seeband.py:1242"
+          },
+          "line_edit": {
+            "scale": 1,
+            "source": "seeband.py:3753"
+          },
+          "display_scale": 1,
+          "fit_scale": 1,
+          "calc_scale": 1,
+          "fit_start_source": ["seeband.py:4927"],
+          "fit_bounds": {
+            "lower": 1,
+            "upper": 10000000.0,
+            "source": ["seeband.py:1140", "seeband.py:1141"]
+          },
+          "calc_source": ["seeband.py:3558"]
+        }
+      ]
+    },
+    {
+      "id": "dpb_s",
+      "model": "DPB",
+      "fit_mode": "S",
+      "status": "working",
+      "fit_function": "dpb_see_fit",
+      "calc_function": "dpb_see_calc",
+      "fit_call": ["seeband.py:4967"],
+      "iteration": {
+        "kind": "single_pass",
+        "source": ["modules/fit_module.py:117"]
+      },
+      "maxfev": {
+        "see": 1000,
+        "source": ["modules/fit_module.py:117"]
+      },
+      "scattering": null,
+      "degeneracy": {
+        "n1_default": 1,
+        "n2_default": 1,
+        "passed_as": "n2 / n1",
+        "source": ["seeband.py:1603", "seeband.py:1613", "seeband.py:4967"]
+      },
+      "parameters": [
+        {
+          "name": "m_eff",
+          "meaning": "effective mass of band 2",
+          "unit": "dimensionless",
+          "role": "fitted",
+          "scattering": ["acPh", "dis", "acPhDis"],
+          "slider": {
+            "widget": "mass_slider_dpb_see",
+            "min": -300,
+            "max": 300,
+            "step": 1,
+            "default": 101,
+            "source": "seeband.py:1528"
+          },
+          "line_edit": {
+            "scale": 100,
+            "source": "seeband.py:3774"
+          },
+          "display_scale": 0.01,
+          "fit_scale": 0.01,
+          "calc_scale": 0.01,
+          "fit_start_source": ["seeband.py:4963", "seeband.py:4964"],
+          "fit_bounds": {
+            "lower": -3,
+            "upper": 3,
+            "source": ["seeband.py:4965", "seeband.py:4966"]
+          },
+          "calc_source": ["seeband.py:3581", "seeband.py:3582"]
+        },
+        {
+          "name": "band_gap",
+          "meaning": "position of band 2",
+          "unit": "K",
+          "role": "fitted",
+          "scattering": ["acPh", "dis", "acPhDis"],
+          "slider": {
+            "widget": "bandgap_slider_dpb_see",
+            "min": -3000,
+            "max": 3000,
+            "step": 10,
+            "default": 1000,
+            "source": "seeband.py:1553"
+          },
+          "line_edit": {
+            "scale": 1,
+            "source": "seeband.py:3776"
+          },
+          "display_scale": 1,
+          "fit_scale": 1,
+          "calc_scale": 1,
+          "fit_start_source": ["seeband.py:4963", "seeband.py:4964"],
+          "fit_bounds": {
+            "lower": -3000,
+            "upper": 3000,
+            "source": ["seeband.py:4965", "seeband.py:4966"]
+          },
+          "calc_source": ["seeband.py:3581", "seeband.py:3582"]
+        },
+        {
+          "name": "fermi_energy",
+          "meaning": "Fermi energy at T = 0",
+          "unit": "K",
+          "role": "fitted",
+          "scattering": ["acPh", "dis", "acPhDis"],
+          "slider": {
+            "widget": "fermi_slider_dpb_see",
+            "min": -3000,
+            "max": 3000,
+            "step": 1,
+            "default": -100,
+            "source": "seeband.py:1574"
+          },
+          "line_edit": {
+            "scale": 1,
+            "source": "seeband.py:3778"
+          },
+          "display_scale": 1,
+          "fit_scale": 1,
+          "calc_scale": 1,
+          "fit_start_source": ["seeband.py:4963", "seeband.py:4964"],
+          "fit_bounds": {
+            "lower": -3000,
+            "upper": 3000,
+            "source": ["seeband.py:4965", "seeband.py:4966"]
+          },
+          "calc_source": ["seeband.py:3581", "seeband.py:3582"]
+        }
+      ]
+    },
+    {
+      "id": "dpb_s_rho",
+      "model": "DPB",
+      "fit_mode": "S+rho",
+      "status": "working",
+      "fit_function": "dpb_see_res_fit",
+      "calc_function": "dpb_see_res_calc",
+      "fit_call": ["seeband.py:5010"],
+      "iteration": {
+        "kind": "iterative",
+        "threshold": 0.1,
+        "max_iterations": 1000,
+        "source": ["seeband.py:5013"]
+      },
+      "maxfev": {
+        "see": 1000,
+        "rho": 50000,
+        "source": [
+          "modules/fit_module.py:392",
+          "modules/fit_module.py:396",
+          "modules/fit_module.py:428",
+          "modules/fit_module.py:432",
+          "modules/fit_module.py:436"
+        ]
+      },
+      "scattering": {
+        "options": ["acPh", "dis", "acPhDis"],
+        "default": "acPh",
+        "source": ["seeband.py:2051", "seeband.py:2054"]
+      },
+      "degeneracy": {
+        "n1_default": 1,
+        "n2_default": 1,
+        "passed_as": "n2 / n1",
+        "source": ["seeband.py:2062", "seeband.py:2071", "seeband.py:5012"]
+      },
+      "parameters": [
+        {
+          "name": "m_eff",
+          "meaning": "effective mass of band 2",
+          "unit": "dimensionless",
+          "role": "fitted",
+          "scattering": ["acPh", "dis", "acPhDis"],
+          "slider": {
+            "widget": "mass_slider_dpb_res",
+            "min": -300,
+            "max": 300,
+            "step": 1,
+            "default": 101,
+            "source": "seeband.py:1834"
+          },
+          "line_edit": {
+            "scale": 100,
+            "source": "seeband.py:3802"
+          },
+          "display_scale": 0.01,
+          "fit_scale": 0.01,
+          "calc_scale": 0.01,
+          "fit_start_source": ["seeband.py:4999", "seeband.py:5000"],
+          "fit_bounds": {
+            "lower": -3,
+            "upper": 3,
+            "source": ["seeband.py:5001", "seeband.py:5002"]
+          },
+          "calc_source": ["seeband.py:3621", "seeband.py:3622"]
+        },
+        {
+          "name": "band_gap",
+          "meaning": "position of band 2",
+          "unit": "K",
+          "role": "fitted",
+          "scattering": ["acPh", "dis", "acPhDis"],
+          "slider": {
+            "widget": "bandgap_slider_dpb_res",
+            "min": -3000,
+            "max": 3000,
+            "step": 10,
+            "default": 1000,
+            "source": "seeband.py:1857"
+          },
+          "line_edit": {
+            "scale": 1,
+            "source": "seeband.py:3803"
+          },
+          "display_scale": 1,
+          "fit_scale": 1,
+          "calc_scale": 1,
+          "fit_start_source": ["seeband.py:4999", "seeband.py:5000"],
+          "fit_bounds": {
+            "lower": -3000,
+            "upper": 3000,
+            "source": ["seeband.py:5001", "seeband.py:5002"]
+          },
+          "calc_source": ["seeband.py:3621", "seeband.py:3622"]
+        },
+        {
+          "name": "fermi_energy",
+          "meaning": "Fermi energy at T = 0",
+          "unit": "K",
+          "role": "fitted",
+          "scattering": ["acPh", "dis", "acPhDis"],
+          "slider": {
+            "widget": "fermi_slider_dpb_res",
+            "min": -3000,
+            "max": 3000,
+            "step": 1,
+            "default": -100,
+            "source": "seeband.py:1880"
+          },
+          "line_edit": {
+            "scale": 1,
+            "source": "seeband.py:3804"
+          },
+          "display_scale": 1,
+          "fit_scale": 1,
+          "calc_scale": 1,
+          "fit_start_source": ["seeband.py:4999", "seeband.py:5000"],
+          "fit_bounds": {
+            "lower": -3000,
+            "upper": 3000,
+            "source": ["seeband.py:5001", "seeband.py:5002"]
+          },
+          "calc_source": ["seeband.py:3621", "seeband.py:3622"]
+        },
+        {
+          "name": "A",
+          "meaning": "tau_ph,1, acoustic phonon scale of band 1",
+          "unit": null,
+          "role": "fitted",
+          "scattering": ["acPh", "acPhDis"],
+          "slider": {
+            "widget": "para_A_slider_dpb_res",
+            "min": 0,
+            "max": 1000000,
+            "step": 1000,
+            "default": 40000,
+            "source": "seeband.py:1902"
+          },
+          "line_edit": {
+            "scale": 1,
+            "source": "seeband.py:3805"
+          },
+          "display_scale": 1,
+          "fit_scale": 1,
+          "calc_scale": 1,
+          "fit_start_source": ["seeband.py:5003"],
+          "fit_bounds": {
+            "lower": 0,
+            "upper": 1000000.0,
+            "source": ["seeband.py:5006", "seeband.py:5007"]
+          },
+          "calc_source": ["seeband.py:3622", "seeband.py:3623"]
+        },
+        {
+          "name": "B",
+          "meaning": "tau_ph,2 / tau_ph,1",
+          "unit": "dimensionless",
+          "role": "fitted",
+          "scattering": ["acPh", "acPhDis"],
+          "slider": {
+            "widget": "para_B_slider_dpb_res",
+            "min": 90,
+            "max": 110,
+            "step": 1,
+            "default": 100,
+            "source": "seeband.py:1924"
+          },
+          "line_edit": {
+            "scale": 100,
+            "source": "seeband.py:3806"
+          },
+          "display_scale": 0.01,
+          "fit_scale": 0.01,
+          "calc_scale": 0.01,
+          "fit_start_source": ["seeband.py:5003"],
+          "fit_bounds": {
+            "lower": 0.9,
+            "upper": 1.1,
+            "source": ["seeband.py:5006", "seeband.py:5007"]
+          },
+          "calc_source": ["seeband.py:3622", "seeband.py:3623"]
+        },
+        {
+          "name": "C",
+          "meaning": "tau_ph,1 / tau_dis,1 at 300 K",
+          "unit": "dimensionless",
+          "role": "fitted",
+          "scattering": ["acPhDis"],
+          "slider": {
+            "widget": "para_C_slider_dpb_res",
+            "min": 50,
+            "max": 200,
+            "step": 1,
+            "default": 100,
+            "source": "seeband.py:1946"
+          },
+          "line_edit": {
+            "scale": 100,
+            "source": "seeband.py:3807"
+          },
+          "display_scale": 0.01,
+          "fit_scale": 0.01,
+          "calc_scale": 0.01,
+          "fit_start_source": ["seeband.py:5003"],
+          "fit_bounds": {
+            "lower": 0.5,
+            "upper": 2,
+            "source": ["seeband.py:5006", "seeband.py:5007"]
+          },
+          "calc_source": ["seeband.py:3622", "seeband.py:3623"],
+          "internal_fit_factor": {
+            "factor": 300,
+            "source": ["modules/fit_module.py:350"]
+          },
+          "internal_calc_factor": {
+            "factor": 300,
+            "source": ["modules/fit_module.py:1556"]
+          }
+        },
+        {
+          "name": "D",
+          "meaning": "tau_ph,2 / tau_dis,2 at 300 K",
+          "unit": "dimensionless",
+          "role": "fitted",
+          "scattering": ["acPhDis"],
+          "slider": {
+            "widget": "para_D_slider_dpb_res",
+            "min": 50,
+            "max": 200,
+            "step": 1,
+            "default": 100,
+            "source": "seeband.py:1971"
+          },
+          "line_edit": {
+            "scale": 100,
+            "source": "seeband.py:3808"
+          },
+          "display_scale": 0.01,
+          "fit_scale": 0.01,
+          "calc_scale": 0.01,
+          "fit_start_source": ["seeband.py:5003"],
+          "fit_bounds": {
+            "lower": 0.5,
+            "upper": 2,
+            "source": ["seeband.py:5006", "seeband.py:5007"]
+          },
+          "calc_source": ["seeband.py:3622", "seeband.py:3623"],
+          "internal_fit_factor": {
+            "factor": 300,
+            "source": ["modules/fit_module.py:350"]
+          },
+          "internal_calc_factor": {
+            "factor": 300,
+            "source": ["modules/fit_module.py:1556"]
+          }
+        },
+        {
+          "name": "F",
+          "meaning": "tau_dis,1, disorder scale of band 1",
+          "unit": null,
+          "role": "fitted",
+          "scattering": ["dis"],
+          "slider": {
+            "widget": "para_F_slider_dpb_res",
+            "min": 0,
+            "max": 100000,
+            "step": 100,
+            "default": 1000,
+            "source": "seeband.py:1997"
+          },
+          "line_edit": {
+            "scale": 1,
+            "source": "seeband.py:3809"
+          },
+          "display_scale": 1,
+          "fit_scale": 1,
+          "calc_scale": 1,
+          "fit_start_source": ["seeband.py:5003"],
+          "fit_bounds": {
+            "lower": 0,
+            "upper": 100000.0,
+            "source": ["seeband.py:5006", "seeband.py:5007"]
+          },
+          "calc_source": ["seeband.py:3622", "seeband.py:3623"]
+        },
+        {
+          "name": "G",
+          "meaning": "tau_dis,2 / tau_dis,1",
+          "unit": "dimensionless",
+          "role": "fitted",
+          "scattering": ["dis"],
+          "slider": {
+            "widget": "para_G_slider_dpb_res",
+            "min": 50,
+            "max": 200,
+            "step": 1,
+            "default": 100,
+            "source": "seeband.py:2023"
+          },
+          "line_edit": {
+            "scale": 100,
+            "source": "seeband.py:3810"
+          },
+          "display_scale": 0.01,
+          "fit_scale": 0.01,
+          "calc_scale": 0.01,
+          "fit_start_source": ["seeband.py:5003"],
+          "fit_bounds": {
+            "lower": 0.5,
+            "upper": 2,
+            "source": ["seeband.py:5006", "seeband.py:5007"]
+          },
+          "calc_source": ["seeband.py:3622", "seeband.py:3623"]
+        }
+      ]
+    },
+    {
+      "id": "dpb_s_rho_rh",
+      "model": "DPB",
+      "fit_mode": "S+rho+R_H",
+      "status": "dis_fails_on_desktop",
+      "status_reason": "D1",
+      "fit_function": "dpb_see_res_hall_fit",
+      "calc_function": "dpb_see_res_hall_calc",
+      "fit_call": ["seeband.py:5052"],
+      "iteration": {
+        "kind": "iterative",
+        "threshold": 0.1,
+        "max_iterations": 20,
+        "source": ["seeband.py:43", "seeband.py:44", "seeband.py:5055"]
+      },
+      "maxfev": {
+        "see": 1000,
+        "rho": 50000,
+        "hall": 5000,
+        "source": [
+          "modules/fit_module.py:855",
+          "modules/fit_module.py:859",
+          "modules/fit_module.py:891",
+          "modules/fit_module.py:895",
+          "modules/fit_module.py:899",
+          "modules/fit_module.py:973",
+          "modules/fit_module.py:977",
+          "modules/fit_module.py:981"
+        ]
+      },
+      "scattering": {
+        "options": ["acPh", "dis", "acPhDis"],
+        "default": "acPh",
+        "source": ["seeband.py:2332", "seeband.py:2335"]
+      },
+      "degeneracy": {
+        "n1_default": 1,
+        "n2_default": 1,
+        "passed_as": "n2 / n1",
+        "source": ["seeband.py:2421", "seeband.py:2429", "seeband.py:5054"]
+      },
+      "parameters": [
+        {
+          "name": "m_eff",
+          "meaning": "effective mass of band 2",
+          "unit": "dimensionless",
+          "role": "fitted",
+          "scattering": ["acPh", "dis", "acPhDis"],
+          "slider": {
+            "widget": "mass_slider_dpb_hall",
+            "min": -300,
+            "max": 300,
+            "step": 1,
+            "default": 101,
+            "source": "seeband.py:2355"
+          },
+          "line_edit": {
+            "scale": 100,
+            "source": "seeband.py:3837"
+          },
+          "display_scale": 0.01,
+          "fit_scale": 0.01,
+          "calc_scale": 0.01,
+          "fit_start_source": ["seeband.py:5043", "seeband.py:5044"],
+          "fit_bounds": {
+            "lower": -3,
+            "upper": 3,
+            "source": ["seeband.py:5045", "seeband.py:5046"]
+          },
+          "calc_source": ["seeband.py:3666", "seeband.py:3667"]
+        },
+        {
+          "name": "band_gap",
+          "meaning": "position of band 2",
+          "unit": "K",
+          "role": "fitted",
+          "scattering": ["acPh", "dis", "acPhDis"],
+          "slider": {
+            "widget": "bandgap_slider_dpb_hall",
+            "min": -3000,
+            "max": 3000,
+            "step": 10,
+            "default": 1000,
+            "source": "seeband.py:2376"
+          },
+          "line_edit": {
+            "scale": 1,
+            "source": "seeband.py:3838"
+          },
+          "display_scale": 1,
+          "fit_scale": 1,
+          "calc_scale": 1,
+          "fit_start_source": ["seeband.py:5043", "seeband.py:5044"],
+          "fit_bounds": {
+            "lower": -3000,
+            "upper": 3000,
+            "source": ["seeband.py:5045", "seeband.py:5046"]
+          },
+          "calc_source": ["seeband.py:3666", "seeband.py:3667"]
+        },
+        {
+          "name": "fermi_energy",
+          "meaning": "Fermi energy at T = 0",
+          "unit": "K",
+          "role": "fitted",
+          "scattering": ["acPh", "dis", "acPhDis"],
+          "slider": {
+            "widget": "fermi_slider_dpb_hall",
+            "min": -3000,
+            "max": 3000,
+            "step": 1,
+            "default": -100,
+            "source": "seeband.py:2397"
+          },
+          "line_edit": {
+            "scale": 1,
+            "source": "seeband.py:3839"
+          },
+          "display_scale": 1,
+          "fit_scale": 1,
+          "calc_scale": 1,
+          "fit_start_source": ["seeband.py:5043", "seeband.py:5044"],
+          "fit_bounds": {
+            "lower": -3000,
+            "upper": 3000,
+            "source": ["seeband.py:5045", "seeband.py:5046"]
+          },
+          "calc_source": ["seeband.py:3666", "seeband.py:3667"]
+        },
+        {
+          "name": "A",
+          "meaning": "tau_ph,1, acoustic phonon scale of band 1",
+          "unit": null,
+          "role": "fitted",
+          "scattering": ["acPh", "acPhDis"],
+          "slider": {
+            "widget": "para_A_slider_dpb_hall",
+            "min": 0,
+            "max": 1000000,
+            "step": 1000,
+            "default": 40000,
+            "source": "seeband.py:2435"
+          },
+          "line_edit": {
+            "scale": 1,
+            "source": "seeband.py:3840"
+          },
+          "display_scale": 1,
+          "fit_scale": 1,
+          "calc_scale": 1,
+          "fit_start_source": ["seeband.py:5047"],
+          "fit_bounds": {
+            "lower": 0,
+            "upper": 1000000.0,
+            "source": ["seeband.py:5048"]
+          },
+          "calc_source": ["seeband.py:3667", "seeband.py:3668"]
+        },
+        {
+          "name": "B",
+          "meaning": "tau_ph,2 / tau_ph,1",
+          "unit": "dimensionless",
+          "role": "fitted",
+          "scattering": ["acPh", "acPhDis"],
+          "slider": {
+            "widget": "para_B_slider_dpb_hall",
+            "min": 90,
+            "max": 110,
+            "step": 1,
+            "default": 100,
+            "source": "seeband.py:2455"
+          },
+          "line_edit": {
+            "scale": 100,
+            "source": "seeband.py:3841"
+          },
+          "display_scale": 0.01,
+          "fit_scale": 0.01,
+          "calc_scale": 0.01,
+          "fit_start_source": ["seeband.py:5047"],
+          "fit_bounds": {
+            "lower": 0.9,
+            "upper": 1.1,
+            "source": ["seeband.py:5048"]
+          },
+          "calc_source": ["seeband.py:3667", "seeband.py:3668"]
+        },
+        {
+          "name": "C",
+          "meaning": "tau_ph,1 / tau_dis,1 at 300 K",
+          "unit": "dimensionless",
+          "role": "fitted",
+          "scattering": ["acPhDis"],
+          "slider": {
+            "widget": "para_C_slider_dpb_hall",
+            "min": 50,
+            "max": 200,
+            "step": 1,
+            "default": 100,
+            "source": "seeband.py:2476"
+          },
+          "line_edit": {
+            "scale": 100,
+            "source": "seeband.py:3842"
+          },
+          "display_scale": 0.01,
+          "fit_scale": 0.01,
+          "calc_scale": 0.01,
+          "fit_start_source": ["seeband.py:5047"],
+          "fit_bounds": {
+            "lower": 0.5,
+            "upper": 2,
+            "source": ["seeband.py:5048"]
+          },
+          "calc_source": ["seeband.py:3667", "seeband.py:3668"],
+          "internal_fit_factor": {
+            "factor": 300,
+            "source": ["modules/fit_module.py:813"]
+          },
+          "internal_calc_factor": {
+            "factor": 300,
+            "source": ["modules/fit_module.py:1695"]
+          }
+        },
+        {
+          "name": "D",
+          "meaning": "tau_ph,2 / tau_dis,2 at 300 K",
+          "unit": "dimensionless",
+          "role": "fitted",
+          "scattering": ["acPhDis"],
+          "slider": {
+            "widget": "para_D_slider_dpb_hall",
+            "min": 50,
+            "max": 200,
+            "step": 1,
+            "default": 100,
+            "source": "seeband.py:2501"
+          },
+          "line_edit": {
+            "scale": 100,
+            "source": "seeband.py:3843"
+          },
+          "display_scale": 0.01,
+          "fit_scale": 0.01,
+          "calc_scale": 0.01,
+          "fit_start_source": ["seeband.py:5047"],
+          "fit_bounds": {
+            "lower": 0.5,
+            "upper": 2,
+            "source": ["seeband.py:5048"]
+          },
+          "calc_source": ["seeband.py:3667", "seeband.py:3668"],
+          "internal_fit_factor": {
+            "factor": 300,
+            "source": ["modules/fit_module.py:813"]
+          },
+          "internal_calc_factor": {
+            "factor": 300,
+            "source": ["modules/fit_module.py:1695"]
+          }
+        },
+        {
+          "name": "F",
+          "meaning": "tau_dis,1, disorder scale of band 1",
+          "unit": null,
+          "role": "fitted",
+          "scattering": ["dis"],
+          "slider": {
+            "widget": "para_F_slider_dpb_hall",
+            "min": 0,
+            "max": 100000,
+            "step": 1000,
+            "default": 1000,
+            "source": "seeband.py:2526"
+          },
+          "line_edit": {
+            "scale": 1,
+            "source": "seeband.py:3845"
+          },
+          "display_scale": 1,
+          "fit_scale": 1,
+          "calc_scale": 1,
+          "fit_start_source": ["seeband.py:5047"],
+          "fit_bounds": {
+            "lower": 0,
+            "upper": 100000.0,
+            "source": ["seeband.py:5048"]
+          },
+          "calc_source": ["seeband.py:3667", "seeband.py:3668"]
+        },
+        {
+          "name": "G",
+          "meaning": "tau_dis,2 / tau_dis,1",
+          "unit": "dimensionless",
+          "role": "fitted",
+          "scattering": ["dis"],
+          "slider": {
+            "widget": "para_G_slider_dpb_hall",
+            "min": 50,
+            "max": 200,
+            "step": 100,
+            "default": 100,
+            "source": "seeband.py:2550"
+          },
+          "line_edit": {
+            "scale": 100,
+            "source": "seeband.py:3846"
+          },
+          "display_scale": 0.01,
+          "fit_scale": 0.01,
+          "calc_scale": 0.01,
+          "fit_start_source": ["seeband.py:5047"],
+          "fit_bounds": {
+            "lower": 50,
+            "upper": 200,
+            "source": ["seeband.py:5048"]
+          },
+          "calc_source": ["seeband.py:3667", "seeband.py:3668"],
+          "web_fit_bounds": {
+            "lower": 0.5,
+            "upper": 2,
+            "reason": "D1"
+          }
+        },
+        {
+          "name": "m1",
+          "meaning": "absolute mass of band 1",
+          "unit": "m_e",
+          "role": "fitted",
+          "scattering": ["acPh", "dis", "acPhDis"],
+          "slider": {
+            "widget": "para_E_slider_dpb_hall",
+            "min": 10,
+            "max": 1000,
+            "step": 1,
+            "default": 100,
+            "source": "seeband.py:2574"
+          },
+          "line_edit": {
+            "scale": 100,
+            "source": "seeband.py:3844"
+          },
+          "display_scale": 0.01,
+          "fit_scale": 0.01,
+          "calc_scale": 0.01,
+          "fit_start_source": ["seeband.py:5049"],
+          "fit_bounds": {
+            "lower": 0.1,
+            "upper": 10,
+            "source": ["seeband.py:5050"]
+          },
+          "calc_source": ["seeband.py:3668"],
+          "fit_transform": {
+            "formula": "m1^(3/2)",
+            "source": ["modules/fit_module.py:775", "modules/fit_module.py:776"]
+          }
+        }
+      ]
+    }
+  ],
+  "deviations": [
+    {
+      "id": "D1",
+      "title": "DPB S + rho + R_H with dis passes G bounds in slider units",
+      "desktop": "Start is 1.0 (slider / 100), bounds stay 50 to 200, so `curve_fit` rejects the start as infeasible. In S + rho the bounds are scaled.",
+      "web": "Use bounds 0.5 to 2. This is a deliberate deviation in the GUI layer. C3 confirms the failure end to end.",
+      "resolved_by": "#11 (C3)",
+      "source": [
+        "seeband.py:5047",
+        "seeband.py:5048",
+        "seeband.py:5006",
+        "seeband.py:5007"
+      ]
+    },
+    {
+      "id": "D2",
+      "title": "SPB S + rho + R_H always fails",
+      "desktop": "The fit reads `fermi_slider_spb`, which does not exist, so the thread stops with an error.",
+      "web": "Mode disabled until fixed.",
+      "resolved_by": "#83 (P4)",
+      "source": ["seeband.py:4926"]
+    },
+    {
+      "id": "D3",
+      "title": "SPB S + rho + R_H builds the initial mass parameter incorrectly",
+      "desktop": "The slider value is passed without dividing by 100, with raw slider bounds. For m > 0 the expression gives an empty list.",
+      "web": "Fixed with the mode.",
+      "resolved_by": "#83 (P4)",
+      "source": [
+        "seeband.py:4930",
+        "seeband.py:4931",
+        "modules/fit_module.py:592"
+      ]
+    },
+    {
+      "id": "D4",
+      "title": "SPB C has three different scales",
+      "desktop": "Displayed as slider / 100, but the fit and the S + rho curve use the raw slider value, then multiply by 300 for acPhDis.",
+      "web": "Exact port keeps the numbers. Describe C in core units and flag acPhDis results.",
+      "resolved_by": "#82 (P3)",
+      "source": [
+        "seeband.py:3513",
+        "seeband.py:4892",
+        "seeband.py:3526",
+        "modules/fit_module.py:204",
+        "modules/fit_module.py:1483"
+      ]
+    },
+    {
+      "id": "D5",
+      "title": "SPB S + rho + R_H curve multiplies C by 300 twice",
+      "desktop": "The handler passes slider * 300, and the calculation multiplies by 300 again for acPhDis. S + rho passes the raw value.",
+      "web": "Fixed with the mode.",
+      "resolved_by": "#83 (P4)",
+      "source": [
+        "seeband.py:3558",
+        "seeband.py:3526",
+        "modules/fit_module.py:1617"
+      ]
+    },
+    {
+      "id": "D6",
+      "title": "SPB S + rho + R_H returns B without dividing by 300",
+      "desktop": "S + rho divides by 300 on return and S + rho + R_H does not, while the calculation multiplies by 300 again.",
+      "web": "Fixed with the mode.",
+      "resolved_by": "#83 (P4)",
+      "source": ["modules/fit_module.py:702", "modules/fit_module.py:265"]
+    },
+    {
+      "id": "D7",
+      "title": "SPB S + rho + R_H result curve passes too few parameters",
+      "desktop": "The curve after a fit passes `params[1:3]`, and S + rho passes `params[1:4]`. With dis, both values are removed and the calculation has no parameter left.",
+      "web": "Fixed with the mode.",
+      "resolved_by": "#83 (P4)",
+      "source": [
+        "seeband.py:4938",
+        "seeband.py:4901",
+        "modules/fit_module.py:1614"
+      ]
+    },
+    {
+      "id": "D8",
+      "title": "Iteration settings differ between DPB modes",
+      "desktop": "S + rho hardcodes 0.1 and 1000. S + rho + R_H uses 0.1 and 20 from the main window. Neither can be changed in a window.",
+      "web": "Exact port keeps these per-mode values in the model description.",
+      "resolved_by": "#16 (C8)",
+      "source": [
+        "seeband.py:5013",
+        "seeband.py:5055",
+        "seeband.py:43",
+        "seeband.py:44"
+      ]
+    },
+    {
+      "id": "D9",
+      "title": "Advanced options for SPB parameter A write to DPB variables",
+      "desktop": "The SPB S + rho handler sets `para_A_*_limit_dpb_res`, and the S + rho + R_H handler also changes `para_A_slider_dpb_hall`. Limits entered for SPB A never reach an SPB fit.",
+      "web": "Not ported. Editable bounds apply to the selected mode.",
+      "resolved_by": "#57 (FS13)",
+      "source": [
+        "seeband.py:4477",
+        "seeband.py:4478",
+        "seeband.py:4491",
+        "seeband.py:4492",
+        "seeband.py:4893"
+      ]
+    },
+    {
+      "id": "D10",
+      "title": "DPB limit variables are not used by fits",
+      "desktop": "`para_*_limit_dpb_*` are initialised and edited, but DPB fits read slider ranges. SPB `para_E_*_limit_spb_hall` is not read at all.",
+      "web": "Not ported. `fit_bounds` here records what the fits actually use.",
+      "resolved_by": "#57 (FS13)",
+      "source": [
+        "seeband.py:1798",
+        "seeband.py:2310",
+        "seeband.py:5006",
+        "seeband.py:5048",
+        "seeband.py:1142"
+      ]
+    },
+    {
+      "id": "D11",
+      "title": "Defaults and steps differ between windows of the same model",
+      "desktop": "SPB mass and E_F start at 1.01 and 100 in S, -1.00 and -100 in S + rho, 1.00 and 100 in S + rho + R_H. The G step is 1 in S + rho and 100 in S + rho + R_H.",
+      "web": "Exact port keeps the defaults. Agree whether to unify them when building the form in FS5.",
+      "resolved_by": "#45 (FS5)",
+      "source": [
+        "seeband.py:619",
+        "seeband.py:642",
+        "seeband.py:828",
+        "seeband.py:849",
+        "seeband.py:1154",
+        "seeband.py:1175",
+        "seeband.py:2025",
+        "seeband.py:2552"
+      ]
+    },
+    {
+      "id": "D12",
+      "title": "DPB S fit and curve disagree when N2/N1 is not 1",
+      "desktop": "The fit uses m_eff without dividing by N, and the curve divides by N.",
+      "web": "Exact port keeps this until fixed.",
+      "resolved_by": "#85 (P6)",
+      "source": ["modules/fit_module.py:116", "modules/fit_module.py:1402"]
+    }
+  ]
+}
