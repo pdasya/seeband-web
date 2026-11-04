@@ -29,3 +29,4 @@ Web version of the SeeBand desktop application. Calculations run only on the ser
 
 - `python-reviewer`, `fastapi-reviewer`, `typescript-reviewer`, `react-reviewer`, `security-reviewer`, `code-reviewer`: read-only reviewers in `.claude/agents/`. Run them when asked.
 - They are third-party, recorded in `.claude/skills/THIRD_PARTY.md`.
+- `physics-reviewer`: written for this project. Checks formulas, limits, scales and whether fits mean anything. It does not replace a physicist's confirmation.

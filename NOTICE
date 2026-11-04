@@ -3,7 +3,8 @@ https://github.com/xAngelswordx/SeeBand
 Reference commit: 803b0e7a425a0a3f4f59688df77e3ad283ca49a1
 
 Code ported from SeeBand, including the calculation code in
-packages/seeband_core, is covered by the original license below.
+packages/seeband_core, and the neural net weights exported from SeeBand are
+covered by the original license below.
 
 --------------------------------------------------------------------------------
 

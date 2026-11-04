@@ -44,4 +44,39 @@ uv pip install --python ../seeband-tf-env/bin/python tensorflow==2.15.1 numpy==1
 
 The fixture is excluded from Prettier and holds the exact script output, so any change to a number shows in the diff. Two runs gave byte-identical files with the versions recorded in the fixture.
 
-The files were saved with Keras 2.9, and these references were captured with TensorFlow 2.15.1 and Keras 2.15.0 on one Mac on Apple Silicon. A one-off numpy forward pass from the weight files differed from these outputs by at most 1.2e-7. The numpy port makes this check repeatable. The original 2.9 environment was not tested, and the desktop GUI was not run: slider rounding and limits are reproduced from `NeuralNetPredictionThread`.
+The files were saved with Keras 2.9, and these references were captured with TensorFlow 2.15.1 and Keras 2.15.0 on one Mac on Apple Silicon. The original 2.9 environment was not tested, and the desktop GUI was not run: slider rounding and limits are reproduced from `NeuralNetPredictionThread`.
+
+## Numpy port
+
+`seeband_core.neural_nets` runs the same nets with numpy, and `tests/test_neural_nets.py` compares each step with these references. It returns `NeuralNetGuess`, with the chosen range and the prediction, or `NoNeuralNet`.
+
+| Step                                   | Rule                                 | Largest difference on one Mac |
+| -------------------------------------- | ------------------------------------ | ----------------------------- |
+| Interpolated Seebeck and network input | relative difference of at most 1e-9  | 4.2e-15                       |
+| Network output                         | exactly equal                        | none                          |
+| Final prediction                       | relative difference of at most 1e-12 | none beyond the rule          |
+
+The output matches because the port rounds as TensorFlow did on that Mac. It uses TensorFlow's own approximation of tanh, and sums each layer in row order, with the rounding that matches: after each multiply and add together in the hidden layers, and after each one separately in the last layer. It does not use `@`, because that goes through BLAS. With `@`, exact comparison passed in one Linux CI run and failed in the next on the same code, with differences of a few 1e-7. `np.tanh` also reaches an output of 1 at about 10 instead of about 7.906.
+
+Beyond the 10 cases here, an independent review recorded 2776 network outputs from the real desktop nets with TensorFlow 2.15.1, on random, extreme and example-shaped inputs. The port's forward pass gave all of them exactly, from the recorded inputs, on one Mac on Apple Silicon. TensorFlow on x86 and the original Keras 2.9 were not tested, so this shows a match with the recorded desktop results, not with TensorFlow on every machine.
+
+The port keeps the desktop's behaviour:
+
+- It chooses a net from the first and last rows, which P9 fixes.
+- It computes the inverse transform in float64, as the desktop does with numpy 1.26. With numpy 2, the desktop's expressions would stay in float32, so the port converts explicitly.
+- Non-finite values come back in a normal `NeuralNetGuess`. An output of exactly 1 gives infinity. With negative Seebeck, outputs of 1 give m_eff = 0, an infinite gap and a Fermi energy of NaN. NaN in the Seebeck data gives NaN. The API must handle these, because they are not valid JSON numbers.
+- The sign of Seebeck follows the mean of the first three interpolated values, so a mean near 0 can follow numerical noise.
+
+The desktop's slider rounding and limits are not part of this module, and a later task needs them. Its slider code raises `OverflowError` on an infinite prediction.
+
+One difference: if the Seebeck fit fails, the port raises `ValueError`, while the desktop fails later with `TypeError`.
+
+## Exporting the weights
+
+`src/seeband_core/data/neural_nets/` holds one `.npz` file per net, exported from the desktop's H5 files. The script stops if a net differs from the expected layers: 7 inputs, dense layers of 16, 16, 8 and 3 units, LeakyReLU with slope 0.1, and tanh at the output. Two runs gave byte-identical files, and `test_weights_are_unchanged` pins their hashes. Run this with the same environment and checkout as above:
+
+```sh
+../seeband-tf-env/bin/python packages/seeband_core/scripts/export_neural_net_weights.py \
+  --desktop ../SeeBand \
+  --output packages/seeband_core/src/seeband_core/data/neural_nets
+```
