@@ -12,7 +12,7 @@ Web version of the SeeBand desktop application. Calculations run only on the ser
 ## Rules linters cannot check
 
 - Make units explicit in names and schemas, for example `temperature_k`.
-- Do not use `print` or mutate inputs in `seeband_core`.
+- Do not mutate inputs in `seeband_core`.
 - Send all visible strings through i18n.
 - Use shared components from `packages/ui`.
 - Do not hand-write API types. Generate them from OpenAPI.

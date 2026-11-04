@@ -11,7 +11,7 @@ Calculations run only on the server. The browser shows data and results.
 
 | Location                | Holds                                                  | Must not hold                                                   |
 | ----------------------- | ------------------------------------------------------ | --------------------------------------------------------------- |
-| `packages/seeband_core` | formulas, fits, parsing, interpolation, model registry | Qt, TensorFlow, FastAPI, HTTP concerns, `print`, input mutation |
+| `packages/seeband_core` | formulas, fits, parsing, interpolation, model registry | Qt, TensorFlow, FastAPI, HTTP concerns, input mutation          |
 | `apps/api`              | routes, validation, process management, LLM gateway    | formulas, stored measurements                                   |
 | `apps/web`              | forms from model descriptions, charts, session state   | formulas, fit logic, API keys, model-specific parameter lists   |
 | `apps/site`             | static public pages                                    | application logic, Plotly, Pyodide                              |

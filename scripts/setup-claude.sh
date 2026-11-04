@@ -13,6 +13,11 @@ if [ ! -f "$skill/SKILL.md" ]; then
   exit 1
 fi
 
+if [ -e .claude/skills/fastapi ] && [ ! -L .claude/skills/fastapi ]; then
+  echo ".claude/skills/fastapi exists and is not a link; remove it first" >&2
+  exit 1
+fi
+
 mkdir -p .claude/skills
 ln -sfn "$skill" .claude/skills/fastapi
 echo "Linked .claude/skills/fastapi -> $skill"

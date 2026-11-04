@@ -36,6 +36,10 @@ python_version = "3.13"
 strict = true
 files = ["packages/seeband_core/src", "apps/api/src"]
 
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+
 [tool.pytest.ini_options]
 testpaths = ["packages/seeband_core/tests", "apps/api/tests"]
 addopts = "--import-mode=importlib"
