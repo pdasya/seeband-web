@@ -14,10 +14,26 @@ import sys
 from pathlib import Path
 from typing import Any
 
+DESKTOP_COMMIT = "803b0e7a425a0a3f4f59688df77e3ad283ca49a1"
 MODEL_RANGES = [(300, 800), (400, 700), (300, 600), (200, 500), (100, 400)]
 EXAMPLES = ["01_Fe2VAl09Si01", "02_SiP", "03_AWI32_SI"]
 MASS_SLIDER_RANGE = (-300, 300)
 ENERGY_SLIDER_RANGE = (-3000, 3000)
+# Slider defaults in all three DPB windows, recorded in desktop_modes.json.
+DEFAULT_START_VALUES = {"m_eff": 1.01, "band_gap_k": 1000, "fermi_energy_k": -100}
+
+
+def band_values(values: Any) -> dict[str, float]:
+    return {
+        "m_eff": float(values[0]),
+        "band_gap_k": float(values[1]),
+        "fermi_energy_k": float(values[2]),
+    }
+
+
+def git_output(*args: str) -> str:
+    result = subprocess.run(["git", *args], capture_output=True, text=True, check=True)
+    return result.stdout.strip()
 
 
 def clamp(value: int, limits: tuple[int, int]) -> int:
@@ -37,7 +53,11 @@ def capture_case(models: Any, np: Any, name: str, kind: str, data: Any) -> dict[
     if models.current_model is None:
         if models.get_prediction(temperature_k, seebeck_v_per_k) is not None:
             raise RuntimeError(f"{name}: get_prediction returned a value with no model")
+        # With no net the desktop leaves the sliders alone, seeband.py:5082. A fresh session
+        # is the only reproducible state, so golden results start from the defaults.
         case["selected_range_k"] = None
+        case["start_value_source"] = "fresh_session_defaults"
+        case["desktop_start_values"] = DEFAULT_START_VALUES
         return case
 
     interpolated = models._interpolate_seebeck(temperature_k, seebeck_v_per_k)
@@ -46,7 +66,7 @@ def capture_case(models: Any, np: Any, name: str, kind: str, data: Any) -> dict[
     reversed_norm = models._reverse_norm(raw)
     prediction = models._transform_prediction(interpolated, reversed_norm)
     direct = models.get_prediction(temperature_k, seebeck_v_per_k)
-    if not np.allclose(np.array(direct, dtype=float), np.array(prediction, dtype=float)):
+    if not np.array_equal(np.array(direct, dtype=float), np.array(prediction, dtype=float)):
         raise RuntimeError(f"{name}: steps do not reproduce get_prediction")
 
     # The slider conversions and Qt clamping from NeuralNetPredictionThread, seeband.py:5083-5085.
@@ -56,10 +76,11 @@ def capture_case(models: Any, np: Any, name: str, kind: str, data: Any) -> dict[
     case |= {
         "selected_range_k": [models.t_min, models.t_max],
         "interpolated_seebeck_v_per_k": [float(x) for x in interpolated],
-        "network_input": [float(x) for x in transformed],
-        "network_output": [float(x) for x in raw],
-        "reversed_norm": [float(x) for x in reversed_norm],
-        "prediction": [float(x) for x in prediction],
+        "network_input_mv_per_k": [float(x) for x in transformed],
+        "network_output": band_values(raw),
+        "reversed_norm": band_values(reversed_norm),
+        "prediction": band_values(prediction),
+        "start_value_source": "neural_net",
         "desktop_start_values": {
             "m_eff": mass_slider / 100.0,
             "band_gap_k": gap_slider,
@@ -80,6 +101,11 @@ def main() -> None:
     sys.dont_write_bytecode = True
     sys.path.insert(0, str(desktop))
     os.chdir(desktop)
+    commit = git_output("rev-parse", "HEAD")
+    if commit != DESKTOP_COMMIT:
+        raise SystemExit(f"Expected SeeBand commit {DESKTOP_COMMIT}, found {commit}")
+    if git_output("status", "--porcelain"):
+        raise SystemExit("The SeeBand checkout has local changes")
 
     import h5py
     import keras
@@ -108,9 +134,6 @@ def main() -> None:
         data = np.column_stack((temperature_k, seebeck))
         cases.append(capture_case(models, np, name, "synthetic", data))
 
-    commit = subprocess.run(
-        ["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True
-    ).stdout.strip()
     weights = sorted(Path("Models").glob("*"))
     document = {
         "description": "Outputs of the SeeBand desktop neural nets, for checking the numpy port.",

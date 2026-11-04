@@ -80,6 +80,8 @@
       "trigger_source": ["seeband.py:3253", "seeband.py:3256"],
       "overwrite_source": ["seeband.py:5083", "seeband.py:5095"],
       "may_not_fire_source": ["modules/neural_nets.py:44"],
+      "on_no_match": "Sliders keep their current values",
+      "on_no_match_source": ["seeband.py:5082"],
       "negative_seebeck_transform": "mass = 1 / prediction, E_F = gap - prediction",
       "transform_source": [
         "modules/neural_nets.py:77",
@@ -1799,7 +1801,7 @@
       "id": "D15",
       "title": "DPB start values depend on the neural net and on earlier fits",
       "desktop": "Each Seebeck import starts the net, which overwrites mass, gap and E_F in all three DPB windows, if a model matches the temperature span. Adjust to fit writes rounded results back to the sliders. See `start_value_overrides`.",
-      "web": "Run the guess after loading S, as on the desktop. C3 uses these start values, not `slider.default`.",
+      "web": "Run the guess after loading S, as on the desktop. C3 uses these start values, not `slider.default`. If no net matches, C3 uses the defaults of a fresh session.",
       "resolved_by": "#49 (FS9)",
       "source": [
         "seeband.py:3253",
