@@ -67,18 +67,19 @@ uv pip install --python ../seeband-golden-env/bin/python \
 uv run python packages/seeband_core/scripts/summarize_golden_results.py
 ```
 
-The files hold exact script output and are excluded from Prettier, so any change to a number shows in the diff. `test_files_are_unchanged` pins their hashes, so a regeneration needs a deliberate update of the pinned values. Repeated runs gave byte-identical files with these versions, on one Mac on Apple Silicon. C5 sets the tolerance for other versions.
+The files hold exact script output and are excluded from Prettier, so any change to a number shows in the diff. `test_files_are_unchanged` pins their hashes, so a regeneration needs a deliberate update of the pinned values. Repeated runs gave byte-identical files with these versions, on one Mac on Apple Silicon. Other versions are covered by the regression tests below.
 
-## Results on the project's versions
+## Regression tests
 
-The golden results use Python 3.11, numpy 1.26 and scipy 1.17, while the project uses Python 3.13, numpy 2.5 and scipy 1.18. A one-off replay, not in this repository, ran all 195 recorded calls through the ported modules on the project's versions:
+`tests/test_golden_regression.py` replays all 195 recorded calls through the ported modules on the project's versions, and checks each result. The golden results use Python 3.11, numpy 1.26 and scipy 1.17, while the project uses Python 3.13, numpy 2.5 and scipy 1.18.
 
-| Result                         | Calls |
-| ------------------------------ | ----- |
-| Exact match                    | 163   |
-| Relative difference below 1e-6 | 20    |
-| Relative difference below 1e-3 | 2     |
-| Same expected error            | 3     |
-| Relative difference above 1e-3 | 7     |
+| Calls                             | Rule                                                                          |
+| --------------------------------- | ----------------------------------------------------------------------------- |
+| All others, including every curve | relative difference of at most 1e-5; the largest seen is 3.4e-6               |
+| Failing fits                      | the same error                                                                |
+| Listed DPB fits on `02_SiP`       | band gap and E_F within 1e-5, m_eff below 1e-5, other parameters not compared |
+| G minimum case on `01`            | relative difference of at most 1e-3; the difference seen is 1e-4              |
 
-The 7 large differences, of 42 to 100%, are all DPB fits on `02_SiP`: the doubtful fits with m_eff of about 4e-07. The next largest is 1e-4, in the G minimum case on `01`. The modules differ from the desktop only in imports and table loading, so the versions are the likely cause, although this was not tested separately. C5 decides how to treat `02_SiP`.
+**`02_SiP` in DPB cannot be reproduced exactly across versions.** m_eff collapses towards 0: about 4e-07 in the golden results, and 6e-07 on the project's versions. ρ then barely depends on the scattering scales, so A moved from 40000 to 1.4e-05 in one case. The data do not determine these values, so comparing them would only test the library versions. The code is unchanged, so the versions are the likely cause, although this was not tested separately. It is also a reason to treat these results as unsound.
+
+Deliberate changes fail these tests: 0.01% on the Boltzmann constant fails 93 tests, 1% on the electron mass fails 32, and removing the division by 300 on the SPB S + ρ return fails 3.
