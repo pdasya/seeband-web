@@ -1,0 +1,5 @@
+packages:
+  - "apps/web"
+  - "apps/site"
+  - "packages/ui"
+  - "packages/api-client"

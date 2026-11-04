@@ -1,0 +1,45 @@
+[project]
+name = "seeband-web"
+version = "0.0.0"
+description = "Workspace root for the SeeBand web application"
+requires-python = ">=3.13"
+dependencies = []
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = ["apps/api", "packages/seeband_core"]
+
+[tool.uv.sources]
+seeband-api = { workspace = true }
+seeband-core = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "seeband-api",
+    "seeband-core",
+    "mypy>=1.15",
+    "pytest>=8",
+    "ruff>=0.11",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "T20"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+files = ["packages/seeband_core/src", "apps/api/src"]
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+
+[tool.pytest.ini_options]
+testpaths = ["packages/seeband_core/tests", "apps/api/tests"]
+addopts = "--import-mode=importlib"
