@@ -35,4 +35,8 @@ The first stage is an exact port of the desktop application.
 - A physics change belongs to the Physics fixes milestone. Write a test for the physical limit first, then fix, update golden results, record it in the changelog, and get a physicist's confirmation.
 - Known errors stay flagged through the known-issue registry until they are fixed. Never hide them, and never fix them inside unrelated work.
 
+## Known exception
+
+`math_module.py`, `fit_module.py` and `data_processing.py` in `seeband_core` are copied unchanged from SeeBand, so until C6 (#14) they still mutate their inputs and call `print`, some of them unconditionally. Do not rely on them leaving your lists unchanged, and pass copies. Do not change them outside C6.
+
 If a task seems to need breaking one of these rules, stop and raise it instead of working around it.

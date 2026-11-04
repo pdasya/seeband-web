@@ -67,4 +67,18 @@ uv pip install --python ../seeband-golden-env/bin/python \
 uv run python packages/seeband_core/scripts/summarize_golden_results.py
 ```
 
-The files hold exact script output and are excluded from Prettier, so any change to a number shows in the diff. `test_files_are_unchanged` pins their hashes, so a regeneration needs a deliberate update of the pinned values. Repeated runs gave byte-identical files with these versions, on one Mac on Apple Silicon. Results from other versions of numpy and scipy may differ slightly: C5 sets the tolerance for that.
+The files hold exact script output and are excluded from Prettier, so any change to a number shows in the diff. `test_files_are_unchanged` pins their hashes, so a regeneration needs a deliberate update of the pinned values. Repeated runs gave byte-identical files with these versions, on one Mac on Apple Silicon. C5 sets the tolerance for other versions.
+
+## Results on the project's versions
+
+The golden results use Python 3.11, numpy 1.26 and scipy 1.17, while the project uses Python 3.13, numpy 2.5 and scipy 1.18. A one-off replay, not in this repository, ran all 195 recorded calls through the ported modules on the project's versions:
+
+| Result                         | Calls |
+| ------------------------------ | ----- |
+| Exact match                    | 163   |
+| Relative difference below 1e-6 | 20    |
+| Relative difference below 1e-3 | 2     |
+| Same expected error            | 3     |
+| Relative difference above 1e-3 | 7     |
+
+The 7 large differences, of 42 to 100%, are all DPB fits on `02_SiP`: the doubtful fits with m_eff of about 4e-07. The next largest is 1e-4, in the G minimum case on `01`. The modules differ from the desktop only in imports and table loading, so the versions are the likely cause, although this was not tested separately. C5 decides how to treat `02_SiP`.
