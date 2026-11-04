@@ -1594,9 +1594,9 @@
     {
       "id": "D1",
       "title": "DPB S + rho + R_H with dis passes G bounds in slider units",
-      "desktop": "Start is 1.0 (slider / 100), bounds stay 50 to 200, so `curve_fit` rejects the start as infeasible. In S + rho the bounds are scaled. By reading only, a lower limit of 0.01 in Advanced options gives a minimum of 1, which might make the start feasible.",
-      "web": "Use bounds 0.5 to 2. This is a deliberate deviation in the GUI layer. C3 confirms the failure end to end and tests the Advanced options case.",
-      "resolved_by": "#11 (C3)",
+      "desktop": "Start is 1.0 (slider / 100), bounds stay 50 to 200, so the fit stops with `Initial guess is outside of provided bounds`. Confirmed on the real window for all 3 examples. In S + rho the bounds are scaled. With a G slider minimum of 1 the fit returns a result, but it is not credible on 2 of the 3 examples. By reading the code, a lower limit of 0.01 in Advanced options gives that minimum.",
+      "web": "Use bounds 0.5 to 2. This is a deliberate deviation in the GUI layer.",
+      "resolved_by": "#17 (C9)",
       "source": [
         "seeband.py:5047",
         "seeband.py:5048",
@@ -1842,7 +1842,7 @@
     {
       "id": "D18",
       "title": "DPB acPhDis can stop when only part of the parameters converged",
-      "desktop": "The loop stops when m_eff, gap, E_F, A and B converge, or when C and D alone converge. Both groups are needed. Relative change also divides by the previous value, which fails at 0.",
+      "desktop": "The loop stops when m_eff, gap, E_F, A and B converge, or when C and D alone converge. Both groups are needed. On the real window, every acPhDis fit on the 3 examples stopped on C and D alone, after 1 or 2 iterations. Relative change also divides by the previous value, which fails at 0.",
       "web": "Exact port keeps this until fixed.",
       "resolved_by": "#84 (P5)",
       "source": [

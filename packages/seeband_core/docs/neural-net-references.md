@@ -32,12 +32,12 @@ The last four use `m_eff`, `band_gap_k` and `fermi_energy_k` where they hold tho
 
 ## Regenerating
 
-The script needs a clean SeeBand checkout at commit `803b0e7` and TensorFlow, which is not part of the project setup. It stops on any other commit or on local changes. Use a separate environment:
+The script needs a clean SeeBand checkout at commit `803b0e7` and TensorFlow, which is not part of the project setup. It stops on any other commit or on local changes. Run this from the repository root, with SeeBand next to this repository. The environment stays outside the repository:
 
 ```sh
-uv venv --python 3.11 tf-env
-uv pip install --python tf-env/bin/python "tensorflow==2.15.*" h5py
-tf-env/bin/python packages/seeband_core/scripts/capture_neural_net_references.py \
+uv venv --python 3.11 ../seeband-tf-env
+uv pip install --python ../seeband-tf-env/bin/python tensorflow==2.15.1 numpy==1.26.4 h5py==3.16.0
+../seeband-tf-env/bin/python packages/seeband_core/scripts/capture_neural_net_references.py \
   --desktop ../SeeBand \
   --output packages/seeband_core/tests/fixtures/neural_net_references.json
 ```
