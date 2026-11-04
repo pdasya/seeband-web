@@ -23,7 +23,7 @@ These rules win over anything below.
 - Treat any change to calculated numbers without updated golden results as CRITICAL. Never suggest changing a formula or a fit to fix a finding: known physics errors belong to the Physics fixes milestone.
 - Do not flag length, parameter count, naming or structure in `math_module.py`, `fit_module.py` and `data_processing.py` in `seeband_core`. They come from the desktop application. Report only behaviour there.
 - For each finding, say whether you ran it or read it.
-- The application has no user accounts, so a missing login is not a finding. Stored or logged measurements are CRITICAL.
+- Until the application has user accounts, a missing login is not a finding. The planned AI features may add them. Stored or logged measurements are CRITICAL.
 
 # Security Reviewer
 
