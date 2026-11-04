@@ -13,6 +13,8 @@ Tests call the core only through call_core. When a refactor renames a function o
 update call_core and leave the pinned fixtures unchanged.
 """
 
+import contextlib
+import copy
 import json
 import math
 from collections.abc import Iterator
@@ -82,13 +84,20 @@ CALL_IDS = [
 ]
 
 
-def call_core(function: str, args: list[Any], kwargs: dict[str, Any]) -> Any:
-    """Run a recorded desktop call against the core. This is the only link to its names."""
+def core_arguments(
+    function: str, args: list[Any], kwargs: dict[str, Any]
+) -> tuple[list[Any], dict[str, Any]]:
+    """Turn recorded arguments into what the core takes today."""
     arrays = ARRAY_ARGUMENTS.get(function, 0)
     converted = [np.array(value) if index < arrays else value for index, value in enumerate(args)]
     # The desktop also passed print_info, which the core no longer has.
     converted = converted[: POSITIONAL_ARGUMENTS.get(function)]
-    kept = {name: value for name, value in kwargs.items() if name != "print_info"}
+    return converted, {name: value for name, value in kwargs.items() if name != "print_info"}
+
+
+def call_core(function: str, args: list[Any], kwargs: dict[str, Any]) -> Any:
+    """Run a recorded desktop call against the core. This is the only link to its names."""
+    converted, kept = core_arguments(function, args, kwargs)
     return getattr(fit_module.PB_fit(), function)(*converted, **kept)
 
 
@@ -165,6 +174,63 @@ def test_replay_matches_the_desktop(
         assert_close(result, call["result"], SPB_S_02_TOLERANCE)
     else:
         assert_close(result, call["result"], FIT_TOLERANCE)
+
+
+def same_value(first: Any, second: Any) -> bool:
+    if isinstance(first, np.ndarray):
+        return isinstance(second, np.ndarray) and np.array_equal(first, second)
+    if isinstance(first, list | tuple):
+        return (
+            type(first) is type(second)
+            and len(first) == len(second)
+            and all(same_value(x, y) for x, y in zip(first, second, strict=True))
+        )
+    return bool(first == second)
+
+
+def calls_with_distinct_inputs() -> list[dict[str, Any]]:
+    distinct = {
+        json.dumps([call["function"], call["args"], call["kwargs"]]): call for *_, call in CALLS
+    }
+    return list(distinct.values())
+
+
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize("call", calls_with_distinct_inputs(), ids=lambda call: call["function"])
+def test_recorded_calls_leave_their_inputs_unchanged(call: dict[str, Any]) -> None:
+    recorded_args, recorded_kwargs = copy.deepcopy(call["args"]), copy.deepcopy(call["kwargs"])
+    args, kwargs = core_arguments(call["function"], recorded_args, recorded_kwargs)
+    args_before, kwargs_before = copy.deepcopy(args), copy.deepcopy(kwargs)
+    with contextlib.suppress(ValueError):
+        getattr(fit_module.PB_fit(), call["function"])(*args, **kwargs)
+    assert same_value(args, args_before)
+    assert same_value(kwargs, kwargs_before)
+
+
+@pytest.mark.filterwarnings("ignore")
+def test_spb_hall_fit_leaves_its_inputs_unchanged() -> None:
+    # This fit has no recorded call (D2), so its inputs are written here.
+    temperature_k = np.linspace(100.0, 800.0, 8)
+    parameter_res = [1.0, 1.0, 1.0]
+    limits_res = ([0.1, 0.1, 0.1], [10.0, 10.0, 10.0])
+    with contextlib.suppress(Exception):
+        fit_module.PB_fit().spb_see_res_hall_fit(
+            temperature_k,
+            -1e-6 * temperature_k / 10,
+            temperature_k,
+            1e-5 + 1e-8 * temperature_k,
+            temperature_k,
+            1e-9 * np.ones(8),
+            [100.0],
+            ([-3000.0], [3000.0]),
+            parameter_res,
+            limits_res,
+            [1.0],
+            ([0.1], [10.0]),
+            "acPh",
+        )
+    assert parameter_res == [1.0, 1.0, 1.0]
+    assert limits_res == ([0.1, 0.1, 0.1], [10.0, 10.0, 10.0])
 
 
 def count_function_entries(node: Any) -> int:

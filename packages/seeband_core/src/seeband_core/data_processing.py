@@ -35,13 +35,17 @@ def validate_data(data):
     if data == []:
         raise Exception("Error in function 'validate_data': data array is empty")
 
-    length = len(data)
-    for i in range(length):
-        if re.match("^\s*\d+\.?\d*(?:[eE][+\-]?\d+)?(?:\s*|\,*|\t*)-?\d+\.?\d*(?:[eE][+\-]?\d+)?\s*(\\n?)", data[length - i - 1]) is None:
-            data.pop(length - i - 1)
-    if len(data) == 0:
+    valid = [
+        line
+        for line in data
+        if re.match(
+            r"^\s*\d+\.?\d*(?:[eE][+\-]?\d+)?(?:\s*|\,*|\t*)-?\d+\.?\d*(?:[eE][+\-]?\d+)?\s*(\n?)", line
+        )
+        is not None
+    ]
+    if len(valid) == 0:
         raise Exception("Error in function 'validate_data': array has no valid entry")
-    return data
+    return valid
 
 
 """
@@ -51,7 +55,7 @@ fills the array with the decimal numbers and returns the array.
 def format_data(data):
     formatted_data = np.array([[0.0, 0.0] for _ in range(len(data))])
     for i in range(len(data)):
-        formatted_data[i] = re.split('[\s*|\,*|\t*]', data[i].strip())
+        formatted_data[i] = re.split(r'[\s*|\,*|\t*]', data[i].strip())
     return formatted_data
 
 

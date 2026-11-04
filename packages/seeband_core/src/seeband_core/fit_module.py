@@ -1,3 +1,5 @@
+import copy
+
 from seeband_core import math_module as te
 import numpy as np
 from scipy import optimize as opt
@@ -163,6 +165,8 @@ class PB_fit:
         parameters = initial_fermi_energy + initial_parameter_res
         
         # Change parameter arrays for the fit according to the scattering type:
+        initial_parameter_res = list(initial_parameter_res)
+        limits_res = copy.deepcopy(limits_res)
         if scatter_type == "acPh":
             del initial_parameter_res[1:3]
             del limits_res[0][1:3]
@@ -286,6 +290,8 @@ class PB_fit:
         parameters = initial_parameter_see + initial_parameter_res
         
         # Change parameter arrays for the fit according to the scattering type:
+        initial_parameter_res = list(initial_parameter_res)
+        limits_res = copy.deepcopy(limits_res)
         if scatter_type == "acPh":
             del initial_parameter_res[2:6]
             del limits_res[0][2:6]
@@ -495,6 +501,8 @@ class PB_fit:
         parameters = initial_fermi_energy + initial_parameter_res + initial_para_E
         
         # Change parameter arrays for the fit according to the scattering type:
+        initial_parameter_res = list(initial_parameter_res)
+        limits_res = copy.deepcopy(limits_res)
         if scatter_type == "acPh":
             del initial_parameter_res[1:3]
             del limits_res[0][1:3]
@@ -641,6 +649,8 @@ class PB_fit:
         parameters = initial_parameter_see + initial_parameter_res + initial_para_E
         
         # Change parameter arrays for the fit according to the scattering type:
+        initial_parameter_res = list(initial_parameter_res)
+        limits_res = copy.deepcopy(limits_res)
         if scatter_type == "acPh":
             del initial_parameter_res[2:6]
             del limits_res[0][2:6]
@@ -875,6 +885,7 @@ class PB_fit:
             raise Exception("Error! Parameter 'scatter_type' in function 'dpb_see_res_fit' must either be 'acPh', 'dis' or 'acPhDis'")
         
         # Change parameter arrays for the fit according to the scattering type:
+        parameter_res = list(parameter_res)
         if scatter_type == "acPh":
             del parameter_res[2:6]
         elif scatter_type == "dis":
@@ -924,6 +935,7 @@ class PB_fit:
             raise Exception("Error! Parameter 'scatter_type' in function 'spb_see_res_calc' must either be 'acPh', 'dis' or 'acPhDis'")
         
         # Change parameter arrays for the fit according to the scattering type:
+        parameter_res = list(parameter_res)
         if scatter_type == "acPh":
             del parameter_res[1:3]
         elif scatter_type == "dis":
@@ -996,6 +1008,7 @@ class PB_fit:
             raise Exception("Error! Parameter 'scatter_type' in function 'dpb_see_res_fit' must either be 'acPh', 'dis' or 'acPhDis'")
         
         # Change parameter arrays for the fit according to the scattering type:
+        parameter_res = list(parameter_res)
         if scatter_type == "acPh":
             del parameter_res[2:6]
         elif scatter_type == "dis":
@@ -1057,6 +1070,7 @@ class PB_fit:
             raise Exception("Error! Parameter 'scatter_type' in function 'spb_see_res_calc' must either be 'acPh', 'dis' or 'acPhDis'")
         
         # Change parameter arrays for the fit according to the scattering type:
+        parameter_res = list(parameter_res)
         if scatter_type == "acPh":
             del parameter_res[1:3]
         elif scatter_type == "dis":
@@ -1134,6 +1148,7 @@ class PB_fit:
             raise Exception("Error! Parameter 'scatter_type' in function 'dpb_see_res_fit' must either be 'acPh', 'dis' or 'acPhDis'")
         
         # Change parameter arrays for the fit according to the scattering type:
+        parameter_res = list(parameter_res)
         if scatter_type == "acPh":
             del parameter_res[2:6]
         elif scatter_type == "dis":
@@ -1212,6 +1227,7 @@ class PB_fit:
         temp_array = np.linspace(Tmin, Tmax, Tnumb)
         
         # Change parameter arrays for the fit according to the scattering type:
+        parameter_res = list(parameter_res)
         if scatter_type == "acPh":
             del parameter_res[1:3]
         elif scatter_type == "dis":
@@ -1263,6 +1279,7 @@ class PB_fit:
         temp_array = np.linspace(Tmin, Tmax, Tnumb)
         
         # Change parameter arrays for the fit according to the scattering type:
+        parameter_res = list(parameter_res)
         if scatter_type == "acPh":
             del parameter_res[1:3]
         elif scatter_type == "dis":
@@ -1327,6 +1344,7 @@ class PB_fit:
             raise Exception("Error! Parameter 'scatter_type' in function 'dpb_ind_see_calc' must either be 'acPh', 'dis' or 'acPhDis'")
         
         # Change parameter arrays for the fit according to the scattering type:
+        parameter_res = list(parameter_res)
         if scatter_type == "acPh":
             del parameter_res[2:6]
         elif scatter_type == "dis":
@@ -1392,6 +1410,7 @@ class PB_fit:
             raise Exception("Error! Parameter 'scatter_type' in function 'dpb_ind_elecCond_calc' must either be 'acPh', 'dis' or 'acPhDis'")
         
         # Change parameter arrays for the fit according to the scattering type:
+        parameter_res = list(parameter_res)
         if scatter_type == "acPh":
             del parameter_res[2:6]
         elif scatter_type == "dis":
@@ -1482,6 +1501,7 @@ class PB_fit:
             raise Exception("Error! Parameter 'scatter_type' in function 'dpb_thermCond_calc' must either be 'acPh', 'dis' or 'acPhDis'")
         
         # Change parameter arrays for the fit according to the scattering type:
+        parameter_res = list(parameter_res)
         if scatter_type == "acPh":
             del parameter_res[2:6]
         elif scatter_type == "dis":
@@ -1532,6 +1552,7 @@ class PB_fit:
             raise Exception("Error! Parameter 'scatter_type' in function 'dpb_thermCond_calc' must either be 'acPh', 'dis' or 'acPhDis'")
         
         # Change parameter arrays for the fit according to the scattering type:
+        parameter_res = list(parameter_res)
         if scatter_type == "acPh":
             del parameter_res[2:6]
         elif scatter_type == "dis":
