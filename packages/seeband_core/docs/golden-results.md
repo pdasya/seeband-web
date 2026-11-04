@@ -74,17 +74,20 @@ The files hold exact script output and are excluded from Prettier, so any change
 
 `tests/test_golden_regression.py` replays all 390 recorded calls through the ported modules on the project's versions: Python 3.13, numpy 2.5 and scipy 1.18. The golden results use Python 3.11, numpy 1.26 and scipy 1.17. Only 159 of the calls have distinct inputs, and 84 are `get_parabolic_band`, which uses no physical constants.
 
-| Calls                             | Rule                                                          | Largest difference on one Mac |
-| --------------------------------- | ------------------------------------------------------------- | ----------------------------- |
-| All curves and graphs             | relative difference of at most 1e-9                           | none: all 354 are exact       |
-| Fits                              | relative difference of at most 1e-5                           | 3.4e-6                        |
-| Failing fits                      | same error type, and "bounds" in the text                     |                               |
-| Listed DPB fits on `02_SiP` (D19) | band gap and E_F within 1e-5, within bounds, m_eff below 1e-5 | not comparable                |
-| G minimum case on `01`            | relative difference of at most 1e-3                           | 1e-4                          |
+| Calls                             | Rule                                                          | Difference seen                                           |
+| --------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------- |
+| All curves and graphs             | relative difference of at most 1e-9                           | exact on one Mac, within the rule on Linux CI             |
+| Fits                              | relative difference of at most 1e-5                           | up to 1.7e-7 on one Mac, within the rule on Linux CI      |
+| SPB S on `02_SiP`                 | relative difference of at most 1e-4                           | 3.4e-6 on one Mac, 1.8e-5 and 2.8e-5 in two Linux CI runs |
+| Failing fits                      | same error type, and "bounds" in the text                     |                                                           |
+| Listed DPB fits on `02_SiP` (D19) | band gap and E_F within 1e-5, within bounds, m_eff below 1e-5 | not comparable                                            |
+| G minimum case on `01`            | relative difference of at most 1e-3                           | 1e-4 on one Mac                                           |
+
+SPB S on `02_SiP` differs between Linux CI runs of the same fit code, so the 1e-5 rule would make the tests flaky. E_F there falls from 100 to 3.76, with solver warnings.
 
 Fit tolerance is wide enough that a small change can pass in a fit, but the curves catch it. Measured with deliberate changes on one Mac: changing the Boltzmann constant to its 2019 value, a change of 3.5e-7, fails 176 tests.
 
-**`02_SiP` in DPB differs by version (D19).** m_eff collapses towards 0 on all versions, but the recorded fits then stay at their start scattering values, with a ρ curve about 1e-11 against data of 0.016 to 0.16. On the project's versions, A moves to about 1e-5, close to the value that scales the curve to the data. So these fits differ from the desktop by about 9 orders of magnitude in A. A separate test checks that ρ follows the data on the project's versions. The code is unchanged, so the library versions are the likely cause, although this was not tested separately.
+**`02_SiP` in DPB is not stable (D19).** m_eff collapses towards 0 on every version. In the golden results the ρ stage then stays at its start, with A = 40000, so the ρ curve is about 1e-11 against data of 0.016 to 0.16, although A of about 1e-5 would match the data. On the project's versions, A reached about 1e-5 for `acPh` and `acPhDis` on one Mac, while on Linux CI it did so only for `acPh`. So the result depends on the versions and the machine, and these fits differ from the desktop by up to about 9 orders of magnitude in A. They are checked only as the table shows, and should be treated as unsound.
 
 **What these tests do not cover:**
 

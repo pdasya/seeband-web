@@ -1855,9 +1855,9 @@
     },
     {
       "id": "D19",
-      "title": "DPB fits on 02_SiP differ between library versions",
-      "desktop": "With Python 3.11, numpy 1.26 and scipy 1.17 the rho stage stays at its start, with A = 40000, so the rho curve is about 1e-11 against data of 0.016 to 0.16. With Python 3.13, numpy 2.5 and scipy 1.18, A moves to about 1e-5 for acPh and acPhDis, close to the value that scales the curve to the data. m_eff collapses towards 0 on both.",
-      "web": "The project's versions stay, so these fits differ from the desktop by about 9 orders of magnitude in A. V1 records this, and a physicist should see both results.",
+      "title": "DPB fits on 02_SiP differ between library versions and machines",
+      "desktop": "m_eff collapses towards 0 on every version. In the golden results the rho stage then stays at its start, with A = 40000, so the rho curve is about 1e-11 against data of 0.016 to 0.16, although A of about 1e-5 would match the data. On the project's versions A reached about 1e-5 for acPh and acPhDis on one Mac. On Linux CI it did so for acPh but stayed far off for acPhDis, so the result depends on the machine.",
+      "web": "These fits cannot match the desktop reliably, and differ by up to about 9 orders of magnitude in A. Treat them as unsound. V1 records this, and a physicist should see the results.",
       "resolved_by": "#71 (V1)",
       "source": [
         "modules/fit_module.py:392",

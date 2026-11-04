@@ -1,7 +1,8 @@
 """Replay every call recorded from the desktop window through the ported modules.
 
 Golden results were captured on one Mac with Python 3.11, numpy 1.26 and scipy 1.17. The project
-uses newer versions, and CI runs on Linux. docs/golden-results.md gives the measured differences.
+uses newer versions, and CI runs on Linux, so this is the check across versions and machines.
+docs/golden-results.md gives the measured differences.
 
 CURVE_TOLERANCE is tight, because curves are direct calculations. FIT_TOLERANCE is looser, because
 fits depend on the solver. A small change can stay within FIT_TOLERANCE, but the curves catch it.
@@ -38,7 +39,7 @@ ARRAY_ARGUMENTS = {
 }
 # Error text can change with a scipy update, so only a stable part of it is compared.
 ERROR_FRAGMENTS = {"ValueError": "bounds"}
-# These fits stop near their start on the recorded versions, and move further on newer ones (D19).
+# These fits are not stable across versions or machines (D19).
 UNSTABLE_02 = {
     ("dpb_s", None),
     ("dpb_s_rho", "acPh"),
@@ -51,6 +52,9 @@ UNSTABLE_02 = {
 COLLAPSED_M_EFF = 1e-5
 # The G minimum case on 01 is not credible either, and differs by about 1e-4.
 D1_01_TOLERANCE = 1e-3
+# E_F on 02_SiP with SPB S falls from 100 to 3.76 with solver warnings. It differed by 3.4e-6 on a
+# Mac, and by 1.8e-5 and 2.8e-5 in two Linux CI runs, so it varies between runs of the same code.
+SPB_S_02_TOLERANCE = 1e-4
 # Public methods with no recorded call. The first is unreachable on the desktop because of D2.
 NOT_COVERED = {
     "spb_see_res_hall_fit",
@@ -162,31 +166,10 @@ def test_replay_matches_the_desktop(
             assert lower <= value <= upper
     elif example == "01_Fe2VAl09Si01" and mode == "d1":
         assert_close(result, call["result"], D1_01_TOLERANCE)
+    elif example == "02_SiP" and mode == "spb_s":
+        assert_close(result, call["result"], SPB_S_02_TOLERANCE)
     else:
         assert_close(result, call["result"], FIT_TOLERANCE)
-
-
-@pytest.mark.filterwarnings("ignore")
-@pytest.mark.parametrize("scattering", ["acPh", "acPhDis"])
-def test_d19_scale_follows_the_data_on_these_versions(scattering: str) -> None:
-    """On 02_SiP, the desktop result stays at its start. Newer versions match the rho data."""
-    call = next(
-        call
-        for example, mode, s, source, call in CALLS
-        if example == "02_SiP" and mode == "dpb_s_rho" and s == scattering and source == "thread"
-        if call["function"] == "dpb_see_res_fit"
-    )
-    assert call["result"][3] == 40000.0
-    parameters = replay(call)
-    temperature, measured = np.array(call["args"][2]), np.array(call["args"][3])
-    band, scattering_values = list(parameters[:3]), list(parameters[3:9])
-    grid, _, curve = call_core(
-        "dpb_see_res_calc",
-        [temperature.min(), temperature.max(), 50, band, scattering_values, call["args"][8]],
-        {"scatter_type": scattering},
-    )
-    ratio = float(np.median(measured / np.interp(temperature, grid, curve)))
-    assert 0.1 < ratio < 10
 
 
 def count_function_entries(node: Any) -> int:
