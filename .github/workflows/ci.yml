@@ -31,6 +31,20 @@ jobs:
         run: uv run mypy
       - name: Pytest
         run: uv run pytest
+      - name: Built package
+        run: |
+          uv build --wheel --package seeband-core --out-dir dist
+          wheel="$PWD/$(ls dist/*.whl)"
+          for file in seeband_core/data/fermi_int_-10_20.txt licenses/LICENSE licenses/LICENSE-seeband-web; do
+            unzip -l "$wheel" | grep -q "$file"
+          done
+          cd "$RUNNER_TEMP"
+          uv run --isolated --no-project --python 3.13 --with "$wheel" python -c "
+          import seeband_core
+          from seeband_core import fit_module, math_module
+          assert 'site-packages' in seeband_core.__file__
+          assert math_module.fermi1_10.shape == (30000, 2)
+          "
 
   typescript:
     name: TypeScript
