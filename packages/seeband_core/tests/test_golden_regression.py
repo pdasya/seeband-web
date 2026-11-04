@@ -209,7 +209,8 @@ def test_recorded_calls_leave_their_inputs_unchanged(call: dict[str, Any]) -> No
 
 @pytest.mark.filterwarnings("ignore")
 def test_spb_hall_fit_leaves_its_inputs_unchanged() -> None:
-    # This fit has no recorded call (D2), so its inputs are written here.
+    # This fit has no recorded call (D2), so its inputs are written here. A whole-number mass gets
+    # past the type error that a float mass causes at the start of the fit.
     temperature_k = np.linspace(100.0, 800.0, 8)
     parameter_res = [1.0, 1.0, 1.0]
     limits_res = ([0.1, 0.1, 0.1], [10.0, 10.0, 10.0])
@@ -225,8 +226,8 @@ def test_spb_hall_fit_leaves_its_inputs_unchanged() -> None:
             ([-3000.0], [3000.0]),
             parameter_res,
             limits_res,
-            [1.0],
-            ([0.1], [10.0]),
+            [-1],
+            ([-10], [-1]),
             "acPh",
         )
     assert parameter_res == [1.0, 1.0, 1.0]
