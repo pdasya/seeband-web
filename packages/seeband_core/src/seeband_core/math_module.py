@@ -14,7 +14,6 @@ e = 1.602176634e-19
 h = 6.62607015e-34
 hbar = h / (2*np.pi)
 me = 9.1093837e-31
-global lamb
 lamb = 0
 
 fermi1_10 = []
@@ -33,44 +32,7 @@ Fermi integral
 #################################################
 '''
 
-# General notation of Fermi integrals
-# def fdint_robust(s: int, eta: float, T: float) -> float:
-#     if eta/T > 709 and s == 1:
-#         return eta**2/(2*T**2)
-#     if s == 0:
-#         return (float(np.log(1+np.exp(eta/T))))
-#     if s == 0.5:
-#         if (eta/T) < -10:
-#             return float(0.886226925452758*1/(np.exp(-eta/T)+0.27))
-#         elif (eta/T) > 5:
-#             #return float (4/(3*np.sqrt(np.pi))*((eta/T)**2+((np.pi**2)/6))**0.75) # approximation with explicit formula
-#             return float(0.886226925452758*(0.7522527780636751*((eta/T)**2+1.6449340668482264)**0.75)) # approximation with constant values pre-calculated
-#         else:
-#             pass
-#     result = -mpmath.gamma(s+1)*mpmath.fp.polylog(s+1, -np.exp(eta/T))
-#     return float(result.real) # important: it is not float-type before but: <class 'mpmath.ctx_mp_python.mpf'>
-# fdint_vec = np.vectorize(fdint_robust)
 
-# def fdint_robust(s: int, eta: float, T: float) -> float:
-#     etaT = eta/T
-#     if etaT > 709 and s == 1:
-#         return eta**2/(2*T**2)
-#     if s == 0:
-#         return (float(np.log(1+np.exp(eta/T))))
-#     if s == 0.5:
-#         if (etaT) < -10:
-#             return float(0.886226925452758*1/(np.exp(-etaT)+0.27))
-#         if -10 <(etaT) < 0:
-#             return float((0.67809872 + etaT * 0.2325289 + 0.031469379 * etaT**2 + 0.001983171 * etaT**3 + 4.8835524e-05 * etaT**4)/(1 + etaT *-0.44775237 + 0.151532 * etaT**2 + -0.032485253 * etaT**3 + 0.0033650243 * etaT**4 - -0.0003349541 *etaT**5))
-#         if (etaT) > 9:
-#             #return float (4/(3*np.sqrt(np.pi))*((eta/T)**2+((np.pi**2)/6))**0.75) # approximation with explicit formula
-#             return float(0.886226925452758*(0.7522527780636751*((etaT)**2+1.6449340668482264)**0.75)) # approximation with constant values pre-calculated
-#         if 0 <(etaT) < 9:
-#             # return float(0.7221811 + etaT * 0.59851416 + 0.14596708 * etaT**2 + 0.0078053442 * etaT**3 + -0.00079834703 * etaT**4 + -3.2181832e-05 *etaT**5 + 3.388691e-06 * etaT**6)
-#             return float((0.6811121 + etaT *0.35196675 + 0.071485242 * etaT**2 + 0.0064371623 * etaT**3 + 0.00021074676 * etaT**4)/(1 + etaT * -0.26460888 + 0.070236986 * etaT**2 + -0.0087561313 * etaT**3 + 0.00059522919 * etaT**4 - 1.642407e-05 *etaT**5))
-#     result = -mpmath.gamma(s+1)*mpmath.fp.polylog(s+1, -np.exp(etaT))
-#     return float(result.real) # important: it is not float-type before but: <class 'mpmath.ctx_mp_python.mpf'>
-# fdint_vec = np.vectorize(fdint_robust)
 
 def fdint_robust(s: int, eta: float, T: float) -> float:
     etaT = eta/T
@@ -84,7 +46,6 @@ def fdint_robust(s: int, eta: float, T: float) -> float:
         if (etaT) > 19.9:
             return float(0.886226925452758*(0.7522527780636751*((etaT)**2+1.6449340668482264)**0.75)) # approximation with constant values pre-calculated
         else:
-            # print(etaT,fermi1_10[int(etaT*1000+10000)][0])
             return fermi1_10[int(etaT*1000+10000)][1] + (fermi1_10[int(etaT*1000+10000+1)][1]-fermi1_10[int(etaT*1000+10000)][1]
                     )/(fermi1_10[int(etaT*1000+10000+1)][0]-fermi1_10[int(etaT*1000+10000)][0])*(etaT-fermi1_10[int(etaT*1000+10000)][0]) # approximation with constant values pre-calculated
 
@@ -93,15 +54,6 @@ def fdint_robust(s: int, eta: float, T: float) -> float:
 fdint_vec = np.vectorize(fdint_robust)
 
 
-def fdint_robust2(s: int, eta: float, T: float) -> float:
-    etaT = eta/T
-    if s == 0:
-        return (float(np.log(1+np.exp(etaT))))
-
-    result = -mpmath.gamma(s+1)*mpmath.fp.polylog(s+1, -np.exp(etaT))
-    # result = -mpmath.fp.polylog(s+1, -np.exp(eta/T))
-    return float(result.real) # important: it is not float-type before but: <class 'mpmath.ctx_mp_python.mpf'>
-fdint_vec2 = np.vectorize(fdint_robust2)
 
 # Calculates Fermi integrals for a single band
 def spb_fermiInt_vs_temp(s: int, T: np.ndarray, mass_sign: int, fermi_energy: float) -> list[float]:
@@ -162,14 +114,12 @@ def spb_carCon(eta: float, meff: float, T: float) -> float:
         # If Fermi energy is inside the band ...
         if eta*np.sign(meff) > 0:
             return (4*np.pi*(2*np.abs(meff)*me*kB*np.abs(eta)/h**2)**1.5)*(2/3) * 1e-6
-            #return ((2*np.abs(meff)*me*kB*T)**1.5/(2*np.pi**2*hbar**3)**1.5)*(2/3) * 1e-6
     
         # If Fermi energy is outside the band ...
         else:
             return 0     
     else:  
         return 4*np.pi*(2*np.abs(meff)*me*kB*T/h**2)**1.5 * fdint_vec(0.5,np.sign(meff)*eta,T) * 1e-6
-        #return (2*(np.abs(meff)*me*kB*T)**1.5/(2*np.pi**2*hbar**3)) * fdint_vec(0.5,np.sign(meff)*eta,T) * 1e-6
     
 # Calculates the chemical potential of a single band at a temperature T
 def spb_chemPot(eta_here: list[float], temp: float, band_mass: int, fermi_energy: float) -> float:
@@ -699,31 +649,6 @@ def dpb_rho_vs_temp_acPh(T: np.ndarray, f0_1: np.ndarray, f0_2: np.ndarray, para
     return scal_fac / ( para_A * ( f0_1 + 1 / meff * para_B * f0_2 ) )
 
 # Calculates the electrical resistivity of two bands for acoustic-phonon scattering
-def dpb_rho_vs_temp_acPh_new(T: np.ndarray, para_A: float, meff: float, initial_weight: float, gap: float, fermi_energy: float, degen: float, scal_fac: float = 1.0) -> np.ndarray:
-    """Calculates the resistivity of two bands at various temperatures for a given set of scattering parameters.
-    
-    Parameters
-    ----------
-    T : numpy.ndarray
-        Numpy array containing all temperatures
-    para_A : float
-        First fitting parameter, representing the prefactor of acoustic-phonon scattering of band 1
-    meff : float
-        Parameter, representing the ratio of the band mass of band 2 to band 1, weighted by the degeneracy
-    XXXX
-    YYYY
-    scal_fac : float
-        Scaling factor, by which the function is multiplied for improvied fitting convergence
-        
-    Returns
-    -------
-    out : numpy.ndarray
-        Numpy array of resistivity values
-    """
-    
-    f0_1, f0_2 = dpb_fermiInt_vs_temp(s = 0, T = T, mass = meff, gap = gap, fermi_energy = fermi_energy, degen = degen)
-
-    return scal_fac / ( para_A * ( f0_1 + 1 / initial_weight * f0_2 ) )
 
 # Calculates the electrical resistivity of two bands for alloy-disorder scattering
 def dpb_rho_vs_temp_dis(T: np.ndarray, f0_1: np.ndarray, f0_2: np.ndarray, para_A: float, para_B: float, meff: float, scal_fac: float = 1.0) -> np.ndarray:
@@ -1316,13 +1241,6 @@ def dpb_ind_elecCond_vs_temp_acPh_dis(temp_array: np.ndarray, f0_1: np.ndarray, 
     return sig1, sig2
 
 # Calculates the individual charge carrier concentrations of two bands at one temperature
-def dpb_ind_carCon(temp: float, fermi_energy: float, meff: float, gap: float, degen: float) -> tuple[np.ndarray, np.ndarray]:
-    
-    mu = fsolve(dpb_chemPot, [fermi_energy], (temp,gap,meff,fermi_energy, degen))[0]
-    
-    carCon1 = spb_carCon(mu, -1, temp) * (-1)
-    carCon2 = spb_carCon(mu - gap, meff * degen**(5/3), temp) * np.sign(meff)
-    return carCon1, carCon2
 
 # Calculates the individual temperature-dependent charge carrier concentrations of two bands
 def dpb_ind_carCon_vs_temp(temp_array: np.ndarray, fermi_energy: float, meff: float, gap: float, degen: float) -> tuple[np.ndarray, np.ndarray]:
@@ -1345,103 +1263,4 @@ Temporary helper functions
 '''
 
 def parabolic_band(k, mass, energy):
-    return((k / 2*np.pi)**2 / (2 * mass) + energy)  
-
-def spart_2PB(T: float, mass: float, gap: float, degen: float, fermi: float) -> list[float]: #args is supposed to look like: mass1,mass2,....,gap1,gap2,.....,fermienergy):
-    #degen is Nv2/Nv1
-    
-    mu = fermi
-    
-    onsi1 = onsi_general(mu, -1, 1, -1, T)
-    onsi2 = onsi_general(mu-gap, mass, 1, -1, T)
-    
-    mu = fsolve(dpb_chemPot, [fermi], (T,gap,mass,fermi, degen))[0]
-    total_sigma = sigma_general(mu, -1, 1, -1, T) + sigma_general(mu-gap, mass, 1, -1, T)
-
-    see1 = onsi1 / total_sigma
-    see2 = onsi2 / total_sigma
-
-    return see1, see2
-    
-def dpb_chemPot_solve(eta_here, T, gap, mass, EF, Nv):
-    return fsolve(dpb_chemPot, [eta_here], (T, gap, mass, EF, Nv))[0]
-
-if __name__ == "__main__":
-    # alpha = 2*np.sqrt(2)*e**2*kB/(np.pi**2*hbar**3*me)
-    # print(f"alpha = {alpha}")
-    
-    # times = time.time()
-    # for i in range(1000000):
-    #     result = fdint_robust(0.5, (i/1000.*6.)-3000., 50) 
-    # print(time.time()-times)
-    
-    # print(4/(3*np.sqrt(np.pi)))
-    # print(np.pi**2/6.)
-    
-    # print(fdint_robust(0.5,1.299,1))
-    # print(fdint_robust(0.5,1.3,1))
-    # print(fdint_robust(0.5,1.301,1))
-    # print(fdint_robust(0.5,1.31,1))
-    fermi_int_approx_x = []
-    fermi_int_approx_y = []
-    fermi_int_accur_x = []
-    fermi_int_accur_y = []
-    for i in range(-10345,20123,1):
-    # for i in range(-8250,-7800,1):
-    # for i in range(-8250,-7500,1):
-        fermi_int_approx_x.append([i/1151])
-        fermi_int_approx_y.append([fdint_robust(0.5,i/1151,1)])
-        fermi_int_accur_x.append([i/1151])
-        fermi_int_accur_y.append([fdint_robust2(0.5,i/1151,1)])
-    
-    import matplotlib.pyplot as plt
-    
-    
-    # Create a plot
-
-    plt.figure(figsize=(10, 6))
-    # plt.plot(fermi_int_approx_x, fermi_int_approx_y, marker='o', linestyle='-', color='b', label='Approximation')
-    # plt.plot(fermi_int_accur_x, fermi_int_accur_y, marker='x', linestyle='-', color='g', label='Accurate')
-    plt.plot(np.array(fermi_int_accur_x), (np.array(fermi_int_accur_y) - np.array(fermi_int_approx_y))/np.array(fermi_int_accur_y), marker='x', linestyle='-', color='g', label='deviation')
-    
-    # plt.xlim(708, 710)
-    # plt.ylim(fdint_robust(1,708,1), fdint_robust(1,710,1))
-    
-    # for i in range(1750,2200,1):
-    #     # print(i, fermi_int_approx_y[i], fermi_int_accur_y[i])
-    #     print(int((i-10000)/1000.*1000+10000), (i-10000)/1000.*1000+10000)
-    # Add title and labels
-    plt.title('Plot of y vs. x')
-    plt.xlabel('x')
-    plt.ylabel('y')
-    
-    # Add a legend
-    plt.legend()
-    
-    # Show the plot
-    plt.grid(True)
-    plt.show()
-    # f = open("fermi_int_-10_10.txt","w")
-    # for i in range(len(fermi_int_accur_x)):
-    #     f.write((f"{fermi_int_accur_x[i][0]}\t{fermi_int_accur_y[i][0]:.10e}\n"))
-    # for i in range(len(fermi_int_accur_x)):
-    #     print(f"{fermi_int_accur_x[i][0]}\t{fermi_int_accur_y[i][0]}")
-    # f.close()
-    
-    # print(fdint_robust(1,710,1))
-    # print(fdint_robust2(1,711,1))
-    # print(fdint_robust(0.5,0,1))
-    # print(fdint_robust(0.5,200,1))
-    # print(fdint_robust(0.5,1.31,1))
-    
-    # print(fdint_robust2(0.5,1,1))
-    # print(fdint_robust2(0.5,0.3,1))
-    # print(fdint_robust2(0.5,200.301,1))
-    # print(fdint_robust2(0.5,1.31,1))
-    # print(mpmath.gamma(float(1.5)))
-    
-    
-    # print(fdint_robust2(0.5,1.2,1))
-    # print(fdint_robust2(0.5,1.21, 1))
-    # print(fdint_robust2(0.5,1.301,1))
-    # print(fdint_robust2(0.5,1.31,1))
+    return((k / 2*np.pi)**2 / (2 * mass) + energy)

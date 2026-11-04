@@ -55,16 +55,9 @@ D1_01_TOLERANCE = 1e-3
 # E_F on 02_SiP with SPB S falls from 100 to 3.76 with solver warnings. It differed by 3.4e-6 on a
 # Mac, and by 1.8e-5 and 2.8e-5 in two Linux CI runs, so it varies between runs of the same code.
 SPB_S_02_TOLERANCE = 1e-4
-# Public methods with no recorded call. The first is unreachable on the desktop because of D2.
-NOT_COVERED = {
-    "spb_see_res_hall_fit",
-    "chempot_1PB",
-    "chempot_2PB",
-    "dpb_see_res_hall_fit_new",
-    "ind_cc_2PB",
-    "ind_seebeck_2PB",
-    "is_accuracy_reached",
-}
+# Public methods with no recorded call. The fit is unreachable on the desktop because of D2, and
+# is_accuracy_reached is covered through the fits that call it.
+NOT_COVERED = {"spb_see_res_hall_fit", "is_accuracy_reached"}
 
 
 def recorded_calls() -> Iterator[tuple[str, str, str | None, str, dict[str, Any]]]:

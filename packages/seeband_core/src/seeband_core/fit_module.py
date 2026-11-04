@@ -1,7 +1,6 @@
 from seeband_core import math_module as te
 import numpy as np
 from scipy import optimize as opt
-# from scipy.optimize import fsolve
 
 class PB_fit:
     def __init__(self):
@@ -264,10 +263,6 @@ class PB_fit:
         else:
             parameters[1:3] = [current_para_A, current_para_B/300.]
                 
-        # if scatter_type == "acPh" or scatter_type == "dis":
-        #     parameters = [current_fermi_energy, current_para_A]
-        # else:
-        #     parameters = [current_fermi_energy, current_para_A, current_para_B]
         return parameters
 
     def dpb_see_res_fit(
@@ -527,10 +522,6 @@ class PB_fit:
         else:
             parameters[3:7] = [current_para_A, current_para_B, current_para_C/300., current_para_D/300.] #adjusted, as the input is given at 300 K
         
-        # if scatter_type == "acPh" or scatter_type == "dis":
-        #     parameters = [current_meff, current_gap, current_fermi_energy, current_para_A, current_para_B]
-        # else:
-        #     parameters = [current_meff, current_gap, current_fermi_energy, current_para_A, current_para_B, current_para_C, current_para_D]
         return parameters
     
     def spb_see_res_hall_fit(
@@ -601,17 +592,6 @@ class PB_fit:
         if scatter_type != "acPh" and scatter_type != "dis" and scatter_type != "acPhDis":
             raise Exception("Error! Parameter 'scatter_type' in function 'spb_see_res_hall_fit' must either be 'acPh', 'dis' or 'acPhDis'")
         
-        # # Check if length of initial_parameter_res and limits_res is according to scatter_type
-        # if scatter_type == "acPh" or scatter_type == "dis":
-        #     if len(initial_parameter_res) != 1:
-        #         raise Exception(f"Error! Parameter 'initial_parameter_res' in function 'spb_see_res_hall_fit' must have length 1 for scatter_type: {scatter_type}")
-        #     elif len(limits_res[0]) != 1 or len(limits_res[1]) != 1:
-        #         raise Exception(f"Error! Parameter 'limits_res' in function 'spb_see_res_hall_fit' must be tuple with arrays of length 1 for scatter_type: {scatter_type}")
-        # else:
-        #     if len(initial_parameter_res) != 2:
-        #         raise Exception(f"Error! Parameter 'initial_parameter_res' in function 'spb_see_res_hall_fit' must have length 2 for scatter_type: {scatter_type}")
-        #     elif len(limits_res[0]) != 2 or len(limits_res[1]) != 2:
-        #         raise Exception(f"Error! Parameter 'limits_res' in function 'spb_see_res_hall_fit' must be tuple with arrays of length 2 for scatter_type: {scatter_type}")
         
         parameters = initial_fermi_energy + initial_parameter_res + initial_para_E
         
@@ -701,10 +681,6 @@ class PB_fit:
         else:
             parameters[1:3] = [current_para_A, current_para_B]
         
-        # if scatter_type == "acPh" or scatter_type == "dis":
-        #     parameters = [current_fermi_energy, current_para_A, current_mass1]
-        # else:
-        #     parameters = [current_fermi_energy, current_para_A, current_para_B, current_mass1]
         return parameters
     
     def dpb_see_res_hall_fit(
@@ -782,17 +758,6 @@ class PB_fit:
         if scatter_type != "acPh" and scatter_type != "dis" and scatter_type != "acPhDis":
             raise Exception("Error! Parameter 'scatter_type' in function 'dpb_see_res_hall_fit' must either be 'acPh', 'dis' or 'acPhDis'")
         
-        # # Check if length of initial_parameter_res and limits_res is according to scatter_type
-        # if scatter_type == "acPh" or scatter_type == "dis":
-        #     if len(initial_parameter_res) != 2:
-        #         raise Exception(f"Error! Parameter 'initial_parameter_res' in function 'dpb_see_res_hall_fit' must have length 2 for scatter_type: {scatter_type}")
-        #     elif len(limits_res[0]) != 2 or len(limits_res[1]) != 2:
-        #         raise Exception(f"Error! Parameter 'limits_res' in function 'dpb_see_res_hall_fit' must be tuple with arrays of length 2 for scatter_type: {scatter_type}")
-        # else:
-        #     if len(initial_parameter_res) != 4:
-        #         raise Exception(f"Error! Parameter 'initial_parameter_res' in function 'dpb_see_res_hall_fit' must have length 4 for scatter_type: {scatter_type}")
-        #     elif len(limits_res[0]) != 4 or len(limits_res[1]) != 4:
-        #         raise Exception(f"Error! Parameter 'limits_res' in function 'dpb_see_res_hall_fit' must be tuple with arrays of length 2 for scatter_type: {scatter_type}")
         
         parameters = initial_parameter_see + initial_parameter_res + initial_para_E
         
@@ -1028,343 +993,8 @@ class PB_fit:
             parameters[3:7] = [current_para_A, current_para_B, current_para_C/300., current_para_D/300.] #adjusted, as the input is given at 300 K
 
         
-        # if scatter_type == "acPh" or scatter_type == "dis":
-        #     parameters = [current_meff, current_gap, current_fermi_energy, current_para_A, current_para_B, current_mass1]
-        # else:
-        #     parameters = [current_meff, current_gap, current_fermi_energy, current_para_A, current_para_B, current_para_C, current_para_D, current_mass1]
         return parameters
     
-    # New fit with meff consideration in resistivity fit
-    def dpb_see_res_hall_fit_new(
-        self,
-        temp_see_list: np.ndarray,
-        see_list: np.ndarray,
-        temp_res_list: np.ndarray,
-        res_list: np.ndarray,
-        temp_hall_list: np.ndarray,
-        hall_list: np.ndarray,
-        initial_parameter_see: list[float],
-        limits_see: tuple[list[float], list[float]], 
-        initial_parameter_res: list[float],
-        limits_res: tuple[list[float], list[float]],
-        initial_mass1: float,
-        limits_mass1: tuple[list[float], list[float]],
-        degen: float,
-        scatter_type: str,
-        threshold: float,
-        max_num_iterations: int,
-        print_info: bool = False,
-        ) -> tuple[float, float, float, float, float, float, float]:
-        """Fits the Seebeck coefficient, resistivity and Hall coefficient data within the double-parabolic-band model and returns band-structure and scattering parameters
-    
-        Parameters
-        ----------
-        temp_see_list : numpy.ndarray
-            Temperatures of the measured Seebeck coefficient in K
-        see_list : numpy.ndarray
-            Seebeck coefficient in V/K at temperatures given by temp_see_list
-        temp_res_list : numpy.ndarray
-            Temperatures of the measured resistivity in K
-        res_list : float
-            Resistivity in Ohm*m at the temperatures given by temp_res_list
-        temp_hall_list : numpy.ndarray
-            Temperatures of the measured Hall coefficient in K
-        hall_list : numpy.ndarray
-            Hall coefficient in m^3/(As) at temperatures given by temp_hall_list
-        initial_parameter_see : list[float]
-            Initial fitting parameters of the Sebeeck coefficient
-        limits_see : tuple[list[float], list[float]]
-            Lower and upper limits of the fitting parameters of the Seebeck coefficient
-        initial_parameter_res : list[float]
-            Initial fitting parameters of the resistivity
-        limits_res : tuple[list[float], list[float]]
-            Lower and upper limits of the fitting parameters of the resistivity
-        initial_mass1 : float
-            Initial mass of band 1 for the fit
-        limits_mass1 : tuple[list[float], list[float]]
-            Lower and upper limits of the mass of band 1 for the fit
-        degen : float
-            Ratio of the degeneracy of band 2 to band 1       
-        scatter_type : string
-            Determines the predominant scattering mechanisms, must be either 'acPh' (acoustic-phonon scattering), 'dis' (alloy-disorder scattering) or 'acPhDis' (both)
-        threshold : float
-            Upper limit of the relative error of the fitting parameter of the resistivity before the fit stops
-        max_num_iterations : int
-            Maximum number of iterations before the fit stops
-        print_info : str, optional
-            Whether to print the fit parameters and meta information to the terminal
-            
-        Returns
-        -------
-        out : list[float]
-            List containing the effective mass, band gap, Fermi energy, scattering parameter A, scattering parameter B, scattering parameter C and scattering parameter D, and parameter E
-        """
-        
-        initial_para_E = [initial_mass1**(3/2)]
-        limits_para_E = [[limits_mass1[0][0]**(3/2)],[limits_mass1[1][0]**(3/2)]]
-        
-        if print_info:  
-            print("Running 'dpb_see_res_hall_fit'")
-            
-        # Check if scatter_type is properly set to acPh, dis or acPhAlDi
-        if scatter_type != "acPh" and scatter_type != "dis" and scatter_type != "acPhDis":
-            raise Exception("Error! Parameter 'scatter_type' in function 'dpb_see_res_hall_fit' must either be 'acPh', 'dis' or 'acPhDis'")
-        
-        # # Check if length of initial_parameter_res and limits_res is according to scatter_type
-        # if scatter_type == "acPh" or scatter_type == "dis":
-        #     if len(initial_parameter_res) != 2:
-        #         raise Exception(f"Error! Parameter 'initial_parameter_res' in function 'dpb_see_res_hall_fit' must have length 2 for scatter_type: {scatter_type}")
-        #     elif len(limits_res[0]) != 2 or len(limits_res[1]) != 2:
-        #         raise Exception(f"Error! Parameter 'limits_res' in function 'dpb_see_res_hall_fit' must be tuple with arrays of length 2 for scatter_type: {scatter_type}")
-        # else:
-        #     if len(initial_parameter_res) != 4:
-        #         raise Exception(f"Error! Parameter 'initial_parameter_res' in function 'dpb_see_res_hall_fit' must have length 4 for scatter_type: {scatter_type}")
-        #     elif len(limits_res[0]) != 4 or len(limits_res[1]) != 4:
-        #         raise Exception(f"Error! Parameter 'limits_res' in function 'dpb_see_res_hall_fit' must be tuple with arrays of length 2 for scatter_type: {scatter_type}")
-        
-        parameters = initial_parameter_see + initial_parameter_res + initial_para_E
-        
-        # Change parameter arrays for the fit according to the scattering type:
-        if scatter_type == "acPh":
-            del initial_parameter_res[2:6]
-            del limits_res[0][2:6]
-            del limits_res[1][2:6]
-        elif scatter_type == "dis":
-            del initial_parameter_res[0:4]
-            del limits_res[0][0:4]
-            del limits_res[1][0:4]
-        else:
-            del initial_parameter_res[4:6]
-            del limits_res[0][4:6]
-            del limits_res[1][4:6]
-            for i in range(2,4):
-                initial_parameter_res[i] = initial_parameter_res[i]*300. #adjusted, as the input is given at 300 K
-                limits_res[0][i] = limits_res[0][i]*300. #adjusted, as the input is given at 300 K
-                limits_res[1][i] = limits_res[1][i]*300. #adjusted, as the input is given at 300 K
-        
-        # Set the start paramters of the first setp to the provided initial paramters
-        start_parameter_see = initial_parameter_see
-        start_paramter_res = initial_parameter_res
-        
-        # Define some variables...
-        current_para_A = start_paramter_res[0]
-        current_para_B = start_paramter_res[1]
-        prev_para_A = current_para_A
-        prev_para_B = current_para_B
-        if scatter_type == "acPhDis":
-            current_para_C = start_paramter_res[2]
-            current_para_D = start_paramter_res[3]
-            prev_para_C = current_para_C
-            prev_para_D = current_para_D
-        current_meff = start_parameter_see[0]/degen
-        current_gap = start_parameter_see[1]
-        current_fermi_energy = start_parameter_see[2]
-        prev_meff = current_meff
-        prev_gap = current_gap
-        prev_fermi_energy = current_fermi_energy
-        
-        parameter_res = start_paramter_res
-        parameter_see = start_parameter_see
-        
-        # Save the number of iterations to track the progress
-        number_iterations = 1
-        
-        # Infinite loop that ends if accuracy is reached or number of iterations is too large
-        while True:
-            if print_info:
-                # print the current number of iterations
-                print(f"Number of iteration: {number_iterations}")
-                print("Starting Seebeck fit...")
-                
-            # Fit the Seebeck coefficient with the parameters 'mass', 'gap' and 'fermi_energy'
-            if scatter_type == "acPh" or scatter_type == "dis":
-                parameter_see, _ = opt.curve_fit(
-                    lambda T, mass, gap, fermi_energy: te.dpb_see_vs_temp_single_scatter(temp_see_list, mass, gap, fermi_energy, degen, current_para_B, scal_fac = 1e6), 
-                    temp_see_list, see_list * 1e6, p0 = start_parameter_see, bounds = limits_see, full_output=False, maxfev=1000)
-            else:
-                parameter_see, _ = opt.curve_fit(
-                    lambda T, mass, gap, fermi_energy: te.dpb_see_vs_temp_double_scatter(temp_see_list, mass, gap, fermi_energy, degen, current_para_B, current_para_C, current_para_D, scal_fac = 1e6), 
-                    temp_see_list, see_list * 1e6, p0 = start_parameter_see, bounds = limits_see, full_output=False, maxfev=1000)
-            
-            # Save the current band parameters
-            current_meff = parameter_see[0]
-            current_gap = parameter_see[1]
-            current_fermi_energy = parameter_see[2]
-            
-            # Set the start parameters of the Sebeeck coefficient fit to the currently best values
-            start_parameter_see = parameter_see
-            
-            if print_info:
-                print(f"Mass: {current_meff:.5f}\n"
-                      f"Gap: {current_gap:.5f}\n"
-                      f"EF: {current_fermi_energy:.5f}\n")
-                
-            if print_info:
-                print("Starting Resistivity fit...")
-                     
-            # Calculate the 'pristine' conductivities of band 1 and band 2 from the fitted band-structure parameters with K = 1, abs(meff) = 1 and beta = 0
-            f0_1, f0_2 = te.dpb_fermiInt_vs_temp(s = 0, T = temp_res_list, mass = current_meff, gap = current_gap, fermi_energy = current_fermi_energy, degen = degen)
-
-            # Check if number of iterations is <= max_num_iterations to ensure that the loop is not infinite
-            # If the fit is not converged after max_num_iterations steps, the resistivity is fitted one more time while keeping the factor for the Seebeck coefficient fixed
-            if number_iterations > max_num_iterations:
-                if print_info:
-                    print(f"Error! Fitting not possible. Number of iterations in 'dpb_see_res_fit' exceeds {max_num_iterations}")                
-                break
-
-            # Fit the resistivity with the parameters 'para_A', para_B', 'para_C' and 'para_D'
-            if scatter_type == "acPh":
-                parameter_res, _ = opt.curve_fit(
-                    lambda T, para_A, meff: te.dpb_rho_vs_temp_acPh_new(T, para_A, meff, initial_weight = current_meff / current_para_B, gap = current_gap, fermi_energy = current_fermi_energy, degen = degen, scal_fac = 1e8),
-                    temp_res_list, res_list * 1e8, p0 = start_paramter_res, bounds = limits_res, full_output=False, maxfev=50_000)
-                    # lambda T, para_A, para_B: te.dpb_rho_vs_temp_acPh(T, f0_1, f0_2, para_A, para_B, current_meff, scal_fac = 1e8), 
-                    # temp_res_list, res_list * 1e8, p0 = start_paramter_res, bounds = limits_res, full_output=False, maxfev=50_000)
-            elif scatter_type == "dis":
-                parameter_res, _ = opt.curve_fit(
-                    lambda T, para_A, para_B: te.dpb_rho_vs_temp_dis(T, f0_1, f0_2, para_A, para_B, current_meff, scal_fac = 1e8), 
-                    temp_res_list, res_list * 1e8, p0 = start_paramter_res, bounds = limits_res, full_output=False, maxfev=50_000)
-            else:
-                parameter_res, _ = opt.curve_fit(
-                    lambda T, para_A, para_B, para_C, para_D: te.dpb_rho_vs_temp_acPh_dis(T, f0_1, f0_2, para_A, para_B, para_C, para_D, current_meff, scal_fac = 1e8), 
-                    temp_res_list, res_list * 1e8, p0 = start_paramter_res, bounds = limits_res, full_output=False, maxfev=50_000)
-            
-            # Save the current scattering parameters
-            current_para_A = parameter_res[0]
-            current_para_B = parameter_res[1] / current_meff
-            current_meff = parameter_res[1]
-            print(f"Mass from res fit: {current_meff}")
-            # current_para_B = parameter_res[1]
-            if scatter_type == "acPhDis":
-                current_para_C = parameter_res[2]
-                current_para_D = parameter_res[3]
-            
-            # Set the start parameters of the resistivity fit to the currently best values
-            start_paramter_res = parameter_res
-
-            if print_info:
-                # Print information about the fitting parameters of the resistivity
-                if scatter_type == "acPh" or scatter_type == "dis":
-                    print(f"current_para_A: {current_para_A:.5f}\n"
-                        f"current_para_B: {current_para_B:.5f}\n")
-                else:
-                    print(f"current_para_A: {current_para_A:.5f}\n"
-                        f"current_para_B: {current_para_B:.5f}\n"
-                        f"current_para_C: {current_para_C:.5f}\n"
-                        f"current_para_D: {current_para_D:.5f}")
-
-            # Calculate the error of the fitting parameters of the resistivtiy
-            error_meff         = np.abs((current_meff - prev_meff)/prev_meff)
-            error_gap          = np.abs((current_gap - prev_gap)/prev_gap)
-            error_fermi_energy = np.abs((current_fermi_energy - prev_fermi_energy)/prev_fermi_energy)
-            error_para_A       = np.abs((current_para_A - prev_para_A)/prev_para_A)
-            error_para_B       = np.abs((current_para_B - prev_para_B)/prev_para_B)
-            if scatter_type == "acPhDis":
-                error_para_C   = np.abs((current_para_C - prev_para_C)/prev_para_C)
-                error_para_D   = np.abs((current_para_D - prev_para_D)/prev_para_D)
-            
-            # Check if the error of all fitting parameters is smaller than threshold
-            if self.is_accuracy_reached(threshold, error_meff, error_gap, error_fermi_energy, error_para_A, error_para_B):
-                if print_info:
-                    print("Accuracy reached.")
-                break
-            if scatter_type == "acPhDis" and self.is_accuracy_reached(threshold, error_para_C, error_para_D):
-                if print_info:
-                    print("Accuracy reached.")
-                break
-
-            # Save the current fitting parameters to determine the error in the next step
-            prev_meff = current_meff
-            prev_gap = current_gap
-            prev_fermi_energy = current_fermi_energy
-            prev_para_A = current_para_A
-            prev_para_B = current_para_B
-            if scatter_type == "acPhDis":
-                prev_para_C = current_para_C
-                prev_para_D = current_para_D
-            
-            # Increase the number of iterations by 1
-            number_iterations += 1
-            
-        if print_info:
-            print("Starting Hall fit...")
-            
-        #Calculate Fermi integrals and rho at temperatures of hall
-        f0_1, f0_2 = te.dpb_fermiInt_vs_temp(s = 0, T = temp_hall_list, mass=current_meff, gap=current_gap, fermi_energy=current_fermi_energy, degen=degen)
-        fm05_1, fm05_2 = te.dpb_fermiInt_vs_temp(s = -0.5, T = temp_hall_list, mass = current_meff, gap = current_gap, fermi_energy=current_fermi_energy, degen=degen)
-        
-        if scatter_type == "acPh":
-            res_array_hall_temp = te.dpb_rho_vs_temp_acPh(temp_hall_list, f0_1, f0_2, current_para_A, current_para_B, current_meff)
-        if scatter_type == "dis":
-            res_array_hall_temp = te.dpb_rho_vs_temp_dis(temp_hall_list, f0_1, f0_2, current_para_A, current_para_B, current_meff)
-        if scatter_type == "acPhDis":
-            res_array_hall_temp = te.dpb_rho_vs_temp_acPh_dis(temp_hall_list, f0_1, f0_2, current_para_A, current_para_B, current_para_C, current_para_D, current_meff)
-        
-        # Fit the hall with the parameter 'para_E'
-        if scatter_type == "acPh":
-            parameter_hall, _ = opt.curve_fit(
-            lambda T, para_E: te.dpb_hall_vs_temp_acPh(T, res_array_hall_temp, fm05_1, fm05_2, current_meff, degen, current_para_A, current_para_B, para_E, scal_fac = 1e10), 
-            temp_hall_list, hall_list * 1e10, p0 = initial_para_E, bounds = limits_para_E, full_output=False, maxfev=5000)
-        elif scatter_type == "dis":
-            parameter_hall, _ = opt.curve_fit(
-            lambda T, para_E: te.dpb_hall_vs_temp_dis(T, res_array_hall_temp, fm05_1, fm05_2, current_meff, degen, current_para_A, current_para_B, para_E, scal_fac = 1e10), 
-            temp_hall_list, hall_list * 1e10, p0 = initial_para_E, bounds = limits_para_E, full_output=False, maxfev=5000)
-        else:
-            parameter_hall, _ = opt.curve_fit(
-                lambda T, para_E: te.dpb_hall_vs_temp_acPh_dis(T, res_array_hall_temp, fm05_1, fm05_2, current_meff, degen, current_para_A, current_para_B, current_para_C, current_para_D, para_E, scal_fac = 1e10), 
-                temp_hall_list, hall_list * 1e10, p0 = initial_para_E, bounds = limits_para_E, full_output=False, maxfev=5000)
-
-        # Save the current scattering parameters
-        current_para_E = parameter_hall[0]
-        current_mass1 = current_para_E**(2/3)
-        
-        # Print the number of steps needed to reach the desired accuracy
-        if print_info:
-            print(f"\nIt took {number_iterations} iterations to evaluate the best fit\n")
-        
-        if print_info:           
-            print("###########################################")
-            print("Band structure parameters:")
-            print(
-                f"Mass: {current_meff:.5f}\n"
-                f"Gap: {current_gap:.5f}\n"
-                f"EF: {current_fermi_energy:.5f}\n"
-                )
-            print("Scattering parameters:")
-            if scatter_type == "acPh" or scatter_type == "dis":
-                print(
-                    f"parameter A: {current_para_A:.3f}\n"
-                    f"parameter B: {current_para_B:.3f}\n"
-                    )
-            else:
-                print(
-                    f"parameter A: {current_para_A:.3f}\n"
-                    f"parameter B: {current_para_B:.3f}\n"
-                    f"parameter C: {current_para_C:.3f}\n"
-                    f"parameter D: {current_para_D:.3f}\n"
-                    )
-            print(
-                f"parameter E: {current_para_E}\n"
-                f"band mass 1: {current_mass1}\n"
-            )
-            print("###########################################")
-        
-        print("Finished 'dpb_see_res_hall_fit'")
-        
-        # Save all fitting parameters in a list and return the list
-        parameters[0:3] = [current_meff*degen, current_gap, current_fermi_energy]
-        parameters[9] = current_mass1
-        if scatter_type == "acPh":
-            parameters[3:5] = [current_para_A, current_para_B]
-        elif scatter_type == "dis":
-            parameters[7:9] = [current_para_A, current_para_B]
-        else:
-            parameters[3:7] = [current_para_A, current_para_B, current_para_C/300., current_para_D/300.] #adjusted, as the input is given at 300 K
-            
-        # if scatter_type == "acPh" or scatter_type == "dis":
-        #     parameters = [current_meff, current_gap, current_fermi_energy, current_para_A, current_para_B, current_mass1]
-        # else:
-        #     parameters = [current_meff, current_gap, current_fermi_energy, current_para_A, current_para_B, current_para_C, current_para_D, current_mass1]
-        return parameters
     
     
     '''
@@ -1564,7 +1194,6 @@ class PB_fit:
         if scatter_type == "acPhDis":
             para_C = parameter_res[2]
             para_D = parameter_res[3]
-            #print(para_C, para_D)
         # Define the band structure parameters
         mass = parameter_see[0]/degen
         gap = parameter_see[1]
@@ -2135,59 +1764,3 @@ class PB_fit:
         for i, wavevector in enumerate(k_array):
             energy_array[i] = te.parabolic_band(wavevector, mass, energy)
         return k_array, energy_array
-    
-    def ind_seebeck_2PB(self, Tmin, Tmax, Tnumb, mass, gap, fermi_energy, degen):
-        temp_array = np.linspace(Tmin, Tmax, Tnumb)
-        see1_array = np.zeros(Tnumb)
-        see2_array = np.zeros(Tnumb)
-        for i, temp in enumerate(temp_array):
-            see1_array[i], see2_array[i] = te.spart_2PB(temp, mass, gap, degen, fermi_energy)
-            
-        return temp_array, see1_array, see2_array
-    
-    def ind_cc_2PB(self, Tmin, Tmax, Tnumb, mass, gap, fermi_energy, degen):
-        temp_array = np.linspace(Tmin, Tmax, Tnumb)
-        chargeCon1_array = np.zeros(Tnumb)
-        chargeCon2_array = np.zeros(Tnumb)
-        
-        for i, temp in enumerate(temp_array):
-            chargeCon1_array[i], chargeCon2_array[i] = te.dpb_ind_carCon(temp, fermi_energy, mass, gap, degen)
-
-        return temp_array, chargeCon1_array, chargeCon2_array
-
-    #!!! FILLER FUNCTION, NOT FUNCTIONAL AT ALL
-    def chempot_1PB(self,Tmin,Tmax,Tnumb,mass, fermi_energy, degen):
-        temp_array = [1,2,3]
-        chemPot_array = [1,2,3]
-        # eta = fermi_energy
-        
-        # for i, temp in enumerate(temp_array):
-        #     eta = te.mu2PB_solve(eta, temp, gap, mass, fermi_energy, degen)
-        #     chemPot_array[i] = eta
-
-        return temp_array, chemPot_array
-        
-    
-    def chempot_2PB(self,Tmin,Tmax,Tnumb,mass,gap,fermi_energy, degen):
-        temp_array = np.linspace(Tmin, Tmax, Tnumb)
-        chemPot_array = np.zeros(Tnumb)
-        eta = fermi_energy
-        
-        for i, temp in enumerate(temp_array):
-            eta = te.dpb_chemPot_solve(eta, temp, gap, mass, fermi_energy, degen)
-            chemPot_array[i] = eta
-
-        return temp_array, chemPot_array
-    
-if __name__ == "__main__":
-    initial_fermi_energy = [300]
-    initial_parameter_res = [1, 2, 3]
-    parameters = initial_fermi_energy + initial_parameter_res
-    
-    del initial_parameter_res[1:3]
-    
-    #print(parameters)
-    
-    parameters2 = [0, 1, 2, 3, 4, 5]
-    parameters2[1:3] = [0, 9]
-    #print(parameters2)

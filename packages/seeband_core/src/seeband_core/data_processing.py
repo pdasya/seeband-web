@@ -1,7 +1,6 @@
 import re
 import numpy as np
 from numpy.polynomial import Chebyshev
-# import matplotlib.pyplot as plt
 
 """
 Opens the file 'filename', checks its validity, formats it into an 2D numpy array and returns this array.
@@ -98,11 +97,6 @@ def save_data(path, data, x_legend="", y_legends=[]):
         legend = legend.strip()
         legend +="\n"
         file.write(legend)
-        # file.write(f"{x_legend}")
-        # if (len(y_arrays) != 0):
-        #     for y_legend in y_legends:
-        #         file.write(f"\t{y_legend}")
-        #     file.write(f"\n")
 
         for i in range(max([max([len(col) for col in data]), len(x_array)])):
             if (len(x_array) > i):
@@ -122,26 +116,3 @@ def save_params(path, para_dict):
     with open(path, "w") as file:
         for key in para_dict:
             file.write(f"{key}\t{para_dict[key]}\n")
-"""
-Shows the x and y data given in '*args'.
-"""
-
-
-# def plot_data(*args):
-#     if len(args) % 2 == 1:
-#         print("Error in 'plot_data()': Number of *args must be even")
-#         return
-#     for i in range(0, len(args), 2):
-#         plt.plot(args[i], args[i + 1])
-#     plt.show()
-
-
-if __name__ == "__main__":
-    string = "a\t\t   ,\tb"
-    print(string.split())
-    # # Examples:
-    # data = get_data("test.dat")
-    # c = fit_data(data, degree=2)
-    # # new_data = interpolate_data(c, None, 300, 500, 50)
-    # new_data = interpolate_data(c, data[:, 0])
-    # # plot_data(data[:, 0], data[:, 1], data[:, 0], c(data[:, 0]), new_data[:, 0], new_data[:, 1])
