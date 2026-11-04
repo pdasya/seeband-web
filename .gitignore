@@ -1,0 +1,25 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+dist/
+.astro/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Claude Code: machine-specific link and personal settings
+.claude/skills/fastapi
+.claude/settings.local.json
+
+# macOS
+.DS_Store
