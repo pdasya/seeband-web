@@ -24,3 +24,8 @@ Web version of the SeeBand desktop application. Calculations run only on the ser
 - `documentation`: what to update alongside a change.
 - `fastapi`, `vercel-composition-patterns`: framework guidance. Project rules win over them.
 - Third-party skills are recorded in `.claude/skills/THIRD_PARTY.md`.
+
+## Agents
+
+- `python-reviewer`, `fastapi-reviewer`, `typescript-reviewer`, `react-reviewer`, `security-reviewer`, `code-reviewer`: read-only reviewers in `.claude/agents/`. Run them when asked.
+- They are third-party, recorded in `.claude/skills/THIRD_PARTY.md`.
