@@ -1,0 +1,4 @@
+pnpm-lock.yaml
+uv.lock
+.claude/skills/vercel-composition-patterns/
+.venv/
