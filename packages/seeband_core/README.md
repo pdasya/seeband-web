@@ -1,6 +1,6 @@
 # seeband_core
 
-Band model calculations and fits, ported from the SeeBand desktop application. It has no dependency on Qt, TensorFlow or FastAPI. `math_module`, `fit_module` and `data_processing` are copied unchanged from SeeBand, apart from imports and how the Fermi table loads. Until C6 cleans them up, they still mutate their inputs and call `print`, and they are excluded from ruff and mypy. `test_ported_modules.py` pins them so that they stay unchanged until then.
+Band model calculations and fits, ported from the SeeBand desktop application. It has no dependency on Qt, TensorFlow or FastAPI. `math_module`, `fit_module` and `data_processing` come from SeeBand. They do not print or change their inputs. Their results match the desktop within the tolerances and with the exceptions listed in [golden results](docs/golden-results.md), including the DPB fits on `02_SiP` that cannot match it (D19).
 
 These modules and the Fermi table keep the original SeeBand [license](LICENSE). The rest of the package is under the [project license](LICENSE-seeband-web). Both are MIT.
 

@@ -13,8 +13,3 @@ indent_size = 4
 
 [*.md]
 trim_trailing_whitespace = false
-
-# Copied unchanged from SeeBand. C6 cleans these up and removes this section.
-[packages/seeband_core/src/seeband_core/{data_processing,fit_module,math_module}.py]
-trim_trailing_whitespace = false
-insert_final_newline = false

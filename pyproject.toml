@@ -26,12 +26,6 @@ dev = [
 
 [tool.ruff]
 line-length = 100
-# Copied unchanged from SeeBand. C6 cleans these up and removes this exclusion.
-extend-exclude = [
-    "packages/seeband_core/src/seeband_core/data_processing.py",
-    "packages/seeband_core/src/seeband_core/fit_module.py",
-    "packages/seeband_core/src/seeband_core/math_module.py",
-]
 target-version = "py313"
 
 [tool.ruff.lint]
@@ -43,13 +37,9 @@ strict = true
 files = ["packages/seeband_core/src", "apps/api/src"]
 
 [[tool.mypy.overrides]]
-# Copied unchanged from SeeBand. C6 cleans these up and removes this exception.
-module = [
-    "seeband_core.data_processing",
-    "seeband_core.fit_module",
-    "seeband_core.math_module",
-]
-ignore_errors = true
+# These libraries publish no type information.
+module = ["mpmath", "scipy.*"]
+ignore_missing_imports = true
 
 [tool.pyright]
 venvPath = "."

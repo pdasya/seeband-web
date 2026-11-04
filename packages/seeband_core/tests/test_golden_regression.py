@@ -9,12 +9,14 @@ fits depend on the solver. A small change can stay within FIT_TOLERANCE, but the
 
 Some fits are not reproducible across versions: see UNSTABLE_02 and deviation D19.
 
-Tests call the core only through call_core. When a refactor renames a function or drops an argument
-such as print_info, update call_core and leave the pinned fixtures unchanged.
+Tests call the core only through core_arguments and invoke_core. When a refactor renames a function
+or drops an argument, update those and leave the pinned fixtures unchanged. The test of
+spb_see_res_hall_fit is the exception: it has no recorded call, so it names the function and its
+argument order itself.
 """
 
 import contextlib
-import io
+import copy
 import json
 import math
 from collections.abc import Iterator
@@ -33,10 +35,13 @@ FIT_TOLERANCE = 1e-5
 ARRAY_ARGUMENTS = {
     "spb_see_fit": 2,
     "spb_see_res_fit": 4,
+    "spb_see_res_hall_fit": 6,
     "dpb_see_fit": 2,
     "dpb_see_res_fit": 4,
     "dpb_see_res_hall_fit": 6,
 }
+# Fits that the desktop called with print_info as a further positional argument.
+POSITIONAL_ARGUMENTS = {"dpb_see_res_fit": 12, "dpb_see_res_hall_fit": 16}
 # Error text can change with a scipy update, so only a stable part of it is compared.
 ERROR_FRAGMENTS = {"ValueError": "bounds"}
 # These fits are not stable across versions or machines (D19).
@@ -55,16 +60,9 @@ D1_01_TOLERANCE = 1e-3
 # E_F on 02_SiP with SPB S falls from 100 to 3.76 with solver warnings. It differed by 3.4e-6 on a
 # Mac, and by 1.8e-5 and 2.8e-5 in two Linux CI runs, so it varies between runs of the same code.
 SPB_S_02_TOLERANCE = 1e-4
-# Public methods with no recorded call. The first is unreachable on the desktop because of D2.
-NOT_COVERED = {
-    "spb_see_res_hall_fit",
-    "chempot_1PB",
-    "chempot_2PB",
-    "dpb_see_res_hall_fit_new",
-    "ind_cc_2PB",
-    "ind_seebeck_2PB",
-    "is_accuracy_reached",
-}
+# Public methods with no recorded call. The fit is unreachable on the desktop because of D2, and
+# is_accuracy_reached is covered through the fits that call it.
+NOT_COVERED = {"spb_see_res_hall_fit", "is_accuracy_reached"}
 
 
 def recorded_calls() -> Iterator[tuple[str, str, str | None, str, dict[str, Any]]]:
@@ -89,12 +87,24 @@ CALL_IDS = [
 ]
 
 
-def call_core(function: str, args: list[Any], kwargs: dict[str, Any]) -> Any:
-    """Run a recorded desktop call against the core. This is the only link to its names."""
+def core_arguments(
+    function: str, args: list[Any], kwargs: dict[str, Any]
+) -> tuple[list[Any], dict[str, Any]]:
+    """Turn recorded arguments into what the core takes today."""
     arrays = ARRAY_ARGUMENTS.get(function, 0)
     converted = [np.array(value) if index < arrays else value for index, value in enumerate(args)]
-    with contextlib.redirect_stdout(io.StringIO()):
-        return getattr(fit_module.PB_fit(), function)(*converted, **kwargs)
+    # The desktop also passed print_info, which the core no longer has.
+    converted = converted[: POSITIONAL_ARGUMENTS.get(function)]
+    return converted, {name: value for name, value in kwargs.items() if name != "print_info"}
+
+
+def invoke_core(function: str, args: list[Any], kwargs: dict[str, Any]) -> Any:
+    return getattr(fit_module.PB_fit(), function)(*args, **kwargs)
+
+
+def call_core(function: str, args: list[Any], kwargs: dict[str, Any]) -> Any:
+    """Run a recorded desktop call against the core."""
+    return invoke_core(function, *core_arguments(function, args, kwargs))
 
 
 def replay(call: dict[str, Any]) -> Any:
@@ -170,6 +180,59 @@ def test_replay_matches_the_desktop(
         assert_close(result, call["result"], SPB_S_02_TOLERANCE)
     else:
         assert_close(result, call["result"], FIT_TOLERANCE)
+
+
+def same_value(first: Any, second: Any) -> bool:
+    if isinstance(first, np.ndarray):
+        return isinstance(second, np.ndarray) and np.array_equal(first, second)
+    if isinstance(first, list | tuple):
+        return (
+            type(first) is type(second)
+            and len(first) == len(second)
+            and all(same_value(x, y) for x, y in zip(first, second, strict=True))
+        )
+    return bool(first == second)
+
+
+def calls_with_distinct_inputs() -> list[dict[str, Any]]:
+    distinct = {
+        json.dumps([call["function"], call["args"], call["kwargs"]]): call for *_, call in CALLS
+    }
+    return list(distinct.values())
+
+
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize("call", calls_with_distinct_inputs(), ids=lambda call: call["function"])
+def test_recorded_calls_leave_their_inputs_unchanged(call: dict[str, Any]) -> None:
+    recorded_args, recorded_kwargs = copy.deepcopy(call["args"]), copy.deepcopy(call["kwargs"])
+    args, kwargs = core_arguments(call["function"], recorded_args, recorded_kwargs)
+    args_before, kwargs_before = copy.deepcopy(args), copy.deepcopy(kwargs)
+    with contextlib.suppress(ValueError):
+        invoke_core(call["function"], args, kwargs)
+    assert same_value(args, args_before)
+    assert same_value(kwargs, kwargs_before)
+
+
+def first_call(document: dict[str, Any], function: str) -> dict[str, Any]:
+    calls = (call for run in document["runs"] for call in run["calls"])
+    return next(call for call in calls if call["function"] == function and "error" not in call)
+
+
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize("scatter_type", ["acPh", "dis", "acPhDis"])
+def test_spb_hall_fit_leaves_its_inputs_unchanged(scatter_type: str) -> None:
+    # This fit has no recorded call (D2), so its arguments are built from other recorded fits. A
+    # whole-number mass gets past the type error that a float mass causes at its start.
+    document = json.loads((GOLDEN / "03_AWI32_SI.json").read_text(encoding="utf-8"))
+    data = first_call(document, "dpb_see_res_hall_fit")["args"][:6]
+    start = first_call(document, "spb_see_res_fit")["args"][5:9]
+    args, kwargs = core_arguments(
+        "spb_see_res_hall_fit", [*data, *start, [-1], ([0], [10]), scatter_type], {}
+    )
+    args_before = copy.deepcopy(args)
+    result = invoke_core("spb_see_res_hall_fit", args, kwargs)
+    assert len(result) == 5
+    assert same_value(args, args_before)
 
 
 def count_function_entries(node: Any) -> int:
