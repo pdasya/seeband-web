@@ -60,8 +60,7 @@ def validate_data(data: list[str]) -> list[str]:
 
 """
 Formats the entries of the array 'data' by splitting it into two decimal numbers, creates a 2D numpy
-array,
-fills the array with the decimal numbers and returns the array.
+array, fills the array with the decimal numbers and returns the array.
 """
 
 
@@ -87,8 +86,7 @@ def fit_data(data: np.ndarray, degree: int = 5) -> Chebyshev | None:
 
 """
 Interpolates the function 'fit' by evaluating it either at the entries of xdata or at every delta_x,
-from x_min to x_max
-and returns the interpolated data in a 2D numpy array.
+from x_min to x_max and returns the interpolated data in a 2D numpy array.
 """
 
 

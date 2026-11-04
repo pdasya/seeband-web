@@ -58,7 +58,7 @@ class PB_fit:
         temp_list: np.ndarray,
         see_list: np.ndarray,
         band_mass: float,
-        initial_fermi_energy: float,
+        initial_fermi_energy: list[float],
         limits_fermi_energy: tuple[list[float], list[float]],
     ) -> list[float]:
         """Fits the Seebeck coefficient within the single-parabolic-band model and returns the
@@ -70,7 +70,7 @@ class PB_fit:
             Temperatures of the measured Seebeck coefficient in K
         see_list : numpy.ndarray
             Seebeck coefficient in V/K at temperatures given by temp_list
-        band_mass : int
+        band_mass : float
             Mass of the band
         initial_fermi_energy : list[float]
             Initial Fermi energy for the fit
@@ -177,9 +177,9 @@ class PB_fit:
             Seebeck coefficient in V/K at temperatures given by temp_see_list
         temp_res_list : numpy.ndarray
             Temperatures of the measured resistivity in K
-        res_list : float
+        res_list : numpy.ndarray
             Resistivity in Ohm*m at the temperatures given by temp_res_list
-        band_mass : int
+        band_mass : float
             Mass of the band
         initial_fermi_energy : list[float]
             Initial Fermi energy for the fit
@@ -328,7 +328,7 @@ class PB_fit:
             Seebeck coefficient in V/K at temperatures given by temp_see_list
         temp_res_list : numpy.ndarray
             Temperatures of the measured resistivity in K
-        res_list : float
+        res_list : numpy.ndarray
             Resistivity in Ohm*m at the temperatures given by temp_res_list
         initial_parameter_see : list[float]
             Initial fitting parameters of the Sebeeck coefficient
@@ -547,7 +547,7 @@ class PB_fit:
         limits_fermi_energy: tuple[list[float], list[float]],
         initial_parameter_res: list[float],
         limits_res: tuple[list[float], list[float]],
-        initial_mass1: list[float],
+        initial_mass1: list[int],
         limits_mass1: tuple[list[float], list[float]],
         scatter_type: str,
     ) -> list[float]:
@@ -577,7 +577,7 @@ class PB_fit:
             Initial fitting parameters of the resistivity
         limits_res : tuple(list[float], list[float])
             Lower and upper limits of the fitting parameters of the resistivity
-        initial_mass1 : list[float]
+        initial_mass1 : list[int]
             Initial mass of band 1 for the fit
         limits_mass1 : tuple[list[float], list[float]]
             Lower and upper limits of the mass of band 1 for the fit
@@ -736,7 +736,7 @@ class PB_fit:
         initial_parameter_res: list[float],
         limits_res: tuple[list[float], list[float]],
         initial_mass1: float,
-        limits_mass1: tuple[list[float], list[float]],
+        limits_mass1: list[list[float]],
         degen: float,
         scatter_type: str,
         threshold: float,
@@ -753,7 +753,7 @@ class PB_fit:
             Seebeck coefficient in V/K at temperatures given by temp_see_list
         temp_res_list : numpy.ndarray
             Temperatures of the measured resistivity in K
-        res_list : float
+        res_list : numpy.ndarray
             Resistivity in Ohm*m at the temperatures given by temp_res_list
         temp_hall_list : numpy.ndarray
             Temperatures of the measured Hall coefficient in K
@@ -769,7 +769,7 @@ class PB_fit:
             Lower and upper limits of the fitting parameters of the resistivity
         initial_mass1 : float
             Initial mass of band 1 for the fit
-        limits_mass1 : tuple[list[float], list[float]]
+        limits_mass1 : list[list[float]]
             Lower and upper limits of the mass of band 1 for the fit
         degen : float
             Ratio of the degeneracy of band 2 to band 1

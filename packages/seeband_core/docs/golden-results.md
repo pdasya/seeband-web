@@ -95,4 +95,4 @@ Fit tolerance is wide enough that a small change can pass in a fit, but the curv
 - `is_accuracy_reached` is covered only through fits.
 - Other data, other fit ranges and interpolation.
 
-A test fails if this list of uncovered methods changes. Tests reach the core only through `call_core`, so a refactor that renames a function or drops an argument updates that one function, not the pinned fixtures.
+A test fails if this list of uncovered methods changes. Tests reach the core only through `core_arguments` and `invoke_core`, so a refactor that renames a function or drops an argument updates those, not the pinned fixtures. The exception is the test of `spb_see_res_hall_fit`, which has no recorded call and names its arguments itself.

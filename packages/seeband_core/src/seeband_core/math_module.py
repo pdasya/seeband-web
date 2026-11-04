@@ -19,12 +19,17 @@ hbar = h / (2 * np.pi)
 me = 9.1093837e-31
 lamb = 0
 
-fermi_table: list[list[float]] = []
-with (resources.files("seeband_core") / "data" / "fermi_int_-10_20.txt").open("r") as file:
-    for text in file.readlines():
-        columns = text.split("	")
-        fermi_table.append([float(columns[0]), float(columns[1])])
-fermi1_10 = np.array(fermi_table)
+
+def _load_fermi_table() -> np.ndarray:
+    table: list[list[float]] = []
+    with (resources.files("seeband_core") / "data" / "fermi_int_-10_20.txt").open("r") as file:
+        for line in file.readlines():
+            columns = line.split("\t")
+            table.append([float(columns[0]), float(columns[1])])
+    return np.array(table)
+
+
+fermi1_10 = _load_fermi_table()
 
 
 """
@@ -34,7 +39,7 @@ Fermi integral
 """
 
 
-def fdint_robust(s: float, eta: float, T: float) -> Any:
+def fdint_robust(s: float, eta: float, T: float) -> float:
     etaT = eta / T
     if etaT > 709 and s == 1:
         return eta**2 / (2 * T**2)
@@ -49,13 +54,14 @@ def fdint_robust(s: float, eta: float, T: float) -> Any:
                 * (0.7522527780636751 * ((etaT) ** 2 + 1.6449340668482264) ** 0.75)
             )  # approximation with constant values pre-calculated
         else:
-            return fermi1_10[int(etaT * 1000 + 10000)][1] + (
+            interpolated: float = fermi1_10[int(etaT * 1000 + 10000)][1] + (
                 fermi1_10[int(etaT * 1000 + 10000 + 1)][1] - fermi1_10[int(etaT * 1000 + 10000)][1]
             ) / (
                 fermi1_10[int(etaT * 1000 + 10000 + 1)][0] - fermi1_10[int(etaT * 1000 + 10000)][0]
             ) * (
                 etaT - fermi1_10[int(etaT * 1000 + 10000)][0]
             )  # approximation with constant values pre-calculated
+            return interpolated
 
     result = -mpmath.gamma(s + 1) * mpmath.fp.polylog(s + 1, -np.exp(etaT))
     return float(
@@ -63,7 +69,7 @@ def fdint_robust(s: float, eta: float, T: float) -> Any:
     )  # important: it is not float-type before but: <class 'mpmath.ctx_mp_python.mpf'>
 
 
-fdint_vec: Callable[..., np.ndarray] = np.vectorize(fdint_robust)
+fdint_vec: Callable[..., Any] = np.vectorize(fdint_robust)
 
 
 # Calculates Fermi integrals for a single band
@@ -108,8 +114,8 @@ Basic thermoelectric functions
 
 
 # General formula for calculating the Onsager coefficient of a single band
-def onsi_general(eta: float, meff: float, K: float, beta: float, T: float) -> np.ndarray:
-    result: np.ndarray = (
+def onsi_general(eta: float, meff: float, K: float, beta: float, T: float) -> float:
+    result: float = (
         -np.sign(meff)
         * (kB / e)
         * K
@@ -124,12 +130,10 @@ def onsi_general(eta: float, meff: float, K: float, beta: float, T: float) -> np
 
 
 # General formula for calculating the electrical conductivity of a single band
-def sigma_general(eta: float, meff: float, K: float, beta: float, T: float) -> np.ndarray:
+def sigma_general(eta: float, meff: float, K: float, beta: float, T: float) -> float:
     # Temperature factor defined as beta + 1, since 1 is obtained from partial integration instead
     # of 3/2
-    result: np.ndarray = (
-        K * T ** (beta + 1) / abs(meff) * fdint_vec(0 + lamb, np.sign(meff) * eta, T)
-    )
+    result: float = K * T ** (beta + 1) / abs(meff) * fdint_vec(0 + lamb, np.sign(meff) * eta, T)
     return result
 
 
@@ -141,33 +145,36 @@ Useful functions
 
 
 # Calculates the charge carrier concentration of a single band
-def spb_carCon(eta: float, meff: float, T: float) -> Any:
+def spb_carCon(eta: float, meff: float, T: float) -> float:
     if T == 0:
         # If Fermi energy is inside the band ...
         if eta * np.sign(meff) > 0:
-            return (
+            at_zero_kelvin: float = (
                 (4 * np.pi * (2 * np.abs(meff) * me * kB * np.abs(eta) / h**2) ** 1.5)
                 * (2 / 3)
                 * 1e-6
             )
+            return at_zero_kelvin
 
         # If Fermi energy is outside the band ...
         else:
             return 0
     else:
-        return (
+        carrier_concentration: float = (
             4
             * np.pi
             * (2 * np.abs(meff) * me * kB * T / h**2) ** 1.5
             * fdint_vec(0.5, np.sign(meff) * eta, T)
             * 1e-6
         )
+        return carrier_concentration
 
 
 # Calculates the chemical potential of a single band at a temperature T
-def spb_chemPot(eta_here: list[float], temp: float, band_mass: float, fermi_energy: float) -> Any:
+def spb_chemPot(eta_here: np.ndarray, temp: float, band_mass: float, fermi_energy: float) -> float:
     result = spb_carCon(eta_here[0], band_mass, temp) - spb_carCon(fermi_energy, band_mass, 0)
-    return np.abs(result)
+    difference: float = np.abs(result)
+    return difference
 
 
 # Calculates the temperature-dependent chemical potential of a single band
@@ -188,8 +195,8 @@ def spb_chemPot_vs_temp(
 # Calculates the chemical potential of two bands at a temperature T with variable degeneracy ratio
 # degen
 def dpb_chemPot(
-    eta_here: list[float], temp: float, gap: float, meff: float, fermi_energy: float, degen: float
-) -> Any:
+    eta_here: np.ndarray, temp: float, gap: float, meff: float, fermi_energy: float, degen: float
+) -> float:
     result = (
         (-1) * spb_carCon(eta_here[0], -1, temp)
         + np.sign(meff) * spb_carCon(eta_here[0] - gap, meff * degen ** (5 / 3), temp)
@@ -198,7 +205,8 @@ def dpb_chemPot(
             + np.sign(meff) * spb_carCon(fermi_energy - gap, meff * degen ** (5 / 3), 0)
         )
     )
-    return np.abs(result)
+    difference: float = np.abs(result)
+    return difference
 
 
 # Calculates the temperature-dependent chemical potential of two bands
@@ -277,7 +285,7 @@ def spb_see_vs_temp(
     fermi_energy : float
         Fitting parameter, representing the position of the Fermi energy with respect to the maximum
         of the band
-    band_mass : int
+    band_mass : float
         Mass of the band
     scal_fac : float
         Scaling factor, by which the function is multiplied for improvied fitting convergence
@@ -624,7 +632,7 @@ def spb_hall_vs_temp(
         Numpy array containing all temperatures
     fermi_energy : float
         Position of the Fermi energy with respect to the maximum of the band
-    mass_sign : int
+    mass_sign : float
         Sign of the band mass; -1 vor valence band, +1 for conduction band
     scal_fac : float
         Scaling factor, by which the function is multiplied for improvied fitting convergence
@@ -909,9 +917,6 @@ def dpb_rho_vs_temp_acPh(
     """
 
     return scal_fac / (para_A * (f0_1 + 1 / meff * para_B * f0_2))
-
-
-# Calculates the electrical resistivity of two bands for acoustic-phonon scattering
 
 
 # Calculates the electrical resistivity of two bands for alloy-disorder scattering
@@ -1834,9 +1839,6 @@ def dpb_ind_elecCond_vs_temp_acPh_dis(
     sig2 = scal_fac * para_A * temp_array * 1 / meff * para_B * f0_2 / (para_D + temp_array)
 
     return sig1, sig2
-
-
-# Calculates the individual charge carrier concentrations of two bands at one temperature
 
 
 # Calculates the individual temperature-dependent charge carrier concentrations of two bands

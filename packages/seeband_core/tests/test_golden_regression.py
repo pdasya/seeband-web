@@ -9,8 +9,10 @@ fits depend on the solver. A small change can stay within FIT_TOLERANCE, but the
 
 Some fits are not reproducible across versions: see UNSTABLE_02 and deviation D19.
 
-Tests call the core only through call_core. When a refactor renames a function or drops an argument,
-update call_core and leave the pinned fixtures unchanged.
+Tests call the core only through core_arguments and invoke_core. When a refactor renames a function
+or drops an argument, update those and leave the pinned fixtures unchanged. The test of
+spb_see_res_hall_fit is the exception: it has no recorded call, so it names the function and its
+argument order itself.
 """
 
 import contextlib
@@ -33,6 +35,7 @@ FIT_TOLERANCE = 1e-5
 ARRAY_ARGUMENTS = {
     "spb_see_fit": 2,
     "spb_see_res_fit": 4,
+    "spb_see_res_hall_fit": 6,
     "dpb_see_fit": 2,
     "dpb_see_res_fit": 4,
     "dpb_see_res_hall_fit": 6,
@@ -95,10 +98,13 @@ def core_arguments(
     return converted, {name: value for name, value in kwargs.items() if name != "print_info"}
 
 
+def invoke_core(function: str, args: list[Any], kwargs: dict[str, Any]) -> Any:
+    return getattr(fit_module.PB_fit(), function)(*args, **kwargs)
+
+
 def call_core(function: str, args: list[Any], kwargs: dict[str, Any]) -> Any:
-    """Run a recorded desktop call against the core. This is the only link to its names."""
-    converted, kept = core_arguments(function, args, kwargs)
-    return getattr(fit_module.PB_fit(), function)(*converted, **kept)
+    """Run a recorded desktop call against the core."""
+    return invoke_core(function, *core_arguments(function, args, kwargs))
 
 
 def replay(call: dict[str, Any]) -> Any:
@@ -202,36 +208,31 @@ def test_recorded_calls_leave_their_inputs_unchanged(call: dict[str, Any]) -> No
     args, kwargs = core_arguments(call["function"], recorded_args, recorded_kwargs)
     args_before, kwargs_before = copy.deepcopy(args), copy.deepcopy(kwargs)
     with contextlib.suppress(ValueError):
-        getattr(fit_module.PB_fit(), call["function"])(*args, **kwargs)
+        invoke_core(call["function"], args, kwargs)
     assert same_value(args, args_before)
     assert same_value(kwargs, kwargs_before)
 
 
+def first_call(document: dict[str, Any], function: str) -> dict[str, Any]:
+    calls = (call for run in document["runs"] for call in run["calls"])
+    return next(call for call in calls if call["function"] == function and "error" not in call)
+
+
 @pytest.mark.filterwarnings("ignore")
-def test_spb_hall_fit_leaves_its_inputs_unchanged() -> None:
-    # This fit has no recorded call (D2), so its inputs are written here. A whole-number mass gets
-    # past the type error that a float mass causes at the start of the fit.
-    temperature_k = np.linspace(100.0, 800.0, 8)
-    parameter_res = [1.0, 1.0, 1.0]
-    limits_res = ([0.1, 0.1, 0.1], [10.0, 10.0, 10.0])
-    with contextlib.suppress(Exception):
-        fit_module.PB_fit().spb_see_res_hall_fit(
-            temperature_k,
-            -1e-6 * temperature_k / 10,
-            temperature_k,
-            1e-5 + 1e-8 * temperature_k,
-            temperature_k,
-            1e-9 * np.ones(8),
-            [100.0],
-            ([-3000.0], [3000.0]),
-            parameter_res,
-            limits_res,
-            [-1],
-            ([-10], [-1]),
-            "acPh",
-        )
-    assert parameter_res == [1.0, 1.0, 1.0]
-    assert limits_res == ([0.1, 0.1, 0.1], [10.0, 10.0, 10.0])
+@pytest.mark.parametrize("scatter_type", ["acPh", "dis", "acPhDis"])
+def test_spb_hall_fit_leaves_its_inputs_unchanged(scatter_type: str) -> None:
+    # This fit has no recorded call (D2), so its arguments are built from other recorded fits. A
+    # whole-number mass gets past the type error that a float mass causes at its start.
+    document = json.loads((GOLDEN / "03_AWI32_SI.json").read_text(encoding="utf-8"))
+    data = first_call(document, "dpb_see_res_hall_fit")["args"][:6]
+    start = first_call(document, "spb_see_res_fit")["args"][5:9]
+    args, kwargs = core_arguments(
+        "spb_see_res_hall_fit", [*data, *start, [-1], ([0], [10]), scatter_type], {}
+    )
+    args_before = copy.deepcopy(args)
+    result = invoke_core("spb_see_res_hall_fit", args, kwargs)
+    assert len(result) == 5
+    assert same_value(args, args_before)
 
 
 def count_function_entries(node: Any) -> int:
