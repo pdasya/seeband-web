@@ -28,7 +28,6 @@ class PB_fit:
         band_mass: int,
         initial_fermi_energy: float,
         limits_fermi_energy: tuple[list[float], list[float]],               
-        print_info: bool = False
         ):
         
         """Fits the Seebeck coefficient within the single-parabolic-band model and returns the position of the Fermi energy
@@ -45,8 +44,6 @@ class PB_fit:
             Initial Fermi energy for the fit
         limits_fermi_energy : tuple(list[float], list[float])
             Lower and upper limits of the Fermi energy for the fit
-        print_info : str, optional
-            Whether to print the fit parameters and meta information to the terminal
             
         Returns
         -------
@@ -54,8 +51,6 @@ class PB_fit:
             List containing the Fermi energy
         """
         
-        if print_info:
-            print("Running 'spb_see_fit'")
 
         # Fit the Seebeck coefficient with the parameters 'mass', 'gap' and 'fermi_energy'
         parameter_see, _ = opt.curve_fit(
@@ -65,11 +60,7 @@ class PB_fit:
         # Save the current band parameters
         current_fermi_energy = parameter_see[0]
         
-        if print_info:
-            print(f"EF: {current_fermi_energy:.5f}\n")
             
-        if print_info:
-            print("Finished 'spb_see_fit'")
 
         parameters = [current_fermi_energy]
         return parameters
@@ -81,7 +72,6 @@ class PB_fit:
         initial_parameter: list[float],
         limits: tuple[list[float], list[float]],               
         degen: float,
-        print_info: bool = False
         ):
         
         """Fits the Seebeck coefficient within the double-parabolic-band model and returns band-structure parameters
@@ -98,8 +88,6 @@ class PB_fit:
             Lower and upper limits of the fitting parameters of the Seebeck coefficient
         degen : float
             Ratio of the degeneracy of band 2 to band 1       
-        print_info : str, optional
-            Whether to print the fit parameters and meta information to the terminal
             
         Returns
         -------
@@ -107,8 +95,6 @@ class PB_fit:
             List containing the effective mass ratio, band gap and Fermi energy
         """
         
-        if print_info:
-            print("Running 'dpb_see_fit'")
 
         # Fit the Seebeck coefficient with the parameters 'mass', 'gap' and 'fermi_energy'
         parameter_see, _ = opt.curve_fit(
@@ -120,13 +106,7 @@ class PB_fit:
         current_gap = parameter_see[1]
         current_fermi_energy = parameter_see[2]
         
-        if print_info:
-            print(f"Mass: {current_meff:.5f}\n"
-                    f"Gap: {current_gap:.5f}\n"
-                    f"EF: {current_fermi_energy:.5f}\n")
             
-        if print_info:
-            print("Finished 'dpb_see_fit'")
 
         parameters = [current_meff*degen, current_gap, current_fermi_energy]
         return parameters
@@ -143,7 +123,6 @@ class PB_fit:
         initial_parameter_res: list[float],
         limits_res: tuple[list[float], list[float]],
         scatter_type: str,
-        print_info: bool = False,
         ) -> list[float]:
         """Fits the Seebeck coefficient and resistivity data within the single-parabolic-band model and returns the Fermi energy and scattering parameters
     
@@ -169,8 +148,6 @@ class PB_fit:
             Lower and upper limits of the fitting parameters of the resistivity
         scatter_type : string
             Determines the predominant scattering mechanisms, must be either 'acPh' (acoustic-phonon scattering), 'dis' (alloy-disorder scattering) or 'acPhDis' (both)    
-        print_info : str, optional
-            Whether to print the fit parameters and meta information to the terminal
             
         Returns
         -------
@@ -178,8 +155,6 @@ class PB_fit:
             List containing the effective Fermi energy, scattering parameter A, scattering parameter B, and, in case of acoustic-phonon + alloy-disorder scattering, scattering parameter C and scattering parameter D
         """
         
-        if print_info:  
-            print("Running 'spb_see_res_fit'")
             
         # Check if scatter_type is properly set to acPh, dis or acPhDis
         if scatter_type != "acPh" and scatter_type != "dis" and scatter_type != "acPhDis":
@@ -214,11 +189,7 @@ class PB_fit:
         # Save the current band parameters
         current_fermi_energy = parameter_see[0]
         
-        if print_info:
-            print(f"EF: {current_fermi_energy:.5f}\n")
             
-        if print_info:
-                print("Starting Resistivity fit...")
                      
         # Calculate the Integral
         f0 = te.spb_fermiInt_vs_temp(s = 0, T = temp_res_list, mass_sign = np.sign(band_mass), fermi_energy = current_fermi_energy)
@@ -242,17 +213,8 @@ class PB_fit:
         if scatter_type == "acPhDis":
             current_para_B = parameter_res[1]
 
-        if print_info:
-            # Print information about the fitting parameters of the resistivity
-            if scatter_type == "acPh" or scatter_type == "dis":
-                print(f"current_para_A: {current_para_A:.5f}\n")
-            else:
-                print(f"current_para_A: {current_para_A:.5f}\n"
-                    f"current_para_B: {current_para_B:.5f}\n")
         
         
-        if print_info:
-            print("Finished 'spb_see_res_fit'")
 
         # Save all fitting parameters in a list and return the list
         parameters[0] = current_fermi_energy
@@ -279,7 +241,6 @@ class PB_fit:
         scatter_type: str,
         threshold: float,
         max_num_iterations: int,
-        print_info: bool = False,
         ) -> tuple[float, float, float, float, float, float, float]:
         """Fits the Seebeck coefficient and resistivity data within the double-parabolic-band model and returns band-structure and scattering parameters
     
@@ -309,8 +270,6 @@ class PB_fit:
             Upper limit of the relative error of the fitting parameter of the resistivity before the fit stops
         max_num_iterations : int
             Maximum number of iterations before the fit stops
-        print_info : str, optional
-            Whether to print the fit parameters and meta information to the terminal
             
         Returns
         -------
@@ -318,8 +277,6 @@ class PB_fit:
             List containing the effective mass, band gap, Fermi energy, scattering parameter A, scattering parameter B, scattering parameter C and scattering parameter D
         """
         
-        if print_info:  
-            print("Running 'dpb_see_res_fit'")
             
     
         # Check if scatter_type is properly set to acPh, dis or acPhDis
@@ -375,10 +332,6 @@ class PB_fit:
         
         # Infinite loop that ends if accuracy is reached or number of iterations is too large
         while True:
-            if print_info:
-                # print the current number of iterations
-                print(f"Number of iteration: {number_iterations}")
-                print("Starting Seebeck fit...")
                 
             # Fit the Seebeck coefficient with the parameters 'mass', 'gap' and 'fermi_energy'
             if scatter_type == "acPh" or scatter_type == "dis":
@@ -398,13 +351,7 @@ class PB_fit:
             # Set the start parameters of the Sebeeck coefficient fit to the currently best values
             start_parameter_see = parameter_see
             
-            if print_info:
-                print(f"Mass: {current_meff:.5f}\n"
-                      f"Gap: {current_gap:.5f}\n"
-                      f"EF: {current_fermi_energy:.5f}\n")
                 
-            if print_info:
-                print("Starting Resistivity fit...")
                      
             # Calculate the 'pristine' conductivities of band 1 and band 2 from the fitted band-structure parameters with K = 1, abs(meff) = 1 and beta = 0
             f0_1, f0_2 = te.dpb_fermiInt_vs_temp(s = 0, T = temp_res_list, mass = current_meff, gap = current_gap, fermi_energy = current_fermi_energy, degen = degen)
@@ -412,8 +359,6 @@ class PB_fit:
             # Check if number of iterations is <= max_num_iterations to ensure that the loop is not infinite
             # If the fit is not converged after max_num_iterations steps, the resistivity is fitted one more time while keeping the factor for the Seebeck coefficient fixed
             if number_iterations > max_num_iterations:
-                if print_info:
-                    print(f"Error! Fitting not possible. Number of iterations in 'dpb_see_res_fit' exceeds {max_num_iterations}")                
                 break
 
             # Fit the resistivity with the parameters 'para_A', para_B', 'para_C' and 'para_D'
@@ -440,16 +385,6 @@ class PB_fit:
             # Set the start parameters of the resistivity fit to the currently best values
             start_paramter_res = parameter_res
 
-            if print_info:
-                # Print information about the fitting parameters of the resistivity
-                if scatter_type == "acPh" or scatter_type == "dis":
-                    print(f"current_para_A: {current_para_A:.5f}\n"
-                        f"current_para_B: {current_para_B:.5f}\n")
-                else:
-                    print(f"current_para_A: {current_para_A:.5f}\n"
-                        f"current_para_B: {current_para_B:.5f}\n"
-                        f"current_para_C: {current_para_C:.5f}\n"
-                        f"current_para_D: {current_para_D:.5f}")
 
             # Calculate the error of the fitting parameters of the resistivtiy
             error_meff         = np.abs((current_meff - prev_meff)/prev_meff)
@@ -463,12 +398,8 @@ class PB_fit:
             
             # Check if the error of all fitting parameters is smaller than threshold
             if self.is_accuracy_reached(threshold, error_meff, error_gap, error_fermi_energy, error_para_A, error_para_B):
-                if print_info:
-                    print("Accuracy reached.")
                 break
             if scatter_type == "acPhDis" and self.is_accuracy_reached(threshold, error_para_C, error_para_D):
-                if print_info:
-                    print("Accuracy reached.")
                 break
             
             # Save the current fitting parameters to determine the error in the next step
@@ -483,35 +414,8 @@ class PB_fit:
             
             # Increase the number of iterations by 1
             number_iterations += 1
-            
-        # Print the number of steps needed to reach the desired accuracy
-        if print_info:
-            print(f"\nIt took {number_iterations} iterations to evaluate the best fit\n")
         
-        if print_info:           
-            print("###########################################")
-            print("Band structure parameters:")
-            print(
-                f"Mass: {current_meff:.5f}\n"
-                f"Gap: {current_gap:.5f}\n"
-                f"EF: {current_fermi_energy:.5f}\n"
-                )
-            print("Scattering parameters:")
-            if scatter_type == "acPh" or scatter_type == "dis":
-                print(
-                    f"parameter A: {current_para_A:.3f}\n"
-                    f"parameter B: {current_para_B:.3f}\n"
-                    )
-            else:
-                print(
-                    f"parameter A: {current_para_A:.3f}\n"
-                    f"parameter B: {current_para_B:.3f}\n"
-                    f"parameter C: {current_para_C:.3f}\n"
-                    f"parameter D: {current_para_D:.3f}\n"
-                    )
-            print("###########################################")
         
-        print("Finished 'dpb_see_res_fit'")
         
         # Save all fitting parameters in a list and return the list
         parameters[0:3] = [current_meff*degen, current_gap, current_fermi_energy]
@@ -539,7 +443,6 @@ class PB_fit:
         initial_mass1: list[float],
         limits_mass1: tuple[list[float], list[float]],
         scatter_type: str,
-        print_info: bool = False,
         ) -> list[float]:
         """Fits the Seebeck coefficient, resistivity and Hall coefficient data within the single-parabolic-band model and returns the Fermi energy, scattering parameters and the band mass
     
@@ -571,8 +474,6 @@ class PB_fit:
             Lower and upper limits of the mass of band 1 for the fit
         scatter_type : string
             Determines the predominant scattering mechanisms, must be either 'acPh' (acoustic-phonon scattering), 'dis' (alloy-disorder scattering) or 'acPhDis' (both)    
-        print_info : str, optional
-            Whether to print the fit parameters and meta information to the terminal
             
         Returns
         -------
@@ -585,8 +486,6 @@ class PB_fit:
         
         band_mass = initial_mass1[0]
         
-        if print_info:  
-            print("Running 'spb_see_res_hall_fit'")
             
         # Check if scatter_type is properly set to acPh, dis or acPhAlDi
         if scatter_type != "acPh" and scatter_type != "dis" and scatter_type != "acPhDis":
@@ -620,11 +519,7 @@ class PB_fit:
         # Save the current band parameters
         current_fermi_energy = parameter_see[0]
         
-        if print_info:
-            print(f"EF: {current_fermi_energy:.5f}\n")
             
-        if print_info:
-                print("Starting Resistivity fit...")
                      
         # Calculate the 'pristine' conductivities of band 1 and band 2 from the fitted band-structure parameters with K = 1, abs(meff) = 1 and beta = 0
         f0 = te.spb_fermiInt_vs_temp(s = 0, T = temp_res_list, mass_sign = np.sign(band_mass), fermi_energy = current_fermi_energy)
@@ -648,16 +543,7 @@ class PB_fit:
         if scatter_type == "acPhDis":
             current_para_B = parameter_res[1]
 
-        if print_info:
-            # Print information about the fitting parameters of the resistivity
-            if scatter_type == "acPh" or scatter_type == "dis":
-                print(f"current_para_A: {current_para_A:.5f}\n")
-            else:
-                print(f"current_para_A: {current_para_A:.5f}\n"
-                    f"current_para_B: {current_para_B:.5f}\n")
         
-        if print_info:
-            print("Starting Hall coefficient fit...")
             
         # Fit the hall with the parameters 'para_E'
         parameter_hall, _ = opt.curve_fit(
@@ -668,8 +554,6 @@ class PB_fit:
         current_para_E = parameter_hall[0]
         current_mass1 = current_para_E**(2/3)
         
-        if print_info:
-            print("Finished 'spb_see_res_hall_fit'")
 
         # Save all fitting parameters in a list and return the list
         parameters[0] = current_fermi_energy
@@ -701,7 +585,6 @@ class PB_fit:
         scatter_type: str,
         threshold: float,
         max_num_iterations: int,
-        print_info: bool = False,
         ) -> tuple[float, float, float, float, float, float, float]:
         """Fits the Seebeck coefficient, resistivity and Hall coefficient data within the double-parabolic-band model and returns band-structure and scattering parameters
     
@@ -739,8 +622,6 @@ class PB_fit:
             Upper limit of the relative error of the fitting parameter of the resistivity before the fit stops
         max_num_iterations : int
             Maximum number of iterations before the fit stops
-        print_info : str, optional
-            Whether to print the fit parameters and meta information to the terminal
             
         Returns
         -------
@@ -751,8 +632,6 @@ class PB_fit:
         initial_para_E = [initial_mass1**(3/2)]
         limits_para_E = [[limits_mass1[0][0]**(3/2)],[limits_mass1[1][0]**(3/2)]]
         
-        if print_info:  
-            print("Running 'dpb_see_res_hall_fit'")
             
         # Check if scatter_type is properly set to acPh, dis or acPhAlDi
         if scatter_type != "acPh" and scatter_type != "dis" and scatter_type != "acPhDis":
@@ -808,10 +687,6 @@ class PB_fit:
         
         # Infinite loop that ends if accuracy is reached or number of iterations is too large
         while True:
-            if print_info:
-                # print the current number of iterations
-                print(f"Number of iteration: {number_iterations}")
-                print("Starting Seebeck fit...")
                 
             # Fit the Seebeck coefficient with the parameters 'mass', 'gap' and 'fermi_energy'
             if scatter_type == "acPh" or scatter_type == "dis":
@@ -831,13 +706,7 @@ class PB_fit:
             # Set the start parameters of the Sebeeck coefficient fit to the currently best values
             start_parameter_see = parameter_see
             
-            if print_info:
-                print(f"Mass: {current_meff:.5f}\n"
-                      f"Gap: {current_gap:.5f}\n"
-                      f"EF: {current_fermi_energy:.5f}\n")
                 
-            if print_info:
-                print("Starting Resistivity fit...")
                      
             # Calculate the 'pristine' conductivities of band 1 and band 2 from the fitted band-structure parameters with K = 1, abs(meff) = 1 and beta = 0
             f0_1, f0_2 = te.dpb_fermiInt_vs_temp(s = 0, T = temp_res_list, mass = current_meff, gap = current_gap, fermi_energy = current_fermi_energy, degen = degen)
@@ -845,8 +714,6 @@ class PB_fit:
             # Check if number of iterations is <= max_num_iterations to ensure that the loop is not infinite
             # If the fit is not converged after max_num_iterations steps, the resistivity is fitted one more time while keeping the factor for the Seebeck coefficient fixed
             if number_iterations > max_num_iterations:
-                if print_info:
-                    print(f"Error! Fitting not possible. Number of iterations in 'dpb_see_res_fit' exceeds {max_num_iterations}")                
                 break
 
             # Fit the resistivity with the parameters 'para_A', para_B', 'para_C' and 'para_D'
@@ -873,16 +740,6 @@ class PB_fit:
             # Set the start parameters of the resistivity fit to the currently best values
             start_paramter_res = parameter_res
 
-            if print_info:
-                # Print information about the fitting parameters of the resistivity
-                if scatter_type == "acPh" or scatter_type == "dis":
-                    print(f"current_para_A: {current_para_A:.5f}\n"
-                        f"current_para_B: {current_para_B:.5f}\n")
-                else:
-                    print(f"current_para_A: {current_para_A:.5f}\n"
-                        f"current_para_B: {current_para_B:.5f}\n"
-                        f"current_para_C: {current_para_C:.5f}\n"
-                        f"current_para_D: {current_para_D:.5f}")
 
             # Calculate the error of the fitting parameters of the resistivtiy
             error_meff         = np.abs((current_meff - prev_meff)/prev_meff)
@@ -896,12 +753,8 @@ class PB_fit:
             
             # Check if the error of all fitting parameters is smaller than threshold
             if self.is_accuracy_reached(threshold, error_meff, error_gap, error_fermi_energy, error_para_A, error_para_B):
-                if print_info:
-                    print("Accuracy reached.")
                 break
             if scatter_type == "acPhDis" and self.is_accuracy_reached(threshold, error_para_C, error_para_D):
-                if print_info:
-                    print("Accuracy reached.")
                 break
 
             # Save the current fitting parameters to determine the error in the next step
@@ -917,8 +770,6 @@ class PB_fit:
             # Increase the number of iterations by 1
             number_iterations += 1
             
-        if print_info:
-            print("Starting Hall fit...")
             
         #Calculate Fermi integrals and rho at temperatures of hall
         f0_1, f0_2 = te.dpb_fermiInt_vs_temp(s = 0, T = temp_hall_list, mass=current_meff, gap=current_gap, fermi_energy=current_fermi_energy, degen=degen)
@@ -949,38 +800,7 @@ class PB_fit:
         current_para_E = parameter_hall[0]
         current_mass1 = current_para_E**(2/3)
         
-        # Print the number of steps needed to reach the desired accuracy
-        if print_info:
-            print(f"\nIt took {number_iterations} iterations to evaluate the best fit\n")
         
-        if print_info:           
-            print("###########################################")
-            print("Band structure parameters:")
-            print(
-                f"Mass: {current_meff:.5f}\n"
-                f"Gap: {current_gap:.5f}\n"
-                f"EF: {current_fermi_energy:.5f}\n"
-                )
-            print("Scattering parameters:")
-            if scatter_type == "acPh" or scatter_type == "dis":
-                print(
-                    f"parameter A: {current_para_A:.3f}\n"
-                    f"parameter B: {current_para_B:.3f}\n"
-                    )
-            else:
-                print(
-                    f"parameter A: {current_para_A:.3f}\n"
-                    f"parameter B: {current_para_B:.3f}\n"
-                    f"parameter C: {current_para_C:.3f}\n"
-                    f"parameter D: {current_para_D:.3f}\n"
-                    )
-            print(
-                f"parameter E: {current_para_E}\n"
-                f"band mass 1: {current_mass1}\n"
-            )
-            print("###########################################")
-        
-        print("Finished 'dpb_see_res_hall_fit'")
         
         # Save all fitting parameters in a list and return the list
         parameters[0:3] = [current_meff*degen, current_gap, current_fermi_energy]
@@ -1644,11 +1464,6 @@ class PB_fit:
         temp_array = np.linspace(Tmin, Tmax, Tnumb)
         
         ind_charCon1, ind_charCon2 = te.dpb_ind_carCon_vs_temp(temp_array, fermi_energy, meff, gap, degen)
-        print(ind_charCon1)
-        print("\n\n\n\n")
-        print(ind_charCon2)
-        print("\n\n\n\n")
-        print(m1)
         return temp_array, m1**1.5 * ind_charCon1, m1**1.5 * ind_charCon2
     
     def dpb_elecCond_calc(

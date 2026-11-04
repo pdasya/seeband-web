@@ -9,12 +9,10 @@ fits depend on the solver. A small change can stay within FIT_TOLERANCE, but the
 
 Some fits are not reproducible across versions: see UNSTABLE_02 and deviation D19.
 
-Tests call the core only through call_core. When a refactor renames a function or drops an argument
-such as print_info, update call_core and leave the pinned fixtures unchanged.
+Tests call the core only through call_core. When a refactor renames a function or drops an argument,
+update call_core and leave the pinned fixtures unchanged.
 """
 
-import contextlib
-import io
 import json
 import math
 from collections.abc import Iterator
@@ -37,6 +35,8 @@ ARRAY_ARGUMENTS = {
     "dpb_see_res_fit": 4,
     "dpb_see_res_hall_fit": 6,
 }
+# Fits that the desktop called with print_info as a further positional argument.
+POSITIONAL_ARGUMENTS = {"dpb_see_res_fit": 12, "dpb_see_res_hall_fit": 16}
 # Error text can change with a scipy update, so only a stable part of it is compared.
 ERROR_FRAGMENTS = {"ValueError": "bounds"}
 # These fits are not stable across versions or machines (D19).
@@ -86,8 +86,10 @@ def call_core(function: str, args: list[Any], kwargs: dict[str, Any]) -> Any:
     """Run a recorded desktop call against the core. This is the only link to its names."""
     arrays = ARRAY_ARGUMENTS.get(function, 0)
     converted = [np.array(value) if index < arrays else value for index, value in enumerate(args)]
-    with contextlib.redirect_stdout(io.StringIO()):
-        return getattr(fit_module.PB_fit(), function)(*converted, **kwargs)
+    # The desktop also passed print_info, which the core no longer has.
+    converted = converted[: POSITIONAL_ARGUMENTS.get(function)]
+    kept = {name: value for name, value in kwargs.items() if name != "print_info"}
+    return getattr(fit_module.PB_fit(), function)(*converted, **kept)
 
 
 def replay(call: dict[str, Any]) -> Any:

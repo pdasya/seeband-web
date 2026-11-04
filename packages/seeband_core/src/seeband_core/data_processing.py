@@ -1,6 +1,10 @@
+import logging
 import re
+
 import numpy as np
 from numpy.polynomial import Chebyshev
+
+logger = logging.getLogger(__name__)
 
 """
 Opens the file 'filename', checks its validity, formats it into an 2D numpy array and returns this array.
@@ -58,7 +62,7 @@ def fit_data(data, degree=5):
     try:
         return Chebyshev.fit(data[:, 0], data[:, 1], degree)
     except Exception as e:
-        print("Error in 'fit_data()': {}".format(e))
+        logger.warning("Error in 'fit_data()': %s", e)
 
 
 """

@@ -1252,7 +1252,6 @@ def dpb_ind_carCon_vs_temp(temp_array: np.ndarray, fermi_energy: float, meff: fl
     for i, temp in enumerate(temp_array):   
         charCon1[i] = spb_carCon(chemPot_array[i], -1, temp) * (-1)
         charCon2[i] = spb_carCon(chemPot_array[i] - gap, meff * degen**(5/3), temp) * np.sign(meff)
-        print(temp, charCon2[i])
     return charCon1, charCon2
 
 
