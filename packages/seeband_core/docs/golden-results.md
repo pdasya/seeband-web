@@ -24,6 +24,7 @@ This differs from using the application by hand. No one clicks the buttons, and 
   - `calls`: the fit and curve calls, with arguments and results. The arguments hold the input data, start values and bounds.
   - `emitted`: what the thread would send to the window: the curve and final parameters.
   - `manual_curve_calls`: the curve calculated from the slider values before the fit.
+  - `graph_buttons`: the calls made by each button of the mode's real additional graphs window, pressed after the fit.
 - `d1_with_g_minimum_1`: the D1 case described below.
 
 The arguments keep the desktop's own order and units, so they match the `fit_module` functions.
@@ -67,18 +68,31 @@ uv pip install --python ../seeband-golden-env/bin/python \
 uv run python packages/seeband_core/scripts/summarize_golden_results.py
 ```
 
-The files hold exact script output and are excluded from Prettier, so any change to a number shows in the diff. `test_files_are_unchanged` pins their hashes, so a regeneration needs a deliberate update of the pinned values. Repeated runs gave byte-identical files with these versions, on one Mac on Apple Silicon. C5 sets the tolerance for other versions.
+The files hold exact script output and are excluded from Prettier, so any change to a number shows in the diff. `test_files_are_unchanged` pins their hashes, so a regeneration needs a deliberate update of the pinned values. Repeated runs gave byte-identical files with these versions, on one Mac on Apple Silicon. The regression tests below cover only the project's locked versions.
 
-## Results on the project's versions
+## Regression tests
 
-The golden results use Python 3.11, numpy 1.26 and scipy 1.17, while the project uses Python 3.13, numpy 2.5 and scipy 1.18. A one-off replay, not in this repository, ran all 195 recorded calls through the ported modules on the project's versions:
+`tests/test_golden_regression.py` replays all 390 recorded calls through the ported modules on the project's versions: Python 3.13, numpy 2.5 and scipy 1.18. The golden results use Python 3.11, numpy 1.26 and scipy 1.17. Only 159 of the calls have distinct inputs, and 84 are `get_parabolic_band`, which uses no physical constants.
 
-| Result                         | Calls |
-| ------------------------------ | ----- |
-| Exact match                    | 163   |
-| Relative difference below 1e-6 | 20    |
-| Relative difference below 1e-3 | 2     |
-| Same expected error            | 3     |
-| Relative difference above 1e-3 | 7     |
+| Calls                             | Rule                                                          | Difference seen                                           |
+| --------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------- |
+| All curves and graphs             | relative difference of at most 1e-9                           | exact on one Mac, within the rule on Linux CI             |
+| Fits                              | relative difference of at most 1e-5                           | up to 1.7e-7 on one Mac, within the rule on Linux CI      |
+| SPB S on `02_SiP`                 | relative difference of at most 1e-4                           | 3.4e-6 on one Mac, 1.8e-5 and 2.8e-5 in two Linux CI runs |
+| Failing fits                      | same error type, and "bounds" in the text                     |                                                           |
+| Listed DPB fits on `02_SiP` (D19) | band gap and E_F within 1e-5, within bounds, m_eff below 1e-5 | not comparable                                            |
+| G minimum case on `01`            | relative difference of at most 1e-3                           | 1e-4 on one Mac                                           |
 
-The 7 large differences, of 42 to 100%, are all DPB fits on `02_SiP`: the doubtful fits with m_eff of about 4e-07. The next largest is 1e-4, in the G minimum case on `01`. The modules differ from the desktop only in imports and table loading, so the versions are the likely cause, although this was not tested separately. C5 decides how to treat `02_SiP`.
+SPB S on `02_SiP` differs between Linux CI runs of the same fit code, so the 1e-5 rule would make the tests flaky. E_F there falls from 100 to 3.76, with solver warnings.
+
+Fit tolerance is wide enough that a small change can pass in a fit, but the curves catch it. Measured with deliberate changes on one Mac: changing the Boltzmann constant to its 2019 value, a change of 3.5e-7, fails 176 tests.
+
+**`02_SiP` in DPB is not stable (D19).** m_eff collapses towards 0 on every version. In the golden results the ρ stage then stays at its start, with A = 40000, so the ρ curve is about 1e-11 against data of 0.016 to 0.16, although A of about 1e-5 would match the data. On the project's versions, A reached about 1e-5 for `acPh` and `acPhDis` on one Mac, while on Linux CI it did so only for `acPh`. So the result depends on the versions and the machine, and these fits differ from the desktop by up to about 9 orders of magnitude in A. They are checked only as the table shows, and should be treated as unsound.
+
+**What these tests do not cover:**
+
+- `spb_see_res_hall_fit`: its fit fails in the desktop GUI first (D2). The S + ρ + R_H curve is covered, at slider defaults only.
+- `chempot_1PB`, `chempot_2PB`, `ind_cc_2PB`, `ind_seebeck_2PB` and `dpb_see_res_hall_fit_new`: the desktop does not use them. `is_accuracy_reached` is covered only through fits.
+- Other data, other fit ranges and interpolation.
+
+A test fails if this list of uncovered methods changes. Tests reach the core only through `call_core`, so a refactor that renames a function or drops an argument updates that one function, not the pinned fixtures.
