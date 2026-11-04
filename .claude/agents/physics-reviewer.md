@@ -28,7 +28,7 @@ The first stage is an exact port, so the two stages need different questions.
 
 Read these before reporting, so that you do not report a known error as new:
 
-- Issues P1 to P10, in the Physics fixes milestone of `pdasya/seeband-web`.
+- All issues in the Physics fixes milestone of `pdasya/seeband-web`.
 - The deviations in `packages/seeband_core/docs/desktop-modes.md`.
 - `packages/seeband_core/docs/golden-results.md`.
 
