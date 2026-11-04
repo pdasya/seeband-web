@@ -72,7 +72,7 @@ The files hold exact script output and are excluded from Prettier, so any change
 
 ## Regression tests
 
-`tests/test_golden_regression.py` replays all 390 recorded calls through the ported modules on the project's versions: Python 3.13, numpy 2.5 and scipy 1.18. The golden results use Python 3.11, numpy 1.26 and scipy 1.17. Only 159 of the calls have distinct inputs, and 84 are `get_parabolic_band`, which uses no physical constants.
+`tests/test_golden_regression.py` replays all 390 recorded calls through the model interface, in `band_models`, on the project's versions: Python 3.13, numpy 2.5 and scipy 1.18. The golden results use Python 3.11, numpy 1.26 and scipy 1.17. Only 159 of the calls have distinct inputs, and 84 are `get_parabolic_band`, which uses no physical constants.
 
 | Calls                             | Rule                                                          | Difference seen                                           |
 | --------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------- |
@@ -95,4 +95,4 @@ Fit tolerance is wide enough that a small change can pass in a fit, but the curv
 - `is_accuracy_reached` is covered only through fits.
 - Other data, other fit ranges and interpolation.
 
-A test fails if this list of uncovered methods changes. Tests reach the core only through `core_arguments` and `invoke_core`, so a refactor that renames a function or drops an argument updates those, not the pinned fixtures. The exception is the test of `spb_see_res_hall_fit`, which has no recorded call and names its arguments itself.
+A test fails if this list of uncovered methods changes. The replay names recorded arguments through the signatures of the core, so a refactor that renames a function or drops an argument updates the test helpers, not the pinned fixtures. The test of `spb_see_res_hall_fit` has no recorded call and names its arguments itself.

@@ -22,7 +22,6 @@ from seeband_core.model_interface import (
     ValueRange,
 )
 from seeband_core.model_registry import ModelRegistry
-from seeband_core.model_registry import registry as default_registry
 from seeband_core.model_scales import (
     core_to_display,
     default_start,
@@ -175,9 +174,10 @@ def test_unknown_names_are_errors() -> None:
         registry.descriptions()[0].fit_mode("nothing")
 
 
-def test_the_default_registry_is_separate_and_starts_empty() -> None:
-    ModelRegistry().register(LinearModel())
-    assert default_registry.descriptions() == ()
+def test_registries_are_separate() -> None:
+    first, second = ModelRegistry(), ModelRegistry()
+    first.register(LinearModel())
+    assert second.descriptions() == ()
 
 
 def test_requests_and_descriptions_can_go_to_a_worker_process() -> None:
