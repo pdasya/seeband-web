@@ -9,6 +9,7 @@ from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from seeband_core.model_catalog import registry
 from seeband_core.model_interface import (
+    CurveKind,
     CurveRequest,
     FitMode,
     Measurement,
@@ -56,6 +57,10 @@ class CalcRequest(BaseModel):
     scattering types. Values outside a control's range are allowed, as a fit can end there. `points`
     defaults to the model's. `measurements` gives an RMSE for each quantity, and should hold only
     points in the fit range. `extrapolated` says that interpolation made up some of these points.
+
+    `kind` chooses the curves, and `GET /api/models` lists which a mode offers. `measurements` need
+    the `measured` kind, because the known issues of a response are those of its curves, and an RMSE
+    of other curves would not carry its own.
     """
 
     model_config = ConfigDict(
@@ -96,6 +101,7 @@ class CalcRequest(BaseModel):
     parameters: dict[str, FiniteFloat]
     min_temperature_k: PositiveFloat
     max_temperature_k: PositiveFloat
+    kind: CurveKind = "measured"
     points: GridPoints | None = None
     band_1_degeneracy: PositiveFloat = 1.0
     band_2_degeneracy: PositiveFloat = 1.0
@@ -281,6 +287,19 @@ async def post_calc(body: CalcRequest, pool: CalcPoolDep) -> CalcResponse:
     ]
     if details:
         raise _refuse(details)
+    if body.measurements and body.kind != "measured":
+        detail = _invalid(
+            "measurements_need_measured_kind", "RMSE compares the measured curves", ["kind"]
+        )
+        raise _refuse([detail])
+    reason = fit_mode.unavailable_reason(body.kind)
+    if reason is not None:
+        raise ApiError(
+            HTTPStatus.UNPROCESSABLE_CONTENT,
+            "curve_unavailable",
+            "This fit mode does not offer this curve",
+            [_invalid(reason, "See curve_unavailable in the API's README", ["kind"])],
+        )
 
     request = CurveRequest(
         fit_mode=fit_mode.id,
@@ -289,6 +308,7 @@ async def post_calc(body: CalcRequest, pool: CalcPoolDep) -> CalcResponse:
         max_temperature_k=body.max_temperature_k,
         points=body.points or description.default_curve_points,
         scattering=body.scattering,
+        kind=body.kind,
         band_1_degeneracy=body.band_1_degeneracy,
         band_2_degeneracy=body.band_2_degeneracy,
         extrapolated=body.extrapolated,

@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from seeband_core.known_issues import disabled_issue_ids
 from seeband_core.model_catalog import registry
 from seeband_core.model_interface import (
+    ALL_CURVE_KINDS,
     CurveKind,
     FitMode,
     IssueCondition,
@@ -106,6 +107,20 @@ class KnownIssueResponse(BaseModel):
     condition: IssueCondition | None = None
 
 
+class CurveAvailabilityResponse(BaseModel):
+    """Whether a mode offers a kind of curve for `POST /api/calc`.
+
+    `reason` is a code for one it does not offer, and a client shows `curve_unavailable.<reason>`
+    through i18n. `relative` means that the size of the curve rests on an assumed value, not on
+    data: carrier concentrations with no Hall data use m1 = 1.
+    """
+
+    kind: CurveKind
+    available: bool
+    reason: str | None = None
+    relative: bool
+
+
 class FitModeResponse(BaseModel):
     """One way of fitting a model.
 
@@ -125,6 +140,7 @@ class FitModeResponse(BaseModel):
     max_iterations: int | None = None
     degeneracy: DegeneracyResponse | None = None
     curve_kinds: list[CurveKind]
+    curves: list[CurveAvailabilityResponse]
     disabled: bool
     disabled_by: list[str]
     known_issues: list[KnownIssueResponse]
@@ -184,6 +200,16 @@ def _known_issue(issue: KnownIssue) -> KnownIssueResponse:
     )
 
 
+def _curve_availability(fit_mode: FitMode, kind: CurveKind) -> CurveAvailabilityResponse:
+    reason = fit_mode.unavailable_reason(kind)
+    return CurveAvailabilityResponse(
+        kind=kind,
+        available=reason is None,
+        reason=reason,
+        relative=kind in fit_mode.relative_curve_kinds,
+    )
+
+
 def _fit_mode(fit_mode: FitMode) -> FitModeResponse:
     degeneracy = fit_mode.degeneracy
     return FitModeResponse(
@@ -204,6 +230,7 @@ def _fit_mode(fit_mode: FitMode) -> FitModeResponse:
             else None
         ),
         curve_kinds=list(fit_mode.curve_kinds),
+        curves=[_curve_availability(fit_mode, kind) for kind in ALL_CURVE_KINDS],
         disabled=fit_mode.disabled,
         disabled_by=list(disabled_issue_ids(fit_mode)),
         known_issues=[_known_issue(issue) for issue in fit_mode.known_issues],

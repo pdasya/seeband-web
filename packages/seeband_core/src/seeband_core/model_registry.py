@@ -23,6 +23,17 @@ def _check(description: ModelDescription) -> None:
         names = [spec.name for spec in fit_mode.parameters]
         if len(set(names)) != len(names):
             raise ValueError(f"Fit mode {fit_mode.id} repeats a parameter: {names}")
+        for unavailable in fit_mode.unavailable_curves:
+            if unavailable.kind in fit_mode.curve_kinds:
+                raise ValueError(f"Fit mode {fit_mode.id} both has and lacks {unavailable.kind}")
+            if not unavailable.reason:
+                raise ValueError(f"Fit mode {fit_mode.id} lacks {unavailable.kind} with no reason")
+        kinds = [unavailable.kind for unavailable in fit_mode.unavailable_curves]
+        if len(set(kinds)) != len(kinds):
+            raise ValueError(f"Fit mode {fit_mode.id} repeats an unavailable curve: {kinds}")
+        for kind in fit_mode.relative_curve_kinds:
+            if kind not in fit_mode.curve_kinds:
+                raise ValueError(f"Fit mode {fit_mode.id} has no curve {kind} to call relative")
         default = fit_mode.default_scattering
         if default is not None and default not in fit_mode.scattering:
             raise ValueError(f"Fit mode {fit_mode.id} defaults to unknown scattering {default}")

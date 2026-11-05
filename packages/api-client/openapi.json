@@ -248,6 +248,54 @@
                                 "measured",
                                 "chemical_potential"
                               ],
+                              "curves": [
+                                {
+                                  "kind": "measured",
+                                  "available": true,
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "seebeck",
+                                  "available": false,
+                                  "reason": "same_as_measured",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "seebeck_by_band",
+                                  "available": false,
+                                  "reason": "single_band",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "chemical_potential",
+                                  "available": true,
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "electrical_conductivity",
+                                  "available": false,
+                                  "reason": "needs_resistivity",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "electrical_conductivity_by_band",
+                                  "available": false,
+                                  "reason": "single_band",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "thermal_conductivity",
+                                  "available": false,
+                                  "reason": "needs_resistivity",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "carrier_concentration_by_band",
+                                  "available": false,
+                                  "reason": "not_on_desktop",
+                                  "relative": false
+                                }
+                              ],
                               "disabled": false,
                               "disabled_by": [],
                               "known_issues": [
@@ -471,6 +519,52 @@
                                 "chemical_potential",
                                 "electrical_conductivity",
                                 "thermal_conductivity"
+                              ],
+                              "curves": [
+                                {
+                                  "kind": "measured",
+                                  "available": true,
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "seebeck",
+                                  "available": false,
+                                  "reason": "same_as_measured",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "seebeck_by_band",
+                                  "available": false,
+                                  "reason": "single_band",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "chemical_potential",
+                                  "available": true,
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "electrical_conductivity",
+                                  "available": true,
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "electrical_conductivity_by_band",
+                                  "available": false,
+                                  "reason": "single_band",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "thermal_conductivity",
+                                  "available": true,
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "carrier_concentration_by_band",
+                                  "available": false,
+                                  "reason": "not_on_desktop",
+                                  "relative": false
+                                }
                               ],
                               "disabled": false,
                               "disabled_by": [],
@@ -718,6 +812,52 @@
                                 "electrical_conductivity",
                                 "thermal_conductivity"
                               ],
+                              "curves": [
+                                {
+                                  "kind": "measured",
+                                  "available": true,
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "seebeck",
+                                  "available": false,
+                                  "reason": "same_as_measured",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "seebeck_by_band",
+                                  "available": false,
+                                  "reason": "single_band",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "chemical_potential",
+                                  "available": true,
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "electrical_conductivity",
+                                  "available": true,
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "electrical_conductivity_by_band",
+                                  "available": false,
+                                  "reason": "single_band",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "thermal_conductivity",
+                                  "available": true,
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "carrier_concentration_by_band",
+                                  "available": false,
+                                  "reason": "not_on_desktop",
+                                  "relative": false
+                                }
+                              ],
                               "disabled": true,
                               "disabled_by": [
                                 "spb_hall_mode_disabled"
@@ -928,6 +1068,52 @@
                                 "seebeck_by_band",
                                 "chemical_potential",
                                 "carrier_concentration_by_band"
+                              ],
+                              "curves": [
+                                {
+                                  "kind": "measured",
+                                  "available": true,
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "seebeck",
+                                  "available": false,
+                                  "reason": "same_as_measured",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "seebeck_by_band",
+                                  "available": true,
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "chemical_potential",
+                                  "available": true,
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "electrical_conductivity",
+                                  "available": false,
+                                  "reason": "needs_resistivity",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "electrical_conductivity_by_band",
+                                  "available": false,
+                                  "reason": "needs_resistivity",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "thermal_conductivity",
+                                  "available": false,
+                                  "reason": "needs_resistivity",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "carrier_concentration_by_band",
+                                  "available": true,
+                                  "relative": true
+                                }
                               ],
                               "disabled": false,
                               "disabled_by": [],
@@ -1343,6 +1529,48 @@
                                 "electrical_conductivity_by_band",
                                 "thermal_conductivity",
                                 "carrier_concentration_by_band"
+                              ],
+                              "curves": [
+                                {
+                                  "kind": "measured",
+                                  "available": true,
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "seebeck",
+                                  "available": true,
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "seebeck_by_band",
+                                  "available": true,
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "chemical_potential",
+                                  "available": true,
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "electrical_conductivity",
+                                  "available": true,
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "electrical_conductivity_by_band",
+                                  "available": true,
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "thermal_conductivity",
+                                  "available": true,
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "carrier_concentration_by_band",
+                                  "available": true,
+                                  "relative": true
+                                }
                               ],
                               "disabled": false,
                               "disabled_by": [],
@@ -1837,6 +2065,48 @@
                                 "thermal_conductivity",
                                 "carrier_concentration_by_band"
                               ],
+                              "curves": [
+                                {
+                                  "kind": "measured",
+                                  "available": true,
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "seebeck",
+                                  "available": true,
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "seebeck_by_band",
+                                  "available": true,
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "chemical_potential",
+                                  "available": true,
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "electrical_conductivity",
+                                  "available": true,
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "electrical_conductivity_by_band",
+                                  "available": true,
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "thermal_conductivity",
+                                  "available": true,
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "carrier_concentration_by_band",
+                                  "available": true,
+                                  "relative": false
+                                }
+                              ],
                               "disabled": false,
                               "disabled_by": [],
                               "known_issues": [
@@ -1996,7 +2266,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "example": "\"c306ebcca5c90ab57d6960126e9e1012\""
+                "example": "\"6aa935eebca0b1428b5535199dee78c0\""
               }
             }
           },
@@ -2290,6 +2560,21 @@
             "exclusiveMinimum": 0.0,
             "title": "Max Temperature K"
           },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "measured",
+              "seebeck",
+              "seebeck_by_band",
+              "chemical_potential",
+              "electrical_conductivity",
+              "electrical_conductivity_by_band",
+              "thermal_conductivity",
+              "carrier_concentration_by_band"
+            ],
+            "title": "Kind",
+            "default": "measured"
+          },
           "points": {
             "anyOf": [
               {
@@ -2351,7 +2636,7 @@
           "max_temperature_k"
         ],
         "title": "CalcRequest",
-        "description": "What to calculate.\n\n`parameters` holds every parameter of the mode in core units, including those of other\nscattering types. Values outside a control's range are allowed, as a fit can end there. `points`\ndefaults to the model's. `measurements` gives an RMSE for each quantity, and should hold only\npoints in the fit range. `extrapolated` says that interpolation made up some of these points.",
+        "description": "What to calculate.\n\n`parameters` holds every parameter of the mode in core units, including those of other\nscattering types. Values outside a control's range are allowed, as a fit can end there. `points`\ndefaults to the model's. `measurements` gives an RMSE for each quantity, and should hold only\npoints in the fit range. `extrapolated` says that interpolation made up some of these points.\n\n`kind` chooses the curves, and `GET /api/models` lists which a mode offers. `measurements` need\nthe `measured` kind, because the known issues of a response are those of its curves, and an RMSE\nof other curves would not carry its own.",
         "examples": [
           {
             "fit_mode": "dpb_s_rho",
@@ -2479,6 +2764,51 @@
             ]
           }
         ]
+      },
+      "CurveAvailabilityResponse": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "measured",
+              "seebeck",
+              "seebeck_by_band",
+              "chemical_potential",
+              "electrical_conductivity",
+              "electrical_conductivity_by_band",
+              "thermal_conductivity",
+              "carrier_concentration_by_band"
+            ],
+            "title": "Kind"
+          },
+          "available": {
+            "type": "boolean",
+            "title": "Available"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "relative": {
+            "type": "boolean",
+            "title": "Relative"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "available",
+          "relative"
+        ],
+        "title": "CurveAvailabilityResponse",
+        "description": "Whether a mode offers a kind of curve for `POST /api/calc`.\n\n`reason` is a code for one it does not offer, and a client shows `curve_unavailable.<reason>`\nthrough i18n. `relative` means that the size of the curve rests on an assumed value, not on\ndata: carrier concentrations with no Hall data use m1 = 1."
       },
       "DegeneracyResponse": {
         "properties": {
@@ -2655,6 +2985,13 @@
             "type": "array",
             "title": "Curve Kinds"
           },
+          "curves": {
+            "items": {
+              "$ref": "#/components/schemas/CurveAvailabilityResponse"
+            },
+            "type": "array",
+            "title": "Curves"
+          },
           "disabled": {
             "type": "boolean",
             "title": "Disabled"
@@ -2682,6 +3019,7 @@
           "scattering",
           "iterative",
           "curve_kinds",
+          "curves",
           "disabled",
           "disabled_by",
           "known_issues"

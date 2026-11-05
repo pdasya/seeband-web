@@ -13,6 +13,7 @@ from seeband_core.model_interface import (
     ModelDescription,
     ParameterSpec,
     Quantity,
+    UnavailableCurve,
     ValueRange,
 )
 
@@ -46,6 +47,35 @@ CURVE_KINDS: dict[str, tuple[CurveKind, ...]] = {
     "dpb_s": ("measured", "seebeck_by_band", "chemical_potential", "carrier_concentration_by_band"),
     "dpb_s_rho": _DPB_FIT_CURVES,
     "dpb_s_rho_rh": _DPB_FIT_CURVES,
+}
+_Unavailable = tuple[tuple[CurveKind, str], ...]
+_NEEDS_RESISTIVITY: _Unavailable = (
+    ("electrical_conductivity", "needs_resistivity"),
+    ("thermal_conductivity", "needs_resistivity"),
+)
+_SPB_UNAVAILABLE: _Unavailable = (
+    ("seebeck", "same_as_measured"),
+    ("seebeck_by_band", "single_band"),
+    ("electrical_conductivity_by_band", "single_band"),
+    ("carrier_concentration_by_band", "not_on_desktop"),
+)
+# Why a mode lacks a kind of curve, as a code that a client shows through i18n.
+UNAVAILABLE_CURVES: dict[str, _Unavailable] = {
+    "spb_s": (*_SPB_UNAVAILABLE, *_NEEDS_RESISTIVITY),
+    "spb_s_rho": _SPB_UNAVAILABLE,
+    "spb_s_rho_rh": _SPB_UNAVAILABLE,
+    "dpb_s": (
+        ("seebeck", "same_as_measured"),
+        *_NEEDS_RESISTIVITY,
+        ("electrical_conductivity_by_band", "needs_resistivity"),
+    ),
+    "dpb_s_rho": (),
+    "dpb_s_rho_rh": (),
+}
+# With no Hall data, these use m1 = 1, so the size of n is not measured.
+RELATIVE_CURVE_KINDS: dict[str, tuple[CurveKind, ...]] = {
+    "dpb_s": ("carrier_concentration_by_band",),
+    "dpb_s_rho": ("carrier_concentration_by_band",),
 }
 
 
@@ -86,6 +116,10 @@ def _fit_mode(entry: dict[str, Any]) -> FitMode:
         ),
         curve_kinds=CURVE_KINDS[entry["id"]],
         known_issues=issues_for_mode(entry["id"]),
+        unavailable_curves=tuple(
+            UnavailableCurve(kind, reason) for kind, reason in UNAVAILABLE_CURVES[entry["id"]]
+        ),
+        relative_curve_kinds=RELATIVE_CURVE_KINDS.get(entry["id"], ()),
     )
 
 
