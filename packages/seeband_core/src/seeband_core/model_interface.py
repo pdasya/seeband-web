@@ -181,6 +181,8 @@ class ModelDescription:
     default_min_temperature_k: float
     default_max_temperature_k: float
     default_curve_points: int
+    # Whether a neural net gives start values for this model. On the desktop, only DPB has one.
+    has_initial_guess: bool = False
 
     def fit_mode(self, fit_mode_id: str) -> FitMode:
         for fit_mode in self.fit_modes:

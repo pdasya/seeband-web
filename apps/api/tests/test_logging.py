@@ -356,12 +356,40 @@ def test_calculation_through_real_workers_logs_no_values(tmp_path: Path) -> None
     with _running_server(command, port, log_path, env) as client:
         response = client.post("/api/calc", json=body, timeout=30)
         assert response.status_code == 200
+        # Few rows make the fit warn, and a Seebeck this large makes the prediction not finite.
+        guess_seebeck = "1.123456789"
+        guess = {
+            "model": "dpb",
+            "temperature_k": [99.2223, 445.5556],
+            "seebeck_v_per_k": [float(guess_seebeck), 2.123456789],
+        }
+        response = client.post("/api/guess", json=guess, timeout=30)
+        assert response.status_code == 200
+        assert response.json()["status"] == "not_finite"
+        no_net = guess | {"temperature_k": [333.4445, 334.4445]}
+        response = client.post("/api/guess", json=no_net, timeout=30)
+        assert response.json()["status"] == "no_net"
+        assert client.post("/api/guess", json=guess | {"model": "spb"}).status_code == 422
 
     log = log_path.read_text(encoding="utf-8")
-    for value in (measured, "1234.5678", "123.456789", "765.4321", "333.3331"):
+    for value in (
+        measured,
+        "1234.5678",
+        "123.456789",
+        "765.4321",
+        "333.3331",
+        guess_seebeck,
+        "2.123456789",
+        "99.2223",
+        "445.5556",
+        "333.4445",
+        "334.4445",
+    ):
         assert value not in log
     assert "RuntimeWarning" not in log
+    assert "RankWarning" not in log
     assert sum(line.get("route") == "/api/calc" for line in _json_lines(log)) == 1
+    assert sum(line.get("route") == "/api/guess" for line in _json_lines(log)) == 3
 
 
 def test_parsing_through_real_workers_keeps_nothing(tmp_path: Path, support_dir: Path) -> None:

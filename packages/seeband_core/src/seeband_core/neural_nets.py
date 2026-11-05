@@ -4,17 +4,23 @@ Each net is four dense layers, run here with numpy instead of TensorFlow. Every 
 desktop's behaviour, including choosing the net from the first and last rows, which P9 fixes.
 """
 
+import math
 from dataclasses import dataclass
 from functools import lru_cache
 from importlib import resources
 
 import numpy as np
+from numpy.polynomial import Chebyshev
 
 from seeband_core import data_processing
+from seeband_core.model_interface import FitMode
+from seeband_core.model_scales import control_value
 
 # The first range that the data span wins, so the order matters.
 NET_RANGES_K = ((300, 800), (400, 700), (300, 600), (200, 500), (100, 400))
 NET_INPUT_POINTS = 7
+# The default degree of `data_processing.fit_data`, which the nets' input goes through.
+SEEBECK_FIT_DEGREE = 5
 LAYER_COUNT = 4
 LEAKY_RELU_SLOPE = np.float32(0.1)
 # The rational approximation that TensorFlow uses for tanh, through Eigen. np.tanh rounds
@@ -79,6 +85,20 @@ def interpolate_seebeck(
     points_k = np.linspace(range_k[0], range_k[1], NET_INPUT_POINTS)
     interpolated: np.ndarray = data_processing.interpolate_data(fit, points_k)[:, 1]
     return interpolated
+
+
+def temperatures_are_sorted(temperature_k: np.ndarray) -> bool:
+    """Say whether the rows rise. If not, the first and last rows are not the real span (P9)."""
+    return bool(np.all(temperature_k[:-1] <= temperature_k[1:]))
+
+
+def seebeck_fit_is_underdetermined(temperature_k: np.ndarray, seebeck_v_per_k: np.ndarray) -> bool:
+    """Say whether the data leave the polynomial open, which makes its values arbitrary."""
+    # With full=True, numpy gives the rank here, and does not warn about it.
+    _, (_, rank, _, _) = Chebyshev.fit(
+        temperature_k, seebeck_v_per_k, SEEBECK_FIT_DEGREE, full=True
+    )
+    return bool(rank <= SEEBECK_FIT_DEGREE)
 
 
 def _seebeck_is_positive(interpolated_v_per_k: np.ndarray) -> bool:
@@ -188,3 +208,19 @@ def predict_band_parameters(
     output = run_network(range_k, network_input(interpolated))
     mass, gap_k, fermi_energy_k = transform_prediction(interpolated, reverse_normalisation(output))
     return NeuralNetGuess(range_k, float(mass), float(gap_k), float(fermi_energy_k))
+
+
+def start_values(guess: NeuralNetGuess, fit_mode: FitMode) -> dict[str, float] | None:
+    """Return the parameters a guess sets in a fit mode, as the desktop's sliders would hold them.
+
+    Returns None if a prediction is not finite, where the desktop's slider code raises.
+    """
+    prediction = {
+        "m_eff": guess.m_eff,
+        "band_gap": guess.band_gap_k,
+        "fermi_energy": guess.fermi_energy_k,
+    }
+    if not all(math.isfinite(value) for value in prediction.values()):
+        return None
+    specs = {spec.name: spec for spec in fit_mode.parameters}
+    return {name: control_value(specs[name], value) for name, value in prediction.items()}

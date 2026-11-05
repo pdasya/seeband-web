@@ -23,6 +23,19 @@ def default_start(fit_mode: FitMode) -> dict[str, float]:
     return {spec.name: default_start_value(spec) for spec in fit_mode.parameters}
 
 
+def control_value(spec: ParameterSpec, value: float) -> float:
+    """Return the core value a control holds once set to a core value, as the desktop's slider does.
+
+    A slider holds whole units within its range. A value that is not finite raises, as on the
+    desktop.
+    """
+    limits = spec.value_range
+    slider_value = round(scale_value(value, 1 / spec.fit_scale))
+    return float(
+        scale_value(max(limits.minimum, min(limits.maximum, slider_value)), spec.fit_scale)
+    )
+
+
 def core_to_display(spec: ParameterSpec, value: float) -> float:
     """Return the value a user sees for a core value."""
     if spec.display_scale == spec.fit_scale:

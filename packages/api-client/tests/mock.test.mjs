@@ -174,6 +174,41 @@ describe("the mock of the real contract", async () => {
     assert.equal((await response.json()).code, "validation_error");
   });
 
+  test("serves a guess for a request that fits the contract", async () => {
+    const response = await fetch(`${url}/api/guess`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({
+        model: "dpb",
+        temperature_k: [100, 400],
+        seebeck_v_per_k: [1e-4, 2e-4],
+      }),
+    });
+
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.status, "guess");
+    assert.equal(body.net_range.min_temperature_k, 400);
+    assert.equal(body.start_values.band_gap, 355);
+  });
+
+  for (const status of ["no_net", "not_finite"]) {
+    test(`serves the ${status} answer on request`, async () => {
+      const response = await fetch(`${url}/api/guess`, {
+        method: "POST",
+        headers: { ...JSON_HEADERS, prefer: `code=200, example=${status}` },
+        body: JSON.stringify({
+          model: "dpb",
+          temperature_k: [100],
+          seebeck_v_per_k: [1e-4],
+        }),
+      });
+
+      assert.equal(response.status, 200);
+      assert.equal((await response.json()).status, status);
+    });
+  }
+
   for (const [status, code] of [
     [404, "not_found"],
     [422, "validation_error"],
@@ -184,6 +219,7 @@ describe("the mock of the real contract", async () => {
     [503, "calculation_unavailable"],
     [422, "invalid_calculation"],
     [422, "invalid_parse_request"],
+    [422, "guess_unavailable"],
   ]) {
     test(`returns the ${code} example on request`, async () => {
       const response = await fetch(`${url}/api/health`, {

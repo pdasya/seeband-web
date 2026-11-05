@@ -1,5 +1,6 @@
 import ast
 import hashlib
+import inspect
 import json
 import os
 import subprocess
@@ -12,6 +13,7 @@ from typing import Any
 import numpy as np
 import pytest
 from seeband_core import data_processing, neural_nets
+from seeband_core.model_catalog import registry
 
 FIXTURE = Path(__file__).parent / "fixtures" / "neural_net_references.json"
 CASES: list[dict[str, Any]] = json.loads(FIXTURE.read_text(encoding="utf-8"))["cases"]
@@ -192,6 +194,94 @@ def test_saturated_outputs_give_infinity_as_on_the_desktop() -> None:
     assert prediction[0] == 0.0
     assert prediction[1] == np.inf
     assert np.isnan(prediction[2])
+
+
+def start_values(case: dict[str, Any]) -> dict[str, float]:
+    start = case["desktop_start_values"]
+    return {
+        "m_eff": start["m_eff"],
+        "band_gap": start["band_gap_k"],
+        "fermi_energy": start["fermi_energy_k"],
+    }
+
+
+@pytest.mark.parametrize("case", SELECTED, ids=lambda case: case["name"])
+def test_start_values_are_what_the_desktop_sliders_hold(case: dict[str, Any]) -> None:
+    guess = neural_nets.predict_band_parameters(*arrays(case))
+    assert isinstance(guess, neural_nets.NeuralNetGuess)
+    for fit_mode in registry.get("dpb").describe().fit_modes:
+        assert neural_nets.start_values(guess, fit_mode) == start_values(case)
+
+
+@pytest.mark.parametrize(
+    ("m_eff", "band_gap_k", "fermi_energy_k"),
+    [
+        (float("inf"), 1.0, 1.0),
+        (float("-inf"), 1.0, 1.0),
+        (float("nan"), 1.0, 1.0),
+        (1.0, float("inf"), 1.0),
+        (1.0, float("nan"), 1.0),
+        (1.0, 1.0, float("inf")),
+        (1.0, 1.0, float("nan")),
+    ],
+)
+def test_prediction_that_is_not_finite_gives_no_start_values(
+    m_eff: float, band_gap_k: float, fermi_energy_k: float
+) -> None:
+    guess = neural_nets.NeuralNetGuess((100, 400), m_eff, band_gap_k, fermi_energy_k)
+    fit_mode = registry.get("dpb").describe().fit_modes[0]
+    assert neural_nets.start_values(guess, fit_mode) is None
+
+
+def test_start_values_are_rounded_and_limited_one_by_one() -> None:
+    guess = neural_nets.NeuralNetGuess((100, 400), -4.5, 2.5, -3000.6)
+    fit_mode = registry.get("dpb").describe().fit_modes[0]
+    assert neural_nets.start_values(guess, fit_mode) == {
+        "m_eff": -3.0,
+        "band_gap": 2.0,
+        "fermi_energy": -3000.0,
+    }
+
+
+def test_sliders_can_round_a_small_m_eff_to_zero() -> None:
+    guess = neural_nets.NeuralNetGuess((100, 400), -0.004, 1.0, 1.0)
+    fit_mode = registry.get("dpb").describe().fit_modes[0]
+    start = neural_nets.start_values(guess, fit_mode)
+    assert start is not None
+    assert str(start["m_eff"]) == "0.0"
+
+
+@pytest.mark.parametrize(
+    ("temperature_k", "expected"),
+    [
+        ([300.0], True),
+        ([100.0, 100.0, 200.0], True),
+        ([100.0, 200.0, 150.0], False),
+        ([200.0, 100.0], False),
+    ],
+)
+def test_sorted_rows_rise_or_stay(temperature_k: list[float], expected: bool) -> None:
+    assert neural_nets.temperatures_are_sorted(np.array(temperature_k)) is expected
+
+
+@pytest.mark.parametrize(
+    ("temperature_k", "expected"),
+    [
+        ([100.0, 400.0], True),
+        ([100.0, 150.0, 200.0, 300.0, 400.0], True),
+        ([100.0, 150.0, 200.0, 300.0, 300.0, 400.0], True),
+        ([100.0, 150.0, 200.0, 250.0, 300.0, 400.0], False),
+    ],
+)
+def test_fit_needs_six_distinct_temperatures(temperature_k: list[float], expected: bool) -> None:
+    seebeck_v_per_k = 1e-6 * np.array(temperature_k)
+    temperatures = np.array(temperature_k)
+    assert neural_nets.seebeck_fit_is_underdetermined(temperatures, seebeck_v_per_k) is expected
+
+
+def test_degree_of_the_check_is_that_of_the_fit() -> None:
+    default = inspect.signature(data_processing.fit_data).parameters["degree"].default
+    assert neural_nets.SEEBECK_FIT_DEGREE == default
 
 
 def test_cached_weights_cannot_be_changed() -> None:

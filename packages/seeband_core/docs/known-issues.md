@@ -35,7 +35,7 @@ The caller sets `extrapolated`, from `InterpolatedData`, since a fit does not kn
 - **No chemical potential in DPB (#106)** has no simple condition on the inputs, unlike SPB.
 - **E_F inside the gap (#107)** cannot be told from a good fit by its inputs alone, and `at_bounds` and `parameter_errors` report part of it.
 - **`underdetermined` interpolation** has no issue that fixes it, because it describes the data. `InterpolatedData` reports it.
-- **Choosing a net by the first and last rows (P9)** does not reach this path, because the parser sorts (D22).
+- **Choosing a net by the first and last rows (P9)** does not reach this path, because the parser sorts (D22). A client can send `POST /api/guess` unsorted rows, and its answer then carries the warning `unsorted_temperature`. It belongs to no mode, so it is not an entry here.
 - **The band diagram (#108)** belongs to no mode, so a client must treat it with care until then.
 - **D4 asks to flag acPhDis results.** In core units, S and ρ of SPB use one scale, so only `acphdis_curve_scale` applies.
 - **The Conventions page** does not exist yet, so S3 takes its note on known issues from this list.
