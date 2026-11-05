@@ -1,5 +1,6 @@
 import importlib.util
 import os
+import sys
 from collections.abc import Callable
 from pathlib import Path
 
@@ -7,6 +8,8 @@ import pytest
 from fastapi import FastAPI
 
 SUPPORT_DIR = Path(__file__).parent / "support"
+# Spawned workers inherit this path, so they can import test functions from there.
+sys.path.insert(0, str(SUPPORT_DIR))
 
 
 @pytest.fixture(autouse=True)

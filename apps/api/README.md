@@ -8,16 +8,19 @@ A thin FastAPI layer over `seeband_core`. It holds routes, validation and proces
 uv run python -m seeband_api
 ```
 
-| Variable                | Default     | Applies to                                 |
-| ----------------------- | ----------- | ------------------------------------------ |
-| `SEEBAND_API_HOST`      | `127.0.0.1` | `python -m seeband_api` only               |
-| `SEEBAND_API_PORT`      | `8000`      | `python -m seeband_api` only               |
-| `SEEBAND_API_LOG_LEVEL` | `INFO`      | the API's own log lines, not uvicorn's own |
+| Variable                     | Default     | Applies to                                 |
+| ---------------------------- | ----------- | ------------------------------------------ |
+| `SEEBAND_API_HOST`           | `127.0.0.1` | `python -m seeband_api` only               |
+| `SEEBAND_API_PORT`           | `8000`      | `python -m seeband_api` only               |
+| `SEEBAND_API_LOG_LEVEL`      | `INFO`      | the API's own log lines, not uvicorn's own |
+| `SEEBAND_API_CALC_WORKERS`   | `2`         | worker processes for calculations          |
+| `SEEBAND_API_CALC_TIMEOUT_S` | `30`        | how long a calculation request waits       |
 
 | Route                   | Purpose                  |
 | ----------------------- | ------------------------ |
 | `GET /api/health`       | status and version       |
 | `GET /api/models`       | model descriptions       |
+| `POST /api/calc`        | curves and RMSE          |
 | `GET /api/openapi.json` | the contract             |
 | `GET /api/docs`         | Swagger UI over the same |
 
@@ -30,6 +33,28 @@ A mode with `disabled: true` must not be offered, and `disabled_by` names the `k
 Requests and results use core units. Each parameter gives its control as `display_range`, what a user sees, and `core_range`, core units, both calculated by `seeband_core`. Send core values from `core_range` rather than calculating them from the scales, because the desktop divides where a multiplication changes the last bit. `step` is a keyboard increment, not a grid. `calc_scale` stays out, because it only reproduces a desktop path.
 
 The contract holds the real response as its example, so `pnpm mock` serves real descriptions, and a change to a description shows in the diff of `openapi.json`.
+
+## Curves
+
+`POST /api/calc` returns curves for given parameters, in core units. It keeps no state, and runs in a pool of worker processes, so that the event loop stays free. Add `measurements` to get an RMSE for each quantity. Send only points in the fit range.
+
+- **Parameters:** all of a mode's parameters are needed, and values outside a control's range are allowed, because a fit can end there. Names are checked, and each problem is listed in `details`.
+- **A disabled mode** gets a 409 `fit_mode_disabled`, with its known issues in `details`.
+- **Values that are not finite** come back as `null`, as with a band mass of 0.
+- **`calculation_failed`** means that the numbers have no result, as with `m_eff` = 0, which divides by zero in the core. The desktop raises there too.
+- **RMSE** uses a grid of 50 points by default, for speed. Ask for `rmse_points: 200` to match the core's default.
+
+A worker cannot be interrupted, so a request that times out gets a 504, while its worker stays busy until the calculation ends.
+
+Median response time for a 50-point curve, through the app in one process with a test client, 20 calls each, on an Apple Silicon Mac with 10 cores and Python 3.13. The RMSE column uses the 31 points per quantity of the demo dataset. Network time is not included, and FS12 measures that.
+
+| Mode, with default scattering | Curves | Curves and RMSE |
+| ----------------------------- | ------ | --------------- |
+| `spb_s`                       | 9 ms   | 17 ms           |
+| `spb_s_rho`                   | 15 ms  | 29 ms           |
+| `dpb_s`                       | 16 ms  | 31 ms           |
+| `dpb_s_rho`                   | 27 ms  | 52 ms           |
+| `dpb_s_rho_rh`                | 40 ms  | 79 ms           |
 
 ## Errors
 

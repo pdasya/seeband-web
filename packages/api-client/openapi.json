@@ -1994,6 +1994,80 @@
           }
         }
       }
+    },
+    "/api/calc": {
+      "post": {
+        "tags": [
+          "calc"
+        ],
+        "summary": "Post Calc",
+        "operationId": "post_calc",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalcRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalcResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "internal_error": {
+                    "value": {
+                      "code": "internal_error",
+                      "message": "Internal server error",
+                      "details": []
+                    }
+                  },
+                  "not_found": {
+                    "value": {
+                      "code": "not_found",
+                      "message": "Not Found",
+                      "details": []
+                    }
+                  },
+                  "validation_error": {
+                    "value": {
+                      "code": "validation_error",
+                      "message": "Invalid request",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "seebeck_v_per_k",
+                            3
+                          ],
+                          "code": "float_parsing",
+                          "message": "Input should be a valid number, unable to parse string as a number"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2015,6 +2089,234 @@
           "upper"
         ],
         "title": "BoundsResponse"
+      },
+      "CalcRequest": {
+        "properties": {
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "fit_mode": {
+            "type": "string",
+            "title": "Fit Mode"
+          },
+          "scattering": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scattering"
+          },
+          "parameters": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Parameters"
+          },
+          "min_temperature_k": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Min Temperature K"
+          },
+          "max_temperature_k": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Max Temperature K"
+          },
+          "points": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000.0,
+                "minimum": 2.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Points"
+          },
+          "band_1_degeneracy": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Band 1 Degeneracy",
+            "default": 1.0
+          },
+          "band_2_degeneracy": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Band 2 Degeneracy",
+            "default": 1.0
+          },
+          "extrapolated": {
+            "type": "boolean",
+            "title": "Extrapolated",
+            "default": false
+          },
+          "measurements": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/MeasurementInput"
+            },
+            "propertyNames": {
+              "enum": [
+                "seebeck",
+                "resistivity",
+                "hall"
+              ]
+            },
+            "type": "object",
+            "title": "Measurements"
+          },
+          "rmse_points": {
+            "type": "integer",
+            "maximum": 1000.0,
+            "minimum": 2.0,
+            "title": "Rmse Points",
+            "default": 50
+          }
+        },
+        "type": "object",
+        "required": [
+          "model",
+          "fit_mode",
+          "parameters",
+          "min_temperature_k",
+          "max_temperature_k"
+        ],
+        "title": "CalcRequest",
+        "description": "What to calculate.\n\n`parameters` holds every parameter of the mode in core units, including those of other\nscattering types. Values outside a control's range are allowed, as a fit can end there. `points`\ndefaults to the model's. `measurements` gives an RMSE for each quantity, and should hold only\npoints in the fit range. `extrapolated` says that interpolation made up some of these points.",
+        "examples": [
+          {
+            "fit_mode": "dpb_s_rho",
+            "max_temperature_k": 500.0,
+            "measurements": {
+              "seebeck": {
+                "temperature_k": [
+                  100.0,
+                  300.0,
+                  500.0
+                ],
+                "values": [
+                  0.0002,
+                  9e-05,
+                  2e-05
+                ]
+              }
+            },
+            "min_temperature_k": 100.0,
+            "model": "dpb",
+            "parameters": {
+              "A": 40000.0,
+              "B": 1.0,
+              "C": 1.0,
+              "D": 1.0,
+              "F": 1000.0,
+              "G": 1.0,
+              "band_gap": 1000.0,
+              "fermi_energy": -100.0,
+              "m_eff": 1.01
+            },
+            "points": 5,
+            "scattering": "acPh"
+          }
+        ]
+      },
+      "CalcResponse": {
+        "properties": {
+          "temperature_k": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Temperature K"
+          },
+          "curves": {
+            "additionalProperties": {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "Curves"
+          },
+          "known_issues": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Known Issues"
+          },
+          "rmse": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/RmseResponse"
+            },
+            "propertyNames": {
+              "enum": [
+                "seebeck",
+                "resistivity",
+                "hall"
+              ]
+            },
+            "type": "object",
+            "title": "Rmse"
+          }
+        },
+        "type": "object",
+        "required": [
+          "temperature_k",
+          "curves",
+          "known_issues",
+          "rmse"
+        ],
+        "title": "CalcResponse",
+        "description": "Curves by name, where each name ends in its unit, and null marks a value that is not finite.\n\n`known_issues` names known errors that apply to this result, as in `GET /api/models`. `rmse` is\nempty without measurements.",
+        "examples": [
+          {
+            "curves": {
+              "resistivity_ohm_m": [
+                3.6627e-05,
+                8.4229e-05,
+                6.7638e-05,
+                4.9129e-05,
+                3.9895e-05
+              ],
+              "seebeck_v_per_k": [
+                0.00020573,
+                0.00022818,
+                8.8928e-05,
+                3.7589e-05,
+                2.0745e-05
+              ]
+            },
+            "known_issues": [],
+            "rmse": {
+              "seebeck": {
+                "unit": "uV/K",
+                "value": 3.385
+              }
+            },
+            "temperature_k": [
+              100.0,
+              200.0,
+              300.0,
+              400.0,
+              500.0
+            ]
+          }
+        ]
       },
       "DegeneracyResponse": {
         "properties": {
@@ -2341,6 +2643,34 @@
         "title": "KnownIssueResponse",
         "description": "A known error of the calculations in this mode. Clients show `message_key` through i18n.\n\nEmpty `scattering` means every type. `curve_kinds` lists the curves it applies to, and empty\nmeans none. Empty `columns` means every curve of those kinds. `condition`, if present, limits it\nto some inputs. `fixed_by` is the issue in this repository that removes it."
       },
+      "MeasurementInput": {
+        "properties": {
+          "temperature_k": {
+            "items": {
+              "type": "number",
+              "exclusiveMinimum": 0.0
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Temperature K"
+          },
+          "values": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Values"
+          }
+        },
+        "type": "object",
+        "required": [
+          "temperature_k",
+          "values"
+        ],
+        "title": "MeasurementInput",
+        "description": "Measured points, with values in V/K for S, ohm m for rho and m^3/C for R_H."
+      },
       "ModelResponse": {
         "properties": {
           "id": {
@@ -2476,6 +2806,31 @@
         ],
         "title": "ParameterResponse",
         "description": "One parameter of a fit mode.\n\n`display_range` is the control's range as a user sees it, and `core_range` is the same range in\nthe core units of requests and results. Use these two, and do not calculate core values from the\nscales: `display_scale` and `fit_scale`, from control units in `value_range`, are there for\ninformation, as the desktop divides where a multiplication would change the last bit.\n\nIn each range, `step` is the desktop's keyboard increment, not a grid: values between steps are\nvalid, and the default or maximum need not lie on a step.\n\n`scattering` lists the types the parameter applies to, and empty means all of them. A mode with\nno choice of scattering uses all its parameters, whatever they list. A `fixed` parameter is set\nby the user, and a fit does not change it. Requests hold every parameter of a mode, including\nthose of other scattering types.\n\n`unit` is the unit of the displayed value, and can be `dimensionless` or `unknown`. `fit_bounds`\nis in core units, and is left out for a parameter that a fit does not change. `meaning` is\nEnglish text, for a client with no translation."
+      },
+      "RmseResponse": {
+        "properties": {
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "unit"
+        ],
+        "title": "RmseResponse",
+        "description": "`value` is null where the model has no finite value to compare."
       },
       "ValueRangeResponse": {
         "properties": {
