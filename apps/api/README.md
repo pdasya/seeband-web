@@ -38,7 +38,7 @@ Routes and the app answer errors with this body:
 }
 ```
 
-Clients translate by `code`, because `message` is English text for developers. `details` is `null` unless there is something to list. Routes report errors by raising `ApiError`.
+Clients translate by `code`, because `message` is English text for developers. `details` is an empty list unless there is something to list. Routes report errors by raising `ApiError`.
 
 Two kinds of answer do not use this format: uvicorn's plain text 400 for malformed HTTP, which never reaches the app, and the plain text 500 when a `BaseException` escapes.
 

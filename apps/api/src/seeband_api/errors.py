@@ -6,6 +6,7 @@ part of a request, such as a dictionary key, but only to the client that sent it
 """
 
 from http import HTTPStatus
+from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -34,7 +35,28 @@ class ErrorResponse(BaseModel):
 
     code: str
     message: str
-    details: list[ErrorDetail] | None
+    details: list[ErrorDetail]
+
+
+ERROR_EXAMPLES: dict[str, dict[str, Any]] = {
+    "internal_error": {
+        "code": INTERNAL_ERROR_CODE,
+        "message": "Internal server error",
+        "details": [],
+    },
+    "not_found": {"code": "not_found", "message": "Not Found", "details": []},
+    "validation_error": {
+        "code": "validation_error",
+        "message": "Invalid request",
+        "details": [
+            {
+                "location": ["body", "seebeck_v_per_k", 3],
+                "code": "float_parsing",
+                "message": "Input should be a valid number, unable to parse string as a number",
+            }
+        ],
+    },
+}
 
 
 class ApiError(Exception):
@@ -65,7 +87,7 @@ def error_response(
 def internal_error_response() -> JSONResponse:
     return error_response(
         HTTPStatus.INTERNAL_SERVER_ERROR,
-        ErrorResponse(code=INTERNAL_ERROR_CODE, message="Internal server error", details=None),
+        ErrorResponse(code=INTERNAL_ERROR_CODE, message="Internal server error", details=[]),
     )
 
 
@@ -73,7 +95,7 @@ def _handle_api_error(_: Request, error: Exception) -> JSONResponse:
     assert isinstance(error, ApiError)
     return error_response(
         error.status_code,
-        ErrorResponse(code=error.code, message=error.message, details=error.details),
+        ErrorResponse(code=error.code, message=error.message, details=error.details or []),
     )
 
 
@@ -84,7 +106,7 @@ def _handle_http_exception(_: Request, error: Exception) -> JSONResponse:
     message = error.detail if isinstance(error.detail, str) else "HTTP error"
     return error_response(
         error.status_code,
-        ErrorResponse(code=code, message=message, details=None),
+        ErrorResponse(code=code, message=message, details=[]),
         # A 405 must keep its Allow header.
         headers=dict(error.headers) if error.headers else None,
     )

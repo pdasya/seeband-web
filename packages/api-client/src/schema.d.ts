@@ -42,9 +42,15 @@ export interface components {
             /** Message */
             message: string;
             /** Details */
-            details: components["schemas"]["ErrorDetail"][] | null;
+            details: components["schemas"]["ErrorDetail"][];
         };
-        /** HealthResponse */
+        /**
+         * HealthResponse
+         * @example {
+         *       "status": "ok",
+         *       "version": "1.0.0"
+         *     }
+         */
         HealthResponse: {
             /**
              * Status

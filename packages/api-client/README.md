@@ -20,3 +20,38 @@ Two checks catch files that are out of date, in `pnpm check` and in CI:
 - `pnpm test` in this package compares `src/schema.d.ts` with `openapi.json`.
 
 `openapi-typescript` 7.13 declares a peer dependency on TypeScript 5, and the project uses 6, so pnpm warns. The generated file passes the type check here on TypeScript 6. This package turns off `skipLibCheck`, because its only source is a `.d.ts` file.
+
+## Mock server
+
+To work on the client without the API, serve the contract at `http://127.0.0.1:4010`:
+
+```sh
+pnpm mock
+```
+
+It runs [Prism](https://github.com/stoplightio/prism) behind a small proxy. It serves the routes and examples in the contract, so a route appears once its API task adds it. It reloads when `openapi.json` changes, and requests during a reload can get a 502. If the file becomes invalid, the mock stops and has to be started again.
+
+A request that breaks the contract gets a 422 `validation_error`, with its problems in `details`, as from the API. Their `code` and `message` values are Prism's, and differ from the API's.
+
+### Switching between the mock and the API
+
+The client calls `/api` on its own origin, and the dev server forwards `/api` to the mock on port 4010 or the API on port 8000. Use this forwarding rather than a base URL for another origin, because neither the API nor the mock's error responses send CORS headers, so a browser would hide those errors from the client. [U4](https://github.com/pdasya/seeband-web/issues/39) adds this setting.
+
+### Testing loading and failure states
+
+| Case                | Command or request header                                  |
+| ------------------- | ---------------------------------------------------------- |
+| Slow responses      | `MOCK_DELAY_MS=800 pnpm mock`                              |
+| Every request fails | `MOCK_PREFER="code=500, example=internal_error" pnpm mock` |
+| One request fails   | `Prefer: code=500, example=internal_error`                 |
+| Invalid request     | `Prefer: code=422, example=validation_error`               |
+| Not found           | `Prefer: code=404, example=not_found`                      |
+
+Give `example` with `code`, as otherwise Prism returns the first example whatever the status. An example name that does not exist gives `mock_error`. A request's own `Prefer` header replaces `MOCK_PREFER`. `MOCK_PORT` changes the port.
+
+### Where the mock differs from the API
+
+- Responses are the examples, and do not depend on the request. A route's response cannot show `null` in a required field, because FastAPI drops `null` from examples. Check real curves against the API.
+- It does not stream events, and a `Prefer` failure with `Accept: text/event-stream` gives `mock_error`.
+- A 405 has no `Allow` header, and `Accept: application/xml` gives a 406 `mock_error`, where the API answers with JSON.
+- A body over 10 MB gets Prism's own 413 format.
