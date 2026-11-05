@@ -70,6 +70,12 @@ def _value(parameters: Mapping[str, float], name: str) -> float:
     return _values(parameters, [name])[0]
 
 
+def _degeneracy_ratio(request: CurveRequest | FitRequest) -> float:
+    if request.band_1_degeneracy <= 0 or request.band_2_degeneracy <= 0:
+        raise ValueError("Band degeneracies must be positive")
+    return request.band_2_degeneracy / request.band_1_degeneracy
+
+
 def _measurement_arrays(
     measurements: Mapping[Quantity, Measurement], quantities: Iterable[Quantity]
 ) -> list[Any]:
@@ -98,6 +104,15 @@ class _BandModel:
             raise ValueError(f"Fit mode {fit_mode_id} needs a scattering type")
         fit_mode.parameters_for(scattering)
         return fit_mode, scattering
+
+    def _check_fit(self, request: FitRequest, fit_mode: FitMode) -> None:
+        specs = {spec.name: spec for spec in fit_mode.parameters}
+        unknown = [name for name in request.start if name not in specs]
+        if unknown:
+            raise ValueError(f"Fit mode {fit_mode.id} has no parameters {unknown}")
+        for name in request.bounds:
+            if name not in specs or specs[name].fit_bounds is None:
+                raise ValueError(f"Fit mode {fit_mode.id} does not fit a parameter {name}")
 
     def _limits(self, request: FitRequest, fit_mode: FitMode, names: Iterable[str]) -> list[Any]:
         """Return [[lower, ...], [upper, ...]], from the request or else the description."""
@@ -158,6 +173,7 @@ class SpbModel(_BandModel):
 
     def fit(self, request: FitRequest, on_iteration: IterationCallback | None = None) -> FitResult:
         fit_mode, scattering = self._mode_and_scattering(request.fit_mode, request.scattering)
+        self._check_fit(request, fit_mode)
         start = request.start
         data = _measurement_arrays(request.measurements, fit_mode.quantities)
         fermi: tuple[Any, Any] = (
@@ -204,7 +220,7 @@ class DpbModel(_BandModel):
         self, request: CurveRequest, fit_mode: FitMode, scattering: str | None
     ) -> tuple[Callable[..., Any], list[Any]]:
         parameters = request.parameters
-        degeneracy = request.band_2_degeneracy / request.band_1_degeneracy
+        degeneracy = _degeneracy_ratio(request)
         bands = _values(parameters, _DPB_BANDS)
         kind = request.kind
         if kind == "chemical_potential":
@@ -239,9 +255,10 @@ class DpbModel(_BandModel):
 
     def fit(self, request: FitRequest, on_iteration: IterationCallback | None = None) -> FitResult:
         fit_mode, scattering = self._mode_and_scattering(request.fit_mode, request.scattering)
+        self._check_fit(request, fit_mode)
         start = request.start
         data = _measurement_arrays(request.measurements, fit_mode.quantities)
-        degeneracy = request.band_2_degeneracy / request.band_1_degeneracy
+        degeneracy = _degeneracy_ratio(request)
         bands: tuple[Any, Any] = (
             _values(start, _DPB_BANDS),
             self._limits(request, fit_mode, _DPB_BANDS),

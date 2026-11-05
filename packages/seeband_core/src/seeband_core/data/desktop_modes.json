@@ -1749,7 +1749,7 @@
     {
       "id": "D12",
       "title": "DPB fits and curves treat m_eff differently when N2/N1 is not 1",
-      "desktop": "In S, the fit uses m_eff without dividing by N and returns that value, while the curve divides by N. In S + rho and S + rho + R_H, the fit starts from the slider mass and returns `current_meff*degen`, and the curve divides by N, so the post-fit curve is consistent, but the start is N times the displayed mass and the reported value can leave the bounds.",
+      "desktop": "In S, the fit uses m_eff without dividing by N and returns that value, while the curve divides by N. In S + rho and S + rho + R_H, the fit starts from the slider mass and returns `current_meff*degen`, and the curve divides by N, so the post-fit curve is consistent, but the start is N times the displayed mass and the reported value can leave the bounds. The S + rho + R_H curve also reads N from the S + rho window, while its fit reads its own window.",
       "web": "Exact port keeps this until fixed.",
       "resolved_by": "#85 (P6)",
       "source": [
@@ -1763,14 +1763,17 @@
         "modules/fit_module.py:1021",
         "modules/fit_module.py:1708",
         "seeband.py:3621",
-        "seeband.py:3666"
+        "seeband.py:3666",
+        "seeband.py:2690",
+        "seeband.py:4275",
+        "seeband.py:5054"
       ]
     },
     {
       "id": "D13",
       "title": "C and D reach the calculation at different scales on different paths",
       "desktop": "See `calc_paths` per mode. For one DPB slider position with acPhDis, an exported curve uses C = 100 * 300 and the slider curve C = 1 * 300.",
-      "web": "The web version has one calculation path, using the slider handler scale in `calc_scale`. V1 records differences against desktop exports and startup curves.",
+      "web": "The web version has one calculation path, in core values, the same as the start and result of a fit. That equals the slider handler scale, apart from `band_mass` and `C` in SPB S + rho + R_H (D3, D5). V1 records differences against desktop exports and startup curves.",
       "resolved_by": "#71 (V1)",
       "source": [
         "seeband.py:3623",
@@ -1864,6 +1867,14 @@
         "modules/fit_module.py:428",
         "modules/fit_module.py:399"
       ]
+    },
+    {
+      "id": "D20",
+      "title": "Additional graphs pass C and D at other scales than the fit",
+      "desktop": "The buttons of the additional graphs windows read the sliders. With acPhDis they pass SPB C = slider / 100 and DPB C and D = slider, while the fit start passes SPB C = slider and DPB C and D = slider / 100. So at one slider position, these graphs use C and D 100 times apart from the fit, on top of the mismatch in P3.",
+      "web": "Curves take core values, so graphs use the same C and D as the fit and the main curve, and results of a fit go to graphs unchanged. Recorded graph calls replay with their recorded values. V1 records the differences.",
+      "resolved_by": "#71 (V1)",
+      "source": ["seeband.py:5932", "seeband.py:6503"]
     }
   ]
 }

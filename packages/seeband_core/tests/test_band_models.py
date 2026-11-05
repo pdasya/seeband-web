@@ -7,6 +7,7 @@ from typing import Any
 
 import numpy as np
 import pytest
+from seeband_core import band_models
 from seeband_core.band_models import parabolic_band
 from seeband_core.model_catalog import registry
 from seeband_core.model_interface import (
@@ -21,6 +22,7 @@ from seeband_core.model_interface import (
 from seeband_core.model_scales import default_start
 
 GOLDEN = Path(__file__).parent / "fixtures" / "golden"
+D3_ERROR = "Inconsistent shapes between bounds"
 CURVE_NAMES: dict[CurveKind, list[str]] = {
     "seebeck": ["seebeck_v_per_k"],
     "seebeck_by_band": ["seebeck_band_1_v_per_k", "seebeck_band_2_v_per_k"],
@@ -107,7 +109,7 @@ def test_every_combination_is_covered() -> None:
 
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize(("model_id", "fit_mode_id", "scattering", "kind"), curve_cases())
-def test_every_curve_runs_and_names_its_unit(
+def test_every_curve_runs(
     model_id: str, fit_mode_id: str, scattering: str | None, kind: CurveKind
 ) -> None:
     model = registry.get(model_id)
@@ -207,7 +209,7 @@ def test_the_spb_hall_fit_keeps_its_recorded_problems() -> None:
     measurements = recorded_measurements(fit_mode)
     start = default_start(fit_mode)
     # D3: a positive mass gives an empty start for E.
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=D3_ERROR):
         model.fit(FitRequest("spb_s_rho_rh", measurements, start, scattering="acPh"))
     with pytest.raises(TypeError):
         model.fit(
@@ -278,6 +280,430 @@ def test_band_diagram_is_available_without_a_model() -> None:
     wavevector, energy = parabolic_band(-1.0, 1.0, 3, 1.0, 5.0)
     assert wavevector.tolist() == [-1.0, 0.0, 1.0]
     assert energy[1] == 5.0
+
+
+# Distinct values, so that a swapped argument shows.
+PARAMETERS: dict[str, float] = {
+    "band_mass": 11.5,
+    "m_eff": 1.25,
+    "band_gap": 2.5,
+    "fermi_energy": 3.5,
+    "A": 4.5,
+    "B": 5.5,
+    "C": 6.5,
+    "D": 7.5,
+    "F": 8.5,
+    "G": 9.5,
+    "m1": 10.5,
+}
+BANDS = [1.25, 2.5, 3.5]
+DPB_RES = [4.5, 5.5, 6.5, 7.5, 8.5, 9.5]
+SPB_RES = [4.5, 6.5, 8.5]
+RATIO = 1.5  # Band 2 degeneracy of 3 over band 1 degeneracy of 2.
+GRID = [50, 800, 5]
+
+# (mode, kind): the core function, and its arguments after the grid. S is the scattering type.
+S = "scattering"
+EXPECTED_CURVE_CALLS: dict[tuple[str, str], tuple[str, list[Any], list[str]]] = {
+    ("spb_s", "measured"): ("spb_see_calc", [11.5, 3.5], ["seebeck_v_per_k"]),
+    ("spb_s", "chemical_potential"): ("spb_chemPot_calc", [11.5, 3.5], ["chemical_potential_k"]),
+    ("spb_s_rho", "measured"): (
+        "spb_see_res_calc",
+        [11.5, 3.5, SPB_RES, S],
+        ["seebeck_v_per_k", "resistivity_ohm_m"],
+    ),
+    ("spb_s_rho", "chemical_potential"): (
+        "spb_chemPot_calc",
+        [11.5, 3.5],
+        ["chemical_potential_k"],
+    ),
+    ("spb_s_rho", "electrical_conductivity"): (
+        "spb_elecCond_calc",
+        [11.5, 3.5, SPB_RES, S],
+        ["electrical_conductivity_s_per_m"],
+    ),
+    ("spb_s_rho", "thermal_conductivity"): (
+        "spb_thermCond_calc",
+        [11.5, 3.5, SPB_RES, S],
+        ["thermal_conductivity_w_per_m_k"],
+    ),
+    ("spb_s_rho_rh", "measured"): (
+        "spb_see_res_hall_calc",
+        [11.5, 3.5, SPB_RES, S],
+        ["seebeck_v_per_k", "resistivity_ohm_m", "hall_m3_per_c"],
+    ),
+    ("spb_s_rho_rh", "chemical_potential"): (
+        "spb_chemPot_calc",
+        [11.5, 3.5],
+        ["chemical_potential_k"],
+    ),
+    ("spb_s_rho_rh", "electrical_conductivity"): (
+        "spb_elecCond_calc",
+        [11.5, 3.5, SPB_RES, S],
+        ["electrical_conductivity_s_per_m"],
+    ),
+    ("spb_s_rho_rh", "thermal_conductivity"): (
+        "spb_thermCond_calc",
+        [11.5, 3.5, SPB_RES, S],
+        ["thermal_conductivity_w_per_m_k"],
+    ),
+    ("dpb_s", "measured"): ("dpb_see_calc", [BANDS, RATIO], ["seebeck_v_per_k"]),
+    ("dpb_s", "seebeck_by_band"): (
+        "dpb_ind_see_seeOnly_calc",
+        [BANDS, RATIO],
+        ["seebeck_band_1_v_per_k", "seebeck_band_2_v_per_k"],
+    ),
+    ("dpb_s", "chemical_potential"): (
+        "dpb_chemPot_calc",
+        [BANDS, RATIO],
+        ["chemical_potential_k"],
+    ),
+    ("dpb_s", "carrier_concentration_by_band"): (
+        "dpb_ind_carCon_calc",
+        [BANDS, RATIO],
+        ["carrier_concentration_band_1_per_cm3", "carrier_concentration_band_2_per_cm3"],
+    ),
+}
+for _mode, _hall in (("dpb_s_rho", False), ("dpb_s_rho_rh", True)):
+    EXPECTED_CURVE_CALLS |= {
+        (_mode, "measured"): (
+            "dpb_see_res_hall_calc" if _hall else "dpb_see_res_calc",
+            [BANDS, DPB_RES, 10.5, RATIO, S] if _hall else [BANDS, DPB_RES, RATIO, S],
+            [
+                "seebeck_v_per_k",
+                "resistivity_ohm_m",
+                *(["hall_m3_per_c"] if _hall else []),
+            ],
+        ),
+        (_mode, "seebeck"): (
+            "dpb_see_with_scatter_calc",
+            [BANDS, DPB_RES, RATIO, S],
+            ["seebeck_v_per_k"],
+        ),
+        (_mode, "seebeck_by_band"): (
+            "dpb_ind_see_calc",
+            [BANDS, DPB_RES, RATIO, S],
+            ["seebeck_band_1_v_per_k", "seebeck_band_2_v_per_k"],
+        ),
+        (_mode, "chemical_potential"): (
+            "dpb_chemPot_calc",
+            [BANDS, RATIO],
+            ["chemical_potential_k"],
+        ),
+        (_mode, "electrical_conductivity"): (
+            "dpb_elecCond_calc",
+            [BANDS, DPB_RES, RATIO, S],
+            ["electrical_conductivity_s_per_m"],
+        ),
+        (_mode, "electrical_conductivity_by_band"): (
+            "dpb_ind_elecCond_calc",
+            [BANDS, DPB_RES, RATIO, S],
+            ["electrical_conductivity_band_1_s_per_m", "electrical_conductivity_band_2_s_per_m"],
+        ),
+        (_mode, "thermal_conductivity"): (
+            "dpb_thermCond_calc",
+            [BANDS, DPB_RES, RATIO, S],
+            ["thermal_conductivity_w_per_m_k"],
+        ),
+        (_mode, "carrier_concentration_by_band"): (
+            "dpb_ind_carCon_calc_m1" if _hall else "dpb_ind_carCon_calc",
+            [BANDS, RATIO, 10.5] if _hall else [BANDS, RATIO],
+            ["carrier_concentration_band_1_per_cm3", "carrier_concentration_band_2_per_cm3"],
+        ),
+    }
+
+# Each parameter's bounds are distinct too: lower is minus its value, upper is 100 plus its value.
+BOUNDS = {name: Bounds(-value, 100 + value) for name, value in PARAMETERS.items()}
+
+
+def limits(*names: str) -> list[list[float]]:
+    return [[BOUNDS[name].lower for name in names], [BOUNDS[name].upper for name in names]]
+
+
+BAND_NAMES = ("m_eff", "band_gap", "fermi_energy")
+DPB_NAMES = ("A", "B", "C", "D", "F", "G")
+SPB_NAMES = ("A", "C", "F")
+DATA_S = ["T_S", "S"]
+DATA_R = ["T_R", "R"]
+DATA_H = ["T_H", "H"]
+# mode: the core function, its positional arguments, its keyword arguments, and the name of each
+# value it returns, in order.
+EXPECTED_FIT_CALLS: dict[str, tuple[str, list[Any], dict[str, Any], list[str]]] = {
+    "spb_s": (
+        "spb_see_fit",
+        [*DATA_S, 11.5, [3.5], limits("fermi_energy")],
+        {},
+        ["fermi_energy"],
+    ),
+    "spb_s_rho": (
+        "spb_see_res_fit",
+        [*DATA_S, *DATA_R, 11.5, [3.5], limits("fermi_energy"), SPB_RES, limits(*SPB_NAMES)],
+        {"scatter_type": S},
+        ["fermi_energy", "A", "C", "F"],
+    ),
+    "spb_s_rho_rh": (
+        "spb_see_res_hall_fit",
+        [
+            *DATA_S,
+            *DATA_R,
+            *DATA_H,
+            [3.5],
+            limits("fermi_energy"),
+            SPB_RES,
+            limits(*SPB_NAMES),
+            [11.5],
+            limits("band_mass"),
+            S,
+        ],
+        {},
+        ["fermi_energy", "A", "C", "F", "band_mass"],
+    ),
+    "dpb_s": (
+        "dpb_see_fit",
+        [*DATA_S, BANDS, limits(*BAND_NAMES), RATIO],
+        {},
+        ["m_eff", "band_gap", "fermi_energy"],
+    ),
+    "dpb_s_rho": (
+        "dpb_see_res_fit",
+        [
+            *DATA_S,
+            *DATA_R,
+            BANDS,
+            limits(*BAND_NAMES),
+            DPB_RES,
+            limits(*DPB_NAMES),
+            RATIO,
+            S,
+            0.1,
+            1000,
+        ],
+        {},
+        ["m_eff", "band_gap", "fermi_energy", "A", "B", "C", "D", "F", "G"],
+    ),
+    "dpb_s_rho_rh": (
+        "dpb_see_res_hall_fit",
+        [
+            *DATA_S,
+            *DATA_R,
+            *DATA_H,
+            BANDS,
+            limits(*BAND_NAMES),
+            DPB_RES,
+            limits(*DPB_NAMES),
+            10.5,
+            limits("m1"),
+            RATIO,
+            S,
+            0.1,
+            20,
+        ],
+        {},
+        ["m_eff", "band_gap", "fermi_energy", "A", "B", "C", "D", "F", "G", "m1"],
+    ),
+}
+
+
+class RecordingCore:
+    """Stands in for the core, records the one call it gets, and returns numbered values."""
+
+    def __init__(self, returned: Any) -> None:
+        self.returned = returned
+        self.calls: list[tuple[str, tuple[Any, ...], dict[str, Any]]] = []
+
+    def __getattr__(self, name: str) -> Any:
+        def record(*args: Any, **kwargs: Any) -> Any:
+            self.calls.append((name, args, kwargs))
+            return self.returned
+
+        return record
+
+
+def request_values(fit_mode: FitMode) -> dict[str, float]:
+    return {spec.name: PARAMETERS[spec.name] for spec in fit_mode.parameters}
+
+
+def with_scattering(values: list[Any], scattering: str | None) -> list[Any]:
+    return [scattering if value is S else value for value in values]
+
+
+def test_the_expected_tables_cover_every_mode_and_kind() -> None:
+    assert {(mode, kind) for _, mode, _, kind in curve_cases()} == set(EXPECTED_CURVE_CALLS)
+    assert {mode for _, mode, _ in combinations()} == set(EXPECTED_FIT_CALLS)
+
+
+@pytest.mark.parametrize(("model_id", "fit_mode_id", "scattering", "kind"), curve_cases())
+def test_curves_call_the_core_as_written_here(
+    monkeypatch: pytest.MonkeyPatch,
+    model_id: str,
+    fit_mode_id: str,
+    scattering: str | None,
+    kind: CurveKind,
+) -> None:
+    function, arguments, names = EXPECTED_CURVE_CALLS[(fit_mode_id, kind)]
+    returned = ("temperature", *[f"curve {index}" for index in range(len(names))])
+    core = RecordingCore(returned)
+    monkeypatch.setattr(band_models, "_CORE", core)
+    model = registry.get(model_id)
+    result = model.calculate(
+        CurveRequest(
+            fit_mode_id,
+            request_values(model.describe().fit_mode(fit_mode_id)),
+            *GRID,  # type: ignore[arg-type]
+            scattering=scattering,
+            kind=kind,
+            band_1_degeneracy=2.0,
+            band_2_degeneracy=3.0,
+        )
+    )
+    assert core.calls == [(function, (*GRID, *with_scattering(arguments, scattering)), {})]
+    assert result.temperature_k == "temperature"
+    assert result.curves == {name: f"curve {index}" for index, name in enumerate(names)}
+
+
+@pytest.mark.parametrize(("model_id", "fit_mode_id", "scattering"), combinations())
+def test_fits_call_the_core_as_written_here(
+    monkeypatch: pytest.MonkeyPatch, model_id: str, fit_mode_id: str, scattering: str | None
+) -> None:
+    function, arguments, keywords, names = EXPECTED_FIT_CALLS[fit_mode_id]
+    core = RecordingCore([100.0 + index for index in range(len(names))])
+    monkeypatch.setattr(band_models, "_CORE", core)
+    model = registry.get(model_id)
+    fit_mode = model.describe().fit_mode(fit_mode_id)
+    start = request_values(fit_mode)
+    all_data: dict[Quantity, Measurement] = {
+        "seebeck": Measurement("T_S", "S"),  # type: ignore[arg-type]
+        "resistivity": Measurement("T_R", "R"),  # type: ignore[arg-type]
+        "hall": Measurement("T_H", "H"),  # type: ignore[arg-type]
+    }
+    bounds = {
+        spec.name: BOUNDS[spec.name] for spec in fit_mode.parameters if spec.fit_bounds is not None
+    }
+    result = model.fit(
+        FitRequest(
+            fit_mode_id,
+            {quantity: all_data[quantity] for quantity in fit_mode.quantities},
+            start,
+            bounds,
+            scattering,
+            band_1_degeneracy=2.0,
+            band_2_degeneracy=3.0,
+        )
+    )
+    expected_keywords = {
+        key: scattering if value is S else value for key, value in keywords.items()
+    }
+    assert core.calls == [
+        (function, tuple(with_scattering(arguments, scattering)), expected_keywords)
+    ]
+    fitted = {name: 100.0 + index for index, name in enumerate(names)}
+    assert result.parameters == start | fitted
+
+
+@pytest.mark.parametrize("fit_mode_id", list(EXPECTED_FIT_CALLS))
+def test_a_fit_returning_the_wrong_length_is_an_error(
+    monkeypatch: pytest.MonkeyPatch, fit_mode_id: str
+) -> None:
+    names = EXPECTED_FIT_CALLS[fit_mode_id][3]
+    monkeypatch.setattr(band_models, "_CORE", RecordingCore([0.0] * (len(names) + 1)))
+    model = registry.get(fit_mode_id.partition("_")[0])
+    fit_mode = model.describe().fit_mode(fit_mode_id)
+    data = {quantity: Measurement(np.zeros(1), np.zeros(1)) for quantity in fit_mode.quantities}
+    with pytest.raises(ValueError, match="zip"):
+        model.fit(
+            FitRequest(
+                fit_mode_id,
+                data,
+                request_values(fit_mode),
+                scattering=fit_mode.default_scattering,
+            ),
+        )
+
+
+def test_a_curve_returning_the_wrong_length_is_an_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(band_models, "_CORE", RecordingCore(("t", "a", "b")))
+    model = registry.get("dpb")
+    fit_mode = model.describe().fit_mode("dpb_s")
+    with pytest.raises(ValueError, match="zip"):
+        model.calculate(
+            CurveRequest("dpb_s", request_values(fit_mode), 50, 800, 5, kind="chemical_potential")
+        )
+
+
+@pytest.mark.parametrize(("first", "second"), [(0.0, 1.0), (1.0, 0.0), (-1.0, 1.0)])
+def test_degeneracies_must_be_positive(first: float, second: float) -> None:
+    model = registry.get("dpb")
+    fit_mode = model.describe().fit_mode("dpb_s")
+    values = default_start(fit_mode)
+    with pytest.raises(ValueError, match="must be positive"):
+        model.calculate(
+            CurveRequest(
+                "dpb_s", values, 50, 800, 5, band_1_degeneracy=first, band_2_degeneracy=second
+            )
+        )
+    with pytest.raises(ValueError, match="must be positive"):
+        model.fit(
+            FitRequest(
+                "dpb_s",
+                recorded_measurements(fit_mode),
+                values,
+                band_1_degeneracy=first,
+                band_2_degeneracy=second,
+            )
+        )
+
+
+@pytest.mark.parametrize(
+    ("bounds", "start_extra", "message"),
+    [
+        ({"Fermi_energy": Bounds(0, 1)}, {}, "does not fit a parameter Fermi_energy"),
+        ({"band_mass": Bounds(5, 6)}, {}, "does not fit a parameter band_mass"),
+        ({}, {"nonsense": 1.0}, "has no parameters"),
+    ],
+)
+def test_names_a_fit_cannot_use_are_errors(
+    bounds: dict[str, Bounds], start_extra: dict[str, float], message: str
+) -> None:
+    model = registry.get("spb")
+    fit_mode = model.describe().fit_mode("spb_s")
+    with pytest.raises(ValueError, match=message):
+        model.fit(
+            FitRequest(
+                "spb_s",
+                recorded_measurements(fit_mode),
+                default_start(fit_mode) | start_extra,
+                bounds,
+            )
+        )
+
+
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize(("model_id", "fit_mode_id"), [("spb", "spb_s_rho"), ("dpb", "dpb_s_rho")])
+@pytest.mark.parametrize("scattering", ["acPh", "dis"])
+def test_curve_names_mean_what_they_say(model_id: str, fit_mode_id: str, scattering: str) -> None:
+    model = registry.get(model_id)
+    values = default_start(model.describe().fit_mode(fit_mode_id))
+    if model_id == "spb":
+        values |= {"band_mass": -1.0, "fermi_energy": -500.0}
+    else:
+        values |= {"band_gap": 2000.0, "fermi_energy": -500.0}
+
+    def curves(kind: CurveKind) -> dict[str, np.ndarray]:
+        return dict(
+            model.calculate(CurveRequest(fit_mode_id, values, 100, 300, 3, scattering, kind)).curves
+        )
+
+    measured = curves("measured")
+    conductivity = curves("electrical_conductivity")["electrical_conductivity_s_per_m"]
+    thermal = curves("thermal_conductivity")["thermal_conductivity_w_per_m_k"]
+    # Conductivity is the inverse of resistivity with these scattering types.
+    assert conductivity * measured["resistivity_ohm_m"] == pytest.approx(1.0)
+    # kappa / (sigma T) is a Lorenz number, here between its limits of about 1.5e-8 and 2.44e-8.
+    lorenz = thermal / (conductivity * np.array([100.0, 200.0, 300.0]))
+    assert np.all((lorenz > 1.4e-8) & (lorenz < 2.5e-8))
+    # A valence band with a Fermi energy inside it gives a positive Seebeck coefficient of µV/K.
+    assert np.all(np.abs(measured["seebeck_v_per_k"]) < 1e-3)
+    assert np.all(measured["seebeck_v_per_k"] > 0)
 
 
 def recorded_fit_calls() -> list[tuple[str, dict[str, Any]]]:
