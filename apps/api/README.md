@@ -38,13 +38,15 @@ The contract holds the real response as its example, so `pnpm mock` serves real 
 
 `POST /api/calc` returns curves for given parameters, in core units. It keeps no state, and runs in a pool of worker processes, so that the event loop stays free. Add `measurements` to get an RMSE for each quantity. Send only points in the fit range.
 
-- **Parameters:** all of a mode's parameters are needed, and values outside a control's range are allowed, because a fit can end there. Names are checked, and each problem is listed in `details`.
-- **A disabled mode** gets a 409 `fit_mode_disabled`, with its known issues in `details`.
-- **Values that are not finite** come back as `null`, as with a band mass of 0.
-- **`calculation_failed`** means that the numbers have no result, as with `m_eff` = 0, which divides by zero in the core. The desktop raises there too.
-- **RMSE** uses a grid of 50 points by default, for speed. Ask for `rmse_points: 200` to match the core's default.
+- **Parameters:** all of a mode's parameters are needed, and values outside a control's range are allowed, because a fit can end there. Names are checked, and problems are listed in `details`. Numbers must be JSON numbers: `true` or `"1.5"` are refused.
+- **A disabled mode** gets a 409 `fit_mode_disabled`, with the ids of its known issues as the `code` in `details`. Show `known_issue.<code>` through i18n.
+- **A value that is not finite** usually comes back as `null`, with the rest of the curve, as with a band mass of 0.
+- **`calculation_failed`** is a 422 that loses the whole curve, because the core raises. This happens at `m_eff` = 0, which divides by zero, and in DPB S + ρ + R_H where a value at low temperature is not finite: at 2 to 300 K, 55 of 100 random parameter sets inside the control ranges failed, and none at 10 to 300 K or 50 to 800 K. In DPB S + ρ, the same condition gives one `null` instead. A measured point at a low temperature can cause it through the RMSE grid too. A negative m1 fails too, as it gives complex values. The API logs the exception's type.
+- **RMSE** uses a grid of 50 points by default, for speed. Ask for `rmse_points: 200` for a value to report: on the demo dataset, 50 points changed an RMSE by about 0.3 % at default parameters, and up to about 4 % near a good fit.
+- **`calculation_unavailable`** is a 503: a worker died, and the next request gets a new pool.
+- **`calculation_timeout`** is a 504. A worker cannot be interrupted, so it stays busy until the calculation ends.
 
-A worker cannot be interrupted, so a request that times out gets a 504, while its worker stays busy until the calculation ends.
+Requests are parsed in the event loop, and there are no size limits until [A10](https://github.com/pdasya/seeband-web/issues/33). A body of 137 MB held up other requests for about a second, and the largest allowed grids, `points` and `rmse_points` of 1000, take about 1.3 s each.
 
 Median response time for a 50-point curve, through the app in one process with a test client, 20 calls each, on an Apple Silicon Mac with 10 cores and Python 3.13. The RMSE column uses the 31 points per quantity of the demo dataset. Network time is not included, and FS12 measures that.
 

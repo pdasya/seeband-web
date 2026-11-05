@@ -124,17 +124,17 @@ export interface components {
              * Band 1 Degeneracy
              * @default 1
              */
-            band_1_degeneracy: number;
+            band_1_degeneracy?: number;
             /**
              * Band 2 Degeneracy
              * @default 1
              */
-            band_2_degeneracy: number;
+            band_2_degeneracy?: number;
             /**
              * Extrapolated
              * @default false
              */
-            extrapolated: boolean;
+            extrapolated?: boolean;
             /** Measurements */
             measurements?: {
                 [key: string]: components["schemas"]["MeasurementInput"];
@@ -143,7 +143,7 @@ export interface components {
              * Rmse Points
              * @default 50
              */
-            rmse_points: number;
+            rmse_points?: number;
         };
         /**
          * CalcResponse
@@ -393,11 +393,11 @@ export interface components {
         };
         /**
          * RmseResponse
-         * @description `value` is null where the model has no finite value to compare.
+         * @description `value` is null where the result is not finite, as when the model has no finite value.
          */
         RmseResponse: {
             /** Value */
-            value?: number | null;
+            value: number | null;
             /** Unit */
             unit: string;
         };

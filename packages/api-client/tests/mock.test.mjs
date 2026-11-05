@@ -146,6 +146,11 @@ describe("the mock of the real contract", async () => {
     [404, "not_found"],
     [422, "validation_error"],
     [500, "internal_error"],
+    [422, "calculation_failed"],
+    [409, "fit_mode_disabled"],
+    [504, "calculation_timeout"],
+    [503, "calculation_unavailable"],
+    [422, "invalid_calculation"],
   ]) {
     test(`returns the ${code} example on request`, async () => {
       const response = await fetch(`${url}/api/health`, {

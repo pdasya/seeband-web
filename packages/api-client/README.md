@@ -46,6 +46,10 @@ The client calls `/api` on its own origin, and the dev server forwards `/api` to
 | One request fails   | `Prefer: code=500, example=internal_error`                 |
 | Invalid request     | `Prefer: code=422, example=validation_error`               |
 | Not found           | `Prefer: code=404, example=not_found`                      |
+| No curve            | `Prefer: code=422, example=calculation_failed`             |
+| Disabled mode       | `Prefer: code=409, example=fit_mode_disabled`              |
+| Too slow            | `Prefer: code=504, example=calculation_timeout`            |
+| Worker died         | `Prefer: code=503, example=calculation_unavailable`        |
 
 Give `example` with `code`, as otherwise Prism returns the first example whatever the status. An example name that does not exist gives `mock_error`. A request's own `Prefer` header replaces `MOCK_PREFER`. `MOCK_PORT` changes the port.
 

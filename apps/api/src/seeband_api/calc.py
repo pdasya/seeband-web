@@ -19,18 +19,21 @@ from seeband_core.model_interface import (
 from seeband_api.calc_pool import CalcPoolDep
 from seeband_api.calc_worker import CalcOutcome, CalculationFailed, calculate
 from seeband_api.errors import ApiError, ErrorDetail
+from seeband_api.request_logging import log_calculation_failure
 from seeband_api.routing import api_router
 
 router = api_router("calc")
 
 MAX_POINTS = 1000
-# Live RMSE needs speed. A grid of 200 is about 3.7 times slower, and changed an RMSE by about
-# 0.3 % at most on the demo dataset with default parameters.
+# Live RMSE needs speed. A grid of 200 is about 3.6 times slower. On the demo dataset, 50 points
+# changed an RMSE by about 0.3 % at default parameters, and up to about 4 % near a good fit, where
+# the RMSE is small. Ask for 200 for a value to report.
 DEFAULT_RMSE_POINTS = 50
 
-FiniteFloat = Annotated[float, Field(allow_inf_nan=False)]
-PositiveFloat = Annotated[float, Field(gt=0, allow_inf_nan=False)]
-GridPoints = Annotated[int, Field(ge=2, le=MAX_POINTS)]
+# Strict, so that `true` or "1.5" are refused here as the contract and the mock refuse them.
+FiniteFloat = Annotated[float, Field(allow_inf_nan=False, strict=True)]
+PositiveFloat = Annotated[float, Field(gt=0, allow_inf_nan=False, strict=True)]
+GridPoints = Annotated[int, Field(ge=2, le=MAX_POINTS, strict=True)]
 
 
 class MeasurementInput(BaseModel):
@@ -96,7 +99,7 @@ class CalcRequest(BaseModel):
     points: GridPoints | None = None
     band_1_degeneracy: PositiveFloat = 1.0
     band_2_degeneracy: PositiveFloat = 1.0
-    extrapolated: bool = False
+    extrapolated: Annotated[bool, Field(strict=True)] = False
     measurements: dict[Quantity, MeasurementInput] = Field(default_factory=dict)
     rmse_points: GridPoints = DEFAULT_RMSE_POINTS
 
@@ -108,9 +111,9 @@ class CalcRequest(BaseModel):
 
 
 class RmseResponse(BaseModel):
-    """`value` is null where the model has no finite value to compare."""
+    """`value` is null where the result is not finite, as when the model has no finite value."""
 
-    value: float | None = None
+    value: float | None
     unit: str
 
 
@@ -175,7 +178,7 @@ def _find_mode(body: CalcRequest) -> tuple[ModelDescription, FitMode]:
             "fit_mode_disabled",
             "This fit mode is disabled until its known issue is fixed",
             [
-                _invalid(issue.id, issue.message_key, ["fit_mode"])
+                _invalid(issue.id, "A known issue disables this mode", ["fit_mode"])
                 for issue in fit_mode.known_issues
                 if issue.severity == "disabled"
             ],
@@ -190,6 +193,19 @@ def _check_scattering(body: CalcRequest, fit_mode: FitMode) -> list[ErrorDetail]
     elif body.scattering not in fit_mode.scattering:
         return [_invalid("unknown_scattering", "This mode has no such type", ["scattering"])]
     return []
+
+
+def _check_degeneracy(body: CalcRequest, fit_mode: FitMode) -> list[ErrorDetail]:
+    if fit_mode.degeneracy is not None:
+        return []
+    return [
+        _invalid("degeneracy_not_in_mode", "This mode has no band degeneracy", [field])
+        for field, value in (
+            ("band_1_degeneracy", body.band_1_degeneracy),
+            ("band_2_degeneracy", body.band_2_degeneracy),
+        )
+        if value != 1
+    ]
 
 
 def _check_parameters(body: CalcRequest, fit_mode: FitMode) -> list[ErrorDetail]:
@@ -259,6 +275,7 @@ async def post_calc(body: CalcRequest, pool: CalcPoolDep) -> CalcResponse:
     description, fit_mode = _find_mode(body)
     details = [
         *_check_scattering(body, fit_mode),
+        *_check_degeneracy(body, fit_mode),
         *_check_parameters(body, fit_mode),
         *_check_measurements(body, fit_mode),
     ]
@@ -280,11 +297,12 @@ async def post_calc(body: CalcRequest, pool: CalcPoolDep) -> CalcResponse:
         outcome = await pool.run(
             calculate, description.id, request, _measurements(body), body.rmse_points
         )
-    except CalculationFailed:
+    except CalculationFailed as error:
+        log_calculation_failure(str(error))
         raise ApiError(
             HTTPStatus.UNPROCESSABLE_CONTENT,
             "calculation_failed",
-            "These parameters have no result",
+            "The calculation has no result for these parameters and temperatures",
         ) from None
     # A long list takes a moment to convert, so this leaves the event loop free too.
     return await run_in_threadpool(_to_response, outcome)

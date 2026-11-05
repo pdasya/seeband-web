@@ -5,7 +5,10 @@ import openapiTS, { astToString } from "openapi-typescript";
 const contract = new URL("../openapi.json", import.meta.url);
 const output = new URL("../src/schema.d.ts", import.meta.url);
 
-const generated = astToString(await openapiTS(contract));
+const generated = astToString(
+  // Otherwise a field with a default counts as required, also in requests.
+  await openapiTS(contract, { defaultNonNullable: false }),
+);
 
 if (process.argv.includes("--check")) {
   const current = await readFile(output, "utf8").catch(() => "");

@@ -7,13 +7,17 @@ import warnings
 from collections.abc import Mapping
 from dataclasses import dataclass
 
+import numpy as np
 from seeband_core.fit_quality import Rmse, curve_rmse
 from seeband_core.model_catalog import registry
 from seeband_core.model_interface import CurveRequest, CurveResult, Measurement, Quantity
 
 
 class CalculationFailed(Exception):
-    """These parameters have no result, such as m_eff = 0, which divides by zero in the core."""
+    """The core has no result, as at m_eff = 0, or for many DPB S + rho + R_H curves at low T.
+
+    It carries only the type of the core's exception, as the core's text can quote values.
+    """
 
 
 @dataclass(frozen=True, eq=False)
@@ -24,15 +28,16 @@ class CalcOutcome:
 
 def _exit_when_parent_exits() -> None:
     parent = multiprocessing.parent_process()
-    if parent is not None:
-        parent.join()
+    assert parent is not None
+    parent.join()
     os._exit(0)
 
 
 def initialise_worker() -> None:
     # A server stopped by a signal does not get to shut its pool down, so a worker would wait for
     # work for ever. This also covers a server that was killed.
-    threading.Thread(target=_exit_when_parent_exits, daemon=True).start()
+    if multiprocessing.parent_process() is not None:
+        threading.Thread(target=_exit_when_parent_exits, daemon=True).start()
     # The core warns on overflow for ordinary parameters, which would flood the log on every slider
     # move. A result that is not finite reaches the client as null.
     warnings.simplefilter("ignore")
@@ -50,12 +55,14 @@ def calculate(
 ) -> CalcOutcome:
     """Returns the curves, and the RMSE against any measurements. The route validates the request.
 
-    So a `ValueError` here comes from the numbers. `CalculationFailed` carries no text, as the
-    core's text can quote values.
+    So a `ValueError` here comes from the numbers.
     """
     model = registry.get(model_id)
     try:
         curve = model.calculate(request)
+        # A negative m1 gives complex values, whose real part would look like a plausible result.
+        if any(np.iscomplexobj(values) for values in curve.curves.values()):
+            raise ValueError("The curve has complex values")
         rmse = (
             curve_rmse(
                 model,
@@ -71,5 +78,5 @@ def calculate(
             else {}
         )
     except (ArithmeticError, ValueError) as error:
-        raise CalculationFailed from error
+        raise CalculationFailed(type(error).__name__) from error
     return CalcOutcome(curve, rmse)

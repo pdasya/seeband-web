@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import math
 from collections.abc import Iterator
 from pathlib import Path
@@ -14,6 +15,7 @@ from seeband_api.calc_pool import CalcPool
 from seeband_api.calc_worker import CalcOutcome
 from seeband_api.errors import ApiError
 from seeband_api.main import create_app
+from seeband_api.settings import Settings
 from seeband_core.fit_quality import curve_rmse
 from seeband_core.model_catalog import registry
 from seeband_core.model_interface import CurveRequest, CurveResult, Measurement
@@ -164,37 +166,100 @@ def test_infinite_curve_value_comes_back_as_null() -> None:
 
 
 @pytest.mark.parametrize(
-    "template",
+    "field",
     [
-        '{{"min_temperature_k":{token}}}',
-        '{{"max_temperature_k":{token}}}',
-        '{{"band_1_degeneracy":{token}}}',
-        '{{"measurements":{{"seebeck":{{"temperature_k":[{token}],"values":[1.0]}}}}}}',
+        '"min_temperature_k":1e400',
+        '"max_temperature_k":1e400',
+        '"band_1_degeneracy":1e400',
+        '"measurements":{"seebeck":{"temperature_k":[1e400],"values":[1.0]}}',
     ],
 )
-def test_infinite_positive_numbers_are_refused(client: TestClient, template: str) -> None:
-    fields = json.loads(template.format(token="1e400"))
+def test_number_too_large_to_hold_is_refused(client: TestClient, field: str) -> None:
+    fixed = _body()
+    content = json.dumps(fixed)[:-1] + "," + field + "}"
 
     response = client.post(
-        "/api/calc",
-        content=json.dumps(_body() | fields),
-        headers={"content-type": "application/json"},
+        "/api/calc", content=content, headers={"content-type": "application/json"}
     )
 
     assert response.status_code == 422
     assert response.json()["code"] == "validation_error"
 
 
-def test_rmse_passes_the_degeneracies(client: TestClient) -> None:
-    measurements = {"seebeck": {"temperature_k": [150.0, 450.0], "values": [1.0e-4, 1.5e-4]}}
-    plain = client.post("/api/calc", json=_body(measurements=measurements)).json()
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"parameters": DPB_S_RHO_PARAMETERS | {"m_eff": True}},
+        {"parameters": DPB_S_RHO_PARAMETERS | {"m_eff": "1.5"}},
+        {"min_temperature_k": "150"},
+        {"points": "5"},
+        {"points": 5.5},
+        {"extrapolated": "yes"},
+        {"band_2_degeneracy": True},
+    ],
+)
+def test_values_of_the_wrong_type_are_refused(client: TestClient, changes: dict[str, Any]) -> None:
+    response = client.post("/api/calc", json=_body(**changes))
 
-    other = client.post(
-        "/api/calc", json=_body(measurements=measurements, band_2_degeneracy=3.0)
-    ).json()
+    assert response.status_code == 422
+    assert response.json()["code"] == "validation_error"
 
-    assert other["rmse"]["seebeck"]["value"] != plain["rmse"]["seebeck"]["value"]
-    assert other["curves"]["seebeck_v_per_k"] != plain["curves"]["seebeck_v_per_k"]
+
+def test_whole_numbers_are_accepted_for_floats(client: TestClient) -> None:
+    response = client.post(
+        "/api/calc",
+        json=_body(min_temperature_k=100, parameters=DPB_S_RHO_PARAMETERS | {"A": 40000}),
+    )
+
+    assert response.status_code == 200
+
+
+def test_settings_reach_the_pool() -> None:
+    with TestClient(create_app(Settings(calc_workers=3, calc_timeout_s=7.0))) as test_client:
+        pool = test_client.app.state.calc_pool
+        assert pool._workers == 3
+        assert pool._timeout_s == 7.0
+    with pytest.raises(RuntimeError):
+        pool._executor.submit(int)
+
+
+@pytest.mark.parametrize(
+    ("scattering", "band_1", "band_2"),
+    [
+        ("dis", 1.0, 1.0),
+        ("acPhDis", 1.0, 1.0),
+        ("acPh", 2.0, 1.0),
+        ("acPh", 1.0, 3.0),
+        ("dis", 2.0, 5.0),
+    ],
+)
+def test_rmse_uses_the_scattering_and_degeneracies_asked_for(
+    client: TestClient, scattering: str, band_1: float, band_2: float
+) -> None:
+    temperature_k = [150.0, 450.0]
+    values = [1.0e-5, 3.0e-5]
+    expected = curve_rmse(
+        registry.get("dpb"),
+        "dpb_s_rho",
+        DPB_S_RHO_PARAMETERS,
+        {"resistivity": Measurement(np.array(temperature_k), np.array(values))},
+        scattering,
+        band_1,
+        band_2,
+        points=50,
+    )
+
+    response = client.post(
+        "/api/calc",
+        json=_body(
+            scattering=scattering,
+            band_1_degeneracy=band_1,
+            band_2_degeneracy=band_2,
+            measurements={"resistivity": {"temperature_k": temperature_k, "values": values}},
+        ),
+    )
+
+    assert response.json()["rmse"]["resistivity"]["value"] == expected["resistivity"].value
 
 
 def test_degeneracies_reach_the_core(client: TestClient) -> None:
@@ -244,7 +309,6 @@ def test_values_that_are_not_finite_come_back_as_null(client: TestClient) -> Non
     )
 
     assert response.status_code == 200
-    json.dumps(response.json(), allow_nan=False)
     assert response.json()["curves"]["seebeck_v_per_k"] == [None] * 5
     assert response.json()["rmse"]["seebeck"] == {"value": None, "unit": "uV/K"}
 
@@ -257,6 +321,76 @@ def test_parameters_with_no_result_answer_a_clear_error(client: TestClient) -> N
     assert response.status_code == 422
     assert response.json()["code"] == "calculation_failed"
     assert response.json()["details"] == []
+
+
+def test_hall_curve_with_a_value_that_is_not_finite_fails_and_is_logged(client: TestClient) -> None:
+    fit_mode = registry.get("dpb").describe().fit_mode("dpb_s_rho_rh")
+    logger = logging.getLogger("seeband_api")
+    records: list[logging.LogRecord] = []
+
+    class Recorder(logging.Handler):
+        def emit(self, record: logging.LogRecord) -> None:
+            records.append(record)
+
+    recorder = Recorder()
+    logger.addHandler(recorder)
+    try:
+        response = client.post(
+            "/api/calc",
+            json=_body(
+                fit_mode="dpb_s_rho_rh",
+                parameters=default_start(fit_mode) | {"fermi_energy": 3000.0},
+                min_temperature_k=2.0,
+                max_temperature_k=300.0,
+                points=50,
+            ),
+        )
+    finally:
+        logger.removeHandler(recorder)
+
+    assert response.status_code == 422
+    assert response.json()["code"] == "calculation_failed"
+    failures = [r for r in records if r.getMessage() == "calculation_failed"]
+    assert [r.__dict__["fields"] for r in failures] == [{"exception_type": "ValueError"}]
+
+
+def test_complex_curve_is_refused_rather_than_cut_to_its_real_part(client: TestClient) -> None:
+    fit_mode = registry.get("dpb").describe().fit_mode("dpb_s_rho_rh")
+
+    response = client.post(
+        "/api/calc",
+        json=_body(fit_mode="dpb_s_rho_rh", parameters=default_start(fit_mode) | {"m1": -1.0}),
+    )
+
+    assert response.status_code == 422
+    assert response.json()["code"] == "calculation_failed"
+
+
+def test_same_condition_leaves_a_null_in_the_mode_without_hall_data(client: TestClient) -> None:
+    response = client.post(
+        "/api/calc",
+        json=_body(
+            parameters=DPB_S_RHO_PARAMETERS | {"fermi_energy": 3000.0},
+            min_temperature_k=2.0,
+            max_temperature_k=300.0,
+            points=50,
+        ),
+    )
+
+    assert response.status_code == 200
+    assert None in response.json()["curves"]["seebeck_v_per_k"]
+
+
+def test_lone_surrogate_in_a_name_answers_in_the_error_format(client: TestClient) -> None:
+    content = json.dumps(_body()).replace('"m_eff"', '"\\ud800"')
+
+    response = client.post(
+        "/api/calc", content=content, headers={"content-type": "application/json"}
+    )
+
+    assert response.status_code == 422
+    assert response.json()["code"] == "invalid_calculation"
+    assert ["body", "parameters", "\ud800"] in [d["location"] for d in response.json()["details"]]
 
 
 def test_values_outside_a_control_are_allowed(client: TestClient) -> None:
@@ -281,7 +415,7 @@ def test_disabled_mode_is_refused_with_its_reason(client: TestClient) -> None:
         {
             "location": ["body", "fit_mode"],
             "code": "spb_hall_mode_disabled",
-            "message": "known_issue.spb_hall_mode_disabled",
+            "message": "A known issue disables this mode",
         }
     ]
 
@@ -329,6 +463,39 @@ def test_invalid_calculations_name_the_problem(
     assert response.status_code == 422
     assert response.json()["code"] == "invalid_calculation"
     assert _details(response) == expected
+
+
+def test_zero_hall_value_is_refused(client: TestClient) -> None:
+    fit_mode = registry.get("dpb").describe().fit_mode("dpb_s_rho_rh")
+    measurements = {"hall": {"temperature_k": [150.0], "values": [0.0]}}
+
+    response = client.post(
+        "/api/calc",
+        json=_body(
+            fit_mode="dpb_s_rho_rh", parameters=default_start(fit_mode), measurements=measurements
+        ),
+    )
+
+    location = ["body", "measurements", "hall", "values", 0]
+    assert _details(response) == [(location, "zero_measured_value")]
+
+
+def test_degeneracy_is_refused_on_a_mode_without_one(client: TestClient) -> None:
+    fit_mode = registry.get("spb").describe().fit_mode("spb_s")
+
+    response = client.post(
+        "/api/calc",
+        json=_body(
+            model="spb",
+            fit_mode="spb_s",
+            scattering=None,
+            parameters=default_start(fit_mode),
+            band_1_degeneracy=5.0,
+        ),
+    )
+
+    assert response.status_code == 422
+    assert _details(response) == [(["body", "band_1_degeneracy"], "degeneracy_not_in_mode")]
 
 
 def test_zero_seebeck_value_is_allowed(client: TestClient) -> None:
@@ -433,8 +600,11 @@ def _run_in_pool(pool: CalcPool, function: Any, *args: Any) -> Any:
 
 
 def test_slow_calculation_answers_504() -> None:
-    pool = CalcPool(1, 0.2)
+    pool = CalcPool(1, 2.0)
     try:
+        # The worker has started by now, so the time limit is spent on the calculation.
+        assert _run_in_pool(pool, pool_functions.double, 21) == 42
+        pool._timeout_s = 0.2
         with pytest.raises(ApiError) as raised:
             _run_in_pool(pool, pool_functions.sleep_for_a_while)
         # A stuck worker cannot be interrupted, so this reaches inside the pool to end the test.

@@ -68,6 +68,11 @@ def configure_logging(level: str) -> None:
     logging.getLogger("uvicorn.access").addFilter(_drop_record)
 
 
+def log_calculation_failure(exception_type: str) -> None:
+    """Records a failure the client sees as a 422, as it could also be a bug in the core."""
+    _logger.warning("calculation_failed", extra={"fields": {"exception_type": exception_type}})
+
+
 def _log_unhandled_exception(error: Exception) -> None:
     frames = [
         f"{Path(frame.filename).name}:{frame.lineno}:{frame.name}"
