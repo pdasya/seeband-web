@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 from seeband_core.model_descriptions import load_desktop_descriptions
 from seeband_core.model_interface import (
+    ALL_CURVE_KINDS,
     Bounds,
     CurveRequest,
     CurveResult,
@@ -19,6 +20,7 @@ from seeband_core.model_interface import (
     Model,
     ModelDescription,
     ParameterSpec,
+    UnavailableCurve,
     ValueRange,
 )
 from seeband_core.model_registry import ModelRegistry
@@ -451,3 +453,73 @@ def test_core_range_uses_the_division_of_the_desktop() -> None:
     )
 
     assert core_range(spec) == ValueRange(57 / 100, 70 / 100, 7 / 100, 57 / 100)
+
+
+SPB_UNAVAILABLE = {
+    "seebeck": "same_as_measured",
+    "seebeck_by_band": "single_band",
+    "electrical_conductivity_by_band": "single_band",
+    "carrier_concentration_by_band": "not_on_desktop",
+}
+# By the buttons of AddGraphsWin* in seeband.py, from which curve_kinds follow.
+EXPECTED_UNAVAILABLE: dict[str, dict[str, str]] = {
+    "spb_s": {
+        **SPB_UNAVAILABLE,
+        "electrical_conductivity": "needs_resistivity",
+        "thermal_conductivity": "needs_resistivity",
+    },
+    "spb_s_rho": SPB_UNAVAILABLE,
+    "spb_s_rho_rh": SPB_UNAVAILABLE,
+    "dpb_s": {
+        "seebeck": "same_as_measured",
+        "electrical_conductivity": "needs_resistivity",
+        "electrical_conductivity_by_band": "needs_resistivity",
+        "thermal_conductivity": "needs_resistivity",
+    },
+    "dpb_s_rho": {},
+    "dpb_s_rho_rh": {},
+}
+
+
+@pytest.mark.parametrize("name", EXPECTED_UNAVAILABLE)
+def test_every_kind_of_curve_is_offered_or_has_a_reason(name: str) -> None:
+    mode = fit_mode_named(name)
+
+    reasons = {kind: mode.unavailable_reason(kind) for kind in ALL_CURVE_KINDS}
+
+    assert {kind: reason for kind, reason in reasons.items() if reason} == EXPECTED_UNAVAILABLE[
+        name
+    ]
+    assert set(mode.curve_kinds) == {kind for kind, reason in reasons.items() if reason is None}
+
+
+def test_only_carrier_concentration_without_hall_data_is_relative() -> None:
+    relative = {name: fit_mode_named(name).relative_curve_kinds for name in EXPECTED_UNAVAILABLE}
+
+    assert relative == {
+        "spb_s": (),
+        "spb_s_rho": (),
+        "spb_s_rho_rh": (),
+        "dpb_s": ("carrier_concentration_by_band",),
+        "dpb_s_rho": ("carrier_concentration_by_band",),
+        "dpb_s_rho_rh": (),
+    }
+
+
+def test_a_new_model_need_not_list_its_missing_curves() -> None:
+    assert LINEAR_MODE.unavailable_reason("chemical_potential") == "not_provided"
+    assert LINEAR_MODE.unavailable_reason("measured") is None
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"unavailable_curves": (UnavailableCurve("measured", "because"),)},
+        {"relative_curve_kinds": ("chemical_potential",)},
+    ],
+)
+def test_contradictory_curve_descriptions_are_refused(changes: dict[str, Any]) -> None:
+    model = Described(description(dataclasses.replace(LINEAR_MODE, **changes)))
+
+    with pytest.raises(ValueError, match="Fit mode"):
+        ModelRegistry().register(model)

@@ -58,6 +58,20 @@ Median response time for a 50-point curve, through the app in one process with a
 | `dpb_s_rho`                   | 27 ms  | 52 ms           |
 | `dpb_s_rho_rh`                | 40 ms  | 79 ms           |
 
+## Derived curves
+
+`kind` in `POST /api/calc` chooses the curves: `measured` by default, or μ, σ, κ, the contributions of each band, or n. Each mode lists what it offers in `curves` in `GET /api/models`, and asking for another answers 422 `curve_unavailable`, with its reason as the `code` in `details`.
+
+| Reason              | Meaning                                                      |
+| ------------------- | ------------------------------------------------------------ |
+| `same_as_measured`  | the total S here is the `measured` curve                     |
+| `single_band`       | SPB has one band, so there are no contributions              |
+| `needs_resistivity` | the mode has no scattering parameters to calculate this from |
+| `not_on_desktop`    | the desktop has no such graph, so there is nothing to port   |
+| `not_provided`      | a new model did not say                                      |
+
+[`curve-availability.md`](../../packages/seeband_core/docs/curve-availability.md) holds the full matrix and how it differs from the desktop.
+
 ## Errors
 
 Routes and the app answer errors with this body:

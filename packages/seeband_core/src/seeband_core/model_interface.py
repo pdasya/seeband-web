@@ -6,7 +6,7 @@ Values in requests and results are in core units: the values the calculations ta
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
-from typing import Literal, Protocol, runtime_checkable
+from typing import Literal, Protocol, get_args, runtime_checkable
 
 import numpy as np
 
@@ -31,6 +31,9 @@ IssueCondition = Literal[
     "fermi_energy_outside_band",
     "interpolation_extrapolated",
 ]
+
+ALL_CURVE_KINDS: tuple[CurveKind, ...] = get_args(CurveKind)
+NOT_PROVIDED = "not_provided"
 
 QUANTITY_UNITS: Mapping[Quantity, str] = {
     "seebeck": "V/K",
@@ -112,11 +115,23 @@ class KnownIssue:
 
 
 @dataclass(frozen=True)
+class UnavailableCurve:
+    """A kind of curve a mode does not offer, and a code that says why."""
+
+    kind: CurveKind
+    reason: str
+
+
+@dataclass(frozen=True)
 class FitMode:
     """One way of fitting a model: which data it needs, its parameters, and the curves it offers.
 
     `scattering` is empty when the mode has no choice of scattering. `iterative` tells a client
     whether an iteration count means anything for this mode.
+
+    `unavailable_curves` says why a kind is missing from `curve_kinds`, and a kind in neither has
+    the reason `not_provided`. `relative_curve_kinds` names curves whose size rests on an assumed
+    value rather than on data, such as carrier concentrations with no Hall data to set m1.
     """
 
     id: str
@@ -130,6 +145,17 @@ class FitMode:
     degeneracy: Degeneracy | None = None
     curve_kinds: tuple[CurveKind, ...] = ("measured",)
     known_issues: tuple[KnownIssue, ...] = ()
+    unavailable_curves: tuple[UnavailableCurve, ...] = ()
+    relative_curve_kinds: tuple[CurveKind, ...] = ()
+
+    def unavailable_reason(self, kind: CurveKind) -> str | None:
+        """Return why this mode does not offer a kind of curve, or None if it does."""
+        if kind in self.curve_kinds:
+            return None
+        for unavailable in self.unavailable_curves:
+            if unavailable.kind == kind:
+                return unavailable.reason
+        return NOT_PROVIDED
 
     @property
     def disabled(self) -> bool:

@@ -69,6 +69,9 @@ export interface components {
          *     scattering types. Values outside a control's range are allowed, as a fit can end there. `points`
          *     defaults to the model's. `measurements` gives an RMSE for each quantity, and should hold only
          *     points in the fit range. `extrapolated` says that interpolation made up some of these points.
+         *
+         *     `kind` chooses the curves, and `GET /api/models` lists which a mode offers. The RMSE always
+         *     compares S, rho and R_H with the data, whatever the kind.
          * @example {
          *       "fit_mode": "dpb_s_rho",
          *       "max_temperature_k": 500,
@@ -118,6 +121,12 @@ export interface components {
             min_temperature_k: number;
             /** Max Temperature K */
             max_temperature_k: number;
+            /**
+             * Kind
+             * @default measured
+             * @enum {string}
+             */
+            kind: "measured" | "seebeck" | "seebeck_by_band" | "chemical_potential" | "electrical_conductivity" | "electrical_conductivity_by_band" | "thermal_conductivity" | "carrier_concentration_by_band";
             /** Points */
             points?: number | null;
             /**
@@ -198,6 +207,27 @@ export interface components {
                 [key: string]: components["schemas"]["RmseResponse"];
             };
         };
+        /**
+         * CurveAvailabilityResponse
+         * @description Whether a mode offers a kind of curve for `POST /api/calc`.
+         *
+         *     `reason` is a code for one it does not offer, and a client shows `curve_unavailable.<reason>`
+         *     through i18n. `relative` means that the size of the curve rests on an assumed value, not on
+         *     data: carrier concentrations with no Hall data use m1 = 1.
+         */
+        CurveAvailabilityResponse: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "measured" | "seebeck" | "seebeck_by_band" | "chemical_potential" | "electrical_conductivity" | "electrical_conductivity_by_band" | "thermal_conductivity" | "carrier_concentration_by_band";
+            /** Available */
+            available: boolean;
+            /** Reason */
+            reason?: string | null;
+            /** Relative */
+            relative: boolean;
+        };
         /** DegeneracyResponse */
         DegeneracyResponse: {
             /** Band 1 Default */
@@ -258,6 +288,8 @@ export interface components {
             degeneracy?: components["schemas"]["DegeneracyResponse"] | null;
             /** Curve Kinds */
             curve_kinds: ("measured" | "seebeck" | "seebeck_by_band" | "chemical_potential" | "electrical_conductivity" | "electrical_conductivity_by_band" | "thermal_conductivity" | "carrier_concentration_by_band")[];
+            /** Curves */
+            curves: components["schemas"]["CurveAvailabilityResponse"][];
             /** Disabled */
             disabled: boolean;
             /** Disabled By */
@@ -466,7 +498,7 @@ export interface operations {
                 headers: {
                     /** @example no-cache */
                     "Cache-Control"?: string;
-                    /** @example "c306ebcca5c90ab57d6960126e9e1012" */
+                    /** @example "6aa935eebca0b1428b5535199dee78c0" */
                     ETag?: string;
                     [name: string]: unknown;
                 };
