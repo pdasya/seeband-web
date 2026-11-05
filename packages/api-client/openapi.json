@@ -2573,6 +2573,186 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ParseResponse"
+                },
+                "examples": {
+                  "clean": {
+                    "value": {
+                      "headers": [
+                        "T (K)",
+                        "S (V/K)"
+                      ],
+                      "column_count": 2,
+                      "row_count": 3,
+                      "preview": [
+                        [
+                          300.0,
+                          0.0001
+                        ],
+                        [
+                          100.0,
+                          2e-05
+                        ],
+                        [
+                          200.0,
+                          6e-05
+                        ]
+                      ],
+                      "mapping": [
+                        {
+                          "column": 0,
+                          "role": "temperature"
+                        },
+                        {
+                          "column": 1,
+                          "role": "seebeck"
+                        }
+                      ],
+                      "measurements": {
+                        "seebeck": {
+                          "temperature_k": [
+                            100.0,
+                            200.0,
+                            300.0
+                          ],
+                          "values": [
+                            2e-05,
+                            6e-05,
+                            0.0001
+                          ],
+                          "points": 3,
+                          "min_temperature_k": 100.0,
+                          "max_temperature_k": 300.0
+                        }
+                      },
+                      "errors": [],
+                      "warnings": [
+                        {
+                          "code": "few_rows"
+                        },
+                        {
+                          "code": "unsorted_temperature",
+                          "column": 0
+                        }
+                      ],
+                      "warnings_omitted": 0,
+                      "interpolated": {},
+                      "interpolation_failed": []
+                    }
+                  },
+                  "with_errors": {
+                    "value": {
+                      "headers": [
+                        "T",
+                        "S"
+                      ],
+                      "column_count": 2,
+                      "row_count": 1,
+                      "preview": [
+                        [
+                          100.0,
+                          1e-06
+                        ]
+                      ],
+                      "mapping": [
+                        {
+                          "column": 0,
+                          "role": "temperature"
+                        },
+                        {
+                          "column": 1,
+                          "role": "seebeck"
+                        }
+                      ],
+                      "measurements": {},
+                      "errors": [
+                        {
+                          "code": "not_numeric",
+                          "line": 3,
+                          "column": 1
+                        }
+                      ],
+                      "warnings": [],
+                      "warnings_omitted": 0,
+                      "interpolated": {},
+                      "interpolation_failed": []
+                    }
+                  },
+                  "interpolated": {
+                    "value": {
+                      "headers": [
+                        "T",
+                        "S"
+                      ],
+                      "column_count": 2,
+                      "row_count": 3,
+                      "preview": [
+                        [
+                          100.0,
+                          1e-06
+                        ],
+                        [
+                          130.0,
+                          2e-06
+                        ],
+                        [
+                          160.0,
+                          3e-06
+                        ]
+                      ],
+                      "mapping": [
+                        {
+                          "column": 0,
+                          "role": "temperature"
+                        },
+                        {
+                          "column": 1,
+                          "role": "seebeck"
+                        }
+                      ],
+                      "measurements": {
+                        "seebeck": {
+                          "temperature_k": [
+                            100.0,
+                            130.0,
+                            160.0
+                          ],
+                          "values": [
+                            1e-06,
+                            2e-06,
+                            3e-06
+                          ],
+                          "points": 3,
+                          "min_temperature_k": 100.0,
+                          "max_temperature_k": 160.0
+                        }
+                      },
+                      "errors": [],
+                      "warnings": [
+                        {
+                          "code": "few_rows"
+                        }
+                      ],
+                      "warnings_omitted": 0,
+                      "interpolated": {
+                        "seebeck": {
+                          "temperature_k": [
+                            100.0,
+                            130.0,
+                            160.0
+                          ],
+                          "values": [
+                            1e-06,
+                            2e-06,
+                            3e-06
+                          ],
+                          "extrapolated": false,
+                          "measured_points_in_range": 3,
+                          "underdetermined": true
+                        }
+                      },
+                      "interpolation_failed": []
+                    }
+                  }
                 }
               }
             }
@@ -3341,6 +3521,32 @@
         "properties": {
           "code": {
             "type": "string",
+            "enum": [
+              "no_data",
+              "wrong_encoding",
+              "line_too_long",
+              "too_many_problems",
+              "too_few_columns",
+              "wrong_column_count",
+              "missing_value",
+              "not_numeric",
+              "not_finite",
+              "decimal_comma",
+              "too_few_rows",
+              "missing_temperature",
+              "non_positive_temperature",
+              "repeated_role",
+              "preamble_skipped",
+              "header_mismatch",
+              "unit_differs",
+              "repeated_header",
+              "columns_need_assigning",
+              "expected_not_found",
+              "no_quantity",
+              "few_rows",
+              "unsorted_temperature",
+              "duplicate_temperature"
+            ],
             "title": "Code"
           },
           "line": {
@@ -3721,13 +3927,7 @@
           "text"
         ],
         "title": "ParseRequest",
-        "description": "A text to read, as the client read it from a file or table.\n\n`expected` names the quantity of a file meant to hold one. `mapping` replaces the suggested\ncolumns with a user's choice, and the text is sent again each time, as the API keeps nothing.\n`interpolate` asks for each quantity on a grid over this fit range.",
-        "examples": [
-          {
-            "expected": "seebeck",
-            "text": "T (K)\tS (V/K)\n300\t1.0e-4\n100\t2.0e-5\n200\t6.0e-5\n"
-          }
-        ]
+        "description": "A text to read, as the client read it from a file or table.\n\n`expected` names the quantity of a file meant to hold one. `mapping` replaces the suggested\ncolumns with a user's choice, and the text is sent again each time, as the API keeps nothing.\n`interpolate` asks for each quantity on a grid over this fit range."
       },
       "ParseResponse": {
         "properties": {
@@ -3843,71 +4043,7 @@
           "interpolation_failed"
         ],
         "title": "ParseResponse",
-        "description": "What the text holds. A file with problems is still a 200, with a preview and its `errors`.\n\n`measurements` is empty with any `errors`. `headers` is left out when no header matches the\ncolumns. `preview` holds the first rows that could be read, in the order of the text, and\n`row_count` all of them. `mapping` is the suggestion or the user's choice. `warnings` holds at\nmost 100, and `warnings_omitted` counts the rest. `interpolation_failed` names quantities that\ncould not be interpolated.",
-        "examples": [
-          {
-            "column_count": 2,
-            "errors": [],
-            "headers": [
-              "T (K)",
-              "S (V/K)"
-            ],
-            "interpolated": {},
-            "interpolation_failed": [],
-            "mapping": [
-              {
-                "column": 0,
-                "role": "temperature"
-              },
-              {
-                "column": 1,
-                "role": "seebeck"
-              }
-            ],
-            "measurements": {
-              "seebeck": {
-                "max_temperature_k": 300.0,
-                "min_temperature_k": 100.0,
-                "points": 3,
-                "temperature_k": [
-                  100.0,
-                  200.0,
-                  300.0
-                ],
-                "values": [
-                  2e-05,
-                  6e-05,
-                  0.0001
-                ]
-              }
-            },
-            "preview": [
-              [
-                300.0,
-                0.0001
-              ],
-              [
-                100.0,
-                2e-05
-              ],
-              [
-                200.0,
-                6e-05
-              ]
-            ],
-            "row_count": 3,
-            "warnings": [
-              {
-                "code": "few_rows"
-              },
-              {
-                "code": "unsorted_temperature",
-                "column": 0
-              }
-            ],
-            "warnings_omitted": 0
-          }
-        ]
+        "description": "What the text holds. A file with problems is still a 200, with a preview and its `errors`.\n\n`measurements` is empty with any `errors`. `headers` is left out when no header matches the\ncolumns. `column_count` is 0 when neither a row nor a header sets it. `preview` holds the first\nrows that could be read, in the order of the text, and `row_count` all of them. `mapping` is the\nsuggestion or the user's choice, and with no readable rows, always the suggestion. `warnings`\nholds every kind, with at most 100 `preamble_skipped`, and `warnings_omitted` counts the rest.\n`interpolation_failed` names quantities that could not be interpolated."
       },
       "RmseResponse": {
         "properties": {

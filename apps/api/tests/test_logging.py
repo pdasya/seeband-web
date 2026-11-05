@@ -364,22 +364,31 @@ def test_calculation_through_real_workers_logs_no_values(tmp_path: Path) -> None
     assert sum(line.get("route") == "/api/calc" for line in _json_lines(log)) == 1
 
 
-def test_parsing_through_real_workers_keeps_nothing(tmp_path: Path) -> None:
-    """Neither the log nor any file holds the text, including temporary files."""
+def test_parsing_through_real_workers_keeps_nothing(tmp_path: Path, support_dir: Path) -> None:
+    """Nothing opens a file for writing during a request, and no log holds the text.
+
+    The text is over 1 MB, where a multipart parser would have moved to a temporary file.
+    """
     port = _free_port()
     log_path = tmp_path / "server.log"
-    temp_dir = tmp_path / "temp"
-    temp_dir.mkdir()
+    audit_path = tmp_path / "audit.log"
     secret = "4.321987654e-05"
-    rows = "\n".join(f"{100 + row * 0.01:.2f} {secret}" for row in range(40000))
+    rows = "\n".join(f"{100 + row * 0.01:.2f} {secret}" for row in range(60000))
+    assert len(rows) > 1024 * 1024
     env = {
         "SEEBAND_API_PORT": str(port),
         "SEEBAND_API_LOG_LEVEL": "DEBUG",
-        "TMPDIR": str(temp_dir),
+        "FILE_AUDIT_LOG": str(audit_path),
+        # Writing a bytecode file during a lazy import would look like the writes this looks for.
+        "PYTHONDONTWRITEBYTECODE": "1",
     }
-    command = [sys.executable, "-m", "seeband_api"]
+    command = [sys.executable, str(support_dir / "serve_with_file_audit.py")]
 
     with _running_server(command, port, log_path, env) as client:
+        # This request starts the workers, and their start-up is not what this test is about.
+        assert client.post("/api/parse", json={"text": "T S\n1 2\n3 4\n"}).status_code == 200
+        before = audit_path.read_text(encoding="utf-8")
+        assert "open" in before, "the audit hook does not seem to be running"
         for text in (f"T S\n{rows}\n", f"T S\n100 {secret} x\n"):
             response = client.post(
                 "/api/parse",
@@ -391,11 +400,10 @@ def test_parsing_through_real_workers_keeps_nothing(tmp_path: Path) -> None:
                 timeout=60,
             )
             assert response.status_code == 200
-        held = [path for path in temp_dir.rglob("*") if path.is_file()]
-        assert not [path for path in held if secret.encode() in path.read_bytes()]
+        during = audit_path.read_text(encoding="utf-8")[len(before) :]
 
+    assert during == ""
     assert secret not in log_path.read_text(encoding="utf-8")
-    assert not [path for path in temp_dir.rglob("*") if path.is_file()]
 
 
 def _worker_pids(server_pid: int) -> list[int]:

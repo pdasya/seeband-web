@@ -59,4 +59,5 @@ Give `example` with `code`, as otherwise Prism returns the first example whateve
 - It does not stream events, and a `Prefer` failure with `Accept: text/event-stream` gives `mock_error`.
 - A 405 has no `Allow` header, and `Accept: application/xml` gives a 406 `mock_error`, where the API answers with JSON.
 - `GET /api/models` sends its `ETag`, but never answers 304.
+- `POST /api/parse` checks only the shape of a request, so a mapping to a missing column or a range under 20 K passes. Its examples are `clean`, `with_errors` and `interpolated`, chosen with `Prefer: example=<name>`.
 - A body over 10 MB gets Prism's own 413 format.

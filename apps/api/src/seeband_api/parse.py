@@ -5,10 +5,10 @@ temporary file, and measurements must not reach the disk. So nothing outlives th
 """
 
 from http import HTTPStatus
-from typing import Annotated, Self
+from typing import Annotated, Any, Self
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
-from seeband_core.data_parser import ParseIssue, Role
+from pydantic import BaseModel, Field, model_validator
+from seeband_core.data_parser import IssueCode, ParseIssue, Role
 from seeband_core.interpolation import InterpolatedData, interpolation_grid_k
 from seeband_core.model_interface import Measurement, Quantity
 
@@ -16,15 +16,17 @@ from seeband_api.calc_pool import CalcPoolDep
 from seeband_api.errors import ApiError, ErrorDetail
 from seeband_api.json_values import finite_or_none
 from seeband_api.parse_worker import FitRange, ParseOutcome, UnknownColumn, parse
+from seeband_api.request_logging import log_calculation_failure
 from seeband_api.routing import api_router
 
 router = api_router("parse")
 
-# About 50000 rows, which takes about 0.2 s. The example files are under 2 KB.
+# About 50000 rows of 40 characters, which take about 0.2 s, or 500000 very short rows, about 1.4 s.
+# The example files are under 2 KB.
 MAX_TEXT_CHARACTERS = 2_000_000
 PREVIEW_ROWS = 10
-# The core limits errors. Warnings can have one per line of text before a table.
-MAX_WARNINGS = 100
+# The core gives a warning per line of text before a table, and limits the other kinds.
+MAX_PREAMBLE_WARNINGS = 100
 
 PositiveFloat = Annotated[float, Field(gt=0, allow_inf_nan=False, strict=True)]
 
@@ -55,17 +57,6 @@ class ParseRequest(BaseModel):
     `interpolate` asks for each quantity on a grid over this fit range.
     """
 
-    model_config = ConfigDict(
-        json_schema_extra={
-            "examples": [
-                {
-                    "text": "T (K)\tS (V/K)\n300\t1.0e-4\n100\t2.0e-5\n200\t6.0e-5\n",
-                    "expected": "seebeck",
-                }
-            ]
-        }
-    )
-
     text: Annotated[str, Field(max_length=MAX_TEXT_CHARACTERS)]
     expected: Quantity | None = None
     mapping: list[ColumnRole] | None = None
@@ -85,7 +76,7 @@ class IssueResponse(BaseModel):
     `line` counts every line of the text from 1, and `column` from 0.
     """
 
-    code: str
+    code: IssueCode
     line: int | None = None
     column: int | None = None
 
@@ -120,45 +111,12 @@ class ParseResponse(BaseModel):
     """What the text holds. A file with problems is still a 200, with a preview and its `errors`.
 
     `measurements` is empty with any `errors`. `headers` is left out when no header matches the
-    columns. `preview` holds the first rows that could be read, in the order of the text, and
-    `row_count` all of them. `mapping` is the suggestion or the user's choice. `warnings` holds at
-    most 100, and `warnings_omitted` counts the rest. `interpolation_failed` names quantities that
-    could not be interpolated.
+    columns. `column_count` is 0 when neither a row nor a header sets it. `preview` holds the first
+    rows that could be read, in the order of the text, and `row_count` all of them. `mapping` is the
+    suggestion or the user's choice, and with no readable rows, always the suggestion. `warnings`
+    holds every kind, with at most 100 `preamble_skipped`, and `warnings_omitted` counts the rest.
+    `interpolation_failed` names quantities that could not be interpolated.
     """
-
-    model_config = ConfigDict(
-        json_schema_extra={
-            "examples": [
-                {
-                    "headers": ["T (K)", "S (V/K)"],
-                    "column_count": 2,
-                    "row_count": 3,
-                    "preview": [[300.0, 1.0e-4], [100.0, 2.0e-5], [200.0, 6.0e-5]],
-                    "mapping": [
-                        {"column": 0, "role": "temperature"},
-                        {"column": 1, "role": "seebeck"},
-                    ],
-                    "measurements": {
-                        "seebeck": {
-                            "temperature_k": [100.0, 200.0, 300.0],
-                            "values": [2.0e-5, 6.0e-5, 1.0e-4],
-                            "points": 3,
-                            "min_temperature_k": 100.0,
-                            "max_temperature_k": 300.0,
-                        }
-                    },
-                    "errors": [],
-                    "warnings": [
-                        {"code": "few_rows"},
-                        {"code": "unsorted_temperature", "column": 0},
-                    ],
-                    "warnings_omitted": 0,
-                    "interpolated": {},
-                    "interpolation_failed": [],
-                }
-            ]
-        }
-    )
 
     headers: list[str] | None = None
     column_count: int
@@ -209,9 +167,11 @@ def _to_response(outcome: ParseOutcome) -> ParseResponse:
     table = outcome.table
     columns = table.columns
     row_count = len(table.lines)
+    preamble = [issue for issue in table.warnings if issue.code == "preamble_skipped"]
+    others = [issue for issue in table.warnings if issue.code != "preamble_skipped"]
     return ParseResponse(
         headers=list(table.headers) if table.headers is not None else None,
-        column_count=len(columns),
+        column_count=table.column_count or len(table.headers or ()),
         row_count=row_count,
         preview=[
             [float(column[row]) for column in columns]
@@ -223,8 +183,8 @@ def _to_response(outcome: ParseOutcome) -> ParseResponse:
             for quantity, measurement in table.measurements.items()
         },
         errors=[_issue(issue) for issue in table.errors],
-        warnings=[_issue(issue) for issue in table.warnings[:MAX_WARNINGS]],
-        warnings_omitted=max(len(table.warnings) - MAX_WARNINGS, 0),
+        warnings=[_issue(issue) for issue in (*others, *preamble[:MAX_PREAMBLE_WARNINGS])],
+        warnings_omitted=max(len(preamble) - MAX_PREAMBLE_WARNINGS, 0),
         interpolated={
             quantity: _interpolated(data) for quantity, data in outcome.interpolated.items()
         },
@@ -232,7 +192,105 @@ def _to_response(outcome: ParseOutcome) -> ParseResponse:
     )
 
 
-@router.post("/parse", response_model_exclude_none=True)
+def _example(body: dict[str, Any]) -> dict[str, Any]:
+    return {"value": body}
+
+
+# The request for each example is in `PARSE_EXAMPLE_REQUESTS`, and a test compares them. The first
+# is what the mock serves unless asked for another, with `Prefer: example=<name>`.
+PARSE_EXAMPLE_REQUESTS: dict[str, dict[str, Any]] = {
+    "clean": {
+        "text": "T (K)\tS (V/K)\n300\t1.0e-4\n100\t2.0e-5\n200\t6.0e-5\n",
+        "expected": "seebeck",
+    },
+    "with_errors": {"text": "T S\n100 1.0e-6\n200 x\n", "expected": "seebeck"},
+    "interpolated": {
+        "text": "T S\n100 1.0e-6\n130 2.0e-6\n160 3.0e-6\n",
+        "interpolate": {"min_temperature_k": 100.0, "max_temperature_k": 160.0},
+    },
+}
+_NO_INTERPOLATION: dict[str, Any] = {"interpolated": {}, "interpolation_failed": []}
+_T_S_MAPPING = [{"column": 0, "role": "temperature"}, {"column": 1, "role": "seebeck"}]
+PARSE_EXAMPLE_RESPONSES: dict[str, dict[str, Any]] = {
+    "clean": {
+        "headers": ["T (K)", "S (V/K)"],
+        "column_count": 2,
+        "row_count": 3,
+        "preview": [[300.0, 1.0e-4], [100.0, 2.0e-5], [200.0, 6.0e-5]],
+        "mapping": _T_S_MAPPING,
+        "measurements": {
+            "seebeck": {
+                "temperature_k": [100.0, 200.0, 300.0],
+                "values": [2.0e-5, 6.0e-5, 1.0e-4],
+                "points": 3,
+                "min_temperature_k": 100.0,
+                "max_temperature_k": 300.0,
+            }
+        },
+        "errors": [],
+        "warnings": [{"code": "few_rows"}, {"code": "unsorted_temperature", "column": 0}],
+        "warnings_omitted": 0,
+        **_NO_INTERPOLATION,
+    },
+    "with_errors": {
+        "headers": ["T", "S"],
+        "column_count": 2,
+        "row_count": 1,
+        "preview": [[100.0, 1.0e-6]],
+        "mapping": _T_S_MAPPING,
+        "measurements": {},
+        "errors": [{"code": "not_numeric", "line": 3, "column": 1}],
+        "warnings": [],
+        "warnings_omitted": 0,
+        **_NO_INTERPOLATION,
+    },
+    "interpolated": {
+        "headers": ["T", "S"],
+        "column_count": 2,
+        "row_count": 3,
+        "preview": [[100.0, 1.0e-6], [130.0, 2.0e-6], [160.0, 3.0e-6]],
+        "mapping": _T_S_MAPPING,
+        "measurements": {
+            "seebeck": {
+                "temperature_k": [100.0, 130.0, 160.0],
+                "values": [1.0e-6, 2.0e-6, 3.0e-6],
+                "points": 3,
+                "min_temperature_k": 100.0,
+                "max_temperature_k": 160.0,
+            }
+        },
+        "errors": [],
+        "warnings": [{"code": "few_rows"}],
+        "warnings_omitted": 0,
+        "interpolated": {
+            "seebeck": {
+                "temperature_k": [100.0, 130.0, 160.0],
+                "values": [1.0e-6, 2.0e-6, 3.0e-6],
+                "extrapolated": False,
+                "measured_points_in_range": 3,
+                "underdetermined": True,
+            }
+        },
+        "interpolation_failed": [],
+    },
+}
+
+
+@router.post(
+    "/parse",
+    response_model_exclude_none=True,
+    responses={
+        200: {
+            "content": {
+                "application/json": {
+                    "examples": {
+                        name: _example(body) for name, body in PARSE_EXAMPLE_RESPONSES.items()
+                    }
+                }
+            }
+        }
+    },
+)
 async def post_parse(body: ParseRequest, pool: CalcPoolDep) -> ParseResponse:
     fit_range = None
     if body.interpolate is not None:
@@ -249,4 +307,6 @@ async def post_parse(body: ParseRequest, pool: CalcPoolDep) -> ParseResponse:
         outcome = await pool.run(parse, body.text, body.expected, mapping, fit_range)
     except UnknownColumn:
         raise _refuse("unknown_column", "The text has no such column", ["mapping"]) from None
+    for failure_type in outcome.failure_types:
+        log_calculation_failure(failure_type)
     return _to_response(outcome)

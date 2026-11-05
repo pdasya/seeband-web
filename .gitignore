@@ -20,6 +20,7 @@ dist/
 # Claude Code: machine-specific link and personal settings
 .claude/skills/fastapi
 .claude/settings.local.json
+.claude/worktrees/
 
 # macOS
 .DS_Store

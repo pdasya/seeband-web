@@ -2,12 +2,20 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Any, get_args
 
+import numpy as np
 import pytest
 from fastapi.testclient import TestClient
+from seeband_api import parse_worker
 from seeband_api.main import create_app
-from seeband_api.parse import MAX_TEXT_CHARACTERS, ParseRequest, ParseResponse
+from seeband_api.parse import (
+    MAX_TEXT_CHARACTERS,
+    PARSE_EXAMPLE_REQUESTS,
+    PARSE_EXAMPLE_RESPONSES,
+    _to_response,
+)
+from seeband_api.parse_worker import ParseOutcome
 from seeband_core.data_parser import IssueCode, parse_table
-from seeband_core.interpolation import interpolate
+from seeband_core.interpolation import InterpolatedData, interpolate
 from seeband_core.model_interface import Measurement
 
 EXAMPLES = (
@@ -91,6 +99,7 @@ def test_file_with_errors_keeps_its_preview_and_has_no_measurements(client: Test
 
 ERROR_CASES: list[tuple[str, dict[str, Any], str]] = [
     ("no_data", {}, ""),
+    ("wrong_encoding", {}, "T\x00S\x00\nA\x00\n"),
     ("line_too_long", {}, "100 1\n" + "1" * 2001 + " 2\n"),
     ("too_many_problems", {}, "100 1\n" + "200 x\n" * 60),
     ("too_few_columns", {}, "100 1\n200\n"),
@@ -182,11 +191,131 @@ def test_expected_names_the_second_column(client: TestClient) -> None:
     assert list(_parse(client, "100 1\n200 2\n", expected="hall")["measurements"]) == ["hall"]
 
 
-def test_many_warnings_are_cut_and_counted(client: TestClient) -> None:
-    body = _parse(client, "text here\n" * 150 + "T S\n100 1\n200 2\n")
+def test_many_preamble_warnings_are_cut_and_hide_nothing_else(client: TestClient) -> None:
+    text = "x y\n" * 150 + "T (K)\tS (uV/K)\n300\t1\n100\t2\n100\t3\n"
 
-    assert len(body["warnings"]) == 100
-    assert body["warnings_omitted"] == 150 + 1 - 100
+    body = _parse(client, text, expected="seebeck")
+
+    codes = [issue["code"] for issue in body["warnings"]]
+    assert codes.count("preamble_skipped") == 100
+    preamble_lines = [i["line"] for i in body["warnings"] if i["code"] == "preamble_skipped"]
+    assert preamble_lines == list(range(1, 101))
+    assert body["warnings_omitted"] == 150 - 100
+    for code in ("unit_differs", "few_rows", "unsorted_temperature", "no_quantity"):
+        assert code in codes, code
+    assert "expected_not_found" in codes
+
+
+def test_a_choice_of_columns_is_kept_while_rows_have_errors(client: TestClient) -> None:
+    mapping = [{"column": 0, "role": "temperature"}, {"column": 2, "role": "hall"}]
+
+    body = _parse(client, "T S rho\n100 1 2\n200 x 3\n300 3 4\n", mapping=mapping)
+
+    assert body["mapping"] == mapping
+    assert [issue["code"] for issue in body["errors"]] == ["not_numeric"]
+    assert body["measurements"] == {}
+
+
+def test_a_stale_expected_warning_goes_with_the_mapping_that_fixes_it(client: TestClient) -> None:
+    mapping = [{"column": 0, "role": "temperature"}, {"column": 1, "role": "hall"}]
+
+    body = _parse(client, "T S\n100 1\n200 x\n", expected="hall", mapping=mapping)
+
+    assert "expected_not_found" not in [issue["code"] for issue in body["warnings"]]
+
+
+def test_unknown_column_is_refused_while_rows_have_errors(client: TestClient) -> None:
+    response = client.post(
+        "/api/parse",
+        json={"text": "T S\n100 1\n200 x\n", "mapping": [{"column": 9, "role": "seebeck"}]},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["details"][0]["code"] == "unknown_column"
+
+
+def test_mapping_is_ignored_when_no_row_could_be_read(client: TestClient) -> None:
+    body = _parse(client, "T S\n100 x\n", mapping=[{"column": 9, "role": "seebeck"}])
+
+    assert body["errors"]
+    assert body["mapping"] == []
+
+
+@pytest.mark.parametrize(
+    ("text", "column_count", "headers"),
+    [
+        ("T S\n100 1\n200 2\n", 2, ["T", "S"]),
+        ("T S\n300,5 1,2\n400,5 1,3\n", 2, ["T", "S"]),
+        ("T S\n1e999 1\n2e999 2\n", 2, ["T", "S"]),
+        ("100 1 2\n200 x 3\n", 3, None),
+        ("", 0, None),
+    ],
+)
+def test_column_count_agrees_with_the_headers(
+    client: TestClient, text: str, column_count: int, headers: list[str] | None
+) -> None:
+    body = _parse(client, text)
+
+    assert body["column_count"] == column_count
+    assert body.get("headers") == headers
+
+
+def test_no_header_is_left_out_not_empty(client: TestClient) -> None:
+    assert "headers" not in _parse(client, "100 1\n200 2\n", expected="seebeck")
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "T S\n100 1\n200 2\n".encode("utf-16").decode("utf-8", errors="replace"),
+        "T S\n100 1\n200 2\n".encode("utf-16-le").decode("utf-8", errors="replace"),
+    ],
+    ids=["utf-16 with mark", "utf-16 without mark"],
+)
+def test_utf_16_read_as_utf_8_says_so(client: TestClient, text: str) -> None:
+    body = _parse(client, text)
+
+    assert [issue["code"] for issue in body["errors"]] == ["wrong_encoding"]
+
+
+def test_several_quantities_are_read_and_interpolated(client: TestClient) -> None:
+    text = "T S rho RH\n100 1 4 7\n200 2 5 8\n300 3 6 9\n"
+    mapping_free = _parse(
+        client, text, interpolate={"min_temperature_k": 100.0, "max_temperature_k": 300.0}
+    )
+
+    assert list(mapping_free["measurements"]) == ["seebeck", "resistivity", "hall"]
+    assert list(mapping_free["interpolated"]) == ["seebeck", "resistivity", "hall"]
+    assert mapping_free["measurements"]["hall"]["values"] == [7.0, 8.0, 9.0]
+
+
+def test_mapping_and_expected_reach_the_parser_with_interpolation(client: TestClient) -> None:
+    body = _parse(
+        client,
+        "100 1 7\n200 2 8\n300 3 9\n",
+        mapping=[{"column": 0, "role": "temperature"}, {"column": 2, "role": "hall"}],
+        interpolate={"min_temperature_k": 100.0, "max_temperature_k": 300.0},
+    )
+
+    assert list(body["interpolated"]) == ["hall"]
+    expected_only = _parse(
+        client,
+        "100 1\n200 2\n300 3\n",
+        expected="resistivity",
+        interpolate={"min_temperature_k": 100.0, "max_temperature_k": 300.0},
+    )
+    assert list(expected_only["interpolated"]) == ["resistivity"]
+
+
+def test_value_that_is_not_finite_comes_back_as_null() -> None:
+    table = parse_table("T S\n100 1\n200 2\n", "seebeck")
+    data = InterpolatedData(
+        Measurement(np.array([100.0, 200.0]), np.array([np.inf, 1.0])), False, 2, False
+    )
+
+    response = _to_response(ParseOutcome(table, {"seebeck": data}, ()))
+
+    assert response.interpolated["seebeck"].values == [None, 1.0]
 
 
 def test_interpolation_equals_the_core_and_keeps_the_originals(client: TestClient) -> None:
@@ -223,28 +352,27 @@ def test_interpolation_reports_data_that_do_not_set_the_polynomial(client: TestC
     assert body["interpolated"]["seebeck"]["extrapolated"] is False
 
 
-def test_one_quantity_failing_leaves_the_others(monkeypatch: pytest.MonkeyPatch) -> None:
-    from seeband_api import parse_worker
-
-    calls = []
-
-    def fail_on_rho(measurement: Measurement, low: float, high: float) -> Any:
-        calls.append(float(measurement.values[0]))
-        if measurement.values[0] == 7.0:
+@pytest.mark.parametrize("failing", [1.0, 4.0, 7.0], ids=["first", "middle", "last"])
+def test_one_quantity_failing_leaves_the_others(
+    monkeypatch: pytest.MonkeyPatch, failing: float
+) -> None:
+    def fail_on_one(measurement: Measurement, low: float, high: float) -> Any:
+        if measurement.values[0] == failing:
             raise ValueError("The data could not be fitted")
         return interpolate(measurement, low, high)
 
-    monkeypatch.setattr(parse_worker, "interpolate", fail_on_rho)
+    monkeypatch.setattr(parse_worker, "interpolate", fail_on_one)
     outcome = parse_worker.parse(
-        "T S rho\n100 1 7\n200 2 8\n300 3 9\n",
+        "T S rho RH\n100 1 4 7\n200 2 5 8\n300 3 6 9\n",
         None,
         None,
         parse_worker.FitRange(100.0, 300.0),
     )
 
-    assert list(outcome.interpolated) == ["seebeck"]
-    assert outcome.interpolation_failed == ("resistivity",)
-    assert calls == [1.0, 7.0]
+    names = {1.0: "seebeck", 4.0: "resistivity", 7.0: "hall"}
+    assert outcome.interpolation_failed == (names[failing],)
+    assert set(outcome.interpolated) == set(names.values()) - {names[failing]}
+    assert outcome.failure_types == ("ValueError",)
 
 
 def test_errors_mean_no_interpolation(client: TestClient) -> None:
@@ -345,8 +473,15 @@ def test_calls_keep_no_state(client: TestClient) -> None:
     assert _parse(client, SIX_ROWS) == first
 
 
-def test_examples_in_the_contract_are_what_the_api_answers(client: TestClient) -> None:
-    request = ParseRequest.model_config["json_schema_extra"]["examples"][0]  # type: ignore[index]
-    example = ParseResponse.model_config["json_schema_extra"]["examples"][0]  # type: ignore[index]
+@pytest.mark.parametrize("name", PARSE_EXAMPLE_REQUESTS)
+def test_examples_in_the_contract_are_what_the_api_answers(client: TestClient, name: str) -> None:
+    answer = client.post("/api/parse", json=PARSE_EXAMPLE_REQUESTS[name]).json()
+    example = PARSE_EXAMPLE_RESPONSES[name]
 
-    assert client.post("/api/parse", json=request).json() == example
+    # The polynomial differs from the rounded example in its last digits.
+    if example["interpolated"]:
+        got = answer["interpolated"]["seebeck"]
+        want = example["interpolated"]["seebeck"]
+        assert got["values"] == pytest.approx(want["values"], rel=1e-6)
+        got["values"] = want["values"]
+    assert answer == example

@@ -3,7 +3,7 @@
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-from seeband_core.data_parser import ParsedTable, Role, parse_table
+from seeband_core.data_parser import ParsedTable, Role, parse_table, with_mapping
 from seeband_core.interpolation import InterpolatedData, interpolate
 from seeband_core.model_interface import Quantity
 
@@ -20,9 +20,27 @@ class FitRange:
 
 @dataclass(frozen=True, eq=False)
 class ParseOutcome:
+    """`failure_types` holds the exception types behind `interpolation_failed`, for the log."""
+
     table: ParsedTable
     interpolated: Mapping[Quantity, InterpolatedData]
     interpolation_failed: tuple[Quantity, ...]
+    failure_types: tuple[str, ...] = ()
+
+
+def _read(text: str, expected: Quantity | None, mapping: Mapping[int, Role] | None) -> ParsedTable:
+    """Reads the text, and applies a user's mapping even if some rows have errors.
+
+    `parse_table` keeps its suggestion when there are errors, and a user fixing columns needs their
+    choice kept. With no readable rows, there are no columns to check it against, so it is ignored.
+    """
+    table = parse_table(text, expected)
+    if mapping is None or not table.columns:
+        return table
+    try:
+        return with_mapping(table, mapping)
+    except ValueError as error:
+        raise UnknownColumn from error
 
 
 def parse(
@@ -35,19 +53,17 @@ def parse(
 
     One quantity failing leaves the others, as a fit may not use it.
     """
-    try:
-        table = parse_table(text, expected, mapping)
-    except ValueError as error:
-        # The route has checked the rest, so this comes from the columns of the text.
-        raise UnknownColumn from error
+    table = _read(text, expected, mapping)
     interpolated: dict[Quantity, InterpolatedData] = {}
     failed: list[Quantity] = []
+    failure_types: list[str] = []
     if fit_range is not None:
         for quantity, measurement in table.measurements.items():
             try:
                 interpolated[quantity] = interpolate(
                     measurement, fit_range.min_temperature_k, fit_range.max_temperature_k
                 )
-            except (ArithmeticError, ValueError):
+            except (ArithmeticError, ValueError) as error:
                 failed.append(quantity)
-    return ParseOutcome(table, interpolated, tuple(failed))
+                failure_types.append(type(error).__name__)
+    return ParseOutcome(table, interpolated, tuple(failed), tuple(failure_types))

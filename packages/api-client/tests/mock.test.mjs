@@ -144,6 +144,25 @@ describe("the mock of the real contract", async () => {
     assert.equal(body.warnings[1].code, "unsorted_temperature");
   });
 
+  for (const [example, check] of [
+    ["with_errors", (body) => assert.equal(body.errors[0].code, "not_numeric")],
+    [
+      "interpolated",
+      (body) => assert.equal(body.interpolated.seebeck.underdetermined, true),
+    ],
+  ]) {
+    test(`serves the ${example} table on request`, async () => {
+      const response = await fetch(`${url}/api/parse`, {
+        method: "POST",
+        headers: { ...JSON_HEADERS, prefer: `example=${example}` },
+        body: JSON.stringify({ text: "T S\n100 1e-6\n200 2e-6\n" }),
+      });
+
+      assert.equal(response.status, 200);
+      check(await response.json());
+    });
+  }
+
   test("refuses a curve request that breaks the contract", async () => {
     const response = await fetch(`${url}/api/calc`, {
       method: "POST",

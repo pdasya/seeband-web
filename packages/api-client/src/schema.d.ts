@@ -379,8 +379,11 @@ export interface components {
          *     `line` counts every line of the text from 1, and `column` from 0.
          */
         IssueResponse: {
-            /** Code */
-            code: string;
+            /**
+             * Code
+             * @enum {string}
+             */
+            code: "no_data" | "wrong_encoding" | "line_too_long" | "too_many_problems" | "too_few_columns" | "wrong_column_count" | "missing_value" | "not_numeric" | "not_finite" | "decimal_comma" | "too_few_rows" | "missing_temperature" | "non_positive_temperature" | "repeated_role" | "preamble_skipped" | "header_mismatch" | "unit_differs" | "repeated_header" | "columns_need_assigning" | "expected_not_found" | "no_quantity" | "few_rows" | "unsorted_temperature" | "duplicate_temperature";
             /** Line */
             line?: number | null;
             /** Column */
@@ -519,10 +522,6 @@ export interface components {
          *     `expected` names the quantity of a file meant to hold one. `mapping` replaces the suggested
          *     columns with a user's choice, and the text is sent again each time, as the API keeps nothing.
          *     `interpolate` asks for each quantity on a grid over this fit range.
-         * @example {
-         *       "expected": "seebeck",
-         *       "text": "T (K)\tS (V/K)\n300\t1.0e-4\n100\t2.0e-5\n200\t6.0e-5\n"
-         *     }
          */
         ParseRequest: {
             /** Text */
@@ -538,72 +537,11 @@ export interface components {
          * @description What the text holds. A file with problems is still a 200, with a preview and its `errors`.
          *
          *     `measurements` is empty with any `errors`. `headers` is left out when no header matches the
-         *     columns. `preview` holds the first rows that could be read, in the order of the text, and
-         *     `row_count` all of them. `mapping` is the suggestion or the user's choice. `warnings` holds at
-         *     most 100, and `warnings_omitted` counts the rest. `interpolation_failed` names quantities that
-         *     could not be interpolated.
-         * @example {
-         *       "column_count": 2,
-         *       "errors": [],
-         *       "headers": [
-         *         "T (K)",
-         *         "S (V/K)"
-         *       ],
-         *       "interpolated": {},
-         *       "interpolation_failed": [],
-         *       "mapping": [
-         *         {
-         *           "column": 0,
-         *           "role": "temperature"
-         *         },
-         *         {
-         *           "column": 1,
-         *           "role": "seebeck"
-         *         }
-         *       ],
-         *       "measurements": {
-         *         "seebeck": {
-         *           "max_temperature_k": 300,
-         *           "min_temperature_k": 100,
-         *           "points": 3,
-         *           "temperature_k": [
-         *             100,
-         *             200,
-         *             300
-         *           ],
-         *           "values": [
-         *             0.00002,
-         *             0.00006,
-         *             0.0001
-         *           ]
-         *         }
-         *       },
-         *       "preview": [
-         *         [
-         *           300,
-         *           0.0001
-         *         ],
-         *         [
-         *           100,
-         *           0.00002
-         *         ],
-         *         [
-         *           200,
-         *           0.00006
-         *         ]
-         *       ],
-         *       "row_count": 3,
-         *       "warnings": [
-         *         {
-         *           "code": "few_rows"
-         *         },
-         *         {
-         *           "code": "unsorted_temperature",
-         *           "column": 0
-         *         }
-         *       ],
-         *       "warnings_omitted": 0
-         *     }
+         *     columns. `column_count` is 0 when neither a row nor a header sets it. `preview` holds the first
+         *     rows that could be read, in the order of the text, and `row_count` all of them. `mapping` is the
+         *     suggestion or the user's choice, and with no readable rows, always the suggestion. `warnings`
+         *     holds every kind, with at most 100 `preamble_skipped`, and `warnings_omitted` counts the rest.
+         *     `interpolation_failed` names quantities that could not be interpolated.
          */
         ParseResponse: {
             /** Headers */

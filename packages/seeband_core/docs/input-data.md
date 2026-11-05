@@ -35,8 +35,9 @@ Problems are codes, with a line and column where they apply, and no text or meas
 | Code                        | Kind    | Meaning                                                                                             |
 | --------------------------- | ------- | --------------------------------------------------------------------------------------------------- |
 | `no_data`                   | error   | no row of numbers                                                                                   |
+| `wrong_encoding`            | error   | no row of numbers, in a text with NUL or replacement characters, such as UTF-16 read as UTF-8       |
 | `line_too_long`             | error   | a line over 2000 characters                                                                         |
-| `too_many_problems`         | error   | the list stopped after 50 errors                                                                    |
+| `too_many_problems`         | error   | the list stopped at the line that reached 50 errors                                                 |
 | `too_few_columns`           | error   | a line with one number                                                                              |
 | `wrong_column_count`        | error   | a line with a different number of columns from the first row                                        |
 | `missing_value`             | error   | an empty field, as in `400,,2`                                                                      |
