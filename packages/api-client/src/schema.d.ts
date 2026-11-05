@@ -50,6 +50,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/parse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Parse */
+        post: operations["post_parse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -209,6 +226,19 @@ export interface components {
             };
         };
         /**
+         * ColumnRole
+         * @description What a column holds. Columns count from 0.
+         */
+        ColumnRole: {
+            /** Column */
+            column: number;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "temperature" | "seebeck" | "resistivity" | "hall";
+        };
+        /**
          * CurveAvailabilityResponse
          * @description Whether a mode offers a kind of curve for `POST /api/calc`.
          *
@@ -315,6 +345,48 @@ export interface components {
             version: string;
         };
         /**
+         * InterpolatedResponse
+         * @description A quantity on the interpolation grid. `null` marks a value that is not finite.
+         *
+         *     `extrapolated` means that some of the grid lies outside the data, so those values are made up,
+         *     and a fit from them should say so through `extrapolated` in its request.
+         *     `measured_points_in_range` of 0 means that all the values are made up. `underdetermined` means
+         *     that the data do not set the polynomial.
+         */
+        InterpolatedResponse: {
+            /** Temperature K */
+            temperature_k: number[];
+            /** Values */
+            values: (number | null)[];
+            /** Extrapolated */
+            extrapolated: boolean;
+            /** Measured Points In Range */
+            measured_points_in_range: number;
+            /** Underdetermined */
+            underdetermined: boolean;
+        };
+        /** InterpolationRange */
+        InterpolationRange: {
+            /** Min Temperature K */
+            min_temperature_k: number;
+            /** Max Temperature K */
+            max_temperature_k: number;
+        };
+        /**
+         * IssueResponse
+         * @description A problem in the data, as a code a client translates, in `input-data.md` of the core.
+         *
+         *     `line` counts every line of the text from 1, and `column` from 0.
+         */
+        IssueResponse: {
+            /** Code */
+            code: string;
+            /** Line */
+            line?: number | null;
+            /** Column */
+            column?: number | null;
+        };
+        /**
          * KnownIssueResponse
          * @description A known error of the calculations in this mode. Clients show `message_key` through i18n.
          *
@@ -354,6 +426,22 @@ export interface components {
             temperature_k: number[];
             /** Values */
             values: number[];
+        };
+        /**
+         * MeasurementResponse
+         * @description Measured data sorted by temperature, in V/K, ohm m or m^3/C, and its size and range.
+         */
+        MeasurementResponse: {
+            /** Temperature K */
+            temperature_k: number[];
+            /** Values */
+            values: number[];
+            /** Points */
+            points: number;
+            /** Min Temperature K */
+            min_temperature_k: number;
+            /** Max Temperature K */
+            max_temperature_k: number;
         };
         /**
          * ModelResponse
@@ -423,6 +511,127 @@ export interface components {
             fit_bounds?: components["schemas"]["BoundsResponse"] | null;
             /** Bounds Editable */
             bounds_editable: boolean;
+        };
+        /**
+         * ParseRequest
+         * @description A text to read, as the client read it from a file or table.
+         *
+         *     `expected` names the quantity of a file meant to hold one. `mapping` replaces the suggested
+         *     columns with a user's choice, and the text is sent again each time, as the API keeps nothing.
+         *     `interpolate` asks for each quantity on a grid over this fit range.
+         * @example {
+         *       "expected": "seebeck",
+         *       "text": "T (K)\tS (V/K)\n300\t1.0e-4\n100\t2.0e-5\n200\t6.0e-5\n"
+         *     }
+         */
+        ParseRequest: {
+            /** Text */
+            text: string;
+            /** Expected */
+            expected?: ("seebeck" | "resistivity" | "hall") | null;
+            /** Mapping */
+            mapping?: components["schemas"]["ColumnRole"][] | null;
+            interpolate?: components["schemas"]["InterpolationRange"] | null;
+        };
+        /**
+         * ParseResponse
+         * @description What the text holds. A file with problems is still a 200, with a preview and its `errors`.
+         *
+         *     `measurements` is empty with any `errors`. `headers` is left out when no header matches the
+         *     columns. `preview` holds the first rows that could be read, in the order of the text, and
+         *     `row_count` all of them. `mapping` is the suggestion or the user's choice. `warnings` holds at
+         *     most 100, and `warnings_omitted` counts the rest. `interpolation_failed` names quantities that
+         *     could not be interpolated.
+         * @example {
+         *       "column_count": 2,
+         *       "errors": [],
+         *       "headers": [
+         *         "T (K)",
+         *         "S (V/K)"
+         *       ],
+         *       "interpolated": {},
+         *       "interpolation_failed": [],
+         *       "mapping": [
+         *         {
+         *           "column": 0,
+         *           "role": "temperature"
+         *         },
+         *         {
+         *           "column": 1,
+         *           "role": "seebeck"
+         *         }
+         *       ],
+         *       "measurements": {
+         *         "seebeck": {
+         *           "max_temperature_k": 300,
+         *           "min_temperature_k": 100,
+         *           "points": 3,
+         *           "temperature_k": [
+         *             100,
+         *             200,
+         *             300
+         *           ],
+         *           "values": [
+         *             0.00002,
+         *             0.00006,
+         *             0.0001
+         *           ]
+         *         }
+         *       },
+         *       "preview": [
+         *         [
+         *           300,
+         *           0.0001
+         *         ],
+         *         [
+         *           100,
+         *           0.00002
+         *         ],
+         *         [
+         *           200,
+         *           0.00006
+         *         ]
+         *       ],
+         *       "row_count": 3,
+         *       "warnings": [
+         *         {
+         *           "code": "few_rows"
+         *         },
+         *         {
+         *           "code": "unsorted_temperature",
+         *           "column": 0
+         *         }
+         *       ],
+         *       "warnings_omitted": 0
+         *     }
+         */
+        ParseResponse: {
+            /** Headers */
+            headers?: string[] | null;
+            /** Column Count */
+            column_count: number;
+            /** Row Count */
+            row_count: number;
+            /** Preview */
+            preview: number[][];
+            /** Mapping */
+            mapping: components["schemas"]["ColumnRole"][];
+            /** Measurements */
+            measurements: {
+                [key: string]: components["schemas"]["MeasurementResponse"];
+            };
+            /** Errors */
+            errors: components["schemas"]["IssueResponse"][];
+            /** Warnings */
+            warnings: components["schemas"]["IssueResponse"][];
+            /** Warnings Omitted */
+            warnings_omitted: number;
+            /** Interpolated */
+            interpolated: {
+                [key: string]: components["schemas"]["InterpolatedResponse"];
+            };
+            /** Interpolation Failed */
+            interpolation_failed: ("seebeck" | "resistivity" | "hall")[];
         };
         /**
          * RmseResponse
@@ -545,6 +754,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CalcResponse"];
+                };
+            };
+            /** @description Default Response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    post_parse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ParseRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParseResponse"];
                 };
             };
             /** @description Default Response */

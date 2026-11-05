@@ -55,7 +55,7 @@ Give `example` with `code`, as otherwise Prism returns the first example whateve
 
 ### Where the mock differs from the API
 
-- Responses are the examples, and do not depend on the request, so `POST /api/calc` always returns the same 5-point curves. A route's response cannot show `null` in a required field, because FastAPI drops `null` from examples. Check real curves against the API.
+- Responses are the examples, and do not depend on the request, so `POST /api/calc` always returns the same 5-point curves and `POST /api/parse` the same 3 rows. A route's response cannot show `null` in a required field, because FastAPI drops `null` from examples. Check real curves against the API.
 - It does not stream events, and a `Prefer` failure with `Accept: text/event-stream` gives `mock_error`.
 - A 405 has no `Allow` header, and `Accept: application/xml` gives a 406 `mock_error`, where the API answers with JSON.
 - `GET /api/models` sends its `ETag`, but never answers 304.

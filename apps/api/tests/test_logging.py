@@ -364,6 +364,40 @@ def test_calculation_through_real_workers_logs_no_values(tmp_path: Path) -> None
     assert sum(line.get("route") == "/api/calc" for line in _json_lines(log)) == 1
 
 
+def test_parsing_through_real_workers_keeps_nothing(tmp_path: Path) -> None:
+    """Neither the log nor any file holds the text, including temporary files."""
+    port = _free_port()
+    log_path = tmp_path / "server.log"
+    temp_dir = tmp_path / "temp"
+    temp_dir.mkdir()
+    secret = "4.321987654e-05"
+    rows = "\n".join(f"{100 + row * 0.01:.2f} {secret}" for row in range(40000))
+    env = {
+        "SEEBAND_API_PORT": str(port),
+        "SEEBAND_API_LOG_LEVEL": "DEBUG",
+        "TMPDIR": str(temp_dir),
+    }
+    command = [sys.executable, "-m", "seeband_api"]
+
+    with _running_server(command, port, log_path, env) as client:
+        for text in (f"T S\n{rows}\n", f"T S\n100 {secret} x\n"):
+            response = client.post(
+                "/api/parse",
+                json={
+                    "text": text,
+                    "expected": "seebeck",
+                    "interpolate": {"min_temperature_k": 100.0, "max_temperature_k": 400.0},
+                },
+                timeout=60,
+            )
+            assert response.status_code == 200
+        held = [path for path in temp_dir.rglob("*") if path.is_file()]
+        assert not [path for path in held if secret.encode() in path.read_bytes()]
+
+    assert secret not in log_path.read_text(encoding="utf-8")
+    assert not [path for path in temp_dir.rglob("*") if path.is_file()]
+
+
 def _worker_pids(server_pid: int) -> list[int]:
     found = subprocess.run(["pgrep", "-P", str(server_pid)], capture_output=True, text=True)
     return [int(pid) for pid in found.stdout.split()]

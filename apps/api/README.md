@@ -21,6 +21,7 @@ uv run python -m seeband_api
 | `GET /api/health`       | status and version       |
 | `GET /api/models`       | model descriptions       |
 | `POST /api/calc`        | curves and RMSE          |
+| `POST /api/parse`       | reading measured data    |
 | `GET /api/openapi.json` | the contract             |
 | `GET /api/docs`         | Swagger UI over the same |
 
@@ -33,6 +34,16 @@ A mode with `disabled: true` must not be offered, and `disabled_by` names the `k
 Requests and results use core units. Each parameter gives its control as `display_range`, what a user sees, and `core_range`, core units, both calculated by `seeband_core`. Send core values from `core_range` rather than calculating them from the scales, because the desktop divides where a multiplication changes the last bit. `step` is a keyboard increment, not a grid. `calc_scale` stays out, because it only reproduces a desktop path.
 
 The contract holds the real response as its example, so `pnpm mock` serves real descriptions, and a change to a description shows in the diff of `openapi.json`.
+
+## Reading data
+
+`POST /api/parse` reads measured data from the text of a file or table, and optionally interpolates it. [`input-data.md`](../../packages/seeband_core/docs/input-data.md) lists the format and every code, and [`interpolation.md`](../../packages/seeband_core/docs/interpolation.md) the interpolation.
+
+- **Input** is JSON with `text`, up to 2 000 000 characters, not a file upload. A multipart parser writes large uploads to a temporary file, so with JSON nothing reaches the disk. The client reads the file and decodes it.
+- **A file with problems is a 200,** with the problems in `errors` and a `preview`, so that a client can show them and let a user assign columns. `measurements` is empty with any error. A 422 means that the request itself is wrong.
+- **Assigning columns:** send the text again with `mapping`, as the API keeps nothing between calls.
+- **`interpolate`** gives each quantity on a grid over a fit range, in `interpolated`, next to the original `measurements`. A range the grid cannot use is a 422. One quantity that cannot be interpolated is named in `interpolation_failed`, and the others stay. Pass `extrapolated` on to `POST /api/calc`, as made-up points enter its results.
+- **Body size** has no general limit until [A10](https://github.com/pdasya/seeband-web/issues/33), so a larger body is read into memory before `text` is refused.
 
 ## Curves
 

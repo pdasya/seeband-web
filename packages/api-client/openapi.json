@@ -82,6 +82,22 @@
                       ]
                     }
                   },
+                  "invalid_parse_request": {
+                    "value": {
+                      "code": "invalid_parse_request",
+                      "message": "Invalid request",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "mapping"
+                          ],
+                          "code": "unknown_column",
+                          "message": "The text has no such column"
+                        }
+                      ]
+                    }
+                  },
                   "invalid_calculation": {
                     "value": {
                       "code": "invalid_calculation",
@@ -2325,6 +2341,22 @@
                       ]
                     }
                   },
+                  "invalid_parse_request": {
+                    "value": {
+                      "code": "invalid_parse_request",
+                      "message": "Invalid request",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "mapping"
+                          ],
+                          "code": "unknown_column",
+                          "message": "The text has no such column"
+                        }
+                      ]
+                    }
+                  },
                   "invalid_calculation": {
                     "value": {
                       "code": "invalid_calculation",
@@ -2456,6 +2488,166 @@
                           ],
                           "code": "spb_hall_mode_disabled",
                           "message": "A known issue disables this mode"
+                        }
+                      ]
+                    }
+                  },
+                  "invalid_parse_request": {
+                    "value": {
+                      "code": "invalid_parse_request",
+                      "message": "Invalid request",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "mapping"
+                          ],
+                          "code": "unknown_column",
+                          "message": "The text has no such column"
+                        }
+                      ]
+                    }
+                  },
+                  "invalid_calculation": {
+                    "value": {
+                      "code": "invalid_calculation",
+                      "message": "Invalid calculation",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "parameters",
+                            "m_eff"
+                          ],
+                          "code": "missing_parameter",
+                          "message": "This mode needs it"
+                        }
+                      ]
+                    }
+                  },
+                  "validation_error": {
+                    "value": {
+                      "code": "validation_error",
+                      "message": "Invalid request",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "seebeck_v_per_k",
+                            3
+                          ],
+                          "code": "float_parsing",
+                          "message": "Input should be a valid number, unable to parse string as a number"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/parse": {
+      "post": {
+        "tags": [
+          "parse"
+        ],
+        "summary": "Post Parse",
+        "operationId": "post_parse",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParseResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "internal_error": {
+                    "value": {
+                      "code": "internal_error",
+                      "message": "Internal server error",
+                      "details": []
+                    }
+                  },
+                  "not_found": {
+                    "value": {
+                      "code": "not_found",
+                      "message": "Not Found",
+                      "details": []
+                    }
+                  },
+                  "calculation_failed": {
+                    "value": {
+                      "code": "calculation_failed",
+                      "message": "The calculation has no result for these parameters and temperatures",
+                      "details": []
+                    }
+                  },
+                  "calculation_timeout": {
+                    "value": {
+                      "code": "calculation_timeout",
+                      "message": "The calculation took too long",
+                      "details": []
+                    }
+                  },
+                  "calculation_unavailable": {
+                    "value": {
+                      "code": "calculation_unavailable",
+                      "message": "The calculation stopped unexpectedly. Try again.",
+                      "details": []
+                    }
+                  },
+                  "fit_mode_disabled": {
+                    "value": {
+                      "code": "fit_mode_disabled",
+                      "message": "This fit mode is disabled until its known issue is fixed",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "fit_mode"
+                          ],
+                          "code": "spb_hall_mode_disabled",
+                          "message": "A known issue disables this mode"
+                        }
+                      ]
+                    }
+                  },
+                  "invalid_parse_request": {
+                    "value": {
+                      "code": "invalid_parse_request",
+                      "message": "Invalid request",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "mapping"
+                          ],
+                          "code": "unknown_column",
+                          "message": "The text has no such column"
                         }
                       ]
                     }
@@ -2765,6 +2957,32 @@
           }
         ]
       },
+      "ColumnRole": {
+        "properties": {
+          "column": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Column"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "temperature",
+              "seebeck",
+              "resistivity",
+              "hall"
+            ],
+            "title": "Role"
+          }
+        },
+        "type": "object",
+        "required": [
+          "column",
+          "role"
+        ],
+        "title": "ColumnRole",
+        "description": "What a column holds. Columns count from 0."
+      },
       "CurveAvailabilityResponse": {
         "properties": {
           "kind": {
@@ -3052,6 +3270,109 @@
           }
         ]
       },
+      "InterpolatedResponse": {
+        "properties": {
+          "temperature_k": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Temperature K"
+          },
+          "values": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Values"
+          },
+          "extrapolated": {
+            "type": "boolean",
+            "title": "Extrapolated"
+          },
+          "measured_points_in_range": {
+            "type": "integer",
+            "title": "Measured Points In Range"
+          },
+          "underdetermined": {
+            "type": "boolean",
+            "title": "Underdetermined"
+          }
+        },
+        "type": "object",
+        "required": [
+          "temperature_k",
+          "values",
+          "extrapolated",
+          "measured_points_in_range",
+          "underdetermined"
+        ],
+        "title": "InterpolatedResponse",
+        "description": "A quantity on the interpolation grid. `null` marks a value that is not finite.\n\n`extrapolated` means that some of the grid lies outside the data, so those values are made up,\nand a fit from them should say so through `extrapolated` in its request.\n`measured_points_in_range` of 0 means that all the values are made up. `underdetermined` means\nthat the data do not set the polynomial."
+      },
+      "InterpolationRange": {
+        "properties": {
+          "min_temperature_k": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Min Temperature K"
+          },
+          "max_temperature_k": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Max Temperature K"
+          }
+        },
+        "type": "object",
+        "required": [
+          "min_temperature_k",
+          "max_temperature_k"
+        ],
+        "title": "InterpolationRange"
+      },
+      "IssueResponse": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "line": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line"
+          },
+          "column": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Column"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "title": "IssueResponse",
+        "description": "A problem in the data, as a code a client translates, in `input-data.md` of the core.\n\n`line` counts every line of the text from 1, and `column` from 0."
+      },
       "KnownIssueResponse": {
         "properties": {
           "id": {
@@ -3170,6 +3491,46 @@
         ],
         "title": "MeasurementInput",
         "description": "Measured points, with values in V/K for S, ohm m for rho and m^3/C for R_H."
+      },
+      "MeasurementResponse": {
+        "properties": {
+          "temperature_k": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Temperature K"
+          },
+          "values": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Values"
+          },
+          "points": {
+            "type": "integer",
+            "title": "Points"
+          },
+          "min_temperature_k": {
+            "type": "number",
+            "title": "Min Temperature K"
+          },
+          "max_temperature_k": {
+            "type": "number",
+            "title": "Max Temperature K"
+          }
+        },
+        "type": "object",
+        "required": [
+          "temperature_k",
+          "values",
+          "points",
+          "min_temperature_k",
+          "max_temperature_k"
+        ],
+        "title": "MeasurementResponse",
+        "description": "Measured data sorted by temperature, in V/K, ohm m or m^3/C, and its size and range."
       },
       "ModelResponse": {
         "properties": {
@@ -3306,6 +3667,247 @@
         ],
         "title": "ParameterResponse",
         "description": "One parameter of a fit mode.\n\n`display_range` is the control's range as a user sees it, and `core_range` is the same range in\nthe core units of requests and results. Use these two, and do not calculate core values from the\nscales: `display_scale` and `fit_scale`, from control units in `value_range`, are there for\ninformation, as the desktop divides where a multiplication would change the last bit.\n\nIn each range, `step` is the desktop's keyboard increment, not a grid: values between steps are\nvalid, and the default or maximum need not lie on a step.\n\n`scattering` lists the types the parameter applies to, and empty means all of them. A mode with\nno choice of scattering uses all its parameters, whatever they list. A `fixed` parameter is set\nby the user, and a fit does not change it. Requests hold every parameter of a mode, including\nthose of other scattering types.\n\n`unit` is the unit of the displayed value, and can be `dimensionless` or `unknown`. `fit_bounds`\nis in core units, and is left out for a parameter that a fit does not change. `meaning` is\nEnglish text, for a client with no translation."
+      },
+      "ParseRequest": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 2000000,
+            "title": "Text"
+          },
+          "expected": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "seebeck",
+                  "resistivity",
+                  "hall"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected"
+          },
+          "mapping": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ColumnRole"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mapping"
+          },
+          "interpolate": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InterpolationRange"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "ParseRequest",
+        "description": "A text to read, as the client read it from a file or table.\n\n`expected` names the quantity of a file meant to hold one. `mapping` replaces the suggested\ncolumns with a user's choice, and the text is sent again each time, as the API keeps nothing.\n`interpolate` asks for each quantity on a grid over this fit range.",
+        "examples": [
+          {
+            "expected": "seebeck",
+            "text": "T (K)\tS (V/K)\n300\t1.0e-4\n100\t2.0e-5\n200\t6.0e-5\n"
+          }
+        ]
+      },
+      "ParseResponse": {
+        "properties": {
+          "headers": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Headers"
+          },
+          "column_count": {
+            "type": "integer",
+            "title": "Column Count"
+          },
+          "row_count": {
+            "type": "integer",
+            "title": "Row Count"
+          },
+          "preview": {
+            "items": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Preview"
+          },
+          "mapping": {
+            "items": {
+              "$ref": "#/components/schemas/ColumnRole"
+            },
+            "type": "array",
+            "title": "Mapping"
+          },
+          "measurements": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/MeasurementResponse"
+            },
+            "propertyNames": {
+              "enum": [
+                "seebeck",
+                "resistivity",
+                "hall"
+              ]
+            },
+            "type": "object",
+            "title": "Measurements"
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/IssueResponse"
+            },
+            "type": "array",
+            "title": "Errors"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/IssueResponse"
+            },
+            "type": "array",
+            "title": "Warnings"
+          },
+          "warnings_omitted": {
+            "type": "integer",
+            "title": "Warnings Omitted"
+          },
+          "interpolated": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/InterpolatedResponse"
+            },
+            "propertyNames": {
+              "enum": [
+                "seebeck",
+                "resistivity",
+                "hall"
+              ]
+            },
+            "type": "object",
+            "title": "Interpolated"
+          },
+          "interpolation_failed": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "seebeck",
+                "resistivity",
+                "hall"
+              ]
+            },
+            "type": "array",
+            "title": "Interpolation Failed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "column_count",
+          "row_count",
+          "preview",
+          "mapping",
+          "measurements",
+          "errors",
+          "warnings",
+          "warnings_omitted",
+          "interpolated",
+          "interpolation_failed"
+        ],
+        "title": "ParseResponse",
+        "description": "What the text holds. A file with problems is still a 200, with a preview and its `errors`.\n\n`measurements` is empty with any `errors`. `headers` is left out when no header matches the\ncolumns. `preview` holds the first rows that could be read, in the order of the text, and\n`row_count` all of them. `mapping` is the suggestion or the user's choice. `warnings` holds at\nmost 100, and `warnings_omitted` counts the rest. `interpolation_failed` names quantities that\ncould not be interpolated.",
+        "examples": [
+          {
+            "column_count": 2,
+            "errors": [],
+            "headers": [
+              "T (K)",
+              "S (V/K)"
+            ],
+            "interpolated": {},
+            "interpolation_failed": [],
+            "mapping": [
+              {
+                "column": 0,
+                "role": "temperature"
+              },
+              {
+                "column": 1,
+                "role": "seebeck"
+              }
+            ],
+            "measurements": {
+              "seebeck": {
+                "max_temperature_k": 300.0,
+                "min_temperature_k": 100.0,
+                "points": 3,
+                "temperature_k": [
+                  100.0,
+                  200.0,
+                  300.0
+                ],
+                "values": [
+                  2e-05,
+                  6e-05,
+                  0.0001
+                ]
+              }
+            },
+            "preview": [
+              [
+                300.0,
+                0.0001
+              ],
+              [
+                100.0,
+                2e-05
+              ],
+              [
+                200.0,
+                6e-05
+              ]
+            ],
+            "row_count": 3,
+            "warnings": [
+              {
+                "code": "few_rows"
+              },
+              {
+                "code": "unsorted_temperature",
+                "column": 0
+              }
+            ],
+            "warnings_omitted": 0
+          }
+        ]
       },
       "RmseResponse": {
         "properties": {

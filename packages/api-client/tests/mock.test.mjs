@@ -131,6 +131,19 @@ describe("the mock of the real contract", async () => {
     assert.equal(body.curves.seebeck_v_per_k.length, 5);
   });
 
+  test("serves a parsed table", async () => {
+    const response = await fetch(`${url}/api/parse`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ text: "T S\n100 1e-6\n200 2e-6\n" }),
+    });
+
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.measurements.seebeck.points, 3);
+    assert.equal(body.warnings[1].code, "unsorted_temperature");
+  });
+
   test("refuses a curve request that breaks the contract", async () => {
     const response = await fetch(`${url}/api/calc`, {
       method: "POST",
@@ -151,6 +164,7 @@ describe("the mock of the real contract", async () => {
     [504, "calculation_timeout"],
     [503, "calculation_unavailable"],
     [422, "invalid_calculation"],
+    [422, "invalid_parse_request"],
   ]) {
     test(`returns the ${code} example on request`, async () => {
       const response = await fetch(`${url}/api/health`, {

@@ -20,6 +20,7 @@ from seeband_core.model_interface import (
 from seeband_api.calc_pool import CalcPoolDep
 from seeband_api.calc_worker import CalcOutcome, CalculationFailed, calculate
 from seeband_api.errors import ApiError, ErrorDetail
+from seeband_api.json_values import finite_or_none
 from seeband_api.request_logging import log_calculation_failure
 from seeband_api.routing import api_router
 
@@ -253,14 +254,10 @@ def _check_measurements(body: CalcRequest, fit_mode: FitMode) -> list[ErrorDetai
     return details
 
 
-def _finite_or_none(values: np.ndarray) -> list[float | None]:
-    return [float(value) if np.isfinite(value) else None for value in values]
-
-
 def _to_response(outcome: CalcOutcome) -> CalcResponse:
     return CalcResponse(
-        temperature_k=_finite_or_none(outcome.curve.temperature_k),  # type: ignore[arg-type]
-        curves={name: _finite_or_none(values) for name, values in outcome.curve.curves.items()},
+        temperature_k=finite_or_none(outcome.curve.temperature_k),  # type: ignore[arg-type]
+        curves={name: finite_or_none(values) for name, values in outcome.curve.curves.items()},
         known_issues=list(outcome.curve.known_issues),
         rmse={
             quantity: RmseResponse(value=rmse.value, unit=rmse.unit)
