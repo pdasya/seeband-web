@@ -35,7 +35,7 @@ jobs:
         run: |
           uv build --wheel --package seeband-core --out-dir dist
           wheel="$PWD/$(ls dist/*.whl)"
-          for file in seeband_core/data/fermi_int_-10_20.txt seeband_core/data/neural_nets/net_100_400.npz seeband_core/data/neural_nets/net_200_500.npz seeband_core/data/neural_nets/net_300_600.npz seeband_core/data/neural_nets/net_300_800.npz seeband_core/data/neural_nets/net_400_700.npz licenses/LICENSE licenses/LICENSE-seeband-web; do
+          for file in seeband_core/data/fermi_int_-10_20.txt seeband_core/data/demo_dataset.json seeband_core/data/neural_nets/net_100_400.npz seeband_core/data/neural_nets/net_200_500.npz seeband_core/data/neural_nets/net_300_600.npz seeband_core/data/neural_nets/net_300_800.npz seeband_core/data/neural_nets/net_400_700.npz licenses/LICENSE licenses/LICENSE-seeband-web; do
             unzip -l "$wheel" | grep -q "$file"
           done
           cd "$RUNNER_TEMP"
@@ -48,6 +48,8 @@ jobs:
           temperature_k = np.linspace(100.0, 800.0, 8)
           guess = neural_nets.predict_band_parameters(temperature_k, 1e-7 * temperature_k)
           assert guess.range_k == (300, 800)
+          from seeband_core.demo_dataset import load_demo_dataset
+          assert load_demo_dataset().synthetic is True
           "
 
   typescript:
