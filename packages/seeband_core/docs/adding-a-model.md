@@ -24,6 +24,14 @@ A fit runs in a separate process, which holds only the models its imports regist
 
 An iterative fit calls `on_iteration` once per iteration, with values in the form of a final result, and `FitMode.iterative` tells a client whether to show a counter. A single-pass fit never calls it. Stopping acts between iterations only, and neither the extra Seebeck stage at the limit nor the Hall stage can be stopped, so a worker still needs a way to end the process.
 
+## Fit quality
+
+- `fit_quality.rmse` compares model values with data: S in µV/K, and ρ and R_H as a percent of the data. A measured value of 0 is an error for a percent, and near a sign change of R_H, tiny values dominate it.
+- `fit_quality.curve_rmse` works from a model and any parameters, with or without a fit. It calculates one curve over the range of the data and interpolates it to the measured temperatures. Pass only the points inside the fit range for an RMSE over that range. On one Mac, a call took 29 to 135 ms at the default 200 points, and the error of interpolating stayed at or below 0.03 µV/K from 100 to 800 K, but reached 0.22 µV/K from 5 K with a small gap. `points` trades one for the other.
+- With N2/N1 other than 1, a DPB S fit does not match its own curve (D12), so `curve_rmse` shows a large RMSE after a good fit. That is the mismatch the user sees in the curve, until P6.
+- `FitResult.parameter_errors` holds standard errors from the last solver run of each stage. It leaves out errors that are not finite, or exactly 0, which means the data do not determine the parameter. Each error holds other stages fixed. In one test, the reported error of SPB A was 0.069 against a real spread of 146, so these are not plain uncertainties.
+- `FitResult.at_bounds` names fitted parameters that ended within 1e-6 of a bound, as a share of the bound, or 1e-6 for a bound below 1.
+
 ## Rules
 
 - Do not mutate requests or measurements.

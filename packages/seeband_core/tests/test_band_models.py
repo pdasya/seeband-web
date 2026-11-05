@@ -443,13 +443,13 @@ EXPECTED_FIT_CALLS: dict[str, tuple[str, list[Any], dict[str, Any], list[str]]] 
     "spb_s": (
         "spb_see_fit",
         [*DATA_S, 11.5, [3.5], limits("fermi_energy")],
-        {},
+        {"progress": ANY},
         ["fermi_energy"],
     ),
     "spb_s_rho": (
         "spb_see_res_fit",
         [*DATA_S, *DATA_R, 11.5, [3.5], limits("fermi_energy"), SPB_RES, limits(*SPB_NAMES)],
-        {"scatter_type": S},
+        {"scatter_type": S, "progress": ANY},
         ["fermi_energy", "A", "C", "F"],
     ),
     "spb_s_rho_rh": (
@@ -466,13 +466,13 @@ EXPECTED_FIT_CALLS: dict[str, tuple[str, list[Any], dict[str, Any], list[str]]] 
             limits("band_mass"),
             S,
         ],
-        {},
+        {"progress": ANY},
         ["fermi_energy", "A", "C", "F", "band_mass"],
     ),
     "dpb_s": (
         "dpb_see_fit",
         [*DATA_S, BANDS, limits(*BAND_NAMES), RATIO],
-        {},
+        {"progress": ANY},
         ["m_eff", "band_gap", "fermi_energy"],
     ),
     "dpb_s_rho": (
@@ -626,7 +626,7 @@ def test_a_fit_returning_the_wrong_length_is_an_error(
     monkeypatch.setattr(band_models, "_CORE", RecordingCore([0.0] * (len(names) + 1)))
     model = registry.get(fit_mode_id.partition("_")[0])
     fit_mode = model.describe().fit_mode(fit_mode_id)
-    data = {quantity: Measurement(np.zeros(1), np.zeros(1)) for quantity in fit_mode.quantities}
+    data = {quantity: Measurement(np.ones(1), np.ones(1)) for quantity in fit_mode.quantities}
     with pytest.raises(ValueError, match="zip"):
         model.fit(
             FitRequest(
@@ -1043,6 +1043,7 @@ def real_measurement() -> Measurement:
         (Measurement(np.ones(2), np.array([1.0, np.inf])), "finite"),
         (Measurement(np.array(["a", "b"]), np.ones(2)), "finite"),
         (Measurement(np.ones(2), np.ones(3)), "different lengths"),
+        (Measurement(np.array([0.0, 1.0]), np.ones(2)), "above 0 K"),
     ],
 )
 def test_bad_measurements_are_invalid_requests(measurement: Measurement, message: str) -> None:
