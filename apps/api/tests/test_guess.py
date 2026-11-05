@@ -16,7 +16,7 @@ from seeband_api.main import create_app
 from seeband_api.settings import Settings
 from seeband_core import data_processing, neural_nets
 from seeband_core.model_catalog import registry
-from seeband_core.model_scales import core_range, default_start
+from seeband_core.model_scales import control_value, core_range, default_start
 
 FIXTURE = (
     Path(__file__).parents[3]
@@ -210,6 +210,79 @@ def test_prediction_that_is_not_finite_has_its_own_state(
     }
 
 
+def test_not_finite_state_keeps_its_warnings(client: TestClient) -> None:
+    body = _post(client, [100.0, 400.0], [1e-4, 2e-4]).json()
+
+    assert body["status"] == "not_finite"
+    assert body["warnings"] == ["underdetermined_fit"]
+
+
+@pytest.mark.parametrize("fit_mode", DPB.fit_modes, ids=lambda fit_mode: fit_mode.id)
+def test_m_eff_that_rounds_to_zero_warns_and_really_has_no_curve(
+    client: TestClient, fit_mode: Any
+) -> None:
+    temperature_k = [300.0 + 20.0 * row for row in range(26)]
+
+    body = _post(client, temperature_k, [-4.5e-4] * 26).json()
+
+    assert body["status"] == "guess"
+    assert 0 < abs(body["prediction"]["m_eff"]) <= 0.005
+    assert body["start_values"]["m_eff"] == 0
+    assert "m_eff_rounds_to_zero" in body["warnings"]
+    calc = client.post(
+        "/api/calc",
+        json={
+            "model": "dpb",
+            "fit_mode": fit_mode.id,
+            "scattering": fit_mode.default_scattering,
+            "parameters": default_start(fit_mode) | body["start_values"],
+            "min_temperature_k": 300.0,
+            "max_temperature_k": 800.0,
+            "points": 5,
+        },
+    )
+    assert calc.json()["code"] == "calculation_failed"
+
+
+def test_ordinary_guess_has_no_warning_about_m_eff(client: TestClient) -> None:
+    case = next(case for case in CASES if case["name"] == "01_Fe2VAl09Si01")
+
+    body = _post(client, case["temperature_k"], case["seebeck_v_per_k"]).json()
+
+    assert body["warnings"] == []
+
+
+def test_each_status_and_reason_is_required_in_the_contract() -> None:
+    schemas = create_app().openapi()["components"]["schemas"]
+
+    assert "status" in schemas["GuessFound"]["required"]
+    assert "status" in schemas["GuessNotFinite"]["required"]
+    assert {"status", "reason"} <= set(schemas["GuessNoNet"]["required"])
+
+
+# As on the desktop: int(np.round(x * 100)) for the mass, within the slider's range.
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        (0.285, 0.28),
+        (0.29, 0.29),
+        (1.15, 1.15),
+        (-2.99955, -3.0),
+        (2.995, 3.0),
+        (3.005, 3.0),
+        (-3.005, -3.0),
+        (0.004, 0.0),
+        (0.006, 0.01),
+    ],
+)
+def test_m_eff_rounds_as_the_desktop(value: float, expected: float) -> None:
+    spec = next(s for s in DPB.fit_modes[0].parameters if s.name == "m_eff")
+
+    assert control_value(spec, value) == expected
+    desktop = max(-300, min(300, int(np.round(value * 100))))
+    assert control_value(spec, value) == desktop / 100
+
+
 def test_one_row_has_no_net(client: TestClient) -> None:
     body = _post(client, [300.0], [1e-4]).json()
 
@@ -363,7 +436,7 @@ def test_unknown_model_is_refused(client: TestClient) -> None:
     )
 
     assert response.status_code == 422
-    assert response.json()["code"] == "invalid_calculation"
+    assert response.json()["code"] == "invalid_guess"
     assert response.json()["details"][0]["location"] == ["body", "model"]
     assert response.json()["details"][0]["code"] == "unknown_model"
 
@@ -485,10 +558,11 @@ def test_calculation_failure_answers_422_and_logs_only_its_type(
 
 
 def test_slow_worker_answers_504(monkeypatch: pytest.MonkeyPatch) -> None:
-    settings = Settings(calc_timeout_s=0.2)
-    with _worker_replaced_by(
-        monkeypatch, pool_functions.sleep_through_a_guess, settings
-    ) as test_client:
+    with _worker_replaced_by(monkeypatch, pool_functions.sleep_through_a_guess) as test_client:
+        # A worker's start takes longer than this limit, so start one, to time the sleep alone.
+        pool = test_client.app.state.calc_pool
+        assert test_client.portal.call(pool.run, pool_functions.double, 21) == 42  # type: ignore[union-attr]
+        pool._timeout_s = 0.2
         response = _post(test_client, [100.0, 400.0], [1e-4, 1e-4])
 
     assert response.status_code == 504

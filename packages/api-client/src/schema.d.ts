@@ -352,7 +352,8 @@ export interface components {
          *     `start_values` holds what to use, by the parameter names of `GET /api/models`, in core units as
          *     in `core_range`: `m_eff` is dimensionless, `band_gap` and `fermi_energy` are in K. They are
          *     rounded and limited as the desktop's sliders do, so they lie in `core_range` of every mode of
-         *     the model. Other parameters keep their values.
+         *     the model. Other parameters keep their values. With the warning `m_eff_rounds_to_zero`, `m_eff`
+         *     is 0, which has no curve, and a fit from it fails, so a client should not use it as it is.
          */
         GuessFound: {
             /**
@@ -367,7 +368,7 @@ export interface components {
                 [key: string]: number;
             };
             /** Warnings */
-            warnings: ("unsorted_temperature" | "underdetermined_fit")[];
+            warnings: ("unsorted_temperature" | "underdetermined_fit" | "m_eff_rounds_to_zero")[];
         };
         /**
          * GuessNoNet
@@ -383,10 +384,9 @@ export interface components {
             status: "no_net";
             /**
              * Reason
-             * @default temperature_span
              * @constant
              */
-            reason?: "temperature_span";
+            reason: "temperature_span";
             /** First Temperature K */
             first_temperature_k: number;
             /** Last Temperature K */
@@ -394,7 +394,7 @@ export interface components {
             /** Available Ranges */
             available_ranges: components["schemas"]["NetRange"][];
             /** Warnings */
-            warnings: ("unsorted_temperature" | "underdetermined_fit")[];
+            warnings: ("unsorted_temperature" | "underdetermined_fit" | "m_eff_rounds_to_zero")[];
         };
         /**
          * GuessNotFinite
@@ -410,7 +410,7 @@ export interface components {
             status: "not_finite";
             net_range: components["schemas"]["NetRange"];
             /** Warnings */
-            warnings: ("unsorted_temperature" | "underdetermined_fit")[];
+            warnings: ("unsorted_temperature" | "underdetermined_fit" | "m_eff_rounds_to_zero")[];
         };
         /**
          * GuessRequest

@@ -218,6 +218,7 @@ describe("the mock of the real contract", async () => {
     [504, "calculation_timeout"],
     [503, "calculation_unavailable"],
     [422, "invalid_calculation"],
+    [422, "invalid_guess"],
     [422, "invalid_parse_request"],
     [422, "guess_unavailable"],
   ]) {

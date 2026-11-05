@@ -98,6 +98,22 @@
                       ]
                     }
                   },
+                  "invalid_guess": {
+                    "value": {
+                      "code": "invalid_guess",
+                      "message": "Invalid request",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "model"
+                          ],
+                          "code": "unknown_model",
+                          "message": "This model does not exist"
+                        }
+                      ]
+                    }
+                  },
                   "guess_unavailable": {
                     "value": {
                       "code": "guess_unavailable",
@@ -2375,6 +2391,22 @@
                       ]
                     }
                   },
+                  "invalid_guess": {
+                    "value": {
+                      "code": "invalid_guess",
+                      "message": "Invalid request",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "model"
+                          ],
+                          "code": "unknown_model",
+                          "message": "This model does not exist"
+                        }
+                      ]
+                    }
+                  },
                   "guess_unavailable": {
                     "value": {
                       "code": "guess_unavailable",
@@ -2538,6 +2570,22 @@
                           ],
                           "code": "unknown_column",
                           "message": "The text has no such column"
+                        }
+                      ]
+                    }
+                  },
+                  "invalid_guess": {
+                    "value": {
+                      "code": "invalid_guess",
+                      "message": "Invalid request",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "model"
+                          ],
+                          "code": "unknown_model",
+                          "message": "This model does not exist"
                         }
                       ]
                     }
@@ -2882,6 +2930,22 @@
                       ]
                     }
                   },
+                  "invalid_guess": {
+                    "value": {
+                      "code": "invalid_guess",
+                      "message": "Invalid request",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "model"
+                          ],
+                          "code": "unknown_model",
+                          "message": "This model does not exist"
+                        }
+                      ]
+                    }
+                  },
                   "guess_unavailable": {
                     "value": {
                       "code": "guess_unavailable",
@@ -3120,6 +3184,22 @@
                           ],
                           "code": "unknown_column",
                           "message": "The text has no such column"
+                        }
+                      ]
+                    }
+                  },
+                  "invalid_guess": {
+                    "value": {
+                      "code": "invalid_guess",
+                      "message": "Invalid request",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "model"
+                          ],
+                          "code": "unknown_model",
+                          "message": "This model does not exist"
                         }
                       ]
                     }
@@ -3738,8 +3818,7 @@
           "status": {
             "type": "string",
             "const": "guess",
-            "title": "Status",
-            "default": "guess"
+            "title": "Status"
           },
           "net_range": {
             "$ref": "#/components/schemas/NetRange"
@@ -3759,7 +3838,8 @@
               "type": "string",
               "enum": [
                 "unsorted_temperature",
-                "underdetermined_fit"
+                "underdetermined_fit",
+                "m_eff_rounds_to_zero"
               ]
             },
             "type": "array",
@@ -3768,27 +3848,26 @@
         },
         "type": "object",
         "required": [
+          "status",
           "net_range",
           "prediction",
           "start_values",
           "warnings"
         ],
         "title": "GuessFound",
-        "description": "A guess.\n\n`start_values` holds what to use, by the parameter names of `GET /api/models`, in core units as\nin `core_range`: `m_eff` is dimensionless, `band_gap` and `fermi_energy` are in K. They are\nrounded and limited as the desktop's sliders do, so they lie in `core_range` of every mode of\nthe model. Other parameters keep their values."
+        "description": "A guess.\n\n`start_values` holds what to use, by the parameter names of `GET /api/models`, in core units as\nin `core_range`: `m_eff` is dimensionless, `band_gap` and `fermi_energy` are in K. They are\nrounded and limited as the desktop's sliders do, so they lie in `core_range` of every mode of\nthe model. Other parameters keep their values. With the warning `m_eff_rounds_to_zero`, `m_eff`\nis 0, which has no curve, and a fit from it fails, so a client should not use it as it is."
       },
       "GuessNoNet": {
         "properties": {
           "status": {
             "type": "string",
             "const": "no_net",
-            "title": "Status",
-            "default": "no_net"
+            "title": "Status"
           },
           "reason": {
             "type": "string",
             "const": "temperature_span",
-            "title": "Reason",
-            "default": "temperature_span"
+            "title": "Reason"
           },
           "first_temperature_k": {
             "type": "number",
@@ -3810,7 +3889,8 @@
               "type": "string",
               "enum": [
                 "unsorted_temperature",
-                "underdetermined_fit"
+                "underdetermined_fit",
+                "m_eff_rounds_to_zero"
               ]
             },
             "type": "array",
@@ -3819,6 +3899,8 @@
         },
         "type": "object",
         "required": [
+          "status",
+          "reason",
           "first_temperature_k",
           "last_temperature_k",
           "available_ranges",
@@ -3832,8 +3914,7 @@
           "status": {
             "type": "string",
             "const": "not_finite",
-            "title": "Status",
-            "default": "not_finite"
+            "title": "Status"
           },
           "net_range": {
             "$ref": "#/components/schemas/NetRange"
@@ -3843,7 +3924,8 @@
               "type": "string",
               "enum": [
                 "unsorted_temperature",
-                "underdetermined_fit"
+                "underdetermined_fit",
+                "m_eff_rounds_to_zero"
               ]
             },
             "type": "array",
@@ -3852,6 +3934,7 @@
         },
         "type": "object",
         "required": [
+          "status",
           "net_range",
           "warnings"
         ],

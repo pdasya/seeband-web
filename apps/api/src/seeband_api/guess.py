@@ -23,7 +23,7 @@ from seeband_api.routing import api_router
 
 router = api_router("guess")
 
-GuessWarning = Literal["unsorted_temperature", "underdetermined_fit"]
+GuessWarning = Literal["unsorted_temperature", "underdetermined_fit", "m_eff_rounds_to_zero"]
 
 _NET_RANGE_EXAMPLE = {"min_temperature_k": 400.0, "max_temperature_k": 700.0}
 # Every third row of the example set 01_Fe2VAl09Si01, rounded to 4 digits.
@@ -112,10 +112,11 @@ class GuessFound(BaseModel):
     `start_values` holds what to use, by the parameter names of `GET /api/models`, in core units as
     in `core_range`: `m_eff` is dimensionless, `band_gap` and `fermi_energy` are in K. They are
     rounded and limited as the desktop's sliders do, so they lie in `core_range` of every mode of
-    the model. Other parameters keep their values.
+    the model. Other parameters keep their values. With the warning `m_eff_rounds_to_zero`, `m_eff`
+    is 0, which has no curve, and a fit from it fails, so a client should not use it as it is.
     """
 
-    status: Literal["guess"] = "guess"
+    status: Literal["guess"]
     net_range: NetRange
     prediction: Prediction
     start_values: dict[str, float]
@@ -128,8 +129,8 @@ class GuessNoNet(BaseModel):
     A client should keep its current values, as the desktop does.
     """
 
-    status: Literal["no_net"] = "no_net"
-    reason: Literal["temperature_span"] = "temperature_span"
+    status: Literal["no_net"]
+    reason: Literal["temperature_span"]
     first_temperature_k: float
     last_temperature_k: float
     available_ranges: list[NetRange]
@@ -142,7 +143,7 @@ class GuessNotFinite(BaseModel):
     The prediction is left out, as JSON has no such numbers. A client should keep its values.
     """
 
-    status: Literal["not_finite"] = "not_finite"
+    status: Literal["not_finite"]
     net_range: NetRange
     warnings: list[GuessWarning]
 
@@ -156,8 +157,8 @@ def _check_model(model_id: str) -> None:
     if description is None:
         raise ApiError(
             HTTPStatus.UNPROCESSABLE_CONTENT,
-            "invalid_calculation",
-            "Invalid calculation",
+            "invalid_guess",
+            "Invalid request",
             [
                 ErrorDetail(
                     location=["body", "model"],
@@ -191,6 +192,8 @@ def _warnings(outcome: GuessOutcome) -> list[GuessWarning]:
         warnings.append("unsorted_temperature")
     if outcome.underdetermined_fit:
         warnings.append("underdetermined_fit")
+    if outcome.start_values is not None and outcome.start_values["m_eff"] == 0:
+        warnings.append("m_eff_rounds_to_zero")
     return warnings
 
 
@@ -199,14 +202,19 @@ def _to_response(outcome: GuessOutcome) -> GuessFound | GuessNoNet | GuessNotFin
     warnings = _warnings(outcome)
     if isinstance(result, NoNeuralNet):
         return GuessNoNet(
+            status="no_net",
+            reason="temperature_span",
             first_temperature_k=result.first_temperature_k,
             last_temperature_k=result.last_temperature_k,
             available_ranges=[_net_range(range_k) for range_k in NET_RANGES_K],
             warnings=warnings,
         )
     if outcome.start_values is None:
-        return GuessNotFinite(net_range=_net_range(result.range_k), warnings=warnings)
+        return GuessNotFinite(
+            status="not_finite", net_range=_net_range(result.range_k), warnings=warnings
+        )
     return GuessFound(
+        status="guess",
         net_range=_net_range(result.range_k),
         prediction=Prediction(
             m_eff=result.m_eff,

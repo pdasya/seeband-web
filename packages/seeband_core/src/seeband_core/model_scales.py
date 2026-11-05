@@ -27,7 +27,7 @@ def control_value(spec: ParameterSpec, value: float) -> float:
     """Return the core value a control holds once set to a core value, as the desktop's slider does.
 
     A slider holds whole units within its range. A value that is not finite raises, as on the
-    desktop.
+    desktop. So does the desktop's slider beyond a 32-bit integer, which this limits instead.
     """
     limits = spec.value_range
     slider_value = round(scale_value(value, 1 / spec.fit_scale))

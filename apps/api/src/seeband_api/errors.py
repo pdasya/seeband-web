@@ -83,6 +83,17 @@ ERROR_EXAMPLES: dict[str, dict[str, Any]] = {
             }
         ],
     },
+    "invalid_guess": {
+        "code": "invalid_guess",
+        "message": "Invalid request",
+        "details": [
+            {
+                "location": ["body", "model"],
+                "code": "unknown_model",
+                "message": "This model does not exist",
+            }
+        ],
+    },
     "guess_unavailable": {
         "code": "guess_unavailable",
         "message": "This model has no neural net guess",

@@ -213,7 +213,8 @@ def predict_band_parameters(
 def start_values(guess: NeuralNetGuess, fit_mode: FitMode) -> dict[str, float] | None:
     """Return the parameters a guess sets in a fit mode, as the desktop's sliders would hold them.
 
-    Returns None if a prediction is not finite, where the desktop's slider code raises.
+    Returns None if a prediction is not finite, where the desktop's slider code raises. A finite
+    value too large for the desktop's slider, which also raises there, is limited here.
     """
     prediction = {
         "m_eff": guess.m_eff,
