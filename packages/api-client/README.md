@@ -29,11 +29,15 @@ To work on the client without the API, serve the contract at `http://127.0.0.1:4
 pnpm mock
 ```
 
-It runs [Prism](https://github.com/stoplightio/prism) behind a small proxy, and restarts its routes when `openapi.json` changes. It serves the routes and examples in the contract, so a route appears once its API task adds it. Requests that break the contract get a 422 in the API's error format. Responses are always the example, and do not depend on the request.
+It runs [Prism](https://github.com/stoplightio/prism) behind a small proxy. It serves the routes and examples in the contract, so a route appears once its API task adds it. It reloads when `openapi.json` changes, and requests during a reload can get a 502. If the file becomes invalid, the mock stops and has to be started again.
 
-The client calls `/api` on its own origin, so switching is a matter of where the dev server forwards `/api`: the mock on port 4010, or the API on port 8000. [U4](https://github.com/pdasya/seeband-web/issues/39) adds this setting.
+A request that breaks the contract gets a 422 `validation_error`, with its problems in `details`, as from the API. Their `code` and `message` values are Prism's, and differ from the API's.
 
-To test loading and failure states:
+### Switching between the mock and the API
+
+The client calls `/api` on its own origin, and the dev server forwards `/api` to the mock on port 4010 or the API on port 8000. Use this forwarding rather than a base URL for another origin, because neither the API nor the mock's error responses send CORS headers, so a browser would hide those errors from the client. [U4](https://github.com/pdasya/seeband-web/issues/39) adds this setting.
+
+### Testing loading and failure states
 
 | Case                | Command or request header                                  |
 | ------------------- | ---------------------------------------------------------- |
@@ -43,6 +47,11 @@ To test loading and failure states:
 | Invalid request     | `Prefer: code=422, example=validation_error`               |
 | Not found           | `Prefer: code=404, example=not_found`                      |
 
-Give `example` with `code`, as otherwise Prism returns the first example whatever the status. A request's own `Prefer` header replaces `MOCK_PREFER`. `MOCK_PORT` changes the port.
+Give `example` with `code`, as otherwise Prism returns the first example whatever the status. An example name that does not exist gives `mock_error`. A request's own `Prefer` header replaces `MOCK_PREFER`. `MOCK_PORT` changes the port.
 
-The mock cannot do what depends on the request, such as real curves, or stream events. Check those against the API.
+### Where the mock differs from the API
+
+- Responses are the examples, and do not depend on the request. A route's response cannot show `null` in a required field, because FastAPI drops `null` from examples. Check real curves against the API.
+- It does not stream events, and a `Prefer` failure with `Accept: text/event-stream` gives `mock_error`.
+- A 405 has no `Allow` header, and `Accept: application/xml` gives a 406 `mock_error`, where the API answers with JSON.
+- A body over 10 MB gets Prism's own 413 format.

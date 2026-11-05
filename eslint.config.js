@@ -8,6 +8,8 @@ export default tseslint.config(
     files: ["**/*.mjs"],
     languageOptions: {
       globals: {
+        AbortController: "readonly",
+        AbortSignal: "readonly",
         Buffer: "readonly",
         URL: "readonly",
         console: "readonly",

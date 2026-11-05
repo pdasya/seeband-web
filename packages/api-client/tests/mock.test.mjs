@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
+import { once } from "node:events";
 import { createServer } from "node:net";
+import { networkInterfaces } from "node:os";
 import { after, describe, test } from "node:test";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
@@ -9,6 +11,7 @@ const MOCK = fileURLToPath(new URL("../scripts/mock.mjs", import.meta.url));
 const POST_CONTRACT = fileURLToPath(
   new URL("./fixtures/post-contract.json", import.meta.url),
 );
+const JSON_HEADERS = { "content-type": "application/json" };
 
 function freePort() {
   return new Promise((resolve) => {
@@ -20,29 +23,64 @@ function freePort() {
   });
 }
 
-const running = [];
+const running = new Set();
 
-async function startMock({ contract, env = {} } = {}) {
-  const port = await freePort();
+function spawnMock({ contract, env = {} } = {}) {
   const mock = spawn(
     process.execPath,
     [MOCK, ...(contract ? [contract] : [])],
     {
-      env: { ...process.env, MOCK_PORT: String(port), ...env },
-      stdio: "ignore",
+      env: { ...process.env, ...env },
+      stdio: ["ignore", "ignore", "pipe"],
     },
   );
-  running.push(mock);
+  mock.stderrText = "";
+  mock.stderr.on("data", (chunk) => (mock.stderrText += chunk));
+  running.add(mock);
+  mock.on("exit", () => running.delete(mock));
+  return mock;
+}
+
+async function startMock({ contract, env = {} } = {}) {
+  const port = await freePort();
+  const mock = spawnMock({
+    contract,
+    env: { MOCK_PORT: String(port), ...env },
+  });
   const url = `http://127.0.0.1:${port}`;
-  for (let attempt = 0; attempt < 600; attempt += 1) {
+  while (mock.exitCode === null) {
     try {
       await fetch(`${url}/`);
-      return url;
+      return { url, port, mock };
     } catch {
       await sleep(50);
     }
   }
-  throw new Error("The mock did not start");
+  throw new Error(`The mock stopped: ${mock.stderrText}`);
+}
+
+function isRunning(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function prismPid(mock) {
+  return Number(
+    execFileSync("pgrep", ["-P", String(mock.pid)], {
+      encoding: "utf8",
+    }).trim(),
+  );
+}
+
+async function waitUntilStopped(pid) {
+  for (let attempt = 0; attempt < 200 && isRunning(pid); attempt += 1) {
+    await sleep(50);
+  }
+  return !isRunning(pid);
 }
 
 after(() => {
@@ -52,12 +90,13 @@ after(() => {
 });
 
 describe("the mock of the real contract", async () => {
-  const url = await startMock();
+  const { url } = await startMock();
 
-  test("returns the example from the contract", async () => {
+  test("returns the example from the contract, with its headers", async () => {
     const response = await fetch(`${url}/api/health`);
 
     assert.equal(response.status, 200);
+    assert.match(response.headers.get("content-type"), /application\/json/);
     assert.deepEqual(await response.json(), { status: "ok", version: "1.0.0" });
   });
 
@@ -85,7 +124,7 @@ describe("the mock of the real contract", async () => {
     const body = await response.json();
     assert.equal(body.code, "not_found");
     assert.deepEqual(body.details, []);
-    assert.equal(typeof body.message, "string");
+    assert.match(body.message, /hasn't been found/);
   });
 
   test("answers a wrong method in the API's error format", async () => {
@@ -94,35 +133,97 @@ describe("the mock of the real contract", async () => {
     assert.equal(response.status, 405);
     assert.equal((await response.json()).code, "method_not_allowed");
   });
+
+  test("marks an unknown example as a problem of the mock", async () => {
+    for (const prefer of ["example=nope", "code=500, example=nope"]) {
+      const response = await fetch(`${url}/api/health`, {
+        headers: { prefer },
+      });
+
+      const body = await response.json();
+      assert.equal(body.code, "mock_error", prefer);
+      assert.notEqual(body.message, "");
+    }
+  });
+
+  for (const path of ["/api/health", "/api/nothing"]) {
+    test(`survives HEAD on ${path}`, async () => {
+      const response = await fetch(`${url}${path}`, { method: "HEAD" });
+
+      assert.ok(response.status >= 200);
+      assert.equal((await fetch(`${url}/api/health`)).status, 200);
+    });
+  }
 });
 
-describe("a request that breaks the contract", async () => {
-  const url = await startMock({ contract: POST_CONTRACT });
+describe("a request to a route like those of api_router", async () => {
+  const { url } = await startMock({ contract: POST_CONTRACT });
+  const post = (body, { path = "/api/points", headers = JSON_HEADERS } = {}) =>
+    fetch(`${url}${path}`, { method: "POST", headers, body });
 
-  test("is refused in the API's error format", async () => {
-    const response = await fetch(`${url}/api/points`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ temperature_k: "warm" }),
+  test("has an invalid field reported with its location", async () => {
+    const response = await post(
+      JSON.stringify({ temperature_k: [300, "warm"] }),
+    );
+
+    assert.equal(response.status, 422);
+    const body = await response.json();
+    assert.equal(body.code, "validation_error");
+    assert.equal(body.details.length, 1);
+    assert.deepEqual(body.details[0].location, ["body", "temperature_k", 1]);
+    assert.equal(body.details[0].code, "type");
+    assert.match(body.details[0].message, /must be number/);
+  });
+
+  test("has a missing body reported at the body", async () => {
+    const response = await post(undefined);
+
+    assert.equal(response.status, 422);
+    const body = await response.json();
+    assert.equal(body.code, "validation_error");
+    assert.deepEqual(body.details[0].location, ["body"]);
+  });
+
+  test("has an unsupported content type answered as the API does", async () => {
+    const response = await post("text", {
+      headers: { "content-type": "text/plain" },
     });
 
     assert.equal(response.status, 422);
     const body = await response.json();
     assert.equal(body.code, "validation_error");
-    assert.deepEqual(body.details[0].location, ["body", "temperature_k"]);
-    assert.deepEqual(Object.keys(body.details[0]).sort(), [
-      "code",
-      "location",
-      "message",
+    assert.equal(body.details[0].code, "415");
+  });
+
+  test("has its query string checked", async () => {
+    const response = await post(JSON.stringify({ temperature_k: [300] }), {
+      path: "/api/points?limit=many",
+    });
+
+    assert.equal(response.status, 422);
+    assert.deepEqual((await response.json()).details[0].location, [
+      "query",
+      "limit",
+    ]);
+  });
+
+  test("has malformed JSON refused, rather than never answered", async () => {
+    const response = await post("{not json", {});
+
+    assert.equal(response.status, 422);
+    const body = await response.json();
+    assert.equal(body.code, "validation_error");
+    assert.deepEqual(body.details, [
+      {
+        location: ["body"],
+        code: "json_invalid",
+        message: "JSON decode error",
+      },
     ]);
   });
 
   test("passes when it is valid, with its body forwarded", async () => {
-    const response = await fetch(`${url}/api/points`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ temperature_k: [300, 400] }),
-    });
+    const response = await post(JSON.stringify({ temperature_k: [300, 400] }));
 
     assert.equal(response.status, 200);
     assert.deepEqual(await response.json(), { count: 2 });
@@ -135,25 +236,117 @@ describe("settings from the environment", async () => {
     env: { MOCK_PREFER: "code=500, example=internal_error" },
   });
 
-  test("MOCK_DELAY_MS delays responses", async () => {
-    const started = performance.now();
-    await (await fetch(`${delayed}/api/health`)).text();
+  for (const headers of [{}, { prefer: "code=200" }]) {
+    test(`MOCK_DELAY_MS delays a request with headers ${JSON.stringify(headers)}`, async () => {
+      const started = performance.now();
+      await (await fetch(`${delayed.url}/api/health`, { headers })).text();
 
-    assert.ok(performance.now() - started >= 290);
+      assert.ok(performance.now() - started >= 290);
+    });
+  }
+
+  test("a request cancelled during the delay does not stop the mock", async () => {
+    await assert.rejects(
+      fetch(`${delayed.url}/api/health`, { signal: AbortSignal.timeout(50) }),
+      /timeout/i,
+    );
+    assert.equal((await fetch(`${delayed.url}/api/health`)).status, 200);
   });
 
   test("MOCK_PREFER applies to requests with no Prefer header", async () => {
-    const response = await fetch(`${failing}/api/health`);
+    const response = await fetch(`${failing.url}/api/health`);
 
     assert.equal(response.status, 500);
     assert.equal((await response.json()).code, "internal_error");
   });
 
   test("a request's own Prefer header wins over MOCK_PREFER", async () => {
-    const response = await fetch(`${failing}/api/health`, {
+    const response = await fetch(`${failing.url}/api/health`, {
       headers: { prefer: "code=200" },
     });
 
     assert.equal(response.status, 200);
+  });
+
+  for (const env of [
+    { MOCK_PORT: "abc" },
+    { MOCK_PORT: "70000" },
+    { MOCK_DELAY_MS: "abc" },
+    { MOCK_DELAY_MS: "-5" },
+    { MOCK_DELAY_MS: "1e12" },
+  ]) {
+    test(`refuses ${JSON.stringify(env)}`, async () => {
+      const mock = spawnMock({ env });
+
+      const [code] = await once(mock, "exit");
+      assert.equal(code, 1);
+      assert.match(
+        mock.stderrText,
+        /Mock API: MOCK_\w+ must be a whole number/,
+      );
+      assert.doesNotMatch(mock.stderrText, /\n\s+at /);
+    });
+  }
+});
+
+describe("the mock's processes", () => {
+  test("listens only on the loopback interface", async (context) => {
+    const { port } = await startMock();
+    const external = Object.values(networkInterfaces())
+      .flat()
+      .find((address) => address.family === "IPv4" && !address.internal);
+    if (!external) {
+      context.skip("this machine has no other interface");
+      return;
+    }
+
+    await assert.rejects(
+      fetch(`http://${external.address}:${port}/api/health`),
+    );
+  });
+
+  test("a busy port gives a clear error and starts nothing", async () => {
+    const { port, url } = await startMock();
+
+    const second = spawnMock({ env: { MOCK_PORT: String(port) } });
+    const [code] = await once(second, "exit");
+
+    assert.equal(code, 1);
+    assert.match(
+      second.stderrText,
+      new RegExp(`Mock API: port ${port} is in use`),
+    );
+    assert.equal((await fetch(`${url}/api/health`)).status, 200);
+  });
+
+  test("stopping the mock stops Prism", async () => {
+    const { mock } = await startMock();
+    const pid = prismPid(mock);
+    assert.ok(isRunning(pid));
+
+    mock.kill("SIGTERM");
+
+    assert.ok(await waitUntilStopped(pid));
+  });
+
+  test("Prism stopping stops the mock", async () => {
+    const { mock } = await startMock();
+
+    process.kill(prismPid(mock), "SIGKILL");
+    const [code] = await once(mock, "exit");
+
+    assert.equal(code, 1);
+    assert.match(mock.stderrText, /Prism stopped/);
+  });
+
+  test("a contract that does not exist fails without a stack trace", async () => {
+    const mock = spawnMock({
+      contract: "/no/such/contract.json",
+      env: { MOCK_PORT: String(await freePort()) },
+    });
+
+    const [code] = await once(mock, "exit");
+    assert.equal(code, 1);
+    assert.match(mock.stderrText, /Mock API: Prism stopped/);
   });
 });

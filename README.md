@@ -26,7 +26,7 @@ The [project overview](https://claude.ai/artifact/5WDV9nBj7G9vXTihrtkGmd) and [d
 
 ## Setup
 
-Requires [Node.js](https://nodejs.org) 24 or newer, [pnpm](https://pnpm.io) 12 and [uv](https://docs.astral.sh/uv/). uv installs Python 3.13 if needed.
+Requires [Node.js](https://nodejs.org) 24.18 or newer, [pnpm](https://pnpm.io) 12 and [uv](https://docs.astral.sh/uv/). uv installs Python 3.13 if needed.
 
 ```sh
 pnpm install

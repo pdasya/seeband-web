@@ -5,6 +5,14 @@
     "/api/points": {
       "post": {
         "operationId": "post_points",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer" }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -28,6 +36,23 @@
             "content": {
               "application/json": {
                 "schema": { "type": "object", "examples": [{ "count": 2 }] }
+              }
+            }
+          },
+          "default": {
+            "description": "As every route through api_router has",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object" },
+                "examples": {
+                  "internal_error": {
+                    "value": {
+                      "code": "internal_error",
+                      "message": "Internal server error",
+                      "details": []
+                    }
+                  }
+                }
               }
             }
           }
