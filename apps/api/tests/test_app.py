@@ -1,5 +1,5 @@
 import pytest
-from fastapi import APIRouter, FastAPI
+from fastapi import APIRouter, FastAPI, HTTPException
 from fastapi.testclient import TestClient
 from pydantic import BaseModel, ValidationError
 from seeband_api.errors import ApiError, ErrorDetail
@@ -28,6 +28,10 @@ def _app_with_test_routes() -> FastAPI:
             "State is bad",
             details=[ErrorDetail(location=["body", 1], code="bad_item", message="Item is bad")],
         )
+
+    @router.get("/dict-detail")
+    async def dict_detail() -> None:
+        raise HTTPException(400, detail={"reason": "structured"})
 
     @router.get("/crash")
     async def crash() -> None:
@@ -77,7 +81,7 @@ def test_validation_error_names_the_problem(client: TestClient) -> None:
     assert set(body["details"][0]) == {"location", "code", "message"}
 
 
-def test_validation_error_does_not_return_submitted_values(client: TestClient) -> None:
+def test_validation_error_leaves_out_pydantic_copy_of_the_input(client: TestClient) -> None:
     # A string in place of a list ends in an error that Pydantic reports with the input.
     response = client.post("/api/test/validated", json={"seebeck_v_per_k": "PRIVATE-VALUE"})
 
@@ -97,6 +101,15 @@ def test_malformed_body_uses_the_error_format(client: TestClient, content: bytes
     assert response.status_code == 422
     assert response.json()["code"] == "validation_error"
     assert "PRIVATE-VALUE" not in response.text
+
+
+def test_http_exception_with_a_detail_that_is_not_text_uses_the_error_format(
+    client: TestClient,
+) -> None:
+    response = client.get("/api/test/dict-detail")
+
+    assert response.status_code == 400
+    assert response.json() == {"code": "http_error", "message": "HTTP error", "details": None}
 
 
 def test_api_error_uses_the_error_format(client: TestClient) -> None:

@@ -13,6 +13,8 @@ def main() -> None:
         host=settings.host,
         port=settings.port,
         access_log=False,
+        # Uvicorn logs the path and query of WebSocket requests. The API has none.
+        ws="none",
     )
 
 

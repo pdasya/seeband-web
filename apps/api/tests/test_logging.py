@@ -1,5 +1,6 @@
 """What reaches the logs, in the app and through a real server."""
 
+import asyncio
 import json
 import logging
 import os
@@ -8,7 +9,7 @@ import socket
 import subprocess
 import sys
 import time
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Coroutine, Iterator
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
@@ -17,8 +18,11 @@ import httpx2
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from seeband_api.__main__ import main as entry_point
 from seeband_api.main import create_app
+from seeband_api.request_logging import RequestLoggingMiddleware
 from seeband_api.settings import Settings
+from starlette.types import Message
 
 SECRET = "SECRET-MEASUREMENT-7fd3"
 BODY = {"note": SECRET, "seebeck_v_per_k": [1.5e-4, 2.5e-4]}
@@ -43,7 +47,8 @@ def _send_requests_carrying_the_secret(client: Any) -> None:
     )
     assert client.post("/api/test/crash", json=BODY).status_code == 500
     assert client.post(f"/api/nothing/{SECRET}?query={SECRET}", json=BODY).status_code == 404
-    assert client.get(f"/api/test/echo/{SECRET}?query={SECRET}").status_code == 405
+    assert client.get(url).status_code == 405
+    assert client.request(SECRET, url).status_code == 405
 
 
 class _RecordEverything(logging.Handler):
@@ -117,7 +122,7 @@ def test_nothing_from_a_request_reaches_the_records(
     with _recorded_logs() as records:
         _send_requests_carrying_the_secret(TestClient(app))
 
-    assert len(_fields(records, "request")) == 7
+    assert len(_fields(records, "request")) == 8
     for record in records:
         assert SECRET not in record.getMessage()
         assert SECRET not in json.dumps(record.__dict__.get("fields"))
@@ -148,6 +153,71 @@ def test_exception_after_the_response_started_keeps_its_status(
     assert response.content == b"first chunk"
     assert _fields(records, "unhandled_exception")[0]["exception_type"] == "RuntimeError"
     assert _fields(records, "request")[0]["status"] == 200
+
+
+def test_unknown_method_is_logged_as_other() -> None:
+    app = create_app()
+    with _recorded_logs() as records:
+        TestClient(app).request(SECRET, "/api/health")
+
+    [fields] = _fields(records, "request")
+    assert fields["method"] == "OTHER"
+
+
+def test_duration_is_in_milliseconds(leaky_app_factory: Callable[[], FastAPI]) -> None:
+    app = leaky_app_factory()
+    with _recorded_logs() as records:
+        TestClient(app).get("/api/test/sleep-50-ms")
+
+    [fields] = _fields(records, "request")
+    assert 40 <= fields["duration_ms"] < 5000
+
+
+def _http_scope() -> dict[str, Any]:
+    return {"type": "http", "method": "POST", "path": "/api/test", "headers": []}
+
+
+def _raises(error: BaseException) -> Callable[..., Coroutine[Any, Any, None]]:
+    async def app(*_: Any) -> None:
+        raise error
+
+    return app
+
+
+def test_any_exception_becomes_the_500_response() -> None:
+    sent: list[Message] = []
+
+    async def send(message: Message) -> None:
+        sent.append(message)
+
+    middleware = RequestLoggingMiddleware(_raises(ValueError(SECRET)), frozenset())
+    with _recorded_logs() as records:
+        asyncio.run(middleware(_http_scope(), None, send))  # type: ignore[arg-type]
+
+    assert sent[0]["status"] == 500
+    assert _fields(records, "unhandled_exception")[0]["exception_type"] == "ValueError"
+    assert _fields(records, "request")[0]["status"] == 500
+
+
+def test_cancellation_continues_and_logs_no_status() -> None:
+    middleware = RequestLoggingMiddleware(_raises(asyncio.CancelledError()), frozenset())
+    with _recorded_logs() as records, pytest.raises(asyncio.CancelledError):
+        asyncio.run(middleware(_http_scope(), None, None))  # type: ignore[arg-type]
+
+    assert _fields(records, "unhandled_exception") == []
+    assert _fields(records, "request")[0]["status"] is None
+
+
+def test_failure_to_send_the_500_does_not_carry_the_original_message() -> None:
+    async def send(_: Message) -> None:
+        raise OSError("connection lost")
+
+    middleware = RequestLoggingMiddleware(_raises(RuntimeError(SECRET)), frozenset())
+    with _recorded_logs() as records, pytest.raises(OSError) as raised:
+        asyncio.run(middleware(_http_scope(), None, send))  # type: ignore[arg-type]
+
+    assert raised.value.__context__ is None
+    assert _fields(records, "request")[0]["status"] is None
 
 
 def test_log_level_setting_is_applied() -> None:
@@ -202,17 +272,8 @@ def _json_lines(text: str) -> list[dict[str, Any]]:
     return lines
 
 
-def test_real_server_with_default_uvicorn_settings_logs_nothing_from_requests(
-    tmp_path: Path, support_dir: Path
-) -> None:
-    """Uvicorn's own logs are the risk: its access log has query strings, its error log tracebacks.
-
-    This runs plain `uvicorn`, with its defaults, rather than the project's entry point. So the
-    app must protect itself even when someone starts it differently.
-    """
-    port = _free_port()
-    log_path = tmp_path / "server.log"
-    command = [
+def _uvicorn_factory_command(support_dir: Path, port: int) -> list[str]:
+    return [
         sys.executable,
         "-m",
         "uvicorn",
@@ -224,7 +285,27 @@ def test_real_server_with_default_uvicorn_settings_logs_nothing_from_requests(
         str(port),
     ]
 
-    with _running_server(command, port, log_path) as client:
+
+def _uvicorn_run_command(support_dir: Path, port: int) -> list[str]:
+    """In this mode the app is created before uvicorn sets up its logging."""
+    return [sys.executable, str(support_dir / "serve_with_uvicorn_run.py"), str(port)]
+
+
+@pytest.mark.parametrize("build_command", [_uvicorn_factory_command, _uvicorn_run_command])
+def test_real_server_with_default_uvicorn_settings_logs_nothing_from_requests(
+    tmp_path: Path, support_dir: Path, build_command: Callable[[Path, int], list[str]]
+) -> None:
+    """Uvicorn's own logs are the risk: its access log has query strings, its error log tracebacks.
+
+    This runs uvicorn with its defaults, rather than the project's entry point. So the app must
+    protect itself even when someone starts it differently. The API's log level is the widest it
+    can be, so that a debug line is checked too.
+    """
+    port = _free_port()
+    log_path = tmp_path / "server.log"
+    command = build_command(support_dir, port)
+
+    with _running_server(command, port, log_path, {"SEEBAND_API_LOG_LEVEL": "DEBUG"}) as client:
         _send_requests_carrying_the_secret(client)
         with pytest.raises(httpx2.TransportError):
             client.post("/api/test/crash-while-streaming", json=BODY).read()
@@ -239,6 +320,21 @@ def test_real_server_with_default_uvicorn_settings_logs_nothing_from_requests(
     assert sum(line.get("event") == "unhandled_exception" for line in lines) == 2
     assert not re.search(r'"(POST|GET) /', log), "the access log is on"
     assert "Uvicorn running" in log
+
+
+def test_entry_point_passes_its_settings_to_the_server(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[dict[str, Any]] = []
+    monkeypatch.setattr("uvicorn.run", lambda _, **options: calls.append(options))
+    monkeypatch.setenv("SEEBAND_API_HOST", "0.0.0.0")
+    monkeypatch.setenv("SEEBAND_API_PORT", "9123")
+
+    entry_point()
+
+    assert calls == [
+        {"factory": True, "host": "0.0.0.0", "port": 9123, "access_log": False, "ws": "none"}
+    ]
 
 
 def test_entry_point_serves_with_settings_from_the_environment(tmp_path: Path) -> None:

@@ -1,7 +1,8 @@
 """The one error format of the API, and the handlers that produce it.
 
 The client translates errors by `code`. `message` is English text for developers. A validation
-error never returns the submitted value, so measurements cannot come back in an error.
+error leaves out Pydantic's copy of the submitted value. Its message or location can still quote
+part of a request, such as a dictionary key, but only to the client that sent it.
 """
 
 from http import HTTPStatus
@@ -33,7 +34,7 @@ class ErrorResponse(BaseModel):
 
     code: str
     message: str
-    details: list[ErrorDetail] | None = None
+    details: list[ErrorDetail] | None
 
 
 class ApiError(Exception):
@@ -64,7 +65,7 @@ def error_response(
 def internal_error_response() -> JSONResponse:
     return error_response(
         HTTPStatus.INTERNAL_SERVER_ERROR,
-        ErrorResponse(code=INTERNAL_ERROR_CODE, message="Internal server error"),
+        ErrorResponse(code=INTERNAL_ERROR_CODE, message="Internal server error", details=None),
     )
 
 
@@ -79,9 +80,11 @@ def _handle_api_error(_: Request, error: Exception) -> JSONResponse:
 def _handle_http_exception(_: Request, error: Exception) -> JSONResponse:
     assert isinstance(error, HTTPException)
     code = _HTTP_ERROR_CODES.get(error.status_code, "http_error")
+    # FastAPI allows a detail that is not text, and the error format does not.
+    message = error.detail if isinstance(error.detail, str) else "HTTP error"
     return error_response(
         error.status_code,
-        ErrorResponse(code=code, message=error.detail),
+        ErrorResponse(code=code, message=message, details=None),
         # A 405 must keep its Allow header.
         headers=dict(error.headers) if error.headers else None,
     )

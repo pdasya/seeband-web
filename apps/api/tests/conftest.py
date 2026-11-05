@@ -1,4 +1,5 @@
 import importlib.util
+import os
 from collections.abc import Callable
 from pathlib import Path
 
@@ -6,6 +7,14 @@ import pytest
 from fastapi import FastAPI
 
 SUPPORT_DIR = Path(__file__).parent / "support"
+
+
+@pytest.fixture(autouse=True)
+def clean_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keeps a developer's own settings out of the tests."""
+    for name in os.environ:
+        if name.startswith("SEEBAND_API_"):
+            monkeypatch.delenv(name)
 
 
 @pytest.fixture

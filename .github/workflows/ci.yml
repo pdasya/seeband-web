@@ -29,12 +29,8 @@ jobs:
         run: uv run ruff format --check .
       - name: Mypy
         run: uv run mypy
-      - name: Pytest
+      - name: Pytest, including that the OpenAPI contract is up to date
         run: uv run pytest
-      - name: OpenAPI contract is up to date
-        run: |
-          uv run python -m seeband_api.export_openapi packages/api-client/openapi.json
-          git diff --exit-code packages/api-client/openapi.json
       - name: Built package
         run: |
           uv build --wheel --package seeband-core --out-dir dist

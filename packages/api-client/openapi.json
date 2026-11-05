@@ -101,7 +101,8 @@
         "type": "object",
         "required": [
           "code",
-          "message"
+          "message",
+          "details"
         ],
         "title": "ErrorResponse",
         "description": "The body of every error response."

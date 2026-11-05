@@ -1,5 +1,6 @@
 """An app whose routes handle data badly on purpose, for testing what reaches the logs."""
 
+import asyncio
 from collections.abc import AsyncIterator
 
 from fastapi import APIRouter, FastAPI
@@ -20,6 +21,10 @@ def create_app() -> FastAPI:
     @router.post("/echo/{item_id}")
     async def echo(item_id: str, query: str, body: Measurements) -> dict[str, str]:
         return {"item_id": item_id, "query": query, "note": body.note}
+
+    @router.get("/sleep-50-ms")
+    async def sleep_50_ms() -> None:
+        await asyncio.sleep(0.05)
 
     @router.post("/crash")
     async def crash(body: Measurements) -> None:
