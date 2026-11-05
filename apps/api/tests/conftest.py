@@ -1,5 +1,6 @@
 import importlib.util
 import os
+import sys
 from collections.abc import Callable
 from pathlib import Path
 
@@ -7,14 +8,14 @@ import pytest
 from fastapi import FastAPI
 
 SUPPORT_DIR = Path(__file__).parent / "support"
+# Spawned workers inherit this path, so they can import test functions from there.
+sys.path.insert(0, str(SUPPORT_DIR))
 
 
-@pytest.fixture(autouse=True)
-def clean_environment(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Keeps a developer's own settings out of the tests."""
-    for name in os.environ:
-        if name.startswith("SEEBAND_API_"):
-            monkeypatch.delenv(name)
+# Keeps a developer's own settings out of the tests, including fixtures shared across a module.
+for _name in list(os.environ):
+    if _name.startswith("SEEBAND_API_"):
+        del os.environ[_name]
 
 
 @pytest.fixture

@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import re
+import signal
 import socket
 import subprocess
 import sys
@@ -230,6 +231,13 @@ def test_log_level_setting_is_applied() -> None:
     create_app(Settings(log_level="INFO"))
 
 
+_SERVER_PIDS: dict[int, int] = {}
+
+
+def _server_pid(port: int) -> int:
+    return _SERVER_PIDS[port]
+
+
 def _free_port() -> int:
     with socket.socket() as probe:
         probe.bind(("127.0.0.1", 0))
@@ -238,7 +246,11 @@ def _free_port() -> int:
 
 @contextmanager
 def _running_server(
-    command: list[str], port: int, log_path: Path, env: dict[str, str] | None = None
+    command: list[str],
+    port: int,
+    log_path: Path,
+    env: dict[str, str] | None = None,
+    stop_signal: signal.Signals = signal.SIGTERM,
 ) -> Iterator[httpx2.Client]:
     with log_path.open("wb") as log_file:
         server = subprocess.Popen(
@@ -247,6 +259,7 @@ def _running_server(
             stderr=subprocess.STDOUT,
             env={**os.environ, "PYTHONUNBUFFERED": "1", **(env or {})},
         )
+        _SERVER_PIDS[port] = server.pid
         try:
             with httpx2.Client(base_url=f"http://127.0.0.1:{port}") as client:
                 deadline = time.monotonic() + 30
@@ -260,7 +273,7 @@ def _running_server(
                         time.sleep(0.05)
                 yield client
         finally:
-            server.terminate()
+            server.send_signal(stop_signal)
             server.wait(timeout=10)
 
 
@@ -320,6 +333,77 @@ def test_real_server_with_default_uvicorn_settings_logs_nothing_from_requests(
     assert sum(line.get("event") == "unhandled_exception" for line in lines) == 2
     assert not re.search(r'"(POST|GET) /', log), "the access log is on"
     assert "Uvicorn running" in log
+
+
+def test_calculation_through_real_workers_logs_no_values(tmp_path: Path) -> None:
+    port = _free_port()
+    log_path = tmp_path / "server.log"
+    command = [sys.executable, "-m", "seeband_api"]
+    env = {"SEEBAND_API_PORT": str(port), "SEEBAND_API_LOG_LEVEL": "DEBUG"}
+    measured = "7.123456789e-05"
+    body = {
+        "model": "spb",
+        "fit_mode": "spb_s",
+        # A band mass of 0 gives results that are not finite, which makes the core warn.
+        "parameters": {"band_mass": 0.0, "fermi_energy": 1234.5678},
+        "min_temperature_k": 123.456789,
+        "max_temperature_k": 765.4321,
+        "measurements": {
+            "seebeck": {"temperature_k": [333.3331], "values": [float(measured)]},
+        },
+    }
+
+    with _running_server(command, port, log_path, env) as client:
+        response = client.post("/api/calc", json=body, timeout=30)
+        assert response.status_code == 200
+
+    log = log_path.read_text(encoding="utf-8")
+    for value in (measured, "1234.5678", "123.456789", "765.4321", "333.3331"):
+        assert value not in log
+    assert "RuntimeWarning" not in log
+    assert sum(line.get("route") == "/api/calc" for line in _json_lines(log)) == 1
+
+
+def _worker_pids(server_pid: int) -> list[int]:
+    found = subprocess.run(["pgrep", "-P", str(server_pid)], capture_output=True, text=True)
+    return [int(pid) for pid in found.stdout.split()]
+
+
+def _is_running(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    return True
+
+
+@pytest.mark.parametrize("stop_signal", [signal.SIGTERM, signal.SIGKILL])
+def test_workers_end_with_the_server(tmp_path: Path, stop_signal: signal.Signals) -> None:
+    """A signal can end the server before it shuts its pool down."""
+    port = _free_port()
+    log_path = tmp_path / "server.log"
+    body = {
+        "model": "spb",
+        "fit_mode": "spb_s",
+        "parameters": {"band_mass": 1.0, "fermi_energy": 100.0},
+        "min_temperature_k": 100,
+        "max_temperature_k": 500,
+        "points": 5,
+    }
+    command = [sys.executable, "-m", "seeband_api"]
+
+    with _running_server(
+        command, port, log_path, {"SEEBAND_API_PORT": str(port)}, stop_signal=stop_signal
+    ) as client:
+        assert client.post("/api/calc", json=body, timeout=30).status_code == 200
+        server_pid = _server_pid(port)
+        workers = _worker_pids(server_pid)
+        assert workers
+
+    deadline = time.monotonic() + 15
+    while any(_is_running(pid) for pid in workers) and time.monotonic() < deadline:
+        time.sleep(0.05)
+    assert not any(_is_running(pid) for pid in workers)
 
 
 def test_entry_point_passes_its_settings_to_the_server(

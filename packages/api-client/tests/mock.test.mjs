@@ -112,10 +112,45 @@ describe("the mock of the real contract", async () => {
     assert.match(response.headers.get("etag"), /^"[0-9a-f]{32}"$/);
   });
 
+  test("serves a curve for a request that fits the contract", async () => {
+    const response = await fetch(`${url}/api/calc`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({
+        model: "dpb",
+        fit_mode: "dpb_s",
+        parameters: { m_eff: 1.01 },
+        min_temperature_k: 100,
+        max_temperature_k: 500,
+      }),
+    });
+
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.temperature_k.length, 5);
+    assert.equal(body.curves.seebeck_v_per_k.length, 5);
+  });
+
+  test("refuses a curve request that breaks the contract", async () => {
+    const response = await fetch(`${url}/api/calc`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ model: "dpb" }),
+    });
+
+    assert.equal(response.status, 422);
+    assert.equal((await response.json()).code, "validation_error");
+  });
+
   for (const [status, code] of [
     [404, "not_found"],
     [422, "validation_error"],
     [500, "internal_error"],
+    [422, "calculation_failed"],
+    [409, "fit_mode_disabled"],
+    [504, "calculation_timeout"],
+    [503, "calculation_unavailable"],
+    [422, "invalid_calculation"],
   ]) {
     test(`returns the ${code} example on request`, async () => {
       const response = await fetch(`${url}/api/health`, {
