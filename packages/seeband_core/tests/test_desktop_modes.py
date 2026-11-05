@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 
-SOURCE = re.compile(r"^(seeband\.py|modules/(fit_module|neural_nets)\.py):\d+$")
+SOURCE = re.compile(r"^(seeband\.py|modules/(fit_module|neural_nets|data_processing)\.py):\d+$")
 DOC = Path(__file__).parents[1] / "docs" / "desktop-modes.md"
 SCATTERING = {"acPh", "dis", "acPhDis"}
 
