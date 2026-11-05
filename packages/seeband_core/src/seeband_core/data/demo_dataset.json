@@ -1,6 +1,9 @@
 {
  "synthetic": true,
- "description": "Synthetic data from the DPB model of this project, with added noise. It is not a measurement of any material. R_H carries the known error of the DPB prefactor (P2).",
+ "message_key": "demo_dataset.synthetic",
+ "known_issues": [
+  "dpb_hall_prefactor"
+ ],
  "model": "dpb",
  "fit_mode": "dpb_s_rho_rh",
  "scattering": "acPh",

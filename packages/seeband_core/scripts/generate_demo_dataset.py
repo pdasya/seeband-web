@@ -1,15 +1,15 @@
-"""Write the synthetic demo dataset. See docs/demo-dataset.md."""
+"""Write the synthetic demo dataset into the source tree. See docs/demo-dataset.md."""
 
 import json
-from importlib import resources
+from pathlib import Path
 
 from seeband_core.demo_dataset import generate_demo_dataset
 
+TARGET = Path(__file__).parents[1] / "src" / "seeband_core" / "data" / "demo_dataset.json"
+
 
 def main() -> None:
-    path = resources.files("seeband_core") / "data" / "demo_dataset.json"
-    with resources.as_file(path) as file:
-        file.write_text(json.dumps(generate_demo_dataset(), indent=1) + "\n", encoding="utf-8")
+    TARGET.write_text(json.dumps(generate_demo_dataset(), indent=1) + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":

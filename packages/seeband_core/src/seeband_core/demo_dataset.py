@@ -19,7 +19,8 @@ from seeband_core.model_scales import default_start
 MODEL = "dpb"
 FIT_MODE = "dpb_s_rho_rh"
 SCATTERING = "acPh"
-# Two bands that show clearly: S peaks near 175 K and falls as band 2 fills.
+# Two bands that show clearly: S peaks near 175 K and falls as band 2 gains conductivity. B = 1
+# keeps a DPB S fit the same model as the rest, because that fit has no B.
 TRUE_PARAMETERS: Mapping[str, float] = {
     "m_eff": 1.2,
     "band_gap": 800.0,
@@ -34,6 +35,9 @@ POINTS = 31
 SEED = 2026
 SEEBECK_NOISE_V_PER_K = 1e-6
 RELATIVE_NOISE = 0.005
+MESSAGE_KEY = "demo_dataset.synthetic"
+# Its R_H comes from the current model, which holds this error.
+KNOWN_ISSUES = ("dpb_hall_prefactor",)
 _COLUMNS: Mapping[Quantity, str] = {
     "seebeck": "seebeck_v_per_k",
     "resistivity": "resistivity_ohm_m",
@@ -43,39 +47,47 @@ _COLUMNS: Mapping[Quantity, str] = {
 
 @dataclass(frozen=True, eq=False)
 class DemoDataset:
-    """The dataset. `synthetic` is always True, so a client can show it."""
+    """The dataset. `synthetic` is always True, and a client shows that through `message_key`.
+
+    `known_issues` lists the errors of the model its data carry, as on any result.
+    """
 
     synthetic: Literal[True]
-    description: str
+    message_key: str
+    known_issues: tuple[str, ...]
     model: str
     fit_mode: str
     scattering: str
     true_parameters: Mapping[str, float]
+    noise: Mapping[str, float]
     measurements: Mapping[Quantity, Measurement]
 
 
-def generate_demo_dataset() -> dict[str, Any]:
-    """Calculate the dataset through the registry, with seeded noise, as a document to store."""
+def clean_curves() -> tuple[np.ndarray, dict[Quantity, np.ndarray]]:
+    """Calculate the curves of the true parameters through the registry, with no noise."""
     model = registry.get(MODEL)
     values = default_start(model.describe().fit_mode(FIT_MODE)) | dict(TRUE_PARAMETERS)
     curve = model.calculate(
         CurveRequest(FIT_MODE, values, MIN_TEMPERATURE_K, MAX_TEMPERATURE_K, POINTS, SCATTERING)
     )
+    return curve.temperature_k, {
+        quantity: curve.curves[column] for quantity, column in _COLUMNS.items()
+    }
+
+
+def generate_demo_dataset() -> dict[str, Any]:
+    """Calculate the dataset through the registry, with seeded noise, as a document to store."""
+    temperature_k, clean = clean_curves()
     generator = np.random.default_rng(SEED)
-    seebeck = curve.curves[_COLUMNS["seebeck"]]
-    resistivity = curve.curves[_COLUMNS["resistivity"]]
-    hall = curve.curves[_COLUMNS["hall"]]
     noisy: dict[Quantity, np.ndarray] = {
-        "seebeck": seebeck + generator.normal(0.0, SEEBECK_NOISE_V_PER_K, POINTS),
-        "resistivity": resistivity * (1 + generator.normal(0.0, RELATIVE_NOISE, POINTS)),
-        "hall": hall * (1 + generator.normal(0.0, RELATIVE_NOISE, POINTS)),
+        "seebeck": clean["seebeck"] + generator.normal(0.0, SEEBECK_NOISE_V_PER_K, POINTS),
+        "resistivity": clean["resistivity"] * (1 + generator.normal(0.0, RELATIVE_NOISE, POINTS)),
+        "hall": clean["hall"] * (1 + generator.normal(0.0, RELATIVE_NOISE, POINTS)),
     }
     return {
         "synthetic": True,
-        "description": (
-            "Synthetic data from the DPB model of this project, with added noise. It is not a "
-            "measurement of any material. R_H carries the known error of the DPB prefactor (P2)."
-        ),
+        "message_key": MESSAGE_KEY,
+        "known_issues": list(KNOWN_ISSUES),
         "model": MODEL,
         "fit_mode": FIT_MODE,
         "scattering": SCATTERING,
@@ -86,7 +98,7 @@ def generate_demo_dataset() -> dict[str, Any]:
             "resistivity_relative": RELATIVE_NOISE,
             "hall_relative": RELATIVE_NOISE,
         },
-        "temperature_k": curve.temperature_k.tolist(),
+        "temperature_k": temperature_k.tolist(),
         **{_COLUMNS[quantity]: column.tolist() for quantity, column in noisy.items()},
     }
 
@@ -97,11 +109,13 @@ def load_demo_dataset() -> DemoDataset:
     temperature_k = np.array(document["temperature_k"])
     return DemoDataset(
         synthetic=document["synthetic"],
-        description=document["description"],
+        message_key=document["message_key"],
+        known_issues=tuple(document["known_issues"]),
         model=document["model"],
         fit_mode=document["fit_mode"],
         scattering=document["scattering"],
         true_parameters=document["true_parameters"],
+        noise=document["noise"],
         measurements={
             quantity: Measurement(temperature_k.copy(), np.array(document[column]))
             for quantity, column in _COLUMNS.items()

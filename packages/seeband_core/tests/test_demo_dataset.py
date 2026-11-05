@@ -5,13 +5,21 @@ from typing import Any
 
 import numpy as np
 import pytest
-from seeband_core.demo_dataset import TRUE_PARAMETERS, generate_demo_dataset, load_demo_dataset
+from seeband_core.demo_dataset import (
+    TRUE_PARAMETERS,
+    clean_curves,
+    generate_demo_dataset,
+    load_demo_dataset,
+)
+from seeband_core.fit_quality import curve_rmse
+from seeband_core.known_issues import KNOWN_ISSUES
 from seeband_core.model_catalog import registry
 from seeband_core.model_interface import FitMode, FitRequest
 from seeband_core.model_scales import default_start
 
-STORED_SHA256 = "807eec98f5ba22678ca5ab8881e499483a72de7ce7d4c8c7ba8270d6383b6b84"
-# Set from fits on one Mac and in Linux CI, as docs/demo-dataset.md gives.
+STORED_SHA256 = "7bc20ce8cdcc6bcbed8eb3c58a243ea022fbb57a02c4b87901ea0a839452030d"
+# These hold for the stored data, with this noise. Another seed can miss them: see
+# docs/demo-dataset.md.
 RECOVERY_MARGIN = {
     "m_eff": 0.01,
     "band_gap": 0.005,
@@ -57,7 +65,7 @@ def test_the_stored_file_comes_from_the_generator() -> None:
     stored, generated = stored_document(), generate_demo_dataset()
     assert set(stored) == set(generated)
     for key, value in generated.items():
-        if isinstance(value, list):
+        if key != "known_issues" and isinstance(value, list):
             difference = np.abs(np.array(value) - np.array(stored[key]))
             assert np.max(difference) <= 1e-9 * np.max(np.abs(stored[key])), key
         else:
@@ -69,12 +77,47 @@ def test_the_generator_gives_the_same_data_twice() -> None:
     assert generate_demo_dataset() == generate_demo_dataset()
 
 
-def test_it_says_that_it_is_synthetic() -> None:
+def test_it_says_that_it_is_synthetic_through_i18n() -> None:
     dataset = load_demo_dataset()
     assert dataset.synthetic is True
-    assert "Synthetic" in dataset.description
-    assert "not a measurement" in dataset.description
     assert stored_document()["synthetic"] is True
+    assert dataset.message_key == "demo_dataset.synthetic"
+    assert "description" not in stored_document()
+
+
+def test_it_is_what_it_says_it_is() -> None:
+    dataset = load_demo_dataset()
+    assert (dataset.model, dataset.fit_mode, dataset.scattering) == ("dpb", "dpb_s_rho_rh", "acPh")
+    assert dict(dataset.true_parameters) == {
+        "m_eff": 1.2,
+        "band_gap": 800.0,
+        "fermi_energy": -150.0,
+        "A": 60000.0,
+        "B": 1.0,
+        "m1": 1.4,
+    }
+    assert dataset.noise == {
+        "seed": 2026,
+        "seebeck_v_per_k": 1e-6,
+        "resistivity_relative": 0.005,
+        "hall_relative": 0.005,
+    }
+    registry.get(dataset.model).describe().fit_mode(dataset.fit_mode).parameters_for(
+        dataset.scattering
+    )
+
+
+def test_it_lists_the_known_errors_of_its_data() -> None:
+    dataset = load_demo_dataset()
+    assert dataset.known_issues == ("dpb_hall_prefactor",)
+    assert set(dataset.known_issues) <= {issue.id for issue in KNOWN_ISSUES}
+
+
+def test_loads_share_no_arrays() -> None:
+    measurements = load_demo_dataset().measurements
+    assert not np.shares_memory(
+        measurements["seebeck"].temperature_k, measurements["hall"].temperature_k
+    )
 
 
 def test_its_data_are_usable_and_in_the_units_of_the_project() -> None:
@@ -97,15 +140,17 @@ def test_it_shows_two_bands() -> None:
     assert measurement.values[0] < measurement.values[peak]
 
 
-def test_it_has_the_stated_noise() -> None:
-    document = stored_document()
-    assert document["noise"]["seed"] == 2026
-    assert document["true_parameters"] == dict(TRUE_PARAMETERS)
-
-
-def test_it_holds_noise() -> None:
-    seebeck = stored_document()["seebeck_v_per_k"]
-    assert np.std(np.diff(seebeck, 2)) > 1e-7
+@pytest.mark.filterwarnings("ignore")
+def test_it_holds_the_stated_noise() -> None:
+    dataset = load_demo_dataset()
+    _, clean = clean_curves()
+    seebeck = dataset.measurements["seebeck"].values - clean["seebeck"]
+    assert 0.5e-6 < np.std(seebeck) < 1.5e-6
+    for quantity in ("resistivity", "hall"):
+        relative = dataset.measurements[quantity].values / clean[quantity] - 1  # type: ignore[index]
+        assert 0.0025 < np.std(relative) < 0.0075, quantity
+        # Relative at both ends, not a share of the peak.
+        assert np.max(np.abs(relative[-10:])) < 0.02, quantity
 
 
 @pytest.mark.filterwarnings("ignore")
@@ -152,6 +197,34 @@ def test_a_wrong_scattering_type_does_not_recover_it() -> None:
 
 
 @pytest.mark.filterwarnings("ignore")
-def test_one_band_cannot_describe_it() -> None:
+def test_the_default_spb_s_start_has_the_wrong_sign_for_it() -> None:
     fit_mode = registry.get("spb").describe().fit_mode("spb_s")
-    assert fit("spb", fit_mode, None).at_bounds == ("fermi_energy",)
+    result = fit("spb", fit_mode, None)
+    assert result.at_bounds == ("fermi_energy",)
+    assert result.parameters["band_mass"] > 0
+
+
+@pytest.mark.filterwarnings("ignore")
+def test_one_band_cannot_describe_it() -> None:
+    model = registry.get("spb")
+    measurements = load_demo_dataset().measurements
+    data = {"seebeck": measurements["seebeck"]}
+    start = {"band_mass": -1.0, "fermi_energy": -100.0}
+    result = model.fit(FitRequest("spb_s", data, start))
+    assert result.status == "converged"
+    assert result.at_bounds == ()
+    value = curve_rmse(model, "spb_s", result.parameters, data)["seebeck"].value
+    assert value is not None
+    assert value > 50
+
+
+@pytest.mark.filterwarnings("ignore")
+def test_the_matching_fit_leaves_only_the_noise() -> None:
+    fit_mode = registry.get("dpb").describe().fit_mode("dpb_s_rho_rh")
+    result = fit("dpb", fit_mode, "acPh")
+    measurements = load_demo_dataset().measurements
+    rmse = curve_rmse(registry.get("dpb"), "dpb_s_rho_rh", result.parameters, measurements, "acPh")
+    assert rmse["seebeck"].value is not None
+    assert rmse["seebeck"].value < 1.5
+    assert rmse["resistivity"].value is not None
+    assert rmse["resistivity"].value < 1.0
