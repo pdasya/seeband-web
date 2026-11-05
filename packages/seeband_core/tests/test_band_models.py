@@ -443,13 +443,13 @@ EXPECTED_FIT_CALLS: dict[str, tuple[str, list[Any], dict[str, Any], list[str]]] 
     "spb_s": (
         "spb_see_fit",
         [*DATA_S, 11.5, [3.5], limits("fermi_energy")],
-        {},
+        {"progress": ANY},
         ["fermi_energy"],
     ),
     "spb_s_rho": (
         "spb_see_res_fit",
         [*DATA_S, *DATA_R, 11.5, [3.5], limits("fermi_energy"), SPB_RES, limits(*SPB_NAMES)],
-        {"scatter_type": S},
+        {"scatter_type": S, "progress": ANY},
         ["fermi_energy", "A", "C", "F"],
     ),
     "spb_s_rho_rh": (
@@ -466,13 +466,13 @@ EXPECTED_FIT_CALLS: dict[str, tuple[str, list[Any], dict[str, Any], list[str]]] 
             limits("band_mass"),
             S,
         ],
-        {},
+        {"progress": ANY},
         ["fermi_energy", "A", "C", "F", "band_mass"],
     ),
     "dpb_s": (
         "dpb_see_fit",
         [*DATA_S, BANDS, limits(*BAND_NAMES), RATIO],
-        {},
+        {"progress": ANY},
         ["m_eff", "band_gap", "fermi_energy"],
     ),
     "dpb_s_rho": (

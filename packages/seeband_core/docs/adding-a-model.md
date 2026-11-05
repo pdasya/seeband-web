@@ -24,6 +24,12 @@ A fit runs in a separate process, which holds only the models its imports regist
 
 An iterative fit calls `on_iteration` once per iteration, with values in the form of a final result, and `FitMode.iterative` tells a client whether to show a counter. A single-pass fit never calls it. Stopping acts between iterations only, and neither the extra Seebeck stage at the limit nor the Hall stage can be stopped, so a worker still needs a way to end the process.
 
+## Fit quality
+
+- `fit_quality.rmse` compares model values with data: S in µV/K, and ρ and R_H as a percent of the data. `fit_quality.curve_rmse` works from a model and any parameters, with or without a fit, by reading its curve at the measured temperatures.
+- `FitResult.parameter_errors` holds standard errors, from the last solver run of each stage, where they are finite. They hold other stages fixed, so a staged fit's real uncertainty is larger.
+- `FitResult.at_bounds` names fitted parameters that ended within 1e-6 of the range from a bound.
+
 ## Rules
 
 - Do not mutate requests or measurements.

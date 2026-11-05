@@ -191,12 +191,19 @@ class FitResult:
 
     `iterations` counts completed iterations, and is None for a single-pass mode. A fitted value can
     lie outside the range of its control. `message` holds fixed text with no measured values.
+
+    `parameter_errors` holds standard errors from the last solver run of each stage, for parameters
+    where one is finite. They hold the other stages fixed, so they understate the real uncertainty
+    of a staged fit. `at_bounds` names fitted parameters that ended at a bound, whose values the
+    data did not settle.
     """
 
     parameters: Mapping[str, float]
     status: FitStatus
     iterations: int | None = None
     message: str | None = None
+    parameter_errors: Mapping[str, float] = field(default_factory=dict)
+    at_bounds: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

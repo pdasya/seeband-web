@@ -1,6 +1,7 @@
 import copy
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Any
 
 import numpy as np
 from scipy import optimize as opt
@@ -16,11 +17,23 @@ class FitProgress:
     it there, leaving out m1, which a Hall fit fits after the loop. It stops the fit by raising.
     `iterations` counts completed Seebeck and resistivity stages. The extra Seebeck stage at the
     limit and the Hall stage cannot be stopped.
+
+    `stage_fits` holds the fitted values and covariance of the last solver run of each stage: `see`,
+    `res` and `hall`. These are in the units of that solver run.
     """
 
     on_iteration: Callable[[int, list[float]], None] | None = None
     iterations: int = 0
     reached_iteration_limit: bool = False
+    stage_fits: dict[str, tuple[np.ndarray, np.ndarray]] = field(default_factory=dict)
+
+
+def _curve_fit(progress: FitProgress | None, stage: str, *args: Any, **kwargs: Any) -> Any:
+    """Run `curve_fit`, and keep its result for the stage if anything follows the fit."""
+    result = opt.curve_fit(*args, **kwargs)
+    if progress is not None:
+        progress.stage_fits[stage] = (result[0], result[1])
+    return result
 
 
 def _dpb_results(
@@ -94,6 +107,7 @@ class PB_fit:
         band_mass: float,
         initial_fermi_energy: list[float],
         limits_fermi_energy: tuple[list[float], list[float]],
+        progress: FitProgress | None = None,
     ) -> list[float]:
         """Fits the Seebeck coefficient within the single-parabolic-band model and returns the
         position of the Fermi energy
@@ -118,7 +132,9 @@ class PB_fit:
         """
 
         # Fit the Seebeck coefficient with the parameters 'mass', 'gap' and 'fermi_energy'
-        parameter_see, _ = opt.curve_fit(
+        parameter_see, _ = _curve_fit(
+            progress,
+            "see",
             lambda T, fermi_energy: te.spb_see_vs_temp(
                 temp_list, fermi_energy, band_mass, scal_fac=1e6
             ),
@@ -143,6 +159,7 @@ class PB_fit:
         initial_parameter: list[float],
         limits: tuple[list[float], list[float]],
         degen: float,
+        progress: FitProgress | None = None,
     ) -> list[float]:
         """Fits the Seebeck coefficient within the double-parabolic-band model and returns
         band-structure parameters
@@ -167,7 +184,9 @@ class PB_fit:
         """
 
         # Fit the Seebeck coefficient with the parameters 'mass', 'gap' and 'fermi_energy'
-        parameter_see, _ = opt.curve_fit(
+        parameter_see, _ = _curve_fit(
+            progress,
+            "see",
             lambda T, meff, gap, fermi_energy: te.dpb_see_vs_temp(
                 temp_list, meff, gap, fermi_energy, degen, scal_fac=1e6
             ),
@@ -199,6 +218,7 @@ class PB_fit:
         initial_parameter_res: list[float],
         limits_res: tuple[list[float], list[float]],
         scatter_type: str,
+        progress: FitProgress | None = None,
     ) -> list[float]:
         """Fits the Seebeck coefficient and resistivity data within the single-parabolic-band model
         and returns the Fermi energy and scattering parameters
@@ -266,7 +286,9 @@ class PB_fit:
             limits_res[1][1] = limits_res[1][1] * 300.0  # adjusted, as the input is given at 300 K
 
         # Fit the Seebeck coefficient with the Fermi energy
-        parameter_see, _ = opt.curve_fit(
+        parameter_see, _ = _curve_fit(
+            progress,
+            "see",
             lambda T, fermi_energy: te.spb_see_vs_temp(
                 temp_see_list, fermi_energy, band_mass, scal_fac=1e6
             ),
@@ -288,7 +310,9 @@ class PB_fit:
 
         # Fit the resistivity
         if scatter_type == "acPh":
-            parameter_res, _ = opt.curve_fit(
+            parameter_res, _ = _curve_fit(
+                progress,
+                "res",
                 lambda T, para_A: te.spb_rho_vs_temp_acPh(T, f0, para_A, scal_fac=1e8),
                 temp_res_list,
                 res_list * 1e8,
@@ -298,7 +322,9 @@ class PB_fit:
                 maxfev=50_000,
             )
         elif scatter_type == "dis":
-            parameter_res, _ = opt.curve_fit(
+            parameter_res, _ = _curve_fit(
+                progress,
+                "res",
                 lambda T, para_A: te.spb_rho_vs_temp_dis(T, f0, para_A, scal_fac=1e8),
                 temp_res_list,
                 res_list * 1e8,
@@ -308,7 +334,9 @@ class PB_fit:
                 maxfev=50_000,
             )
         else:
-            parameter_res, _ = opt.curve_fit(
+            parameter_res, _ = _curve_fit(
+                progress,
+                "res",
                 lambda T, para_A, para_B: te.spb_rho_vs_temp_acPh_dis(
                     T, f0, para_A, para_B, scal_fac=1e8
                 ),
@@ -464,7 +492,9 @@ class PB_fit:
                 model_see = _dpb_see_model_double_scatter(
                     temp_see_list, degen, current_para_B, current_para_C, current_para_D
                 )
-            parameter_see, _ = opt.curve_fit(
+            parameter_see, _ = _curve_fit(
+                progress,
+                "see",
                 model_see,
                 temp_see_list,
                 see_list * 1e6,
@@ -503,7 +533,9 @@ class PB_fit:
                 break
 
             # Fit the resistivity with the parameters 'para_A', para_B', 'para_C' and 'para_D'
-            parameter_res, _ = opt.curve_fit(
+            parameter_res, _ = _curve_fit(
+                progress,
+                "res",
                 _dpb_rho_model(scatter_type, f0_1, f0_2, current_meff),
                 temp_res_list,
                 res_list * 1e8,
@@ -611,6 +643,7 @@ class PB_fit:
         initial_mass1: list[int],
         limits_mass1: tuple[list[float], list[float]],
         scatter_type: str,
+        progress: FitProgress | None = None,
     ) -> list[float]:
         """Fits the Seebeck coefficient, resistivity and Hall coefficient data within the
         single-parabolic-band model and returns the Fermi energy, scattering parameters and the band
@@ -695,7 +728,9 @@ class PB_fit:
             limits_res[1][1] = limits_res[1][1] * 300.0  # adjusted, as the input is given at 300 K
 
         # Fit the Seebeck coefficient with the Fermi energy
-        parameter_see, _ = opt.curve_fit(
+        parameter_see, _ = _curve_fit(
+            progress,
+            "see",
             lambda T, fermi_energy: te.spb_see_vs_temp(
                 temp_see_list, fermi_energy, band_mass, scal_fac=1e6
             ),
@@ -718,7 +753,9 @@ class PB_fit:
 
         # Fit the resistivity
         if scatter_type == "acPh":
-            parameter_res, _ = opt.curve_fit(
+            parameter_res, _ = _curve_fit(
+                progress,
+                "res",
                 lambda T, para_A: te.spb_rho_vs_temp_acPh(T, f0, para_A, scal_fac=1e8),
                 temp_res_list,
                 res_list * 1e8,
@@ -728,7 +765,9 @@ class PB_fit:
                 maxfev=50_000,
             )
         elif scatter_type == "dis":
-            parameter_res, _ = opt.curve_fit(
+            parameter_res, _ = _curve_fit(
+                progress,
+                "res",
                 lambda T, para_A: te.spb_rho_vs_temp_dis(T, f0, para_A, scal_fac=1e8),
                 temp_res_list,
                 res_list * 1e8,
@@ -738,7 +777,9 @@ class PB_fit:
                 maxfev=50_000,
             )
         else:
-            parameter_res, _ = opt.curve_fit(
+            parameter_res, _ = _curve_fit(
+                progress,
+                "res",
                 lambda T, para_A, para_B: te.spb_rho_vs_temp_acPh_dis(
                     T, f0, para_A, para_B, scal_fac=1e8
                 ),
@@ -756,7 +797,9 @@ class PB_fit:
             current_para_B = parameter_res[1]
 
         # Fit the hall with the parameters 'para_E'
-        parameter_hall, _ = opt.curve_fit(
+        parameter_hall, _ = _curve_fit(
+            progress,
+            "hall",
             lambda T, para_E: te.spb_hall_vs_temp(
                 T, current_fermi_energy, np.sign(band_mass), para_E, scal_fac=1e10
             ),
@@ -928,7 +971,9 @@ class PB_fit:
                 model_see = _dpb_see_model_double_scatter(
                     temp_see_list, degen, current_para_B, current_para_C, current_para_D
                 )
-            parameter_see, _ = opt.curve_fit(
+            parameter_see, _ = _curve_fit(
+                progress,
+                "see",
                 model_see,
                 temp_see_list,
                 see_list * 1e6,
@@ -967,7 +1012,9 @@ class PB_fit:
                 break
 
             # Fit the resistivity with the parameters 'para_A', para_B', 'para_C' and 'para_D'
-            parameter_res, _ = opt.curve_fit(
+            parameter_res, _ = _curve_fit(
+                progress,
+                "res",
                 _dpb_rho_model(scatter_type, f0_1, f0_2, current_meff),
                 temp_res_list,
                 res_list * 1e8,
@@ -1084,7 +1131,9 @@ class PB_fit:
 
         # Fit the hall with the parameter 'para_E'
         if scatter_type == "acPh":
-            parameter_hall, _ = opt.curve_fit(
+            parameter_hall, _ = _curve_fit(
+                progress,
+                "hall",
                 lambda T, para_E: te.dpb_hall_vs_temp_acPh(
                     T,
                     res_array_hall_temp,
@@ -1105,7 +1154,9 @@ class PB_fit:
                 maxfev=5000,
             )
         elif scatter_type == "dis":
-            parameter_hall, _ = opt.curve_fit(
+            parameter_hall, _ = _curve_fit(
+                progress,
+                "hall",
                 lambda T, para_E: te.dpb_hall_vs_temp_dis(
                     T,
                     res_array_hall_temp,
@@ -1126,7 +1177,9 @@ class PB_fit:
                 maxfev=5000,
             )
         else:
-            parameter_hall, _ = opt.curve_fit(
+            parameter_hall, _ = _curve_fit(
+                progress,
+                "hall",
                 lambda T, para_E: te.dpb_hall_vs_temp_acPh_dis(
                     T,
                     res_array_hall_temp,
