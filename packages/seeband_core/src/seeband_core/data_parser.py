@@ -147,9 +147,7 @@ def _role_and_unit(header: str) -> tuple[Role | None, str | None]:
 
 
 def _unit_is_right(role: Role, unit: str) -> bool:
-    return (
-        re.sub(r"\s+", "", unit).lower() in _UNITS[role] or re.sub(r"\s+", "", unit) in _UNITS[role]
-    )
+    return re.sub(r"\s+", "", unit).lower() in _UNITS[role]
 
 
 def _mapping_from_headers(headers: list[str]) -> tuple[dict[int, Role], list[ParseIssue]]:
