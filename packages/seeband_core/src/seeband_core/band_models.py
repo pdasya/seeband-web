@@ -15,6 +15,7 @@ from typing import Any
 import numpy as np
 
 from seeband_core import fit_module
+from seeband_core.known_issues import active_issue_ids
 from seeband_core.model_descriptions import load_desktop_descriptions
 from seeband_core.model_interface import (
     Bounds,
@@ -248,6 +249,7 @@ class _BandModel:
             progress.iterations if fit_mode.iterative else None,
             parameter_errors=self._stage_errors(fit_mode, request.scattering, ratio, progress),
             at_bounds=self._at_bounds(request, fit_mode, parameters, ratio, progress.stage_fits),
+            known_issues=active_issue_ids(fit_mode, request.scattering, parameters, ratio),
         )
 
     def _run_fit(
@@ -334,7 +336,12 @@ class _BandModel:
             if request.kind == "measured"
             else _CURVE_NAMES[request.kind]
         )
-        return CurveResult(temperature_k, dict(zip(names, curves, strict=True)))
+        ratio = _degeneracy_ratio(request)
+        return CurveResult(
+            temperature_k,
+            dict(zip(names, curves, strict=True)),
+            active_issue_ids(fit_mode, scattering, request.parameters, ratio, request.kind),
+        )
 
     def _curve_call(
         self, request: CurveRequest, fit_mode: FitMode, scattering: str | None

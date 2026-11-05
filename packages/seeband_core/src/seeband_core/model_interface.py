@@ -23,6 +23,8 @@ CurveKind = Literal[
     "carrier_concentration_by_band",
 ]
 FitStatus = Literal["converged", "iteration_limit", "stopped", "failed"]
+IssueSeverity = Literal["disabled", "unreliable", "caution"]
+IssueCondition = Literal["degeneracy_not_one", "negative_m_eff", "interpolation_extrapolated"]
 
 QUANTITY_UNITS: Mapping[Quantity, str] = {
     "seebeck": "V/K",
@@ -79,6 +81,30 @@ class Degeneracy:
 
 
 @dataclass(frozen=True)
+class KnownIssue:
+    """A known error of the calculations, and where it applies.
+
+    `scattering` is empty for every type. `condition` limits it to some inputs. `fixed_by` is the
+    issue that removes it. `explanation` is for developers, and a user sees `message_key` through
+    i18n.
+    """
+
+    id: str
+    severity: IssueSeverity
+    fixed_by: str
+    fit_modes: tuple[str, ...]
+    explanation: str
+    scattering: tuple[str, ...] = ()
+    curve_kinds: tuple[CurveKind, ...] = ()
+    affects_fit: bool = False
+    condition: IssueCondition | None = None
+
+    @property
+    def message_key(self) -> str:
+        return f"known_issue.{self.id}"
+
+
+@dataclass(frozen=True)
 class FitMode:
     """One way of fitting a model: which data it needs, its parameters, and the curves it offers.
 
@@ -96,6 +122,12 @@ class FitMode:
     max_iterations: int | None = None
     degeneracy: Degeneracy | None = None
     curve_kinds: tuple[CurveKind, ...] = ("measured",)
+    known_issues: tuple[KnownIssue, ...] = ()
+
+    @property
+    def disabled(self) -> bool:
+        """Whether a client must not offer this mode. The model does not enforce this itself."""
+        return any(issue.severity == "disabled" for issue in self.known_issues)
 
     def parameters_for(self, scattering: str | None) -> tuple[ParameterSpec, ...]:
         """Return the parameters that apply to a scattering type, or all of them for None."""
@@ -169,6 +201,7 @@ class CurveResult:
 
     temperature_k: np.ndarray
     curves: Mapping[str, np.ndarray]
+    known_issues: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, eq=False)
@@ -219,6 +252,7 @@ class FitResult:
     message: str | None = None
     parameter_errors: Mapping[str, float] = field(default_factory=dict)
     at_bounds: tuple[str, ...] = ()
+    known_issues: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
