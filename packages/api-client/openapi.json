@@ -10,7 +10,7 @@
         "tags": [
           "health"
         ],
-        "summary": "Get Health",
+        "summary": "Get Healthy",
         "operationId": "get_health",
         "responses": {
           "200": {
