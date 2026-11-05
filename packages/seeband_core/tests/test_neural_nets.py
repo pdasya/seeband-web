@@ -104,11 +104,13 @@ def test_each_step_matches_the_desktop(case: dict[str, Any]) -> None:
 
     interpolated = neural_nets.interpolate_seebeck(temperature_k, seebeck_v_per_k, range_k)
     assert interpolated == pytest.approx(
-        case["interpolated_seebeck_v_per_k"], rel=INTERPOLATION_TOLERANCE
+        case["interpolated_seebeck_v_per_k"], rel=INTERPOLATION_TOLERANCE, abs=0
     )
 
     inputs = neural_nets.network_input(interpolated)
-    assert inputs == pytest.approx(case["network_input_mv_per_k"], rel=INTERPOLATION_TOLERANCE)
+    assert inputs == pytest.approx(
+        case["network_input_mv_per_k"], rel=INTERPOLATION_TOLERANCE, abs=0
+    )
 
     output = neural_nets.run_network(range_k, inputs)
     assert output.dtype == np.float32

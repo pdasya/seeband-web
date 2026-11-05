@@ -1899,9 +1899,9 @@
     {
       "id": "D23",
       "title": "One interpolation switch, recalculated with the fit range",
-      "desktop": "Each quantity has its own interpolation button. The grid comes from the fit range at the click, and changing the range later only changes the mask on the old grid, so the points depend on the order of the clicks.",
-      "web": "One switch applies to all loaded quantities, and the grid always comes from the current fit range. With a range set before the click, the points equal the desktop's. The extrapolation stays, and P7 fixes it.",
-      "resolved_by": "#21 (C13)",
+      "desktop": "Each quantity has its own interpolation button. The grid comes from the fit range at the click, and changing the range later only changes the mask on the old grid, so the points depend on the order of the clicks. A range under 20 K, or any other failure in the button, unchecks it and leaves that quantity raw without saying so. Loading a new file resets to raw data while the button stays checked.",
+      "web": "One switch applies to the quantities the fit mode uses, and the grid always comes from the current fit range. With a range set before the click, the points equal the desktop's. A range it cannot use is an error. The extrapolation stays, and P7 fixes it.",
+      "resolved_by": "#43 (FS3)",
       "source": [
         "seeband.py:3380",
         "seeband.py:3414",
