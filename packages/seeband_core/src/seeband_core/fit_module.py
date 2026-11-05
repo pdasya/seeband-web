@@ -1,10 +1,42 @@
 import copy
 from collections.abc import Callable
+from dataclasses import dataclass
 
 import numpy as np
 from scipy import optimize as opt
 
 from seeband_core import math_module as te
+
+
+@dataclass
+class FitProgress:
+    """Follows the loop of an iterative fit.
+
+    `on_iteration` receives the iteration and the values a fit would return if it ended there. It
+    stops the fit by raising. `iterations` counts completed Seebeck and resistivity stages.
+    """
+
+    on_iteration: Callable[[int, list[float]], None] | None = None
+    iterations: int = 0
+    reached_iteration_limit: bool = False
+
+
+def _dpb_results(
+    parameters: list[float],
+    scatter_type: str,
+    bands: list[float],
+    scattering: list[float],
+) -> list[float]:
+    """Return the fit's parameter list with new band and scattering values in their places."""
+    results = list(parameters)
+    results[0:3] = bands
+    if scatter_type == "acPh":
+        results[3:5] = scattering
+    elif scatter_type == "dis":
+        results[7:9] = scattering
+    else:
+        results[3:7] = scattering
+    return results
 
 
 def _dpb_see_model_single_scatter(
@@ -316,6 +348,7 @@ class PB_fit:
         scatter_type: str,
         threshold: float,
         max_num_iterations: int,
+        progress: FitProgress | None = None,
     ) -> list[float]:
         """Fits the Seebeck coefficient and resistivity data within the double-parabolic-band model
         and returns band-structure and scattering parameters
@@ -348,6 +381,8 @@ class PB_fit:
             fit stops
         max_num_iterations : int
             Maximum number of iterations before the fit stops
+        progress : FitProgress, optional
+            Follows the loop, and can stop it
 
         Returns
         -------
@@ -461,6 +496,8 @@ class PB_fit:
             # If the fit is not converged after max_num_iterations steps, the resistivity is fitted
             # one more time while keeping the factor for the Seebeck coefficient fixed
             if number_iterations > max_num_iterations:
+                if progress is not None:
+                    progress.reached_iteration_limit = True
                 break
 
             # Fit the resistivity with the parameters 'para_A', para_B', 'para_C' and 'para_D'
@@ -483,6 +520,28 @@ class PB_fit:
 
             # Set the start parameters of the resistivity fit to the currently best values
             start_paramter_res = parameter_res
+
+            if progress is not None:
+                progress.iterations = number_iterations
+                if progress.on_iteration is not None:
+                    progress.on_iteration(
+                        number_iterations,
+                        _dpb_results(
+                            parameters,
+                            scatter_type,
+                            [current_meff * degen, current_gap, current_fermi_energy],
+                            (
+                                [current_para_A, current_para_B]
+                                if scatter_type != "acPhDis"
+                                else [
+                                    current_para_A,
+                                    current_para_B,
+                                    current_para_C / 300.0,
+                                    current_para_D / 300.0,
+                                ]
+                            ),
+                        )[:9],
+                    )
 
             # Calculate the error of the fitting parameters of the resistivtiy
             error_meff = np.abs((current_meff - prev_meff) / prev_meff)
@@ -741,6 +800,7 @@ class PB_fit:
         scatter_type: str,
         threshold: float,
         max_num_iterations: int,
+        progress: FitProgress | None = None,
     ) -> list[float]:
         """Fits the Seebeck coefficient, resistivity and Hall coefficient data within the
         double-parabolic-band model and returns band-structure and scattering parameters
@@ -781,6 +841,8 @@ class PB_fit:
             fit stops
         max_num_iterations : int
             Maximum number of iterations before the fit stops
+        progress : FitProgress, optional
+            Follows the loop, and can stop it
 
         Returns
         -------
@@ -898,6 +960,8 @@ class PB_fit:
             # If the fit is not converged after max_num_iterations steps, the resistivity is fitted
             # one more time while keeping the factor for the Seebeck coefficient fixed
             if number_iterations > max_num_iterations:
+                if progress is not None:
+                    progress.reached_iteration_limit = True
                 break
 
             # Fit the resistivity with the parameters 'para_A', para_B', 'para_C' and 'para_D'
@@ -920,6 +984,28 @@ class PB_fit:
 
             # Set the start parameters of the resistivity fit to the currently best values
             start_paramter_res = parameter_res
+
+            if progress is not None:
+                progress.iterations = number_iterations
+                if progress.on_iteration is not None:
+                    progress.on_iteration(
+                        number_iterations,
+                        _dpb_results(
+                            parameters,
+                            scatter_type,
+                            [current_meff * degen, current_gap, current_fermi_energy],
+                            (
+                                [current_para_A, current_para_B]
+                                if scatter_type != "acPhDis"
+                                else [
+                                    current_para_A,
+                                    current_para_B,
+                                    current_para_C / 300.0,
+                                    current_para_D / 300.0,
+                                ]
+                            ),
+                        )[:9],
+                    )
 
             # Calculate the error of the fitting parameters of the resistivtiy
             error_meff = np.abs((current_meff - prev_meff) / prev_meff)

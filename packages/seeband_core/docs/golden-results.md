@@ -79,7 +79,7 @@ The files hold exact script output and are excluded from Prettier, so any change
 | All curves and graphs             | relative difference of at most 1e-9                           | exact on one Mac, within the rule on Linux CI             |
 | Fits                              | relative difference of at most 1e-5                           | up to 1.7e-7 on one Mac, within the rule on Linux CI      |
 | SPB S on `02_SiP`                 | relative difference of at most 1e-4                           | 3.4e-6 on one Mac, 1.8e-5 and 2.8e-5 in two Linux CI runs |
-| Failing fits                      | same error type, and "bounds" in the text                     |                                                           |
+| Failing fits                      | status `failed`, and "bounds" in the text                     |                                                           |
 | Listed DPB fits on `02_SiP` (D19) | band gap and E_F within 1e-5, within bounds, m_eff below 1e-5 | not comparable                                            |
 | G minimum case on `01`            | relative difference of at most 1e-3                           | 1e-4 on one Mac                                           |
 

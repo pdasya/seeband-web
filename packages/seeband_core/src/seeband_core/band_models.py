@@ -4,6 +4,7 @@ Everything here is in core units, so nothing here converts a scale. Results keep
 calculations they come from.
 """
 
+import logging
 from collections.abc import Callable, Iterable, Mapping
 from typing import Any
 
@@ -19,7 +20,10 @@ from seeband_core.model_interface import (
     FitMode,
     FitRequest,
     FitResult,
+    FitStatus,
+    FitStopped,
     IterationCallback,
+    IterationUpdate,
     Measurement,
     ModelDescription,
     Quantity,
@@ -27,6 +31,7 @@ from seeband_core.model_interface import (
 
 # Any, because calls here spread lists of mixed arguments that mypy cannot match to a signature.
 _CORE: Any = fit_module.PB_fit()
+logger = logging.getLogger(__name__)
 _SPB_SCATTERING = ("A", "C", "F")
 _DPB_BANDS = ("m_eff", "band_gap", "fermi_energy")
 _DPB_SCATTERING = ("A", "B", "C", "D", "F", "G")
@@ -87,6 +92,22 @@ def _measurement_arrays(
     return arrays
 
 
+class _CallbackError(Exception):
+    """Carries an error of the caller's callback through the fit, which is not its failure."""
+
+
+def _failure_message(error: Exception) -> str:
+    """Return fixed text for a failed fit, because solver messages are not written for users."""
+    text = str(error)
+    if "bounds" in text or "infeasible" in text:
+        return "The start values do not fit the bounds."
+    if "not finite" in text:
+        return "The model gave values that are not finite at the start values."
+    if isinstance(error, RuntimeError):
+        return "The fit reached its limit of function evaluations."
+    return "The fit failed with an internal error."
+
+
 class _BandModel:
     """What SPB and DPB share: checks, bounds and naming of results."""
 
@@ -124,6 +145,66 @@ class _BandModel:
                 raise ValueError(f"Parameter {name} has no bounds")
             chosen.append(bounds)
         return [[bounds.lower for bounds in chosen], [bounds.upper for bounds in chosen]]
+
+    def _run_fit(
+        self,
+        request: FitRequest,
+        function: Callable[..., Any],
+        arguments: list[Any],
+        keywords: dict[str, Any],
+        names: tuple[str, ...],
+    ) -> FitResult:
+        """Run a single-pass fit, and turn its errors into a status."""
+        try:
+            fitted = function(*arguments, **keywords)
+        except Exception as error:
+            logger.warning("A fit failed with %s", type(error).__name__)
+            return FitResult(dict(request.start), "failed", message=_failure_message(error))
+        return FitResult(dict(request.start) | dict(zip(names, fitted, strict=True)), "converged")
+
+    def _run_iterative_fit(
+        self,
+        request: FitRequest,
+        function: Callable[..., Any],
+        arguments: list[Any],
+        names: tuple[str, ...],
+        on_iteration: IterationCallback | None,
+    ) -> FitResult:
+        """Run a fit with a loop, and turn how it ended into a status."""
+        latest = dict(request.start)
+        progress = fit_module.FitProgress()
+        if on_iteration is not None:
+            callback = on_iteration
+
+            def report(iteration: int, values: list[float]) -> None:
+                # A parameter fitted after the loop is not in `values`, so it keeps its start.
+                latest.update(zip(names, values, strict=False))
+                try:
+                    callback(IterationUpdate(iteration, dict(latest)))
+                except FitStopped:
+                    raise
+                except Exception as error:
+                    raise _CallbackError from error
+
+            progress.on_iteration = report
+        try:
+            fitted = function(*arguments, progress=progress)
+        except FitStopped:
+            return FitResult(latest, "stopped", progress.iterations)
+        except _CallbackError as error:
+            assert error.__cause__ is not None
+            raise error.__cause__ from None
+        except Exception as error:
+            logger.warning("A fit failed with %s", type(error).__name__)
+            return FitResult(
+                dict(request.start),
+                "failed",
+                progress.iterations,
+                _failure_message(error),
+            )
+        status: FitStatus = "iteration_limit" if progress.reached_iteration_limit else "converged"
+        result = dict(request.start) | dict(zip(names, fitted, strict=True))
+        return FitResult(result, status, progress.iterations)
 
     def calculate(self, request: CurveRequest) -> CurveResult:
         fit_mode, scattering = self._mode_and_scattering(request.fit_mode, request.scattering)
@@ -176,40 +257,41 @@ class SpbModel(_BandModel):
         self._check_fit(request, fit_mode)
         start = request.start
         data = _measurement_arrays(request.measurements, fit_mode.quantities)
-        fermi: tuple[Any, Any] = (
+        fermi: list[Any] = [
             [_value(start, "fermi_energy")],
             self._limits(request, fit_mode, ["fermi_energy"]),
-        )
-        result = dict(start)
+        ]
         if fit_mode.id == "spb_s":
-            fitted = _CORE.spb_see_fit(*data, _value(start, "band_mass"), *fermi)
-            names: tuple[str, ...] = ("fermi_energy",)
-        else:
-            scattering_start: tuple[Any, Any] = (
-                _values(start, _SPB_SCATTERING),
-                self._limits(request, fit_mode, _SPB_SCATTERING),
+            arguments = [*data, _value(start, "band_mass"), *fermi]
+            return self._run_fit(request, _CORE.spb_see_fit, arguments, {}, ("fermi_energy",))
+        scattering_start: list[Any] = [
+            _values(start, _SPB_SCATTERING),
+            self._limits(request, fit_mode, _SPB_SCATTERING),
+        ]
+        if fit_mode.id == "spb_s_rho":
+            arguments = [*data, _value(start, "band_mass"), *fermi, *scattering_start]
+            return self._run_fit(
+                request,
+                _CORE.spb_see_res_fit,
+                arguments,
+                {"scatter_type": scattering},
+                ("fermi_energy", *_SPB_SCATTERING),
             )
-            if fit_mode.id == "spb_s_rho":
-                fitted = _CORE.spb_see_res_fit(
-                    *data,
-                    _value(start, "band_mass"),
-                    *fermi,
-                    *scattering_start,
-                    scatter_type=scattering,
-                )
-                names = ("fermi_energy", *_SPB_SCATTERING)
-            else:
-                fitted = _CORE.spb_see_res_hall_fit(
-                    *data,
-                    *fermi,
-                    *scattering_start,
-                    [_value(start, "band_mass")],
-                    self._limits(request, fit_mode, ["band_mass"]),
-                    scattering,
-                )
-                names = ("fermi_energy", *_SPB_SCATTERING, "band_mass")
-        result.update(zip(names, fitted, strict=True))
-        return FitResult(result)
+        arguments = [
+            *data,
+            *fermi,
+            *scattering_start,
+            [_value(start, "band_mass")],
+            self._limits(request, fit_mode, ["band_mass"]),
+            scattering,
+        ]
+        return self._run_fit(
+            request,
+            _CORE.spb_see_res_hall_fit,
+            arguments,
+            {},
+            ("fermi_energy", *_SPB_SCATTERING, "band_mass"),
+        )
 
 
 class DpbModel(_BandModel):
@@ -259,42 +341,35 @@ class DpbModel(_BandModel):
         start = request.start
         data = _measurement_arrays(request.measurements, fit_mode.quantities)
         degeneracy = _degeneracy_ratio(request)
-        bands: tuple[Any, Any] = (
+        bands: list[Any] = [
             _values(start, _DPB_BANDS),
             self._limits(request, fit_mode, _DPB_BANDS),
-        )
-        result = dict(start)
+        ]
         if fit_mode.id == "dpb_s":
-            fitted = _CORE.dpb_see_fit(*data, *bands, degeneracy)
-            names: tuple[str, ...] = _DPB_BANDS
-        else:
-            scattering_start: tuple[Any, Any] = (
-                _values(start, _DPB_SCATTERING),
-                self._limits(request, fit_mode, _DPB_SCATTERING),
+            arguments = [*data, *bands, degeneracy]
+            return self._run_fit(request, _CORE.dpb_see_fit, arguments, {}, _DPB_BANDS)
+        scattering_start: list[Any] = [
+            _values(start, _DPB_SCATTERING),
+            self._limits(request, fit_mode, _DPB_SCATTERING),
+        ]
+        loop = [degeneracy, scattering, fit_mode.threshold, fit_mode.max_iterations]
+        names = (*_DPB_BANDS, *_DPB_SCATTERING)
+        if fit_mode.id == "dpb_s_rho":
+            return self._run_iterative_fit(
+                request,
+                _CORE.dpb_see_res_fit,
+                [*data, *bands, *scattering_start, *loop],
+                names,
+                on_iteration,
             )
-            if fit_mode.id == "dpb_s_rho":
-                fitted = _CORE.dpb_see_res_fit(
-                    *data,
-                    *bands,
-                    *scattering_start,
-                    degeneracy,
-                    scattering,
-                    fit_mode.threshold,
-                    fit_mode.max_iterations,
-                )
-                names = (*_DPB_BANDS, *_DPB_SCATTERING)
-            else:
-                fitted = _CORE.dpb_see_res_hall_fit(
-                    *data,
-                    *bands,
-                    *scattering_start,
-                    _value(start, "m1"),
-                    self._limits(request, fit_mode, ["m1"]),
-                    degeneracy,
-                    scattering,
-                    fit_mode.threshold,
-                    fit_mode.max_iterations,
-                )
-                names = (*_DPB_BANDS, *_DPB_SCATTERING, "m1")
-        result.update(zip(names, fitted, strict=True))
-        return FitResult(result)
+        arguments = [
+            *data,
+            *bands,
+            *scattering_start,
+            _value(start, "m1"),
+            self._limits(request, fit_mode, ["m1"]),
+            *loop,
+        ]
+        return self._run_iterative_fit(
+            request, _CORE.dpb_see_res_hall_fit, arguments, (*names, "m1"), on_iteration
+        )

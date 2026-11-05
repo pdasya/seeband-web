@@ -1,9 +1,11 @@
 import copy
+import dataclasses
 import json
 import subprocess
 import sys
 from pathlib import Path
 from typing import Any
+from unittest.mock import ANY
 
 import numpy as np
 import pytest
@@ -16,13 +18,14 @@ from seeband_core.model_interface import (
     CurveRequest,
     FitMode,
     FitRequest,
+    FitStopped,
+    IterationUpdate,
     Measurement,
     Quantity,
 )
 from seeband_core.model_scales import default_start
 
 GOLDEN = Path(__file__).parent / "fixtures" / "golden"
-D3_ERROR = "Inconsistent shapes between bounds"
 CURVE_NAMES: dict[CurveKind, list[str]] = {
     "seebeck": ["seebeck_v_per_k"],
     "seebeck_by_band": ["seebeck_band_1_v_per_k", "seebeck_band_2_v_per_k"],
@@ -145,6 +148,7 @@ def test_every_working_fit_returns_all_parameters_and_keeps_its_request(
 
     result = model.fit(FitRequest(fit_mode_id, measurements, start, scattering=scattering))
 
+    assert result.status == "converged"
     assert set(result.parameters) == set(start)
     assert start == start_before
     for name, data in measurements.items():
@@ -173,17 +177,20 @@ def test_web_bounds_of_d1_let_the_fit_run_and_desktop_bounds_fail_as_recorded() 
     measurements = recorded_measurements(fit_mode)
     start = default_start(fit_mode)
     result = model.fit(FitRequest("dpb_s_rho_rh", measurements, start, scattering="dis"))
+    assert result.status == "converged"
     assert 0.5 <= result.parameters["G"] <= 2
-    with pytest.raises(ValueError, match="bounds"):
-        model.fit(
-            FitRequest(
-                "dpb_s_rho_rh",
-                measurements,
-                start,
-                bounds={"G": Bounds(50, 200)},
-                scattering="dis",
-            )
+    failed = model.fit(
+        FitRequest(
+            "dpb_s_rho_rh",
+            measurements,
+            start,
+            bounds={"G": Bounds(50, 200)},
+            scattering="dis",
         )
+    )
+    assert failed.status == "failed"
+    assert failed.message == "The start values do not fit the bounds."
+    assert failed.parameters == start
 
 
 @pytest.mark.filterwarnings("ignore")
@@ -209,12 +216,15 @@ def test_the_spb_hall_fit_keeps_its_recorded_problems() -> None:
     measurements = recorded_measurements(fit_mode)
     start = default_start(fit_mode)
     # D3: a positive mass gives an empty start for E.
-    with pytest.raises(ValueError, match=D3_ERROR):
-        model.fit(FitRequest("spb_s_rho_rh", measurements, start, scattering="acPh"))
-    with pytest.raises(TypeError):
-        model.fit(
-            FitRequest("spb_s_rho_rh", measurements, start | {"band_mass": -1.5}, scattering="acPh")
-        )
+    empty = model.fit(FitRequest("spb_s_rho_rh", measurements, start, scattering="acPh"))
+    assert (empty.status, empty.message) == ("failed", "The start values do not fit the bounds.")
+    float_mass = model.fit(
+        FitRequest("spb_s_rho_rh", measurements, start | {"band_mass": -1.5}, scattering="acPh")
+    )
+    assert (float_mass.status, float_mass.message) == (
+        "failed",
+        "The fit failed with an internal error.",
+    )
     result = model.fit(
         FitRequest(
             "spb_s_rho_rh",
@@ -224,6 +234,7 @@ def test_the_spb_hall_fit_keeps_its_recorded_problems() -> None:
             scattering="acPh",
         )
     )
+    assert result.status == "converged"
     assert set(result.parameters) == set(start)
 
 
@@ -478,7 +489,7 @@ EXPECTED_FIT_CALLS: dict[str, tuple[str, list[Any], dict[str, Any], list[str]]] 
             0.1,
             1000,
         ],
-        {},
+        {"progress": ANY},
         ["m_eff", "band_gap", "fermi_energy", "A", "B", "C", "D", "F", "G"],
     ),
     "dpb_s_rho_rh": (
@@ -498,7 +509,7 @@ EXPECTED_FIT_CALLS: dict[str, tuple[str, list[Any], dict[str, Any], list[str]]] 
             0.1,
             20,
         ],
-        {},
+        {"progress": ANY},
         ["m_eff", "band_gap", "fermi_energy", "A", "B", "C", "D", "F", "G", "m1"],
     ),
 }
@@ -756,3 +767,165 @@ def test_described_bounds_match_what_the_desktop_passed(mode: str, call: dict[st
                 assert bounds == Bounds(0.5, 2)
             else:
                 assert (bounds.lower, bounds.upper) == (lower, upper)
+
+
+ITERATIVE_CASES = [
+    ("dpb_s_rho", "acPh"),
+    ("dpb_s_rho", "dis"),
+    ("dpb_s_rho", "acPhDis"),
+    ("dpb_s_rho_rh", "acPh"),
+    ("dpb_s_rho_rh", "dis"),
+    ("dpb_s_rho_rh", "acPhDis"),
+]
+
+
+def iterative_request(fit_mode_id: str, scattering: str, degeneracy: float = 1.0) -> FitRequest:
+    fit_mode = registry.get("dpb").describe().fit_mode(fit_mode_id)
+    return FitRequest(
+        fit_mode_id,
+        recorded_measurements(fit_mode),
+        default_start(fit_mode),
+        scattering=scattering,
+        band_2_degeneracy=degeneracy,
+    )
+
+
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize(("fit_mode_id", "scattering"), ITERATIVE_CASES)
+def test_a_callback_changes_no_number_and_follows_each_iteration(
+    fit_mode_id: str, scattering: str
+) -> None:
+    model = registry.get("dpb")
+    request = iterative_request(fit_mode_id, scattering, degeneracy=2.0)
+    plain = model.fit(request)
+    updates: list[IterationUpdate] = []
+    followed = model.fit(request, updates.append)
+
+    assert followed.parameters == plain.parameters
+    assert plain.status == followed.status == "converged"
+    assert plain.iterations == followed.iterations
+    assert [update.iteration for update in updates] == list(range(1, len(updates) + 1))
+    assert len(updates) == followed.iterations
+    # The last update has the form of the result, including its conversions, apart from m1.
+    fitted_later = {"m1"} if fit_mode_id == "dpb_s_rho_rh" else set()
+    for name, value in updates[-1].parameters.items():
+        if name not in fitted_later:
+            assert value == followed.parameters[name], name
+    assert all(update.parameters["m1"] == 1.0 for update in updates if fitted_later)
+    assert followed.iterations is not None
+
+
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize(("fit_mode_id", "scattering"), ITERATIVE_CASES)
+def test_a_callback_can_stop_a_fit(fit_mode_id: str, scattering: str) -> None:
+    updates: list[IterationUpdate] = []
+
+    def stop(update: IterationUpdate) -> None:
+        updates.append(update)
+        raise FitStopped
+
+    result = registry.get("dpb").fit(iterative_request(fit_mode_id, scattering), stop)
+    assert result.status == "stopped"
+    assert result.iterations == 1
+    assert result.parameters == updates[-1].parameters
+    assert len(updates) == 1
+
+
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize("fit_mode_id", ["dpb_s_rho", "dpb_s_rho_rh"])
+def test_reaching_the_iteration_limit_is_not_success(fit_mode_id: str) -> None:
+    model = band_models.DpbModel()
+    description = model.describe()
+    modes = tuple(
+        dataclasses.replace(mode, threshold=1e-300, max_iterations=2)
+        if mode.id == fit_mode_id
+        else mode
+        for mode in description.fit_modes
+    )
+    model._description = dataclasses.replace(description, fit_modes=modes)
+    updates: list[IterationUpdate] = []
+    result = model.fit(iterative_request(fit_mode_id, "acPh"), updates.append)
+    assert result.status == "iteration_limit"
+    assert result.iterations == 2
+    assert [update.iteration for update in updates] == [1, 2]
+
+
+@pytest.mark.parametrize(
+    ("error", "message"),
+    [
+        (ValueError("x0 is infeasible at 123.456"), "The start values do not fit the bounds."),
+        (ValueError("Residuals are not finite at 123.456"), "not finite"),
+        (RuntimeError("Optimal parameters not found: 123.456"), "limit of function evaluations"),
+        (TypeError("can't multiply 123.456"), "internal error"),
+    ],
+)
+@pytest.mark.parametrize(("model_id", "fit_mode_id"), [("dpb", "dpb_s"), ("dpb", "dpb_s_rho")])
+def test_a_failed_fit_has_a_status_and_a_safe_message(
+    monkeypatch: pytest.MonkeyPatch,
+    model_id: str,
+    fit_mode_id: str,
+    error: Exception,
+    message: str,
+) -> None:
+    class Failing:
+        def __getattr__(self, name: str) -> Any:
+            def fail(*args: Any, **kwargs: Any) -> Any:
+                raise error
+
+            return fail
+
+    monkeypatch.setattr(band_models, "_CORE", Failing())
+    model = registry.get(model_id)
+    fit_mode = model.describe().fit_mode(fit_mode_id)
+    start = default_start(fit_mode)
+    result = model.fit(
+        FitRequest(
+            fit_mode_id,
+            recorded_measurements(fit_mode),
+            start,
+            scattering=fit_mode.default_scattering,
+        )
+    )
+    assert result.status == "failed"
+    assert result.parameters == start
+    assert result.message is not None
+    assert message in result.message
+    assert "123.456" not in result.message
+
+
+@pytest.mark.filterwarnings("ignore")
+def test_an_error_in_the_callback_reaches_the_caller() -> None:
+    class CallbackBroke(Exception):
+        pass
+
+    def broken(update: IterationUpdate) -> None:
+        raise CallbackBroke
+
+    with pytest.raises(CallbackBroke):
+        registry.get("dpb").fit(iterative_request("dpb_s_rho", "acPh"), broken)
+
+
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize(
+    ("model_id", "fit_mode_id", "scattering"),
+    [("spb", "spb_s", None), ("spb", "spb_s_rho", "acPh"), ("dpb", "dpb_s", None)],
+)
+def test_single_pass_fits_have_no_iterations(
+    model_id: str, fit_mode_id: str, scattering: str | None
+) -> None:
+    model = registry.get(model_id)
+    fit_mode = model.describe().fit_mode(fit_mode_id)
+    assert not fit_mode.iterative
+    updates: list[IterationUpdate] = []
+    result = model.fit(
+        FitRequest(
+            fit_mode_id,
+            recorded_measurements(fit_mode),
+            default_start(fit_mode),
+            scattering=scattering,
+        ),
+        updates.append,
+    )
+    assert result.status == "converged"
+    assert result.iterations is None
+    assert updates == []

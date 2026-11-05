@@ -11,6 +11,19 @@ A new model needs one class and one registration. API and client code find model
 
 A fit runs in a separate process, which holds only the models its imports registered, so use `model_catalog` in workers too. `band_models` is the example of a real model.
 
+## Fit outcomes
+
+`fit` returns a `FitResult` with one of four statuses, and raises only for an invalid request:
+
+| Status            | Meaning                                                                                                                              | Parameters              |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ----------------------- |
+| `converged`       | the fit ended normally: an iterative fit met its stop rule, or a single-pass solver returned. This does not mean the result is sound | the result              |
+| `iteration_limit` | the loop reached its limit. The desktop reports this as success                                                                      | what the fit ended with |
+| `stopped`         | a callback raised `FitStopped`                                                                                                       | the last iteration      |
+| `failed`          | the calculation raised. `message` holds fixed text, because solver messages are not written for users                                | the start values        |
+
+An iterative fit calls `on_iteration` once per iteration, with values in the form of a final result, and `FitMode.iterative` tells a client whether to show a counter. A single-pass fit never calls it, and stopping one means ending its process.
+
 ## Rules
 
 - Do not mutate requests or measurements.
