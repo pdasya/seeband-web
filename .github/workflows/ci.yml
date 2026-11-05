@@ -31,6 +31,10 @@ jobs:
         run: uv run mypy
       - name: Pytest
         run: uv run pytest
+      - name: OpenAPI contract is up to date
+        run: |
+          uv run python -m seeband_api.export_openapi packages/api-client/openapi.json
+          git diff --exit-code packages/api-client/openapi.json
       - name: Built package
         run: |
           uv build --wheel --package seeband-core --out-dir dist
@@ -68,5 +72,5 @@ jobs:
         run: pnpm lint
       - name: Type check
         run: pnpm typecheck
-      - name: Tests
+      - name: Tests, including that generated API types are up to date
         run: pnpm test

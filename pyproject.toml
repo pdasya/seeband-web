@@ -22,6 +22,7 @@ dev = [
     "mypy>=1.15",
     "pytest>=8",
     "ruff>=0.11",
+    "httpx2>=2.16.0",
 ]
 
 [tool.ruff]

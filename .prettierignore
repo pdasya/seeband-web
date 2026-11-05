@@ -8,3 +8,5 @@ packages/seeband_core/tests/fixtures/interpolation_references.json
 packages/seeband_core/src/seeband_core/data/demo_dataset.json
 packages/seeband_core/tests/fixtures/golden/
 packages/seeband_core/docs/golden-results-summary.md
+packages/api-client/openapi.json
+packages/api-client/src/schema.d.ts
