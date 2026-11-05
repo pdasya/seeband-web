@@ -1,6 +1,14 @@
 """A registry of models. Import the one that holds the built-in models from `model_catalog`."""
 
+from math import isclose
+
 from seeband_core.model_interface import Model, ModelDescription
+
+
+def _check_scale(scale: float, where: str) -> None:
+    """Reject what `scale_value` cannot honour: it treats a fraction as 1/n."""
+    if scale <= 0 or (scale < 1 and not isclose(round(1 / scale) * scale, 1.0)):
+        raise ValueError(f"{where} has a scale of {scale}, which is not above 0 or 1/n")
 
 
 def _check(description: ModelDescription) -> None:
@@ -19,6 +27,8 @@ def _check(description: ModelDescription) -> None:
         if default is not None and default not in fit_mode.scattering:
             raise ValueError(f"Fit mode {fit_mode.id} defaults to unknown scattering {default}")
         for spec in fit_mode.parameters:
+            _check_scale(spec.display_scale, f"Parameter {spec.name} in {fit_mode.id}")
+            _check_scale(spec.fit_scale, f"Parameter {spec.name} in {fit_mode.id}")
             limits = spec.value_range
             if not limits.minimum <= limits.default <= limits.maximum or limits.step <= 0:
                 raise ValueError(f"Parameter {spec.name} in {fit_mode.id} has an invalid range")

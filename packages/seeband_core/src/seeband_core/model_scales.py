@@ -37,6 +37,17 @@ def display_to_core(spec: ParameterSpec, value: float) -> float:
     return scale_value(value, spec.fit_scale / spec.display_scale)
 
 
+def core_range(spec: ParameterSpec) -> ValueRange:
+    """Return the range of a parameter's control in core units."""
+    limits = spec.value_range
+    return ValueRange(
+        scale_value(limits.minimum, spec.fit_scale),
+        scale_value(limits.maximum, spec.fit_scale),
+        scale_value(limits.step, spec.fit_scale),
+        scale_value(limits.default, spec.fit_scale),
+    )
+
+
 def display_range(spec: ParameterSpec) -> ValueRange:
     """Return the range of a parameter's control as a user sees it."""
     scaled = spec.value_range
