@@ -68,10 +68,1797 @@
           }
         }
       }
+    },
+    "/api/models": {
+      "get": {
+        "tags": [
+          "models"
+        ],
+        "summary": "Get Models",
+        "operationId": "get_models",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelsResponse"
+                },
+                "examples": {
+                  "registry": {
+                    "value": {
+                      "models": [
+                        {
+                          "id": "spb",
+                          "name": "Single parabolic band",
+                          "default_min_temperature_k": 50.0,
+                          "default_max_temperature_k": 800.0,
+                          "default_curve_points": 50,
+                          "fit_modes": [
+                            {
+                              "id": "spb_s",
+                              "quantities": [
+                                "seebeck"
+                              ],
+                              "parameters": [
+                                {
+                                  "name": "band_mass",
+                                  "meaning": "band mass, sign sets the carrier type",
+                                  "unit": "m_e",
+                                  "role": "fixed",
+                                  "scattering": [
+                                    "acPh",
+                                    "dis",
+                                    "acPhDis"
+                                  ],
+                                  "value_range": {
+                                    "minimum": -300.0,
+                                    "maximum": 300.0,
+                                    "step": 1.0,
+                                    "default": 101.0
+                                  },
+                                  "display_range": {
+                                    "minimum": -3.0,
+                                    "maximum": 3.0,
+                                    "step": 0.01,
+                                    "default": 1.01
+                                  },
+                                  "display_scale": 0.01,
+                                  "fit_scale": 0.01,
+                                  "default_core_value": 1.01,
+                                  "bounds_editable": false
+                                },
+                                {
+                                  "name": "fermi_energy",
+                                  "meaning": "Fermi energy at T = 0",
+                                  "unit": "K",
+                                  "role": "fitted",
+                                  "scattering": [
+                                    "acPh",
+                                    "dis",
+                                    "acPhDis"
+                                  ],
+                                  "value_range": {
+                                    "minimum": -3000.0,
+                                    "maximum": 3000.0,
+                                    "step": 1.0,
+                                    "default": 100.0
+                                  },
+                                  "display_range": {
+                                    "minimum": -3000.0,
+                                    "maximum": 3000.0,
+                                    "step": 1.0,
+                                    "default": 100.0
+                                  },
+                                  "display_scale": 1.0,
+                                  "fit_scale": 1.0,
+                                  "default_core_value": 100.0,
+                                  "fit_bounds": {
+                                    "lower": -3000.0,
+                                    "upper": 3000.0
+                                  },
+                                  "bounds_editable": true
+                                }
+                              ],
+                              "scattering": [],
+                              "iterative": false,
+                              "curve_kinds": [
+                                "measured",
+                                "chemical_potential"
+                              ],
+                              "disabled": false,
+                              "disabled_by": [],
+                              "known_issues": [
+                                {
+                                  "id": "no_chemical_potential",
+                                  "severity": "unreliable",
+                                  "message_key": "known_issue.no_chemical_potential",
+                                  "explanation": "With the Fermi energy outside the band, there are no carriers, and the solved chemical potential and curves mean nothing",
+                                  "fixed_by": "#106",
+                                  "scattering": [],
+                                  "curve_kinds": [
+                                    "measured",
+                                    "chemical_potential",
+                                    "electrical_conductivity",
+                                    "thermal_conductivity"
+                                  ],
+                                  "columns": [],
+                                  "affects_fit": true,
+                                  "condition": "fermi_energy_outside_band"
+                                },
+                                {
+                                  "id": "interpolation_extrapolates",
+                                  "severity": "unreliable",
+                                  "message_key": "known_issue.interpolation_extrapolates",
+                                  "explanation": "Interpolation made up points beyond the data, and they enter the fit",
+                                  "fixed_by": "#86",
+                                  "scattering": [],
+                                  "curve_kinds": [],
+                                  "columns": [],
+                                  "affects_fit": false,
+                                  "condition": "interpolation_extrapolated"
+                                }
+                              ]
+                            },
+                            {
+                              "id": "spb_s_rho",
+                              "quantities": [
+                                "seebeck",
+                                "resistivity"
+                              ],
+                              "parameters": [
+                                {
+                                  "name": "band_mass",
+                                  "meaning": "band mass, sign sets the carrier type",
+                                  "unit": "m_e",
+                                  "role": "fixed",
+                                  "scattering": [
+                                    "acPh",
+                                    "dis",
+                                    "acPhDis"
+                                  ],
+                                  "value_range": {
+                                    "minimum": -300.0,
+                                    "maximum": 300.0,
+                                    "step": 1.0,
+                                    "default": -100.0
+                                  },
+                                  "display_range": {
+                                    "minimum": -3.0,
+                                    "maximum": 3.0,
+                                    "step": 0.01,
+                                    "default": -1.0
+                                  },
+                                  "display_scale": 0.01,
+                                  "fit_scale": 0.01,
+                                  "default_core_value": -1.0,
+                                  "bounds_editable": false
+                                },
+                                {
+                                  "name": "fermi_energy",
+                                  "meaning": "Fermi energy at T = 0",
+                                  "unit": "K",
+                                  "role": "fitted",
+                                  "scattering": [
+                                    "acPh",
+                                    "dis",
+                                    "acPhDis"
+                                  ],
+                                  "value_range": {
+                                    "minimum": -3000.0,
+                                    "maximum": 3000.0,
+                                    "step": 1.0,
+                                    "default": -100.0
+                                  },
+                                  "display_range": {
+                                    "minimum": -3000.0,
+                                    "maximum": 3000.0,
+                                    "step": 1.0,
+                                    "default": -100.0
+                                  },
+                                  "display_scale": 1.0,
+                                  "fit_scale": 1.0,
+                                  "default_core_value": -100.0,
+                                  "fit_bounds": {
+                                    "lower": -3000.0,
+                                    "upper": 3000.0
+                                  },
+                                  "bounds_editable": true
+                                },
+                                {
+                                  "name": "A",
+                                  "meaning": "tau_ph,1, acoustic phonon scale of band 1",
+                                  "unit": "unknown",
+                                  "role": "fitted",
+                                  "scattering": [
+                                    "acPh",
+                                    "acPhDis"
+                                  ],
+                                  "value_range": {
+                                    "minimum": 0.0,
+                                    "maximum": 1000000.0,
+                                    "step": 1000.0,
+                                    "default": 40000.0
+                                  },
+                                  "display_range": {
+                                    "minimum": 0.0,
+                                    "maximum": 1000000.0,
+                                    "step": 1000.0,
+                                    "default": 40000.0
+                                  },
+                                  "display_scale": 1.0,
+                                  "fit_scale": 1.0,
+                                  "default_core_value": 40000.0,
+                                  "fit_bounds": {
+                                    "lower": 1.0,
+                                    "upper": 10000000.0
+                                  },
+                                  "bounds_editable": false
+                                },
+                                {
+                                  "name": "C",
+                                  "meaning": "tau_ph,1 / tau_dis,1 at 300 K",
+                                  "unit": "dimensionless",
+                                  "role": "fitted",
+                                  "scattering": [
+                                    "acPhDis"
+                                  ],
+                                  "value_range": {
+                                    "minimum": 0.0,
+                                    "maximum": 300.0,
+                                    "step": 1.0,
+                                    "default": 100.0
+                                  },
+                                  "display_range": {
+                                    "minimum": 0.0,
+                                    "maximum": 3.0,
+                                    "step": 0.01,
+                                    "default": 1.0
+                                  },
+                                  "display_scale": 0.01,
+                                  "fit_scale": 1.0,
+                                  "default_core_value": 100.0,
+                                  "fit_bounds": {
+                                    "lower": 0.001,
+                                    "upper": 1000.0
+                                  },
+                                  "bounds_editable": false
+                                },
+                                {
+                                  "name": "F",
+                                  "meaning": "tau_dis,1, disorder scale of band 1",
+                                  "unit": "unknown",
+                                  "role": "fitted",
+                                  "scattering": [
+                                    "dis"
+                                  ],
+                                  "value_range": {
+                                    "minimum": 0.0,
+                                    "maximum": 100000.0,
+                                    "step": 100.0,
+                                    "default": 4000.0
+                                  },
+                                  "display_range": {
+                                    "minimum": 0.0,
+                                    "maximum": 100000.0,
+                                    "step": 100.0,
+                                    "default": 4000.0
+                                  },
+                                  "display_scale": 1.0,
+                                  "fit_scale": 1.0,
+                                  "default_core_value": 4000.0,
+                                  "fit_bounds": {
+                                    "lower": 1.0,
+                                    "upper": 10000000.0
+                                  },
+                                  "bounds_editable": false
+                                }
+                              ],
+                              "scattering": [
+                                "acPh",
+                                "dis",
+                                "acPhDis"
+                              ],
+                              "default_scattering": "acPh",
+                              "iterative": false,
+                              "curve_kinds": [
+                                "measured",
+                                "chemical_potential",
+                                "electrical_conductivity",
+                                "thermal_conductivity"
+                              ],
+                              "disabled": false,
+                              "disabled_by": [],
+                              "known_issues": [
+                                {
+                                  "id": "acphdis_curve_scale",
+                                  "severity": "unreliable",
+                                  "message_key": "known_issue.acphdis_curve_scale",
+                                  "explanation": "With acPhDis, these curves use another scale of C and D from rho and S, so sigma * rho != 1 and band contributions do not sum to S",
+                                  "fixed_by": "#82",
+                                  "scattering": [
+                                    "acPhDis"
+                                  ],
+                                  "curve_kinds": [
+                                    "seebeck_by_band",
+                                    "electrical_conductivity",
+                                    "electrical_conductivity_by_band",
+                                    "thermal_conductivity"
+                                  ],
+                                  "columns": [],
+                                  "affects_fit": false
+                                },
+                                {
+                                  "id": "no_chemical_potential",
+                                  "severity": "unreliable",
+                                  "message_key": "known_issue.no_chemical_potential",
+                                  "explanation": "With the Fermi energy outside the band, there are no carriers, and the solved chemical potential and curves mean nothing",
+                                  "fixed_by": "#106",
+                                  "scattering": [],
+                                  "curve_kinds": [
+                                    "measured",
+                                    "chemical_potential",
+                                    "electrical_conductivity",
+                                    "thermal_conductivity"
+                                  ],
+                                  "columns": [],
+                                  "affects_fit": true,
+                                  "condition": "fermi_energy_outside_band"
+                                },
+                                {
+                                  "id": "interpolation_extrapolates",
+                                  "severity": "unreliable",
+                                  "message_key": "known_issue.interpolation_extrapolates",
+                                  "explanation": "Interpolation made up points beyond the data, and they enter the fit",
+                                  "fixed_by": "#86",
+                                  "scattering": [],
+                                  "curve_kinds": [],
+                                  "columns": [],
+                                  "affects_fit": false,
+                                  "condition": "interpolation_extrapolated"
+                                }
+                              ]
+                            },
+                            {
+                              "id": "spb_s_rho_rh",
+                              "quantities": [
+                                "seebeck",
+                                "resistivity",
+                                "hall"
+                              ],
+                              "parameters": [
+                                {
+                                  "name": "band_mass",
+                                  "meaning": "band mass, sign sets the carrier type",
+                                  "unit": "m_e",
+                                  "role": "fitted",
+                                  "scattering": [
+                                    "acPh",
+                                    "dis",
+                                    "acPhDis"
+                                  ],
+                                  "value_range": {
+                                    "minimum": -300.0,
+                                    "maximum": 300.0,
+                                    "step": 1.0,
+                                    "default": 100.0
+                                  },
+                                  "display_range": {
+                                    "minimum": -3.0,
+                                    "maximum": 3.0,
+                                    "step": 0.01,
+                                    "default": 1.0
+                                  },
+                                  "display_scale": 0.01,
+                                  "fit_scale": 1.0,
+                                  "default_core_value": 100.0,
+                                  "fit_bounds": {
+                                    "lower": -300.0,
+                                    "upper": 300.0
+                                  },
+                                  "bounds_editable": true
+                                },
+                                {
+                                  "name": "fermi_energy",
+                                  "meaning": "Fermi energy at T = 0",
+                                  "unit": "K",
+                                  "role": "fitted",
+                                  "scattering": [
+                                    "acPh",
+                                    "dis",
+                                    "acPhDis"
+                                  ],
+                                  "value_range": {
+                                    "minimum": -3000.0,
+                                    "maximum": 3000.0,
+                                    "step": 1.0,
+                                    "default": 100.0
+                                  },
+                                  "display_range": {
+                                    "minimum": -3000.0,
+                                    "maximum": 3000.0,
+                                    "step": 1.0,
+                                    "default": 100.0
+                                  },
+                                  "display_scale": 1.0,
+                                  "fit_scale": 1.0,
+                                  "default_core_value": 100.0,
+                                  "fit_bounds": {
+                                    "lower": -3000.0,
+                                    "upper": 3000.0
+                                  },
+                                  "bounds_editable": true
+                                },
+                                {
+                                  "name": "A",
+                                  "meaning": "tau_ph,1, acoustic phonon scale of band 1",
+                                  "unit": "unknown",
+                                  "role": "fitted",
+                                  "scattering": [
+                                    "acPh",
+                                    "acPhDis"
+                                  ],
+                                  "value_range": {
+                                    "minimum": 0.0,
+                                    "maximum": 1000000.0,
+                                    "step": 1000.0,
+                                    "default": 40000.0
+                                  },
+                                  "display_range": {
+                                    "minimum": 0.0,
+                                    "maximum": 1000000.0,
+                                    "step": 1000.0,
+                                    "default": 40000.0
+                                  },
+                                  "display_scale": 1.0,
+                                  "fit_scale": 1.0,
+                                  "default_core_value": 40000.0,
+                                  "fit_bounds": {
+                                    "lower": 1.0,
+                                    "upper": 10000000.0
+                                  },
+                                  "bounds_editable": false
+                                },
+                                {
+                                  "name": "C",
+                                  "meaning": "tau_ph,1 / tau_dis,1 at 300 K",
+                                  "unit": "dimensionless",
+                                  "role": "fitted",
+                                  "scattering": [
+                                    "acPhDis"
+                                  ],
+                                  "value_range": {
+                                    "minimum": 0.0,
+                                    "maximum": 300.0,
+                                    "step": 1.0,
+                                    "default": 100.0
+                                  },
+                                  "display_range": {
+                                    "minimum": 0.0,
+                                    "maximum": 3.0,
+                                    "step": 0.01,
+                                    "default": 1.0
+                                  },
+                                  "display_scale": 0.01,
+                                  "fit_scale": 1.0,
+                                  "default_core_value": 100.0,
+                                  "fit_bounds": {
+                                    "lower": 0.001,
+                                    "upper": 1000.0
+                                  },
+                                  "bounds_editable": false
+                                },
+                                {
+                                  "name": "F",
+                                  "meaning": "tau_dis,1, disorder scale of band 1",
+                                  "unit": "unknown",
+                                  "role": "fitted",
+                                  "scattering": [
+                                    "dis"
+                                  ],
+                                  "value_range": {
+                                    "minimum": 0.0,
+                                    "maximum": 100000.0,
+                                    "step": 100.0,
+                                    "default": 4000.0
+                                  },
+                                  "display_range": {
+                                    "minimum": 0.0,
+                                    "maximum": 100000.0,
+                                    "step": 100.0,
+                                    "default": 4000.0
+                                  },
+                                  "display_scale": 1.0,
+                                  "fit_scale": 1.0,
+                                  "default_core_value": 4000.0,
+                                  "fit_bounds": {
+                                    "lower": 1.0,
+                                    "upper": 10000000.0
+                                  },
+                                  "bounds_editable": false
+                                }
+                              ],
+                              "scattering": [
+                                "acPh",
+                                "dis",
+                                "acPhDis"
+                              ],
+                              "default_scattering": "acPh",
+                              "iterative": false,
+                              "curve_kinds": [
+                                "measured",
+                                "chemical_potential",
+                                "electrical_conductivity",
+                                "thermal_conductivity"
+                              ],
+                              "disabled": true,
+                              "disabled_by": [
+                                "spb_hall_mode_disabled"
+                              ],
+                              "known_issues": [
+                                {
+                                  "id": "spb_hall_mode_disabled",
+                                  "severity": "disabled",
+                                  "message_key": "known_issue.spb_hall_mode_disabled",
+                                  "explanation": "This fit fails on the desktop, and its mass and scales are wrong (D2, D3, D6)",
+                                  "fixed_by": "#83",
+                                  "scattering": [],
+                                  "curve_kinds": [],
+                                  "columns": [],
+                                  "affects_fit": true
+                                },
+                                {
+                                  "id": "spb_hall_uses_fermi_energy",
+                                  "severity": "unreliable",
+                                  "message_key": "known_issue.spb_hall_uses_fermi_energy",
+                                  "explanation": "SPB R_H uses the Fermi energy at 0 K instead of the chemical potential",
+                                  "fixed_by": "#103",
+                                  "scattering": [],
+                                  "curve_kinds": [
+                                    "measured"
+                                  ],
+                                  "columns": [
+                                    "hall_m3_per_c"
+                                  ],
+                                  "affects_fit": true
+                                },
+                                {
+                                  "id": "acphdis_curve_scale",
+                                  "severity": "unreliable",
+                                  "message_key": "known_issue.acphdis_curve_scale",
+                                  "explanation": "With acPhDis, these curves use another scale of C and D from rho and S, so sigma * rho != 1 and band contributions do not sum to S",
+                                  "fixed_by": "#82",
+                                  "scattering": [
+                                    "acPhDis"
+                                  ],
+                                  "curve_kinds": [
+                                    "seebeck_by_band",
+                                    "electrical_conductivity",
+                                    "electrical_conductivity_by_band",
+                                    "thermal_conductivity"
+                                  ],
+                                  "columns": [],
+                                  "affects_fit": false
+                                },
+                                {
+                                  "id": "no_chemical_potential",
+                                  "severity": "unreliable",
+                                  "message_key": "known_issue.no_chemical_potential",
+                                  "explanation": "With the Fermi energy outside the band, there are no carriers, and the solved chemical potential and curves mean nothing",
+                                  "fixed_by": "#106",
+                                  "scattering": [],
+                                  "curve_kinds": [
+                                    "measured",
+                                    "chemical_potential",
+                                    "electrical_conductivity",
+                                    "thermal_conductivity"
+                                  ],
+                                  "columns": [],
+                                  "affects_fit": true,
+                                  "condition": "fermi_energy_outside_band"
+                                },
+                                {
+                                  "id": "interpolation_extrapolates",
+                                  "severity": "unreliable",
+                                  "message_key": "known_issue.interpolation_extrapolates",
+                                  "explanation": "Interpolation made up points beyond the data, and they enter the fit",
+                                  "fixed_by": "#86",
+                                  "scattering": [],
+                                  "curve_kinds": [],
+                                  "columns": [],
+                                  "affects_fit": false,
+                                  "condition": "interpolation_extrapolated"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "id": "dpb",
+                          "name": "Double parabolic band",
+                          "default_min_temperature_k": 50.0,
+                          "default_max_temperature_k": 800.0,
+                          "default_curve_points": 50,
+                          "fit_modes": [
+                            {
+                              "id": "dpb_s",
+                              "quantities": [
+                                "seebeck"
+                              ],
+                              "parameters": [
+                                {
+                                  "name": "m_eff",
+                                  "meaning": "band mass ratio m2/m1, the sign sets the type of band 2",
+                                  "unit": "dimensionless",
+                                  "role": "fitted",
+                                  "scattering": [
+                                    "acPh",
+                                    "dis",
+                                    "acPhDis"
+                                  ],
+                                  "value_range": {
+                                    "minimum": -300.0,
+                                    "maximum": 300.0,
+                                    "step": 1.0,
+                                    "default": 101.0
+                                  },
+                                  "display_range": {
+                                    "minimum": -3.0,
+                                    "maximum": 3.0,
+                                    "step": 0.01,
+                                    "default": 1.01
+                                  },
+                                  "display_scale": 0.01,
+                                  "fit_scale": 0.01,
+                                  "default_core_value": 1.01,
+                                  "fit_bounds": {
+                                    "lower": -3.0,
+                                    "upper": 3.0
+                                  },
+                                  "bounds_editable": true
+                                },
+                                {
+                                  "name": "band_gap",
+                                  "meaning": "position of band 2",
+                                  "unit": "K",
+                                  "role": "fitted",
+                                  "scattering": [
+                                    "acPh",
+                                    "dis",
+                                    "acPhDis"
+                                  ],
+                                  "value_range": {
+                                    "minimum": -3000.0,
+                                    "maximum": 3000.0,
+                                    "step": 10.0,
+                                    "default": 1000.0
+                                  },
+                                  "display_range": {
+                                    "minimum": -3000.0,
+                                    "maximum": 3000.0,
+                                    "step": 10.0,
+                                    "default": 1000.0
+                                  },
+                                  "display_scale": 1.0,
+                                  "fit_scale": 1.0,
+                                  "default_core_value": 1000.0,
+                                  "fit_bounds": {
+                                    "lower": -3000.0,
+                                    "upper": 3000.0
+                                  },
+                                  "bounds_editable": true
+                                },
+                                {
+                                  "name": "fermi_energy",
+                                  "meaning": "Fermi energy at T = 0",
+                                  "unit": "K",
+                                  "role": "fitted",
+                                  "scattering": [
+                                    "acPh",
+                                    "dis",
+                                    "acPhDis"
+                                  ],
+                                  "value_range": {
+                                    "minimum": -3000.0,
+                                    "maximum": 3000.0,
+                                    "step": 1.0,
+                                    "default": -100.0
+                                  },
+                                  "display_range": {
+                                    "minimum": -3000.0,
+                                    "maximum": 3000.0,
+                                    "step": 1.0,
+                                    "default": -100.0
+                                  },
+                                  "display_scale": 1.0,
+                                  "fit_scale": 1.0,
+                                  "default_core_value": -100.0,
+                                  "fit_bounds": {
+                                    "lower": -3000.0,
+                                    "upper": 3000.0
+                                  },
+                                  "bounds_editable": true
+                                }
+                              ],
+                              "scattering": [],
+                              "iterative": false,
+                              "degeneracy": {
+                                "band_1_default": 1.0,
+                                "band_2_default": 1.0
+                              },
+                              "curve_kinds": [
+                                "measured",
+                                "seebeck_by_band",
+                                "chemical_potential",
+                                "carrier_concentration_by_band"
+                              ],
+                              "disabled": false,
+                              "disabled_by": [],
+                              "known_issues": [
+                                {
+                                  "id": "dpb_s_degeneracy",
+                                  "severity": "unreliable",
+                                  "message_key": "known_issue.dpb_s_degeneracy",
+                                  "explanation": "With N2/N1 other than 1, a fitted m_eff does not match its curves (D12)",
+                                  "fixed_by": "#85",
+                                  "scattering": [],
+                                  "curve_kinds": [
+                                    "measured",
+                                    "seebeck_by_band",
+                                    "chemical_potential",
+                                    "carrier_concentration_by_band"
+                                  ],
+                                  "columns": [],
+                                  "affects_fit": true,
+                                  "condition": "degeneracy_not_one"
+                                },
+                                {
+                                  "id": "negative_m_eff_weight",
+                                  "severity": "caution",
+                                  "message_key": "known_issue.negative_m_eff_weight",
+                                  "explanation": "With m_eff below 0, band 2 gets a negative weight, for a physicist to check",
+                                  "fixed_by": "#104",
+                                  "scattering": [],
+                                  "curve_kinds": [
+                                    "measured",
+                                    "seebeck",
+                                    "seebeck_by_band",
+                                    "electrical_conductivity",
+                                    "electrical_conductivity_by_band",
+                                    "thermal_conductivity"
+                                  ],
+                                  "columns": [],
+                                  "affects_fit": true,
+                                  "condition": "negative_m_eff"
+                                },
+                                {
+                                  "id": "collapsed_m_eff",
+                                  "severity": "unreliable",
+                                  "message_key": "known_issue.collapsed_m_eff",
+                                  "explanation": "m_eff near 0 removes the weight of the other band, so the data do not settle the fit, and it differs between machines (D19)",
+                                  "fixed_by": "#107",
+                                  "scattering": [],
+                                  "curve_kinds": [
+                                    "measured",
+                                    "seebeck",
+                                    "seebeck_by_band",
+                                    "electrical_conductivity",
+                                    "electrical_conductivity_by_band",
+                                    "thermal_conductivity",
+                                    "chemical_potential",
+                                    "carrier_concentration_by_band"
+                                  ],
+                                  "columns": [],
+                                  "affects_fit": true,
+                                  "condition": "collapsed_m_eff"
+                                },
+                                {
+                                  "id": "interpolation_extrapolates",
+                                  "severity": "unreliable",
+                                  "message_key": "known_issue.interpolation_extrapolates",
+                                  "explanation": "Interpolation made up points beyond the data, and they enter the fit",
+                                  "fixed_by": "#86",
+                                  "scattering": [],
+                                  "curve_kinds": [],
+                                  "columns": [],
+                                  "affects_fit": false,
+                                  "condition": "interpolation_extrapolated"
+                                }
+                              ]
+                            },
+                            {
+                              "id": "dpb_s_rho",
+                              "quantities": [
+                                "seebeck",
+                                "resistivity"
+                              ],
+                              "parameters": [
+                                {
+                                  "name": "m_eff",
+                                  "meaning": "band mass ratio m2/m1, the sign sets the type of band 2",
+                                  "unit": "dimensionless",
+                                  "role": "fitted",
+                                  "scattering": [
+                                    "acPh",
+                                    "dis",
+                                    "acPhDis"
+                                  ],
+                                  "value_range": {
+                                    "minimum": -300.0,
+                                    "maximum": 300.0,
+                                    "step": 1.0,
+                                    "default": 101.0
+                                  },
+                                  "display_range": {
+                                    "minimum": -3.0,
+                                    "maximum": 3.0,
+                                    "step": 0.01,
+                                    "default": 1.01
+                                  },
+                                  "display_scale": 0.01,
+                                  "fit_scale": 0.01,
+                                  "default_core_value": 1.01,
+                                  "fit_bounds": {
+                                    "lower": -3.0,
+                                    "upper": 3.0
+                                  },
+                                  "bounds_editable": true
+                                },
+                                {
+                                  "name": "band_gap",
+                                  "meaning": "position of band 2",
+                                  "unit": "K",
+                                  "role": "fitted",
+                                  "scattering": [
+                                    "acPh",
+                                    "dis",
+                                    "acPhDis"
+                                  ],
+                                  "value_range": {
+                                    "minimum": -3000.0,
+                                    "maximum": 3000.0,
+                                    "step": 10.0,
+                                    "default": 1000.0
+                                  },
+                                  "display_range": {
+                                    "minimum": -3000.0,
+                                    "maximum": 3000.0,
+                                    "step": 10.0,
+                                    "default": 1000.0
+                                  },
+                                  "display_scale": 1.0,
+                                  "fit_scale": 1.0,
+                                  "default_core_value": 1000.0,
+                                  "fit_bounds": {
+                                    "lower": -3000.0,
+                                    "upper": 3000.0
+                                  },
+                                  "bounds_editable": true
+                                },
+                                {
+                                  "name": "fermi_energy",
+                                  "meaning": "Fermi energy at T = 0",
+                                  "unit": "K",
+                                  "role": "fitted",
+                                  "scattering": [
+                                    "acPh",
+                                    "dis",
+                                    "acPhDis"
+                                  ],
+                                  "value_range": {
+                                    "minimum": -3000.0,
+                                    "maximum": 3000.0,
+                                    "step": 1.0,
+                                    "default": -100.0
+                                  },
+                                  "display_range": {
+                                    "minimum": -3000.0,
+                                    "maximum": 3000.0,
+                                    "step": 1.0,
+                                    "default": -100.0
+                                  },
+                                  "display_scale": 1.0,
+                                  "fit_scale": 1.0,
+                                  "default_core_value": -100.0,
+                                  "fit_bounds": {
+                                    "lower": -3000.0,
+                                    "upper": 3000.0
+                                  },
+                                  "bounds_editable": true
+                                },
+                                {
+                                  "name": "A",
+                                  "meaning": "tau_ph,1, acoustic phonon scale of band 1",
+                                  "unit": "unknown",
+                                  "role": "fitted",
+                                  "scattering": [
+                                    "acPh",
+                                    "acPhDis"
+                                  ],
+                                  "value_range": {
+                                    "minimum": 0.0,
+                                    "maximum": 1000000.0,
+                                    "step": 1000.0,
+                                    "default": 40000.0
+                                  },
+                                  "display_range": {
+                                    "minimum": 0.0,
+                                    "maximum": 1000000.0,
+                                    "step": 1000.0,
+                                    "default": 40000.0
+                                  },
+                                  "display_scale": 1.0,
+                                  "fit_scale": 1.0,
+                                  "default_core_value": 40000.0,
+                                  "fit_bounds": {
+                                    "lower": 0.0,
+                                    "upper": 1000000.0
+                                  },
+                                  "bounds_editable": true
+                                },
+                                {
+                                  "name": "B",
+                                  "meaning": "tau_ph,2 / tau_ph,1",
+                                  "unit": "dimensionless",
+                                  "role": "fitted",
+                                  "scattering": [
+                                    "acPh",
+                                    "acPhDis"
+                                  ],
+                                  "value_range": {
+                                    "minimum": 90.0,
+                                    "maximum": 110.0,
+                                    "step": 1.0,
+                                    "default": 100.0
+                                  },
+                                  "display_range": {
+                                    "minimum": 0.9,
+                                    "maximum": 1.1,
+                                    "step": 0.01,
+                                    "default": 1.0
+                                  },
+                                  "display_scale": 0.01,
+                                  "fit_scale": 0.01,
+                                  "default_core_value": 1.0,
+                                  "fit_bounds": {
+                                    "lower": 0.9,
+                                    "upper": 1.1
+                                  },
+                                  "bounds_editable": true
+                                },
+                                {
+                                  "name": "C",
+                                  "meaning": "tau_ph,1 / tau_dis,1 at 300 K",
+                                  "unit": "dimensionless",
+                                  "role": "fitted",
+                                  "scattering": [
+                                    "acPhDis"
+                                  ],
+                                  "value_range": {
+                                    "minimum": 50.0,
+                                    "maximum": 200.0,
+                                    "step": 1.0,
+                                    "default": 100.0
+                                  },
+                                  "display_range": {
+                                    "minimum": 0.5,
+                                    "maximum": 2.0,
+                                    "step": 0.01,
+                                    "default": 1.0
+                                  },
+                                  "display_scale": 0.01,
+                                  "fit_scale": 0.01,
+                                  "default_core_value": 1.0,
+                                  "fit_bounds": {
+                                    "lower": 0.5,
+                                    "upper": 2.0
+                                  },
+                                  "bounds_editable": true
+                                },
+                                {
+                                  "name": "D",
+                                  "meaning": "tau_ph,2 / tau_dis,2 at 300 K",
+                                  "unit": "dimensionless",
+                                  "role": "fitted",
+                                  "scattering": [
+                                    "acPhDis"
+                                  ],
+                                  "value_range": {
+                                    "minimum": 50.0,
+                                    "maximum": 200.0,
+                                    "step": 1.0,
+                                    "default": 100.0
+                                  },
+                                  "display_range": {
+                                    "minimum": 0.5,
+                                    "maximum": 2.0,
+                                    "step": 0.01,
+                                    "default": 1.0
+                                  },
+                                  "display_scale": 0.01,
+                                  "fit_scale": 0.01,
+                                  "default_core_value": 1.0,
+                                  "fit_bounds": {
+                                    "lower": 0.5,
+                                    "upper": 2.0
+                                  },
+                                  "bounds_editable": true
+                                },
+                                {
+                                  "name": "F",
+                                  "meaning": "tau_dis,1, disorder scale of band 1",
+                                  "unit": "unknown",
+                                  "role": "fitted",
+                                  "scattering": [
+                                    "dis"
+                                  ],
+                                  "value_range": {
+                                    "minimum": 0.0,
+                                    "maximum": 100000.0,
+                                    "step": 100.0,
+                                    "default": 1000.0
+                                  },
+                                  "display_range": {
+                                    "minimum": 0.0,
+                                    "maximum": 100000.0,
+                                    "step": 100.0,
+                                    "default": 1000.0
+                                  },
+                                  "display_scale": 1.0,
+                                  "fit_scale": 1.0,
+                                  "default_core_value": 1000.0,
+                                  "fit_bounds": {
+                                    "lower": 0.0,
+                                    "upper": 100000.0
+                                  },
+                                  "bounds_editable": true
+                                },
+                                {
+                                  "name": "G",
+                                  "meaning": "tau_dis,2 / tau_dis,1",
+                                  "unit": "dimensionless",
+                                  "role": "fitted",
+                                  "scattering": [
+                                    "dis"
+                                  ],
+                                  "value_range": {
+                                    "minimum": 50.0,
+                                    "maximum": 200.0,
+                                    "step": 1.0,
+                                    "default": 100.0
+                                  },
+                                  "display_range": {
+                                    "minimum": 0.5,
+                                    "maximum": 2.0,
+                                    "step": 0.01,
+                                    "default": 1.0
+                                  },
+                                  "display_scale": 0.01,
+                                  "fit_scale": 0.01,
+                                  "default_core_value": 1.0,
+                                  "fit_bounds": {
+                                    "lower": 0.5,
+                                    "upper": 2.0
+                                  },
+                                  "bounds_editable": true
+                                }
+                              ],
+                              "scattering": [
+                                "acPh",
+                                "dis",
+                                "acPhDis"
+                              ],
+                              "default_scattering": "acPh",
+                              "iterative": true,
+                              "threshold": 0.1,
+                              "max_iterations": 1000,
+                              "degeneracy": {
+                                "band_1_default": 1.0,
+                                "band_2_default": 1.0
+                              },
+                              "curve_kinds": [
+                                "measured",
+                                "seebeck",
+                                "seebeck_by_band",
+                                "chemical_potential",
+                                "electrical_conductivity",
+                                "electrical_conductivity_by_band",
+                                "thermal_conductivity",
+                                "carrier_concentration_by_band"
+                              ],
+                              "disabled": false,
+                              "disabled_by": [],
+                              "known_issues": [
+                                {
+                                  "id": "acphdis_curve_scale",
+                                  "severity": "unreliable",
+                                  "message_key": "known_issue.acphdis_curve_scale",
+                                  "explanation": "With acPhDis, these curves use another scale of C and D from rho and S, so sigma * rho != 1 and band contributions do not sum to S",
+                                  "fixed_by": "#82",
+                                  "scattering": [
+                                    "acPhDis"
+                                  ],
+                                  "curve_kinds": [
+                                    "seebeck_by_band",
+                                    "electrical_conductivity",
+                                    "electrical_conductivity_by_band",
+                                    "thermal_conductivity"
+                                  ],
+                                  "columns": [],
+                                  "affects_fit": false
+                                },
+                                {
+                                  "id": "acphdis_band_weight",
+                                  "severity": "unreliable",
+                                  "message_key": "known_issue.acphdis_band_weight",
+                                  "explanation": "With acPhDis, the band weight of the last temperature applies to all of S",
+                                  "fixed_by": "#102",
+                                  "scattering": [
+                                    "acPhDis"
+                                  ],
+                                  "curve_kinds": [
+                                    "measured",
+                                    "seebeck"
+                                  ],
+                                  "columns": [
+                                    "seebeck_v_per_k"
+                                  ],
+                                  "affects_fit": true
+                                },
+                                {
+                                  "id": "acphdis_early_stop",
+                                  "severity": "unreliable",
+                                  "message_key": "known_issue.acphdis_early_stop",
+                                  "explanation": "With acPhDis, the fit stops when C and D alone settle, as every recorded fit on the 3 examples did (D18)",
+                                  "fixed_by": "#84",
+                                  "scattering": [
+                                    "acPhDis"
+                                  ],
+                                  "curve_kinds": [],
+                                  "columns": [],
+                                  "affects_fit": true
+                                },
+                                {
+                                  "id": "dpb_loop_degeneracy",
+                                  "severity": "caution",
+                                  "message_key": "known_issue.dpb_loop_degeneracy",
+                                  "explanation": "With N2/N1 other than 1, the fit returns m_eff times N, which can leave its bounds (D12)",
+                                  "fixed_by": "#85",
+                                  "scattering": [],
+                                  "curve_kinds": [],
+                                  "columns": [],
+                                  "affects_fit": true,
+                                  "condition": "degeneracy_not_one"
+                                },
+                                {
+                                  "id": "negative_m_eff_weight",
+                                  "severity": "caution",
+                                  "message_key": "known_issue.negative_m_eff_weight",
+                                  "explanation": "With m_eff below 0, band 2 gets a negative weight, for a physicist to check",
+                                  "fixed_by": "#104",
+                                  "scattering": [],
+                                  "curve_kinds": [
+                                    "measured",
+                                    "seebeck",
+                                    "seebeck_by_band",
+                                    "electrical_conductivity",
+                                    "electrical_conductivity_by_band",
+                                    "thermal_conductivity"
+                                  ],
+                                  "columns": [],
+                                  "affects_fit": true,
+                                  "condition": "negative_m_eff"
+                                },
+                                {
+                                  "id": "collapsed_m_eff",
+                                  "severity": "unreliable",
+                                  "message_key": "known_issue.collapsed_m_eff",
+                                  "explanation": "m_eff near 0 removes the weight of the other band, so the data do not settle the fit, and it differs between machines (D19)",
+                                  "fixed_by": "#107",
+                                  "scattering": [],
+                                  "curve_kinds": [
+                                    "measured",
+                                    "seebeck",
+                                    "seebeck_by_band",
+                                    "electrical_conductivity",
+                                    "electrical_conductivity_by_band",
+                                    "thermal_conductivity",
+                                    "chemical_potential",
+                                    "carrier_concentration_by_band"
+                                  ],
+                                  "columns": [],
+                                  "affects_fit": true,
+                                  "condition": "collapsed_m_eff"
+                                },
+                                {
+                                  "id": "interpolation_extrapolates",
+                                  "severity": "unreliable",
+                                  "message_key": "known_issue.interpolation_extrapolates",
+                                  "explanation": "Interpolation made up points beyond the data, and they enter the fit",
+                                  "fixed_by": "#86",
+                                  "scattering": [],
+                                  "curve_kinds": [],
+                                  "columns": [],
+                                  "affects_fit": false,
+                                  "condition": "interpolation_extrapolated"
+                                }
+                              ]
+                            },
+                            {
+                              "id": "dpb_s_rho_rh",
+                              "quantities": [
+                                "seebeck",
+                                "resistivity",
+                                "hall"
+                              ],
+                              "parameters": [
+                                {
+                                  "name": "m_eff",
+                                  "meaning": "band mass ratio m2/m1, the sign sets the type of band 2",
+                                  "unit": "dimensionless",
+                                  "role": "fitted",
+                                  "scattering": [
+                                    "acPh",
+                                    "dis",
+                                    "acPhDis"
+                                  ],
+                                  "value_range": {
+                                    "minimum": -300.0,
+                                    "maximum": 300.0,
+                                    "step": 1.0,
+                                    "default": 101.0
+                                  },
+                                  "display_range": {
+                                    "minimum": -3.0,
+                                    "maximum": 3.0,
+                                    "step": 0.01,
+                                    "default": 1.01
+                                  },
+                                  "display_scale": 0.01,
+                                  "fit_scale": 0.01,
+                                  "default_core_value": 1.01,
+                                  "fit_bounds": {
+                                    "lower": -3.0,
+                                    "upper": 3.0
+                                  },
+                                  "bounds_editable": true
+                                },
+                                {
+                                  "name": "band_gap",
+                                  "meaning": "position of band 2",
+                                  "unit": "K",
+                                  "role": "fitted",
+                                  "scattering": [
+                                    "acPh",
+                                    "dis",
+                                    "acPhDis"
+                                  ],
+                                  "value_range": {
+                                    "minimum": -3000.0,
+                                    "maximum": 3000.0,
+                                    "step": 10.0,
+                                    "default": 1000.0
+                                  },
+                                  "display_range": {
+                                    "minimum": -3000.0,
+                                    "maximum": 3000.0,
+                                    "step": 10.0,
+                                    "default": 1000.0
+                                  },
+                                  "display_scale": 1.0,
+                                  "fit_scale": 1.0,
+                                  "default_core_value": 1000.0,
+                                  "fit_bounds": {
+                                    "lower": -3000.0,
+                                    "upper": 3000.0
+                                  },
+                                  "bounds_editable": true
+                                },
+                                {
+                                  "name": "fermi_energy",
+                                  "meaning": "Fermi energy at T = 0",
+                                  "unit": "K",
+                                  "role": "fitted",
+                                  "scattering": [
+                                    "acPh",
+                                    "dis",
+                                    "acPhDis"
+                                  ],
+                                  "value_range": {
+                                    "minimum": -3000.0,
+                                    "maximum": 3000.0,
+                                    "step": 1.0,
+                                    "default": -100.0
+                                  },
+                                  "display_range": {
+                                    "minimum": -3000.0,
+                                    "maximum": 3000.0,
+                                    "step": 1.0,
+                                    "default": -100.0
+                                  },
+                                  "display_scale": 1.0,
+                                  "fit_scale": 1.0,
+                                  "default_core_value": -100.0,
+                                  "fit_bounds": {
+                                    "lower": -3000.0,
+                                    "upper": 3000.0
+                                  },
+                                  "bounds_editable": true
+                                },
+                                {
+                                  "name": "A",
+                                  "meaning": "tau_ph,1, acoustic phonon scale of band 1",
+                                  "unit": "unknown",
+                                  "role": "fitted",
+                                  "scattering": [
+                                    "acPh",
+                                    "acPhDis"
+                                  ],
+                                  "value_range": {
+                                    "minimum": 0.0,
+                                    "maximum": 1000000.0,
+                                    "step": 1000.0,
+                                    "default": 40000.0
+                                  },
+                                  "display_range": {
+                                    "minimum": 0.0,
+                                    "maximum": 1000000.0,
+                                    "step": 1000.0,
+                                    "default": 40000.0
+                                  },
+                                  "display_scale": 1.0,
+                                  "fit_scale": 1.0,
+                                  "default_core_value": 40000.0,
+                                  "fit_bounds": {
+                                    "lower": 0.0,
+                                    "upper": 1000000.0
+                                  },
+                                  "bounds_editable": true
+                                },
+                                {
+                                  "name": "B",
+                                  "meaning": "tau_ph,2 / tau_ph,1",
+                                  "unit": "dimensionless",
+                                  "role": "fitted",
+                                  "scattering": [
+                                    "acPh",
+                                    "acPhDis"
+                                  ],
+                                  "value_range": {
+                                    "minimum": 90.0,
+                                    "maximum": 110.0,
+                                    "step": 1.0,
+                                    "default": 100.0
+                                  },
+                                  "display_range": {
+                                    "minimum": 0.9,
+                                    "maximum": 1.1,
+                                    "step": 0.01,
+                                    "default": 1.0
+                                  },
+                                  "display_scale": 0.01,
+                                  "fit_scale": 0.01,
+                                  "default_core_value": 1.0,
+                                  "fit_bounds": {
+                                    "lower": 0.9,
+                                    "upper": 1.1
+                                  },
+                                  "bounds_editable": true
+                                },
+                                {
+                                  "name": "C",
+                                  "meaning": "tau_ph,1 / tau_dis,1 at 300 K",
+                                  "unit": "dimensionless",
+                                  "role": "fitted",
+                                  "scattering": [
+                                    "acPhDis"
+                                  ],
+                                  "value_range": {
+                                    "minimum": 50.0,
+                                    "maximum": 200.0,
+                                    "step": 1.0,
+                                    "default": 100.0
+                                  },
+                                  "display_range": {
+                                    "minimum": 0.5,
+                                    "maximum": 2.0,
+                                    "step": 0.01,
+                                    "default": 1.0
+                                  },
+                                  "display_scale": 0.01,
+                                  "fit_scale": 0.01,
+                                  "default_core_value": 1.0,
+                                  "fit_bounds": {
+                                    "lower": 0.5,
+                                    "upper": 2.0
+                                  },
+                                  "bounds_editable": true
+                                },
+                                {
+                                  "name": "D",
+                                  "meaning": "tau_ph,2 / tau_dis,2 at 300 K",
+                                  "unit": "dimensionless",
+                                  "role": "fitted",
+                                  "scattering": [
+                                    "acPhDis"
+                                  ],
+                                  "value_range": {
+                                    "minimum": 50.0,
+                                    "maximum": 200.0,
+                                    "step": 1.0,
+                                    "default": 100.0
+                                  },
+                                  "display_range": {
+                                    "minimum": 0.5,
+                                    "maximum": 2.0,
+                                    "step": 0.01,
+                                    "default": 1.0
+                                  },
+                                  "display_scale": 0.01,
+                                  "fit_scale": 0.01,
+                                  "default_core_value": 1.0,
+                                  "fit_bounds": {
+                                    "lower": 0.5,
+                                    "upper": 2.0
+                                  },
+                                  "bounds_editable": true
+                                },
+                                {
+                                  "name": "F",
+                                  "meaning": "tau_dis,1, disorder scale of band 1",
+                                  "unit": "unknown",
+                                  "role": "fitted",
+                                  "scattering": [
+                                    "dis"
+                                  ],
+                                  "value_range": {
+                                    "minimum": 0.0,
+                                    "maximum": 100000.0,
+                                    "step": 1000.0,
+                                    "default": 1000.0
+                                  },
+                                  "display_range": {
+                                    "minimum": 0.0,
+                                    "maximum": 100000.0,
+                                    "step": 1000.0,
+                                    "default": 1000.0
+                                  },
+                                  "display_scale": 1.0,
+                                  "fit_scale": 1.0,
+                                  "default_core_value": 1000.0,
+                                  "fit_bounds": {
+                                    "lower": 0.0,
+                                    "upper": 100000.0
+                                  },
+                                  "bounds_editable": true
+                                },
+                                {
+                                  "name": "G",
+                                  "meaning": "tau_dis,2 / tau_dis,1",
+                                  "unit": "dimensionless",
+                                  "role": "fitted",
+                                  "scattering": [
+                                    "dis"
+                                  ],
+                                  "value_range": {
+                                    "minimum": 50.0,
+                                    "maximum": 200.0,
+                                    "step": 100.0,
+                                    "default": 100.0
+                                  },
+                                  "display_range": {
+                                    "minimum": 0.5,
+                                    "maximum": 2.0,
+                                    "step": 1.0,
+                                    "default": 1.0
+                                  },
+                                  "display_scale": 0.01,
+                                  "fit_scale": 0.01,
+                                  "default_core_value": 1.0,
+                                  "fit_bounds": {
+                                    "lower": 0.5,
+                                    "upper": 2.0
+                                  },
+                                  "bounds_editable": true
+                                },
+                                {
+                                  "name": "m1",
+                                  "meaning": "absolute mass of band 1",
+                                  "unit": "m_e",
+                                  "role": "fitted",
+                                  "scattering": [
+                                    "acPh",
+                                    "dis",
+                                    "acPhDis"
+                                  ],
+                                  "value_range": {
+                                    "minimum": 10.0,
+                                    "maximum": 1000.0,
+                                    "step": 1.0,
+                                    "default": 100.0
+                                  },
+                                  "display_range": {
+                                    "minimum": 0.1,
+                                    "maximum": 10.0,
+                                    "step": 0.01,
+                                    "default": 1.0
+                                  },
+                                  "display_scale": 0.01,
+                                  "fit_scale": 0.01,
+                                  "default_core_value": 1.0,
+                                  "fit_bounds": {
+                                    "lower": 0.1,
+                                    "upper": 10.0
+                                  },
+                                  "bounds_editable": true
+                                }
+                              ],
+                              "scattering": [
+                                "acPh",
+                                "dis",
+                                "acPhDis"
+                              ],
+                              "default_scattering": "acPh",
+                              "iterative": true,
+                              "threshold": 0.1,
+                              "max_iterations": 20,
+                              "degeneracy": {
+                                "band_1_default": 1.0,
+                                "band_2_default": 1.0
+                              },
+                              "curve_kinds": [
+                                "measured",
+                                "seebeck",
+                                "seebeck_by_band",
+                                "chemical_potential",
+                                "electrical_conductivity",
+                                "electrical_conductivity_by_band",
+                                "thermal_conductivity",
+                                "carrier_concentration_by_band"
+                              ],
+                              "disabled": false,
+                              "disabled_by": [],
+                              "known_issues": [
+                                {
+                                  "id": "dpb_hall_prefactor",
+                                  "severity": "unreliable",
+                                  "message_key": "known_issue.dpb_hall_prefactor",
+                                  "explanation": "DPB R_H is half of what it should be, so m1 and n from it are too low",
+                                  "fixed_by": "#81",
+                                  "scattering": [],
+                                  "curve_kinds": [
+                                    "measured",
+                                    "carrier_concentration_by_band"
+                                  ],
+                                  "columns": [
+                                    "hall_m3_per_c",
+                                    "carrier_concentration_band_1_per_cm3",
+                                    "carrier_concentration_band_2_per_cm3"
+                                  ],
+                                  "affects_fit": true
+                                },
+                                {
+                                  "id": "acphdis_curve_scale",
+                                  "severity": "unreliable",
+                                  "message_key": "known_issue.acphdis_curve_scale",
+                                  "explanation": "With acPhDis, these curves use another scale of C and D from rho and S, so sigma * rho != 1 and band contributions do not sum to S",
+                                  "fixed_by": "#82",
+                                  "scattering": [
+                                    "acPhDis"
+                                  ],
+                                  "curve_kinds": [
+                                    "seebeck_by_band",
+                                    "electrical_conductivity",
+                                    "electrical_conductivity_by_band",
+                                    "thermal_conductivity"
+                                  ],
+                                  "columns": [],
+                                  "affects_fit": false
+                                },
+                                {
+                                  "id": "acphdis_band_weight",
+                                  "severity": "unreliable",
+                                  "message_key": "known_issue.acphdis_band_weight",
+                                  "explanation": "With acPhDis, the band weight of the last temperature applies to all of S",
+                                  "fixed_by": "#102",
+                                  "scattering": [
+                                    "acPhDis"
+                                  ],
+                                  "curve_kinds": [
+                                    "measured",
+                                    "seebeck"
+                                  ],
+                                  "columns": [
+                                    "seebeck_v_per_k"
+                                  ],
+                                  "affects_fit": true
+                                },
+                                {
+                                  "id": "acphdis_early_stop",
+                                  "severity": "unreliable",
+                                  "message_key": "known_issue.acphdis_early_stop",
+                                  "explanation": "With acPhDis, the fit stops when C and D alone settle, as every recorded fit on the 3 examples did (D18)",
+                                  "fixed_by": "#84",
+                                  "scattering": [
+                                    "acPhDis"
+                                  ],
+                                  "curve_kinds": [],
+                                  "columns": [],
+                                  "affects_fit": true
+                                },
+                                {
+                                  "id": "dpb_loop_degeneracy",
+                                  "severity": "caution",
+                                  "message_key": "known_issue.dpb_loop_degeneracy",
+                                  "explanation": "With N2/N1 other than 1, the fit returns m_eff times N, which can leave its bounds (D12)",
+                                  "fixed_by": "#85",
+                                  "scattering": [],
+                                  "curve_kinds": [],
+                                  "columns": [],
+                                  "affects_fit": true,
+                                  "condition": "degeneracy_not_one"
+                                },
+                                {
+                                  "id": "negative_m_eff_weight",
+                                  "severity": "caution",
+                                  "message_key": "known_issue.negative_m_eff_weight",
+                                  "explanation": "With m_eff below 0, band 2 gets a negative weight, for a physicist to check",
+                                  "fixed_by": "#104",
+                                  "scattering": [],
+                                  "curve_kinds": [
+                                    "measured",
+                                    "seebeck",
+                                    "seebeck_by_band",
+                                    "electrical_conductivity",
+                                    "electrical_conductivity_by_band",
+                                    "thermal_conductivity"
+                                  ],
+                                  "columns": [],
+                                  "affects_fit": true,
+                                  "condition": "negative_m_eff"
+                                },
+                                {
+                                  "id": "collapsed_m_eff",
+                                  "severity": "unreliable",
+                                  "message_key": "known_issue.collapsed_m_eff",
+                                  "explanation": "m_eff near 0 removes the weight of the other band, so the data do not settle the fit, and it differs between machines (D19)",
+                                  "fixed_by": "#107",
+                                  "scattering": [],
+                                  "curve_kinds": [
+                                    "measured",
+                                    "seebeck",
+                                    "seebeck_by_band",
+                                    "electrical_conductivity",
+                                    "electrical_conductivity_by_band",
+                                    "thermal_conductivity",
+                                    "chemical_potential",
+                                    "carrier_concentration_by_band"
+                                  ],
+                                  "columns": [],
+                                  "affects_fit": true,
+                                  "condition": "collapsed_m_eff"
+                                },
+                                {
+                                  "id": "hall_dis_no_reference",
+                                  "severity": "caution",
+                                  "message_key": "known_issue.hall_dis_no_reference",
+                                  "explanation": "This fit fails on the desktop (D1). It runs here with other bounds of G, so there is no desktop result to compare with",
+                                  "fixed_by": "#71",
+                                  "scattering": [
+                                    "dis"
+                                  ],
+                                  "curve_kinds": [],
+                                  "columns": [],
+                                  "affects_fit": true
+                                },
+                                {
+                                  "id": "interpolation_extrapolates",
+                                  "severity": "unreliable",
+                                  "message_key": "known_issue.interpolation_extrapolates",
+                                  "explanation": "Interpolation made up points beyond the data, and they enter the fit",
+                                  "fixed_by": "#86",
+                                  "scattering": [],
+                                  "curve_kinds": [],
+                                  "columns": [],
+                                  "affects_fit": false,
+                                  "condition": "interpolation_extrapolated"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "internal_error": {
+                    "value": {
+                      "code": "internal_error",
+                      "message": "Internal server error",
+                      "details": []
+                    }
+                  },
+                  "not_found": {
+                    "value": {
+                      "code": "not_found",
+                      "message": "Not Found",
+                      "details": []
+                    }
+                  },
+                  "validation_error": {
+                    "value": {
+                      "code": "validation_error",
+                      "message": "Invalid request",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "seebeck_v_per_k",
+                            3
+                          ],
+                          "code": "float_parsing",
+                          "message": "Input should be a valid number, unable to parse string as a number"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "BoundsResponse": {
+        "properties": {
+          "lower": {
+            "type": "number",
+            "title": "Lower"
+          },
+          "upper": {
+            "type": "number",
+            "title": "Upper"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lower",
+          "upper"
+        ],
+        "title": "BoundsResponse"
+      },
+      "DegeneracyResponse": {
+        "properties": {
+          "band_1_default": {
+            "type": "number",
+            "title": "Band 1 Default"
+          },
+          "band_2_default": {
+            "type": "number",
+            "title": "Band 2 Default"
+          }
+        },
+        "type": "object",
+        "required": [
+          "band_1_default",
+          "band_2_default"
+        ],
+        "title": "DegeneracyResponse"
+      },
       "ErrorDetail": {
         "properties": {
           "location": {
@@ -133,6 +1920,136 @@
         "title": "ErrorResponse",
         "description": "The body of every error response."
       },
+      "FitModeResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "quantities": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "seebeck",
+                "resistivity",
+                "hall"
+              ]
+            },
+            "type": "array",
+            "title": "Quantities"
+          },
+          "parameters": {
+            "items": {
+              "$ref": "#/components/schemas/ParameterResponse"
+            },
+            "type": "array",
+            "title": "Parameters"
+          },
+          "scattering": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Scattering"
+          },
+          "default_scattering": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Scattering"
+          },
+          "iterative": {
+            "type": "boolean",
+            "title": "Iterative"
+          },
+          "threshold": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold"
+          },
+          "max_iterations": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Iterations"
+          },
+          "degeneracy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DegeneracyResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "curve_kinds": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "measured",
+                "seebeck",
+                "seebeck_by_band",
+                "chemical_potential",
+                "electrical_conductivity",
+                "electrical_conductivity_by_band",
+                "thermal_conductivity",
+                "carrier_concentration_by_band"
+              ]
+            },
+            "type": "array",
+            "title": "Curve Kinds"
+          },
+          "disabled": {
+            "type": "boolean",
+            "title": "Disabled"
+          },
+          "disabled_by": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Disabled By"
+          },
+          "known_issues": {
+            "items": {
+              "$ref": "#/components/schemas/KnownIssueResponse"
+            },
+            "type": "array",
+            "title": "Known Issues"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "quantities",
+          "parameters",
+          "scattering",
+          "iterative",
+          "curve_kinds",
+          "disabled",
+          "disabled_by",
+          "known_issues"
+        ],
+        "title": "FitModeResponse",
+        "description": "One way of fitting a model.\n\nA client must not offer a mode with `disabled`. `disabled_by` names the `known_issues` that say\nwhy. `iterative` tells whether an iteration count means anything, and `threshold` and\n`max_iterations` apply only to an iterative mode. `scattering` is empty when a mode has no\nchoice of scattering."
+      },
       "HealthResponse": {
         "properties": {
           "status": {
@@ -157,6 +2074,267 @@
             "version": "1.0.0"
           }
         ]
+      },
+      "KnownIssueResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "disabled",
+              "unreliable",
+              "caution"
+            ],
+            "title": "Severity"
+          },
+          "message_key": {
+            "type": "string",
+            "title": "Message Key"
+          },
+          "explanation": {
+            "type": "string",
+            "title": "Explanation"
+          },
+          "fixed_by": {
+            "type": "string",
+            "title": "Fixed By"
+          },
+          "scattering": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Scattering"
+          },
+          "curve_kinds": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "measured",
+                "seebeck",
+                "seebeck_by_band",
+                "chemical_potential",
+                "electrical_conductivity",
+                "electrical_conductivity_by_band",
+                "thermal_conductivity",
+                "carrier_concentration_by_band"
+              ]
+            },
+            "type": "array",
+            "title": "Curve Kinds"
+          },
+          "columns": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Columns"
+          },
+          "affects_fit": {
+            "type": "boolean",
+            "title": "Affects Fit"
+          },
+          "condition": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "degeneracy_not_one",
+                  "negative_m_eff",
+                  "collapsed_m_eff",
+                  "fermi_energy_outside_band",
+                  "interpolation_extrapolated"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Condition"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "severity",
+          "message_key",
+          "explanation",
+          "fixed_by",
+          "scattering",
+          "curve_kinds",
+          "columns",
+          "affects_fit"
+        ],
+        "title": "KnownIssueResponse",
+        "description": "A known error of the calculations in this mode.\n\nClients show `message_key` through i18n. `explanation` is English text for developers. Empty\n`scattering` means every type, and empty `columns` every curve of a kind. `condition`, if\npresent, limits the issue to some inputs. `fixed_by` is the issue in this repository that\nremoves it."
+      },
+      "ModelResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "default_min_temperature_k": {
+            "type": "number",
+            "title": "Default Min Temperature K"
+          },
+          "default_max_temperature_k": {
+            "type": "number",
+            "title": "Default Max Temperature K"
+          },
+          "default_curve_points": {
+            "type": "integer",
+            "title": "Default Curve Points"
+          },
+          "fit_modes": {
+            "items": {
+              "$ref": "#/components/schemas/FitModeResponse"
+            },
+            "type": "array",
+            "title": "Fit Modes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "default_min_temperature_k",
+          "default_max_temperature_k",
+          "default_curve_points",
+          "fit_modes"
+        ],
+        "title": "ModelResponse",
+        "description": "A model. `name` is English text, for a client to fall back on."
+      },
+      "ModelsResponse": {
+        "properties": {
+          "models": {
+            "items": {
+              "$ref": "#/components/schemas/ModelResponse"
+            },
+            "type": "array",
+            "title": "Models"
+          }
+        },
+        "type": "object",
+        "required": [
+          "models"
+        ],
+        "title": "ModelsResponse"
+      },
+      "ParameterResponse": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "meaning": {
+            "type": "string",
+            "title": "Meaning"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "fitted",
+              "fixed"
+            ],
+            "title": "Role"
+          },
+          "scattering": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Scattering"
+          },
+          "value_range": {
+            "$ref": "#/components/schemas/ValueRangeResponse"
+          },
+          "display_range": {
+            "$ref": "#/components/schemas/ValueRangeResponse"
+          },
+          "display_scale": {
+            "type": "number",
+            "title": "Display Scale"
+          },
+          "fit_scale": {
+            "type": "number",
+            "title": "Fit Scale"
+          },
+          "default_core_value": {
+            "type": "number",
+            "title": "Default Core Value"
+          },
+          "fit_bounds": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BoundsResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "bounds_editable": {
+            "type": "boolean",
+            "title": "Bounds Editable"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "meaning",
+          "unit",
+          "role",
+          "scattering",
+          "value_range",
+          "display_range",
+          "display_scale",
+          "fit_scale",
+          "default_core_value",
+          "bounds_editable"
+        ],
+        "title": "ParameterResponse",
+        "description": "One parameter of a fit mode.\n\n`value_range` is in control units, and `display_range` is the same range as a user sees it.\n`display_scale` converts control units to displayed values, and `fit_scale` to core units.\n`unit` is the unit of the displayed value. `fit_bounds` is in core units, and is left out for a\nparameter that a fit does not change. `meaning` is English text, for a client to fall back on."
+      },
+      "ValueRangeResponse": {
+        "properties": {
+          "minimum": {
+            "type": "number",
+            "title": "Minimum"
+          },
+          "maximum": {
+            "type": "number",
+            "title": "Maximum"
+          },
+          "step": {
+            "type": "number",
+            "title": "Step"
+          },
+          "default": {
+            "type": "number",
+            "title": "Default"
+          }
+        },
+        "type": "object",
+        "required": [
+          "minimum",
+          "maximum",
+          "step",
+          "default"
+        ],
+        "title": "ValueRangeResponse"
       }
     }
   }

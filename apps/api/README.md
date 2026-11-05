@@ -17,8 +17,19 @@ uv run python -m seeband_api
 | Route                   | Purpose                  |
 | ----------------------- | ------------------------ |
 | `GET /api/health`       | status and version       |
+| `GET /api/models`       | model descriptions       |
 | `GET /api/openapi.json` | the contract             |
 | `GET /api/docs`         | Swagger UI over the same |
+
+## Model descriptions
+
+`GET /api/models` returns what a client builds its forms from: models, fit modes, parameters, scales, bounds and known issues. It comes from the model registry in `seeband_core`, so a new model needs no change here. It can be cached for an hour.
+
+A mode with `disabled: true` must not be offered, and `disabled_by` names the `known_issues` entries that say why. Show their `message_key` through i18n. `explanation`, `meaning` and `name` are English, for developers or as a fallback. Fields that do not apply are left out, rather than `null`.
+
+Values are in three units. `value_range` is in control units, `display_range` is what a user sees, and `default_core_value` and `fit_bounds` are in core units. `calc_scale` stays out, because it only reproduces a desktop path.
+
+The contract holds the real response as its example, so `pnpm mock` serves real descriptions, and a change to a description shows in the diff of `openapi.json`.
 
 ## Errors
 

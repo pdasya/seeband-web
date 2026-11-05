@@ -5,6 +5,7 @@ from fastapi.routing import APIRoute
 
 from seeband_api.errors import add_error_handlers
 from seeband_api.health import router as health_router
+from seeband_api.models import router as models_router
 from seeband_api.request_logging import RequestLoggingMiddleware, configure_logging
 from seeband_api.settings import Settings
 from seeband_api.version import API_VERSION
@@ -36,4 +37,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         unparameterised_paths=frozenset({OPENAPI_PATH, DOCS_PATH}),
     )
     app.include_router(health_router)
+    app.include_router(models_router)
     return app

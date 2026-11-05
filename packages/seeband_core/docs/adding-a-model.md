@@ -7,7 +7,7 @@ A new model needs one class and one registration. API and client code find model
 3. **Fit.** `fit(FitRequest)` returns a `FitResult` with the fitted parameters.
 4. **Register it.** Add `registry.register(model)` to `seeband_core.model_catalog`, and import `registry` from there.
 
-`LinearModel` in `tests/test_model_registry.py` is a small example. It ignores scales and scattering, which a real model handles. API and client code do not exist yet, so the test shows only that a model works through the interface and registry.
+`LinearModel` in `tests/test_model_registry.py` is a small example. It ignores scales and scattering, which a real model handles. The test shows only that a model works through the interface and registry. `GET /api/models` then describes it, and `apps/api/tests/test_models.py` checks that with a made-up description.
 
 A fit runs in a separate process, which holds only the models its imports registered, so use `model_catalog` in workers too. `band_models` is the example of a real model.
 
