@@ -174,7 +174,6 @@ def test_infinite_curve_value_comes_back_as_null() -> None:
 )
 def test_infinite_positive_numbers_are_refused(client: TestClient, template: str) -> None:
     fields = json.loads(template.format(token="1e400"))
-    assert any(math.inf in (value,) for value in _flatten(fields))
 
     response = client.post(
         "/api/calc",

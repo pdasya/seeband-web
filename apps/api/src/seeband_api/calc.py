@@ -24,8 +24,8 @@ from seeband_api.routing import api_router
 router = api_router("calc")
 
 MAX_POINTS = 1000
-# Live RMSE needs speed. A grid of 200 is about 3.7 times slower, and changed an RMSE by about 0.3 %
-# at most on the demo dataset with default parameters.
+# Live RMSE needs speed. A grid of 200 is about 3.7 times slower, and changed an RMSE by about
+# 0.3 % at most on the demo dataset with default parameters.
 DEFAULT_RMSE_POINTS = 50
 
 FiniteFloat = Annotated[float, Field(allow_inf_nan=False)]
