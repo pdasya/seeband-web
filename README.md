@@ -41,6 +41,12 @@ pnpm check
 
 GitHub Actions runs the same checks on every pull request and on pushes to `main`.
 
+After changing the API, regenerate its contract and TypeScript types. The checks fail if they are out of date:
+
+```sh
+pnpm api:generate
+```
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for branch, commit and pull request rules.

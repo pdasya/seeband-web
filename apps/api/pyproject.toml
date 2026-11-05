@@ -5,7 +5,9 @@ description = "HTTP API over seeband_core"
 requires-python = ">=3.13"
 dependencies = [
     "fastapi>=0.162",
+    "pydantic-settings>=2.6",
     "seeband-core",
+    "uvicorn>=0.34",
 ]
 
 [tool.uv.sources]
