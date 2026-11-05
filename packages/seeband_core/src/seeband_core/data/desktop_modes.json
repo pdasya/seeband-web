@@ -1875,6 +1875,14 @@
       "web": "Curves take core values, so graphs use the same C and D as the fit and the main curve, and results of a fit go to graphs unchanged. Recorded graph calls replay with their recorded values. V1 records the differences.",
       "resolved_by": "#71 (V1)",
       "source": ["seeband.py:5932", "seeband.py:6503"]
+    },
+    {
+      "id": "D21",
+      "title": "Reaching the iteration limit looks like success",
+      "desktop": "When an iterative DPB fit reaches its limit, it stops after the Seebeck fit of the extra iteration, and returns results without an error. Only `print_info` showed this.",
+      "web": "The fit returns the same values with the status `iteration_limit`.",
+      "resolved_by": "#18 (C10)",
+      "source": ["modules/fit_module.py:419", "modules/fit_module.py:882"]
     }
   ]
 }

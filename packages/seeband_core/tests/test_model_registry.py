@@ -69,7 +69,7 @@ class LinearModel:
         slope = np.dot(data.temperature_k, data.values) / np.dot(
             data.temperature_k, data.temperature_k
         )
-        return FitResult({"slope": float(slope)})
+        return FitResult({"slope": float(slope)}, "converged")
 
 
 class Described(LinearModel):

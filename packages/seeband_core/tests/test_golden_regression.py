@@ -35,6 +35,7 @@ from seeband_core.model_interface import (
     CurveKind,
     CurveRequest,
     FitRequest,
+    FitResult,
     Measurement,
     Quantity,
 )
@@ -238,16 +239,23 @@ def curve_request(fit_mode: str, scattering: str | None, call: dict[str, Any]) -
     )
 
 
+def replay_fit(mode: str, call: dict[str, Any]) -> FitResult:
+    fit_mode = "dpb_s_rho_rh" if mode == "d1" else mode
+    model = default_registry.get(fit_mode.partition("_")[0])
+    return model.fit(fit_request(fit_mode, call))
+
+
 def replay(mode: str, scattering: str | None, call: dict[str, Any]) -> Any:
     """Run a recorded desktop call through the model interface, and return it in recorded order."""
     function = call["function"]
     if function == "get_parabolic_band":
         return list(parabolic_band(*call["args"]))
+    if function.endswith("_fit"):
+        result = replay_fit(mode, call)
+        assert result.status == "converged"
+        return [result.parameters[name] for name in FIT_RESULT_NAMES[function]]
     fit_mode = "dpb_s_rho_rh" if mode == "d1" else mode
     model = default_registry.get(fit_mode.partition("_")[0])
-    if function.endswith("_fit"):
-        result = model.fit(fit_request(fit_mode, call))
-        return [result.parameters[name] for name in FIT_RESULT_NAMES[function]]
     curve = model.calculate(curve_request(fit_mode, scattering, call))
     return [curve.temperature_k, *curve.curves.values()]
 
@@ -292,10 +300,12 @@ def test_replay_matches_the_desktop(
 ) -> None:
     if "error" in call:
         kind, _, message = call["error"].partition(": ")
-        with pytest.raises(Exception) as caught:
-            replay(mode, scattering, call)
-        assert type(caught.value).__name__ == kind
-        assert ERROR_FRAGMENTS.get(kind, message) in str(caught.value)
+        assert kind == "ValueError"
+        assert ERROR_FRAGMENTS[kind] in message
+        failed = replay_fit(mode, call)
+        assert failed.status == "failed"
+        assert failed.message is not None
+        assert ERROR_FRAGMENTS.get(kind, message) in failed.message
         return
 
     result = replay(mode, scattering, call)
@@ -316,6 +326,27 @@ def test_replay_matches_the_desktop(
         assert_close(result, call["result"], SPB_S_02_TOLERANCE)
     else:
         assert_close(result, call["result"], FIT_TOLERANCE)
+
+
+def recorded_iterative_runs() -> Iterator[tuple[str, str | None, int, dict[str, Any]]]:
+    # 02_SiP is left out, because its DPB fits differ between versions and machines (D19).
+    for example in ("01_Fe2VAl09Si01", "03_AWI32_SI"):
+        document = json.loads((GOLDEN / f"{example}.json").read_text(encoding="utf-8"))
+        for run in document["runs"]:
+            if run["iterations"] is not None and "error" not in run["calls"][0]:
+                yield run["mode"], run["scattering"], run["iterations"], run["calls"][0]
+
+
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize(
+    ("mode", "scattering", "iterations", "call"), list(recorded_iterative_runs())
+)
+def test_iterations_match_the_desktop(
+    mode: str, scattering: str | None, iterations: int, call: dict[str, Any]
+) -> None:
+    result = replay_fit(mode, call)
+    assert result.status == "converged"
+    assert result.iterations == iterations
 
 
 def same_value(first: Any, second: Any) -> bool:

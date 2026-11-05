@@ -181,19 +181,31 @@ class FitRequest:
 class FitResult:
     """The outcome of a fit, in core units.
 
-    A fit reports a failure through `status` and `message`, and does not raise it. `iterations` is
-    None for a single-pass mode. A fitted value can lie outside the range of its control.
+    A fit that fails returns `failed` with a `message`, and its start values, because partial values
+    should not look usable. A request that is invalid raises instead. `stopped` holds the values of
+    the last iteration, with m1 still at its start, and `iteration_limit` holds what the fit ended
+    with, which is not a converged result.
+
+    `converged` means that the fit ended normally: for an iterative fit, its stop rule was met, and
+    for a single-pass fit, the solver returned. It does not mean the result is sound.
+
+    `iterations` counts completed iterations, and is None for a single-pass mode. A fitted value can
+    lie outside the range of its control. `message` holds fixed text with no measured values.
     """
 
     parameters: Mapping[str, float]
-    status: FitStatus = "converged"
+    status: FitStatus
     iterations: int | None = None
     message: str | None = None
 
 
 @dataclass(frozen=True)
 class IterationUpdate:
-    """Progress of an iterative fit, in core units. Raise `FitStopped` from a callback to stop."""
+    """Progress of an iterative fit, in core units, in the form a final result would have.
+
+    Raise `FitStopped` from a callback to stop. A parameter fitted after the loop, such as m1, keeps
+    its start value here.
+    """
 
     iteration: int
     parameters: Mapping[str, float]
@@ -213,5 +225,9 @@ class Model(Protocol):
     def calculate(self, request: CurveRequest) -> CurveResult: ...
 
     def fit(self, request: FitRequest, on_iteration: IterationCallback | None = None) -> FitResult:
-        """Run a fit. The callback is apart from the request, which stays picklable for a worker."""
+        """Run a fit. The callback is apart from the request, which stays picklable for a worker.
+
+        The callback runs once per iteration of an iterative mode, and never for a single-pass mode.
+        An error it raises other than `FitStopped` reaches the caller.
+        """
         ...
