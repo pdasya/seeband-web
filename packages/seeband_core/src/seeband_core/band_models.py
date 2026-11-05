@@ -40,7 +40,8 @@ _SPB_SCATTERING = ("A", "C", "F")
 _DPB_BANDS = ("m_eff", "band_gap", "fermi_energy")
 _DPB_SCATTERING = ("A", "B", "C", "D", "F", "G")
 _MEASURED_CURVES = ("seebeck_v_per_k", "resistivity_ohm_m", "hall_m3_per_c")
-# A parameter this close to a bound, as a share of the range, counts as being at it.
+# A parameter this close to a bound, as a share of the bound, counts as being at it. A share of the
+# range would flag well-fitted values on the ranges here that span many decades.
 AT_BOUND_TOLERANCE = 1e-6
 _CURVE_NAMES: dict[CurveKind, tuple[str, ...]] = {
     "seebeck": ("seebeck_v_per_k",),
@@ -107,7 +108,16 @@ def _standard_errors(covariance: np.ndarray) -> list[float]:
 
 
 def _named_errors(names: Iterable[str], errors: Iterable[float]) -> dict[str, float]:
-    return {name: error for name, error in zip(names, errors, strict=True) if math.isfinite(error)}
+    """Keep usable errors. Exactly 0 means the solver saw no effect of the parameter on the data."""
+    return {
+        name: error
+        for name, error in zip(names, errors, strict=True)
+        if math.isfinite(error) and error > 0
+    }
+
+
+def _is_at_bound(value: float, bound: float) -> bool:
+    return math.isfinite(bound) and abs(value - bound) <= AT_BOUND_TOLERANCE * max(abs(bound), 1.0)
 
 
 def _mass_error(energy: float, energy_error: float) -> float:
@@ -143,16 +153,6 @@ def _log_failure(error: Exception) -> None:
     logger.warning("A fit failed with %s at %s", type(error).__name__, place)
 
 
-def _check_measurement(quantity: str, measurement: Measurement) -> None:
-    for values in (measurement.temperature_k, measurement.values):
-        if not isinstance(values, np.ndarray) or values.ndim != 1 or values.size == 0:
-            raise ValueError(f"Measurement {quantity} needs non-empty one-dimensional arrays")
-        if not np.issubdtype(values.dtype, np.number) or not np.all(np.isfinite(values)):
-            raise ValueError(f"Measurement {quantity} needs finite numbers")
-    if measurement.temperature_k.size != measurement.values.size:
-        raise ValueError(f"Measurement {quantity} has temperatures and values of different lengths")
-
-
 class _BandModel:
     """What SPB and DPB share: checks, bounds and naming of results."""
 
@@ -186,7 +186,7 @@ class _BandModel:
                 raise ValueError(f"The lower bound of {name} must be below its upper bound")
         for quantity in fit_mode.quantities:
             if quantity in request.measurements:
-                _check_measurement(quantity, request.measurements[quantity])
+                request.measurements[quantity].check(quantity)
 
     def _limits(self, request: FitRequest, fit_mode: FitMode, names: Iterable[str]) -> list[Any]:
         """Return [[lower, ...], [upper, ...]], from the request or else the description."""
@@ -210,17 +210,26 @@ class _BandModel:
         fit_mode: FitMode,
         parameters: Mapping[str, float],
         ratio: float,
+        stages: Mapping[str, Any],
     ) -> tuple[str, ...]:
         found = []
         for spec in fit_mode.parameters_for(request.scattering):
             bounds = request.bounds.get(spec.name) or spec.fit_bounds
             if spec.role != "fitted" or bounds is None:
                 continue
+            # A stopped Hall fit never reached its last stage.
+            if spec.name in ("m1", "band_mass") and "hall" not in stages:
+                continue
+            value = parameters[spec.name]
             # With N2/N1 other than 1, the loop fits m_eff / N, and its bounds apply to that (D12).
-            scale = ratio if fit_mode.iterative and spec.name == "m_eff" else 1.0
-            value = parameters[spec.name] / scale
-            tolerance = AT_BOUND_TOLERANCE * (bounds.upper - bounds.lower)
-            if value <= bounds.lower + tolerance or value >= bounds.upper - tolerance:
+            if fit_mode.iterative and spec.name == "m_eff":
+                value = value / ratio
+            # SPB S + rho + R_H returns C still multiplied by 300 (D6).
+            if fit_mode.id == "spb_s_rho_rh" and spec.name == "C":
+                value = value / 300.0
+            if value <= bounds.lower or value >= bounds.upper:
+                found.append(spec.name)
+            elif _is_at_bound(value, bounds.lower) or _is_at_bound(value, bounds.upper):
                 found.append(spec.name)
         return tuple(found)
 
@@ -238,7 +247,7 @@ class _BandModel:
             status,
             progress.iterations if fit_mode.iterative else None,
             parameter_errors=self._stage_errors(fit_mode, request.scattering, ratio, progress),
-            at_bounds=self._at_bounds(request, fit_mode, parameters, ratio),
+            at_bounds=self._at_bounds(request, fit_mode, parameters, ratio, progress.stage_fits),
         )
 
     def _run_fit(

@@ -131,6 +131,18 @@ class Measurement:
     temperature_k: np.ndarray
     values: np.ndarray
 
+    def check(self, quantity: str) -> None:
+        """Raise `ValueError` unless this is usable data: arrays of finite numbers, T above 0."""
+        for array in (self.temperature_k, self.values):
+            if not isinstance(array, np.ndarray) or array.ndim != 1 or array.size == 0:
+                raise ValueError(f"Measurement {quantity} needs non-empty one-dimensional arrays")
+            if not np.issubdtype(array.dtype, np.number) or not np.all(np.isfinite(array)):
+                raise ValueError(f"Measurement {quantity} needs finite numbers")
+        if self.temperature_k.size != self.values.size:
+            raise ValueError(f"Measurement {quantity} has arrays of different lengths")
+        if np.min(self.temperature_k) <= 0:
+            raise ValueError(f"Measurement {quantity} needs temperatures above 0 K")
+
 
 @dataclass(frozen=True, eq=False)
 class CurveRequest:
@@ -192,10 +204,13 @@ class FitResult:
     `iterations` counts completed iterations, and is None for a single-pass mode. A fitted value can
     lie outside the range of its control. `message` holds fixed text with no measured values.
 
-    `parameter_errors` holds standard errors from the last solver run of each stage, for parameters
-    where one is finite. They hold the other stages fixed, so they understate the real uncertainty
-    of a staged fit. `at_bounds` names fitted parameters that ended at a bound, whose values the
-    data did not settle.
+    `parameter_errors` holds standard errors from the last solver run of each stage. It leaves out a
+    parameter with an error that is not finite, or is exactly 0, which means the data do not
+    determine it. Each error holds every other stage fixed, so in a staged fit it can be far too
+    small, and it is not a plain uncertainty to show as a value with a +/-.
+
+    `at_bounds` names fitted parameters that ended at a bound, so the bound may be what set them. A
+    parameter a fit never reached, such as m1 in a stopped fit, is not named.
     """
 
     parameters: Mapping[str, float]
