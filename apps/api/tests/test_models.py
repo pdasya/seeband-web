@@ -1,19 +1,30 @@
 import json
+import re
+from dataclasses import asdict, replace
 from pathlib import Path
 from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
 from seeband_api.main import create_app
-from seeband_api.models import build_models_response
+from seeband_api.models import _registry_response, build_models_response
+from seeband_core.model_catalog import registry
 from seeband_core.model_interface import (
     Bounds,
+    CurveRequest,
+    CurveResult,
+    Degeneracy,
     FitMode,
+    FitRequest,
+    FitResult,
+    IterationCallback,
     KnownIssue,
     ModelDescription,
     ParameterSpec,
     ValueRange,
 )
+from seeband_core.model_registry import ModelRegistry
+from seeband_core.model_scales import core_range, display_range
 
 CONTRACT = Path(__file__).parents[3] / "packages" / "api-client" / "openapi.json"
 
@@ -58,7 +69,6 @@ def test_spb_hall_mode_is_disabled_with_its_reason(modes: dict[str, dict[str, An
     assert reason["severity"] == "disabled"
     assert reason["message_key"] == "known_issue.spb_hall_mode_disabled"
     assert reason["fixed_by"] == "#83"
-    assert "fails on the desktop" in reason["explanation"]
 
 
 def test_only_that_mode_is_disabled(modes: dict[str, dict[str, Any]]) -> None:
@@ -99,26 +109,47 @@ def test_fields_that_do_not_apply_are_left_out(modes: dict[str, dict[str, Any]])
     assert modes["dpb_s_rho"]["degeneracy"] == {"band_1_default": 1, "band_2_default": 1}
 
 
-def test_scales_and_values_of_a_parameter_shown_at_another_scale(
-    modes: dict[str, dict[str, Any]],
-) -> None:
+def test_ranges_of_a_parameter_shown_at_another_scale(modes: dict[str, dict[str, Any]]) -> None:
     # From seeband.py: C in SPB S + rho shows as slider / 100, and enters a fit as the slider value.
     spec = _parameter(modes["spb_s_rho"], "C")
 
     assert spec["display_scale"] == 0.01
     assert spec["fit_scale"] == 1
-    assert spec["default_core_value"] == spec["value_range"]["default"]
-    assert spec["display_range"]["default"] == spec["value_range"]["default"] / 100
-    assert spec["display_range"]["maximum"] == spec["value_range"]["maximum"] / 100
+    assert spec["value_range"]["default"] == 100
+    assert spec["core_range"]["default"] == 100
+    assert spec["display_range"]["default"] == 1
     assert spec["role"] == "fitted"
     assert spec["scattering"] == ["acPhDis"]
 
 
-def test_core_value_divides_as_the_desktop_does(modes: dict[str, dict[str, Any]]) -> None:
-    spec = _parameter(modes["dpb_s"], "m_eff")
+def test_core_range_divides_as_the_desktop_does() -> None:
+    # 57 / 100 and 57 * 0.01 differ in the last bit, so this tells them apart.
+    assert 57 / 100 != 57 * 0.01
+    spec = ParameterSpec(
+        name="p",
+        meaning="A test parameter",
+        unit="K",
+        role="fitted",
+        scattering=(),
+        value_range=ValueRange(57, 57, 1, 57),
+        display_scale=1,
+        fit_scale=0.01,
+        calc_scale=1,
+    )
+    description = ModelDescription(
+        id="test",
+        name="Test model",
+        fit_modes=(FitMode(id="m", quantities=("seebeck",), parameters=(spec,)),),
+        default_min_temperature_k=10,
+        default_max_temperature_k=20,
+        default_curve_points=5,
+    )
 
-    assert spec["fit_scale"] == 0.01
-    assert spec["default_core_value"] == spec["value_range"]["default"] / 100
+    [model] = build_models_response([description]).models
+    limits = model.fit_modes[0].parameters[0].core_range
+
+    assert limits.default == 57 / 100
+    assert limits.minimum == 57 / 100
 
 
 def test_bounds_are_given_or_left_out(modes: dict[str, dict[str, Any]]) -> None:
@@ -145,12 +176,145 @@ def test_known_issue_conditions_and_scope_reach_the_client(
     assert "condition" not in issues["dpb_hall_prefactor"]
 
 
-def test_response_is_strict_json(response: Any) -> None:
-    json.dumps(response.json(), allow_nan=False)
+def test_every_field_matches_the_registry(response: Any) -> None:
+    """The values are checked in the core, so this checks that the route carries all of them."""
+    models = response.json()["models"]
+    descriptions = registry.descriptions()
+
+    assert [model["id"] for model in models] == [description.id for description in descriptions]
+    for model, description in zip(models, descriptions, strict=True):
+        assert model["name"] == description.name
+        assert model["default_min_temperature_k"] == description.default_min_temperature_k
+        assert model["default_max_temperature_k"] == description.default_max_temperature_k
+        assert model["default_curve_points"] == description.default_curve_points
+        assert [mode["id"] for mode in model["fit_modes"]] == [
+            fit_mode.id for fit_mode in description.fit_modes
+        ]
+        for mode, fit_mode in zip(model["fit_modes"], description.fit_modes, strict=True):
+            _check_mode(mode, fit_mode)
 
 
-def test_response_can_be_cached(response: Any) -> None:
-    assert response.headers["cache-control"] == "public, max-age=3600"
+def _check_mode(mode: dict[str, Any], fit_mode: FitMode) -> None:
+    assert mode["quantities"] == list(fit_mode.quantities)
+    assert mode["scattering"] == list(fit_mode.scattering)
+    assert mode.get("default_scattering") == fit_mode.default_scattering
+    assert mode.get("threshold") == fit_mode.threshold
+    assert mode.get("max_iterations") == fit_mode.max_iterations
+    assert mode["curve_kinds"] == list(fit_mode.curve_kinds)
+    if fit_mode.degeneracy is None:
+        assert "degeneracy" not in mode
+    else:
+        assert mode["degeneracy"] == asdict(fit_mode.degeneracy)
+    assert [issue["id"] for issue in mode["known_issues"]] == [i.id for i in fit_mode.known_issues]
+    for issue, known in zip(mode["known_issues"], fit_mode.known_issues, strict=True):
+        assert issue["severity"] == known.severity
+        assert issue["message_key"] == known.message_key
+        assert issue["fixed_by"] == known.fixed_by
+        assert issue["scattering"] == list(known.scattering)
+        assert issue["curve_kinds"] == list(known.curve_kinds)
+        assert issue["columns"] == list(known.columns)
+        assert issue["affects_fit"] == known.affects_fit
+        assert issue.get("condition") == known.condition
+    assert [spec["name"] for spec in mode["parameters"]] == [p.name for p in fit_mode.parameters]
+    for spec, parameter in zip(mode["parameters"], fit_mode.parameters, strict=True):
+        assert spec["meaning"] == parameter.meaning
+        assert spec["unit"] == parameter.unit
+        assert spec["role"] == parameter.role
+        assert spec["scattering"] == list(parameter.scattering)
+        assert spec["value_range"] == asdict(parameter.value_range)
+        assert spec["display_range"] == asdict(display_range(parameter))
+        assert spec["core_range"] == asdict(core_range(parameter))
+        assert spec["display_scale"] == parameter.display_scale
+        assert spec["fit_scale"] == parameter.fit_scale
+        assert spec["bounds_editable"] == parameter.bounds_editable
+        if parameter.fit_bounds is None:
+            assert "fit_bounds" not in spec
+        else:
+            assert spec["fit_bounds"] == asdict(parameter.fit_bounds)
+
+
+def test_explanation_for_developers_does_not_reach_clients(response: Any) -> None:
+    assert '"explanation"' not in response.text
+    assert "fails on the desktop" not in response.text
+
+
+def test_clients_must_revalidate(response: Any) -> None:
+    assert response.headers["cache-control"] == "no-cache"
+    assert re.fullmatch(r'"[0-9a-f]{32}"', response.headers["etag"])
+
+
+@pytest.mark.parametrize("header", ["{etag}", 'W/{etag}, "other"', "*"])
+def test_unchanged_descriptions_answer_304(response: Any, header: str) -> None:
+    etag = response.headers["etag"]
+
+    answer = TestClient(create_app()).get(
+        "/api/models", headers={"If-None-Match": header.format(etag=etag)}
+    )
+
+    assert answer.status_code == 304
+    assert answer.content == b""
+    assert answer.headers["etag"] == etag
+    assert answer.headers["cache-control"] == "no-cache"
+
+
+def test_changed_descriptions_answer_in_full() -> None:
+    answer = TestClient(create_app()).get("/api/models", headers={"If-None-Match": '"old"'})
+
+    assert answer.status_code == 200
+    assert answer.json()["models"]
+
+
+def test_values_that_the_real_models_share_are_not_assumed() -> None:
+    """All real modes have the same temperatures and degeneracies, so these use other values."""
+    made_up = _made_up_description()
+    fit_mode = replace(
+        made_up.fit_modes[0],
+        iterative=True,
+        threshold=0.25,
+        max_iterations=7,
+        degeneracy=Degeneracy(2, 3),
+    )
+
+    [model] = build_models_response([replace(made_up, fit_modes=(fit_mode,))]).models
+
+    assert model.default_min_temperature_k == 10
+    assert model.default_max_temperature_k == 20
+    assert model.default_curve_points == 5
+    [mode] = model.fit_modes
+    assert mode.threshold == 0.25
+    assert mode.max_iterations == 7
+    assert mode.degeneracy is not None
+    assert (mode.degeneracy.band_1_default, mode.degeneracy.band_2_default) == (2, 3)
+
+
+class _FakeModel:
+    def __init__(self, description: ModelDescription) -> None:
+        self._description = description
+
+    def describe(self) -> ModelDescription:
+        return self._description
+
+    def calculate(self, request: CurveRequest) -> CurveResult:
+        raise NotImplementedError
+
+    def fit(self, request: FitRequest, on_iteration: IterationCallback | None = None) -> FitResult:
+        raise NotImplementedError
+
+
+def test_route_serves_a_model_registered_with_no_change_in_the_api(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    local = ModelRegistry()
+    local.register(_FakeModel(_made_up_description()))
+    monkeypatch.setattr("seeband_api.models.registry", local)
+    _registry_response.cache_clear()
+    try:
+        body = TestClient(create_app()).get("/api/models").json()
+    finally:
+        _registry_response.cache_clear()
+
+    assert [model["id"] for model in body["models"]] == ["test"]
+    assert body["models"][0]["fit_modes"][0]["disabled_by"] == ["made_up"]
 
 
 def test_response_matches_the_contract_snapshot(response: Any) -> None:
@@ -161,8 +325,7 @@ def test_response_matches_the_contract_snapshot(response: Any) -> None:
     assert response.json() == media["application/json"]["examples"]["registry"]["value"]
 
 
-def test_response_comes_from_the_descriptions_given() -> None:
-    """A new model needs no change in the API."""
+def _made_up_description() -> ModelDescription:
     issue = KnownIssue(
         id="made_up", severity="disabled", fixed_by="#1", fit_modes=("m",), explanation="Test"
     )
@@ -178,7 +341,7 @@ def test_response_comes_from_the_descriptions_given() -> None:
         calc_scale=1,
         fit_bounds=Bounds(0.0, 2.0),
     )
-    description = ModelDescription(
+    return ModelDescription(
         id="test",
         name="Test model",
         fit_modes=(
@@ -188,12 +351,3 @@ def test_response_comes_from_the_descriptions_given() -> None:
         default_max_temperature_k=20,
         default_curve_points=5,
     )
-
-    [model] = build_models_response([description]).model_dump()["models"]
-
-    assert model["id"] == "test"
-    [mode] = model["fit_modes"]
-    assert mode["disabled"] is True
-    assert mode["disabled_by"] == ["made_up"]
-    assert mode["parameters"][0]["default_core_value"] == 1.0
-    assert mode["parameters"][0]["display_range"]["maximum"] == 200

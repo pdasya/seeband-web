@@ -23,6 +23,7 @@ from seeband_core.model_interface import (
 )
 from seeband_core.model_registry import ModelRegistry
 from seeband_core.model_scales import (
+    core_range,
     core_to_display,
     default_start,
     default_start_value,
@@ -423,3 +424,30 @@ def test_display_range_uses_the_display_scale() -> None:
 def test_the_linear_model_is_a_model() -> None:
     model: Model = LinearModel()
     assert isinstance(model, Model)
+
+
+def _with_spec_changes(**changes: Any) -> ModelDescription:
+    spec = dataclasses.replace(LINEAR_MODE.parameters[0], **changes)
+    return description(dataclasses.replace(LINEAR_MODE, parameters=(spec,)))
+
+
+@pytest.mark.parametrize("scale", [0.0, -1.0, 0.3, 0.7])
+@pytest.mark.parametrize("field", ["display_scale", "fit_scale"])
+def test_scale_that_scale_value_cannot_honour_is_refused(field: str, scale: float) -> None:
+    model = Described(_with_spec_changes(**{field: scale}))
+
+    with pytest.raises(ValueError, match="scale"):
+        ModelRegistry().register(model)
+
+
+@pytest.mark.parametrize("scale", [0.01, 0.5, 1.0, 300.0, 1e-3])
+def test_usual_scales_are_accepted(scale: float) -> None:
+    ModelRegistry().register(Described(_with_spec_changes(fit_scale=scale)))
+
+
+def test_core_range_uses_the_division_of_the_desktop() -> None:
+    spec = dataclasses.replace(
+        LINEAR_MODE.parameters[0], value_range=ValueRange(57, 70, 7, 57), fit_scale=0.01
+    )
+
+    assert core_range(spec) == ValueRange(57 / 100, 70 / 100, 7 / 100, 57 / 100)

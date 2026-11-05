@@ -76,6 +76,24 @@
         ],
         "summary": "Get Models",
         "operationId": "get_models",
+        "parameters": [
+          {
+            "name": "if-none-match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-None-Match"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -123,9 +141,14 @@
                                     "step": 0.01,
                                     "default": 1.01
                                   },
+                                  "core_range": {
+                                    "minimum": -3.0,
+                                    "maximum": 3.0,
+                                    "step": 0.01,
+                                    "default": 1.01
+                                  },
                                   "display_scale": 0.01,
                                   "fit_scale": 0.01,
-                                  "default_core_value": 1.01,
                                   "bounds_editable": false
                                 },
                                 {
@@ -150,9 +173,14 @@
                                     "step": 1.0,
                                     "default": 100.0
                                   },
+                                  "core_range": {
+                                    "minimum": -3000.0,
+                                    "maximum": 3000.0,
+                                    "step": 1.0,
+                                    "default": 100.0
+                                  },
                                   "display_scale": 1.0,
                                   "fit_scale": 1.0,
-                                  "default_core_value": 100.0,
                                   "fit_bounds": {
                                     "lower": -3000.0,
                                     "upper": 3000.0
@@ -173,7 +201,6 @@
                                   "id": "no_chemical_potential",
                                   "severity": "unreliable",
                                   "message_key": "known_issue.no_chemical_potential",
-                                  "explanation": "With the Fermi energy outside the band, there are no carriers, and the solved chemical potential and curves mean nothing",
                                   "fixed_by": "#106",
                                   "scattering": [],
                                   "curve_kinds": [
@@ -190,7 +217,6 @@
                                   "id": "interpolation_extrapolates",
                                   "severity": "unreliable",
                                   "message_key": "known_issue.interpolation_extrapolates",
-                                  "explanation": "Interpolation made up points beyond the data, and they enter the fit",
                                   "fixed_by": "#86",
                                   "scattering": [],
                                   "curve_kinds": [],
@@ -229,9 +255,14 @@
                                     "step": 0.01,
                                     "default": -1.0
                                   },
+                                  "core_range": {
+                                    "minimum": -3.0,
+                                    "maximum": 3.0,
+                                    "step": 0.01,
+                                    "default": -1.0
+                                  },
                                   "display_scale": 0.01,
                                   "fit_scale": 0.01,
-                                  "default_core_value": -1.0,
                                   "bounds_editable": false
                                 },
                                 {
@@ -256,9 +287,14 @@
                                     "step": 1.0,
                                     "default": -100.0
                                   },
+                                  "core_range": {
+                                    "minimum": -3000.0,
+                                    "maximum": 3000.0,
+                                    "step": 1.0,
+                                    "default": -100.0
+                                  },
                                   "display_scale": 1.0,
                                   "fit_scale": 1.0,
-                                  "default_core_value": -100.0,
                                   "fit_bounds": {
                                     "lower": -3000.0,
                                     "upper": 3000.0
@@ -286,9 +322,14 @@
                                     "step": 1000.0,
                                     "default": 40000.0
                                   },
+                                  "core_range": {
+                                    "minimum": 0.0,
+                                    "maximum": 1000000.0,
+                                    "step": 1000.0,
+                                    "default": 40000.0
+                                  },
                                   "display_scale": 1.0,
                                   "fit_scale": 1.0,
-                                  "default_core_value": 40000.0,
                                   "fit_bounds": {
                                     "lower": 1.0,
                                     "upper": 10000000.0
@@ -315,9 +356,14 @@
                                     "step": 0.01,
                                     "default": 1.0
                                   },
+                                  "core_range": {
+                                    "minimum": 0.0,
+                                    "maximum": 300.0,
+                                    "step": 1.0,
+                                    "default": 100.0
+                                  },
                                   "display_scale": 0.01,
                                   "fit_scale": 1.0,
-                                  "default_core_value": 100.0,
                                   "fit_bounds": {
                                     "lower": 0.001,
                                     "upper": 1000.0
@@ -344,9 +390,14 @@
                                     "step": 100.0,
                                     "default": 4000.0
                                   },
+                                  "core_range": {
+                                    "minimum": 0.0,
+                                    "maximum": 100000.0,
+                                    "step": 100.0,
+                                    "default": 4000.0
+                                  },
                                   "display_scale": 1.0,
                                   "fit_scale": 1.0,
-                                  "default_core_value": 4000.0,
                                   "fit_bounds": {
                                     "lower": 1.0,
                                     "upper": 10000000.0
@@ -374,7 +425,6 @@
                                   "id": "acphdis_curve_scale",
                                   "severity": "unreliable",
                                   "message_key": "known_issue.acphdis_curve_scale",
-                                  "explanation": "With acPhDis, these curves use another scale of C and D from rho and S, so sigma * rho != 1 and band contributions do not sum to S",
                                   "fixed_by": "#82",
                                   "scattering": [
                                     "acPhDis"
@@ -392,7 +442,6 @@
                                   "id": "no_chemical_potential",
                                   "severity": "unreliable",
                                   "message_key": "known_issue.no_chemical_potential",
-                                  "explanation": "With the Fermi energy outside the band, there are no carriers, and the solved chemical potential and curves mean nothing",
                                   "fixed_by": "#106",
                                   "scattering": [],
                                   "curve_kinds": [
@@ -409,7 +458,6 @@
                                   "id": "interpolation_extrapolates",
                                   "severity": "unreliable",
                                   "message_key": "known_issue.interpolation_extrapolates",
-                                  "explanation": "Interpolation made up points beyond the data, and they enter the fit",
                                   "fixed_by": "#86",
                                   "scattering": [],
                                   "curve_kinds": [],
@@ -449,9 +497,14 @@
                                     "step": 0.01,
                                     "default": 1.0
                                   },
+                                  "core_range": {
+                                    "minimum": -300.0,
+                                    "maximum": 300.0,
+                                    "step": 1.0,
+                                    "default": 100.0
+                                  },
                                   "display_scale": 0.01,
                                   "fit_scale": 1.0,
-                                  "default_core_value": 100.0,
                                   "fit_bounds": {
                                     "lower": -300.0,
                                     "upper": 300.0
@@ -480,9 +533,14 @@
                                     "step": 1.0,
                                     "default": 100.0
                                   },
+                                  "core_range": {
+                                    "minimum": -3000.0,
+                                    "maximum": 3000.0,
+                                    "step": 1.0,
+                                    "default": 100.0
+                                  },
                                   "display_scale": 1.0,
                                   "fit_scale": 1.0,
-                                  "default_core_value": 100.0,
                                   "fit_bounds": {
                                     "lower": -3000.0,
                                     "upper": 3000.0
@@ -510,9 +568,14 @@
                                     "step": 1000.0,
                                     "default": 40000.0
                                   },
+                                  "core_range": {
+                                    "minimum": 0.0,
+                                    "maximum": 1000000.0,
+                                    "step": 1000.0,
+                                    "default": 40000.0
+                                  },
                                   "display_scale": 1.0,
                                   "fit_scale": 1.0,
-                                  "default_core_value": 40000.0,
                                   "fit_bounds": {
                                     "lower": 1.0,
                                     "upper": 10000000.0
@@ -539,9 +602,14 @@
                                     "step": 0.01,
                                     "default": 1.0
                                   },
+                                  "core_range": {
+                                    "minimum": 0.0,
+                                    "maximum": 300.0,
+                                    "step": 1.0,
+                                    "default": 100.0
+                                  },
                                   "display_scale": 0.01,
                                   "fit_scale": 1.0,
-                                  "default_core_value": 100.0,
                                   "fit_bounds": {
                                     "lower": 0.001,
                                     "upper": 1000.0
@@ -568,9 +636,14 @@
                                     "step": 100.0,
                                     "default": 4000.0
                                   },
+                                  "core_range": {
+                                    "minimum": 0.0,
+                                    "maximum": 100000.0,
+                                    "step": 100.0,
+                                    "default": 4000.0
+                                  },
                                   "display_scale": 1.0,
                                   "fit_scale": 1.0,
-                                  "default_core_value": 4000.0,
                                   "fit_bounds": {
                                     "lower": 1.0,
                                     "upper": 10000000.0
@@ -600,7 +673,6 @@
                                   "id": "spb_hall_mode_disabled",
                                   "severity": "disabled",
                                   "message_key": "known_issue.spb_hall_mode_disabled",
-                                  "explanation": "This fit fails on the desktop, and its mass and scales are wrong (D2, D3, D6)",
                                   "fixed_by": "#83",
                                   "scattering": [],
                                   "curve_kinds": [],
@@ -611,7 +683,6 @@
                                   "id": "spb_hall_uses_fermi_energy",
                                   "severity": "unreliable",
                                   "message_key": "known_issue.spb_hall_uses_fermi_energy",
-                                  "explanation": "SPB R_H uses the Fermi energy at 0 K instead of the chemical potential",
                                   "fixed_by": "#103",
                                   "scattering": [],
                                   "curve_kinds": [
@@ -626,7 +697,6 @@
                                   "id": "acphdis_curve_scale",
                                   "severity": "unreliable",
                                   "message_key": "known_issue.acphdis_curve_scale",
-                                  "explanation": "With acPhDis, these curves use another scale of C and D from rho and S, so sigma * rho != 1 and band contributions do not sum to S",
                                   "fixed_by": "#82",
                                   "scattering": [
                                     "acPhDis"
@@ -644,7 +714,6 @@
                                   "id": "no_chemical_potential",
                                   "severity": "unreliable",
                                   "message_key": "known_issue.no_chemical_potential",
-                                  "explanation": "With the Fermi energy outside the band, there are no carriers, and the solved chemical potential and curves mean nothing",
                                   "fixed_by": "#106",
                                   "scattering": [],
                                   "curve_kinds": [
@@ -661,7 +730,6 @@
                                   "id": "interpolation_extrapolates",
                                   "severity": "unreliable",
                                   "message_key": "known_issue.interpolation_extrapolates",
-                                  "explanation": "Interpolation made up points beyond the data, and they enter the fit",
                                   "fixed_by": "#86",
                                   "scattering": [],
                                   "curve_kinds": [],
@@ -708,9 +776,14 @@
                                     "step": 0.01,
                                     "default": 1.01
                                   },
+                                  "core_range": {
+                                    "minimum": -3.0,
+                                    "maximum": 3.0,
+                                    "step": 0.01,
+                                    "default": 1.01
+                                  },
                                   "display_scale": 0.01,
                                   "fit_scale": 0.01,
-                                  "default_core_value": 1.01,
                                   "fit_bounds": {
                                     "lower": -3.0,
                                     "upper": 3.0
@@ -739,9 +812,14 @@
                                     "step": 10.0,
                                     "default": 1000.0
                                   },
+                                  "core_range": {
+                                    "minimum": -3000.0,
+                                    "maximum": 3000.0,
+                                    "step": 10.0,
+                                    "default": 1000.0
+                                  },
                                   "display_scale": 1.0,
                                   "fit_scale": 1.0,
-                                  "default_core_value": 1000.0,
                                   "fit_bounds": {
                                     "lower": -3000.0,
                                     "upper": 3000.0
@@ -770,9 +848,14 @@
                                     "step": 1.0,
                                     "default": -100.0
                                   },
+                                  "core_range": {
+                                    "minimum": -3000.0,
+                                    "maximum": 3000.0,
+                                    "step": 1.0,
+                                    "default": -100.0
+                                  },
                                   "display_scale": 1.0,
                                   "fit_scale": 1.0,
-                                  "default_core_value": -100.0,
                                   "fit_bounds": {
                                     "lower": -3000.0,
                                     "upper": 3000.0
@@ -799,7 +882,6 @@
                                   "id": "dpb_s_degeneracy",
                                   "severity": "unreliable",
                                   "message_key": "known_issue.dpb_s_degeneracy",
-                                  "explanation": "With N2/N1 other than 1, a fitted m_eff does not match its curves (D12)",
                                   "fixed_by": "#85",
                                   "scattering": [],
                                   "curve_kinds": [
@@ -816,7 +898,6 @@
                                   "id": "negative_m_eff_weight",
                                   "severity": "caution",
                                   "message_key": "known_issue.negative_m_eff_weight",
-                                  "explanation": "With m_eff below 0, band 2 gets a negative weight, for a physicist to check",
                                   "fixed_by": "#104",
                                   "scattering": [],
                                   "curve_kinds": [
@@ -835,7 +916,6 @@
                                   "id": "collapsed_m_eff",
                                   "severity": "unreliable",
                                   "message_key": "known_issue.collapsed_m_eff",
-                                  "explanation": "m_eff near 0 removes the weight of the other band, so the data do not settle the fit, and it differs between machines (D19)",
                                   "fixed_by": "#107",
                                   "scattering": [],
                                   "curve_kinds": [
@@ -856,7 +936,6 @@
                                   "id": "interpolation_extrapolates",
                                   "severity": "unreliable",
                                   "message_key": "known_issue.interpolation_extrapolates",
-                                  "explanation": "Interpolation made up points beyond the data, and they enter the fit",
                                   "fixed_by": "#86",
                                   "scattering": [],
                                   "curve_kinds": [],
@@ -895,9 +974,14 @@
                                     "step": 0.01,
                                     "default": 1.01
                                   },
+                                  "core_range": {
+                                    "minimum": -3.0,
+                                    "maximum": 3.0,
+                                    "step": 0.01,
+                                    "default": 1.01
+                                  },
                                   "display_scale": 0.01,
                                   "fit_scale": 0.01,
-                                  "default_core_value": 1.01,
                                   "fit_bounds": {
                                     "lower": -3.0,
                                     "upper": 3.0
@@ -926,9 +1010,14 @@
                                     "step": 10.0,
                                     "default": 1000.0
                                   },
+                                  "core_range": {
+                                    "minimum": -3000.0,
+                                    "maximum": 3000.0,
+                                    "step": 10.0,
+                                    "default": 1000.0
+                                  },
                                   "display_scale": 1.0,
                                   "fit_scale": 1.0,
-                                  "default_core_value": 1000.0,
                                   "fit_bounds": {
                                     "lower": -3000.0,
                                     "upper": 3000.0
@@ -957,9 +1046,14 @@
                                     "step": 1.0,
                                     "default": -100.0
                                   },
+                                  "core_range": {
+                                    "minimum": -3000.0,
+                                    "maximum": 3000.0,
+                                    "step": 1.0,
+                                    "default": -100.0
+                                  },
                                   "display_scale": 1.0,
                                   "fit_scale": 1.0,
-                                  "default_core_value": -100.0,
                                   "fit_bounds": {
                                     "lower": -3000.0,
                                     "upper": 3000.0
@@ -987,9 +1081,14 @@
                                     "step": 1000.0,
                                     "default": 40000.0
                                   },
+                                  "core_range": {
+                                    "minimum": 0.0,
+                                    "maximum": 1000000.0,
+                                    "step": 1000.0,
+                                    "default": 40000.0
+                                  },
                                   "display_scale": 1.0,
                                   "fit_scale": 1.0,
-                                  "default_core_value": 40000.0,
                                   "fit_bounds": {
                                     "lower": 0.0,
                                     "upper": 1000000.0
@@ -1017,9 +1116,14 @@
                                     "step": 0.01,
                                     "default": 1.0
                                   },
+                                  "core_range": {
+                                    "minimum": 0.9,
+                                    "maximum": 1.1,
+                                    "step": 0.01,
+                                    "default": 1.0
+                                  },
                                   "display_scale": 0.01,
                                   "fit_scale": 0.01,
-                                  "default_core_value": 1.0,
                                   "fit_bounds": {
                                     "lower": 0.9,
                                     "upper": 1.1
@@ -1046,9 +1150,14 @@
                                     "step": 0.01,
                                     "default": 1.0
                                   },
+                                  "core_range": {
+                                    "minimum": 0.5,
+                                    "maximum": 2.0,
+                                    "step": 0.01,
+                                    "default": 1.0
+                                  },
                                   "display_scale": 0.01,
                                   "fit_scale": 0.01,
-                                  "default_core_value": 1.0,
                                   "fit_bounds": {
                                     "lower": 0.5,
                                     "upper": 2.0
@@ -1075,9 +1184,14 @@
                                     "step": 0.01,
                                     "default": 1.0
                                   },
+                                  "core_range": {
+                                    "minimum": 0.5,
+                                    "maximum": 2.0,
+                                    "step": 0.01,
+                                    "default": 1.0
+                                  },
                                   "display_scale": 0.01,
                                   "fit_scale": 0.01,
-                                  "default_core_value": 1.0,
                                   "fit_bounds": {
                                     "lower": 0.5,
                                     "upper": 2.0
@@ -1104,9 +1218,14 @@
                                     "step": 100.0,
                                     "default": 1000.0
                                   },
+                                  "core_range": {
+                                    "minimum": 0.0,
+                                    "maximum": 100000.0,
+                                    "step": 100.0,
+                                    "default": 1000.0
+                                  },
                                   "display_scale": 1.0,
                                   "fit_scale": 1.0,
-                                  "default_core_value": 1000.0,
                                   "fit_bounds": {
                                     "lower": 0.0,
                                     "upper": 100000.0
@@ -1133,9 +1252,14 @@
                                     "step": 0.01,
                                     "default": 1.0
                                   },
+                                  "core_range": {
+                                    "minimum": 0.5,
+                                    "maximum": 2.0,
+                                    "step": 0.01,
+                                    "default": 1.0
+                                  },
                                   "display_scale": 0.01,
                                   "fit_scale": 0.01,
-                                  "default_core_value": 1.0,
                                   "fit_bounds": {
                                     "lower": 0.5,
                                     "upper": 2.0
@@ -1173,7 +1297,6 @@
                                   "id": "acphdis_curve_scale",
                                   "severity": "unreliable",
                                   "message_key": "known_issue.acphdis_curve_scale",
-                                  "explanation": "With acPhDis, these curves use another scale of C and D from rho and S, so sigma * rho != 1 and band contributions do not sum to S",
                                   "fixed_by": "#82",
                                   "scattering": [
                                     "acPhDis"
@@ -1191,7 +1314,6 @@
                                   "id": "acphdis_band_weight",
                                   "severity": "unreliable",
                                   "message_key": "known_issue.acphdis_band_weight",
-                                  "explanation": "With acPhDis, the band weight of the last temperature applies to all of S",
                                   "fixed_by": "#102",
                                   "scattering": [
                                     "acPhDis"
@@ -1209,7 +1331,6 @@
                                   "id": "acphdis_early_stop",
                                   "severity": "unreliable",
                                   "message_key": "known_issue.acphdis_early_stop",
-                                  "explanation": "With acPhDis, the fit stops when C and D alone settle, as every recorded fit on the 3 examples did (D18)",
                                   "fixed_by": "#84",
                                   "scattering": [
                                     "acPhDis"
@@ -1222,7 +1343,6 @@
                                   "id": "dpb_loop_degeneracy",
                                   "severity": "caution",
                                   "message_key": "known_issue.dpb_loop_degeneracy",
-                                  "explanation": "With N2/N1 other than 1, the fit returns m_eff times N, which can leave its bounds (D12)",
                                   "fixed_by": "#85",
                                   "scattering": [],
                                   "curve_kinds": [],
@@ -1234,7 +1354,6 @@
                                   "id": "negative_m_eff_weight",
                                   "severity": "caution",
                                   "message_key": "known_issue.negative_m_eff_weight",
-                                  "explanation": "With m_eff below 0, band 2 gets a negative weight, for a physicist to check",
                                   "fixed_by": "#104",
                                   "scattering": [],
                                   "curve_kinds": [
@@ -1253,7 +1372,6 @@
                                   "id": "collapsed_m_eff",
                                   "severity": "unreliable",
                                   "message_key": "known_issue.collapsed_m_eff",
-                                  "explanation": "m_eff near 0 removes the weight of the other band, so the data do not settle the fit, and it differs between machines (D19)",
                                   "fixed_by": "#107",
                                   "scattering": [],
                                   "curve_kinds": [
@@ -1274,7 +1392,6 @@
                                   "id": "interpolation_extrapolates",
                                   "severity": "unreliable",
                                   "message_key": "known_issue.interpolation_extrapolates",
-                                  "explanation": "Interpolation made up points beyond the data, and they enter the fit",
                                   "fixed_by": "#86",
                                   "scattering": [],
                                   "curve_kinds": [],
@@ -1314,9 +1431,14 @@
                                     "step": 0.01,
                                     "default": 1.01
                                   },
+                                  "core_range": {
+                                    "minimum": -3.0,
+                                    "maximum": 3.0,
+                                    "step": 0.01,
+                                    "default": 1.01
+                                  },
                                   "display_scale": 0.01,
                                   "fit_scale": 0.01,
-                                  "default_core_value": 1.01,
                                   "fit_bounds": {
                                     "lower": -3.0,
                                     "upper": 3.0
@@ -1345,9 +1467,14 @@
                                     "step": 10.0,
                                     "default": 1000.0
                                   },
+                                  "core_range": {
+                                    "minimum": -3000.0,
+                                    "maximum": 3000.0,
+                                    "step": 10.0,
+                                    "default": 1000.0
+                                  },
                                   "display_scale": 1.0,
                                   "fit_scale": 1.0,
-                                  "default_core_value": 1000.0,
                                   "fit_bounds": {
                                     "lower": -3000.0,
                                     "upper": 3000.0
@@ -1376,9 +1503,14 @@
                                     "step": 1.0,
                                     "default": -100.0
                                   },
+                                  "core_range": {
+                                    "minimum": -3000.0,
+                                    "maximum": 3000.0,
+                                    "step": 1.0,
+                                    "default": -100.0
+                                  },
                                   "display_scale": 1.0,
                                   "fit_scale": 1.0,
-                                  "default_core_value": -100.0,
                                   "fit_bounds": {
                                     "lower": -3000.0,
                                     "upper": 3000.0
@@ -1406,9 +1538,14 @@
                                     "step": 1000.0,
                                     "default": 40000.0
                                   },
+                                  "core_range": {
+                                    "minimum": 0.0,
+                                    "maximum": 1000000.0,
+                                    "step": 1000.0,
+                                    "default": 40000.0
+                                  },
                                   "display_scale": 1.0,
                                   "fit_scale": 1.0,
-                                  "default_core_value": 40000.0,
                                   "fit_bounds": {
                                     "lower": 0.0,
                                     "upper": 1000000.0
@@ -1436,9 +1573,14 @@
                                     "step": 0.01,
                                     "default": 1.0
                                   },
+                                  "core_range": {
+                                    "minimum": 0.9,
+                                    "maximum": 1.1,
+                                    "step": 0.01,
+                                    "default": 1.0
+                                  },
                                   "display_scale": 0.01,
                                   "fit_scale": 0.01,
-                                  "default_core_value": 1.0,
                                   "fit_bounds": {
                                     "lower": 0.9,
                                     "upper": 1.1
@@ -1465,9 +1607,14 @@
                                     "step": 0.01,
                                     "default": 1.0
                                   },
+                                  "core_range": {
+                                    "minimum": 0.5,
+                                    "maximum": 2.0,
+                                    "step": 0.01,
+                                    "default": 1.0
+                                  },
                                   "display_scale": 0.01,
                                   "fit_scale": 0.01,
-                                  "default_core_value": 1.0,
                                   "fit_bounds": {
                                     "lower": 0.5,
                                     "upper": 2.0
@@ -1494,9 +1641,14 @@
                                     "step": 0.01,
                                     "default": 1.0
                                   },
+                                  "core_range": {
+                                    "minimum": 0.5,
+                                    "maximum": 2.0,
+                                    "step": 0.01,
+                                    "default": 1.0
+                                  },
                                   "display_scale": 0.01,
                                   "fit_scale": 0.01,
-                                  "default_core_value": 1.0,
                                   "fit_bounds": {
                                     "lower": 0.5,
                                     "upper": 2.0
@@ -1523,9 +1675,14 @@
                                     "step": 1000.0,
                                     "default": 1000.0
                                   },
+                                  "core_range": {
+                                    "minimum": 0.0,
+                                    "maximum": 100000.0,
+                                    "step": 1000.0,
+                                    "default": 1000.0
+                                  },
                                   "display_scale": 1.0,
                                   "fit_scale": 1.0,
-                                  "default_core_value": 1000.0,
                                   "fit_bounds": {
                                     "lower": 0.0,
                                     "upper": 100000.0
@@ -1552,9 +1709,14 @@
                                     "step": 1.0,
                                     "default": 1.0
                                   },
+                                  "core_range": {
+                                    "minimum": 0.5,
+                                    "maximum": 2.0,
+                                    "step": 1.0,
+                                    "default": 1.0
+                                  },
                                   "display_scale": 0.01,
                                   "fit_scale": 0.01,
-                                  "default_core_value": 1.0,
                                   "fit_bounds": {
                                     "lower": 0.5,
                                     "upper": 2.0
@@ -1583,9 +1745,14 @@
                                     "step": 0.01,
                                     "default": 1.0
                                   },
+                                  "core_range": {
+                                    "minimum": 0.1,
+                                    "maximum": 10.0,
+                                    "step": 0.01,
+                                    "default": 1.0
+                                  },
                                   "display_scale": 0.01,
                                   "fit_scale": 0.01,
-                                  "default_core_value": 1.0,
                                   "fit_bounds": {
                                     "lower": 0.1,
                                     "upper": 10.0
@@ -1623,7 +1790,6 @@
                                   "id": "dpb_hall_prefactor",
                                   "severity": "unreliable",
                                   "message_key": "known_issue.dpb_hall_prefactor",
-                                  "explanation": "DPB R_H is half of what it should be, so m1 and n from it are too low",
                                   "fixed_by": "#81",
                                   "scattering": [],
                                   "curve_kinds": [
@@ -1641,7 +1807,6 @@
                                   "id": "acphdis_curve_scale",
                                   "severity": "unreliable",
                                   "message_key": "known_issue.acphdis_curve_scale",
-                                  "explanation": "With acPhDis, these curves use another scale of C and D from rho and S, so sigma * rho != 1 and band contributions do not sum to S",
                                   "fixed_by": "#82",
                                   "scattering": [
                                     "acPhDis"
@@ -1659,7 +1824,6 @@
                                   "id": "acphdis_band_weight",
                                   "severity": "unreliable",
                                   "message_key": "known_issue.acphdis_band_weight",
-                                  "explanation": "With acPhDis, the band weight of the last temperature applies to all of S",
                                   "fixed_by": "#102",
                                   "scattering": [
                                     "acPhDis"
@@ -1677,7 +1841,6 @@
                                   "id": "acphdis_early_stop",
                                   "severity": "unreliable",
                                   "message_key": "known_issue.acphdis_early_stop",
-                                  "explanation": "With acPhDis, the fit stops when C and D alone settle, as every recorded fit on the 3 examples did (D18)",
                                   "fixed_by": "#84",
                                   "scattering": [
                                     "acPhDis"
@@ -1690,7 +1853,6 @@
                                   "id": "dpb_loop_degeneracy",
                                   "severity": "caution",
                                   "message_key": "known_issue.dpb_loop_degeneracy",
-                                  "explanation": "With N2/N1 other than 1, the fit returns m_eff times N, which can leave its bounds (D12)",
                                   "fixed_by": "#85",
                                   "scattering": [],
                                   "curve_kinds": [],
@@ -1702,7 +1864,6 @@
                                   "id": "negative_m_eff_weight",
                                   "severity": "caution",
                                   "message_key": "known_issue.negative_m_eff_weight",
-                                  "explanation": "With m_eff below 0, band 2 gets a negative weight, for a physicist to check",
                                   "fixed_by": "#104",
                                   "scattering": [],
                                   "curve_kinds": [
@@ -1721,7 +1882,6 @@
                                   "id": "collapsed_m_eff",
                                   "severity": "unreliable",
                                   "message_key": "known_issue.collapsed_m_eff",
-                                  "explanation": "m_eff near 0 removes the weight of the other band, so the data do not settle the fit, and it differs between machines (D19)",
                                   "fixed_by": "#107",
                                   "scattering": [],
                                   "curve_kinds": [
@@ -1742,7 +1902,6 @@
                                   "id": "hall_dis_no_reference",
                                   "severity": "caution",
                                   "message_key": "known_issue.hall_dis_no_reference",
-                                  "explanation": "This fit fails on the desktop (D1). It runs here with other bounds of G, so there is no desktop result to compare with",
                                   "fixed_by": "#71",
                                   "scattering": [
                                     "dis"
@@ -1755,7 +1914,6 @@
                                   "id": "interpolation_extrapolates",
                                   "severity": "unreliable",
                                   "message_key": "known_issue.interpolation_extrapolates",
-                                  "explanation": "Interpolation made up points beyond the data, and they enter the fit",
                                   "fixed_by": "#86",
                                   "scattering": [],
                                   "curve_kinds": [],
@@ -1772,15 +1930,25 @@
                   }
                 }
               }
+            },
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-cache"
+              },
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "\"c306ebcca5c90ab57d6960126e9e1012\""
+              }
             }
           },
           "default": {
-            "description": "Default Response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
                 "examples": {
                   "internal_error": {
                     "value": {
@@ -1813,9 +1981,16 @@
                       ]
                     }
                   }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
-            }
+            },
+            "description": "Default Response"
+          },
+          "304": {
+            "description": "The descriptions have not changed since the given `If-None-Match`"
           }
         }
       }
@@ -2048,7 +2223,7 @@
           "known_issues"
         ],
         "title": "FitModeResponse",
-        "description": "One way of fitting a model.\n\nA client must not offer a mode with `disabled`. `disabled_by` names the `known_issues` that say\nwhy. `iterative` tells whether an iteration count means anything, and `threshold` and\n`max_iterations` apply only to an iterative mode. `scattering` is empty when a mode has no\nchoice of scattering."
+        "description": "One way of fitting a model.\n\nA client must not offer a mode with `disabled`. `disabled_by` names the `known_issues` that say\nwhy. `iterative` tells whether an iteration count means anything. `threshold`, a relative\nchange, and `max_iterations` are what an iterative fit uses, and a request cannot change them.\n`scattering` is empty when a mode has no choice of scattering."
       },
       "HealthResponse": {
         "properties": {
@@ -2093,10 +2268,6 @@
           "message_key": {
             "type": "string",
             "title": "Message Key"
-          },
-          "explanation": {
-            "type": "string",
-            "title": "Explanation"
           },
           "fixed_by": {
             "type": "string",
@@ -2161,7 +2332,6 @@
           "id",
           "severity",
           "message_key",
-          "explanation",
           "fixed_by",
           "scattering",
           "curve_kinds",
@@ -2169,7 +2339,7 @@
           "affects_fit"
         ],
         "title": "KnownIssueResponse",
-        "description": "A known error of the calculations in this mode.\n\nClients show `message_key` through i18n. `explanation` is English text for developers. Empty\n`scattering` means every type, and empty `columns` every curve of a kind. `condition`, if\npresent, limits the issue to some inputs. `fixed_by` is the issue in this repository that\nremoves it."
+        "description": "A known error of the calculations in this mode. Clients show `message_key` through i18n.\n\nEmpty `scattering` means every type. `curve_kinds` lists the curves it applies to, and empty\nmeans none. Empty `columns` means every curve of those kinds. `condition`, if present, limits it\nto some inputs. `fixed_by` is the issue in this repository that removes it."
       },
       "ModelResponse": {
         "properties": {
@@ -2264,6 +2434,9 @@
           "display_range": {
             "$ref": "#/components/schemas/ValueRangeResponse"
           },
+          "core_range": {
+            "$ref": "#/components/schemas/ValueRangeResponse"
+          },
           "display_scale": {
             "type": "number",
             "title": "Display Scale"
@@ -2271,10 +2444,6 @@
           "fit_scale": {
             "type": "number",
             "title": "Fit Scale"
-          },
-          "default_core_value": {
-            "type": "number",
-            "title": "Default Core Value"
           },
           "fit_bounds": {
             "anyOf": [
@@ -2300,13 +2469,13 @@
           "scattering",
           "value_range",
           "display_range",
+          "core_range",
           "display_scale",
           "fit_scale",
-          "default_core_value",
           "bounds_editable"
         ],
         "title": "ParameterResponse",
-        "description": "One parameter of a fit mode.\n\n`value_range` is in control units, and `display_range` is the same range as a user sees it.\n`display_scale` converts control units to displayed values, and `fit_scale` to core units.\n`unit` is the unit of the displayed value. `fit_bounds` is in core units, and is left out for a\nparameter that a fit does not change. `meaning` is English text, for a client to fall back on."
+        "description": "One parameter of a fit mode.\n\n`display_range` is the control's range as a user sees it, and `core_range` is the same range in\nthe core units of requests and results. Use these two, and do not calculate core values from the\nscales: `display_scale` and `fit_scale`, from control units in `value_range`, are there for\ninformation, as the desktop divides where a multiplication would change the last bit.\n\nIn each range, `step` is the desktop's keyboard increment, not a grid: values between steps are\nvalid, and the default or maximum need not lie on a step.\n\n`scattering` lists the types the parameter applies to, and empty means all of them. A mode with\nno choice of scattering uses all its parameters, whatever they list. A `fixed` parameter is set\nby the user, and a fit does not change it. Requests hold every parameter of a mode, including\nthose of other scattering types.\n\n`unit` is the unit of the displayed value, and can be `dimensionless` or `unknown`. `fit_bounds`\nis in core units, and is left out for a parameter that a fit does not change. `meaning` is\nEnglish text, for a client with no translation."
       },
       "ValueRangeResponse": {
         "properties": {

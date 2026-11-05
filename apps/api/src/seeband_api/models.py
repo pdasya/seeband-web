@@ -6,9 +6,10 @@ from examples in the contract, so this way the mock's example equals the real re
 
 from collections.abc import Iterable
 from functools import cache
-from typing import Any
+from hashlib import sha256
+from typing import Annotated, Any
 
-from fastapi import Response
+from fastapi import Header, Response
 from pydantic import BaseModel
 from seeband_core.known_issues import disabled_issue_ids
 from seeband_core.model_catalog import registry
@@ -24,12 +25,12 @@ from seeband_core.model_interface import (
     Quantity,
     ValueRange,
 )
-from seeband_core.model_scales import default_start_value, display_range
+from seeband_core.model_scales import core_range, display_range
 
 from seeband_api.routing import api_router
 
-# Descriptions change only with a release, so an hour limits how long a client can hold old ones.
-CACHE_CONTROL = "public, max-age=3600"
+# Clients revalidate, as a client holding old descriptions could offer a mode that is now disabled.
+CACHE_CONTROL = "no-cache"
 
 router = api_router("models")
 
@@ -49,10 +50,22 @@ class BoundsResponse(BaseModel):
 class ParameterResponse(BaseModel):
     """One parameter of a fit mode.
 
-    `value_range` is in control units, and `display_range` is the same range as a user sees it.
-    `display_scale` converts control units to displayed values, and `fit_scale` to core units.
-    `unit` is the unit of the displayed value. `fit_bounds` is in core units, and is left out for a
-    parameter that a fit does not change. `meaning` is English text, for a client to fall back on.
+    `display_range` is the control's range as a user sees it, and `core_range` is the same range in
+    the core units of requests and results. Use these two, and do not calculate core values from the
+    scales: `display_scale` and `fit_scale`, from control units in `value_range`, are there for
+    information, as the desktop divides where a multiplication would change the last bit.
+
+    In each range, `step` is the desktop's keyboard increment, not a grid: values between steps are
+    valid, and the default or maximum need not lie on a step.
+
+    `scattering` lists the types the parameter applies to, and empty means all of them. A mode with
+    no choice of scattering uses all its parameters, whatever they list. A `fixed` parameter is set
+    by the user, and a fit does not change it. Requests hold every parameter of a mode, including
+    those of other scattering types.
+
+    `unit` is the unit of the displayed value, and can be `dimensionless` or `unknown`. `fit_bounds`
+    is in core units, and is left out for a parameter that a fit does not change. `meaning` is
+    English text, for a client with no translation.
     """
 
     name: str
@@ -62,9 +75,9 @@ class ParameterResponse(BaseModel):
     scattering: list[str]
     value_range: ValueRangeResponse
     display_range: ValueRangeResponse
+    core_range: ValueRangeResponse
     display_scale: float
     fit_scale: float
-    default_core_value: float
     fit_bounds: BoundsResponse | None = None
     bounds_editable: bool
 
@@ -75,18 +88,16 @@ class DegeneracyResponse(BaseModel):
 
 
 class KnownIssueResponse(BaseModel):
-    """A known error of the calculations in this mode.
+    """A known error of the calculations in this mode. Clients show `message_key` through i18n.
 
-    Clients show `message_key` through i18n. `explanation` is English text for developers. Empty
-    `scattering` means every type, and empty `columns` every curve of a kind. `condition`, if
-    present, limits the issue to some inputs. `fixed_by` is the issue in this repository that
-    removes it.
+    Empty `scattering` means every type. `curve_kinds` lists the curves it applies to, and empty
+    means none. Empty `columns` means every curve of those kinds. `condition`, if present, limits it
+    to some inputs. `fixed_by` is the issue in this repository that removes it.
     """
 
     id: str
     severity: IssueSeverity
     message_key: str
-    explanation: str
     fixed_by: str
     scattering: list[str]
     curve_kinds: list[CurveKind]
@@ -99,9 +110,9 @@ class FitModeResponse(BaseModel):
     """One way of fitting a model.
 
     A client must not offer a mode with `disabled`. `disabled_by` names the `known_issues` that say
-    why. `iterative` tells whether an iteration count means anything, and `threshold` and
-    `max_iterations` apply only to an iterative mode. `scattering` is empty when a mode has no
-    choice of scattering.
+    why. `iterative` tells whether an iteration count means anything. `threshold`, a relative
+    change, and `max_iterations` are what an iterative fit uses, and a request cannot change them.
+    `scattering` is empty when a mode has no choice of scattering.
     """
 
     id: str
@@ -151,9 +162,9 @@ def _parameter(spec: ParameterSpec) -> ParameterResponse:
         scattering=list(spec.scattering),
         value_range=_value_range(spec.value_range),
         display_range=_value_range(display_range(spec)),
+        core_range=_value_range(core_range(spec)),
         display_scale=spec.display_scale,
         fit_scale=spec.fit_scale,
-        default_core_value=default_start_value(spec),
         fit_bounds=BoundsResponse(lower=bounds.lower, upper=bounds.upper) if bounds else None,
         bounds_editable=spec.bounds_editable,
     )
@@ -164,7 +175,6 @@ def _known_issue(issue: KnownIssue) -> KnownIssueResponse:
         id=issue.id,
         severity=issue.severity,
         message_key=issue.message_key,
-        explanation=issue.explanation,
         fixed_by=issue.fixed_by,
         scattering=list(issue.scattering),
         curve_kinds=list(issue.curve_kinds),
@@ -221,6 +231,11 @@ def _registry_response() -> ModelsResponse:
     return build_models_response(registry.descriptions())
 
 
+def _registry_etag() -> str:
+    body = _registry_response().model_dump_json(exclude_none=True)
+    return f'"{sha256(body.encode()).hexdigest()[:32]}"'
+
+
 def _registry_example() -> dict[str, Any]:
     """The real descriptions, so that the mock can drive a client's forms."""
     return _registry_response().model_dump(mode="json", exclude_none=True)
@@ -228,15 +243,28 @@ def _registry_example() -> dict[str, Any]:
 
 @router.get(
     "/models",
+    response_model=ModelsResponse,
     response_model_exclude_none=True,
     responses={
         200: {
+            "headers": {
+                "Cache-Control": {"schema": {"type": "string"}, "example": CACHE_CONTROL},
+                "ETag": {"schema": {"type": "string"}, "example": _registry_etag()},
+            },
             "content": {
                 "application/json": {"examples": {"registry": {"value": _registry_example()}}}
-            }
-        }
+            },
+        },
+        304: {"description": "The descriptions have not changed since the given `If-None-Match`"},
     },
 )
-async def get_models(response: Response) -> ModelsResponse:
-    response.headers["Cache-Control"] = CACHE_CONTROL
+async def get_models(
+    response: Response,
+    if_none_match: Annotated[str | None, Header()] = None,
+) -> ModelsResponse | Response:
+    etag = _registry_etag()
+    headers = {"Cache-Control": CACHE_CONTROL, "ETag": etag}
+    if if_none_match is not None and (if_none_match.strip() == "*" or etag in if_none_match):
+        return Response(status_code=304, headers=headers)
+    response.headers.update(headers)
     return _registry_response()

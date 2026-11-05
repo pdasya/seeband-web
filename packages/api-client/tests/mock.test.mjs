@@ -108,6 +108,8 @@ describe("the mock of the real contract", async () => {
     const mode = models[0].fit_modes.find(({ id }) => id === "spb_s_rho_rh");
     assert.equal(mode.disabled, true);
     assert.deepEqual(mode.disabled_by, ["spb_hall_mode_disabled"]);
+    assert.equal(response.headers.get("cache-control"), "no-cache");
+    assert.match(response.headers.get("etag"), /^"[0-9a-f]{32}"$/);
   });
 
   for (const [status, code] of [
