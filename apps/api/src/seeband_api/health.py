@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from seeband_api.routing import api_router
 from seeband_api.version import API_VERSION
@@ -11,6 +11,10 @@ router = api_router("health")
 
 
 class HealthResponse(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={"examples": [{"status": "ok", "version": "1.0.0"}]}
+    )
+
     status: Literal["ok"]
     version: str
 

@@ -41,6 +41,8 @@ pnpm check
 
 GitHub Actions runs the same checks on every pull request and on pushes to `main`.
 
+To work on the client without the API, run `pnpm mock`. See [`packages/api-client`](packages/api-client/README.md).
+
 After changing the API, regenerate its contract and TypeScript types. The checks fail if they are out of date:
 
 ```sh

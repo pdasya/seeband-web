@@ -9,6 +9,7 @@
   "scripts": {
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
+    "mock": "pnpm --filter @seeband/api-client run mock",
     "api:generate": "uv run python -m seeband_api.export_openapi packages/api-client/openapi.json && pnpm --filter @seeband/api-client run generate",
     "typecheck": "pnpm -r --if-present run typecheck",
     "test": "pnpm -r --if-present run test",

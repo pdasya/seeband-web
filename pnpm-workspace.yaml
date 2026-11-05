@@ -3,3 +3,5 @@ packages:
   - "apps/site"
   - "packages/ui"
   - "packages/api-client"
+allowBuilds:
+  "@scarf/scarf": false

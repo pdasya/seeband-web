@@ -57,7 +57,7 @@ def test_unknown_path_uses_the_error_format(client: TestClient) -> None:
     response = client.get("/api/nothing-here")
 
     assert response.status_code == 404
-    assert response.json() == {"code": "not_found", "message": "Not Found", "details": None}
+    assert response.json() == {"code": "not_found", "message": "Not Found", "details": []}
 
 
 def test_wrong_method_uses_the_error_format_and_keeps_allow(client: TestClient) -> None:
@@ -109,7 +109,7 @@ def test_http_exception_with_a_detail_that_is_not_text_uses_the_error_format(
     response = client.get("/api/test/dict-detail")
 
     assert response.status_code == 400
-    assert response.json() == {"code": "http_error", "message": "HTTP error", "details": None}
+    assert response.json() == {"code": "http_error", "message": "HTTP error", "details": []}
 
 
 def test_api_error_uses_the_error_format(client: TestClient) -> None:
@@ -133,7 +133,7 @@ def test_unhandled_exception_uses_the_error_format_without_its_message(
     assert response.json() == {
         "code": "internal_error",
         "message": "Internal server error",
-        "details": None,
+        "details": [],
     }
 
 

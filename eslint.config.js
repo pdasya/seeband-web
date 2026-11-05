@@ -7,7 +7,14 @@ export default tseslint.config(
   {
     files: ["**/*.mjs"],
     languageOptions: {
-      globals: { URL: "readonly", console: "readonly", process: "writable" },
+      globals: {
+        Buffer: "readonly",
+        URL: "readonly",
+        console: "readonly",
+        fetch: "readonly",
+        performance: "readonly",
+        process: "writable",
+      },
     },
   },
   js.configs.recommended,
