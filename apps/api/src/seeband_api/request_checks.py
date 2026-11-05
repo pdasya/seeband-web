@@ -32,19 +32,21 @@ def invalid(code: str, message: str, location: list[str | int]) -> ErrorDetail:
     return ErrorDetail(location=["body", *location], code=code, message=message)
 
 
-def find_mode(model_id: str, fit_mode_id: str, error_code: str) -> tuple[ModelDescription, FitMode]:
-    """Finds a mode that can run, or refuses with `error_code` or as disabled."""
+def find_mode(
+    model_id: str, fit_mode_id: str, error_code: str, error_message: str
+) -> tuple[ModelDescription, FitMode]:
+    """Finds a mode that can run, or refuses with this error or as disabled."""
     descriptions = {description.id: description for description in registry.descriptions()}
     description = descriptions.get(model_id)
     if description is None:
         detail = invalid("unknown_model", "This model does not exist", ["model"])
-        raise ApiError(HTTPStatus.UNPROCESSABLE_CONTENT, error_code, "Invalid request", [detail])
+        raise ApiError(HTTPStatus.UNPROCESSABLE_CONTENT, error_code, error_message, [detail])
     try:
         fit_mode = description.fit_mode(fit_mode_id)
     except KeyError:
         detail = invalid("unknown_fit_mode", "This model has no such fit mode", ["fit_mode"])
         raise ApiError(
-            HTTPStatus.UNPROCESSABLE_CONTENT, error_code, "Invalid request", [detail]
+            HTTPStatus.UNPROCESSABLE_CONTENT, error_code, error_message, [detail]
         ) from None
     if fit_mode.disabled:
         raise ApiError(

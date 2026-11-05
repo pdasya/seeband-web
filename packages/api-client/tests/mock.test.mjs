@@ -163,6 +163,25 @@ describe("the mock of the real contract", async () => {
     });
   }
 
+  test("sends the retry hint of a full fit queue", async () => {
+    const response = await fetch(`${url}/api/fit`, {
+      method: "POST",
+      headers: { ...JSON_HEADERS, prefer: "code=429, example=fit_queue_full" },
+      body: JSON.stringify({
+        model: "dpb",
+        fit_mode: "dpb_s",
+        start: { m_eff: 1.01 },
+        min_temperature_k: 100,
+        max_temperature_k: 500,
+        measurements: { seebeck: { temperature_k: [100], values: [1e-4] } },
+      }),
+    });
+
+    assert.equal(response.status, 429);
+    assert.equal(response.headers.get("retry-after"), "5");
+    assert.equal((await response.json()).code, "fit_queue_full");
+  });
+
   test("serves a fit result", async () => {
     const response = await fetch(`${url}/api/fit`, {
       method: "POST",

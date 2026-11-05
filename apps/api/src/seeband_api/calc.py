@@ -193,7 +193,9 @@ def _to_response(outcome: CalcOutcome) -> CalcResponse:
 
 @router.post("/calc")
 async def post_calc(body: CalcRequest, pool: CalcPoolDep) -> CalcResponse:
-    description, fit_mode = find_mode(body.model, body.fit_mode, "invalid_calculation")
+    description, fit_mode = find_mode(
+        body.model, body.fit_mode, "invalid_calculation", "Invalid calculation"
+    )
     details = [
         *check_scattering(body.scattering, fit_mode),
         *check_degeneracy(body.band_1_degeneracy, body.band_2_degeneracy, fit_mode),

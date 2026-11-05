@@ -48,3 +48,11 @@ def write_pid_and_hang(path: str, send: Callable[[int], None]) -> None:
     with open(path, "w", encoding="utf-8") as file:
         file.write(str(os.getpid()))
     time.sleep(120)
+
+
+def hang_with_a_large_request(blob: bytes, send: Callable[[int], None]) -> None:
+    time.sleep(120)
+
+
+def exit_with_a_value(value: str, send: Callable[[int], None]) -> None:
+    raise SystemExit(value)

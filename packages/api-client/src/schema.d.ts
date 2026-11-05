@@ -1104,6 +1104,17 @@ export interface operations {
                     "application/json": components["schemas"]["FitResponse"];
                 };
             };
+            /** @description Too many fits are running or waiting */
+            429: {
+                headers: {
+                    /** @example 5 */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Default Response */
             default: {
                 headers: {

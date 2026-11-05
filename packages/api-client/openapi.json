@@ -3703,6 +3703,33 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Too many fits are running or waiting",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer"
+                },
+                "example": 5
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "fit_queue_full": {
+                    "value": {
+                      "code": "fit_queue_full",
+                      "message": "Too many fits are running. Try again shortly.",
+                      "details": []
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }

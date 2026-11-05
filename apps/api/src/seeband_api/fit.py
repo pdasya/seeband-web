@@ -11,8 +11,8 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from seeband_core.interpolation import in_fit_range
 from seeband_core.model_interface import Bounds, FitMode, FitRequest, FitResult, FitStatus, Quantity
 
-from seeband_api.errors import ApiError, ErrorDetail
-from seeband_api.fit_runner import FitRunnerDep
+from seeband_api.errors import ERROR_EXAMPLES, ApiError, ErrorDetail, ErrorResponse
+from seeband_api.fit_runner import RETRY_AFTER_S, FitRunnerDep
 from seeband_api.fit_worker import run_fit
 from seeband_api.request_checks import (
     FiniteFloat,
@@ -180,9 +180,26 @@ def _to_response(result: FitResult) -> FitResponse:
     )
 
 
-@router.post("/fit", response_model_exclude_none=True)
+@router.post(
+    "/fit",
+    response_model_exclude_none=True,
+    responses={
+        429: {
+            "model": ErrorResponse,
+            "description": "Too many fits are running or waiting",
+            "headers": {
+                "Retry-After": {"schema": {"type": "integer"}, "example": RETRY_AFTER_S},
+            },
+            "content": {
+                "application/json": {
+                    "examples": {"fit_queue_full": {"value": ERROR_EXAMPLES["fit_queue_full"]}}
+                }
+            },
+        }
+    },
+)
 async def post_fit(body: FitApiRequest, runner: FitRunnerDep) -> FitResponse:
-    description, fit_mode = find_mode(body.model, body.fit_mode, "invalid_fit")
+    description, fit_mode = find_mode(body.model, body.fit_mode, "invalid_fit", "Invalid fit")
     scattering_details = check_scattering(body.scattering, fit_mode)
     details = [
         *scattering_details,

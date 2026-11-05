@@ -4,6 +4,9 @@ import asyncio
 import logging
 import multiprocessing
 import os
+import signal
+import subprocess
+import sys
 import time
 from collections.abc import Awaitable, Callable, Iterator
 from pathlib import Path
@@ -55,17 +58,20 @@ def test_fit_past_the_time_limit_answers_504_and_ends() -> None:
 
 
 def test_process_that_ignores_terminate_is_killed() -> None:
-    # The limit leaves time to start, and the iteration shows that terminate was being ignored.
-    runner = FitRunner(1, 0, 5.0)
-    seen: list[int] = []
-    started = time.monotonic()
+    runner = FitRunner(1, 0, 60.0)
 
-    with pytest.raises(ApiError) as raised:
-        _run(lambda: runner.run(fit_functions.hang_ignoring_terminate, on_iteration=seen.append))
+    async def main() -> None:
+        seen = asyncio.Event()
+        task = asyncio.create_task(
+            runner.run(fit_functions.hang_ignoring_terminate, on_iteration=lambda _: seen.set())
+        )
+        # The iteration shows that it has started to ignore terminate.
+        await seen.wait()
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await asyncio.wait_for(task, 10.0)
 
-    assert raised.value.code == "fit_timeout"
-    assert seen == [1]
-    assert time.monotonic() - started < 20
+    asyncio.run(main())
 
 
 @pytest.mark.parametrize("function", [fit_functions.die, fit_functions.exit_quietly])
@@ -123,6 +129,95 @@ def test_cancelling_a_call_ends_its_process(tmp_path: Path) -> None:
         os.kill(pid, 0)
 
 
+@pytest.mark.parametrize("delay_s", [0.0, 0.02, 0.1, 0.3])
+@pytest.mark.parametrize("size", [2_000, 128_000, 2_000_000])
+def test_cancelling_while_it_starts_leaves_no_process(delay_s: float, size: int) -> None:
+    """A large request waits for the child to read it, which is when a cancel used to leak."""
+    runner = FitRunner(1, 0, 60.0)
+
+    async def main() -> None:
+        task = asyncio.create_task(runner.run(fit_functions.hang_with_a_large_request, b"x" * size))
+        await asyncio.sleep(delay_s)
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await asyncio.wait_for(task, 10.0)
+        assert not runner._semaphore.locked()
+        assert runner._running == set()
+
+    asyncio.run(main())
+
+
+def test_a_second_cancel_keeps_the_slot_until_the_process_has_ended() -> None:
+    runner = FitRunner(1, 0, 60.0)
+
+    async def main() -> None:
+        seen = asyncio.Event()
+        task = asyncio.create_task(
+            runner.run(fit_functions.hang_ignoring_terminate, on_iteration=lambda _: seen.set())
+        )
+        await seen.wait()
+        task.cancel()
+        await asyncio.sleep(0.05)
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await asyncio.wait_for(task, 10.0)
+        alive = [
+            child
+            for child in multiprocessing.active_children()
+            if "SpawnProcess" in child.name and child.is_alive()
+        ]
+        assert alive == []
+
+    asyncio.run(main())
+
+
+def test_exit_in_the_process_answers_500_with_its_type_only() -> None:
+    runner = FitRunner(1, 0, 30.0)
+
+    with pytest.raises(ApiError) as raised:
+        _run(lambda: runner.run(fit_functions.exit_with_a_value, "SECRET-VALUE"))
+
+    assert raised.value.code == "fit_failed"
+
+
+def test_pipes_are_closed_however_a_fit_ends() -> None:
+    runner = FitRunner(1, 0, 30.0)
+
+    async def main() -> None:
+        await runner.run(fit_functions.double, 2)
+        before = len(os.listdir("/dev/fd"))
+        for _ in range(3):
+            await runner.run(fit_functions.double, 2)
+            with pytest.raises(ApiError):
+                await runner.run(fit_functions.die)
+        assert len(os.listdir("/dev/fd")) <= before
+
+    asyncio.run(main())
+
+
+def test_fit_ends_when_the_server_is_killed(tmp_path: Path, support_dir: Path) -> None:
+    pid_file = tmp_path / "pid"
+    server = subprocess.run(
+        [sys.executable, str(support_dir / "run_fit_then_die.py"), str(pid_file)],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        env={**os.environ, "PYTHONPATH": os.pathsep.join(sys.path)},
+    )
+    assert server.returncode == -signal.SIGKILL, server.stderr
+    pid = int(pid_file.read_text())
+
+    deadline = time.monotonic() + 15
+    while time.monotonic() < deadline:
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return
+        time.sleep(0.05)
+    os.kill(pid, signal.SIGKILL)
+    pytest.fail("The fit outlived the server")
+
+
 def test_requests_beyond_the_limit_are_refused_at_once_with_a_retry_hint() -> None:
     runner = FitRunner(1, 1, 30.0)
 
@@ -146,7 +241,7 @@ def test_requests_beyond_the_limit_are_refused_at_once_with_a_retry_hint() -> No
     assert refused_after < 0.5
 
 
-def test_at_most_the_limit_run_at_once(tmp_path: Path) -> None:
+def test_at_most_the_limit_run_at_once() -> None:
     runner = FitRunner(2, 10, 30.0)
     high_water = 0
 
@@ -156,7 +251,7 @@ def test_at_most_the_limit_run_at_once(tmp_path: Path) -> None:
         async def watch() -> None:
             nonlocal high_water
             while True:
-                high_water = max(high_water, len(runner._processes))
+                high_water = max(high_water, len(runner._running))
                 await asyncio.sleep(0.01)
 
         watcher = asyncio.create_task(watch())

@@ -87,6 +87,20 @@ def test_result_equals_the_core(
     assert body["known_issues"] == list(expected.known_issues)
 
 
+def test_single_pass_fit_leaves_out_iterations(client: TestClient) -> None:
+    body = client.post("/api/fit", json=_body()).json()
+
+    assert "iterations" not in body
+    assert "message" not in body
+
+
+def test_refused_model_uses_the_format_of_this_route(client: TestClient) -> None:
+    response = client.post("/api/fit", json=_body(model="nope"))
+
+    assert response.json()["code"] == "invalid_fit"
+    assert response.json()["message"] == "Invalid fit"
+
+
 def test_custom_bounds_reach_the_fit(client: TestClient) -> None:
     # The default start of the band gap is 1000 K, and the fit leaves it without these bounds.
     bounds = Bounds(990.0, 1010.0)
@@ -154,7 +168,7 @@ def test_only_points_in_the_fit_range_enter_the_fit(client: TestClient) -> None:
     assert body["parameters"] == expected.parameters
 
 
-def test_disabled_mode_is_refused_before_any_process(client: TestClient) -> None:
+def test_disabled_mode_is_refused(client: TestClient) -> None:
     response = client.post(
         "/api/fit", json=_body("spb", "spb_s_rho_rh", scattering="acPh") | {"measurements": {}}
     )
@@ -243,6 +257,7 @@ def test_degeneracy_is_refused_on_a_mode_without_one(client: TestClient) -> None
         {"start": {"m_eff": "1.5"}},
         {"min_temperature_k": 500.0, "max_temperature_k": 100.0},
         {"min_temperature_k": 0.0},
+        {"min_temperature_k": 100.0, "max_temperature_k": 100.0},
         {"extrapolated": "yes"},
         {"band_1_degeneracy": 0.0},
         {"measurements": {"seebeck": {"temperature_k": [1.0], "values": []}}},
@@ -270,6 +285,13 @@ def test_full_queue_answers_429_with_a_retry_hint() -> None:
     assert response.status_code == 429
     assert response.json()["code"] == "fit_queue_full"
     assert response.headers["retry-after"] == "5"
+
+
+def test_contract_declares_the_retry_hint() -> None:
+    contract = create_app().openapi()
+    answer = contract["paths"]["/api/fit"]["post"]["responses"]["429"]
+
+    assert "Retry-After" in answer["headers"]
 
 
 def test_stopping_the_app_closes_the_runner(monkeypatch: pytest.MonkeyPatch) -> None:
