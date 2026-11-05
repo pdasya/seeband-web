@@ -48,7 +48,7 @@ The files were saved with Keras 2.9, and these references were captured with Ten
 
 ## Numpy port
 
-`seeband_core.neural_nets` runs the same nets with numpy, and `tests/test_neural_nets.py` compares each step with these references. It returns `NeuralNetGuess`, with the chosen range and the prediction, or `NoNeuralNet`.
+`seeband_core.neural_nets` runs the same nets with numpy, and `tests/test_neural_nets.py` compares each step with these references. It returns `NeuralNetGuess`, with the chosen range and the prediction, or `NoNeuralNet`. `start_values` turns a guess into what the desktop's sliders would hold, through `model_scales.control_value`, and equals `desktop_start_values` on all 8 cases with a net. `POST /api/guess` serves these.
 
 | Step                                   | Rule                                 | Largest difference on one Mac |
 | -------------------------------------- | ------------------------------------ | ----------------------------- |
@@ -64,10 +64,10 @@ The port keeps the desktop's behaviour:
 
 - It chooses a net from the first and last rows, which P9 fixes.
 - It computes the inverse transform in float64, as the desktop does with numpy 1.26. With numpy 2, the desktop's expressions would stay in float32, so the port converts explicitly.
-- Non-finite values come back in a normal `NeuralNetGuess`. An output of exactly 1 gives infinity. With negative Seebeck, outputs of 1 give m_eff = 0, an infinite gap and a Fermi energy of NaN. NaN in the Seebeck data gives NaN. The API must handle these, because they are not valid JSON numbers.
+- Non-finite values come back in a normal `NeuralNetGuess`. An output of exactly 1 gives infinity. With negative Seebeck, outputs of 1 give m_eff = 0, an infinite gap and a Fermi energy of NaN. NaN in the Seebeck data gives NaN. They are not valid JSON numbers, so `start_values` returns None for them, and the API answers `not_finite`.
 - The sign of Seebeck follows the mean of the first three interpolated values, so a mean near 0 can follow numerical noise.
 
-The desktop's slider rounding and limits are not part of this module, and a later task needs them. Its slider code raises `OverflowError` on an infinite prediction.
+The desktop's slider code raises `OverflowError` on an infinite prediction, and `ValueError` on NaN.
 
 One difference: if the Seebeck fit fails, the port raises `ValueError`, while the desktop fails later with `TypeError`.
 

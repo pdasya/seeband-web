@@ -47,6 +47,9 @@ The client calls `/api` on its own origin, and the dev server forwards `/api` to
 | Invalid request     | `Prefer: code=422, example=validation_error`               |
 | Not found           | `Prefer: code=404, example=not_found`                      |
 | No curve            | `Prefer: code=422, example=calculation_failed`             |
+| No net              | `Prefer: code=200, example=no_net`                         |
+| Guess not finite    | `Prefer: code=200, example=not_finite`                     |
+| Guess refused, SPB  | `Prefer: code=422, example=guess_unavailable`              |
 | Disabled mode       | `Prefer: code=409, example=fit_mode_disabled`              |
 | Too slow            | `Prefer: code=504, example=calculation_timeout`            |
 | Worker died         | `Prefer: code=503, example=calculation_unavailable`        |
@@ -56,6 +59,7 @@ Give `example` with `code`, as otherwise Prism returns the first example whateve
 ### Where the mock differs from the API
 
 - Responses are the examples, and do not depend on the request, so `POST /api/calc` always returns the same 5-point curves and `POST /api/parse` the same 3 rows. A route's response cannot show `null` in a required field, because FastAPI drops `null` from examples. Check real curves against the API.
+- `POST /api/guess` always returns the same `guess` for DPB or SPB, unless `Prefer` asks for another answer. Its `warnings` are always empty, so check those against the API.
 - It does not stream events, and a `Prefer` failure with `Accept: text/event-stream` gives `mock_error`.
 - A 405 has no `Allow` header, and `Accept: application/xml` gives a 406 `mock_error`, where the API answers with JSON.
 - `GET /api/models` sends its `ETag`, but never answers 304.

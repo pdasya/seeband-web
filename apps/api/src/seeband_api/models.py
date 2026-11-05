@@ -147,13 +147,17 @@ class FitModeResponse(BaseModel):
 
 
 class ModelResponse(BaseModel):
-    """A model. `name` is English text, for a client to fall back on."""
+    """A model. `name` is English text, for a client to fall back on.
+
+    `has_initial_guess` says that `POST /api/guess` gives start values for this model.
+    """
 
     id: str
     name: str
     default_min_temperature_k: float
     default_max_temperature_k: float
     default_curve_points: int
+    has_initial_guess: bool
     fit_modes: list[FitModeResponse]
 
 
@@ -246,6 +250,7 @@ def build_models_response(descriptions: Iterable[ModelDescription]) -> ModelsRes
                 default_min_temperature_k=description.default_min_temperature_k,
                 default_max_temperature_k=description.default_max_temperature_k,
                 default_curve_points=description.default_curve_points,
+                has_initial_guess=description.has_initial_guess,
                 fit_modes=[_fit_mode(fit_mode) for fit_mode in description.fit_modes],
             )
             for description in descriptions

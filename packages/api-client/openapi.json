@@ -98,6 +98,38 @@
                       ]
                     }
                   },
+                  "invalid_guess": {
+                    "value": {
+                      "code": "invalid_guess",
+                      "message": "Invalid request",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "model"
+                          ],
+                          "code": "unknown_model",
+                          "message": "This model does not exist"
+                        }
+                      ]
+                    }
+                  },
+                  "guess_unavailable": {
+                    "value": {
+                      "code": "guess_unavailable",
+                      "message": "This model has no neural net guess",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "model"
+                          ],
+                          "code": "no_neural_net",
+                          "message": "See has_initial_guess in GET /api/models"
+                        }
+                      ]
+                    }
+                  },
                   "invalid_calculation": {
                     "value": {
                       "code": "invalid_calculation",
@@ -182,6 +214,7 @@
                           "default_min_temperature_k": 50.0,
                           "default_max_temperature_k": 800.0,
                           "default_curve_points": 50,
+                          "has_initial_guess": false,
                           "fit_modes": [
                             {
                               "id": "spb_s",
@@ -957,6 +990,7 @@
                           "default_min_temperature_k": 50.0,
                           "default_max_temperature_k": 800.0,
                           "default_curve_points": 50,
+                          "has_initial_guess": true,
                           "fit_modes": [
                             {
                               "id": "dpb_s",
@@ -2282,7 +2316,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "example": "\"6aa935eebca0b1428b5535199dee78c0\""
+                "example": "\"0e5a3e6231ad9e8798854c4fb7e813de\""
               }
             }
           },
@@ -2353,6 +2387,38 @@
                           ],
                           "code": "unknown_column",
                           "message": "The text has no such column"
+                        }
+                      ]
+                    }
+                  },
+                  "invalid_guess": {
+                    "value": {
+                      "code": "invalid_guess",
+                      "message": "Invalid request",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "model"
+                          ],
+                          "code": "unknown_model",
+                          "message": "This model does not exist"
+                        }
+                      ]
+                    }
+                  },
+                  "guess_unavailable": {
+                    "value": {
+                      "code": "guess_unavailable",
+                      "message": "This model has no neural net guess",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "model"
+                          ],
+                          "code": "no_neural_net",
+                          "message": "See has_initial_guess in GET /api/models"
                         }
                       ]
                     }
@@ -2504,6 +2570,38 @@
                           ],
                           "code": "unknown_column",
                           "message": "The text has no such column"
+                        }
+                      ]
+                    }
+                  },
+                  "invalid_guess": {
+                    "value": {
+                      "code": "invalid_guess",
+                      "message": "Invalid request",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "model"
+                          ],
+                          "code": "unknown_model",
+                          "message": "This model does not exist"
+                        }
+                      ]
+                    }
+                  },
+                  "guess_unavailable": {
+                    "value": {
+                      "code": "guess_unavailable",
+                      "message": "This model has no neural net guess",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "model"
+                          ],
+                          "code": "no_neural_net",
+                          "message": "See has_initial_guess in GET /api/models"
                         }
                       ]
                     }
@@ -2828,6 +2926,296 @@
                           ],
                           "code": "unknown_column",
                           "message": "The text has no such column"
+                        }
+                      ]
+                    }
+                  },
+                  "invalid_guess": {
+                    "value": {
+                      "code": "invalid_guess",
+                      "message": "Invalid request",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "model"
+                          ],
+                          "code": "unknown_model",
+                          "message": "This model does not exist"
+                        }
+                      ]
+                    }
+                  },
+                  "guess_unavailable": {
+                    "value": {
+                      "code": "guess_unavailable",
+                      "message": "This model has no neural net guess",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "model"
+                          ],
+                          "code": "no_neural_net",
+                          "message": "See has_initial_guess in GET /api/models"
+                        }
+                      ]
+                    }
+                  },
+                  "invalid_calculation": {
+                    "value": {
+                      "code": "invalid_calculation",
+                      "message": "Invalid calculation",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "parameters",
+                            "m_eff"
+                          ],
+                          "code": "missing_parameter",
+                          "message": "This mode needs it"
+                        }
+                      ]
+                    }
+                  },
+                  "validation_error": {
+                    "value": {
+                      "code": "validation_error",
+                      "message": "Invalid request",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "seebeck_v_per_k",
+                            3
+                          ],
+                          "code": "float_parsing",
+                          "message": "Input should be a valid number, unable to parse string as a number"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/guess": {
+      "post": {
+        "tags": [
+          "guess"
+        ],
+        "summary": "Post Guess",
+        "operationId": "post_guess",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GuessRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/GuessFound"
+                    },
+                    {
+                      "$ref": "#/components/schemas/GuessNoNet"
+                    },
+                    {
+                      "$ref": "#/components/schemas/GuessNotFinite"
+                    }
+                  ],
+                  "title": "Response Post Guess",
+                  "discriminator": {
+                    "propertyName": "status",
+                    "mapping": {
+                      "guess": "#/components/schemas/GuessFound",
+                      "no_net": "#/components/schemas/GuessNoNet",
+                      "not_finite": "#/components/schemas/GuessNotFinite"
+                    }
+                  }
+                },
+                "examples": {
+                  "guess": {
+                    "value": {
+                      "status": "guess",
+                      "net_range": {
+                        "min_temperature_k": 400.0,
+                        "max_temperature_k": 700.0
+                      },
+                      "prediction": {
+                        "m_eff": 1.425,
+                        "band_gap_k": 354.6,
+                        "fermi_energy_k": 939.8
+                      },
+                      "start_values": {
+                        "m_eff": 1.42,
+                        "band_gap": 355.0,
+                        "fermi_energy": 940.0
+                      },
+                      "warnings": []
+                    }
+                  },
+                  "no_net": {
+                    "value": {
+                      "status": "no_net",
+                      "reason": "temperature_span",
+                      "first_temperature_k": 308.5,
+                      "last_temperature_k": 650.0,
+                      "available_ranges": [
+                        {
+                          "min_temperature_k": 300.0,
+                          "max_temperature_k": 800.0
+                        },
+                        {
+                          "min_temperature_k": 400.0,
+                          "max_temperature_k": 700.0
+                        },
+                        {
+                          "min_temperature_k": 300.0,
+                          "max_temperature_k": 600.0
+                        },
+                        {
+                          "min_temperature_k": 200.0,
+                          "max_temperature_k": 500.0
+                        },
+                        {
+                          "min_temperature_k": 100.0,
+                          "max_temperature_k": 400.0
+                        }
+                      ],
+                      "warnings": []
+                    }
+                  },
+                  "not_finite": {
+                    "value": {
+                      "status": "not_finite",
+                      "net_range": {
+                        "min_temperature_k": 400.0,
+                        "max_temperature_k": 700.0
+                      },
+                      "warnings": []
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "internal_error": {
+                    "value": {
+                      "code": "internal_error",
+                      "message": "Internal server error",
+                      "details": []
+                    }
+                  },
+                  "not_found": {
+                    "value": {
+                      "code": "not_found",
+                      "message": "Not Found",
+                      "details": []
+                    }
+                  },
+                  "calculation_failed": {
+                    "value": {
+                      "code": "calculation_failed",
+                      "message": "The calculation has no result for these parameters and temperatures",
+                      "details": []
+                    }
+                  },
+                  "calculation_timeout": {
+                    "value": {
+                      "code": "calculation_timeout",
+                      "message": "The calculation took too long",
+                      "details": []
+                    }
+                  },
+                  "calculation_unavailable": {
+                    "value": {
+                      "code": "calculation_unavailable",
+                      "message": "The calculation stopped unexpectedly. Try again.",
+                      "details": []
+                    }
+                  },
+                  "fit_mode_disabled": {
+                    "value": {
+                      "code": "fit_mode_disabled",
+                      "message": "This fit mode is disabled until its known issue is fixed",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "fit_mode"
+                          ],
+                          "code": "spb_hall_mode_disabled",
+                          "message": "A known issue disables this mode"
+                        }
+                      ]
+                    }
+                  },
+                  "invalid_parse_request": {
+                    "value": {
+                      "code": "invalid_parse_request",
+                      "message": "Invalid request",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "mapping"
+                          ],
+                          "code": "unknown_column",
+                          "message": "The text has no such column"
+                        }
+                      ]
+                    }
+                  },
+                  "invalid_guess": {
+                    "value": {
+                      "code": "invalid_guess",
+                      "message": "Invalid request",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "model"
+                          ],
+                          "code": "unknown_model",
+                          "message": "This model does not exist"
+                        }
+                      ]
+                    }
+                  },
+                  "guess_unavailable": {
+                    "value": {
+                      "code": "guess_unavailable",
+                      "message": "This model has no neural net guess",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "model"
+                          ],
+                          "code": "no_neural_net",
+                          "message": "See has_initial_guess in GET /api/models"
                         }
                       ]
                     }
@@ -3425,6 +3813,196 @@
         "title": "FitModeResponse",
         "description": "One way of fitting a model.\n\nA client must not offer a mode with `disabled`. `disabled_by` names the `known_issues` that say\nwhy. `iterative` tells whether an iteration count means anything. `threshold`, a relative\nchange, and `max_iterations` are what an iterative fit uses, and a request cannot change them.\n`scattering` is empty when a mode has no choice of scattering."
       },
+      "GuessFound": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "guess",
+            "title": "Status"
+          },
+          "net_range": {
+            "$ref": "#/components/schemas/NetRange"
+          },
+          "prediction": {
+            "$ref": "#/components/schemas/Prediction"
+          },
+          "start_values": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Start Values"
+          },
+          "warnings": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "unsorted_temperature",
+                "underdetermined_fit",
+                "m_eff_rounds_to_zero"
+              ]
+            },
+            "type": "array",
+            "title": "Warnings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "net_range",
+          "prediction",
+          "start_values",
+          "warnings"
+        ],
+        "title": "GuessFound",
+        "description": "A guess.\n\n`start_values` holds what to use, by the parameter names of `GET /api/models`, in core units as\nin `core_range`: `m_eff` is dimensionless, `band_gap` and `fermi_energy` are in K. They are\nrounded and limited as the desktop's sliders do, so they lie in `core_range` of every mode of\nthe model. Other parameters keep their values. With the warning `m_eff_rounds_to_zero`, `m_eff`\nis 0, which has no curve, and a fit from it fails, so a client should not use it as it is."
+      },
+      "GuessNoNet": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "no_net",
+            "title": "Status"
+          },
+          "reason": {
+            "type": "string",
+            "const": "temperature_span",
+            "title": "Reason"
+          },
+          "first_temperature_k": {
+            "type": "number",
+            "title": "First Temperature K"
+          },
+          "last_temperature_k": {
+            "type": "number",
+            "title": "Last Temperature K"
+          },
+          "available_ranges": {
+            "items": {
+              "$ref": "#/components/schemas/NetRange"
+            },
+            "type": "array",
+            "title": "Available Ranges"
+          },
+          "warnings": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "unsorted_temperature",
+                "underdetermined_fit",
+                "m_eff_rounds_to_zero"
+              ]
+            },
+            "type": "array",
+            "title": "Warnings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "reason",
+          "first_temperature_k",
+          "last_temperature_k",
+          "available_ranges",
+          "warnings"
+        ],
+        "title": "GuessNoNet",
+        "description": "No net fits: the first and last rows do not span any of `available_ranges`.\n\nA client should keep its current values, as the desktop does."
+      },
+      "GuessNotFinite": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "not_finite",
+            "title": "Status"
+          },
+          "net_range": {
+            "$ref": "#/components/schemas/NetRange"
+          },
+          "warnings": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "unsorted_temperature",
+                "underdetermined_fit",
+                "m_eff_rounds_to_zero"
+              ]
+            },
+            "type": "array",
+            "title": "Warnings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "net_range",
+          "warnings"
+        ],
+        "title": "GuessNotFinite",
+        "description": "The net ran, but a value of its prediction is not finite, so there is nothing to use.\n\nThe prediction is left out, as JSON has no such numbers. A client should keep its values."
+      },
+      "GuessRequest": {
+        "properties": {
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "temperature_k": {
+            "items": {
+              "type": "number",
+              "exclusiveMinimum": 0.0
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Temperature K"
+          },
+          "seebeck_v_per_k": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Seebeck V Per K"
+          }
+        },
+        "type": "object",
+        "required": [
+          "model",
+          "temperature_k",
+          "seebeck_v_per_k"
+        ],
+        "title": "GuessRequest",
+        "description": "Measured Seebeck data, in V/K, with all rows of the data.\n\nUnlike `POST /api/calc`, this takes every row and not only the fit range, as the desktop does.\nRows are read in the order sent, and the choice of net reads the first and last.",
+        "examples": [
+          {
+            "model": "dpb",
+            "seebeck_v_per_k": [
+              -8.983e-06,
+              -5.032e-05,
+              -7.751e-05,
+              -9.938e-05,
+              -0.0001174,
+              -0.0001202,
+              -0.0001046,
+              -8.192e-05,
+              -6.19e-05,
+              -4.7e-05
+            ],
+            "temperature_k": [
+              25.0,
+              100.0,
+              175.0,
+              250.0,
+              325.0,
+              400.0,
+              475.0,
+              550.0,
+              625.0,
+              700.0
+            ]
+          }
+        ]
+      },
       "HealthResponse": {
         "properties": {
           "status": {
@@ -3760,6 +4338,10 @@
             "type": "integer",
             "title": "Default Curve Points"
           },
+          "has_initial_guess": {
+            "type": "boolean",
+            "title": "Has Initial Guess"
+          },
           "fit_modes": {
             "items": {
               "$ref": "#/components/schemas/FitModeResponse"
@@ -3775,10 +4357,11 @@
           "default_min_temperature_k",
           "default_max_temperature_k",
           "default_curve_points",
+          "has_initial_guess",
           "fit_modes"
         ],
         "title": "ModelResponse",
-        "description": "A model. `name` is English text, for a client to fall back on."
+        "description": "A model. `name` is English text, for a client to fall back on.\n\n`has_initial_guess` says that `POST /api/guess` gives start values for this model."
       },
       "ModelsResponse": {
         "properties": {
@@ -3795,6 +4378,25 @@
           "models"
         ],
         "title": "ModelsResponse"
+      },
+      "NetRange": {
+        "properties": {
+          "min_temperature_k": {
+            "type": "number",
+            "title": "Min Temperature K"
+          },
+          "max_temperature_k": {
+            "type": "number",
+            "title": "Max Temperature K"
+          }
+        },
+        "type": "object",
+        "required": [
+          "min_temperature_k",
+          "max_temperature_k"
+        ],
+        "title": "NetRange",
+        "description": "The temperature span a net needs, and the range of its input."
       },
       "ParameterResponse": {
         "properties": {
@@ -4044,6 +4646,30 @@
         ],
         "title": "ParseResponse",
         "description": "What the text holds. A file with problems is still a 200, with a preview and its `errors`.\n\n`measurements` is empty with any `errors`. `headers` is left out when no header matches the\ncolumns. `column_count` is 0 when neither a row nor a header sets it. `preview` holds the first\nrows that could be read, in the order of the text, and `row_count` all of them. `mapping` is the\nsuggestion or the user's choice, and with no readable rows, always the suggestion. `warnings`\nholds every kind, with at most 100 `preamble_skipped`, and `warnings_omitted` counts the rest.\n`interpolation_failed` names quantities that could not be interpolated."
+      },
+      "Prediction": {
+        "properties": {
+          "m_eff": {
+            "type": "number",
+            "title": "M Eff"
+          },
+          "band_gap_k": {
+            "type": "number",
+            "title": "Band Gap K"
+          },
+          "fermi_energy_k": {
+            "type": "number",
+            "title": "Fermi Energy K"
+          }
+        },
+        "type": "object",
+        "required": [
+          "m_eff",
+          "band_gap_k",
+          "fermi_energy_k"
+        ],
+        "title": "Prediction",
+        "description": "The net's prediction as it is, in core units, before any rounding or limits."
       },
       "RmseResponse": {
         "properties": {

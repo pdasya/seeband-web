@@ -67,6 +67,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/guess": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Guess */
+        post: operations["post_guess"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -329,6 +346,115 @@ export interface components {
             known_issues: components["schemas"]["KnownIssueResponse"][];
         };
         /**
+         * GuessFound
+         * @description A guess.
+         *
+         *     `start_values` holds what to use, by the parameter names of `GET /api/models`, in core units as
+         *     in `core_range`: `m_eff` is dimensionless, `band_gap` and `fermi_energy` are in K. They are
+         *     rounded and limited as the desktop's sliders do, so they lie in `core_range` of every mode of
+         *     the model. Other parameters keep their values. With the warning `m_eff_rounds_to_zero`, `m_eff`
+         *     is 0, which has no curve, and a fit from it fails, so a client should not use it as it is.
+         */
+        GuessFound: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            status: "guess";
+            net_range: components["schemas"]["NetRange"];
+            prediction: components["schemas"]["Prediction"];
+            /** Start Values */
+            start_values: {
+                [key: string]: number;
+            };
+            /** Warnings */
+            warnings: ("unsorted_temperature" | "underdetermined_fit" | "m_eff_rounds_to_zero")[];
+        };
+        /**
+         * GuessNoNet
+         * @description No net fits: the first and last rows do not span any of `available_ranges`.
+         *
+         *     A client should keep its current values, as the desktop does.
+         */
+        GuessNoNet: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            status: "no_net";
+            /**
+             * Reason
+             * @constant
+             */
+            reason: "temperature_span";
+            /** First Temperature K */
+            first_temperature_k: number;
+            /** Last Temperature K */
+            last_temperature_k: number;
+            /** Available Ranges */
+            available_ranges: components["schemas"]["NetRange"][];
+            /** Warnings */
+            warnings: ("unsorted_temperature" | "underdetermined_fit" | "m_eff_rounds_to_zero")[];
+        };
+        /**
+         * GuessNotFinite
+         * @description The net ran, but a value of its prediction is not finite, so there is nothing to use.
+         *
+         *     The prediction is left out, as JSON has no such numbers. A client should keep its values.
+         */
+        GuessNotFinite: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            status: "not_finite";
+            net_range: components["schemas"]["NetRange"];
+            /** Warnings */
+            warnings: ("unsorted_temperature" | "underdetermined_fit" | "m_eff_rounds_to_zero")[];
+        };
+        /**
+         * GuessRequest
+         * @description Measured Seebeck data, in V/K, with all rows of the data.
+         *
+         *     Unlike `POST /api/calc`, this takes every row and not only the fit range, as the desktop does.
+         *     Rows are read in the order sent, and the choice of net reads the first and last.
+         * @example {
+         *       "model": "dpb",
+         *       "seebeck_v_per_k": [
+         *         -0.000008983,
+         *         -0.00005032,
+         *         -0.00007751,
+         *         -0.00009938,
+         *         -0.0001174,
+         *         -0.0001202,
+         *         -0.0001046,
+         *         -0.00008192,
+         *         -0.0000619,
+         *         -0.000047
+         *       ],
+         *       "temperature_k": [
+         *         25,
+         *         100,
+         *         175,
+         *         250,
+         *         325,
+         *         400,
+         *         475,
+         *         550,
+         *         625,
+         *         700
+         *       ]
+         *     }
+         */
+        GuessRequest: {
+            /** Model */
+            model: string;
+            /** Temperature K */
+            temperature_k: number[];
+            /** Seebeck V Per K */
+            seebeck_v_per_k: number[];
+        };
+        /**
          * HealthResponse
          * @example {
          *       "status": "ok",
@@ -449,6 +575,8 @@ export interface components {
         /**
          * ModelResponse
          * @description A model. `name` is English text, for a client to fall back on.
+         *
+         *     `has_initial_guess` says that `POST /api/guess` gives start values for this model.
          */
         ModelResponse: {
             /** Id */
@@ -461,6 +589,8 @@ export interface components {
             default_max_temperature_k: number;
             /** Default Curve Points */
             default_curve_points: number;
+            /** Has Initial Guess */
+            has_initial_guess: boolean;
             /** Fit Modes */
             fit_modes: components["schemas"]["FitModeResponse"][];
         };
@@ -468,6 +598,16 @@ export interface components {
         ModelsResponse: {
             /** Models */
             models: components["schemas"]["ModelResponse"][];
+        };
+        /**
+         * NetRange
+         * @description The temperature span a net needs, and the range of its input.
+         */
+        NetRange: {
+            /** Min Temperature K */
+            min_temperature_k: number;
+            /** Max Temperature K */
+            max_temperature_k: number;
         };
         /**
          * ParameterResponse
@@ -572,6 +712,18 @@ export interface components {
             interpolation_failed: ("seebeck" | "resistivity" | "hall")[];
         };
         /**
+         * Prediction
+         * @description The net's prediction as it is, in core units, before any rounding or limits.
+         */
+        Prediction: {
+            /** M Eff */
+            m_eff: number;
+            /** Band Gap K */
+            band_gap_k: number;
+            /** Fermi Energy K */
+            fermi_energy_k: number;
+        };
+        /**
          * RmseResponse
          * @description `value` is null where the result is not finite, as when the model has no finite value.
          */
@@ -646,7 +798,7 @@ export interface operations {
                 headers: {
                     /** @example no-cache */
                     "Cache-Control"?: string;
-                    /** @example "6aa935eebca0b1428b5535199dee78c0" */
+                    /** @example "0e5a3e6231ad9e8798854c4fb7e813de" */
                     ETag?: string;
                     [name: string]: unknown;
                 };
@@ -725,6 +877,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ParseResponse"];
+                };
+            };
+            /** @description Default Response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    post_guess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GuessRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GuessFound"] | components["schemas"]["GuessNoNet"] | components["schemas"]["GuessNotFinite"];
                 };
             };
             /** @description Default Response */

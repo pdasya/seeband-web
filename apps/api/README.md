@@ -22,12 +22,15 @@ uv run python -m seeband_api
 | `GET /api/models`       | model descriptions       |
 | `POST /api/calc`        | curves and RMSE          |
 | `POST /api/parse`       | reading measured data    |
+| `POST /api/guess`       | neural net start values  |
 | `GET /api/openapi.json` | the contract             |
 | `GET /api/docs`         | Swagger UI over the same |
 
 ## Model descriptions
 
 `GET /api/models` returns what a client builds its forms from: models, fit modes, parameters, scales, bounds and known issues. It comes from the model registry in `seeband_core`, so a new model needs no change here. Clients revalidate it: it sends `Cache-Control: no-cache` and an `ETag`, and answers 304 if nothing changed, because a client holding old descriptions could offer a mode that is now disabled.
+
+`has_initial_guess` says that a model has the neural net of `POST /api/guess`, which is DPB only.
 
 A mode with `disabled: true` must not be offered, and `disabled_by` names the `known_issues` entries that say why. Show their `message_key` through i18n. `meaning` and `name` are English, for a client with no translation. Fields that do not apply are left out, rather than `null`.
 
@@ -84,6 +87,48 @@ Median response time for a 50-point curve, through the app in one process with a
 | `not_provided`      | a new model did not say                                      |
 
 [`curve-availability.md`](../../packages/seeband_core/docs/curve-availability.md) holds the full matrix and how it differs from the desktop.
+
+## Initial guess
+
+`POST /api/guess` takes `model`, `temperature_k` and `seebeck_v_per_k`, and answers with DPB start values from the neural net. For DPB data that fit the contract, it answers 200, apart from the errors listed below, and `status` says which of three answers it is:
+
+| `status`     | Meaning                                                                                                | Holds                                                                       |
+| ------------ | ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
+| `guess`      | a net fits, and its prediction is finite                                                               | `net_range`, `start_values`, `prediction`, `warnings`                       |
+| `no_net`     | the first and last rows span no net's range, with `reason` `temperature_span`. Keep the current values | `first_temperature_k`, `last_temperature_k`, `available_ranges`, `warnings` |
+| `not_finite` | a net fits, but a value of its prediction is not finite. Keep the current values                       | `net_range`, `warnings`                                                     |
+
+- **Use `start_values`, unless the warning `m_eff_rounds_to_zero` is there.** They go into `parameters` of `POST /api/calc`, by the names in `GET /api/models`, and the mode's other parameters keep their values. `m_eff` is dimensionless, and `band_gap` and `fermi_energy` are in K. For these three, the core and displayed numbers are the same in every DPB mode. They are rounded and limited as the desktop's sliders do, so they lie in `core_range`: a gap of 52464 K starts at 3000 K. `step` does not apply: 554 K is a valid gap.
+- **`prediction` is the net's own result**, before rounding and limits, in `m_eff`, `band_gap_k` and `fermi_energy_k`. It equals the core's exactly.
+- **`net_range` is the real range of the net that was used.** Show it, rather than a fixed text.
+- **Send every row of the Seebeck data, in V/K.** The desktop reads the whole file, not the fit range, unlike `POST /api/calc`.
+- **SPB gets a 422 `guess_unavailable`**, as only DPB has nets. A client should read `has_initial_guess` in `GET /api/models`, rather than name DPB. An unknown model gets a 422 `invalid_guess`.
+- **`calculation_failed`** is a 422 for a fit that fails. It did not happen in 20000 random requests with extreme finite values, run through the core on one Mac, so it should be rare. `calculation_unavailable` and `calculation_timeout` are as in `POST /api/calc`.
+
+`warnings` holds codes for a client to show through i18n, as `guess_warning.<code>`. The answer still follows the data:
+
+| Code                   | Meaning                                                                                                                                                                                                                                       |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `unsorted_temperature` | The rows do not rise. The net is still chosen by the first and last rows, as on the desktop, until [P9](https://github.com/pdasya/seeband-web/issues/88). The parser sorts its rows, so it does not send these                                |
+| `underdetermined_fit`  | The data do not set the degree-5 polynomial behind the net's input, which takes 6 distinct temperatures. The values then mean little                                                                                                          |
+| `m_eff_rounds_to_zero` | The predicted `m_eff` is at most 0.005 in size, so it starts at 0. `POST /api/calc` then answers `calculation_failed`, and a fit from it fails. Constant S of -450 to -600 µV/K from 300 to 800 K gives this. Ask the user for a mass instead |
+
+**Limits:**
+
+- **The guess is a starting point, with no known error bar.** The synthetic references show that a straight line gets a guess too. Nothing here says that the data look like what the nets were trained on.
+- **`not_finite` comes from real sizes of Seebeck.** A constant 1 mV/K from 100 to 800 K gives it, because the net's output reaches exactly 1, which the inverse transform turns into infinity.
+- **Start values carry no known issues.** A curve from them lists its own in `known_issues`, such as `negative_m_eff_weight`.
+
+`tests/test_guess.py` runs the 10 cases of the [neural net references](../../packages/seeband_core/docs/neural-net-references.md) through the route: the 8 with a net give the recorded `desktop_start_values` exactly, and the 2 without give `no_net`.
+
+**Differences from the desktop**, which sets its sliders directly when an S file loads:
+
+- At a prediction that is not finite, the desktop raises inside its thread. An unhandled exception in a `QThread` aborted a minimal PyQt5 5.15.11 script, and the desktop has no handler for it, so it probably exits. Here, nothing is applied. The real GUI was not run for this.
+- A finite prediction too large for a slider, such as a band gap of 3355444200 K from a constant 660 µV/K, raises `OverflowError` on the desktop's slider, seen on a bare `QSlider`. Here it is limited, to 3000 K, so this answers `guess` where the desktop would fail. `prediction` shows the raw value.
+- `m_eff` = 0 raises in the desktop's slider handler. Here, `m_eff_rounds_to_zero` says so.
+- If the fit fails, this answers `calculation_failed`, and the desktop's thread raises `TypeError`.
+
+Median response time, in the same setting as for curves above, 20 calls each: 1.9 ms for the 30 rows of `01_Fe2VAl09Si01`, 1.4 ms for the 50 rows of `03_AWI32_SI`, 1.0 ms for a `no_net` answer on the 12 rows of `02_SiP`, and 2.5 ms for 1000 synthetic rows. The first call that a worker makes to a net took 19 ms, because it loads the weights.
 
 ## Errors
 

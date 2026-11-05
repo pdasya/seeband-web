@@ -9,6 +9,7 @@ from fastapi.routing import APIRoute
 from seeband_api.calc import router as calc_router
 from seeband_api.calc_pool import CalcPool
 from seeband_api.errors import add_error_handlers
+from seeband_api.guess import router as guess_router
 from seeband_api.health import router as health_router
 from seeband_api.models import router as models_router
 from seeband_api.parse import router as parse_router
@@ -55,4 +56,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(models_router)
     app.include_router(calc_router)
     app.include_router(parse_router)
+    app.include_router(guess_router)
     return app
