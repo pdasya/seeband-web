@@ -15,7 +15,7 @@ from typing import Any
 import numpy as np
 
 from seeband_core import fit_module
-from seeband_core.known_issues import active_issue_ids
+from seeband_core.known_issues import active_issue_ids, disabled_issue_ids
 from seeband_core.model_descriptions import load_desktop_descriptions
 from seeband_core.model_interface import (
     Bounds,
@@ -249,7 +249,9 @@ class _BandModel:
             progress.iterations if fit_mode.iterative else None,
             parameter_errors=self._stage_errors(fit_mode, request.scattering, ratio, progress),
             at_bounds=self._at_bounds(request, fit_mode, parameters, ratio, progress.stage_fits),
-            known_issues=active_issue_ids(fit_mode, request.scattering, parameters, ratio),
+            known_issues=active_issue_ids(
+                fit_mode, request.scattering, parameters, ratio, extrapolated=request.extrapolated
+            ),
         )
 
     def _run_fit(
@@ -269,7 +271,12 @@ class _BandModel:
             raise
         except Exception as error:
             _log_failure(error)
-            return FitResult(dict(request.start), "failed", message=_failure_message(error))
+            return FitResult(
+                dict(request.start),
+                "failed",
+                message=_failure_message(error),
+                known_issues=disabled_issue_ids(fit_mode),
+            )
         parameters = dict(request.start) | dict(zip(names, fitted, strict=True))
         return self._ended_fit(request, fit_mode, progress, parameters, "converged")
 
@@ -315,6 +322,7 @@ class _BandModel:
                 "failed",
                 progress.iterations,
                 _failure_message(error),
+                known_issues=disabled_issue_ids(fit_mode),
             )
         if callback_error is not None:
             raise callback_error
@@ -336,11 +344,13 @@ class _BandModel:
             if request.kind == "measured"
             else _CURVE_NAMES[request.kind]
         )
-        ratio = _degeneracy_ratio(request)
+        ratio = _degeneracy_ratio(request) if fit_mode.degeneracy is not None else 1.0
         return CurveResult(
             temperature_k,
             dict(zip(names, curves, strict=True)),
-            active_issue_ids(fit_mode, scattering, request.parameters, ratio, request.kind),
+            active_issue_ids(
+                fit_mode, scattering, request.parameters, ratio, request.kind, request.extrapolated
+            ),
         )
 
     def _curve_call(

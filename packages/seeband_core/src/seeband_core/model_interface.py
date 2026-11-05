@@ -24,7 +24,13 @@ CurveKind = Literal[
 ]
 FitStatus = Literal["converged", "iteration_limit", "stopped", "failed"]
 IssueSeverity = Literal["disabled", "unreliable", "caution"]
-IssueCondition = Literal["degeneracy_not_one", "negative_m_eff", "interpolation_extrapolated"]
+IssueCondition = Literal[
+    "degeneracy_not_one",
+    "negative_m_eff",
+    "collapsed_m_eff",
+    "fermi_energy_outside_band",
+    "interpolation_extrapolated",
+]
 
 QUANTITY_UNITS: Mapping[Quantity, str] = {
     "seebeck": "V/K",
@@ -84,9 +90,9 @@ class Degeneracy:
 class KnownIssue:
     """A known error of the calculations, and where it applies.
 
-    `scattering` is empty for every type. `condition` limits it to some inputs. `fixed_by` is the
-    issue that removes it. `explanation` is for developers, and a user sees `message_key` through
-    i18n.
+    `scattering` is empty for every type. `condition` limits it to some inputs. `columns` names the
+    curves of a kind that it changes, and is empty for all of them. `fixed_by` is the issue that
+    removes it. `explanation` is for developers, and a user sees `message_key` through i18n.
     """
 
     id: str
@@ -96,12 +102,13 @@ class KnownIssue:
     explanation: str
     scattering: tuple[str, ...] = ()
     curve_kinds: tuple[CurveKind, ...] = ()
+    columns: tuple[str, ...] = ()
     affects_fit: bool = False
     condition: IssueCondition | None = None
+    message_key: str = field(init=False)
 
-    @property
-    def message_key(self) -> str:
-        return f"known_issue.{self.id}"
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "message_key", f"known_issue.{self.id}")
 
 
 @dataclass(frozen=True)
@@ -181,7 +188,7 @@ class CurveRequest:
     """Ask for curves. `parameters` holds every parameter of the mode, in core units.
 
     That includes fixed parameters and those of other scattering types, which the calculations
-    read and return unchanged.
+    read and return unchanged. `extrapolated` says that the data behind it were partly made up.
     """
 
     fit_mode: str
@@ -193,6 +200,7 @@ class CurveRequest:
     kind: CurveKind = "measured"
     band_1_degeneracy: float = 1.0
     band_2_degeneracy: float = 1.0
+    extrapolated: bool = False
 
 
 @dataclass(frozen=True, eq=False)
@@ -210,7 +218,8 @@ class FitRequest:
 
     That includes fixed parameters and those of other scattering types. `bounds` overrides
     the bounds of the description for the fitted parameters it names, and naming any other is an
-    error.
+    error. `extrapolated` says that interpolation made up some of the data, so that the result says
+    so too.
     """
 
     fit_mode: str
@@ -220,6 +229,7 @@ class FitRequest:
     scattering: str | None = None
     band_1_degeneracy: float = 1.0
     band_2_degeneracy: float = 1.0
+    extrapolated: bool = False
 
 
 @dataclass(frozen=True)

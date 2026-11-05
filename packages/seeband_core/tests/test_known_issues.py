@@ -1,17 +1,120 @@
+import dataclasses
 import json
 import re
-from importlib import resources
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 import pytest
-from seeband_core.known_issues import ALL_MODES, KNOWN_ISSUES, active_issue_ids, issues_for_mode
+from seeband_core.known_issues import (
+    COLLAPSED_M_EFF,
+    KNOWN_ISSUES,
+    active_issue_ids,
+    issues_for_mode,
+)
 from seeband_core.model_catalog import registry
 from seeband_core.model_interface import CurveKind, CurveRequest, FitMode, FitRequest, Measurement
 from seeband_core.model_scales import default_start
 
 DOC = Path(__file__).parents[1] / "docs" / "known-issues.md"
+SPB = ("spb_s", "spb_s_rho", "spb_s_rho_rh")
+DPB = ("dpb_s", "dpb_s_rho", "dpb_s_rho_rh")
+LOOP = ("dpb_s_rho", "dpb_s_rho_rh")
+DPB_FIT_CURVES = (
+    "measured",
+    "seebeck",
+    "seebeck_by_band",
+    "electrical_conductivity",
+    "electrical_conductivity_by_band",
+    "thermal_conductivity",
+)
+ALL_CURVES = (*DPB_FIT_CURVES, "chemical_potential", "carrier_concentration_by_band")
+# Written here so that a change of scope, severity or fix fails.
+# id: severity, fixed by, modes, scattering, curve kinds, affects fit, condition.
+EXPECTED: dict[str, tuple[Any, ...]] = {
+    "spb_hall_mode_disabled": ("disabled", "#83", ("spb_s_rho_rh",), (), (), True, None),
+    "spb_hall_uses_fermi_energy": (
+        "unreliable",
+        "#103",
+        ("spb_s_rho_rh",),
+        (),
+        ("measured",),
+        True,
+        None,
+    ),
+    "dpb_hall_prefactor": (
+        "unreliable",
+        "#81",
+        ("dpb_s_rho_rh",),
+        (),
+        ("measured", "carrier_concentration_by_band"),
+        True,
+        None,
+    ),
+    "acphdis_curve_scale": (
+        "unreliable",
+        "#82",
+        ("spb_s_rho", "spb_s_rho_rh", "dpb_s_rho", "dpb_s_rho_rh"),
+        ("acPhDis",),
+        (
+            "seebeck_by_band",
+            "electrical_conductivity",
+            "electrical_conductivity_by_band",
+            "thermal_conductivity",
+        ),
+        False,
+        None,
+    ),
+    "acphdis_band_weight": (
+        "unreliable",
+        "#102",
+        LOOP,
+        ("acPhDis",),
+        ("measured", "seebeck"),
+        True,
+        None,
+    ),
+    "acphdis_early_stop": ("unreliable", "#84", LOOP, ("acPhDis",), (), True, None),
+    "dpb_s_degeneracy": (
+        "unreliable",
+        "#85",
+        ("dpb_s",),
+        (),
+        ("measured", "seebeck_by_band", "chemical_potential", "carrier_concentration_by_band"),
+        True,
+        "degeneracy_not_one",
+    ),
+    "dpb_loop_degeneracy": ("caution", "#85", LOOP, (), (), True, "degeneracy_not_one"),
+    "negative_m_eff_weight": (
+        "caution",
+        "#104",
+        DPB,
+        (),
+        DPB_FIT_CURVES,
+        True,
+        "negative_m_eff",
+    ),
+    "collapsed_m_eff": ("unreliable", "#107", DPB, (), ALL_CURVES, True, "collapsed_m_eff"),
+    "no_chemical_potential": (
+        "unreliable",
+        "#106",
+        SPB,
+        (),
+        ("measured", "chemical_potential", "electrical_conductivity", "thermal_conductivity"),
+        True,
+        "fermi_energy_outside_band",
+    ),
+    "hall_dis_no_reference": ("caution", "#71", ("dpb_s_rho_rh",), ("dis",), (), True, None),
+    "interpolation_extrapolates": (
+        "unreliable",
+        "#86",
+        (*SPB, *DPB),
+        (),
+        (),
+        False,
+        "interpolation_extrapolated",
+    ),
+}
 
 
 def fit_mode(fit_mode_id: str) -> FitMode:
@@ -26,125 +129,162 @@ def ids(
     return set(active_issue_ids(fit_mode(fit_mode_id), scattering, parameters, ratio, kind, **kw))
 
 
-def test_ids_are_unique() -> None:
-    names = [issue.id for issue in KNOWN_ISSUES]
-    assert len(set(names)) == len(names)
+def test_entries_are_as_written_here() -> None:
+    found = {
+        issue.id: (
+            issue.severity,
+            issue.fixed_by,
+            issue.fit_modes,
+            issue.scattering,
+            issue.curve_kinds,
+            issue.affects_fit,
+            issue.condition,
+        )
+        for issue in KNOWN_ISSUES
+    }
+    assert found == EXPECTED
+    assert len(KNOWN_ISSUES) == len(EXPECTED)
 
 
 @pytest.mark.parametrize("issue", KNOWN_ISSUES, ids=lambda issue: issue.id)
-def test_each_entry_is_complete_and_valid(issue: Any) -> None:
+def test_each_entry_is_usable(issue: Any) -> None:
     assert re.fullmatch(r"#\d+", issue.fixed_by)
     assert issue.explanation
     assert issue.message_key == f"known_issue.{issue.id}"
-    assert issue.fit_modes
-    assert issue.curve_kinds or issue.affects_fit or issue.condition
     for fit_mode_id in issue.fit_modes:
-        mode = fit_mode(fit_mode_id)
-        assert issue in mode.known_issues
-        assert set(issue.scattering) <= set(mode.scattering) or not issue.scattering
-        # A kind the mode does not offer is fine for a list that spans modes, but one must offer it.
+        assert issue in fit_mode(fit_mode_id).known_issues
+        assert set(issue.scattering) <= set(fit_mode(fit_mode_id).scattering)
     for kind in issue.curve_kinds:
         assert any(kind in fit_mode(name).curve_kinds for name in issue.fit_modes), kind
 
 
-def test_the_doc_lists_every_entry_with_its_fix() -> None:
-    text = DOC.read_text(encoding="utf-8")
-    for issue in KNOWN_ISSUES:
-        row = next(line for line in text.splitlines() if line.startswith(f"| `{issue.id}`"))
-        assert issue.severity in row
-        assert issue.fixed_by in row
+def test_the_doc_and_the_list_match_both_ways() -> None:
+    rows = {}
+    for line in DOC.read_text(encoding="utf-8").splitlines():
+        match = re.match(r"\| `(\w+)`\s*\| (\w+)\s*\|.*\| (#\d+)\s*\|$", line)
+        if match:
+            rows[match.group(1)] = (match.group(2), match.group(3))
+    assert rows == {issue.id: (issue.severity, issue.fixed_by) for issue in KNOWN_ISSUES}
+
+
+def test_a_description_serialises_with_its_keys() -> None:
+    description = registry.get("dpb").describe()
+    text = json.dumps(dataclasses.asdict(description), allow_nan=False)
+    assert "known_issue.dpb_hall_prefactor" in text
 
 
 def test_issues_for_mode_selects_by_mode() -> None:
     names = {issue.id for issue in issues_for_mode("spb_s")}
-    assert names == {"interpolation_extrapolates"}
-    assert "dpb_hall_prefactor" in {issue.id for issue in issues_for_mode("dpb_s_rho_rh")}
+    assert names == {"no_chemical_potential", "interpolation_extrapolates"}
 
 
-def test_only_the_spb_hall_mode_is_disabled_and_the_table_agrees() -> None:
-    path = resources.files("seeband_core") / "data" / "desktop_modes.json"
-    for mode in json.loads(path.read_text("utf-8"))["modes"]:
-        assert fit_mode(mode["id"]).disabled is (mode["status"] == "fails_on_desktop")
-    assert [name for name in ALL_MODES if fit_mode(name).disabled] == ["spb_s_rho_rh"]
+@pytest.mark.parametrize("name", [*SPB, *DPB])
+def test_only_the_spb_hall_mode_is_disabled(name: str) -> None:
+    assert fit_mode(name).disabled is (name == "spb_s_rho_rh")
 
 
-def test_the_dis_mode_that_fails_on_the_desktop_is_flagged() -> None:
-    assert "hall_dis_web_bounds" in ids("dpb_s_rho_rh", "dis")
-    assert "hall_dis_web_bounds" not in ids("dpb_s_rho_rh", "acPh")
-    assert "hall_dis_web_bounds" not in ids("dpb_s_rho", "dis")
+@pytest.mark.parametrize("kind", ["measured", "chemical_potential", "thermal_conductivity", None])
+def test_a_disabled_mode_shows_on_every_result(kind: Any) -> None:
+    assert "spb_hall_mode_disabled" in ids("spb_s_rho_rh", "acPh", kind)
+
+
+def test_a_flag_for_one_scattering_type_stays_there() -> None:
+    assert "hall_dis_no_reference" in ids("dpb_s_rho_rh", "dis")
+    assert "hall_dis_no_reference" not in ids("dpb_s_rho_rh", "acPh")
+    assert "acphdis_curve_scale" not in ids("dpb_s_rho", "acPh", "thermal_conductivity")
+    assert "acphdis_curve_scale" in ids("dpb_s_rho", "acPhDis", "seebeck_by_band")
 
 
 @pytest.mark.parametrize(
-    ("mode", "scattering", "kind", "expected", "absent"),
+    ("condition_kwargs", "mode", "scattering", "kind", "issue", "active"),
     [
-        ("dpb_s_rho_rh", "acPh", "measured", {"dpb_hall_prefactor"}, set()),
-        ("dpb_s_rho_rh", "acPh", "carrier_concentration_by_band", {"dpb_hall_prefactor"}, set()),
-        ("dpb_s_rho", "acPh", "measured", set(), {"dpb_hall_prefactor"}),
-        ("dpb_s_rho_rh", "acPh", "chemical_potential", set(), {"dpb_hall_prefactor"}),
-        ("spb_s_rho", "acPhDis", "electrical_conductivity", {"acphdis_conductivity_scale"}, set()),
-        ("dpb_s_rho", "acPhDis", "thermal_conductivity", {"acphdis_conductivity_scale"}, set()),
+        ({"ratio": 1.0}, "dpb_s", None, None, "dpb_s_degeneracy", False),
+        ({"ratio": 2.0}, "dpb_s", None, None, "dpb_s_degeneracy", True),
+        ({"ratio": 0.5}, "dpb_s", None, "chemical_potential", "dpb_s_degeneracy", True),
+        ({"ratio": 2.0}, "dpb_s_rho", "acPh", None, "dpb_loop_degeneracy", True),
+        ({"ratio": 2.0}, "dpb_s_rho", "acPh", "measured", "dpb_loop_degeneracy", False),
+        ({"parameters": {"m_eff": 1.0}}, "dpb_s", None, None, "negative_m_eff_weight", False),
+        ({"parameters": {"m_eff": 0.0}}, "dpb_s", None, None, "negative_m_eff_weight", False),
+        ({"parameters": {"m_eff": -1.0}}, "dpb_s", None, None, "negative_m_eff_weight", True),
         (
-            "dpb_s_rho_rh",
-            "acPhDis",
-            "electrical_conductivity_by_band",
-            {"acphdis_conductivity_scale"},
-            set(),
+            {"parameters": {"m_eff": -1.0}},
+            "dpb_s",
+            None,
+            "chemical_potential",
+            "negative_m_eff_weight",
+            False,
         ),
-        ("spb_s_rho", "acPh", "electrical_conductivity", set(), {"acphdis_conductivity_scale"}),
-        ("spb_s_rho", "acPhDis", "measured", set(), {"acphdis_conductivity_scale"}),
-        ("dpb_s_rho", "acPhDis", "measured", {"acphdis_band_weight"}, set()),
-        ("dpb_s_rho", "acPhDis", "seebeck", {"acphdis_band_weight"}, set()),
-        ("dpb_s_rho", "dis", "measured", set(), {"acphdis_band_weight"}),
-        ("spb_s_rho_rh", "acPh", "measured", {"spb_hall_uses_fermi_energy"}, set()),
-    ],
-)
-def test_curves_get_the_issues_that_apply(
-    mode: str, scattering: str, kind: Any, expected: set[str], absent: set[str]
-) -> None:
-    found = ids(mode, scattering, kind)
-    assert expected <= found
-    assert not absent & found
-
-
-@pytest.mark.parametrize(
-    ("mode", "scattering", "expected", "absent"),
-    [
-        ("dpb_s_rho_rh", "acPh", {"dpb_hall_prefactor"}, {"acphdis_early_stop"}),
+        ({"parameters": {"m_eff": 1.0}}, "dpb_s", None, None, "collapsed_m_eff", False),
         (
+            {"parameters": {"m_eff": COLLAPSED_M_EFF / 2}},
             "dpb_s_rho",
-            "acPhDis",
-            {"acphdis_early_stop", "acphdis_band_weight"},
-            {"dpb_hall_prefactor"},
+            "acPh",
+            None,
+            "collapsed_m_eff",
+            True,
         ),
-        ("dpb_s_rho", "acPh", set(), {"acphdis_early_stop", "acphdis_conductivity_scale"}),
-        ("spb_s_rho_rh", "acPh", {"spb_hall_mode_disabled"}, set()),
+        (
+            {"parameters": {"m_eff": -COLLAPSED_M_EFF / 2}},
+            "dpb_s_rho",
+            "acPh",
+            "measured",
+            "collapsed_m_eff",
+            True,
+        ),
+        (
+            {"parameters": {"band_mass": 1.0, "fermi_energy": 100.0}},
+            "spb_s",
+            None,
+            None,
+            "no_chemical_potential",
+            False,
+        ),
+        (
+            {"parameters": {"band_mass": -1.0, "fermi_energy": -100.0}},
+            "spb_s",
+            None,
+            "measured",
+            "no_chemical_potential",
+            False,
+        ),
+        (
+            {"parameters": {"band_mass": 1.0, "fermi_energy": -100.0}},
+            "spb_s",
+            None,
+            "measured",
+            "no_chemical_potential",
+            True,
+        ),
+        (
+            {"parameters": {"band_mass": -1.0, "fermi_energy": 100.0}},
+            "spb_s",
+            None,
+            None,
+            "no_chemical_potential",
+            True,
+        ),
+        (
+            {"parameters": {"band_mass": 1.0, "fermi_energy": 0.0}},
+            "spb_s",
+            None,
+            None,
+            "no_chemical_potential",
+            True,
+        ),
+        ({"extrapolated": False}, "spb_s", None, None, "interpolation_extrapolates", False),
+        ({"extrapolated": True}, "spb_s", None, None, "interpolation_extrapolates", True),
+        ({"extrapolated": True}, "dpb_s", None, "measured", "interpolation_extrapolates", True),
     ],
 )
-def test_fits_get_the_issues_that_apply(
-    mode: str, scattering: str, expected: set[str], absent: set[str]
+def test_conditions_are_checked(
+    condition_kwargs: dict[str, Any],
+    mode: str,
+    scattering: str | None,
+    kind: Any,
+    issue: str,
+    active: bool,
 ) -> None:
-    found = ids(mode, scattering)
-    assert expected <= found
-    assert not absent & found
-
-
-def test_conditions_are_checked() -> None:
-    assert "dpb_s_degeneracy" not in ids("dpb_s", None)
-    assert "dpb_s_degeneracy" in ids("dpb_s", None, ratio=2.0)
-    assert "dpb_s_degeneracy" in ids("dpb_s", None, "measured", ratio=0.5)
-    assert "negative_m_eff_weight" not in ids("dpb_s", None, parameters={"m_eff": 1.0})
-    assert "negative_m_eff_weight" not in ids("dpb_s", None, parameters={"m_eff": 0.0})
-    assert "negative_m_eff_weight" in ids("dpb_s", None, parameters={"m_eff": -1.0})
-    assert "negative_m_eff_weight" in ids("dpb_s", None, "measured", parameters={"m_eff": -1.0})
-    assert "negative_m_eff_weight" not in ids(
-        "dpb_s", None, "chemical_potential", parameters={"m_eff": -1.0}
-    )
-
-
-def test_extrapolation_applies_wherever_it_is_reported() -> None:
-    assert "interpolation_extrapolates" not in ids("spb_s", None)
-    assert "interpolation_extrapolates" in ids("spb_s", None, extrapolated=True)
-    assert "interpolation_extrapolates" in ids("dpb_s_rho", "acPh", "measured", extrapolated=True)
+    assert (issue in ids(mode, scattering, kind, **condition_kwargs)) is active
 
 
 def synthetic(fit_mode_id: str) -> dict[Any, Measurement]:
@@ -156,39 +296,142 @@ def synthetic(fit_mode_id: str) -> dict[Any, Measurement]:
     }
 
 
-def test_results_carry_their_issues() -> None:
-    model = registry.get("dpb")
-    start = default_start(fit_mode("dpb_s"))
-    plain = model.calculate(CurveRequest("dpb_s", start, 100, 300, 3))
-    assert plain.known_issues == ()
-    with_n = model.calculate(CurveRequest("dpb_s", start, 100, 300, 3, band_2_degeneracy=2.0))
-    assert with_n.known_issues == ("dpb_s_degeneracy",)
-    negative = model.calculate(
-        CurveRequest("dpb_s", start | {"m_eff": -1.0, "band_gap": -200.0}, 100, 300, 3)
-    )
-    assert negative.known_issues == ("negative_m_eff_weight",)
-    hall = model.calculate(
-        CurveRequest("dpb_s_rho_rh", default_start(fit_mode("dpb_s_rho_rh")), 100, 300, 3, "acPh")
-    )
-    assert "dpb_hall_prefactor" in hall.known_issues
+def curve_ids(fit_mode_id: str, scattering: str | None = None, **kw: Any) -> set[str]:
+    model = registry.get(fit_mode_id.partition("_")[0])
+    values = default_start(fit_mode(fit_mode_id)) | kw.pop("values", {})
+    request = CurveRequest(fit_mode_id, values, 100, 300, 3, scattering, **kw)
+    return set(model.calculate(request).known_issues)
 
 
 @pytest.mark.filterwarnings("ignore")
-def test_a_fit_result_carries_its_issues_and_a_failed_one_does_not() -> None:
-    model = registry.get("dpb")
-    start = default_start(fit_mode("dpb_s_rho"))
-    result = model.fit(FitRequest("dpb_s_rho", synthetic("dpb_s_rho"), start, scattering="acPhDis"))
-    assert set(result.known_issues) == {"acphdis_band_weight", "acphdis_early_stop"}
-    failed = model.fit(
-        FitRequest("dpb_s_rho", synthetic("dpb_s_rho"), start | {"A": -5.0}, scattering="acPh")
+def test_curves_carry_their_issues_through_the_model() -> None:
+    assert curve_ids("dpb_s") == set()
+    assert curve_ids("dpb_s", band_2_degeneracy=2.0) == {"dpb_s_degeneracy"}
+    assert curve_ids("dpb_s", values={"m_eff": -1.0, "band_gap": -200.0}) == {
+        "negative_m_eff_weight"
+    }
+    assert curve_ids("dpb_s_rho", "acPhDis", kind="thermal_conductivity") == {"acphdis_curve_scale"}
+    assert curve_ids("dpb_s_rho", "acPh", kind="thermal_conductivity") == set()
+    assert curve_ids("dpb_s_rho_rh", "acPh") == {"dpb_hall_prefactor"}
+    assert curve_ids("spb_s", extrapolated=True) == {"interpolation_extrapolates"}
+    # A degeneracy means nothing in SPB, so it is neither read nor checked.
+    assert curve_ids("spb_s", band_2_degeneracy=0.0) == set()
+
+
+class FixedFit:
+    """Stands in for the core, returning the given values."""
+
+    def __init__(self, returned: list[float]) -> None:
+        self.returned = returned
+
+    def __getattr__(self, name: str) -> Any:
+        return lambda *args, **kwargs: self.returned
+
+
+def fit_ids(
+    monkeypatch: pytest.MonkeyPatch, fit_mode_id: str, returned: list[float], **kw: Any
+) -> set[str]:
+    from seeband_core import band_models
+
+    monkeypatch.setattr(band_models, "_CORE", FixedFit(returned))
+    model = registry.get(fit_mode_id.partition("_")[0])
+    values = default_start(fit_mode(fit_mode_id)) | kw.pop("values", {})
+    request = FitRequest(fit_mode_id, synthetic(fit_mode_id), values, **kw)
+    return set(model.fit(request).known_issues)
+
+
+def test_a_fit_reads_conditions_from_its_result_not_its_start(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    negative = fit_ids(monkeypatch, "dpb_s", [-1.0, 500.0, 500.0], values={"m_eff": 1.0})
+    assert negative == {"negative_m_eff_weight"}
+    positive = fit_ids(monkeypatch, "dpb_s", [1.0, 500.0, 500.0], values={"m_eff": -1.0})
+    assert positive == set()
+    collapsed = fit_ids(monkeypatch, "dpb_s", [1e-7, 500.0, 500.0])
+    assert collapsed == {"collapsed_m_eff"}
+    outside = fit_ids(monkeypatch, "spb_s", [-100.0], values={"band_mass": 1.0})
+    assert outside == {"no_chemical_potential"}
+
+
+def test_a_fit_passes_its_degeneracy_and_scattering_on(monkeypatch: pytest.MonkeyPatch) -> None:
+    loop = [1.0, 500.0, 500.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+    with_n = fit_ids(monkeypatch, "dpb_s", [1.0, 500.0, 500.0], band_2_degeneracy=2.0)
+    assert with_n == {"dpb_s_degeneracy"}
+    acphdis = fit_ids(monkeypatch, "dpb_s_rho", loop, scattering="acPhDis")
+    assert acphdis == {"acphdis_band_weight", "acphdis_early_stop"}
+    acph = fit_ids(monkeypatch, "dpb_s_rho", loop, scattering="acPh", band_2_degeneracy=2.0)
+    assert acph == {"dpb_loop_degeneracy"}
+    made_up = fit_ids(monkeypatch, "spb_s", [100.0], extrapolated=True)
+    assert made_up == {"interpolation_extrapolates"}
+
+
+def test_a_failed_fit_lists_only_a_disabled_mode(monkeypatch: pytest.MonkeyPatch) -> None:
+    from seeband_core import band_models
+
+    class Failing:
+        def __getattr__(self, name: str) -> Any:
+            def fail(*args: Any, **kwargs: Any) -> Any:
+                raise ValueError("Residuals are not finite")
+
+            return fail
+
+    monkeypatch.setattr(band_models, "_CORE", Failing())
+    dpb = registry.get("dpb").fit(
+        FitRequest(
+            "dpb_s_rho",
+            synthetic("dpb_s_rho"),
+            default_start(fit_mode("dpb_s_rho")),
+            scattering="acPhDis",
+        )
     )
-    assert failed.status == "failed"
-    assert failed.known_issues == ()
+    assert (dpb.status, dpb.known_issues) == ("failed", ())
+    spb = registry.get("spb").fit(
+        FitRequest(
+            "spb_s_rho_rh",
+            synthetic("spb_s_rho_rh"),
+            default_start(fit_mode("spb_s_rho_rh")),
+            scattering="acPh",
+        )
+    )
+    assert (spb.status, spb.known_issues) == ("failed", ("spb_hall_mode_disabled",))
 
 
-def test_removing_an_entry_removes_the_flag(monkeypatch: pytest.MonkeyPatch) -> None:
-    import seeband_core.known_issues as module
+def curves(mode: str, scattering: str, kind: CurveKind, values: dict[str, float]) -> Any:
+    model = registry.get(mode.partition("_")[0])
+    return model.calculate(CurveRequest(mode, values, 100, 800, 8, scattering, kind)).curves
 
-    kept = tuple(issue for issue in KNOWN_ISSUES if issue.id != "dpb_hall_prefactor")
-    monkeypatch.setattr(module, "KNOWN_ISSUES", kept)
-    assert "dpb_hall_prefactor" not in {i.id for i in module.issues_for_mode("dpb_s_rho_rh")}
+
+@pytest.mark.filterwarnings("ignore")
+class TestTheErrorsAreStillThere:
+    """Each of these fails once its error is fixed, and that is the prompt to remove its flag."""
+
+    def test_acphdis_conductivity_is_not_the_inverse_of_resistivity(self) -> None:
+        for mode in ("spb_s_rho", "dpb_s_rho"):
+            values = default_start(fit_mode(mode))
+            rho = curves(mode, "acPhDis", "measured", values)["resistivity_ohm_m"]
+            sigma = curves(mode, "acPhDis", "electrical_conductivity", values)[
+                "electrical_conductivity_s_per_m"
+            ]
+            assert not np.allclose(sigma * rho, 1.0)
+            rho = curves(mode, "acPh", "measured", values)["resistivity_ohm_m"]
+            sigma = curves(mode, "acPh", "electrical_conductivity", values)[
+                "electrical_conductivity_s_per_m"
+            ]
+            assert np.allclose(sigma * rho, 1.0)
+
+    def test_acphdis_seebeck_depends_on_the_grid(self) -> None:
+        model = registry.get("dpb")
+        start = default_start(fit_mode("dpb_s_rho"))
+        values = start | {
+            "m_eff": 1.0,
+            "band_gap": 300.0,
+            "fermi_energy": -100.0,
+            "C": 0.5,
+            "D": 2.0,
+        }
+
+        def at_low_end(high_k: float) -> float:
+            request = CurveRequest("dpb_s_rho", values, 100, high_k, 3, "acPhDis")
+            return float(model.calculate(request).curves["seebeck_v_per_k"][0])
+
+        assert at_low_end(400) != pytest.approx(at_low_end(800), rel=1e-3, abs=0)
