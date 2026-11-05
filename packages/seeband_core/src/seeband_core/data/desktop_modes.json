@@ -1883,6 +1883,18 @@
       "web": "The fit returns the same values with the status `iteration_limit`.",
       "resolved_by": "#18 (C10)",
       "source": ["modules/fit_module.py:419", "modules/fit_module.py:882"]
+    },
+    {
+      "id": "D22",
+      "title": "The web parser rejects bad lines and sorts by temperature",
+      "desktop": "The parser drops any line it cannot read, without saying so, and fails on two spaces in a row or a comma followed by a space. It keeps the order of the rows, so the neural net choice reads the first and last rows as the range.",
+      "web": "A line it cannot read is an error with its line number, and these separators work. Rows are sorted by temperature with a warning. So an unsorted file can get a net where the desktop gets none, as P9 intends, and solver starts follow the new order.",
+      "resolved_by": "#20 (C12)",
+      "source": [
+        "modules/data_processing.py:37",
+        "modules/data_processing.py:51",
+        "modules/neural_nets.py:21"
+      ]
     }
   ]
 }
