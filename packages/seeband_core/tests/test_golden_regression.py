@@ -9,14 +9,16 @@ fits depend on the solver. A small change can stay within FIT_TOLERANCE, but the
 
 Some fits are not reproducible across versions: see UNSTABLE_02 and deviation D19.
 
-Tests call the core only through core_arguments and invoke_core. When a refactor renames a function
-or drops an argument, update those and leave the pinned fixtures unchanged. The test of
-spb_see_res_hall_fit is the exception: it has no recorded call, so it names the function and its
-argument order itself.
+The replay goes through the model interface, so it also checks SPB and DPB in band_models. Recorded
+calls name their arguments through the core's signatures, in recorded_arguments. When a refactor
+renames a function or drops an argument, update these and leave the pinned fixtures unchanged. The
+input tests call the core directly, through core_arguments and invoke_core. The test of
+spb_see_res_hall_fit has no recorded call, so it names the function and its argument order itself.
 """
 
 import contextlib
 import copy
+import inspect
 import json
 import math
 from collections.abc import Iterator
@@ -26,6 +28,16 @@ from typing import Any
 import numpy as np
 import pytest
 from seeband_core import fit_module
+from seeband_core.band_models import parabolic_band
+from seeband_core.model_catalog import registry as default_registry
+from seeband_core.model_interface import (
+    Bounds,
+    CurveKind,
+    CurveRequest,
+    FitRequest,
+    Measurement,
+    Quantity,
+)
 
 GOLDEN = Path(__file__).parent / "fixtures" / "golden"
 EXAMPLES = ["01_Fe2VAl09Si01", "02_SiP", "03_AWI32_SI"]
@@ -102,18 +114,142 @@ def invoke_core(function: str, args: list[Any], kwargs: dict[str, Any]) -> Any:
     return getattr(fit_module.PB_fit(), function)(*args, **kwargs)
 
 
-def call_core(function: str, args: list[Any], kwargs: dict[str, Any]) -> Any:
-    """Run a recorded desktop call against the core."""
-    return invoke_core(function, *core_arguments(function, args, kwargs))
+CURVE_KINDS: dict[str, CurveKind] = {
+    "spb_see_calc": "measured",
+    "spb_see_res_calc": "measured",
+    "spb_see_res_hall_calc": "measured",
+    "dpb_see_calc": "measured",
+    "dpb_see_res_calc": "measured",
+    "dpb_see_res_hall_calc": "measured",
+    "dpb_see_with_scatter_calc": "seebeck",
+    "spb_chemPot_calc": "chemical_potential",
+    "dpb_chemPot_calc": "chemical_potential",
+    "spb_elecCond_calc": "electrical_conductivity",
+    "dpb_elecCond_calc": "electrical_conductivity",
+    "spb_thermCond_calc": "thermal_conductivity",
+    "dpb_thermCond_calc": "thermal_conductivity",
+    "dpb_ind_see_seeOnly_calc": "seebeck_by_band",
+    "dpb_ind_see_calc": "seebeck_by_band",
+    "dpb_ind_elecCond_calc": "electrical_conductivity_by_band",
+    "dpb_ind_carCon_calc": "carrier_concentration_by_band",
+    "dpb_ind_carCon_calc_m1": "carrier_concentration_by_band",
+}
+SPB_SCATTERING = ("A", "C", "F")
+DPB_BANDS = ("m_eff", "band_gap", "fermi_energy")
+DPB_SCATTERING = ("A", "B", "C", "D", "F", "G")
+# The order of each fit's recorded result.
+FIT_RESULT_NAMES = {
+    "spb_see_fit": ("fermi_energy",),
+    "spb_see_res_fit": ("fermi_energy", *SPB_SCATTERING),
+    "dpb_see_fit": DPB_BANDS,
+    "dpb_see_res_fit": (*DPB_BANDS, *DPB_SCATTERING),
+    "dpb_see_res_hall_fit": (*DPB_BANDS, *DPB_SCATTERING, "m1"),
+}
 
 
-def replay(call: dict[str, Any]) -> Any:
-    # Fit functions change the lists they receive, so each call gets its own copy.
-    return call_core(
+def recorded_arguments(call: dict[str, Any]) -> dict[str, Any]:
+    """Name a recorded call's arguments from the core's signature, without print_info."""
+    function = getattr(fit_module.PB_fit, call["function"])
+    args, kwargs = core_arguments(
         call["function"],
         json.loads(json.dumps(call["args"])),
         json.loads(json.dumps(call["kwargs"])),
     )
+    return dict(inspect.signature(function).bind(None, *args, **kwargs).arguments)
+
+
+def named(names: tuple[str, ...], values: list[Any]) -> dict[str, Any]:
+    return dict(zip(names, values, strict=True))
+
+
+def named_bounds(names: tuple[str, ...], limits: list[list[float]]) -> dict[str, Bounds]:
+    return {
+        name: Bounds(lower, upper)
+        for name, lower, upper in zip(names, limits[0], limits[1], strict=True)
+    }
+
+
+def fit_request(fit_mode: str, call: dict[str, Any]) -> FitRequest:
+    a = recorded_arguments(call)
+    temperature_see = a.get("temp_see_list", a.get("temp_list"))
+    measurements: dict[Quantity, Measurement] = {
+        "seebeck": Measurement(temperature_see, a.get("see_list"))
+    }
+    if "res_list" in a:
+        measurements["resistivity"] = Measurement(a["temp_res_list"], a["res_list"])
+    if "hall_list" in a:
+        measurements["hall"] = Measurement(a["temp_hall_list"], a["hall_list"])
+    start: dict[str, Any] = {}
+    bounds: dict[str, Bounds] = {}
+    if "band_mass" in a:
+        start["band_mass"] = a["band_mass"]
+        start["fermi_energy"] = a["initial_fermi_energy"][0]
+        bounds |= named_bounds(("fermi_energy",), a["limits_fermi_energy"])
+        if "initial_parameter_res" in a:
+            start |= named(SPB_SCATTERING, a["initial_parameter_res"])
+            bounds |= named_bounds(SPB_SCATTERING, a["limits_res"])
+    else:
+        start |= named(DPB_BANDS, a.get("initial_parameter_see", a.get("initial_parameter")))
+        bounds |= named_bounds(DPB_BANDS, a.get("limits_see", a.get("limits")))
+        if "initial_parameter_res" in a:
+            start |= named(DPB_SCATTERING, a["initial_parameter_res"])
+            bounds |= named_bounds(DPB_SCATTERING, a["limits_res"])
+    if "initial_mass1" in a:
+        start["m1"] = a["initial_mass1"]
+        bounds |= named_bounds(("m1",), a["limits_mass1"])
+    if "threshold" in a:
+        described = default_registry.get("dpb").describe().fit_mode(fit_mode)
+        assert (a["threshold"], a["max_num_iterations"]) == (
+            described.threshold,
+            described.max_iterations,
+        )
+    return FitRequest(
+        fit_mode,
+        measurements,
+        start,
+        bounds,
+        a.get("scatter_type"),
+        band_2_degeneracy=a.get("degen", 1.0),
+    )
+
+
+def curve_request(fit_mode: str, scattering: str | None, call: dict[str, Any]) -> CurveRequest:
+    a = recorded_arguments(call)
+    parameters: dict[str, Any] = {}
+    if "band_mass" in a:
+        parameters["band_mass"] = a["band_mass"]
+        parameters["fermi_energy"] = a["fermi_energy"]
+    if "parameter_see" in a:
+        parameters |= named(DPB_BANDS, a["parameter_see"])
+    if "parameter_res" in a:
+        names = SPB_SCATTERING if fit_mode.startswith("spb") else DPB_SCATTERING
+        parameters |= named(names, a["parameter_res"])
+    if "band_mass1" in a or "m1" in a:
+        parameters["m1"] = a.get("band_mass1", a.get("m1"))
+    return CurveRequest(
+        fit_mode,
+        parameters,
+        a["Tmin"],
+        a["Tmax"],
+        a["Tnumb"],
+        a.get("scatter_type", scattering),
+        CURVE_KINDS[call["function"]],
+        band_2_degeneracy=a.get("degen", 1.0),
+    )
+
+
+def replay(mode: str, scattering: str | None, call: dict[str, Any]) -> Any:
+    """Run a recorded desktop call through the model interface, and return it in recorded order."""
+    function = call["function"]
+    if function == "get_parabolic_band":
+        return list(parabolic_band(*call["args"]))
+    fit_mode = "dpb_s_rho_rh" if mode == "d1" else mode
+    model = default_registry.get(fit_mode.partition("_")[0])
+    if function.endswith("_fit"):
+        result = model.fit(fit_request(fit_mode, call))
+        return [result.parameters[name] for name in FIT_RESULT_NAMES[function]]
+    curve = model.calculate(curve_request(fit_mode, scattering, call))
+    return [curve.temperature_k, *curve.curves.values()]
 
 
 def flat(value: Any) -> Iterator[float]:
@@ -157,12 +293,12 @@ def test_replay_matches_the_desktop(
     if "error" in call:
         kind, _, message = call["error"].partition(": ")
         with pytest.raises(Exception) as caught:
-            replay(call)
+            replay(mode, scattering, call)
         assert type(caught.value).__name__ == kind
         assert ERROR_FRAGMENTS.get(kind, message) in str(caught.value)
         return
 
-    result = replay(call)
+    result = replay(mode, scattering, call)
     if not call["function"].endswith("_fit"):
         assert_close(result, call["result"], CURVE_TOLERANCE)
     elif example == "02_SiP" and (mode, scattering) in UNSTABLE_02:

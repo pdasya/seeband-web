@@ -72,7 +72,7 @@ The files hold exact script output and are excluded from Prettier, so any change
 
 ## Regression tests
 
-`tests/test_golden_regression.py` replays all 390 recorded calls through the ported modules on the project's versions: Python 3.13, numpy 2.5 and scipy 1.18. The golden results use Python 3.11, numpy 1.26 and scipy 1.17. Only 159 of the calls have distinct inputs, and 84 are `get_parabolic_band`, which uses no physical constants.
+`tests/test_golden_regression.py` replays all 390 recorded calls on the code in `band_models`: 306 through the model interface, and the 84 of `get_parabolic_band` through a plain function, on the project's versions: Python 3.13, numpy 2.5 and scipy 1.18. The golden results use Python 3.11, numpy 1.26 and scipy 1.17. Only 159 of the calls have distinct inputs, and 84 are `get_parabolic_band`, which uses no physical constants.
 
 | Calls                             | Rule                                                          | Difference seen                                           |
 | --------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------- |
@@ -85,9 +85,13 @@ The files hold exact script output and are excluded from Prettier, so any change
 
 SPB S on `02_SiP` differs between Linux CI runs of the same fit code, so the 1e-5 rule would make the tests flaky. E_F there falls from 100 to 3.76, with solver warnings.
 
-Fit tolerance is wide enough that a small change can pass in a fit, but the curves catch it. Measured with deliberate changes on one Mac: changing the Boltzmann constant to its 2019 value, a change of 3.5e-7, fails 176 tests.
+Fit tolerance is wide enough that a small change can pass in a fit, but the curves catch it. Measured with deliberate changes on one Mac: changing the Boltzmann constant to its 2019 value, a change of 3.5e-7, fails 174 tests.
 
 **`02_SiP` in DPB is not stable (D19).** m_eff collapses towards 0 on every version. In the golden results the ρ stage then stays at its start, with A = 40000, so the ρ curve is about 1e-11 against data of 0.016 to 0.16, although A of about 1e-5 would match the data. On the project's versions, A reached about 1e-5 for `acPh` and `acPhDis` on one Mac, while on Linux CI it did so only for `acPh`. So the result depends on the versions and the machine, and these fits differ from the desktop by up to about 9 orders of magnitude in A. They are checked only as the table shows, and should be treated as unsound.
+
+**Graph calls replay with their recorded values.** The additional graphs pass C and D at other scales than the fit (D20), and those values are not core values. So the replay shows the same calculation, not that a graph from a web fit equals the desktop's.
+
+**Every recorded degeneracy ratio is 1 and every recorded m1 in a carrier concentration is 1,** so the replay cannot check either. `tests/test_band_models.py` checks the calls the adapters make, against a table written there.
 
 **What these tests do not cover:**
 
@@ -95,4 +99,4 @@ Fit tolerance is wide enough that a small change can pass in a fit, but the curv
 - `is_accuracy_reached` is covered only through fits.
 - Other data, other fit ranges and interpolation.
 
-A test fails if this list of uncovered methods changes. Tests reach the core only through `core_arguments` and `invoke_core`, so a refactor that renames a function or drops an argument updates those, not the pinned fixtures. The exception is the test of `spb_see_res_hall_fit`, which has no recorded call and names its arguments itself.
+A test fails if this list of uncovered methods changes. The replay names recorded arguments through the signatures of the core, so a refactor that renames a function or drops an argument updates the test helpers, not the pinned fixtures. The test of `spb_see_res_hall_fit` has no recorded call and names its arguments itself.

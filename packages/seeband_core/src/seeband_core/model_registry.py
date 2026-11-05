@@ -1,4 +1,4 @@
-"""The models the application knows about. API and client code find models only through here."""
+"""A registry of models. Import the one that holds the built-in models from `model_catalog`."""
 
 from seeband_core.model_interface import Model, ModelDescription
 

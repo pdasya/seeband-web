@@ -164,7 +164,8 @@ class FitRequest:
     """Ask for a fit. `start` holds every parameter of the mode, in core units.
 
     That includes fixed parameters and those of other scattering types. `bounds` overrides
-    the bounds of the description for the parameters it names.
+    the bounds of the description for the fitted parameters it names, and naming any other is an
+    error.
     """
 
     fit_mode: str
