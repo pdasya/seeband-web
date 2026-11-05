@@ -60,7 +60,9 @@ Median response time for a 50-point curve, through the app in one process with a
 
 ## Derived curves
 
-`kind` in `POST /api/calc` chooses the curves: `measured` by default, or μ, σ, κ, the contributions of each band, or n. Each mode lists what it offers in `curves` in `GET /api/models`, and asking for another answers 422 `curve_unavailable`, with its reason as the `code` in `details`.
+`kind` in `POST /api/calc` chooses the curves: `measured` by default, or μ, σ, κ, the contributions of each band, or n. Each mode lists what it offers in `curves` in `GET /api/models`, and asking for another answers 422 `curve_unavailable`, with its reason as the `code` in `details`. Show `curve_unavailable.<code>` through i18n. `measurements` need the `measured` kind.
+
+`thermal_conductivity` is the electronic part only, κ_e. There is no lattice term.
 
 | Reason              | Meaning                                                      |
 | ------------------- | ------------------------------------------------------------ |

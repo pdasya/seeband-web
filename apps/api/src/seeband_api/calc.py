@@ -58,8 +58,9 @@ class CalcRequest(BaseModel):
     defaults to the model's. `measurements` gives an RMSE for each quantity, and should hold only
     points in the fit range. `extrapolated` says that interpolation made up some of these points.
 
-    `kind` chooses the curves, and `GET /api/models` lists which a mode offers. The RMSE always
-    compares S, rho and R_H with the data, whatever the kind.
+    `kind` chooses the curves, and `GET /api/models` lists which a mode offers. `measurements` need
+    the `measured` kind, because the known issues of a response are those of its curves, and an RMSE
+    of other curves would not carry its own.
     """
 
     model_config = ConfigDict(
@@ -286,13 +287,18 @@ async def post_calc(body: CalcRequest, pool: CalcPoolDep) -> CalcResponse:
     ]
     if details:
         raise _refuse(details)
+    if body.measurements and body.kind != "measured":
+        detail = _invalid(
+            "measurements_need_measured_kind", "RMSE compares the measured curves", ["kind"]
+        )
+        raise _refuse([detail])
     reason = fit_mode.unavailable_reason(body.kind)
     if reason is not None:
         raise ApiError(
             HTTPStatus.UNPROCESSABLE_CONTENT,
             "curve_unavailable",
             "This fit mode does not offer this curve",
-            [_invalid(reason, f"curve_unavailable.{reason}", ["kind"])],
+            [_invalid(reason, "See curve_unavailable in the API's README", ["kind"])],
         )
 
     request = CurveRequest(

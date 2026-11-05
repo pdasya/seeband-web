@@ -7,7 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 from seeband_api.main import create_app
 from seeband_core.model_catalog import registry
-from seeband_core.model_interface import CurveRequest
+from seeband_core.model_interface import ALL_CURVE_KINDS, CurveRequest
 from seeband_core.model_scales import default_start
 
 BY_BAND_COLUMNS = {
@@ -124,7 +124,8 @@ def modes(client: TestClient) -> dict[str, dict[str, Any]]:
 
 def test_the_matrix_covers_every_cell() -> None:
     for fit_mode_id in OFFERED:
-        assert len(OFFERED[fit_mode_id]) + len(REFUSED[fit_mode_id]) == 8
+        assert set(OFFERED[fit_mode_id]) | set(REFUSED[fit_mode_id]) == set(ALL_CURVE_KINDS)
+        assert not set(OFFERED[fit_mode_id]) & set(REFUSED[fit_mode_id])
 
 
 @pytest.mark.parametrize(("fit_mode_id", "scattering", "kind"), OFFERED_CELLS)
@@ -155,7 +156,11 @@ def test_refused_curve_gives_its_reason(
     assert response.json()["code"] == "curve_unavailable"
     reason = REFUSED[fit_mode_id][kind]
     assert response.json()["details"] == [
-        {"location": ["body", "kind"], "code": reason, "message": f"curve_unavailable.{reason}"}
+        {
+            "location": ["body", "kind"],
+            "code": reason,
+            "message": "See curve_unavailable in the API's README",
+        }
     ]
 
 
@@ -197,16 +202,54 @@ def test_carrier_concentration_is_relative_without_hall_data(
     assert not any(flags.values())
 
 
-def test_absolute_n_follows_m1_and_relative_n_has_none(client: TestClient) -> None:
+def test_absolute_n_scales_with_m1_and_relative_n_uses_one(client: TestClient) -> None:
     kind = "carrier_concentration_by_band"
     body = _body("dpb_s_rho_rh", "acPh", kind)
-    at_one = client.post("/api/calc", json=body).json()
+    at_one = client.post("/api/calc", json=body).json()["curves"]
     body["parameters"] = body["parameters"] | {"m1": 2.0}
-    at_two = client.post("/api/calc", json=body).json()
-    relative = client.post("/api/calc", json=_body("dpb_s_rho", "acPh", kind)).json()
+    at_two = client.post("/api/calc", json=body).json()["curves"]
+    relative = client.post("/api/calc", json=_body("dpb_s_rho", "acPh", kind)).json()["curves"]
 
-    assert at_two["curves"] != at_one["curves"]
-    assert relative["curves"] == at_one["curves"]
+    assert relative == at_one
+    # The density of states goes as m^1.5, for both bands, as they share m1.
+    for name, values in at_one.items():
+        assert at_two[name] == pytest.approx([value * 2**1.5 for value in values], rel=1e-12)
+
+
+def test_r_h_scales_inversely_with_n_through_m1(client: TestClient) -> None:
+    body = _body("dpb_s_rho_rh", "acPh", "measured")
+    at_one = client.post("/api/calc", json=body).json()["curves"]
+    body["parameters"] = body["parameters"] | {"m1": 2.0}
+    at_two = client.post("/api/calc", json=body).json()["curves"]
+
+    expected = [value / 2**1.5 for value in at_one["hall_m3_per_c"]]
+    assert at_two["hall_m3_per_c"] == pytest.approx(expected, rel=1e-12)
+    assert at_two["seebeck_v_per_k"] == at_one["seebeck_v_per_k"]
+    assert at_two["resistivity_ohm_m"] == at_one["resistivity_ohm_m"]
+
+
+def test_negative_m1_in_n_is_refused(client: TestClient) -> None:
+    body = _body("dpb_s_rho_rh", "acPh", "carrier_concentration_by_band")
+    body["parameters"] = body["parameters"] | {"m1": -1.0}
+
+    response = client.post("/api/calc", json=body)
+
+    assert response.status_code == 422
+    assert response.json()["code"] == "calculation_failed"
+
+
+def test_disabled_mode_answers_first_even_for_a_curve_it_lacks(client: TestClient) -> None:
+    response = client.post("/api/calc", json=_body("spb_s_rho_rh", "acPh", "seebeck_by_band"))
+
+    assert response.status_code == 409
+
+
+def test_bad_parameters_are_reported_before_an_unavailable_curve(client: TestClient) -> None:
+    body = _body("spb_s", None, "seebeck_by_band") | {"parameters": {"band_mass": 1.0}}
+
+    response = client.post("/api/calc", json=body)
+
+    assert response.json()["code"] == "invalid_calculation"
 
 
 @pytest.mark.parametrize(
@@ -233,15 +276,14 @@ def test_acphdis_flag_is_not_on_curves_it_does_not_change(client: TestClient) ->
     assert "acphdis_curve_scale" not in body["known_issues"]
 
 
-def test_rmse_compares_with_the_data_whatever_the_kind(client: TestClient) -> None:
+def test_measurements_need_the_measured_kind(client: TestClient) -> None:
     measurements = {"seebeck": {"temperature_k": [300.0, 500.0], "values": [1.0e-4, 2.0e-4]}}
-    measured = _body("dpb_s_rho", "acPh", "measured") | {"measurements": measurements}
-    derived = _body("dpb_s_rho", "acPh", "chemical_potential") | {"measurements": measurements}
+    body = _body("dpb_s_rho", "acPh", "chemical_potential") | {"measurements": measurements}
 
-    assert (
-        client.post("/api/calc", json=derived).json()["rmse"]
-        == client.post("/api/calc", json=measured).json()["rmse"]
-    )
+    response = client.post("/api/calc", json=body)
+
+    assert response.status_code == 422
+    assert response.json()["details"][0]["code"] == "measurements_need_measured_kind"
 
 
 def test_unknown_kind_is_refused(client: TestClient) -> None:

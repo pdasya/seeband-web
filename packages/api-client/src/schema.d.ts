@@ -70,8 +70,9 @@ export interface components {
          *     defaults to the model's. `measurements` gives an RMSE for each quantity, and should hold only
          *     points in the fit range. `extrapolated` says that interpolation made up some of these points.
          *
-         *     `kind` chooses the curves, and `GET /api/models` lists which a mode offers. The RMSE always
-         *     compares S, rho and R_H with the data, whatever the kind.
+         *     `kind` chooses the curves, and `GET /api/models` lists which a mode offers. `measurements` need
+         *     the `measured` kind, because the known issues of a response are those of its curves, and an RMSE
+         *     of other curves would not carry its own.
          * @example {
          *       "fit_mode": "dpb_s_rho",
          *       "max_temperature_k": 500,
@@ -126,7 +127,7 @@ export interface components {
              * @default measured
              * @enum {string}
              */
-            kind: "measured" | "seebeck" | "seebeck_by_band" | "chemical_potential" | "electrical_conductivity" | "electrical_conductivity_by_band" | "thermal_conductivity" | "carrier_concentration_by_band";
+            kind?: "measured" | "seebeck" | "seebeck_by_band" | "chemical_potential" | "electrical_conductivity" | "electrical_conductivity_by_band" | "thermal_conductivity" | "carrier_concentration_by_band";
             /** Points */
             points?: number | null;
             /**

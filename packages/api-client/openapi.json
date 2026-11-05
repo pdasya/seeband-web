@@ -2636,7 +2636,7 @@
           "max_temperature_k"
         ],
         "title": "CalcRequest",
-        "description": "What to calculate.\n\n`parameters` holds every parameter of the mode in core units, including those of other\nscattering types. Values outside a control's range are allowed, as a fit can end there. `points`\ndefaults to the model's. `measurements` gives an RMSE for each quantity, and should hold only\npoints in the fit range. `extrapolated` says that interpolation made up some of these points.\n\n`kind` chooses the curves, and `GET /api/models` lists which a mode offers. The RMSE always\ncompares S, rho and R_H with the data, whatever the kind.",
+        "description": "What to calculate.\n\n`parameters` holds every parameter of the mode in core units, including those of other\nscattering types. Values outside a control's range are allowed, as a fit can end there. `points`\ndefaults to the model's. `measurements` gives an RMSE for each quantity, and should hold only\npoints in the fit range. `extrapolated` says that interpolation made up some of these points.\n\n`kind` chooses the curves, and `GET /api/models` lists which a mode offers. `measurements` need\nthe `measured` kind, because the known issues of a response are those of its curves, and an RMSE\nof other curves would not carry its own.",
         "examples": [
           {
             "fit_mode": "dpb_s_rho",

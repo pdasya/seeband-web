@@ -516,6 +516,13 @@ def test_a_new_model_need_not_list_its_missing_curves() -> None:
     [
         {"unavailable_curves": (UnavailableCurve("measured", "because"),)},
         {"relative_curve_kinds": ("chemical_potential",)},
+        {"unavailable_curves": (UnavailableCurve("seebeck", ""),)},
+        {
+            "unavailable_curves": (
+                UnavailableCurve("seebeck", "a"),
+                UnavailableCurve("seebeck", "b"),
+            )
+        },
     ],
 )
 def test_contradictory_curve_descriptions_are_refused(changes: dict[str, Any]) -> None:
