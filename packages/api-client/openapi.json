@@ -82,6 +82,51 @@
                       ]
                     }
                   },
+                  "invalid_fit": {
+                    "value": {
+                      "code": "invalid_fit",
+                      "message": "Invalid fit",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "bounds",
+                            "m_eff"
+                          ],
+                          "code": "parameter_not_fitted",
+                          "message": "This fit does not fit it"
+                        }
+                      ]
+                    }
+                  },
+                  "fit_queue_full": {
+                    "value": {
+                      "code": "fit_queue_full",
+                      "message": "Too many fits are running. Try again shortly.",
+                      "details": []
+                    }
+                  },
+                  "fit_timeout": {
+                    "value": {
+                      "code": "fit_timeout",
+                      "message": "The fit took too long",
+                      "details": []
+                    }
+                  },
+                  "fit_process_died": {
+                    "value": {
+                      "code": "fit_process_died",
+                      "message": "The fit stopped unexpectedly. Try again.",
+                      "details": []
+                    }
+                  },
+                  "fit_failed": {
+                    "value": {
+                      "code": "fit_failed",
+                      "message": "The fit ended with an internal error",
+                      "details": []
+                    }
+                  },
                   "invalid_parse_request": {
                     "value": {
                       "code": "invalid_parse_request",
@@ -2375,6 +2420,51 @@
                       ]
                     }
                   },
+                  "invalid_fit": {
+                    "value": {
+                      "code": "invalid_fit",
+                      "message": "Invalid fit",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "bounds",
+                            "m_eff"
+                          ],
+                          "code": "parameter_not_fitted",
+                          "message": "This fit does not fit it"
+                        }
+                      ]
+                    }
+                  },
+                  "fit_queue_full": {
+                    "value": {
+                      "code": "fit_queue_full",
+                      "message": "Too many fits are running. Try again shortly.",
+                      "details": []
+                    }
+                  },
+                  "fit_timeout": {
+                    "value": {
+                      "code": "fit_timeout",
+                      "message": "The fit took too long",
+                      "details": []
+                    }
+                  },
+                  "fit_process_died": {
+                    "value": {
+                      "code": "fit_process_died",
+                      "message": "The fit stopped unexpectedly. Try again.",
+                      "details": []
+                    }
+                  },
+                  "fit_failed": {
+                    "value": {
+                      "code": "fit_failed",
+                      "message": "The fit ended with an internal error",
+                      "details": []
+                    }
+                  },
                   "invalid_parse_request": {
                     "value": {
                       "code": "invalid_parse_request",
@@ -2556,6 +2646,51 @@
                           "message": "A known issue disables this mode"
                         }
                       ]
+                    }
+                  },
+                  "invalid_fit": {
+                    "value": {
+                      "code": "invalid_fit",
+                      "message": "Invalid fit",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "bounds",
+                            "m_eff"
+                          ],
+                          "code": "parameter_not_fitted",
+                          "message": "This fit does not fit it"
+                        }
+                      ]
+                    }
+                  },
+                  "fit_queue_full": {
+                    "value": {
+                      "code": "fit_queue_full",
+                      "message": "Too many fits are running. Try again shortly.",
+                      "details": []
+                    }
+                  },
+                  "fit_timeout": {
+                    "value": {
+                      "code": "fit_timeout",
+                      "message": "The fit took too long",
+                      "details": []
+                    }
+                  },
+                  "fit_process_died": {
+                    "value": {
+                      "code": "fit_process_died",
+                      "message": "The fit stopped unexpectedly. Try again.",
+                      "details": []
+                    }
+                  },
+                  "fit_failed": {
+                    "value": {
+                      "code": "fit_failed",
+                      "message": "The fit ended with an internal error",
+                      "details": []
                     }
                   },
                   "invalid_parse_request": {
@@ -2914,6 +3049,51 @@
                       ]
                     }
                   },
+                  "invalid_fit": {
+                    "value": {
+                      "code": "invalid_fit",
+                      "message": "Invalid fit",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "bounds",
+                            "m_eff"
+                          ],
+                          "code": "parameter_not_fitted",
+                          "message": "This fit does not fit it"
+                        }
+                      ]
+                    }
+                  },
+                  "fit_queue_full": {
+                    "value": {
+                      "code": "fit_queue_full",
+                      "message": "Too many fits are running. Try again shortly.",
+                      "details": []
+                    }
+                  },
+                  "fit_timeout": {
+                    "value": {
+                      "code": "fit_timeout",
+                      "message": "The fit took too long",
+                      "details": []
+                    }
+                  },
+                  "fit_process_died": {
+                    "value": {
+                      "code": "fit_process_died",
+                      "message": "The fit stopped unexpectedly. Try again.",
+                      "details": []
+                    }
+                  },
+                  "fit_failed": {
+                    "value": {
+                      "code": "fit_failed",
+                      "message": "The fit ended with an internal error",
+                      "details": []
+                    }
+                  },
                   "invalid_parse_request": {
                     "value": {
                       "code": "invalid_parse_request",
@@ -3172,6 +3352,272 @@
                       ]
                     }
                   },
+                  "invalid_fit": {
+                    "value": {
+                      "code": "invalid_fit",
+                      "message": "Invalid fit",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "bounds",
+                            "m_eff"
+                          ],
+                          "code": "parameter_not_fitted",
+                          "message": "This fit does not fit it"
+                        }
+                      ]
+                    }
+                  },
+                  "fit_queue_full": {
+                    "value": {
+                      "code": "fit_queue_full",
+                      "message": "Too many fits are running. Try again shortly.",
+                      "details": []
+                    }
+                  },
+                  "fit_timeout": {
+                    "value": {
+                      "code": "fit_timeout",
+                      "message": "The fit took too long",
+                      "details": []
+                    }
+                  },
+                  "fit_process_died": {
+                    "value": {
+                      "code": "fit_process_died",
+                      "message": "The fit stopped unexpectedly. Try again.",
+                      "details": []
+                    }
+                  },
+                  "fit_failed": {
+                    "value": {
+                      "code": "fit_failed",
+                      "message": "The fit ended with an internal error",
+                      "details": []
+                    }
+                  },
+                  "invalid_parse_request": {
+                    "value": {
+                      "code": "invalid_parse_request",
+                      "message": "Invalid request",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "mapping"
+                          ],
+                          "code": "unknown_column",
+                          "message": "The text has no such column"
+                        }
+                      ]
+                    }
+                  },
+                  "invalid_guess": {
+                    "value": {
+                      "code": "invalid_guess",
+                      "message": "Invalid request",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "model"
+                          ],
+                          "code": "unknown_model",
+                          "message": "This model does not exist"
+                        }
+                      ]
+                    }
+                  },
+                  "guess_unavailable": {
+                    "value": {
+                      "code": "guess_unavailable",
+                      "message": "This model has no neural net guess",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "model"
+                          ],
+                          "code": "no_neural_net",
+                          "message": "See has_initial_guess in GET /api/models"
+                        }
+                      ]
+                    }
+                  },
+                  "invalid_calculation": {
+                    "value": {
+                      "code": "invalid_calculation",
+                      "message": "Invalid calculation",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "parameters",
+                            "m_eff"
+                          ],
+                          "code": "missing_parameter",
+                          "message": "This mode needs it"
+                        }
+                      ]
+                    }
+                  },
+                  "validation_error": {
+                    "value": {
+                      "code": "validation_error",
+                      "message": "Invalid request",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "seebeck_v_per_k",
+                            3
+                          ],
+                          "code": "float_parsing",
+                          "message": "Input should be a valid number, unable to parse string as a number"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/fit": {
+      "post": {
+        "tags": [
+          "fit"
+        ],
+        "summary": "Post Fit",
+        "operationId": "post_fit",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FitApiRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FitResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "internal_error": {
+                    "value": {
+                      "code": "internal_error",
+                      "message": "Internal server error",
+                      "details": []
+                    }
+                  },
+                  "not_found": {
+                    "value": {
+                      "code": "not_found",
+                      "message": "Not Found",
+                      "details": []
+                    }
+                  },
+                  "calculation_failed": {
+                    "value": {
+                      "code": "calculation_failed",
+                      "message": "The calculation has no result for these parameters and temperatures",
+                      "details": []
+                    }
+                  },
+                  "calculation_timeout": {
+                    "value": {
+                      "code": "calculation_timeout",
+                      "message": "The calculation took too long",
+                      "details": []
+                    }
+                  },
+                  "calculation_unavailable": {
+                    "value": {
+                      "code": "calculation_unavailable",
+                      "message": "The calculation stopped unexpectedly. Try again.",
+                      "details": []
+                    }
+                  },
+                  "fit_mode_disabled": {
+                    "value": {
+                      "code": "fit_mode_disabled",
+                      "message": "This fit mode is disabled until its known issue is fixed",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "fit_mode"
+                          ],
+                          "code": "spb_hall_mode_disabled",
+                          "message": "A known issue disables this mode"
+                        }
+                      ]
+                    }
+                  },
+                  "invalid_fit": {
+                    "value": {
+                      "code": "invalid_fit",
+                      "message": "Invalid fit",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "bounds",
+                            "m_eff"
+                          ],
+                          "code": "parameter_not_fitted",
+                          "message": "This fit does not fit it"
+                        }
+                      ]
+                    }
+                  },
+                  "fit_queue_full": {
+                    "value": {
+                      "code": "fit_queue_full",
+                      "message": "Too many fits are running. Try again shortly.",
+                      "details": []
+                    }
+                  },
+                  "fit_timeout": {
+                    "value": {
+                      "code": "fit_timeout",
+                      "message": "The fit took too long",
+                      "details": []
+                    }
+                  },
+                  "fit_process_died": {
+                    "value": {
+                      "code": "fit_process_died",
+                      "message": "The fit stopped unexpectedly. Try again.",
+                      "details": []
+                    }
+                  },
+                  "fit_failed": {
+                    "value": {
+                      "code": "fit_failed",
+                      "message": "The fit ended with an internal error",
+                      "details": []
+                    }
+                  },
                   "invalid_parse_request": {
                     "value": {
                       "code": "invalid_parse_request",
@@ -3264,6 +3710,24 @@
   },
   "components": {
     "schemas": {
+      "BoundsInput": {
+        "properties": {
+          "lower": {
+            "type": "number",
+            "title": "Lower"
+          },
+          "upper": {
+            "type": "number",
+            "title": "Upper"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lower",
+          "upper"
+        ],
+        "title": "BoundsInput"
+      },
       "BoundsResponse": {
         "properties": {
           "lower": {
@@ -3675,6 +4139,132 @@
         "title": "ErrorResponse",
         "description": "The body of every error response."
       },
+      "FitApiRequest": {
+        "properties": {
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "fit_mode": {
+            "type": "string",
+            "title": "Fit Mode"
+          },
+          "scattering": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scattering"
+          },
+          "start": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Start"
+          },
+          "bounds": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/BoundsInput"
+            },
+            "type": "object",
+            "title": "Bounds"
+          },
+          "min_temperature_k": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Min Temperature K"
+          },
+          "max_temperature_k": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Max Temperature K"
+          },
+          "band_1_degeneracy": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Band 1 Degeneracy",
+            "default": 1.0
+          },
+          "band_2_degeneracy": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Band 2 Degeneracy",
+            "default": 1.0
+          },
+          "extrapolated": {
+            "type": "boolean",
+            "title": "Extrapolated",
+            "default": false
+          },
+          "measurements": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/MeasurementInput"
+            },
+            "propertyNames": {
+              "enum": [
+                "seebeck",
+                "resistivity",
+                "hall"
+              ]
+            },
+            "type": "object",
+            "title": "Measurements"
+          }
+        },
+        "type": "object",
+        "required": [
+          "model",
+          "fit_mode",
+          "start",
+          "min_temperature_k",
+          "max_temperature_k",
+          "measurements"
+        ],
+        "title": "FitApiRequest",
+        "description": "What to fit.\n\n`start` holds every parameter of the mode in core units, including those of other scattering\ntypes. `bounds` overrides the description's bounds for fitted parameters, in core units.\n`measurements` holds each quantity of the mode, and only points from `min_temperature_k` to\n`max_temperature_k`, inclusive, enter the fit. `extrapolated` says that interpolation made up\nsome of these points, so that the result says so too.",
+        "examples": [
+          {
+            "bounds": {
+              "band_gap": {
+                "lower": 0.0,
+                "upper": 4000.0
+              }
+            },
+            "fit_mode": "dpb_s",
+            "max_temperature_k": 500.0,
+            "measurements": {
+              "seebeck": {
+                "temperature_k": [
+                  100.0,
+                  200.0,
+                  300.0,
+                  400.0,
+                  500.0
+                ],
+                "values": [
+                  0.0002,
+                  0.00023,
+                  8.9e-05,
+                  3.8e-05,
+                  2.1e-05
+                ]
+              }
+            },
+            "min_temperature_k": 100.0,
+            "model": "dpb",
+            "start": {
+              "band_gap": 1000.0,
+              "fermi_energy": -100.0,
+              "m_eff": 1.01
+            }
+          }
+        ]
+      },
       "FitModeResponse": {
         "properties": {
           "id": {
@@ -3812,6 +4402,104 @@
         ],
         "title": "FitModeResponse",
         "description": "One way of fitting a model.\n\nA client must not offer a mode with `disabled`. `disabled_by` names the `known_issues` that say\nwhy. `iterative` tells whether an iteration count means anything. `threshold`, a relative\nchange, and `max_iterations` are what an iterative fit uses, and a request cannot change them.\n`scattering` is empty when a mode has no choice of scattering."
+      },
+      "FitResponse": {
+        "properties": {
+          "parameters": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Parameters"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "converged",
+              "iteration_limit",
+              "stopped",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "iterations": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Iterations"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "parameter_errors": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Parameter Errors"
+          },
+          "at_bounds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "At Bounds"
+          },
+          "known_issues": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Known Issues"
+          }
+        },
+        "type": "object",
+        "required": [
+          "parameters",
+          "status",
+          "parameter_errors",
+          "at_bounds",
+          "known_issues"
+        ],
+        "title": "FitResponse",
+        "description": "The outcome of a fit, in core units.\n\n`converged` means that the fit ended normally, not that the result is sound. `iteration_limit`\nis not a converged result. `failed` returns the start values, with fixed text in `message`.\n`iterations` is left out for a single-pass mode. A value that is not finite is null.\n\n`parameter_errors` holds standard errors from the last solver run of each stage, holding other\nstages fixed, so in a staged fit they can be far too small, and are not plain uncertainties.\n`at_bounds` names fitted parameters that ended at a bound, which may be what set them.\n`known_issues` names known errors that apply, as in `GET /api/models`.",
+        "examples": [
+          {
+            "at_bounds": [],
+            "known_issues": [],
+            "parameter_errors": {
+              "band_gap": 12.0,
+              "fermi_energy": 4.0,
+              "m_eff": 0.02
+            },
+            "parameters": {
+              "band_gap": 910.0,
+              "fermi_energy": -35.0,
+              "m_eff": 0.57
+            },
+            "status": "converged"
+          }
+        ]
       },
       "GuessFound": {
         "properties": {

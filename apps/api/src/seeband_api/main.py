@@ -9,6 +9,8 @@ from fastapi.routing import APIRoute
 from seeband_api.calc import router as calc_router
 from seeband_api.calc_pool import CalcPool
 from seeband_api.errors import add_error_handlers
+from seeband_api.fit import router as fit_router
+from seeband_api.fit_runner import FitRunner
 from seeband_api.guess import router as guess_router
 from seeband_api.health import router as health_router
 from seeband_api.models import router as models_router
@@ -34,7 +36,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.calc_pool = CalcPool(settings.calc_workers, settings.calc_timeout_s)
         app.state.calc_pool.warm_up()
+        app.state.fit_runner = FitRunner(
+            settings.fit_max_running, settings.fit_max_waiting, settings.fit_timeout_s
+        )
         yield
+        app.state.fit_runner.close()
         app.state.calc_pool.close()
 
     app = FastAPI(
@@ -57,4 +63,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(calc_router)
     app.include_router(parse_router)
     app.include_router(guess_router)
+    app.include_router(fit_router)
     return app

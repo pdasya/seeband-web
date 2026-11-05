@@ -434,6 +434,44 @@ def test_parsing_through_real_workers_keeps_nothing(tmp_path: Path, support_dir:
     assert secret not in log_path.read_text(encoding="utf-8")
 
 
+def test_fit_through_a_real_process_logs_no_values_and_leaves_none(tmp_path: Path) -> None:
+    port = _free_port()
+    log_path = tmp_path / "server.log"
+    secret = "4.321987654e-05"
+    body = {
+        "model": "dpb",
+        "fit_mode": "dpb_s",
+        "start": {"m_eff": 1.01, "band_gap": 1000.0, "fermi_energy": -100.0},
+        "min_temperature_k": 100.0,
+        "max_temperature_k": 500.0,
+        "measurements": {
+            "seebeck": {
+                "temperature_k": [100.0, 200.0, 300.0, 400.0, 500.0],
+                "values": [float(secret), 2.0e-4, 1.0e-4, 5.0e-5, 2.0e-5],
+            }
+        },
+    }
+    env = {"SEEBAND_API_PORT": str(port), "SEEBAND_API_LOG_LEVEL": "DEBUG"}
+    command = [sys.executable, "-m", "seeband_api"]
+
+    with _running_server(command, port, log_path, env) as client:
+        assert client.post("/api/fit", json=body, timeout=60).status_code == 200
+        # Bounds that exclude the start make the core's solver raise.
+        failed = {**body, "bounds": {"band_gap": {"lower": 1.0, "upper": 2.0}}}
+        response = client.post("/api/fit", json=failed, timeout=60)
+        assert response.json()["status"] == "failed"
+        children = _worker_pids(_server_pid(port))
+
+    log = log_path.read_text(encoding="utf-8")
+    assert secret not in log
+    assert "Traceback" not in log
+    assert sum(line.get("route") == "/api/fit" for line in _json_lines(log)) == 2
+    deadline = time.monotonic() + 15
+    while any(_is_running(pid) for pid in children) and time.monotonic() < deadline:
+        time.sleep(0.05)
+    assert not any(_is_running(pid) for pid in children)
+
+
 def _worker_pids(server_pid: int) -> list[int]:
     found = subprocess.run(["pgrep", "-P", str(server_pid)], capture_output=True, text=True)
     return [int(pid) for pid in found.stdout.split()]
