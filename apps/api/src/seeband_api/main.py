@@ -11,6 +11,7 @@ from seeband_api.calc_pool import CalcPool
 from seeband_api.errors import add_error_handlers
 from seeband_api.health import router as health_router
 from seeband_api.models import router as models_router
+from seeband_api.parse import router as parse_router
 from seeband_api.request_logging import RequestLoggingMiddleware, configure_logging
 from seeband_api.settings import Settings
 from seeband_api.version import API_VERSION
@@ -53,4 +54,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(health_router)
     app.include_router(models_router)
     app.include_router(calc_router)
+    app.include_router(parse_router)
     return app

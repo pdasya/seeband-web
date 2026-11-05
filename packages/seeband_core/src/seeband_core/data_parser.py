@@ -19,6 +19,7 @@ Role = Literal["temperature", "seebeck", "resistivity", "hall"]
 IssueCode = Literal[
     # Errors
     "no_data",
+    "wrong_encoding",
     "line_too_long",
     "too_many_problems",
     "too_few_columns",
@@ -96,7 +97,8 @@ class ParsedTable:
     """The columns of a text, and what they seem to hold.
 
     `columns` holds every row that could be read, for a preview, in the order of the text, with
-    `lines` giving each row's line. `mapping` goes from column to role, as a suggestion or as a user
+    `lines` giving each row's line. `column_count` is that of the first row of numbers, and 0 if no
+    row set one. `mapping` goes from column to role, as a suggestion or as a user
     chose it. `measurements` is sorted by temperature, and is empty with any `errors`.
     """
 
@@ -107,6 +109,7 @@ class ParsedTable:
     measurements: Mapping[Quantity, Measurement]
     errors: tuple[ParseIssue, ...]
     warnings: tuple[ParseIssue, ...]
+    column_count: int = 0
 
 
 def _content_lines(text: str) -> list[tuple[int, str]]:
@@ -230,7 +233,13 @@ def with_mapping(table: ParsedTable, mapping: Mapping[int, Role]) -> ParsedTable
     kept_errors = tuple(issue for issue in table.errors if issue.code not in _FROM_MAPPING)
     kept_warnings = tuple(issue for issue in table.warnings if issue.code not in _FROM_MAPPING)
     if kept_errors:
-        return replace(table, mapping=dict(mapping), measurements={}, errors=kept_errors)
+        return replace(
+            table,
+            mapping=dict(mapping),
+            measurements={},
+            errors=kept_errors,
+            warnings=kept_warnings,
+        )
     measurements, errors, warnings = _measure(table.columns, table.lines, mapping)
     return replace(
         table,
@@ -312,7 +321,9 @@ def parse_table(
     data_lines = lines[leading:]
     empty = ParsedTable(None, (), (), {}, {}, (), tuple(warnings))
     if not data_lines:
-        return replace(empty, errors=(ParseIssue("no_data"),))
+        # A text read in the wrong encoding, such as UTF-16 as UTF-8, has only "text" lines.
+        code: IssueCode = "wrong_encoding" if "\x00" in text or "\ufffd" in text else "no_data"
+        return replace(empty, errors=(ParseIssue(code),))
 
     rows, row_lines, column_count, errors = _read_rows(data_lines)
     columns: tuple[np.ndarray, ...] = ()
@@ -348,6 +359,7 @@ def parse_table(
         {},
         tuple(errors),
         tuple(warnings),
+        column_count or 0,
     )
     if errors:
         return parsed

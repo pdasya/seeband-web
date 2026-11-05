@@ -72,6 +72,17 @@ ERROR_EXAMPLES: dict[str, dict[str, Any]] = {
             }
         ],
     },
+    "invalid_parse_request": {
+        "code": "invalid_parse_request",
+        "message": "Invalid request",
+        "details": [
+            {
+                "location": ["body", "mapping"],
+                "code": "unknown_column",
+                "message": "The text has no such column",
+            }
+        ],
+    },
     "invalid_calculation": {
         "code": "invalid_calculation",
         "message": "Invalid calculation",
