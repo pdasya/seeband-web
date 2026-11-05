@@ -300,6 +300,8 @@ def test_replay_matches_the_desktop(
 ) -> None:
     if "error" in call:
         kind, _, message = call["error"].partition(": ")
+        assert kind == "ValueError"
+        assert ERROR_FRAGMENTS[kind] in message
         failed = replay_fit(mode, call)
         assert failed.status == "failed"
         assert failed.message is not None

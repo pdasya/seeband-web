@@ -5,7 +5,11 @@ calculations they come from.
 """
 
 import logging
+import math
+import traceback
 from collections.abc import Callable, Iterable, Mapping
+from numbers import Real
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -76,8 +80,9 @@ def _value(parameters: Mapping[str, float], name: str) -> float:
 
 
 def _degeneracy_ratio(request: CurveRequest | FitRequest) -> float:
-    if request.band_1_degeneracy <= 0 or request.band_2_degeneracy <= 0:
-        raise ValueError("Band degeneracies must be positive")
+    for degeneracy in (request.band_1_degeneracy, request.band_2_degeneracy):
+        if not 0 < degeneracy < math.inf:
+            raise ValueError("Band degeneracies must be positive")
     return request.band_2_degeneracy / request.band_1_degeneracy
 
 
@@ -95,17 +100,38 @@ def _measurement_arrays(
 class _CallbackError(Exception):
     """Carries an error of the caller's callback through the fit, which is not its failure."""
 
+    def __init__(self, original: Exception) -> None:
+        super().__init__()
+        self.original = original
+
 
 def _failure_message(error: Exception) -> str:
     """Return fixed text for a failed fit, because solver messages are not written for users."""
     text = str(error)
-    if "bounds" in text or "infeasible" in text:
+    if isinstance(error, ValueError) and "bounds" in text:
         return "The start values do not fit the bounds."
-    if "not finite" in text:
-        return "The model gave values that are not finite at the start values."
-    if isinstance(error, RuntimeError):
+    if isinstance(error, ValueError) and "not finite" in text:
+        return "The model gave values that are not finite during the fit."
+    if isinstance(error, RuntimeError) and "Optimal parameters not found" in text:
         return "The fit reached its limit of function evaluations."
     return "The fit failed with an internal error."
+
+
+def _log_failure(error: Exception) -> None:
+    """Log where a fit failed, without the error's text, which could hold measured values."""
+    frames = traceback.extract_tb(error.__traceback__)
+    place = f"{Path(frames[-1].filename).name}:{frames[-1].lineno}" if frames else "unknown"
+    logger.warning("A fit failed with %s at %s", type(error).__name__, place)
+
+
+def _check_measurement(quantity: str, measurement: Measurement) -> None:
+    for values in (measurement.temperature_k, measurement.values):
+        if not isinstance(values, np.ndarray) or values.ndim != 1 or values.size == 0:
+            raise ValueError(f"Measurement {quantity} needs non-empty one-dimensional arrays")
+        if not np.issubdtype(values.dtype, np.number) or not np.all(np.isfinite(values)):
+            raise ValueError(f"Measurement {quantity} needs finite numbers")
+    if measurement.temperature_k.size != measurement.values.size:
+        raise ValueError(f"Measurement {quantity} has temperatures and values of different lengths")
 
 
 class _BandModel:
@@ -131,9 +157,17 @@ class _BandModel:
         unknown = [name for name in request.start if name not in specs]
         if unknown:
             raise ValueError(f"Fit mode {fit_mode.id} has no parameters {unknown}")
-        for name in request.bounds:
+        for name, value in request.start.items():
+            if not isinstance(value, Real) or not math.isfinite(value):
+                raise ValueError(f"Start value of {name} must be a finite number")
+        for name, bounds in request.bounds.items():
             if name not in specs or specs[name].fit_bounds is None:
                 raise ValueError(f"Fit mode {fit_mode.id} does not fit a parameter {name}")
+            if not bounds.lower < bounds.upper:
+                raise ValueError(f"The lower bound of {name} must be below its upper bound")
+        for quantity in fit_mode.quantities:
+            if quantity in request.measurements:
+                _check_measurement(quantity, request.measurements[quantity])
 
     def _limits(self, request: FitRequest, fit_mode: FitMode, names: Iterable[str]) -> list[Any]:
         """Return [[lower, ...], [upper, ...]], from the request or else the description."""
@@ -157,8 +191,10 @@ class _BandModel:
         """Run a single-pass fit, and turn its errors into a status."""
         try:
             fitted = function(*arguments, **keywords)
+        except MemoryError:
+            raise
         except Exception as error:
-            logger.warning("A fit failed with %s", type(error).__name__)
+            _log_failure(error)
             return FitResult(dict(request.start), "failed", message=_failure_message(error))
         return FitResult(dict(request.start) | dict(zip(names, fitted, strict=True)), "converged")
 
@@ -172,6 +208,7 @@ class _BandModel:
     ) -> FitResult:
         """Run a fit with a loop, and turn how it ended into a status."""
         latest = dict(request.start)
+        callback_error: Exception | None = None
         progress = fit_module.FitProgress()
         if on_iteration is not None:
             callback = on_iteration
@@ -184,7 +221,7 @@ class _BandModel:
                 except FitStopped:
                     raise
                 except Exception as error:
-                    raise _CallbackError from error
+                    raise _CallbackError(error) from error
 
             progress.on_iteration = report
         try:
@@ -192,16 +229,19 @@ class _BandModel:
         except FitStopped:
             return FitResult(latest, "stopped", progress.iterations)
         except _CallbackError as error:
-            assert error.__cause__ is not None
-            raise error.__cause__ from None
+            callback_error = error.original
+        except MemoryError:
+            raise
         except Exception as error:
-            logger.warning("A fit failed with %s", type(error).__name__)
+            _log_failure(error)
             return FitResult(
                 dict(request.start),
                 "failed",
                 progress.iterations,
                 _failure_message(error),
             )
+        if callback_error is not None:
+            raise callback_error
         status: FitStatus = "iteration_limit" if progress.reached_iteration_limit else "converged"
         result = dict(request.start) | dict(zip(names, fitted, strict=True))
         return FitResult(result, status, progress.iterations)

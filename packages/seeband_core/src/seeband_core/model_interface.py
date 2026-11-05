@@ -181,9 +181,10 @@ class FitRequest:
 class FitResult:
     """The outcome of a fit, in core units.
 
-    A fit that fails returns `failed` with a `message`, and its start values. A request that is
-    invalid raises instead. `stopped` holds the values of the last iteration, and `iteration_limit`
-    holds what the fit ended with, which is not a converged result.
+    A fit that fails returns `failed` with a `message`, and its start values, because partial values
+    should not look usable. A request that is invalid raises instead. `stopped` holds the values of
+    the last iteration, with m1 still at its start, and `iteration_limit` holds what the fit ended
+    with, which is not a converged result.
 
     `converged` means that the fit ended normally: for an iterative fit, its stop rule was met, and
     for a single-pass fit, the solver returned. It does not mean the result is sound.

@@ -13,16 +13,16 @@ A fit runs in a separate process, which holds only the models its imports regist
 
 ## Fit outcomes
 
-`fit` returns a `FitResult` with one of four statuses, and raises only for an invalid request:
+`fit` returns a `FitResult` with one of four statuses. It raises for an invalid request, for an error in the callback and for `MemoryError`. An invalid request includes empty, non-finite or mismatched measurements, a start value that is not a finite number, inverted bounds, and names a fit cannot use. A start value outside the bounds is `failed`, as D1 records on the desktop.
 
-| Status            | Meaning                                                                                                                              | Parameters              |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ----------------------- |
-| `converged`       | the fit ended normally: an iterative fit met its stop rule, or a single-pass solver returned. This does not mean the result is sound | the result              |
-| `iteration_limit` | the loop reached its limit. The desktop reports this as success                                                                      | what the fit ended with |
-| `stopped`         | a callback raised `FitStopped`                                                                                                       | the last iteration      |
-| `failed`          | the calculation raised. `message` holds fixed text, because solver messages are not written for users                                | the start values        |
+| Status            | Meaning                                                                                                                              | Parameters                                     |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------- |
+| `converged`       | the fit ended normally: an iterative fit met its stop rule, or a single-pass solver returned. This does not mean the result is sound | the result                                     |
+| `iteration_limit` | the loop reached its limit. The desktop reports this as success                                                                      | what the fit ended with                        |
+| `stopped`         | a callback raised `FitStopped`                                                                                                       | the last iteration, with m1 still at its start |
+| `failed`          | the calculation raised. `message` holds fixed text, because solver messages are not written for users                                | the start values                               |
 
-An iterative fit calls `on_iteration` once per iteration, with values in the form of a final result, and `FitMode.iterative` tells a client whether to show a counter. A single-pass fit never calls it, and stopping one means ending its process.
+An iterative fit calls `on_iteration` once per iteration, with values in the form of a final result, and `FitMode.iterative` tells a client whether to show a counter. A single-pass fit never calls it. Stopping acts between iterations only, and neither the extra Seebeck stage at the limit nor the Hall stage can be stopped, so a worker still needs a way to end the process.
 
 ## Rules
 

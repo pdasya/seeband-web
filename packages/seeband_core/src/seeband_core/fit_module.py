@@ -12,8 +12,10 @@ from seeband_core import math_module as te
 class FitProgress:
     """Follows the loop of an iterative fit.
 
-    `on_iteration` receives the iteration and the values a fit would return if it ended there. It
-    stops the fit by raising. `iterations` counts completed Seebeck and resistivity stages.
+    `on_iteration` receives the iteration and the values a fit would return if its stop rule ended
+    it there, leaving out m1, which a Hall fit fits after the loop. It stops the fit by raising.
+    `iterations` counts completed Seebeck and resistivity stages. The extra Seebeck stage at the
+    limit and the Hall stage cannot be stopped.
     """
 
     on_iteration: Callable[[int, list[float]], None] | None = None
