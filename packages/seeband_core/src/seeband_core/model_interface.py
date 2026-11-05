@@ -23,6 +23,14 @@ CurveKind = Literal[
     "carrier_concentration_by_band",
 ]
 FitStatus = Literal["converged", "iteration_limit", "stopped", "failed"]
+IssueSeverity = Literal["disabled", "unreliable", "caution"]
+IssueCondition = Literal[
+    "degeneracy_not_one",
+    "negative_m_eff",
+    "collapsed_m_eff",
+    "fermi_energy_outside_band",
+    "interpolation_extrapolated",
+]
 
 QUANTITY_UNITS: Mapping[Quantity, str] = {
     "seebeck": "V/K",
@@ -79,6 +87,31 @@ class Degeneracy:
 
 
 @dataclass(frozen=True)
+class KnownIssue:
+    """A known error of the calculations, and where it applies.
+
+    `scattering` is empty for every type. `condition` limits it to some inputs. `columns` names the
+    curves of a kind that it changes, and is empty for all of them. `fixed_by` is the issue that
+    removes it. `explanation` is for developers, and a user sees `message_key` through i18n.
+    """
+
+    id: str
+    severity: IssueSeverity
+    fixed_by: str
+    fit_modes: tuple[str, ...]
+    explanation: str
+    scattering: tuple[str, ...] = ()
+    curve_kinds: tuple[CurveKind, ...] = ()
+    columns: tuple[str, ...] = ()
+    affects_fit: bool = False
+    condition: IssueCondition | None = None
+    message_key: str = field(init=False)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "message_key", f"known_issue.{self.id}")
+
+
+@dataclass(frozen=True)
 class FitMode:
     """One way of fitting a model: which data it needs, its parameters, and the curves it offers.
 
@@ -96,6 +129,12 @@ class FitMode:
     max_iterations: int | None = None
     degeneracy: Degeneracy | None = None
     curve_kinds: tuple[CurveKind, ...] = ("measured",)
+    known_issues: tuple[KnownIssue, ...] = ()
+
+    @property
+    def disabled(self) -> bool:
+        """Whether a client must not offer this mode. The model does not enforce this itself."""
+        return any(issue.severity == "disabled" for issue in self.known_issues)
 
     def parameters_for(self, scattering: str | None) -> tuple[ParameterSpec, ...]:
         """Return the parameters that apply to a scattering type, or all of them for None."""
@@ -149,7 +188,7 @@ class CurveRequest:
     """Ask for curves. `parameters` holds every parameter of the mode, in core units.
 
     That includes fixed parameters and those of other scattering types, which the calculations
-    read and return unchanged.
+    read and return unchanged. `extrapolated` says that the data behind it were partly made up.
     """
 
     fit_mode: str
@@ -161,6 +200,7 @@ class CurveRequest:
     kind: CurveKind = "measured"
     band_1_degeneracy: float = 1.0
     band_2_degeneracy: float = 1.0
+    extrapolated: bool = False
 
 
 @dataclass(frozen=True, eq=False)
@@ -169,6 +209,7 @@ class CurveResult:
 
     temperature_k: np.ndarray
     curves: Mapping[str, np.ndarray]
+    known_issues: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, eq=False)
@@ -177,7 +218,8 @@ class FitRequest:
 
     That includes fixed parameters and those of other scattering types. `bounds` overrides
     the bounds of the description for the fitted parameters it names, and naming any other is an
-    error.
+    error. `extrapolated` says that interpolation made up some of the data, so that the result says
+    so too.
     """
 
     fit_mode: str
@@ -187,6 +229,7 @@ class FitRequest:
     scattering: str | None = None
     band_1_degeneracy: float = 1.0
     band_2_degeneracy: float = 1.0
+    extrapolated: bool = False
 
 
 @dataclass(frozen=True)
@@ -219,6 +262,7 @@ class FitResult:
     message: str | None = None
     parameter_errors: Mapping[str, float] = field(default_factory=dict)
     at_bounds: tuple[str, ...] = ()
+    known_issues: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

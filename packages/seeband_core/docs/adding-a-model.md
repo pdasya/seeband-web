@@ -32,6 +32,10 @@ An iterative fit calls `on_iteration` once per iteration, with values in the for
 - `FitResult.parameter_errors` holds standard errors from the last solver run of each stage. It leaves out errors that are not finite, or exactly 0, which means the data do not determine the parameter. Each error holds other stages fixed. In one test, the reported error of SPB A was 0.069 against a real spread of 146, so these are not plain uncertainties.
 - `FitResult.at_bounds` names fitted parameters that ended within 1e-6 of a bound, as a share of the bound, or 1e-6 for a bound below 1.
 
+## Known issues
+
+A known error goes in `known_issues.py`. `FitMode.known_issues` and `FitMode.disabled` expose it in descriptions, and `known_issues` on a result lists those that apply to it. See [known issues](known-issues.md).
+
 ## Rules
 
 - Do not mutate requests or measurements.

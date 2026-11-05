@@ -4,6 +4,7 @@ import json
 from importlib import resources
 from typing import Any
 
+from seeband_core.known_issues import issues_for_mode
 from seeband_core.model_interface import (
     Bounds,
     CurveKind,
@@ -84,6 +85,7 @@ def _fit_mode(entry: dict[str, Any]) -> FitMode:
             Degeneracy(degeneracy["n1_default"], degeneracy["n2_default"]) if degeneracy else None
         ),
         curve_kinds=CURVE_KINDS[entry["id"]],
+        known_issues=issues_for_mode(entry["id"]),
     )
 
 
