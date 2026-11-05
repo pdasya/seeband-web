@@ -1895,6 +1895,19 @@
         "modules/data_processing.py:51",
         "modules/neural_nets.py:21"
       ]
+    },
+    {
+      "id": "D23",
+      "title": "One interpolation switch, recalculated with the fit range",
+      "desktop": "Each quantity has its own interpolation button. The grid comes from the fit range at the click, and changing the range later only changes the mask on the old grid, so the points depend on the order of the clicks.",
+      "web": "One switch applies to all loaded quantities, and the grid always comes from the current fit range. With a range set before the click, the points equal the desktop's. The extrapolation stays, and P7 fixes it.",
+      "resolved_by": "#21 (C13)",
+      "source": [
+        "seeband.py:3380",
+        "seeband.py:3414",
+        "seeband.py:3445",
+        "seeband.py:4467"
+      ]
     }
   ]
 }
