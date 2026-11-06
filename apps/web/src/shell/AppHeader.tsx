@@ -52,7 +52,7 @@ export function AppHeader() {
       <div className="mx-auto flex max-w-[var(--layout-max-width)] flex-wrap items-center gap-x-6 gap-y-3 px-6 py-3">
         <div className="flex items-center gap-2.5">
           <Logo />
-          <div className="text-lg font-semibold tracking-[-0.01em]">
+          <div className="text-base font-semibold tracking-[-0.01em]">
             {STRINGS.appName}
           </div>
           <span className="rounded-full border px-2 py-0.5 text-xs font-medium text-[var(--color-zinc-600)]">

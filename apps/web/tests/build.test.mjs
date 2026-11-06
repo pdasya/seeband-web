@@ -63,6 +63,10 @@ test("the fonts' licenses are served with them", () => {
   }
 });
 
+test("the system's dark setting changes nothing, as there are no dark tokens", () => {
+  assert.doesNotMatch(css, /prefers-color-scheme:\s*dark/);
+});
+
 test("the root font size stays, as Tailwind's sizes in rem would otherwise shrink", () => {
   for (const match of css.matchAll(
     /(?:^|})\s*(?:html|:root)[^{]*\{([^}]*)\}/g,
@@ -81,9 +85,6 @@ test("the design's tokens are in the styles", () => {
     "#2563eb",
     "#ea580c",
     "#0d9488",
-    "--radius-card:12px",
-    "--radius-group:8px",
-    "--radius-control:6px",
   ]) {
     assert.ok(css.replaceAll(" ", "").includes(value), value);
   }

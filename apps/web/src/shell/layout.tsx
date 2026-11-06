@@ -61,7 +61,7 @@ export function Panel({
   return (
     <section className="rounded-xl border bg-card shadow-card">
       <div className="p-5">
-        <h2 className="m-0 text-lg font-semibold tracking-[-0.01em]">
+        <h2 className="m-0 text-base font-semibold tracking-[-0.01em]">
           {title}
         </h2>
         {children}
