@@ -211,7 +211,26 @@ test("a range that holds reaches interpolation, and one that does not says so", 
   await expect(page.getByText("Fit range 50–600 K")).toBeVisible();
 });
 
-for (const value of ["0", "2.5", ""]) {
+for (const value of ["0.5", "2.5"]) {
+  test(`a degeneracy of ${value} is kept`, async ({ page }) => {
+    await open(page);
+
+    await page.getByLabel("N₁").fill(value);
+    await page.getByLabel("N₁").blur();
+
+    await expect(page.getByLabel("N₁")).toHaveAttribute(
+      "aria-invalid",
+      "false",
+    );
+    await expect(page.getByRole("alert")).toHaveCount(0);
+
+    await page.getByRole("link", { name: "Results" }).click();
+    await page.getByRole("link", { name: "Model fit" }).click();
+    await expect(page.getByLabel("N₁")).toHaveValue(value);
+  });
+}
+
+for (const value of ["0", "-1", ""]) {
   test(`a degeneracy of "${value}" says so and stays out of the session`, async ({
     page,
   }) => {
@@ -227,7 +246,7 @@ for (const value of ["0", "2.5", ""]) {
       "aria-invalid",
       "false",
     );
-    await expect(page.getByRole("alert")).toContainText("whole numbers from 1");
+    await expect(page.getByRole("alert")).toContainText("must be above 0");
 
     await page.getByRole("link", { name: "Results" }).click();
     await page.getByRole("link", { name: "Model fit" }).click();
@@ -248,6 +267,21 @@ test("typing a correction clears the message about a degeneracy", async ({
 
   await expect(page.getByRole("alert")).toHaveCount(0);
   await expect(page.getByText("not fitted")).toBeVisible();
+});
+
+test("a fractional range is kept", async ({ page }) => {
+  await open(page);
+
+  await page.getByLabel("Lower bound, K").fill("50.5");
+  await page.getByLabel("Upper bound, K").fill("600.25");
+  await page.getByLabel("Upper bound, K").blur();
+
+  await expect(page.getByRole("alert")).toHaveCount(0);
+
+  await page.getByRole("link", { name: "Results" }).click();
+  await page.getByRole("link", { name: "Model fit" }).click();
+  await expect(page.getByLabel("Lower bound, K")).toHaveValue("50.5");
+  await expect(page.getByLabel("Upper bound, K")).toHaveValue("600.25");
 });
 
 test("a range being typed sends nothing until it is finished", async ({

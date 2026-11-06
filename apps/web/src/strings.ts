@@ -34,7 +34,7 @@ export const STRINGS = {
     },
     degeneracyHint: "Band degeneracies are not fitted.",
     degeneracyInvalid:
-      "N₁ and N₂ are whole numbers from 1. The last valid value stays in use.",
+      "N₁ and N₂ must be above 0. The last valid value stays in use.",
     range: "Fit range, K",
     rangeMin: "Lower bound, K",
     rangeMax: "Upper bound, K",

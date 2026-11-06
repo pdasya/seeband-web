@@ -54,13 +54,6 @@ function positiveOrNull(value: string): number | null {
     : null;
 }
 
-function wholeOrNull(value: string): number | null {
-  const number = Number(value);
-  return value.trim() !== "" && Number.isSafeInteger(number) && number >= 1
-    ? number
-    : null;
-}
-
 function Group({
   label,
   children,
@@ -137,7 +130,7 @@ function DegeneracyField({
   const id = useId();
   const [draft, setDraft] = useState(String(value));
   const commit = () => {
-    const number = wholeOrNull(draft);
+    const number = positiveOrNull(draft);
     onInvalidChange(number === null);
     if (number !== null) {
       setDraft(String(number));
@@ -154,8 +147,8 @@ function DegeneracyField({
       <Input
         id={id}
         type="number"
-        min={1}
-        step={1}
+        min={0}
+        step="any"
         value={draft}
         aria-invalid={invalid}
         onChange={(event) => {

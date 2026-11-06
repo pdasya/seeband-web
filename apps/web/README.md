@@ -81,7 +81,7 @@ SEEBAND_API_TARGET=http://127.0.0.1:8000 pnpm --filter @seeband/web exec playwri
 
 - **A disabled mode cannot be chosen,** and its reason shows under the options, from the text for its known issue. A new known issue that disables a mode needs a line in `strings.ts`, or it gets a general text.
 - **Each model keeps its own mode, scattering and degeneracies,** as the design does. The fit range is shared.
-- **A number being typed stays in its field.** It reaches the session on leaving the field or on Enter, and only if it holds, so the steps on the way to it send nothing and clear no result. N₁ and N₂ are whole numbers from 1, and the two bounds of the range go together.
+- **A number being typed stays in its field.** It reaches the session on leaving the field or on Enter, and only if it holds, so the steps on the way to it send nothing and clear no result. N₁ and N₂ are any numbers above 0, and the two bounds of the range go together.
 
 ## Charts
 

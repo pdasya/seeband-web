@@ -202,6 +202,19 @@ def test_degeneracies_reach_the_fit(client: TestClient) -> None:
     assert "dpb_loop_degeneracy" in body["known_issues"]
 
 
+def test_fractional_degeneracies_reach_the_fit(client: TestClient) -> None:
+    expected = _core_fit(
+        "dpb", "dpb_s_rho", scattering="acPh", band_1_degeneracy=1.5, band_2_degeneracy=2.5
+    )
+
+    body = _result(
+        client,
+        _body("dpb", "dpb_s_rho", scattering="acPh", band_1_degeneracy=1.5, band_2_degeneracy=2.5),
+    )
+
+    assert body["parameters"] == expected.parameters
+
+
 def test_extrapolated_data_is_flagged(client: TestClient) -> None:
     plain = _result(client, _body())
     flagged = _result(client, _body(extrapolated=True))
