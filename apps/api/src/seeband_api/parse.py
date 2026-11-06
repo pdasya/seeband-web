@@ -164,7 +164,7 @@ def _interpolated(data: InterpolatedData) -> InterpolatedResponse:
     )
 
 
-def _to_response(outcome: ParseOutcome) -> ParseResponse:
+def to_parse_response(outcome: ParseOutcome) -> ParseResponse:
     table = outcome.table
     columns = table.columns
     row_count = len(table.lines)
@@ -316,4 +316,4 @@ async def post_parse(
         raise _refuse("too_many_rows", f"At most {max_points} rows", ["text"])
     for failure_type in outcome.failure_types:
         log_calculation_failure(failure_type)
-    return _to_response(outcome)
+    return to_parse_response(outcome)

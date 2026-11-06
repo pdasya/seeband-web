@@ -103,6 +103,16 @@ def generate_demo_dataset() -> dict[str, Any]:
     }
 
 
+def demo_table_text(dataset: DemoDataset) -> str:
+    """The dataset as the text of a file that the parser reads, with values kept exactly."""
+    temperature_k = dataset.measurements["seebeck"].temperature_k
+    columns = [temperature_k, *(dataset.measurements[quantity].values for quantity in _COLUMNS)]
+    rows = zip(*(column.tolist() for column in columns), strict=True)
+    return "T\tS\trho\tR_H\n" + "".join(
+        "\t".join(repr(value) for value in row) + "\n" for row in rows
+    )
+
+
 def load_demo_dataset() -> DemoDataset:
     path = resources.files("seeband_core") / "data" / "demo_dataset.json"
     document = json.loads(path.read_text(encoding="utf-8"))

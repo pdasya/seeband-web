@@ -11,7 +11,7 @@ from seeband_api.parse import (
     MAX_TEXT_CHARACTERS,
     PARSE_EXAMPLE_REQUESTS,
     PARSE_EXAMPLE_RESPONSES,
-    _to_response,
+    to_parse_response,
 )
 from seeband_api.parse_worker import ParseOutcome
 from seeband_core.data_parser import IssueCode, parse_table
@@ -313,7 +313,7 @@ def test_value_that_is_not_finite_comes_back_as_null() -> None:
         Measurement(np.array([100.0, 200.0]), np.array([np.inf, 1.0])), False, 2, False
     )
 
-    response = _to_response(ParseOutcome(table, {"seebeck": data}, ()))
+    response = to_parse_response(ParseOutcome(table, {"seebeck": data}, ()))
 
     assert response.interpolated["seebeck"].values == [None, 1.0]
 

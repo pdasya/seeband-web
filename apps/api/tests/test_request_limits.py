@@ -217,6 +217,7 @@ def test_reading_routes_have_no_rate_limit() -> None:
     with _client(calc_per_minute=1, parse_per_minute=1, guess_per_minute=1, fit_per_minute=1) as c:
         assert [c.get("/api/models").status_code for _ in range(5)] == [200] * 5
         assert [c.get("/api/health").status_code for _ in range(5)] == [200] * 5
+        assert [c.get("/api/demo").status_code for _ in range(5)] == [200] * 5
 
 
 def test_a_refused_request_logs_its_route_and_status() -> None:

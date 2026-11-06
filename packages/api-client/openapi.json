@@ -3890,6 +3890,553 @@
           }
         }
       }
+    },
+    "/api/demo": {
+      "get": {
+        "tags": [
+          "demo"
+        ],
+        "summary": "Get Demo",
+        "operationId": "get_demo",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DemoResponse"
+                },
+                "examples": {
+                  "demo": {
+                    "value": {
+                      "headers": [
+                        "T",
+                        "S",
+                        "rho",
+                        "R_H"
+                      ],
+                      "column_count": 4,
+                      "row_count": 31,
+                      "preview": [
+                        [
+                          50.0,
+                          9.268892694384608e-05,
+                          6.114959298287624e-06,
+                          2.979912550720506e-07
+                        ],
+                        [
+                          75.0,
+                          0.00013063742872412742,
+                          9.902036137652306e-06,
+                          3.057366999989455e-07
+                        ],
+                        [
+                          100.0,
+                          0.00015817298717411932,
+                          1.4283697194756858e-05,
+                          3.121617285990612e-07
+                        ],
+                        [
+                          125.0,
+                          0.00018508771206913953,
+                          1.8939864426941722e-05,
+                          3.182497937740966e-07
+                        ],
+                        [
+                          150.0,
+                          0.0002008961323606316,
+                          2.4172951253570913e-05,
+                          3.1174828780547804e-07
+                        ],
+                        [
+                          175.0,
+                          0.0002065060336835406,
+                          2.876149230362729e-05,
+                          2.9714640995730386e-07
+                        ],
+                        [
+                          200.0,
+                          0.00020076334664054232,
+                          3.233885960184509e-05,
+                          2.6247847654432056e-07
+                        ],
+                        [
+                          225.0,
+                          0.00018535678356561513,
+                          3.4310336596647014e-05,
+                          2.1931654660904387e-07
+                        ],
+                        [
+                          250.0,
+                          0.00016400387682983324,
+                          3.454218618855157e-05,
+                          1.7136697584462932e-07
+                        ],
+                        [
+                          275.0,
+                          0.00014354013305271633,
+                          3.3544002341563496e-05,
+                          1.3300592053120916e-07
+                        ]
+                      ],
+                      "mapping": [
+                        {
+                          "column": 0,
+                          "role": "temperature"
+                        },
+                        {
+                          "column": 1,
+                          "role": "seebeck"
+                        },
+                        {
+                          "column": 2,
+                          "role": "resistivity"
+                        },
+                        {
+                          "column": 3,
+                          "role": "hall"
+                        }
+                      ],
+                      "measurements": {
+                        "seebeck": {
+                          "temperature_k": [
+                            50.0,
+                            75.0,
+                            100.0,
+                            125.0,
+                            150.0,
+                            175.0,
+                            200.0,
+                            225.0,
+                            250.0,
+                            275.0,
+                            300.0,
+                            325.0,
+                            350.0,
+                            375.0,
+                            400.0,
+                            425.0,
+                            450.0,
+                            475.0,
+                            500.0,
+                            525.0,
+                            550.0,
+                            575.0,
+                            600.0,
+                            625.0,
+                            650.0,
+                            675.0,
+                            700.0,
+                            725.0,
+                            750.0,
+                            775.0,
+                            800.0
+                          ],
+                          "values": [
+                            9.268892694384608e-05,
+                            0.00013063742872412742,
+                            0.00015817298717411932,
+                            0.00018508771206913953,
+                            0.0002008961323606316,
+                            0.0002065060336835406,
+                            0.00020076334664054232,
+                            0.00018535678356561513,
+                            0.00016400387682983324,
+                            0.00014354013305271633,
+                            0.00012672126245604273,
+                            0.00011200672924364626,
+                            9.983573973556606e-05,
+                            9.058407386037577e-05,
+                            8.343946235216095e-05,
+                            7.668895584319947e-05,
+                            7.201380448319064e-05,
+                            6.892579851946376e-05,
+                            6.486900666096288e-05,
+                            6.077094465760645e-05,
+                            5.9233202377790883e-05,
+                            5.827127830325408e-05,
+                            5.5563587138795824e-05,
+                            5.4056888080695455e-05,
+                            5.3447457582250436e-05,
+                            5.338993839357904e-05,
+                            4.974695510180394e-05,
+                            5.081830829622962e-05,
+                            4.734884011787525e-05,
+                            4.7947870990616674e-05,
+                            4.5871479246336865e-05
+                          ],
+                          "points": 31,
+                          "min_temperature_k": 50.0,
+                          "max_temperature_k": 800.0
+                        },
+                        "resistivity": {
+                          "temperature_k": [
+                            50.0,
+                            75.0,
+                            100.0,
+                            125.0,
+                            150.0,
+                            175.0,
+                            200.0,
+                            225.0,
+                            250.0,
+                            275.0,
+                            300.0,
+                            325.0,
+                            350.0,
+                            375.0,
+                            400.0,
+                            425.0,
+                            450.0,
+                            475.0,
+                            500.0,
+                            525.0,
+                            550.0,
+                            575.0,
+                            600.0,
+                            625.0,
+                            650.0,
+                            675.0,
+                            700.0,
+                            725.0,
+                            750.0,
+                            775.0,
+                            800.0
+                          ],
+                          "values": [
+                            6.114959298287624e-06,
+                            9.902036137652306e-06,
+                            1.4283697194756858e-05,
+                            1.8939864426941722e-05,
+                            2.4172951253570913e-05,
+                            2.876149230362729e-05,
+                            3.233885960184509e-05,
+                            3.4310336596647014e-05,
+                            3.454218618855157e-05,
+                            3.3544002341563496e-05,
+                            3.204892808188386e-05,
+                            3.054102497962955e-05,
+                            2.944856668777577e-05,
+                            2.8011397273392927e-05,
+                            2.685491869521857e-05,
+                            2.600423346416561e-05,
+                            2.470863757895393e-05,
+                            2.4310101709722265e-05,
+                            2.3655080620860475e-05,
+                            2.2835987895973814e-05,
+                            2.2176574893284842e-05,
+                            2.1504753641361556e-05,
+                            2.1223057328112645e-05,
+                            2.065771150702352e-05,
+                            2.0324948286540144e-05,
+                            1.9955060450757923e-05,
+                            1.9698180655975205e-05,
+                            1.950707178861511e-05,
+                            1.9063949348947223e-05,
+                            1.8779182985524005e-05,
+                            1.8551888780467e-05
+                          ],
+                          "points": 31,
+                          "min_temperature_k": 50.0,
+                          "max_temperature_k": 800.0
+                        },
+                        "hall": {
+                          "temperature_k": [
+                            50.0,
+                            75.0,
+                            100.0,
+                            125.0,
+                            150.0,
+                            175.0,
+                            200.0,
+                            225.0,
+                            250.0,
+                            275.0,
+                            300.0,
+                            325.0,
+                            350.0,
+                            375.0,
+                            400.0,
+                            425.0,
+                            450.0,
+                            475.0,
+                            500.0,
+                            525.0,
+                            550.0,
+                            575.0,
+                            600.0,
+                            625.0,
+                            650.0,
+                            675.0,
+                            700.0,
+                            725.0,
+                            750.0,
+                            775.0,
+                            800.0
+                          ],
+                          "values": [
+                            2.979912550720506e-07,
+                            3.057366999989455e-07,
+                            3.121617285990612e-07,
+                            3.182497937740966e-07,
+                            3.1174828780547804e-07,
+                            2.9714640995730386e-07,
+                            2.6247847654432056e-07,
+                            2.1931654660904387e-07,
+                            1.7136697584462932e-07,
+                            1.3300592053120916e-07,
+                            1.0432089849981801e-07,
+                            8.056367718816249e-08,
+                            6.48107859353319e-08,
+                            5.25164387916226e-08,
+                            4.3340024626923036e-08,
+                            3.637474999735392e-08,
+                            3.1353156532188405e-08,
+                            2.6909653742142362e-08,
+                            2.3726630034487803e-08,
+                            2.0713580462424212e-08,
+                            1.8517061068343825e-08,
+                            1.6649109256765624e-08,
+                            1.5033451852235934e-08,
+                            1.355330883329413e-08,
+                            1.2419805277778362e-08,
+                            1.1430550330266132e-08,
+                            1.0506848372740288e-08,
+                            9.803074105360444e-09,
+                            9.105515603473732e-09,
+                            8.381669789278175e-09,
+                            7.84425491569444e-09
+                          ],
+                          "points": 31,
+                          "min_temperature_k": 50.0,
+                          "max_temperature_k": 800.0
+                        }
+                      },
+                      "errors": [],
+                      "warnings": [],
+                      "warnings_omitted": 0,
+                      "interpolated": {},
+                      "interpolation_failed": [],
+                      "synthetic": true,
+                      "message_key": "demo_dataset.synthetic",
+                      "known_issues": [
+                        "dpb_hall_prefactor"
+                      ],
+                      "model": "dpb",
+                      "fit_mode": "dpb_s_rho_rh",
+                      "scattering": "acPh",
+                      "true_parameters": {
+                        "m_eff": 1.2,
+                        "band_gap": 800.0,
+                        "fermi_energy": -150.0,
+                        "A": 60000.0,
+                        "B": 1.0,
+                        "m1": 1.4
+                      },
+                      "noise": {
+                        "seed": 2026,
+                        "seebeck_v_per_k": 1e-06,
+                        "resistivity_relative": 0.005,
+                        "hall_relative": 0.005
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "internal_error": {
+                    "value": {
+                      "code": "internal_error",
+                      "message": "Internal server error",
+                      "details": []
+                    }
+                  },
+                  "not_found": {
+                    "value": {
+                      "code": "not_found",
+                      "message": "Not Found",
+                      "details": []
+                    }
+                  },
+                  "calculation_failed": {
+                    "value": {
+                      "code": "calculation_failed",
+                      "message": "The calculation has no result for these parameters and temperatures",
+                      "details": []
+                    }
+                  },
+                  "calculation_timeout": {
+                    "value": {
+                      "code": "calculation_timeout",
+                      "message": "The calculation took too long",
+                      "details": []
+                    }
+                  },
+                  "calculation_unavailable": {
+                    "value": {
+                      "code": "calculation_unavailable",
+                      "message": "The calculation stopped unexpectedly. Try again.",
+                      "details": []
+                    }
+                  },
+                  "fit_mode_disabled": {
+                    "value": {
+                      "code": "fit_mode_disabled",
+                      "message": "This fit mode is disabled until its known issue is fixed",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "fit_mode"
+                          ],
+                          "code": "spb_hall_mode_disabled",
+                          "message": "A known issue disables this mode"
+                        }
+                      ]
+                    }
+                  },
+                  "invalid_fit": {
+                    "value": {
+                      "code": "invalid_fit",
+                      "message": "Invalid fit",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "bounds",
+                            "m_eff"
+                          ],
+                          "code": "parameter_not_fitted",
+                          "message": "This fit does not fit it"
+                        }
+                      ]
+                    }
+                  },
+                  "fit_queue_full": {
+                    "value": {
+                      "code": "fit_queue_full",
+                      "message": "Too many fits are running. Try again shortly.",
+                      "details": []
+                    }
+                  },
+                  "rate_limited": {
+                    "value": {
+                      "code": "rate_limited",
+                      "message": "Too many requests",
+                      "details": []
+                    }
+                  },
+                  "request_too_large": {
+                    "value": {
+                      "code": "request_too_large",
+                      "message": "A request can hold at most 10000000 bytes",
+                      "details": []
+                    }
+                  },
+                  "client_fit_limit": {
+                    "value": {
+                      "code": "client_fit_limit",
+                      "message": "This client has too many fits running or waiting",
+                      "details": []
+                    }
+                  },
+                  "invalid_parse_request": {
+                    "value": {
+                      "code": "invalid_parse_request",
+                      "message": "Invalid request",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "mapping"
+                          ],
+                          "code": "unknown_column",
+                          "message": "The text has no such column"
+                        }
+                      ]
+                    }
+                  },
+                  "invalid_guess": {
+                    "value": {
+                      "code": "invalid_guess",
+                      "message": "Invalid request",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "model"
+                          ],
+                          "code": "unknown_model",
+                          "message": "This model does not exist"
+                        }
+                      ]
+                    }
+                  },
+                  "guess_unavailable": {
+                    "value": {
+                      "code": "guess_unavailable",
+                      "message": "This model has no neural net guess",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "model"
+                          ],
+                          "code": "no_neural_net",
+                          "message": "See has_initial_guess in GET /api/models"
+                        }
+                      ]
+                    }
+                  },
+                  "invalid_calculation": {
+                    "value": {
+                      "code": "invalid_calculation",
+                      "message": "Invalid calculation",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "parameters",
+                            "m_eff"
+                          ],
+                          "code": "missing_parameter",
+                          "message": "This mode needs it"
+                        }
+                      ]
+                    }
+                  },
+                  "validation_error": {
+                    "value": {
+                      "code": "validation_error",
+                      "message": "Invalid request",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "seebeck_v_per_k",
+                            3
+                          ],
+                          "code": "float_parsing",
+                          "message": "Input should be a valid number, unable to parse string as a number"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4261,6 +4808,197 @@
           "band_2_default"
         ],
         "title": "DegeneracyResponse"
+      },
+      "DemoNoise": {
+        "properties": {
+          "seed": {
+            "type": "integer",
+            "title": "Seed"
+          },
+          "seebeck_v_per_k": {
+            "type": "number",
+            "title": "Seebeck V Per K"
+          },
+          "resistivity_relative": {
+            "type": "number",
+            "title": "Resistivity Relative"
+          },
+          "hall_relative": {
+            "type": "number",
+            "title": "Hall Relative"
+          }
+        },
+        "type": "object",
+        "required": [
+          "seed",
+          "seebeck_v_per_k",
+          "resistivity_relative",
+          "hall_relative"
+        ],
+        "title": "DemoNoise",
+        "description": "The noise added to the model's curves: V/K for S, and a relative size for rho and R_H."
+      },
+      "DemoResponse": {
+        "properties": {
+          "headers": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Headers"
+          },
+          "column_count": {
+            "type": "integer",
+            "title": "Column Count"
+          },
+          "row_count": {
+            "type": "integer",
+            "title": "Row Count"
+          },
+          "preview": {
+            "items": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Preview"
+          },
+          "mapping": {
+            "items": {
+              "$ref": "#/components/schemas/ColumnRole"
+            },
+            "type": "array",
+            "title": "Mapping"
+          },
+          "measurements": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/MeasurementResponse"
+            },
+            "propertyNames": {
+              "enum": [
+                "seebeck",
+                "resistivity",
+                "hall"
+              ]
+            },
+            "type": "object",
+            "title": "Measurements"
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/IssueResponse"
+            },
+            "type": "array",
+            "title": "Errors"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/IssueResponse"
+            },
+            "type": "array",
+            "title": "Warnings"
+          },
+          "warnings_omitted": {
+            "type": "integer",
+            "title": "Warnings Omitted"
+          },
+          "interpolated": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/InterpolatedResponse"
+            },
+            "propertyNames": {
+              "enum": [
+                "seebeck",
+                "resistivity",
+                "hall"
+              ]
+            },
+            "type": "object",
+            "title": "Interpolated"
+          },
+          "interpolation_failed": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "seebeck",
+                "resistivity",
+                "hall"
+              ]
+            },
+            "type": "array",
+            "title": "Interpolation Failed"
+          },
+          "synthetic": {
+            "type": "boolean",
+            "const": true,
+            "title": "Synthetic"
+          },
+          "message_key": {
+            "type": "string",
+            "title": "Message Key"
+          },
+          "known_issues": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Known Issues"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "fit_mode": {
+            "type": "string",
+            "title": "Fit Mode"
+          },
+          "scattering": {
+            "type": "string",
+            "title": "Scattering"
+          },
+          "true_parameters": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "True Parameters"
+          },
+          "noise": {
+            "$ref": "#/components/schemas/DemoNoise"
+          }
+        },
+        "type": "object",
+        "required": [
+          "column_count",
+          "row_count",
+          "preview",
+          "mapping",
+          "measurements",
+          "errors",
+          "warnings",
+          "warnings_omitted",
+          "interpolated",
+          "interpolation_failed",
+          "synthetic",
+          "message_key",
+          "known_issues",
+          "model",
+          "fit_mode",
+          "scattering",
+          "true_parameters",
+          "noise"
+        ],
+        "title": "DemoResponse",
+        "description": "A parsed file, as from `POST /api/parse`, that is not a measurement of any material.\n\nA client must say so, by showing `message_key` through i18n wherever the data appear.\n`known_issues` names the errors of the model that the data carry. `model`, `fit_mode` and\n`scattering` say what generated them. `true_parameters` holds values of that model, in core\nunits, and its other parameters were at the defaults of `GET /api/models`."
       },
       "ErrorDetail": {
         "properties": {

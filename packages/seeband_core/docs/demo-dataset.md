@@ -37,7 +37,7 @@ With interpolation on over 50 to 800 K, `extrapolated` stays false and these fit
 ## For FS11
 
 - The design's demo differs: S and ρ only, over 25 to 800 K, with uniform noise, r = 0.6, E_g = 500 K, E_F = 650 K and B = 1.5, which is outside the fit bounds of 0.9 to 1.1, and S negative. Its labels need changing.
-- To export it for the parser, use the headers `T`, `S`, `rho` and `R_H`, because it does not read the keys of the stored file.
+- `demo_table_text` gives it as the text of a file, with the headers `T`, `S`, `rho` and `R_H`, because the parser does not read the keys of the stored file. It reads back exactly, with no warnings. `GET /api/demo` serves that result.
 
 ## Regenerating
 

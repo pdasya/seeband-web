@@ -101,6 +101,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/demo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Demo */
+        get: operations["get_demo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -306,6 +323,77 @@ export interface components {
             band_1_default: number;
             /** Band 2 Default */
             band_2_default: number;
+        };
+        /**
+         * DemoNoise
+         * @description The noise added to the model's curves: V/K for S, and a relative size for rho and R_H.
+         */
+        DemoNoise: {
+            /** Seed */
+            seed: number;
+            /** Seebeck V Per K */
+            seebeck_v_per_k: number;
+            /** Resistivity Relative */
+            resistivity_relative: number;
+            /** Hall Relative */
+            hall_relative: number;
+        };
+        /**
+         * DemoResponse
+         * @description A parsed file, as from `POST /api/parse`, that is not a measurement of any material.
+         *
+         *     A client must say so, by showing `message_key` through i18n wherever the data appear.
+         *     `known_issues` names the errors of the model that the data carry. `model`, `fit_mode` and
+         *     `scattering` say what generated them. `true_parameters` holds values of that model, in core
+         *     units, and its other parameters were at the defaults of `GET /api/models`.
+         */
+        DemoResponse: {
+            /** Headers */
+            headers?: string[] | null;
+            /** Column Count */
+            column_count: number;
+            /** Row Count */
+            row_count: number;
+            /** Preview */
+            preview: number[][];
+            /** Mapping */
+            mapping: components["schemas"]["ColumnRole"][];
+            /** Measurements */
+            measurements: {
+                [key: string]: components["schemas"]["MeasurementResponse"];
+            };
+            /** Errors */
+            errors: components["schemas"]["IssueResponse"][];
+            /** Warnings */
+            warnings: components["schemas"]["IssueResponse"][];
+            /** Warnings Omitted */
+            warnings_omitted: number;
+            /** Interpolated */
+            interpolated: {
+                [key: string]: components["schemas"]["InterpolatedResponse"];
+            };
+            /** Interpolation Failed */
+            interpolation_failed: ("seebeck" | "resistivity" | "hall")[];
+            /**
+             * Synthetic
+             * @constant
+             */
+            synthetic: true;
+            /** Message Key */
+            message_key: string;
+            /** Known Issues */
+            known_issues: string[];
+            /** Model */
+            model: string;
+            /** Fit Mode */
+            fit_mode: string;
+            /** Scattering */
+            scattering: string;
+            /** True Parameters */
+            true_parameters: {
+                [key: string]: number;
+            };
+            noise: components["schemas"]["DemoNoise"];
         };
         /**
          * ErrorDetail
@@ -1201,6 +1289,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_demo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DemoResponse"];
                 };
             };
             /** @description Default Response */
