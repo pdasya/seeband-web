@@ -122,6 +122,14 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
             className="size-4 flex-none animate-spin text-muted-foreground"
             aria-hidden="true"
           />
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={`${text.cancel} ${names.symbol}`}
+            onClick={onRemove}
+          >
+            <XIcon aria-hidden="true" />
+          </Button>
         </div>
       </>
     );

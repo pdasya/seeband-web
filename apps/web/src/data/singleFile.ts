@@ -8,6 +8,15 @@ import {
   type ParsedTable,
 } from "@/session/store";
 
+// Stops the request itself, so that a cancelled or replaced read uses nothing more on the server.
+let current: AbortController | null = null;
+
+function stopCurrentRequest(): AbortSignal {
+  current?.abort();
+  current = new AbortController();
+  return current.signal;
+}
+
 function store() {
   return useSessionStore.getState();
 }
@@ -52,9 +61,10 @@ async function read(
     table,
   });
   clearData();
+  const signal = stopCurrentRequest();
   const body: ParseRequest = mapping === null ? { text } : { text, mapping };
   try {
-    const parsed = await apiClient.postParse(body);
+    const parsed = await apiClient.postParse(body, signal);
     if (store().singleFile?.request === request) {
       store().finishSingleFile(parsed);
       applyTable(name, parsed);
@@ -111,6 +121,7 @@ export async function assignColumn(
 }
 
 export function removeSingleFile() {
+  stopCurrentRequest();
   clearData();
   store().clearSingleFile();
 }

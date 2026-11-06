@@ -322,6 +322,14 @@ export function SingleFilePanel() {
               className="size-4 flex-none animate-spin text-muted-foreground"
               aria-hidden="true"
             />
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={text.cancel}
+              onClick={removeSingleFile}
+            >
+              <XIcon aria-hidden="true" />
+            </Button>
           </div>
         ) : (
           <DropArea

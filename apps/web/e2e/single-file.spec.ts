@@ -461,6 +461,45 @@ test("of two files, the last chosen counts, even if the first takes longer", asy
   await expect(slot(page).getByText("slow.csv")).toHaveCount(0);
 });
 
+test("a read can be cancelled, which stops its request", async ({ page }) => {
+  let answer: (() => Promise<void>) | undefined;
+  await page.route("**/api/parse", (route) => {
+    answer = () => route.fulfill({ json: parsed() });
+  });
+  await openSingleFile(page);
+  const failed = page.waitForEvent("requestfailed");
+
+  await choose(page, "slow.csv");
+  await expect.poll(() => answer !== undefined).toBe(true);
+  await page.getByRole("button", { name: "Cancel reading" }).click();
+
+  expect((await failed).failure()?.errorText).toContain("ABORTED");
+  await expect(page.getByText("A table with several columns")).toBeVisible();
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await answer?.().catch(() => undefined);
+  await expect(page.getByRole("combobox")).toHaveCount(0);
+});
+
+test("an older mapping's request is stopped by a newer one", async ({
+  page,
+}) => {
+  await page.route("**/api/parse", (route) => {
+    const body = route.request().postDataJSON() as { mapping?: object[] };
+    return body.mapping === undefined
+      ? route.fulfill({ json: parsed() })
+      : undefined;
+  });
+  await openSingleFile(page);
+  await choose(page);
+  await expect(page.getByText("S · 3 points")).toBeVisible();
+  const failed = page.waitForEvent("requestfailed");
+
+  await pickRole(page, "rho", "Ignore");
+  await pickRole(page, "R_H", "Ignore");
+
+  expect((await failed).failure()?.errorText).toContain("ABORTED");
+});
+
 test("a late answer to an older mapping does not overwrite a newer one", async ({
   page,
 }) => {

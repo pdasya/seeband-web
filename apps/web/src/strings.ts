@@ -45,6 +45,7 @@ export const STRINGS = {
     },
     reading: "Reading…",
     remove: "Remove file",
+    cancel: "Cancel reading",
     points: "points",
     line: "Line",
     column: "Column",

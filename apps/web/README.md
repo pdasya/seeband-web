@@ -59,6 +59,7 @@ The app always calls `/api` on its own origin, so there is no base URL to set, a
 
 `data/DataPanel.tsx` holds a slot for each of S, ρ and R_H. A file goes straight to `POST /api/parse`, as parsing belongs on the server, and it took 6 ms for 1000 rows through a test client on one Mac. With separate files, its text stays only for that request, and the result goes to the session store.
 
+- **A read can be cancelled** with the button on its card, which stops the request.
 - **A new file replaces the old one,** and stops a read under way. If it fails, the old data go too, as a fit from them would look like a fit from the new file.
 - **A file over 8 MB or 2000000 characters is refused before sending,** as a 413 for a large body can arrive as a network error.
 - **Text in UTF-16 with a byte order mark is decoded here.** Anything else is read as UTF-8, and the server reports what that spoils.
