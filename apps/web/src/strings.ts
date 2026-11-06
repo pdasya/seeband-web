@@ -16,7 +16,12 @@ export const STRINGS = {
   },
   data: {
     title: "Data",
-    subtitle: "Two columns: T and value, SI units",
+    subtitle: {
+      separate:
+        "Each file: T in K and the value. S in V/K, ρ in Ω·m, R_H in m³/C.",
+      single:
+        "One table: a column for T in K, and for each quantity. S in V/K, ρ in Ω·m, R_H in m³/C.",
+    },
     dropHint: "Drop a file or browse",
     source: {
       label: "Data source",
@@ -35,6 +40,8 @@ export const STRINGS = {
       notFound: "not found",
       preview: "Preview, first rows",
       errorTitle: "Check the mapping.",
+      fileErrorTitle: "Check the file.",
+      noQuantity: "No column holds a quantity yet. Choose one above.",
     },
     reading: "Reading…",
     remove: "Remove file",

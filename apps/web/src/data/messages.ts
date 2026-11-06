@@ -10,6 +10,7 @@ type Issue = components["schemas"]["IssueResponse"];
 const ABOUT_A_COLUMN: ReadonlySet<Issue["code"]> = new Set([
   "unit_differs",
   "repeated_header",
+  "repeated_role",
 ]);
 
 // These say something about usable data, not why a file gave none.
@@ -25,6 +26,23 @@ const QUANTITY_MISSING: ReadonlySet<Issue["code"]> = new Set([
   "expected_not_found",
   "no_quantity",
 ]);
+
+// These are about the choice of columns, and the rest about the file.
+const ABOUT_THE_MAPPING: ReadonlySet<Issue["code"]> = new Set([
+  "missing_temperature",
+  "repeated_role",
+]);
+
+export function errorsAreAboutTheMapping(errors: readonly Issue[]): boolean {
+  return errors.every(({ code }) => ABOUT_THE_MAPPING.has(code));
+}
+
+/** What may explain why no column holds a quantity, out of a file's warnings. */
+export function explainingWarnings(warnings: readonly Issue[]): Issue[] {
+  return warnings.filter(
+    ({ code }) => !ONLY_INFORMATION.has(code) && !QUANTITY_MISSING.has(code),
+  );
+}
 
 export function issueMessage(issue: Issue): string {
   const { data } = STRINGS;
@@ -58,9 +76,7 @@ export function noDataMessages(
     const more = errors.length - shown.length;
     return more > 0 ? [...shown, `${data.andMore} ${String(more)}`] : shown;
   }
-  const reasons = warnings.filter(
-    ({ code }) => !ONLY_INFORMATION.has(code) && !QUANTITY_MISSING.has(code),
-  );
+  const reasons = explainingWarnings(warnings);
   return [data.quantityNotFound, ...reasons.map(issueMessage)];
 }
 

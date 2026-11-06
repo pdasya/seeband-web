@@ -2,7 +2,12 @@
 import { describe, expect, test } from "vitest";
 
 import { ApiError } from "@/api/errors";
-import { failureMessage, issueMessage, noDataMessages } from "@/data/messages";
+import {
+  errorsAreAboutTheMapping,
+  failureMessage,
+  issueMessage,
+  noDataMessages,
+} from "@/data/messages";
 import { FileReadError } from "@/data/readFile";
 import { STRINGS } from "@/strings";
 
@@ -25,6 +30,23 @@ describe("issueMessage", () => {
     expect(issueMessage({ code: "unsorted_temperature", column: 0 })).toBe(
       data.issues.unsorted_temperature,
     );
+  });
+});
+
+describe("errorsAreAboutTheMapping", () => {
+  test("only the mapping's own errors count", () => {
+    expect(
+      errorsAreAboutTheMapping([
+        { code: "missing_temperature" },
+        { code: "repeated_role", column: 1 },
+      ]),
+    ).toBe(true);
+    expect(
+      errorsAreAboutTheMapping([
+        { code: "missing_temperature" },
+        { code: "not_numeric", line: 2 },
+      ]),
+    ).toBe(false);
   });
 });
 

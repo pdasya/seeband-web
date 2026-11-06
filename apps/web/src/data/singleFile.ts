@@ -1,6 +1,6 @@
 import { apiClient, type ParseRequest } from "@/api/client";
 import { failureMessage } from "@/data/messages";
-import { FileReadError, readFileText } from "@/data/readFile";
+import { readFileText } from "@/data/readFile";
 import {
   QUANTITIES,
   useSessionStore,
@@ -67,23 +67,27 @@ async function read(
 }
 
 export async function loadSingleFile(file: File) {
+  // This takes the place of anything before it now, so that a read of a slow file cannot come back
+  // after a removal, a change of source or a newer file.
+  const request = store().startSingleFile({
+    name: file.name,
+    text: "",
+    mapping: [],
+    table: null,
+  });
+  clearData();
   let text: string;
   try {
     text = await readFileText(file);
   } catch (error) {
-    if (error instanceof FileReadError) {
-      clearData();
-      store().startSingleFile({
-        name: file.name,
-        text: "",
-        mapping: [],
-        table: null,
-      });
+    if (store().singleFile?.request === request) {
       store().failSingleFile(failureMessage(error));
     }
     return;
   }
-  await read(file.name, text, null, null);
+  if (store().singleFile?.request === request) {
+    await read(file.name, text, null, null);
+  }
 }
 
 export function failSingleFile(message: string) {

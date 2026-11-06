@@ -31,7 +31,7 @@ export function DataPanel() {
   const mode = useSessionStore((state) => state.dataMode);
   const setMode = useSessionStore((state) => state.setDataMode);
   return (
-    <Panel title={data.title} subtitle={data.subtitle}>
+    <Panel title={data.title} subtitle={data.subtitle[mode]}>
       <Tabs
         value={mode}
         onValueChange={(value) => {

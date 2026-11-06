@@ -86,6 +86,23 @@ test("detected columns show, with chips and a preview", async ({ page }) => {
   await expect(page.getByRole("cell", { name: "1.000e-4" })).toBeVisible();
 });
 
+test("the panel says what each source expects, with its units", async ({
+  page,
+}) => {
+  await page.goto("/fit");
+  await expect(
+    page.getByText("Each file: T in K and the value."),
+  ).toBeVisible();
+
+  await page.getByRole("tab", { name: "Single file" }).click();
+
+  await expect(page.getByText("One table: a column for T in K")).toBeVisible();
+  await expect(
+    page.getByText("S in V/K, ρ in Ω·m, R_H in m³/C."),
+  ).toBeVisible();
+  await expect(page.getByText("Each file: T in K")).toHaveCount(0);
+});
+
 test("the first read sends no mapping, so that the server suggests one", async ({
   page,
 }) => {
@@ -283,6 +300,165 @@ test("a server that is down says so, and a wrong type sends nothing", async ({
   await expect(page.getByRole("alert")).toContainText(
     "server is not responding",
   );
+});
+
+test("a failed change of mapping shows no data as loaded", async ({ page }) => {
+  await page.route("**/api/parse", (route) => {
+    const body = route.request().postDataJSON() as { mapping?: object[] };
+    return body.mapping === undefined
+      ? route.fulfill({ json: parsed() })
+      : route.fulfill({ status: 502, contentType: "text/plain", body: "" });
+  });
+  await openSingleFile(page);
+  await choose(page);
+  await expect(page.getByText("S · 3 points")).toBeVisible();
+
+  await pickRole(page, "R_H", "Ignore");
+
+  await expect(page.getByRole("alert")).toContainText(
+    "server is not responding",
+  );
+  await expect(page.getByText("S · not found")).toBeVisible();
+  await expect(page.getByText("S · 3 points")).toHaveCount(0);
+});
+
+test("a table with no quantity assigned asks for one, in an alert", async ({
+  page,
+}) => {
+  await page.route("**/api/parse", (route) =>
+    route.fulfill({
+      json: parsed({
+        headers: undefined,
+        mapping: [{ column: 0, role: "temperature" }],
+        measurements: {},
+        warnings: [
+          { code: "columns_need_assigning" },
+          { code: "few_rows" },
+          { code: "no_quantity" },
+        ],
+      }),
+    }),
+  );
+  await openSingleFile(page);
+
+  await choose(page);
+
+  const alert = page.getByRole("alert");
+  await expect(alert).toContainText("Check the mapping.");
+  await expect(alert).toContainText("No column holds a quantity yet");
+  await expect(alert).toContainText("More than two columns with no header");
+  await expect(page.getByText("neural net")).toHaveCount(0);
+});
+
+test("an error in the file is not called a problem of the mapping", async ({
+  page,
+}) => {
+  await page.route("**/api/parse", (route) =>
+    route.fulfill({
+      json: parsed({
+        measurements: {},
+        errors: [{ code: "not_numeric", line: 3, column: 0 }],
+      }),
+    }),
+  );
+  await openSingleFile(page);
+
+  await choose(page);
+
+  await expect(page.getByRole("alert")).toContainText("Check the file.");
+  await expect(page.getByRole("alert")).toContainText("Line 3");
+});
+
+test("each column used twice is named", async ({ page }) => {
+  await page.route("**/api/parse", (route) =>
+    route.fulfill({
+      json: parsed({
+        measurements: {},
+        errors: [
+          { code: "repeated_role", column: 1 },
+          { code: "repeated_role", column: 2 },
+        ],
+      }),
+    }),
+  );
+  await openSingleFile(page);
+
+  await choose(page);
+
+  await expect(page.getByRole("alert")).toContainText("Check the mapping.");
+  await expect(page.getByRole("alert")).toContainText("Column 2: A quantity");
+  await expect(page.getByRole("alert")).toContainText("Column 3: A quantity");
+});
+
+test("a file still being read does not come back after a change of source", async ({
+  page,
+}) => {
+  let requests = 0;
+  await page.route("**/api/parse", (route) => {
+    requests += 1;
+    return route.fulfill({ json: parsed() });
+  });
+  await openSingleFile(page);
+  // A read of a file that takes time, which the page can leave during.
+  await page.evaluate(() => {
+    const real = Blob.prototype.arrayBuffer;
+    Blob.prototype.arrayBuffer = async function slow(this: Blob) {
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      return real.call(this);
+    };
+  });
+
+  await choose(page);
+  await expect(page.getByText("Reading…").first()).toBeVisible();
+  await page.getByRole("tab", { name: "Separate files" }).click();
+  await page.waitForTimeout(700);
+
+  expect(requests).toBe(0);
+  await expect(page.locator('input[type="file"]')).toHaveCount(3);
+  await page.getByRole("tab", { name: "Single file" }).click();
+  await expect(page.getByText("A table with several columns")).toBeVisible();
+});
+
+test("of two files, the last chosen counts, even if the first takes longer", async ({
+  page,
+}) => {
+  const texts: string[] = [];
+  await page.route("**/api/parse", (route) => {
+    texts.push((route.request().postDataJSON() as { text: string }).text);
+    return route.fulfill({ json: parsed() });
+  });
+  await openSingleFile(page);
+  await page.evaluate(() => {
+    const real = Blob.prototype.arrayBuffer;
+    Blob.prototype.arrayBuffer = async function slow(this: Blob) {
+      if (this instanceof File && this.name === "slow.csv") {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+      return real.call(this);
+    };
+    const drop = (name: string) => {
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(new File([name], name));
+      document.querySelector('[data-file-slot="table"]')?.dispatchEvent(
+        new DragEvent("drop", {
+          bubbles: true,
+          cancelable: true,
+          dataTransfer,
+        }),
+      );
+    };
+    drop("slow.csv");
+    setTimeout(() => {
+      drop("fast.csv");
+    }, 50);
+  });
+
+  await expect(slot(page).getByText("fast.csv")).toBeVisible();
+  await page.waitForTimeout(800);
+
+  expect(texts).toEqual(["fast.csv"]);
+  await expect(slot(page).getByText("fast.csv")).toBeVisible();
+  await expect(slot(page).getByText("slow.csv")).toHaveCount(0);
 });
 
 test("a late answer to an older mapping does not overwrite a newer one", async ({

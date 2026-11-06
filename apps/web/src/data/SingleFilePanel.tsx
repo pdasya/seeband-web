@@ -25,7 +25,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DropArea, useFileDrop } from "@/data/DropArea";
-import { issueMessage, noDataMessages } from "@/data/messages";
+import {
+  errorsAreAboutTheMapping,
+  explainingWarnings,
+  issueMessage,
+  noDataMessages,
+} from "@/data/messages";
 import {
   assignColumn,
   failSingleFile,
@@ -140,11 +145,13 @@ function ColumnMapping({
   );
 }
 
-function ParsedChips({ table }: { table: ParsedTable }) {
+/** From the session, not the last answer, as this is what a fit would use. */
+function ParsedChips() {
+  const data = useSessionStore((state) => state.data);
   return (
     <div className="flex flex-wrap gap-1.5">
       {QUANTITIES.map((quantity) => {
-        const measurement = table.measurements[quantity];
+        const measurement = data[quantity]?.measurement;
         const { symbol } = text.quantities[quantity];
         return (
           <Badge
@@ -221,17 +228,28 @@ function Preview({
   );
 }
 
-function Problems({ table }: { table: ParsedTable }) {
-  if (table.errors.length === 0) {
+function Problems({ table, usable }: { table: ParsedTable; usable: boolean }) {
+  const hasErrors = table.errors.length > 0;
+  if (!hasErrors && usable) {
     return null;
   }
+  const messages = hasErrors
+    ? noDataMessages(table.errors, [])
+    : [
+        text.single.noQuantity,
+        ...explainingWarnings(table.warnings).map(issueMessage),
+      ];
   return (
     <Alert variant="destructive">
       <AlertCircleIcon aria-hidden="true" />
-      <AlertTitle>{text.single.errorTitle}</AlertTitle>
+      <AlertTitle>
+        {errorsAreAboutTheMapping(table.errors)
+          ? text.single.errorTitle
+          : text.single.fileErrorTitle}
+      </AlertTitle>
       <AlertDescription>
         <ul className="m-0 list-none p-0">
-          {noDataMessages(table.errors, []).map((message, index) => (
+          {messages.map((message, index) => (
             <li key={index}>{message}</li>
           ))}
         </ul>
@@ -254,16 +272,19 @@ export function SingleFilePanel() {
   const { dragging, dropTarget } = useFileDrop(handlers);
   const table = file?.table ?? null;
 
+  const data = useSessionStore((state) => state.data);
+  const loaded = QUANTITIES.filter((q) => data[q] !== undefined)
+    .map((q) => text.quantities[q].title)
+    .join(", ");
+  let announcement = "";
+  if (file?.loading === true) {
+    announcement = `${file.name}: ${text.reading}`;
+  } else if (file !== null && loaded !== "") {
+    announcement = `${file.name}: ${loaded}`;
+  }
   const status = (
     <div role="status" className="sr-only">
-      {file?.loading === true ? `${file.name}: ${text.reading}` : ""}
-      {file?.loading !== true && table !== null && file !== null
-        ? `${file.name}: ${QUANTITIES.filter(
-            (q) => table.measurements[q] !== undefined,
-          )
-            .map((q) => text.quantities[q].title)
-            .join(", ")}`
-        : ""}
+      {announcement}
     </div>
   );
   const failure = file?.failure != null && (
@@ -318,6 +339,8 @@ export function SingleFilePanel() {
   const usable = QUANTITIES.some(
     (quantity) => table.measurements[quantity] !== undefined,
   );
+  // A failed read says so itself, and the last answer no longer applies.
+  const settled = !file.loading && file.failure === null;
   return (
     <div className="flex flex-col gap-2.5">
       {status}
@@ -354,18 +377,13 @@ export function SingleFilePanel() {
         <ColumnMapping table={table} mapping={file.mapping} />
       )}
       {failure}
-      <Problems table={table} />
-      <ParsedChips table={table} />
+      {settled && <Problems table={table} usable={usable} />}
+      <ParsedChips />
       {table.preview.length > 0 && (
         <Preview table={table} mapping={file.mapping} />
       )}
-      {table.warnings.length > 0 && (
-        <ul
-          className={cn(
-            "m-0 list-none p-0 text-xs",
-            usable ? "text-muted-foreground" : "text-destructive",
-          )}
-        >
+      {settled && usable && table.warnings.length > 0 && (
+        <ul className="m-0 list-none p-0 text-xs text-muted-foreground">
           {table.warnings.map((warning, index) => (
             <li key={index}>{issueMessage(warning)}</li>
           ))}
