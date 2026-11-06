@@ -20,7 +20,7 @@ const EXAMPLES = fileURLToPath(
 
 for (const example of ["01_Fe2VAl09Si01", "02_SiP", "03_AWI32_SI"]) {
   test(`all files of ${example} load`, async ({ page }) => {
-    await page.goto("/app/fit");
+    await page.goto("/fit");
 
     for (const suffix of ["see", "rho", "hall"]) {
       const name = `${example}_${suffix}.txt`;
@@ -48,7 +48,7 @@ for (const example of ["01_Fe2VAl09Si01", "02_SiP", "03_AWI32_SI"]) {
 test("a broken file shows a specific error from the real parser", async ({
   page,
 }) => {
-  await page.goto("/app/fit");
+  await page.goto("/fit");
   const good = readFileSync(`${EXAMPLES}01_Fe2VAl09Si01_see.txt`, "utf8");
   const lines = good.split("\n");
   lines[3] = "300 not-a-number";

@@ -16,7 +16,7 @@ export default defineConfig({
   },
   webServer: {
     command: `node_modules/.bin/vite --port ${String(PORT)} --strictPort`,
-    url: `http://localhost:${String(PORT)}/app/e2e/chart-fixture.html`,
+    url: `http://localhost:${String(PORT)}/e2e/chart-fixture.html`,
     reuseExistingServer: false,
   },
 });

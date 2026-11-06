@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test("the shared header has its styles, in the design's sizes", async ({
   page,
 }) => {
-  await page.goto("/app/fit");
+  await page.goto("/fit");
 
   const look = await page.locator("header.sb-header").evaluate((header) => {
     const style = (selector: string) => {
@@ -40,14 +40,14 @@ test("the shared header has its styles, in the design's sizes", async ({
 test("links inside the app stay in the page, and the current one moves", async ({
   page,
 }) => {
-  await page.goto("/app/fit");
+  await page.goto("/fit");
   await page.evaluate(() => {
     (window as unknown as { sameDocument: boolean }).sameDocument = true;
   });
 
   await page.getByRole("link", { name: "Results" }).click();
 
-  await expect(page).toHaveURL(/\/app\/results$/);
+  await expect(page).toHaveURL(/\/results$/);
   await expect(page.getByRole("link", { name: "Results" })).toHaveAttribute(
     "aria-current",
     "page",
@@ -60,7 +60,7 @@ test("links inside the app stay in the page, and the current one moves", async (
 });
 
 test("links to the public site leave the app", async ({ page }) => {
-  await page.goto("/app/fit");
+  await page.goto("/fit");
 
   await expect(page.getByRole("link", { name: "Overview" })).toHaveAttribute(
     "href",
@@ -75,7 +75,7 @@ test("links to the public site leave the app", async ({ page }) => {
 test("there is no language switch while the app has one language", async ({
   page,
 }) => {
-  await page.goto("/app/fit");
+  await page.goto("/fit");
 
   await expect(page.locator(".sb-header__languages")).toHaveCount(0);
 });

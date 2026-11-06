@@ -11,7 +11,6 @@ const apiProxy = {
 };
 
 export default defineConfig({
-  base: "/app/",
   server: { proxy: apiProxy },
   preview: { proxy: apiProxy },
   plugins: [react(), tailwindcss()],
