@@ -1,8 +1,8 @@
 """Limits that apply before a request reaches its route: its rate by client, and its size.
 
 These run before the body is read or parsed, so that a refused request costs little. The store is
-in memory, for each server process. A client's address is not logged, and is dropped by the first
-request at least a minute after its client's last.
+in memory, for each server process. A client's address is not logged. With requests coming in, it is
+dropped within about 2 minutes of its client's last request, and with none, stays until the next.
 """
 
 import ipaddress
@@ -90,6 +90,12 @@ class RateLimiter:
         }
 
 
+def _route_path(scope: Scope) -> str:
+    """The path that routes see. `path` starts with a server's root path, and routing drops it."""
+    path: str = scope["path"]
+    return path.removeprefix(scope.get("root_path", ""))
+
+
 def _content_length(scope: Scope) -> int | None:
     for name, value in scope["headers"]:
         if name == b"content-length":
@@ -149,7 +155,7 @@ class RequestLimitsMiddleware:
         await self._app(scope, receive_body_then_continue, send)
 
     async def _refused_by_rate(self, scope: Scope, receive: Receive, send: Send) -> bool:
-        path = scope["path"]
+        path = _route_path(scope)
         if scope["method"] != "POST" or not self._limiter.limits(path):
             return False
         retry_after_s = self._limiter.retry_after_s(path, client_key(scope))

@@ -178,6 +178,35 @@ def test_every_route_that_takes_a_body_has_a_rate_limit() -> None:
     }
 
 
+def test_a_root_path_does_not_switch_off_the_rate() -> None:
+    sent: list[Message] = []
+
+    async def app(_: Scope, __: Receive, app_send: Send) -> None:
+        await Response("ok")({"type": "http"}, __, app_send)
+
+    async def receive() -> Message:
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    async def send(message: Message) -> None:
+        sent.append(message)
+
+    middleware = RequestLimitsMiddleware(app, RateLimiter({"/api/fit": 1}), 100)
+    # As uvicorn gives it with `--root-path /sb`.
+    scope = {
+        "type": "http",
+        "method": "POST",
+        "path": "/sb/api/fit",
+        "root_path": "/sb",
+        "headers": [],
+        "client": ("192.0.2.1", 1),
+    }
+
+    asyncio.run(middleware(scope, receive, send))
+    asyncio.run(middleware(scope, receive, send))
+
+    assert [m["status"] for m in sent if m["type"] == "http.response.start"] == [200, 429]
+
+
 def test_only_post_counts_towards_a_rate() -> None:
     with _client(guess_per_minute=1) as client:
         assert [client.get("/api/guess").status_code for _ in range(3)] == [405] * 3
