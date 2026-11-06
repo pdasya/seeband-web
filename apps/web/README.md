@@ -8,7 +8,24 @@ pnpm --filter @seeband/web build    # into apps/web/dist, every asset under /app
 pnpm --filter @seeband/web preview  # the production build at /app/
 ```
 
-The page is a sample of the base components, to compare with the design. U2 replaces it, and U3 translates its text.
+## Shell
+
+| Path           | Shows               |
+| -------------- | ------------------- |
+| `/app/`        | leads to `/app/fit` |
+| `/app/fit`     | the fit screen      |
+| `/app/results` | the results screen  |
+| anything else  | a not-found view    |
+
+`src/routes.tsx` holds the routes, and `src/shell` what screens share: the header, the two columns that wrap, the page heading with its slot for a status badge, and panels. The fit and results screens are frames for now.
+
+- **Overview and Conventions** are plain links to the public site, which does not exist before S1, so they lead nowhere in development.
+- **A server must answer any path under `/app/` with `index.html`,** as a reload at `/app/results` otherwise gets a 404, and send `/app` to `/app/`. `vite preview` does the first, and answers `/app` and a path with broken percent-encoding with its own 404. [I1](https://github.com/pdasya/seeband-web/issues/53) must set it in Caddy.
+- **The error views show no details,** as an error's message could quote a user's data. An error in a page appears inside the shell, and one in the shell appears without it.
+- **A move inside the app takes focus to `main`,** so that a screen reader follows it. Scroll position is not handled, as the pages are short so far.
+- **Headings on the fit screen come in the design's order:** Data and Model come before the `h1`, as the side panel does. V2 should check this with a screen reader.
+- **All text is in `src/strings.ts`** until [U3](https://github.com/pdasya/seeband-web/issues/36) brings i18n. Add new text there.
+- **The header stays here until [U6](https://github.com/pdasya/seeband-web/issues/37)** shares it with the site, and adds the language switch. The design's Export button comes with R4.
 
 ## Base components
 
