@@ -41,10 +41,7 @@ export interface TransportChartProps {
 
 function ChartEmptyState({ title, text }: EmptyState) {
   return (
-    <div
-      className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed p-6 text-center"
-      style={{ minHeight: CHART_HEIGHT_PX }}
-    >
+    <div className="flex min-h-[340px] flex-col items-center justify-center gap-2 rounded-lg border border-dashed p-6 text-center">
       <div className="flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
         <ChartLineIcon className="size-[18px]" aria-hidden="true" />
       </div>

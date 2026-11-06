@@ -56,8 +56,7 @@ const AXIS_STEP_K = 100;
 const DEFAULT_MAX_K = 800;
 // Past this, ticks each 100 K would crowd together, so Plotly chooses them.
 const MAX_TICKED_K = 1200;
-// Taller than the design's 340 px, at the maintainer's request, to read S more easily.
-export const CHART_HEIGHT_PX = 480;
+export const CHART_HEIGHT_PX = 340;
 
 export function readChartTheme(root: Element): ChartTheme {
   const styles = getComputedStyle(root);

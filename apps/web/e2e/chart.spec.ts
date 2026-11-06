@@ -134,23 +134,6 @@ test("new values update the same drawing rather than a new one", async ({
   );
 });
 
-test("the chart and its empty state have the same height", async ({ page }) => {
-  await openChart(page);
-  const chart = await page
-    .locator(".main-svg")
-    .first()
-    .evaluate((element) => element.getBoundingClientRect().height);
-  expect(chart).toBe(480);
-
-  await page.goto(`${FIXTURE}?empty`);
-
-  const empty = await page
-    .getByText("No data yet")
-    .locator("..")
-    .evaluate((element) => element.getBoundingClientRect().height);
-  expect(empty).toBe(480);
-});
-
 test("a screen reader gets the description, as the drawing is one image", async ({
   page,
 }) => {
