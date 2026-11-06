@@ -35,7 +35,8 @@ export interface TransportChartProps {
   /** What a screen reader says about the chart, as it cannot read the drawing. */
   description: string;
   toggleMeasurementsLabel: string;
-  loadFailedText: string;
+  /** Shown if Plotly cannot load, or cannot draw this data. */
+  failedText: string;
 }
 
 function ChartEmptyState({ title, text }: EmptyState) {
@@ -57,6 +58,9 @@ function Legend({
   curves: readonly ChartCurve[];
   measurementsLabel: string | null;
 }) {
+  if (curves.length === 0 && measurementsLabel === null) {
+    return null;
+  }
   return (
     <ul className="m-0 flex list-none flex-wrap gap-4 p-0 text-xs text-muted-foreground">
       {measurementsLabel !== null && (
@@ -93,7 +97,7 @@ function Plot({
   xAxisTitle,
   yAxisTitle,
   description,
-  loadFailedText,
+  failedText,
 }: {
   curves: readonly ChartCurve[];
   measurements: ChartMeasurements | null;
@@ -102,7 +106,7 @@ function Plot({
   xAxisTitle: string;
   yAxisTitle: string;
   description: string;
-  loadFailedText: string;
+  failedText: string;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const [plotly, setPlotly] = useState<PlotlyModule | null>(null);
@@ -145,10 +149,15 @@ function Plot({
     if (plotly === null || element === null) {
       return;
     }
-    const { data, layout } = buildFigure(input, readChartTheme(element));
-    plotly.react(element, data, layout, PLOT_CONFIG).catch(() => {
-      setFailed(true);
-    });
+    // An error thrown here would otherwise take the whole page with it.
+    Promise.resolve()
+      .then(() => {
+        const { data, layout } = buildFigure(input, readChartTheme(element));
+        return plotly.react(element, data, layout, PLOT_CONFIG);
+      })
+      .catch(() => {
+        setFailed(true);
+      });
   }, [plotly, input]);
 
   useEffect(() => {
@@ -164,7 +173,7 @@ function Plot({
   if (failed) {
     return (
       <Alert variant="destructive">
-        <AlertDescription>{loadFailedText}</AlertDescription>
+        <AlertDescription>{failedText}</AlertDescription>
       </Alert>
     );
   }
@@ -192,7 +201,7 @@ export function TransportChart({
   yAxisTitle,
   description,
   toggleMeasurementsLabel,
-  loadFailedText,
+  failedText,
 }: TransportChartProps) {
   const [showMeasurements, setShowMeasurements] = useState(true);
   const toggleId = useId();
@@ -230,7 +239,7 @@ export function TransportChart({
         xAxisTitle={xAxisTitle}
         yAxisTitle={yAxisTitle}
         description={description}
-        loadFailedText={loadFailedText}
+        failedText={failedText}
       />
     </figure>
   );

@@ -84,15 +84,21 @@ export function curveColor(curve: ChartCurve, index: number): CurveColor {
 }
 
 function axisMaxK(input: FigureInput): number {
-  const temperatures = [
-    ...input.curves.flatMap((curve) => curve.temperatureK),
-    ...(input.measurements?.temperatureK ?? []),
-    ...(input.fitRange === null ? [] : [input.fitRange.maxK]),
-  ];
-  if (temperatures.length === 0) {
-    return DEFAULT_MAX_K;
+  let maxK = 0;
+  const include = (temperatures: readonly number[]) => {
+    // A loop, as spreading a very long array into `Math.max` overflows the stack.
+    for (const temperatureK of temperatures) {
+      if (Number.isFinite(temperatureK) && temperatureK > maxK) {
+        maxK = temperatureK;
+      }
+    }
+  };
+  for (const curve of input.curves) {
+    include(curve.temperatureK);
   }
-  return Math.ceil(Math.max(...temperatures) / AXIS_STEP_K) * AXIS_STEP_K;
+  include(input.measurements?.temperatureK ?? []);
+  include(input.fitRange === null ? [] : [input.fitRange.maxK]);
+  return maxK > 0 ? Math.ceil(maxK / AXIS_STEP_K) * AXIS_STEP_K : DEFAULT_MAX_K;
 }
 
 function outsideRangeShapes(

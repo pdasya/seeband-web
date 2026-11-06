@@ -34,7 +34,7 @@ export function FitPage() {
                   yAxisTitle={chart.fitAxis}
                   description={chart.fitDescription}
                   toggleMeasurementsLabel={chart.toggleMeasurements}
-                  loadFailedText={chart.loadFailed}
+                  failedText={chart.failed}
                 />
               </div>
             </Panel>

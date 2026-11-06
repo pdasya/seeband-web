@@ -126,6 +126,43 @@ describe("the x axis", () => {
     expect(layout.xaxis?.range).toEqual([0, axisK]);
   });
 
+  test("a very long curve does not overflow the stack", () => {
+    const temperatureK = Array.from({ length: 300_000 }, (_, i) => i / 500);
+    const values = temperatureK.map(() => 1);
+
+    const { layout } = buildFigure(
+      {
+        ...INPUT,
+        curves: [{ id: "a", label: "A", temperatureK, values }],
+      },
+      THEME,
+    );
+
+    expect(layout.xaxis?.range).toEqual([0, 600]);
+  });
+
+  test.each([
+    ["only negative", [-100, -50]],
+    ["not finite", [Number.NaN, Number.POSITIVE_INFINITY]],
+  ])("with temperatures %s, it keeps the design's range", (_, temperatureK) => {
+    const { layout } = buildFigure(
+      {
+        ...INPUT,
+        curves: [
+          {
+            id: "a",
+            label: "A",
+            temperatureK,
+            values: temperatureK.map(() => 1),
+          },
+        ],
+      },
+      THEME,
+    );
+
+    expect(layout.xaxis?.range).toEqual([0, 800]);
+  });
+
   test("with no data, it has the design's range", () => {
     expect(buildFigure(INPUT, THEME).layout.xaxis?.range).toEqual([0, 800]);
   });

@@ -20,7 +20,7 @@ const PROPS: TransportChartProps = {
   yAxisTitle: "S",
   description: "Chart of S against temperature",
   toggleMeasurementsLabel: "Show measurements",
-  loadFailedText: "The chart could not load",
+  failedText: "The chart could not load",
 };
 
 beforeEach(() => {
@@ -94,7 +94,30 @@ test("the toggle shows only with measurements, and a failed load says so", async
   render(<TransportChart {...PROPS} measurements={null} />);
 
   expect(screen.queryByRole("switch")).toBeNull();
-  expect(await screen.findByText(PROPS.loadFailedText)).toBeTruthy();
+  expect(await screen.findByText(PROPS.failedText)).toBeTruthy();
+});
+
+test.each([
+  ["rejects", () => Promise.reject(new Error("SECRET-VALUE"))],
+  [
+    "throws",
+    () => {
+      throw new Error("SECRET-VALUE");
+    },
+  ],
+])("if drawing %s, the message shows, with no details", async (_, draw) => {
+  react.mockImplementationOnce(draw);
+
+  render(<TransportChart {...PROPS} />);
+
+  expect(await screen.findByText(PROPS.failedText)).toBeTruthy();
+  expect(document.body.textContent).not.toContain("SECRET-VALUE");
+});
+
+test("with nothing to name, there is no empty legend", () => {
+  render(<TransportChart {...PROPS} curves={[]} measurements={null} />);
+
+  expect(screen.queryByRole("list")).toBeNull();
 });
 
 test("leaving before Plotly has loaded draws nothing", async () => {

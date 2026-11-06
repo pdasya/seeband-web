@@ -62,6 +62,7 @@ The app always calls `/api` on its own origin, so there is no base URL to set, a
 - **Plotly loads on first use,** as it is 400 KB compressed, and an empty state does not load it. This is the `basic` bundle, the smallest published: scatter, bar and pie.
 - **Colours and fonts come from the tokens,** read from CSS when drawing, so a token change reaches the chart.
 - **New data goes through `Plotly.react`,** which updates the drawing. Keep `curves` and the other props stable between renders, for example with `useMemo`, as new arrays draw again.
+- **If Plotly cannot load or draw,** the chart shows a message rather than taking the page with it. It stays until the chart next appears.
 - **A value of null leaves a gap,** and the switch for measurements is the chart's own state.
 
 `e2e/` tests the chart in a browser with fixed data, through `pnpm --filter @seeband/web test`. It uses your Chrome, and in CI Playwright's Chromium. `test-results/chart.png` is a picture of it.

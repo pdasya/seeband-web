@@ -17,8 +17,7 @@ export const STRINGS = {
   chart: {
     temperatureAxis: "T, K",
     toggleMeasurements: "Show measurements",
-    loadFailed:
-      "The chart could not load. Check your connection and reload the page.",
+    failed: "The chart could not be shown. Try reloading the page.",
     noDataTitle: "No data yet",
     noDataText: "Curves appear here once measurements are loaded.",
     fitDescription: "Chart of the measurements and model against temperature",
