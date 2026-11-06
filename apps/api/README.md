@@ -35,6 +35,7 @@ uv run python -m seeband_api
 | `POST /api/parse`       | reading measured data    |
 | `POST /api/guess`       | neural net start values  |
 | `POST /api/fit`         | fitting, as event stream |
+| `GET /api/demo`         | synthetic dataset        |
 | `GET /api/openapi.json` | the contract             |
 | `GET /api/docs`         | Swagger UI over the same |
 
@@ -138,6 +139,14 @@ A `failed` fit's `message` is English text with no code, so a client cannot tran
 - **Assigning columns:** send the text again with `mapping`, as the API keeps nothing between calls. A choice is kept even while some rows have errors. A column that does not exist gives a 422 `invalid_parse_request` with `unknown_column`. With no readable rows, there is nothing to check it against, and `mapping` stays the suggestion.
 - **`interpolate`** gives each quantity on a grid over a fit range, in `interpolated`, next to the original `measurements`. A range the grid cannot use is a 422 `invalid_parse_request` with `invalid_interpolation_range`. A polynomial that overflows gives `null`, which a client must not send on to `POST /api/calc`, as it refuses it. One quantity that cannot be interpolated is named in `interpolation_failed`, and the others stay. Pass `extrapolated` on to `POST /api/calc` if any quantity sets it, as made-up points enter its results.
 - **Size:** a text over the limit gets a 422, and over 2000 rows a 422 `invalid_parse_request` with `too_many_rows`, even if some rows have errors. See [Limits](#limits).
+
+## Demo dataset
+
+`GET /api/demo` answers with the synthetic dataset of [`demo-dataset.md`](../../packages/seeband_core/docs/demo-dataset.md): S, ρ and R_H at 31 points from 50 to 800 K. **It is not a measurement of any material.** Show `message_key` through i18n wherever the data appear, as `synthetic` is always true.
+
+It holds every field of a `POST /api/parse` response, because it goes through the same parser, so a client can treat it as a parsed file. It has no `interpolated` values. It adds `model`, `fit_mode` and `scattering`, which can be sent as they are to `POST /api/fit` or `POST /api/calc`, and what generated it, in `true_parameters` and `noise`. `true_parameters` is in core units, and is not a whole set: the mode's other parameters were at their `core_range` defaults in `GET /api/models`. So to send it to `POST /api/calc`, merge it over those, as it alone gets a 422. `known_issues` holds `dpb_hall_prefactor`, as its R_H comes from the current model.
+
+It has no rate limit and no `ETag`, as it costs almost nothing and is under 10 KB.
 
 ## Curves
 

@@ -100,6 +100,17 @@ describe("the mock of the real contract", async () => {
     assert.deepEqual(await response.json(), { status: "ok", version: "1.0.0" });
   });
 
+  test("serves the demo dataset, labelled synthetic", async () => {
+    const response = await fetch(`${url}/api/demo`);
+
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.synthetic, true);
+    assert.equal(body.message_key, "demo_dataset.synthetic");
+    assert.equal(body.measurements.seebeck.points, 31);
+    assert.equal(body.row_count, 31);
+  });
+
   test("serves the real model descriptions", async () => {
     const response = await fetch(`${url}/api/models`);
 

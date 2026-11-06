@@ -5,9 +5,11 @@ from typing import Any
 
 import numpy as np
 import pytest
+from seeband_core.data_parser import parse_table
 from seeband_core.demo_dataset import (
     TRUE_PARAMETERS,
     clean_curves,
+    demo_table_text,
     generate_demo_dataset,
     load_demo_dataset,
 )
@@ -75,6 +77,19 @@ def test_the_stored_file_comes_from_the_generator() -> None:
 @pytest.mark.filterwarnings("ignore")
 def test_the_generator_gives_the_same_data_twice() -> None:
     assert generate_demo_dataset() == generate_demo_dataset()
+
+
+def test_its_text_reads_back_exactly_through_the_parser() -> None:
+    dataset = load_demo_dataset()
+
+    table = parse_table(demo_table_text(dataset))
+
+    assert table.errors == ()
+    assert table.warnings == ()
+    assert set(table.measurements) == set(dataset.measurements)
+    for quantity, measurement in dataset.measurements.items():
+        assert np.array_equal(table.measurements[quantity].temperature_k, measurement.temperature_k)
+        assert np.array_equal(table.measurements[quantity].values, measurement.values)
 
 
 def test_it_says_that_it_is_synthetic_through_i18n() -> None:
