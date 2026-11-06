@@ -88,6 +88,17 @@ ERROR_EXAMPLES: dict[str, dict[str, Any]] = {
         "message": "Too many fits are running. Try again shortly.",
         "details": [],
     },
+    "rate_limited": {"code": "rate_limited", "message": "Too many requests", "details": []},
+    "request_too_large": {
+        "code": "request_too_large",
+        "message": "A request can hold at most 10000000 bytes",
+        "details": [],
+    },
+    "client_fit_limit": {
+        "code": "client_fit_limit",
+        "message": "This client has too many fits running or waiting",
+        "details": [],
+    },
     "invalid_parse_request": {
         "code": "invalid_parse_request",
         "message": "Invalid request",

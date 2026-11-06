@@ -18,17 +18,19 @@ from seeband_api.errors import ApiError, ErrorDetail
 from seeband_api.json_values import finite_or_none
 from seeband_api.request_checks import (
     FiniteFloat,
+    MaxPointsDep,
     MeasurementInput,
     PositiveFloat,
     check_degeneracy,
     check_parameter_names,
+    check_point_counts,
     check_scattering,
     find_mode,
     invalid,
     to_measurements,
 )
 from seeband_api.request_logging import log_calculation_failure
-from seeband_api.routing import api_router
+from seeband_api.routing import api_router, too_many_requests
 
 router = api_router("calc")
 
@@ -191,8 +193,8 @@ def _to_response(outcome: CalcOutcome) -> CalcResponse:
     )
 
 
-@router.post("/calc")
-async def post_calc(body: CalcRequest, pool: CalcPoolDep) -> CalcResponse:
+@router.post("/calc", responses={429: too_many_requests()})
+async def post_calc(body: CalcRequest, pool: CalcPoolDep, max_points: MaxPointsDep) -> CalcResponse:
     description, fit_mode = find_mode(
         body.model, body.fit_mode, "invalid_calculation", "Invalid calculation"
     )
@@ -201,6 +203,7 @@ async def post_calc(body: CalcRequest, pool: CalcPoolDep) -> CalcResponse:
         *check_degeneracy(body.band_1_degeneracy, body.band_2_degeneracy, fit_mode),
         *check_parameter_names(list(body.parameters), "parameters", fit_mode),
         *_check_measurements(body, fit_mode),
+        *check_point_counts(body.measurements, max_points),
     ]
     if details:
         raise _refuse(details)

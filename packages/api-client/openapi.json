@@ -106,6 +106,27 @@
                       "details": []
                     }
                   },
+                  "rate_limited": {
+                    "value": {
+                      "code": "rate_limited",
+                      "message": "Too many requests",
+                      "details": []
+                    }
+                  },
+                  "request_too_large": {
+                    "value": {
+                      "code": "request_too_large",
+                      "message": "A request can hold at most 10000000 bytes",
+                      "details": []
+                    }
+                  },
+                  "client_fit_limit": {
+                    "value": {
+                      "code": "client_fit_limit",
+                      "message": "This client has too many fits running or waiting",
+                      "details": []
+                    }
+                  },
                   "invalid_parse_request": {
                     "value": {
                       "code": "invalid_parse_request",
@@ -2423,6 +2444,27 @@
                       "details": []
                     }
                   },
+                  "rate_limited": {
+                    "value": {
+                      "code": "rate_limited",
+                      "message": "Too many requests",
+                      "details": []
+                    }
+                  },
+                  "request_too_large": {
+                    "value": {
+                      "code": "request_too_large",
+                      "message": "A request can hold at most 10000000 bytes",
+                      "details": []
+                    }
+                  },
+                  "client_fit_limit": {
+                    "value": {
+                      "code": "client_fit_limit",
+                      "message": "This client has too many fits running or waiting",
+                      "details": []
+                    }
+                  },
                   "invalid_parse_request": {
                     "value": {
                       "code": "invalid_parse_request",
@@ -2630,6 +2672,27 @@
                       "details": []
                     }
                   },
+                  "rate_limited": {
+                    "value": {
+                      "code": "rate_limited",
+                      "message": "Too many requests",
+                      "details": []
+                    }
+                  },
+                  "request_too_large": {
+                    "value": {
+                      "code": "request_too_large",
+                      "message": "A request can hold at most 10000000 bytes",
+                      "details": []
+                    }
+                  },
+                  "client_fit_limit": {
+                    "value": {
+                      "code": "client_fit_limit",
+                      "message": "This client has too many fits running or waiting",
+                      "details": []
+                    }
+                  },
                   "invalid_parse_request": {
                     "value": {
                       "code": "invalid_parse_request",
@@ -2710,6 +2773,33 @@
                           "message": "Input should be a valid number, unable to parse string as a number"
                         }
                       ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this client, or for the server",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer"
+                },
+                "example": 5
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "rate_limited": {
+                    "value": {
+                      "code": "rate_limited",
+                      "message": "Too many requests",
+                      "details": []
                     }
                   }
                 }
@@ -3010,6 +3100,27 @@
                       "details": []
                     }
                   },
+                  "rate_limited": {
+                    "value": {
+                      "code": "rate_limited",
+                      "message": "Too many requests",
+                      "details": []
+                    }
+                  },
+                  "request_too_large": {
+                    "value": {
+                      "code": "request_too_large",
+                      "message": "A request can hold at most 10000000 bytes",
+                      "details": []
+                    }
+                  },
+                  "client_fit_limit": {
+                    "value": {
+                      "code": "client_fit_limit",
+                      "message": "This client has too many fits running or waiting",
+                      "details": []
+                    }
+                  },
                   "invalid_parse_request": {
                     "value": {
                       "code": "invalid_parse_request",
@@ -3090,6 +3201,33 @@
                           "message": "Input should be a valid number, unable to parse string as a number"
                         }
                       ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this client, or for the server",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer"
+                },
+                "example": 5
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "rate_limited": {
+                    "value": {
+                      "code": "rate_limited",
+                      "message": "Too many requests",
+                      "details": []
                     }
                   }
                 }
@@ -3292,6 +3430,27 @@
                       "details": []
                     }
                   },
+                  "rate_limited": {
+                    "value": {
+                      "code": "rate_limited",
+                      "message": "Too many requests",
+                      "details": []
+                    }
+                  },
+                  "request_too_large": {
+                    "value": {
+                      "code": "request_too_large",
+                      "message": "A request can hold at most 10000000 bytes",
+                      "details": []
+                    }
+                  },
+                  "client_fit_limit": {
+                    "value": {
+                      "code": "client_fit_limit",
+                      "message": "This client has too many fits running or waiting",
+                      "details": []
+                    }
+                  },
                   "invalid_parse_request": {
                     "value": {
                       "code": "invalid_parse_request",
@@ -3372,6 +3531,33 @@
                           "message": "Input should be a valid number, unable to parse string as a number"
                         }
                       ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this client, or for the server",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer"
+                },
+                "example": 5
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "rate_limited": {
+                    "value": {
+                      "code": "rate_limited",
+                      "message": "Too many requests",
+                      "details": []
                     }
                   }
                 }
@@ -3554,6 +3740,27 @@
                       "details": []
                     }
                   },
+                  "rate_limited": {
+                    "value": {
+                      "code": "rate_limited",
+                      "message": "Too many requests",
+                      "details": []
+                    }
+                  },
+                  "request_too_large": {
+                    "value": {
+                      "code": "request_too_large",
+                      "message": "A request can hold at most 10000000 bytes",
+                      "details": []
+                    }
+                  },
+                  "client_fit_limit": {
+                    "value": {
+                      "code": "client_fit_limit",
+                      "message": "This client has too many fits running or waiting",
+                      "details": []
+                    }
+                  },
                   "invalid_parse_request": {
                     "value": {
                       "code": "invalid_parse_request",
@@ -3641,7 +3848,7 @@
             }
           },
           "429": {
-            "description": "Too many fits are running or waiting",
+            "description": "Too many requests from this client, or for the server",
             "headers": {
               "Retry-After": {
                 "schema": {
@@ -3660,6 +3867,20 @@
                     "value": {
                       "code": "fit_queue_full",
                       "message": "Too many fits are running. Try again shortly.",
+                      "details": []
+                    }
+                  },
+                  "client_fit_limit": {
+                    "value": {
+                      "code": "client_fit_limit",
+                      "message": "This client has too many fits running or waiting",
+                      "details": []
+                    }
+                  },
+                  "rate_limited": {
+                    "value": {
+                      "code": "rate_limited",
+                      "message": "Too many requests",
                       "details": []
                     }
                   }

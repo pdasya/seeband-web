@@ -11,7 +11,7 @@ from http import HTTPStatus
 from typing import Annotated, Any, Literal, Self
 
 import numpy as np
-from fastapi import Depends
+from fastapi import Depends, Request
 from fastapi.sse import EventSourceResponse
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from seeband_core.interpolation import in_fit_range
@@ -26,7 +26,6 @@ from seeband_core.model_interface import (
 )
 
 from seeband_api.errors import (
-    ERROR_EXAMPLES,
     INTERNAL_ERROR_CODE,
     ApiError,
     ErrorDetail,
@@ -36,23 +35,25 @@ from seeband_api.fit_runner import (
     FIT_FAILED_MESSAGE,
     FIT_PROCESS_DIED_MESSAGE,
     FIT_TIMEOUT_MESSAGE,
-    RETRY_AFTER_S,
     FitRunnerDep,
 )
 from seeband_api.fit_worker import run_fit
 from seeband_api.request_checks import (
     FiniteFloat,
+    MaxPointsDep,
     MeasurementInput,
     PositiveFloat,
     check_degeneracy,
     check_parameter_names,
+    check_point_counts,
     check_scattering,
     find_mode,
     invalid,
     to_measurements,
 )
+from seeband_api.request_limits import client_key
 from seeband_api.request_logging import log_unhandled_exception
-from seeband_api.routing import api_router
+from seeband_api.routing import api_router, too_many_requests
 
 router = api_router("fit")
 
@@ -286,7 +287,7 @@ def _to_response(result: FitResult) -> FitResponse:
     )
 
 
-def _to_core_request(body: FitApiRequest) -> tuple[str, FitRequest]:
+def _to_core_request(body: FitApiRequest, max_points: int) -> tuple[str, FitRequest]:
     description, fit_mode = find_mode(body.model, body.fit_mode, "invalid_fit", "Invalid fit")
     scattering_details = check_scattering(body.scattering, fit_mode)
     details = [
@@ -294,6 +295,7 @@ def _to_core_request(body: FitApiRequest) -> tuple[str, FitRequest]:
         *check_degeneracy(body.band_1_degeneracy, body.band_2_degeneracy, fit_mode),
         *check_parameter_names(list(body.start), "start", fit_mode),
         *_check_measurements(body, fit_mode),
+        *check_point_counts(body.measurements, max_points),
     ]
     # The bounds depend on the scattering type, so this needs a valid one.
     if not scattering_details:
@@ -344,14 +346,16 @@ class _AcceptedFit:
     events: asyncio.Queue[FitEvent | None]
 
 
-async def _accept_fit(body: FitApiRequest, runner: FitRunnerDep) -> AsyncIterator[_AcceptedFit]:
+async def _accept_fit(
+    body: FitApiRequest, request: Request, runner: FitRunnerDep, max_points: MaxPointsDep
+) -> AsyncIterator[_AcceptedFit]:
     """Refuses a request or takes its place in the queue, before the response starts.
 
     The fit belongs to the request rather than to the stream, whose generator a disconnect can stop
     before its first step. So the fit always ends here, however the request ends. If this is itself
     cancelled, at a stop of the server, the task still ends its process.
     """
-    model_id, request = _to_core_request(body)
+    model_id, core_request = _to_core_request(body, max_points)
     events: asyncio.Queue[FitEvent | None] = asyncio.Queue()
 
     def on_iteration(update: IterationUpdate) -> None:
@@ -362,7 +366,8 @@ async def _accept_fit(body: FitApiRequest, runner: FitRunnerDep) -> AsyncIterato
     task = runner.submit(
         run_fit,
         model_id,
-        request,
+        core_request,
+        client=client_key(request.scope),
         on_started=lambda: events.put_nowait(FitStarted()),
         on_iteration=on_iteration,
     )
@@ -400,18 +405,7 @@ def _last_event(task: asyncio.Task[FitResult]) -> FitEvent:
             "description": "Events of the fit. The last is `done` or `error`",
             "content": {"text/event-stream": {"examples": _STREAM_EXAMPLES}},
         },
-        429: {
-            "model": ErrorResponse,
-            "description": "Too many fits are running or waiting",
-            "headers": {
-                "Retry-After": {"schema": {"type": "integer"}, "example": RETRY_AFTER_S},
-            },
-            "content": {
-                "application/json": {
-                    "examples": {"fit_queue_full": {"value": ERROR_EXAMPLES["fit_queue_full"]}}
-                }
-            },
-        },
+        429: too_many_requests(("fit_queue_full", "client_fit_limit", "rate_limited")),
     },
 )
 async def post_fit(fit: Annotated[_AcceptedFit, Depends(_accept_fit)]) -> AsyncIterable[FitEvent]:

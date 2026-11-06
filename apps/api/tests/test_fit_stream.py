@@ -237,3 +237,34 @@ def test_refused_requests_are_plain_errors_through_a_real_server(
     assert response.headers["content-type"] == "application/json"
     assert response.json()["code"] == "invalid_fit"
     assert not server.pid_file.exists()
+
+
+def test_one_client_cannot_hold_more_than_its_share_of_fits(
+    tmp_path: Path, support_dir: Path
+) -> None:
+    with (
+        _server(tmp_path, support_dir, "hang", fit_max_per_client=1) as server,
+        server.stream() as running,
+    ):
+        events = read_events(running.iter_lines())
+        assert next(events) == {"type": "started"}
+
+        refused = server.client.post("/api/fit", json=FAKE_FIT_BODY)
+        # Another client, through the proxy that the server trusts on this address.
+        other = server.client.send(
+            server.client.build_request(
+                "POST",
+                "/api/fit",
+                json=FAKE_FIT_BODY,
+                headers={"x-forwarded-for": "198.51.100.1"},
+                timeout=60,
+            ),
+            stream=True,
+        )
+        try:
+            assert refused.status_code == 429
+            assert refused.json()["code"] == "client_fit_limit"
+            assert refused.headers["retry-after"] == "5"
+            assert other.status_code == 200
+        finally:
+            other.close()

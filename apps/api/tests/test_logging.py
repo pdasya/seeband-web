@@ -363,6 +363,8 @@ def test_parsing_through_real_workers_keeps_nothing(tmp_path: Path, support_dir:
         "SEEBAND_API_PORT": str(port),
         "SEEBAND_API_LOG_LEVEL": "DEBUG",
         "FILE_AUDIT_LOG": str(audit_path),
+        # The text must be long enough for a multipart parser to use a file.
+        "SEEBAND_API_MAX_POINTS": "100000",
         # Writing a bytecode file during a lazy import would look like the writes this looks for.
         "PYTHONDONTWRITEBYTECODE": "1",
     }
@@ -507,6 +509,7 @@ def test_entry_point_passes_its_settings_to_the_server(
             "host": "0.0.0.0",
             "port": 9123,
             "access_log": False,
+            "forwarded_allow_ips": "127.0.0.1,::1",
             "ws": "none",
             "timeout_graceful_shutdown": 5,
         }

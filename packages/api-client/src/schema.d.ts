@@ -1060,6 +1060,17 @@ export interface operations {
                     "application/json": components["schemas"]["CalcResponse"];
                 };
             };
+            /** @description Too many requests from this client, or for the server */
+            429: {
+                headers: {
+                    /** @example 5 */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Default Response */
             default: {
                 headers: {
@@ -1091,6 +1102,17 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ParseResponse"];
+                };
+            };
+            /** @description Too many requests from this client, or for the server */
+            429: {
+                headers: {
+                    /** @example 5 */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Default Response */
@@ -1126,6 +1148,17 @@ export interface operations {
                     "application/json": components["schemas"]["GuessFound"] | components["schemas"]["GuessNoNet"] | components["schemas"]["GuessNotFinite"];
                 };
             };
+            /** @description Too many requests from this client, or for the server */
+            429: {
+                headers: {
+                    /** @example 5 */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Default Response */
             default: {
                 headers: {
@@ -1159,7 +1192,7 @@ export interface operations {
                     "text/event-stream": unknown;
                 };
             };
-            /** @description Too many fits are running or waiting */
+            /** @description Too many requests from this client, or for the server */
             429: {
                 headers: {
                     /** @example 5 */

@@ -16,6 +16,10 @@ sys.path.insert(0, str(SUPPORT_DIR))
 for _name in list(os.environ):
     if _name.startswith("SEEBAND_API_"):
         del os.environ[_name]
+# Tests send requests far faster than a person, including through servers they start. Those that
+# check the rate limits set their own.
+for _name in ("CALC", "PARSE", "GUESS", "FIT"):
+    os.environ[f"SEEBAND_API_{_name}_PER_MINUTE"] = "1000000"
 
 
 @pytest.fixture

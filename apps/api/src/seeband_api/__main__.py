@@ -15,6 +15,7 @@ def main() -> None:
         host=settings.host,
         port=settings.port,
         access_log=False,
+        forwarded_allow_ips=settings.trusted_proxies,
         # A stop otherwise waits for every running and queued fit, up to minutes. After this long,
         # requests are cancelled, and each fit's process ends with its request.
         timeout_graceful_shutdown=GRACEFUL_SHUTDOWN_S,

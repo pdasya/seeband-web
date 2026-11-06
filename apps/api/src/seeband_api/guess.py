@@ -17,9 +17,14 @@ from seeband_api.calc_pool import CalcPoolDep
 from seeband_api.calc_worker import CalculationFailed
 from seeband_api.errors import ApiError, ErrorDetail
 from seeband_api.guess_worker import GuessOutcome, guess
-from seeband_api.request_checks import FiniteFloat, PositiveFloat
+from seeband_api.request_checks import (
+    FiniteFloat,
+    MaxPointsDep,
+    PositiveFloat,
+    too_many_points,
+)
 from seeband_api.request_logging import log_calculation_failure
-from seeband_api.routing import api_router
+from seeband_api.routing import api_router, too_many_requests
 
 router = api_router("guess")
 
@@ -238,13 +243,21 @@ def _to_response(outcome: GuessOutcome) -> GuessFound | GuessNoNet | GuessNotFin
                     }
                 }
             }
-        }
+        },
+        429: too_many_requests(),
     },
 )
 async def post_guess(
-    body: GuessRequest, pool: CalcPoolDep
+    body: GuessRequest, pool: CalcPoolDep, max_points: MaxPointsDep
 ) -> GuessFound | GuessNoNet | GuessNotFinite:
     _check_model(body.model)
+    if len(body.temperature_k) > max_points:
+        raise ApiError(
+            HTTPStatus.UNPROCESSABLE_CONTENT,
+            "invalid_guess",
+            "Invalid request",
+            [too_many_points(max_points, ["temperature_k"])],
+        )
     try:
         outcome = await pool.run(
             guess, body.model, np.array(body.temperature_k), np.array(body.seebeck_v_per_k)
