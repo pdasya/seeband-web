@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, test } from "vitest";
 
 import {
   createSessionStore,
+  fitData,
   type FitResult,
   type SessionData,
 } from "@/session/store";
@@ -24,6 +25,7 @@ const DATA: SessionData = {
   },
   source: { kind: "demo", messageKey: "demo_dataset.synthetic" },
   extrapolated: false,
+  text: "T S\n100 1e-4\n",
 };
 
 let store: ReturnType<typeof createSessionStore>;
@@ -200,6 +202,136 @@ describe("the source of data", () => {
       loading: false,
       failure: "message",
     });
+  });
+});
+
+describe("interpolation", () => {
+  const VALUES = {
+    temperature_k: [50, 100],
+    values: [5, 6],
+    extrapolated: true,
+    measured_points_in_range: 1,
+    underdetermined: false,
+  };
+  const measured = () => fitData(state(), "seebeck");
+
+  test("off, a fit reads the measured data", () => {
+    state().setData("seebeck", DATA);
+
+    expect(measured()).toEqual({
+      temperature_k: [100],
+      values: [1e-4],
+      extrapolated: false,
+    });
+  });
+
+  test("on, a fit reads the interpolated values, and says that they are made up", () => {
+    state().setData("seebeck", DATA);
+    state().setInterpolationEnabled(true);
+    state().finishInterpolation({ seebeck: VALUES }, []);
+
+    expect(measured()).toEqual({
+      temperature_k: [50, 100],
+      values: [5, 6],
+      extrapolated: true,
+    });
+  });
+
+  test("turning it off restores the measured data exactly", () => {
+    state().setData("seebeck", DATA);
+    const before = state().data.seebeck;
+    state().setInterpolationEnabled(true);
+    state().finishInterpolation({ seebeck: VALUES }, []);
+
+    state().setInterpolationEnabled(false);
+
+    expect(state().data.seebeck).toBe(before);
+    expect(state().interpolation.values).toEqual({});
+    expect(measured()?.values).toEqual([1e-4]);
+  });
+
+  test.each([
+    ["not answered yet", undefined],
+    ["a value that is not finite", { ...VALUES, values: [5, null] }],
+  ])(
+    "on, with %s, a fit reads nothing rather than the measured data",
+    (_, values) => {
+      state().setData("seebeck", DATA);
+      state().setInterpolationEnabled(true);
+      state().finishInterpolation(
+        values === undefined ? {} : { seebeck: values },
+        [],
+      );
+
+      expect(measured()).toBeNull();
+    },
+  );
+
+  test("new data drop values from the old data, and keep the switch on", () => {
+    state().setData("seebeck", DATA);
+    state().setInterpolationEnabled(true);
+    state().finishInterpolation({ seebeck: VALUES }, ["hall"]);
+
+    state().setData("seebeck", DATA);
+
+    expect(state().interpolation).toMatchObject({
+      enabled: true,
+      values: {},
+      failed: [],
+    });
+  });
+
+  test("a change clears an old result, which was from other values", () => {
+    state().fitEvent(state().fitRequested(), { type: "done", result: RESULT });
+
+    state().setInterpolationEnabled(true);
+
+    expect(state().fit).toEqual({ status: "idle" });
+  });
+
+  test("a failure of one file says so, and leaves the others", () => {
+    state().setInterpolationEnabled(true);
+
+    state().finishInterpolation({ seebeck: VALUES }, ["hall"], "message");
+
+    expect(state().interpolation).toMatchObject({
+      values: { seebeck: VALUES },
+      failed: ["hall"],
+      failure: "message",
+      loading: false,
+    });
+  });
+
+  test("while it waits for an answer, a fit reads nothing, as the values are old", () => {
+    state().setData("seebeck", DATA);
+    state().setInterpolationEnabled(true);
+    state().finishInterpolation({ seebeck: VALUES }, []);
+    expect(measured()).not.toBeNull();
+
+    state().startInterpolation();
+
+    expect(measured()).toBeNull();
+  });
+
+  test("stopping clears the wait, and leaves the rest", () => {
+    state().setInterpolationEnabled(true);
+    state().startInterpolation();
+
+    state().stopInterpolation();
+
+    expect(state().interpolation).toMatchObject({
+      enabled: true,
+      loading: false,
+    });
+  });
+
+  test("an answer does not clear a fit's result", () => {
+    state().setInterpolationEnabled(true);
+    state().fitEvent(state().fitRequested(), { type: "done", result: RESULT });
+
+    state().finishInterpolation({ seebeck: VALUES }, []);
+
+    expect(state().fit.status).toBe("done");
   });
 });
 

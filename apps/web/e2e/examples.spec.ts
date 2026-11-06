@@ -103,3 +103,29 @@ test("a single file maps its columns through the real parser", async ({
   await page.getByRole("option", { name: "S", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("assigned twice");
 });
+
+test("interpolation of an example through the real API has its flags", async ({
+  page,
+}) => {
+  await page.goto("/fit");
+  // Its data run from 25 to 750 K, and the default range ends at 800 K.
+  await page
+    .locator('input[type="file"]')
+    .first()
+    .setInputFiles(`${EXAMPLES}01_Fe2VAl09Si01_see.txt`);
+  await expect(slots(page).getByText(/\d+ points/)).toBeVisible();
+
+  await page.getByRole("switch", { name: /Interpolation/ }).click();
+
+  await expect(page.getByText("Fit range 50–800 K")).toBeVisible();
+  await expect(page.getByRole("alert")).toContainText(
+    "S: the grid goes beyond the data",
+  );
+
+  await page.getByRole("switch", { name: /Interpolation/ }).click();
+
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(
+    slots(page).getByText("30 points · 25–750 K · V/K"),
+  ).toBeVisible();
+});

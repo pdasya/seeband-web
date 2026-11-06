@@ -28,6 +28,24 @@ export const STRINGS = {
       separate: "Separate files",
       single: "Single file",
     },
+    interpolation: {
+      title: "Interpolation",
+      hint: "Chebyshev, degree 10, step ≈20 K",
+      working: "Interpolating…",
+      range: "Fit range",
+      noRange: "The fit range is not known yet.",
+      invalidRange:
+        "This fit range cannot be interpolated. It must start above 0 K, and span 20 to 200000 K.",
+      flags: {
+        failed: "could not be interpolated, so a fit cannot use it.",
+        notFinite: "the polynomial overflowed, so a fit cannot use it.",
+        noMeasuredPoints:
+          "no measured point lies in the fit range, so every value is made up.",
+        extrapolated:
+          "the grid goes beyond the data, so some values are made up.",
+        underdetermined: "too few points set the polynomial.",
+      },
+    },
     single: {
       dropTitle: "A table with several columns",
       rows: "rows",

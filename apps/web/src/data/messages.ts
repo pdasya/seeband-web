@@ -90,6 +90,8 @@ export function failureMessage(error: unknown): string {
     return data.parseFailed;
   }
   switch (error.details[0]?.code ?? error.code) {
+    case "invalid_interpolation_range":
+      return data.interpolation.invalidRange;
     case "too_many_rows":
       return data.tooManyRows;
     case "request_too_large":
