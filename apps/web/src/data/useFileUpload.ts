@@ -64,6 +64,7 @@ export function useFileUpload(quantity: Quantity) {
           measurement,
           source: { kind: "file", name: file.name },
           extrapolated: false,
+          text,
         });
         setState({
           status: "idle",

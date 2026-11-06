@@ -27,7 +27,7 @@ function clearData() {
   }
 }
 
-function applyTable(name: string, table: ParsedTable) {
+function applyTable(name: string, text: string, table: ParsedTable) {
   for (const quantity of QUANTITIES) {
     const measurement = table.measurements[quantity];
     if (measurement === undefined) {
@@ -37,6 +37,7 @@ function applyTable(name: string, table: ParsedTable) {
         measurement,
         source: { kind: "file", name },
         extrapolated: false,
+        text,
       });
     }
   }
@@ -67,7 +68,7 @@ async function read(
     const parsed = await apiClient.postParse(body, signal);
     if (store().singleFile?.request === request) {
       store().finishSingleFile(parsed);
-      applyTable(name, parsed);
+      applyTable(name, text, parsed);
     }
   } catch (error) {
     if (store().singleFile?.request === request) {

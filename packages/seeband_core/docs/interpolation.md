@@ -13,16 +13,30 @@
 | Switched off          | The fit reads the measured points inside the range, with `in_fit_range`. D16 on the desktop, where this can break a later fit, is not ported                                                                                                  |
 | A range it cannot use | An error: under 20 K, starting at 0 K or below, or over 200000 K. On the desktop, a range under 20 K fails inside the button, which unchecks itself and leaves the data raw (D23)                                                             |
 
-## For FS3
+## In the web client
 
-These are decisions for the client and API, which the core leaves open but must not be lost:
+FS3 decided these, which the core leaves open. They are in `apps/web`.
 
-- **One quantity failing.** The desktop keeps that quantity raw and says nothing. Show it instead, and a failure in a quantity the mode does not use should not block a fit.
-- **Flags.** Show `extrapolated`, `underdetermined` and `measured_points_in_range` for each quantity. With 0 measured points, every value is made up, so warn before fitting.
-- **What charts show.** The desktop shows interpolated points in place of raw ones.
-- **Neural net.** The desktop reads raw data for start values, even with interpolation on. Keep that.
-- **RMSE.** Compare with the data the fit read, and say which.
-- **Few points.** A fit on very few points can still return `converged`, for example on the one point of the narrowest grid.
+| Question                   | Answer                                                                                                                                                  |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| One quantity failing       | It is named, and a fit cannot read it, while the others stay. Whether that blocks a fit depends on the mode, which FS8 decides                          |
+| Flags                      | `extrapolated`, `underdetermined`, and 0 for `measured_points_in_range`, are shown for each quantity. With 0, the text says that every value is made up |
+| A value that is not finite | A fit cannot read that quantity, as the API refuses null                                                                                                |
+| Switched off               | The measured data were never changed, so they are back at once                                                                                          |
+
+Left for later tasks, and not to be lost:
+
+- **What charts show (FS6).** The desktop shows interpolated points in place of raw ones. The plan for the web is to plot the measured points, and fit the interpolated ones.
+- **Neural net (FS9).** The desktop reads raw data for start values, even with interpolation on. Keep that.
+- **RMSE (FS6, FS10).** Compare with the data the fit read, and say which.
+- **Few points (FS8).** A fit on very few points can still return `converged`, for example on the one point of the narrowest grid.
+
+## Differences from the desktop, for V1
+
+- **One switch rather than one button per quantity (D23).** A user cannot interpolate S and leave ρ measured, so a comparison with the desktop needs all or none.
+- **It follows the fit range and data.** The desktop's grid stays from the click (D23), so a comparison must click again after changing the range.
+- **A range it cannot use is an error shown to the user.** The desktop's button unchecks itself, and leaves the data raw (D23).
+- **A quantity that fails is named,** and a fit cannot read it. The desktop keeps it raw, and says nothing.
 
 ## Known issues
 

@@ -25,6 +25,28 @@ export interface SessionData {
   measurement: Measurement;
   source: DataSource;
   extrapolated: boolean;
+  /** The file's text, in memory only, as interpolating sends it again. */
+  text: string;
+}
+
+export type InterpolatedQuantities = Partial<
+  Record<Quantity, Schemas["InterpolatedResponse"]>
+>;
+
+/** Interpolated values sit beside the measured data, so that turning it off restores those. */
+export interface InterpolationState {
+  enabled: boolean;
+  loading: boolean;
+  values: InterpolatedQuantities;
+  failed: readonly Quantity[];
+  failure: string | null;
+}
+
+/** What a fit reads for a quantity. */
+export interface FitData {
+  temperature_k: readonly number[];
+  values: readonly number[];
+  extrapolated: boolean;
 }
 
 /** Data come from a file for each quantity, or from one table. Only one way at a time. */
@@ -86,6 +108,14 @@ const INITIAL_SELECTION: Selection = {
   maxTemperatureK: null,
 };
 
+const INITIAL_INTERPOLATION: InterpolationState = {
+  enabled: false,
+  loading: false,
+  values: {},
+  failed: [],
+  failure: null,
+};
+
 export interface SessionState {
   data: Partial<Record<Quantity, SessionData>>;
   selection: Selection;
@@ -94,7 +124,15 @@ export interface SessionState {
   fit: FitState;
   dataMode: DataMode;
   singleFile: SingleFile | null;
+  interpolation: InterpolationState;
 
+  setInterpolationEnabled: (enabled: boolean) => void;
+  startInterpolation: () => void;
+  finishInterpolation: (
+    values: InterpolatedQuantities,
+    failed: readonly Quantity[],
+  ) => void;
+  failInterpolation: (failure: string) => void;
   /** Clears all the data, as what the other way loaded no longer shows. */
   setDataMode: (mode: DataMode) => void;
   /** Returns the id of this request, so that a late answer to an older one can be ignored. */
@@ -114,6 +152,10 @@ export interface SessionState {
   fitEvent: (run: number, event: FitEvent) => void;
   fitStopped: (run: number) => void;
   fitFailed: (run: number, failure: FitFailure) => void;
+}
+
+function withoutValues(interpolation: InterpolationState): InterpolationState {
+  return { ...interpolation, values: {}, failed: [], failure: null };
 }
 
 function isActive(fit: FitState): boolean {
@@ -161,6 +203,47 @@ export const createSessionStore = () =>
       fit: { status: "idle" },
       dataMode: "separate",
       singleFile: null,
+      interpolation: INITIAL_INTERPOLATION,
+
+      setInterpolationEnabled: (enabled) => {
+        set((state) => ({
+          interpolation: { ...INITIAL_INTERPOLATION, enabled },
+          fit: withoutOldResult(state.fit),
+        }));
+      },
+      startInterpolation: () => {
+        set((state) => ({
+          interpolation: {
+            ...state.interpolation,
+            loading: true,
+            failure: null,
+          },
+        }));
+      },
+      finishInterpolation: (values, failed) => {
+        set((state) => ({
+          interpolation: {
+            ...state.interpolation,
+            loading: false,
+            values,
+            failed,
+            failure: null,
+          },
+          fit: withoutOldResult(state.fit),
+        }));
+      },
+      failInterpolation: (failure) => {
+        set((state) => ({
+          interpolation: {
+            ...state.interpolation,
+            loading: false,
+            values: {},
+            failed: [],
+            failure,
+          },
+          fit: withoutOldResult(state.fit),
+        }));
+      },
 
       setDataMode: (mode) => {
         set((state) =>
@@ -170,6 +253,7 @@ export const createSessionStore = () =>
                 dataMode: mode,
                 data: {},
                 singleFile: null,
+                interpolation: withoutValues(state.interpolation),
                 fit: withoutOldResult(state.fit),
               },
         );
@@ -213,6 +297,7 @@ export const createSessionStore = () =>
       setData: (quantity, data) => {
         set((state) => ({
           data: { ...state.data, [quantity]: data },
+          interpolation: withoutValues(state.interpolation),
           fit: withoutOldResult(state.fit),
         }));
       },
@@ -221,7 +306,11 @@ export const createSessionStore = () =>
           const data = Object.fromEntries(
             Object.entries(state.data).filter(([name]) => name !== quantity),
           );
-          return { data, fit: withoutOldResult(state.fit) };
+          return {
+            data,
+            interpolation: withoutValues(state.interpolation),
+            fit: withoutOldResult(state.fit),
+          };
         });
       },
       setSelection: (selection) => {
@@ -277,5 +366,33 @@ export const createSessionStore = () =>
       },
     };
   });
+
+/**
+ * What a fit reads for a quantity: its interpolated values with the switch on, or else the measured
+ * data. With the switch on, a quantity with no usable values gives null rather than quietly falling
+ * back to measured data, and so does a value that is not finite, which the API would refuse.
+ */
+export function fitData(
+  state: Pick<SessionState, "data" | "interpolation">,
+  quantity: Quantity,
+): FitData | null {
+  const entry = state.data[quantity];
+  if (entry === undefined) {
+    return null;
+  }
+  if (!state.interpolation.enabled) {
+    const { temperature_k, values } = entry.measurement;
+    return { temperature_k, values, extrapolated: entry.extrapolated };
+  }
+  const result = state.interpolation.values[quantity];
+  if (result?.values.some((value) => value === null) !== false) {
+    return null;
+  }
+  return {
+    temperature_k: result.temperature_k,
+    values: result.values as number[],
+    extrapolated: result.extrapolated,
+  };
+}
 
 export const useSessionStore = createSessionStore();
