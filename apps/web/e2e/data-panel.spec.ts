@@ -611,7 +611,8 @@ test("a reload with files asks first, and with none it does not", async ({
       mimeType: "text/plain",
       buffer: Buffer.from("T S\n100 1\n"),
     });
-  await expect(page.getByText("s.txt", { exact: true })).toBeVisible();
+  // Its name shows while it is read, and only this says that it has loaded.
+  await expect(page.getByText(/^1 points/)).toBeVisible();
 
   await reloadAsAUserWould(page);
   expect(dialogs).toEqual(["beforeunload"]);
@@ -636,7 +637,8 @@ test("removing the last file ends the question", async ({ page }) => {
       mimeType: "text/plain",
       buffer: Buffer.from("T S\n100 1\n"),
     });
-  await expect(page.getByText("s.txt", { exact: true })).toBeVisible();
+  // Its name shows while it is read, and only this says that it has loaded.
+  await expect(page.getByText(/^1 points/)).toBeVisible();
   await page
     .getByRole("button", { name: /Remove/ })
     .first()
