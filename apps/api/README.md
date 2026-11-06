@@ -93,7 +93,9 @@ Time for each fit of the 3 desktop examples, in all 11 working combinations of m
 
 **Behind a proxy:** a proxy must pass events on as they come, and must close its connection to the API when the client closes its own, or a Stop will not reach the fit. The API sends `Cache-Control: no-cache` and `X-Accel-Buffering: no`. Neither has been tried through Caddy yet: [I1](https://github.com/pdasya/seeband-web/issues/53) should check both with a real request.
 
-**Stopping the server** waits 5 s for requests through `python -m seeband_api`, then cancels them, and their fits end. Their streams end with no last event. Plain `uvicorn` has no such limit, so a stop waits for every running and queued fit.
+**A Stop relies on the server reporting a disconnect while a fit sends nothing.** Uvicorn 0.54 reports ASGI spec version 2.3, so Starlette listens for it, and a client that leaves is noticed at once. With version 2.4 or higher, Starlette only notices a failed send, so a silent fit would end at the next keepalive, up to 15 s later. `tests/test_fit_stream.py` would fail on such an upgrade of uvicorn.
+
+**Stopping the server** waits 5 s for requests through `python -m seeband_api`, then cancels them, and their fits end. Their streams end with no last event. Requests cancelled this way write no `request` line to the log. Plain `uvicorn` has no such limit, so a stop waits for every running and queued fit.
 
 A `failed` fit's `message` is English text with no code, so a client cannot translate it by code.
 

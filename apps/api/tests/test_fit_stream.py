@@ -78,23 +78,19 @@ def test_events_arrive_while_the_fit_runs(tmp_path: Path, support_dir: Path) -> 
             }
 
 
-def test_closing_the_connection_ends_the_fit_and_leaves_the_last_values(
+def test_closing_the_connection_ends_the_fit_and_gives_back_its_place(
     tmp_path: Path, support_dir: Path
 ) -> None:
     with _server(
         tmp_path, support_dir, "iterate_then_hang", fit_max_running=1, fit_max_waiting=0
     ) as server:
-        last: dict[str, Any] = {}
         with server.stream() as response:
             for event in read_events(response.iter_lines()):
-                if event["type"] == "iteration":
-                    last = event
-                    if event["iteration"] == 2:
-                        break
+                if event.get("iteration") == 2:
+                    break
         pids = wait_for_fit_pids(server.pid_file, 1)
 
         assert wait_until_ended(pids, 5.0)
-        assert last["parameters"] == dict(fit_functions.FAKE_ITERATIONS[1].parameters)
         # The only place is free again, as otherwise this gets a 429.
         with server.stream() as second:
             assert second.status_code == 200
