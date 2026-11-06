@@ -56,6 +56,8 @@ test("draws curves, hollow markers, shading, a reference line and axes", async (
   await expect(page.locator(".xtitle")).toHaveText("T, K");
   await expect(page.locator(".ytitle")).toHaveText("S, µV/K");
   await expect(page.locator(".xtick text").first()).toHaveText("0");
+  // The largest value is 121, so the axis ends on the next round tick above it.
+  await expect(page.locator(".ytick text").last()).toHaveText("140");
 
   const font = await page
     .locator(".xtitle")

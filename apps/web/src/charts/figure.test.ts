@@ -180,6 +180,69 @@ describe("the x axis", () => {
   });
 });
 
+describe("the y axis", () => {
+  const axisFor = (values: (number | null)[]) =>
+    buildFigure(
+      {
+        ...INPUT,
+        curves: [
+          {
+            id: "a",
+            label: "A",
+            temperatureK: values.map((_, index) => index),
+            values,
+          },
+        ],
+      },
+      THEME,
+    ).layout.yaxis;
+
+  test.each([
+    ["S in µV/K", [5, 121], [0, 140], 20],
+    ["a top on a tick, which gets room above it", [0, 120], [0, 140], 20],
+    ["negative values", [-207, -12], [-250, 0], 50],
+    ["both signs", [-30, 45], [-40, 60], 20],
+    ["one value", [50, 50], [50, 60], 10],
+    ["zero alone", [0, 0], [0, 0.2], 0.2],
+  ])("with %s", (_, values, range, dtick) => {
+    const axis = axisFor(values);
+
+    expect(axis?.range).toEqual(range);
+    expect(axis?.dtick).toBe(dtick);
+    expect(axis?.tick0).toBe(0);
+  });
+
+  test("small values in V/K get round ticks too", () => {
+    const axis = axisFor([2e-5, 2.1e-4]);
+
+    expect(axis?.dtick).toBeCloseTo(5e-5, 12);
+    expect(axis?.range?.[0]).toBeCloseTo(0, 12);
+    expect(axis?.range?.[1]).toBeCloseTo(2.5e-4, 12);
+  });
+
+  test("gaps and values that are not finite are ignored", () => {
+    expect(axisFor([null, 10, Number.NaN, 100])?.range).toEqual([0, 120]);
+  });
+
+  test("with no values, Plotly chooses", () => {
+    expect(axisFor([null])?.range).toBeUndefined();
+    expect(axisFor([])?.dtick).toBeUndefined();
+  });
+
+  test("measurements and reference lines count, and hidden ones do not", () => {
+    const { layout } = buildFigure(
+      {
+        ...INPUT,
+        measurements: { label: "M", temperatureK: [100], values: [10] },
+        referenceLines: [{ value: 90, label: "E" }],
+      },
+      THEME,
+    );
+
+    expect(layout.yaxis?.range).toEqual([0, 100]);
+  });
+});
+
 describe("the area outside the fit range", () => {
   test("is shaded on both sides, below the data", () => {
     expect(

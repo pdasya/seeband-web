@@ -101,6 +101,51 @@ function axisMaxK(input: FigureInput): number {
   return maxK > 0 ? Math.ceil(maxK / AXIS_STEP_K) * AXIS_STEP_K : DEFAULT_MAX_K;
 }
 
+// About this many intervals fit the chart's height.
+const Y_INTERVALS = 6;
+
+function niceStep(span: number): number {
+  const rough = span / Y_INTERVALS;
+  const magnitude = 10 ** Math.floor(Math.log10(rough));
+  const multiple = [1, 2, 5].find((value) => value * magnitude >= rough) ?? 10;
+  return multiple * magnitude;
+}
+
+/** Ends the axis on round ticks beyond the values, so that the top and bottom have labels. */
+function yAxisTicks(
+  input: FigureInput,
+): { range: [number, number]; dtick: number; tick0: number } | null {
+  let low = Number.POSITIVE_INFINITY;
+  let high = Number.NEGATIVE_INFINITY;
+  const include = (values: readonly (number | null)[]) => {
+    for (const value of values) {
+      if (value !== null && Number.isFinite(value)) {
+        low = Math.min(low, value);
+        high = Math.max(high, value);
+      }
+    }
+  };
+  for (const curve of input.curves) {
+    include(curve.values);
+  }
+  include(input.measurements?.values ?? []);
+  include(input.referenceLines.map((line) => line.value));
+  if (low > high) {
+    return null;
+  }
+  // One value has no span to measure, so its size sets the step.
+  const span = high - low || Math.abs(high) || 1;
+  const step = niceStep(span);
+  return {
+    range: [
+      Math.floor(low / step) * step,
+      (Math.floor(high / step) + 1) * step,
+    ],
+    dtick: step,
+    tick0: 0,
+  };
+}
+
 function outsideRangeShapes(
   fitRange: ChartFitRange,
   maxK: number,
@@ -219,6 +264,7 @@ export function buildFigure(
       zeroline: false,
       tickfont: tickFont,
       automargin: true,
+      ...yAxisTicks(input),
     },
     shapes: [
       ...(fitRange === null ? [] : outsideRangeShapes(fitRange, maxK, theme)),
