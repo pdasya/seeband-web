@@ -83,6 +83,20 @@ SEEBAND_API_TARGET=http://127.0.0.1:8000 pnpm --filter @seeband/web exec playwri
 - **Each model keeps its own mode, scattering and degeneracies,** as the design does. The fit range is shared.
 - **A number being typed stays in its field.** It reaches the session on leaving the field or on Enter, and only if it holds, so the steps on the way to it send nothing and clear no result. N₁ and N₂ are any numbers above 0, and the two bounds of the range go together.
 
+## Numbers
+
+The app shows numbers with a decimal comma, in fields, labels, messages and charts, whatever the browser's region. `lib/numbers.ts` holds this. Number fields are text fields, because `type="number"` shows the separator of the computer's region. They accept a comma or a point. Files and the API keep their points.
+
+## Parameters
+
+`model/ParametersPanel.tsx` shows the parameters of the chosen fit mode and scattering type from their descriptions, so a new parameter needs no change here. Without a line in `strings.ts`, it shows its name.
+
+- **Values are in core units, per fit mode.** `model/parameters.ts` holds the only conversion to what a user sees, and `parameterValues` gives every parameter of a mode for a request, with defaults from `core_range`.
+- **The slider moves by whole control units,** as on the desktop. Arrow keys move by the description's `step`, and Page keys or Shift with an arrow by ten. `step` is not a grid, so values between steps stay as they are.
+- **A typed number** counts on leaving the field or on Enter, and only within the range. It may lie between whole control units, unlike on the desktop (D26). Advanced ranges come in FS13.
+- **Whole control units reach the core exactly,** as from the desktop's slider, so 2.55 at a display scale of 0.01 gives 255, not 254.99999999999997.
+- **The SPB mass is one slider across negative and positive,** as on the desktop, where the sign sets the carrier type.
+
 ## Charts
 
 `charts/TransportChart.tsx` draws a quantity against temperature with Plotly: measurements, model curves, the area outside the fit range, reference lines, a legend and a switch for the measurements. `charts/figure.ts` turns those into Plotly's terms, and calculates no physics. All text comes in as props, for i18n, and is English for now.

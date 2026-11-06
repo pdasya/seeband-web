@@ -5,6 +5,7 @@ import { useEffect, useId, useState } from "react";
 import { modelsQuery } from "@/api/queries";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
+import { formatNumber, parseNumber } from "@/lib/numbers";
 import {
   Select,
   SelectContent,
@@ -47,11 +48,9 @@ function scatteringLabel(id: string): string {
   return known[id] ?? id;
 }
 
-function positiveOrNull(value: string): number | null {
-  const number = Number(value);
-  return value.trim() !== "" && Number.isFinite(number) && number > 0
-    ? number
-    : null;
+function positiveOrNull(text: string): number | null {
+  const number = parseNumber(text);
+  return number !== null && number > 0 ? number : null;
 }
 
 function Group({
@@ -118,22 +117,24 @@ function DegeneracyField({
   label,
   value,
   invalid,
+  errorId,
   onInvalidChange,
   onCommit,
 }: {
   label: string;
   value: number;
   invalid: boolean;
+  errorId: string;
   onInvalidChange: (invalid: boolean) => void;
   onCommit: (value: number) => void;
 }) {
   const id = useId();
-  const [draft, setDraft] = useState(String(value));
+  const [draft, setDraft] = useState(formatNumber(value));
   const commit = () => {
     const number = positiveOrNull(draft);
     onInvalidChange(number === null);
     if (number !== null) {
-      setDraft(String(number));
+      setDraft(formatNumber(number));
       if (number !== value) {
         onCommit(number);
       }
@@ -146,11 +147,11 @@ function DegeneracyField({
       </label>
       <Input
         id={id}
-        type="number"
-        min={0}
-        step="any"
+        inputMode="decimal"
+        autoComplete="off"
         value={draft}
         aria-invalid={invalid}
+        aria-describedby={invalid ? errorId : undefined}
         onChange={(event) => {
           setDraft(event.target.value);
           onInvalidChange(false);
@@ -177,6 +178,7 @@ function DegeneracyFields({
   onBand1Commit: (value: number) => void;
   onBand2Commit: (value: number) => void;
 }) {
+  const errorId = useId();
   const [band1Invalid, setBand1Invalid] = useState(false);
   const [band2Invalid, setBand2Invalid] = useState(false);
   return (
@@ -186,6 +188,7 @@ function DegeneracyFields({
           label="N₁"
           value={band1}
           invalid={band1Invalid}
+          errorId={errorId}
           onInvalidChange={setBand1Invalid}
           onCommit={onBand1Commit}
         />
@@ -193,12 +196,13 @@ function DegeneracyFields({
           label="N₂"
           value={band2}
           invalid={band2Invalid}
+          errorId={errorId}
           onInvalidChange={setBand2Invalid}
           onCommit={onBand2Commit}
         />
       </div>
       {band1Invalid || band2Invalid ? (
-        <span role="alert" className="text-xs text-destructive">
+        <span id={errorId} role="alert" className="text-xs text-destructive">
           {text.degeneracyInvalid}
         </span>
       ) : (
@@ -219,8 +223,9 @@ function FitRangeFields({
   maxK: number;
   onCommit: (minK: number, maxK: number) => void;
 }) {
-  const [minDraft, setMinDraft] = useState(String(minK));
-  const [maxDraft, setMaxDraft] = useState(String(maxK));
+  const errorId = useId();
+  const [minDraft, setMinDraft] = useState(formatNumber(minK));
+  const [maxDraft, setMaxDraft] = useState(formatNumber(maxK));
   const [invalid, setInvalid] = useState(false);
   // Both together, as the two bounds only mean something as a pair.
   const commit = () => {
@@ -241,9 +246,9 @@ function FitRangeFields({
     <Group label={text.range}>
       <div className="grid grid-cols-2 gap-3">
         <Input
-          type="number"
-          min={0}
-          step={5}
+          inputMode="decimal"
+          autoComplete="off"
+          aria-describedby={invalid ? errorId : undefined}
           aria-label={text.rangeMin}
           aria-invalid={invalid}
           value={minDraft}
@@ -255,9 +260,9 @@ function FitRangeFields({
           onKeyDown={commitOnEnter}
         />
         <Input
-          type="number"
-          min={0}
-          step={5}
+          inputMode="decimal"
+          autoComplete="off"
+          aria-describedby={invalid ? errorId : undefined}
           aria-label={text.rangeMax}
           aria-invalid={invalid}
           value={maxDraft}
@@ -270,7 +275,7 @@ function FitRangeFields({
         />
       </div>
       {invalid && (
-        <span role="alert" className="text-xs text-destructive">
+        <span id={errorId} role="alert" className="text-xs text-destructive">
           {text.rangeInvalid}
         </span>
       )}

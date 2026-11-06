@@ -1,6 +1,7 @@
 import { TransportChart } from "@/charts/TransportChart";
 import { DataPanel } from "@/data/DataPanel";
 import { ModelPanel } from "@/model/ModelPanel";
+import { ParametersPanel } from "@/model/ParametersPanel";
 import { PageHeading, Panel, TwoColumns } from "@/shell/layout";
 import { StatusBadge } from "@/shell/StatusBadge";
 import { STRINGS } from "@/strings";
@@ -42,7 +43,7 @@ export function FitPage() {
             </Panel>
             <div className="flex flex-wrap items-stretch gap-4">
               <div className="min-w-0 flex-[1_1_320px]">
-                <Panel title={fit.parameters} />
+                <ParametersPanel />
               </div>
               <div className="min-w-0 flex-[1_1_320px]">
                 <Panel title={fit.result} />

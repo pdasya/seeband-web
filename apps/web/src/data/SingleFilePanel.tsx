@@ -37,6 +37,7 @@ import {
   loadSingleFile,
   removeSingleFile,
 } from "@/data/singleFile";
+import { formatNumber, withDecimalComma } from "@/lib/numbers";
 import { cn } from "@/lib/utils";
 import {
   QUANTITIES,
@@ -60,7 +61,9 @@ function formatValue(value: number | undefined, isTemperature: boolean) {
   if (value === undefined) {
     return "";
   }
-  return isTemperature ? String(value) : value.toExponential(3);
+  return isTemperature
+    ? formatNumber(value)
+    : withDecimalComma(value.toExponential(3));
 }
 
 function FileIcon() {

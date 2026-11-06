@@ -33,6 +33,10 @@ function shapes(input: Partial<FigureInput>): Partial<Shape>[] {
   return buildFigure({ ...INPUT, ...input }, THEME).layout.shapes ?? [];
 }
 
+test("uses the decimal comma of the rest of the app", () => {
+  expect(buildFigure(INPUT, THEME).layout.separators).toBe(",");
+});
+
 describe("curves", () => {
   test("take colours in order, unless one is named, and keep their gaps", () => {
     const curve = {

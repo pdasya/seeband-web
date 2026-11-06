@@ -226,11 +226,11 @@ for (const value of ["0.5", "2.5"]) {
 
     await page.getByRole("link", { name: "Results" }).click();
     await page.getByRole("link", { name: "Model fit" }).click();
-    await expect(page.getByLabel("N₁")).toHaveValue(value);
+    await expect(page.getByLabel("N₁")).toHaveValue(value.replace(".", ","));
   });
 }
 
-for (const value of ["0", "-1", ""]) {
+for (const value of ["0", "-1", "", "abc"]) {
   test(`a degeneracy of "${value}" says so and stays out of the session`, async ({
     page,
   }) => {
@@ -269,6 +269,51 @@ test("typing a correction clears the message about a degeneracy", async ({
   await expect(page.getByText("not fitted")).toBeVisible();
 });
 
+test("the data panel shows numbers with a comma too", async ({ page }) => {
+  await page.route("**/api/parse", (route: Route) =>
+    route.fulfill({
+      json: {
+        column_count: 2,
+        row_count: 2,
+        preview: [],
+        mapping: [],
+        measurements: {
+          seebeck: {
+            temperature_k: [100.5, 200.5],
+            values: [1, 2],
+            points: 2,
+            min_temperature_k: 100.5,
+            max_temperature_k: 200.5,
+          },
+        },
+        errors: [],
+        warnings: [],
+        warnings_omitted: 0,
+        interpolated: {},
+        interpolation_failed: [],
+      },
+    }),
+  );
+  await open(page);
+  await page
+    .locator('input[type="file"]')
+    .first()
+    .setInputFiles({
+      name: "s.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from("T S\n100.5 1\n200.5 2\n"),
+    });
+  await expect(
+    page.getByText("2 points · 100,5–200,5 K · V/K", { exact: true }),
+  ).toBeVisible();
+
+  await page.getByLabel("Lower bound, K").fill("50.5");
+  await page.getByLabel("Lower bound, K").blur();
+  await page.getByRole("switch", { name: /Interpolation/ }).click();
+
+  await expect(page.getByText("Fit range 50,5–800 K")).toBeVisible();
+});
+
 test("a fractional range is kept", async ({ page }) => {
   await open(page);
 
@@ -280,8 +325,8 @@ test("a fractional range is kept", async ({ page }) => {
 
   await page.getByRole("link", { name: "Results" }).click();
   await page.getByRole("link", { name: "Model fit" }).click();
-  await expect(page.getByLabel("Lower bound, K")).toHaveValue("50.5");
-  await expect(page.getByLabel("Upper bound, K")).toHaveValue("600.25");
+  await expect(page.getByLabel("Lower bound, K")).toHaveValue("50,5");
+  await expect(page.getByLabel("Upper bound, K")).toHaveValue("600,25");
 });
 
 test("a range being typed sends nothing until it is finished", async ({

@@ -145,3 +145,15 @@ test("the real model descriptions fill the model panel", async ({ page }) => {
   ).toBeDisabled();
   await expect(page.getByText(/fails on the desktop/)).toBeVisible();
 });
+
+test("the real descriptions fill the parameters", async ({ page }) => {
+  await page.goto("/fit");
+
+  await expect(
+    page.getByRole("textbox", { name: "E_F", exact: true }),
+  ).toHaveValue("-100");
+  await page.getByRole("radio", { name: "SPB" }).click();
+  await expect(
+    page.getByRole("slider", { name: "m", exact: true }),
+  ).toHaveAttribute("aria-valuemin", "-3");
+});

@@ -148,8 +148,8 @@ describe("a change after a result", () => {
     ["data", () => state().setData("seebeck", DATA)],
     ["removed data", () => state().removeData("seebeck")],
     ["selection", () => state().setSelection({ fitMode: "dpb_s" })],
-    ["parameters", () => state().setParameters({ m_eff: 2 })],
-    ["one parameter", () => state().setParameter("m_eff", 2)],
+    ["parameters", () => state().setParameters("dpb_s", { m_eff: 2 })],
+    ["one parameter", () => state().setParameter("dpb_s", "m_eff", 2)],
   ])("%s clears the result, which no longer matches", (_, change) => {
     state().fitEvent(state().fitRequested(), { type: "done", result: RESULT });
 
@@ -161,10 +161,10 @@ describe("a change after a result", () => {
   test("it leaves a running fit alone, as stopping it is the caller's", () => {
     state().fitEvent(state().fitRequested(), { type: "started" });
 
-    state().setParameter("m_eff", 2);
+    state().setParameter("dpb_s", "m_eff", 2);
 
     expect(state().fit.status).toBe("running");
-    expect(state().parameters).toEqual({ m_eff: 2 });
+    expect(state().parameters).toEqual({ dpb_s: { m_eff: 2 } });
   });
 });
 
@@ -335,6 +335,19 @@ describe("interpolation", () => {
   });
 });
 
+describe("parameters", () => {
+  test("are kept per fit mode", () => {
+    state().setParameter("dpb_s", "m_eff", 2);
+    state().setParameter("dpb_s", "band_gap", 900);
+    state().setParameter("dpb_s_rho", "m_eff", 3);
+
+    expect(state().parameters).toEqual({
+      dpb_s: { m_eff: 2, band_gap: 900 },
+      dpb_s_rho: { m_eff: 3 },
+    });
+  });
+});
+
 describe("choosing a model", () => {
   const DPB = {
     fitMode: "dpb_s",
@@ -401,7 +414,7 @@ describe("session values", () => {
   });
 
   test("each store is separate", () => {
-    state().setParameter("m_eff", 2);
+    state().setParameter("dpb_s", "m_eff", 2);
 
     expect(createSessionStore().getState().parameters).toEqual({});
   });
@@ -420,7 +433,7 @@ describe("session values", () => {
 
     const fresh = createSessionStore();
     fresh.getState().setData("seebeck", DATA);
-    fresh.getState().setParameter("m_eff", 2);
+    fresh.getState().setParameter("dpb_s", "m_eff", 2);
 
     expect(writes).toEqual([]);
   });
