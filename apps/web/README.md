@@ -55,6 +55,22 @@ The app always calls `/api` on its own origin, so there is no base URL to set, a
 - **The store does not call the API.** A change after a result clears it, but a change during a fit leaves it running, so FS8 decides whether to stop it.
 - **`tests` run the client against the real mock,** in `api/mock.integration.test.ts`.
 
+## Data
+
+`data/DataPanel.tsx` holds a slot for each of S, ρ and R_H. A file goes straight to `POST /api/parse`, as parsing belongs on the server, and it answers in milliseconds. Its text stays only for that request, and the result goes to the session store.
+
+- **A new file replaces the old one,** and stops a read under way. If it fails, the old data go too, as a fit from them would look like a fit from the new file.
+- **A file over 8 MB or 2000000 characters is refused before sending,** as a 413 for a large body can arrive as a network error.
+- **Text in UTF-16 with a byte order mark is decoded here.** Anything else is read as UTF-8, and the server reports what that spoils.
+- **Only the slot's quantity is taken.** Reading one file for all three, with its columns, is FS2.
+
+`e2e/examples.spec.ts` loads the 9 example files through a real API, and runs only when `SEEBAND_API_TARGET` is set:
+
+```sh
+uv run python -m seeband_api
+SEEBAND_API_TARGET=http://127.0.0.1:8000 pnpm --filter @seeband/web exec playwright test examples
+```
+
 ## Charts
 
 `charts/TransportChart.tsx` draws a quantity against temperature with Plotly: measurements, model curves, the area outside the fit range, reference lines, a legend and a switch for the measurements. `charts/figure.ts` turns those into Plotly's terms, and calculates no physics. All text comes in as props, for i18n, and is English for now.
