@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { serveModels } from "./support/models";
+
 const TABLE =
   "T,S,rho,R_H\n100,1e-4,1e-5,1e-7\n200,2e-4,2e-5,2e-7\n300,3e-4,3e-5,3e-7\n";
 const measurement = {
@@ -42,6 +44,7 @@ function parsed(overrides: object = {}) {
 }
 
 async function openSingleFile(page: Page) {
+  await serveModels(page);
   await page.goto("/fit");
   await page.getByRole("tab", { name: "Single file" }).click();
 }
@@ -278,7 +281,9 @@ test("a broken file shows its error, with no columns to map", async ({
   await choose(page);
 
   await expect(page.getByRole("alert")).toContainText("No rows of numbers");
-  await expect(page.getByRole("combobox")).toHaveCount(0);
+  await expect(
+    page.getByRole("combobox", { name: /^Quantity for column/ }),
+  ).toHaveCount(0);
   await expect(page.getByRole("table")).toHaveCount(0);
 });
 
@@ -477,7 +482,9 @@ test("a read can be cancelled, which stops its request", async ({ page }) => {
   await expect(page.getByText("A table with several columns")).toBeVisible();
   await expect(page.getByRole("alert")).toHaveCount(0);
   await answer?.().catch(() => undefined);
-  await expect(page.getByRole("combobox")).toHaveCount(0);
+  await expect(
+    page.getByRole("combobox", { name: /^Quantity for column/ }),
+  ).toHaveCount(0);
 });
 
 test("an older mapping's request is stopped by a newer one", async ({
@@ -555,7 +562,9 @@ test("removing the file clears everything, and changing source clears data", asy
   await expect(page.getByText("S · 3 points")).toBeVisible();
 
   await page.getByRole("button", { name: "Remove file" }).click();
-  await expect(page.getByRole("combobox")).toHaveCount(0);
+  await expect(
+    page.getByRole("combobox", { name: /^Quantity for column/ }),
+  ).toHaveCount(0);
   await expect(page.getByText("A table with several columns")).toBeVisible();
 
   await choose(page);

@@ -335,6 +335,46 @@ describe("interpolation", () => {
   });
 });
 
+describe("choosing a model", () => {
+  const DPB = {
+    fitMode: "dpb_s",
+    scattering: null,
+    band1Degeneracy: 2,
+    band2Degeneracy: 3,
+  };
+  const SPB = {
+    fitMode: "spb_s",
+    scattering: null,
+    band1Degeneracy: 1,
+    band2Degeneracy: 1,
+  };
+
+  test("keeps the last model's settings and the range, and clears a result", () => {
+    state().setSelection({ model: "dpb", ...DPB, minTemperatureK: 60 });
+    state().fitEvent(state().fitRequested(), { type: "done", result: RESULT });
+
+    state().chooseModel("spb", SPB);
+
+    expect(state().selection).toMatchObject({
+      model: "spb",
+      fitMode: "spb_s",
+      band2Degeneracy: 1,
+      minTemperatureK: 60,
+    });
+    expect(state().savedModelSettings).toEqual({ dpb: DPB });
+    expect(state().fit).toEqual({ status: "idle" });
+  });
+
+  test("choosing the same model changes nothing", () => {
+    state().setSelection({ model: "dpb", ...DPB });
+
+    state().chooseModel("dpb", SPB);
+
+    expect(state().selection.fitMode).toBe("dpb_s");
+    expect(state().savedModelSettings).toEqual({});
+  });
+});
+
 describe("session values", () => {
   test("data keep their source, and removing one leaves the others", () => {
     state().setData("seebeck", DATA);

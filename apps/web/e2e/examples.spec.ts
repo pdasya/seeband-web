@@ -129,3 +129,19 @@ test("interpolation of an example through the real API has its flags", async ({
     slots(page).getByText("30 points · 25–750 K · V/K"),
   ).toBeVisible();
 });
+
+test("the real model descriptions fill the model panel", async ({ page }) => {
+  await page.goto("/fit");
+
+  await expect(page.getByRole("radio", { name: "DPB" })).toBeChecked();
+  await expect(
+    page.getByRole("radio", { name: "S + ρ", exact: true }),
+  ).toBeChecked();
+
+  await page.getByRole("radio", { name: "SPB" }).click();
+
+  await expect(
+    page.getByRole("radio", { name: "S + ρ + R_H", exact: true }),
+  ).toBeDisabled();
+  await expect(page.getByText(/fails on the desktop/)).toBeVisible();
+});

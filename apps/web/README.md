@@ -75,6 +75,14 @@ uv run python -m seeband_api
 SEEBAND_API_TARGET=http://127.0.0.1:8000 pnpm --filter @seeband/web exec playwright test examples
 ```
 
+## Model
+
+`model/ModelPanel.tsx` chooses which fit can run. All of it comes from `GET /api/models`, so a new model needs no change here. A fit mode's name comes from its quantities, and a model's from its id. `model/selection.ts` keeps a choice only where it still holds, so a disabled mode is never chosen.
+
+- **A disabled mode cannot be chosen,** and its reason shows under the options, from the text for its known issue. A new known issue that disables a mode needs a line in `strings.ts`, or it gets a general text.
+- **Each model keeps its own mode, scattering and degeneracies,** as the design does. The fit range is shared.
+- **A number being typed stays in its field.** It reaches the session on leaving the field or on Enter, and only if it holds, so the steps on the way to it send nothing and clear no result. N₁ and N₂ are any numbers above 0, and the two bounds of the range go together.
+
 ## Charts
 
 `charts/TransportChart.tsx` draws a quantity against temperature with Plotly: measurements, model curves, the area outside the fit range, reference lines, a legend and a switch for the measurements. `charts/figure.ts` turns those into Plotly's terms, and calculates no physics. All text comes in as props, for i18n, and is English for now.

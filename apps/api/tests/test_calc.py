@@ -272,6 +272,23 @@ def test_degeneracies_reach_the_core(client: TestClient) -> None:
     assert body["curves"]["seebeck_v_per_k"] == expected.curves["seebeck_v_per_k"].tolist()
 
 
+@pytest.mark.parametrize(("band_1", "band_2"), [(0.5, 1.0), (1.0, 2.5), (1.5, 0.25)])
+def test_fractional_degeneracies_reach_the_core(
+    client: TestClient, band_1: float, band_2: float
+) -> None:
+    expected = registry.get("dpb").calculate(
+        CurveRequest(
+            "dpb_s_rho", DPB_S_RHO_PARAMETERS, 100, 500, 11, "acPh", "measured", band_1, band_2
+        )
+    )
+
+    body = client.post(
+        "/api/calc", json=_body(band_1_degeneracy=band_1, band_2_degeneracy=band_2)
+    ).json()
+
+    assert body["curves"]["seebeck_v_per_k"] == expected.curves["seebeck_v_per_k"].tolist()
+
+
 def test_points_default_to_the_model(client: TestClient) -> None:
     body = _body()
     del body["points"]

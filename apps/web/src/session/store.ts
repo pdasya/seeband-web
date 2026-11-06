@@ -13,6 +13,10 @@ export const QUANTITIES: readonly Quantity[] = [
 ];
 export type ParsedTable = Schemas["ParseResponse"];
 export type ColumnRole = Schemas["ColumnRole"];
+export type ModelSettings = Pick<
+  Selection,
+  "fitMode" | "scattering" | "band1Degeneracy" | "band2Degeneracy"
+>;
 export type Measurement = Schemas["MeasurementResponse"];
 export type FitResult = Schemas["FitResponse"];
 export type FitFailure = Schemas["ErrorResponse"];
@@ -125,7 +129,11 @@ export interface SessionState {
   dataMode: DataMode;
   singleFile: SingleFile | null;
   interpolation: InterpolationState;
+  /** What each model had when another was chosen, as the design keeps them apart. */
+  savedModelSettings: Record<string, ModelSettings>;
 
+  /** Keeps the current model's settings, and takes up these for the new one. */
+  chooseModel: (model: string, settings: ModelSettings) => void;
   setInterpolationEnabled: (enabled: boolean) => void;
   startInterpolation: () => void;
   stopInterpolation: () => void;
@@ -205,7 +213,32 @@ export const createSessionStore = () =>
       dataMode: "separate",
       singleFile: null,
       interpolation: INITIAL_INTERPOLATION,
+      savedModelSettings: {},
 
+      chooseModel: (model, settings) => {
+        set((state) => {
+          const { selection } = state;
+          if (selection.model === model) {
+            return state;
+          }
+          return {
+            savedModelSettings:
+              selection.model === null
+                ? state.savedModelSettings
+                : {
+                    ...state.savedModelSettings,
+                    [selection.model]: {
+                      fitMode: selection.fitMode,
+                      scattering: selection.scattering,
+                      band1Degeneracy: selection.band1Degeneracy,
+                      band2Degeneracy: selection.band2Degeneracy,
+                    },
+                  },
+            selection: { ...selection, ...settings, model },
+            fit: withoutOldResult(state.fit),
+          };
+        });
+      },
       setInterpolationEnabled: (enabled) => {
         set((state) => ({
           interpolation: { ...INITIAL_INTERPOLATION, enabled },

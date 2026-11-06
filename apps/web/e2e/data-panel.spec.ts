@@ -1,5 +1,7 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
 
+import { serveModels } from "./support/models";
+
 const SEEBECK = {
   temperature_k: [100, 200, 300],
   values: [1e-4, 2e-4, 3e-4],
@@ -44,6 +46,7 @@ async function choose(page: Page, name: string, text = "T S\n100 1e-4\n") {
 }
 
 test.beforeEach(async ({ page }) => {
+  await serveModels(page);
   await page.goto("/fit");
 });
 
