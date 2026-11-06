@@ -6,6 +6,13 @@ import type { FitEvent } from "@/api/fitStream";
 type Schemas = components["schemas"];
 
 export type Quantity = NonNullable<Schemas["ParseRequest"]["expected"]>;
+export const QUANTITIES: readonly Quantity[] = [
+  "seebeck",
+  "resistivity",
+  "hall",
+];
+export type ParsedTable = Schemas["ParseResponse"];
+export type ColumnRole = Schemas["ColumnRole"];
 export type Measurement = Schemas["MeasurementResponse"];
 export type FitResult = Schemas["FitResponse"];
 export type FitFailure = Schemas["ErrorResponse"];
@@ -18,6 +25,23 @@ export interface SessionData {
   measurement: Measurement;
   source: DataSource;
   extrapolated: boolean;
+}
+
+/** Data come from a file for each quantity, or from one table. Only one way at a time. */
+export type DataMode = "separate" | "single";
+
+/**
+ * One table, kept with its text in memory only, as a new mapping sends it again. `table` is the
+ * last answer, which stays on screen during the next.
+ */
+export interface SingleFile {
+  name: string;
+  text: string;
+  mapping: readonly ColumnRole[];
+  table: ParsedTable | null;
+  loading: boolean;
+  failure: string | null;
+  request: number;
 }
 
 export interface Selection {
@@ -68,7 +92,18 @@ export interface SessionState {
   /** In core units, as the API takes them. */
   parameters: Record<string, number>;
   fit: FitState;
+  dataMode: DataMode;
+  singleFile: SingleFile | null;
 
+  /** Clears all the data, as what the other way loaded no longer shows. */
+  setDataMode: (mode: DataMode) => void;
+  /** Returns the id of this request, so that a late answer to an older one can be ignored. */
+  startSingleFile: (
+    file: Pick<SingleFile, "name" | "text" | "mapping" | "table">,
+  ) => number;
+  finishSingleFile: (table: ParsedTable) => void;
+  failSingleFile: (failure: string) => void;
+  clearSingleFile: () => void;
   setData: (quantity: Quantity, data: SessionData) => void;
   removeData: (quantity: Quantity) => void;
   setSelection: (selection: Partial<Selection>) => void;
@@ -115,6 +150,7 @@ export const createSessionStore = () =>
   create<SessionState>()((set) => {
     // Late events of an old run must not reach a newer one, or the wrong result would show.
     let currentRun = 0;
+    let lastRequest = 0;
     const withoutOldResult = (fit: FitState): FitState =>
       isActive(fit) ? fit : { status: "idle" };
 
@@ -123,7 +159,57 @@ export const createSessionStore = () =>
       selection: INITIAL_SELECTION,
       parameters: {},
       fit: { status: "idle" },
+      dataMode: "separate",
+      singleFile: null,
 
+      setDataMode: (mode) => {
+        set((state) =>
+          state.dataMode === mode
+            ? state
+            : {
+                dataMode: mode,
+                data: {},
+                singleFile: null,
+                fit: withoutOldResult(state.fit),
+              },
+        );
+      },
+      startSingleFile: (file) => {
+        lastRequest += 1;
+        set({
+          singleFile: {
+            ...file,
+            loading: true,
+            failure: null,
+            request: lastRequest,
+          },
+        });
+        return lastRequest;
+      },
+      finishSingleFile: (table) => {
+        set((state) =>
+          state.singleFile === null
+            ? state
+            : {
+                singleFile: {
+                  ...state.singleFile,
+                  table,
+                  mapping: table.mapping,
+                  loading: false,
+                },
+              },
+        );
+      },
+      failSingleFile: (failure) => {
+        set((state) =>
+          state.singleFile === null
+            ? state
+            : { singleFile: { ...state.singleFile, loading: false, failure } },
+        );
+      },
+      clearSingleFile: () => {
+        set({ singleFile: null });
+      },
       setData: (quantity, data) => {
         set((state) => ({
           data: { ...state.data, [quantity]: data },

@@ -515,7 +515,9 @@ test("data stay when moving to another screen and back", async ({ page }) => {
 });
 
 test("a slot shows focus when reached with the keyboard", async ({ page }) => {
-  await page.locator("nav a").last().focus();
+  // The switch of the source and its panel come first.
+  await page.getByRole("tab", { name: "Separate files" }).focus();
+  await page.keyboard.press("Tab");
   await page.keyboard.press("Tab");
 
   await expect(seebeckInput(page)).toBeFocused();
