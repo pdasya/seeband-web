@@ -54,6 +54,13 @@ function positiveOrNull(value: string): number | null {
     : null;
 }
 
+function wholeOrNull(value: string): number | null {
+  const number = Number(value);
+  return value.trim() !== "" && Number.isSafeInteger(number) && number >= 1
+    ? number
+    : null;
+}
+
 function Group({
   label,
   children,
@@ -110,19 +117,35 @@ function ChoiceGroup({
   );
 }
 
-/** A number being typed stays as text, and only one that holds reaches the session. */
+/**
+ * A number being typed stays as text, and reaches the session on leaving the field or on Enter, so
+ * the steps on the way to it do not count. An unchanged value does not, as that would clear a result.
+ */
 function DegeneracyField({
   label,
   value,
+  invalid,
+  onInvalidChange,
   onCommit,
 }: {
   label: string;
   value: number;
+  invalid: boolean;
+  onInvalidChange: (invalid: boolean) => void;
   onCommit: (value: number) => void;
 }) {
   const id = useId();
   const [draft, setDraft] = useState(String(value));
-  const invalid = positiveOrNull(draft) === null;
+  const commit = () => {
+    const number = wholeOrNull(draft);
+    onInvalidChange(number === null);
+    if (number !== null) {
+      setDraft(String(number));
+      if (number !== value) {
+        onCommit(number);
+      }
+    }
+  };
   return (
     <div className="flex flex-col gap-1.5">
       <label htmlFor={id} className="text-[13px] font-medium">
@@ -137,12 +160,59 @@ function DegeneracyField({
         aria-invalid={invalid}
         onChange={(event) => {
           setDraft(event.target.value);
-          const number = positiveOrNull(event.target.value);
-          if (number !== null) {
-            onCommit(number);
+          onInvalidChange(false);
+        }}
+        onBlur={commit}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            commit();
           }
         }}
       />
+    </div>
+  );
+}
+
+function DegeneracyFields({
+  band1,
+  band2,
+  onBand1Commit,
+  onBand2Commit,
+}: {
+  band1: number;
+  band2: number;
+  onBand1Commit: (value: number) => void;
+  onBand2Commit: (value: number) => void;
+}) {
+  const [band1Invalid, setBand1Invalid] = useState(false);
+  const [band2Invalid, setBand2Invalid] = useState(false);
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="grid grid-cols-2 gap-3">
+        <DegeneracyField
+          label="N₁"
+          value={band1}
+          invalid={band1Invalid}
+          onInvalidChange={setBand1Invalid}
+          onCommit={onBand1Commit}
+        />
+        <DegeneracyField
+          label="N₂"
+          value={band2}
+          invalid={band2Invalid}
+          onInvalidChange={setBand2Invalid}
+          onCommit={onBand2Commit}
+        />
+      </div>
+      {band1Invalid || band2Invalid ? (
+        <span role="alert" className="text-xs text-destructive">
+          {text.degeneracyInvalid}
+        </span>
+      ) : (
+        <span className="text-xs text-muted-foreground">
+          {text.degeneracyHint}
+        </span>
+      )}
     </div>
   );
 }
@@ -158,17 +228,20 @@ function FitRangeFields({
 }) {
   const [minDraft, setMinDraft] = useState(String(minK));
   const [maxDraft, setMaxDraft] = useState(String(maxK));
-  const low = positiveOrNull(minDraft);
-  const high = positiveOrNull(maxDraft);
-  const valid = low !== null && high !== null && low < high;
-  const change = (nextMin: string, nextMax: string) => {
-    setMinDraft(nextMin);
-    setMaxDraft(nextMax);
-    const nextLow = positiveOrNull(nextMin);
-    const nextHigh = positiveOrNull(nextMax);
-    // Both together, as the two bounds only mean something as a pair.
-    if (nextLow !== null && nextHigh !== null && nextLow < nextHigh) {
-      onCommit(nextLow, nextHigh);
+  const [invalid, setInvalid] = useState(false);
+  // Both together, as the two bounds only mean something as a pair.
+  const commit = () => {
+    const low = positiveOrNull(minDraft);
+    const high = positiveOrNull(maxDraft);
+    const valid = low !== null && high !== null && low < high;
+    setInvalid(!valid);
+    if (valid && (low !== minK || high !== maxK)) {
+      onCommit(low, high);
+    }
+  };
+  const commitOnEnter = (event: React.KeyboardEvent) => {
+    if (event.key === "Enter") {
+      commit();
     }
   };
   return (
@@ -179,25 +252,31 @@ function FitRangeFields({
           min={0}
           step={5}
           aria-label={text.rangeMin}
-          aria-invalid={!valid}
+          aria-invalid={invalid}
           value={minDraft}
           onChange={(event) => {
-            change(event.target.value, maxDraft);
+            setMinDraft(event.target.value);
+            setInvalid(false);
           }}
+          onBlur={commit}
+          onKeyDown={commitOnEnter}
         />
         <Input
           type="number"
           min={0}
           step={5}
           aria-label={text.rangeMax}
-          aria-invalid={!valid}
+          aria-invalid={invalid}
           value={maxDraft}
           onChange={(event) => {
-            change(minDraft, event.target.value);
+            setMaxDraft(event.target.value);
+            setInvalid(false);
           }}
+          onBlur={commit}
+          onKeyDown={commitOnEnter}
         />
       </div>
-      {!valid && (
+      {invalid && (
         <span role="alert" className="text-xs text-destructive">
           {text.rangeInvalid}
         </span>
@@ -316,27 +395,17 @@ function ModelControls({ models }: { models: readonly ModelDescription[] }) {
 
       {mode?.degeneracy != null && (
         // A new model starts its fields from its own values.
-        <div key={model.id} className="flex flex-col gap-1.5">
-          <div className="grid grid-cols-2 gap-3">
-            <DegeneracyField
-              label="N₁"
-              value={selection.band1Degeneracy}
-              onCommit={(band1Degeneracy) => {
-                setSelection({ band1Degeneracy });
-              }}
-            />
-            <DegeneracyField
-              label="N₂"
-              value={selection.band2Degeneracy}
-              onCommit={(band2Degeneracy) => {
-                setSelection({ band2Degeneracy });
-              }}
-            />
-          </div>
-          <span className="text-xs text-muted-foreground">
-            {text.degeneracyHint}
-          </span>
-        </div>
+        <DegeneracyFields
+          key={model.id}
+          band1={selection.band1Degeneracy}
+          band2={selection.band2Degeneracy}
+          onBand1Commit={(band1Degeneracy) => {
+            setSelection({ band1Degeneracy });
+          }}
+          onBand2Commit={(band2Degeneracy) => {
+            setSelection({ band2Degeneracy });
+          }}
+        />
       )}
 
       <FitRangeFields

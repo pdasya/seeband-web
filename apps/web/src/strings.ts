@@ -33,6 +33,8 @@ export const STRINGS = {
         "not available until a known error is fixed. This fit fails on the desktop, and its mass and scales are wrong.",
     },
     degeneracyHint: "Band degeneracies are not fitted.",
+    degeneracyInvalid:
+      "N₁ and N₂ are whole numbers from 1. The last valid value stays in use.",
     range: "Fit range, K",
     rangeMin: "Lower bound, K",
     rangeMax: "Upper bound, K",

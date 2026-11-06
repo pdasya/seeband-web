@@ -8,6 +8,34 @@ async function open(page: Page) {
   await expect(page.getByRole("radio", { name: "DPB" })).toBeVisible();
 }
 
+async function serveParse(page: Page, bodies: object[]) {
+  await page.route("**/api/parse", (route: Route) => {
+    bodies.push(route.request().postDataJSON() as object);
+    return route.fulfill({
+      json: {
+        column_count: 2,
+        row_count: 3,
+        preview: [],
+        mapping: [],
+        measurements: {
+          seebeck: {
+            temperature_k: [100],
+            values: [1],
+            points: 1,
+            min_temperature_k: 100,
+            max_temperature_k: 100,
+          },
+        },
+        errors: [],
+        warnings: [],
+        warnings_omitted: 0,
+        interpolated: {},
+        interpolation_failed: [],
+      },
+    });
+  });
+}
+
 const mode = (page: Page, name: string) =>
   page.getByRole("radio", { name, exact: true });
 
@@ -73,6 +101,7 @@ test("each model keeps its own choices", async ({ page }) => {
   await page.getByRole("combobox", { name: "Scattering" }).click();
   await page.getByRole("option", { name: /acPhDis/ }).click();
   await page.getByLabel("N₂").fill("3");
+  await page.getByLabel("N₂").blur();
 
   await page.getByRole("radio", { name: "SPB" }).click();
   await expect(mode(page, "S")).toBeChecked();
@@ -151,31 +180,7 @@ test("a range that holds reaches interpolation, and one that does not says so", 
   page,
 }) => {
   const bodies: { interpolate?: object }[] = [];
-  await page.route("**/api/parse", (route: Route) => {
-    bodies.push(route.request().postDataJSON() as { interpolate?: object });
-    return route.fulfill({
-      json: {
-        column_count: 2,
-        row_count: 3,
-        preview: [],
-        mapping: [],
-        measurements: {
-          seebeck: {
-            temperature_k: [100],
-            values: [1],
-            points: 1,
-            min_temperature_k: 100,
-            max_temperature_k: 100,
-          },
-        },
-        errors: [],
-        warnings: [],
-        warnings_omitted: 0,
-        interpolated: {},
-        interpolation_failed: [],
-      },
-    });
-  });
+  await serveParse(page, bodies);
   await open(page);
   await page
     .locator('input[type="file"]')
@@ -189,6 +194,7 @@ test("a range that holds reaches interpolation, and one that does not says so", 
   await expect.poll(() => bodies.length).toBe(2);
 
   await page.getByLabel("Upper bound, K").fill("600");
+  await page.getByLabel("Upper bound, K").blur();
 
   await expect
     .poll(() => bodies.at(-1)?.interpolate)
@@ -196,6 +202,7 @@ test("a range that holds reaches interpolation, and one that does not says so", 
 
   const before = bodies.length;
   await page.getByLabel("Upper bound, K").fill("10");
+  await page.getByLabel("Upper bound, K").press("Enter");
   await expect(page.getByRole("alert")).toContainText(
     "lower bound must be below the upper",
   );
@@ -204,16 +211,117 @@ test("a range that holds reaches interpolation, and one that does not says so", 
   await expect(page.getByText("Fit range 50–600 K")).toBeVisible();
 });
 
-test("a degeneracy that cannot be used stays out of the session", async ({
+for (const value of ["0", "2.5", ""]) {
+  test(`a degeneracy of "${value}" says so and stays out of the session`, async ({
+    page,
+  }) => {
+    await open(page);
+    await page.getByLabel("N₁").fill("2");
+    await page.getByLabel("N₁").press("Enter");
+
+    await page.getByLabel("N₁").fill(value);
+    await page.getByLabel("N₁").blur();
+
+    await expect(page.getByLabel("N₁")).toHaveAttribute("aria-invalid", "true");
+    await expect(page.getByLabel("N₂")).toHaveAttribute(
+      "aria-invalid",
+      "false",
+    );
+    await expect(page.getByRole("alert")).toContainText("whole numbers from 1");
+
+    await page.getByRole("link", { name: "Results" }).click();
+    await page.getByRole("link", { name: "Model fit" }).click();
+    await expect(page.getByLabel("N₁")).toHaveValue("2");
+    await expect(page.getByRole("alert")).toHaveCount(0);
+  });
+}
+
+test("typing a correction clears the message about a degeneracy", async ({
   page,
 }) => {
   await open(page);
-
   await page.getByLabel("N₁").fill("0");
+  await page.getByLabel("N₁").blur();
+  await expect(page.getByRole("alert")).toBeVisible();
 
-  await expect(page.getByLabel("N₁")).toHaveAttribute("aria-invalid", "true");
+  await page.getByLabel("N₁").fill("3");
+
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(page.getByText("not fitted")).toBeVisible();
+});
+
+test("a range being typed sends nothing until it is finished", async ({
+  page,
+}) => {
+  const bodies: object[] = [];
+  await serveParse(page, bodies);
+  await open(page);
+  await page
+    .locator('input[type="file"]')
+    .first()
+    .setInputFiles({
+      name: "s.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from("T S\n100 1\n"),
+    });
+  await page.getByRole("switch", { name: /Interpolation/ }).click();
+  await expect.poll(() => bodies.length).toBe(2);
+
+  const upper = page.getByLabel("Upper bound, K");
+  await upper.clear();
+  // On the way to 600, 6 is below the lower bound, and 60 is a valid range.
+  await upper.pressSequentially("60");
+  await page.waitForTimeout(500);
+  expect(bodies).toHaveLength(2);
+  await expect(page.getByRole("alert")).toHaveCount(0);
+
+  await upper.pressSequentially("0");
+  await upper.press("Enter");
+
+  await expect.poll(() => bodies.length).toBe(3);
+  await expect(page.getByText("Fit range 50–600 K")).toBeVisible();
+});
+
+test("leaving a field unchanged keeps a result, and changing one clears it", async ({
+  page,
+}) => {
+  await open(page);
+  const fitStatus = () =>
+    page.evaluate(async () => {
+      const path = "/src/session/store.ts";
+      const { useSessionStore } = (await import(/* @vite-ignore */ path)) as {
+        useSessionStore: { getState: () => { fit: { status: string } } };
+      };
+      return useSessionStore.getState().fit.status;
+    });
+  await page.evaluate(async () => {
+    const path = "/src/session/store.ts";
+    const { useSessionStore } = (await import(/* @vite-ignore */ path)) as {
+      useSessionStore: {
+        getState: () => {
+          fitRequested: () => number;
+          fitEvent: (run: number, event: object) => void;
+        };
+      };
+    };
+    const state = useSessionStore.getState();
+    state.fitEvent(state.fitRequested(), {
+      type: "done",
+      result: { status: "converged" },
+    });
+  });
+  expect(await fitStatus()).not.toBe("idle");
+
+  for (const label of ["N₁", "N₂", "Lower bound, K", "Upper bound, K"]) {
+    await page.getByLabel(label).focus();
+    await page.getByLabel(label).press("Enter");
+    await page.getByLabel(label).blur();
+  }
+  expect(await fitStatus()).not.toBe("idle");
+
   await page.getByLabel("N₁").fill("2");
-  await expect(page.getByLabel("N₁")).toHaveAttribute("aria-invalid", "false");
+  await page.getByLabel("N₁").blur();
+  await expect.poll(fitStatus).toBe("idle");
 });
 
 test("the choices stay when moving to another screen and back", async ({
