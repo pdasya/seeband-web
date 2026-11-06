@@ -31,7 +31,6 @@ function failureText(error: ApiError): string {
 export function LiveCharts({ live }: { live: LiveCurves }) {
   const { result, busy, error } = live;
   const data = useSessionStore((state) => state.data);
-  const interpolation = useSessionStore((state) => state.interpolation);
   const minK = useSessionStore((state) => state.selection.minTemperatureK);
   const maxK = useSessionStore((state) => state.selection.maxTemperatureK);
 
@@ -59,19 +58,18 @@ export function LiveCharts({ live }: { live: LiveCurves }) {
           values: toMicrovoltPerK(seebeck.values),
         };
   }, [seebeck]);
-  // What the RMSE and a fit really use with the switch on, kept apart from what was measured.
+  // What the RMSE and a fit really use with the switch on, kept apart from what was measured. Like
+  // the curve, they stay until the next answer, and the store clears them with the switch.
+  const shown = useSessionStore((state) => state.interpolation.values.seebeck);
   const interpolatedPoints = useMemo((): ChartMeasurements | null => {
-    const shown = interpolation.values.seebeck;
-    return !interpolation.enabled ||
-      interpolation.loading ||
-      shown === undefined
+    return shown === undefined
       ? null
       : {
           label: text.interpolated,
           temperatureK: shown.temperature_k,
           values: toMicrovoltPerK(shown.values),
         };
-  }, [interpolation]);
+  }, [shown]);
   const fitRange = useMemo((): ChartFitRange | null => {
     return minK === null || maxK === null ? null : { minK, maxK };
   }, [minK, maxK]);
