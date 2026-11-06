@@ -1,5 +1,7 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
 
+import { serveModels } from "./support/models";
+
 const MEASUREMENT = {
   temperature_k: [100, 200, 300],
   values: [1e-4, 2e-4, 3e-4],
@@ -50,15 +52,7 @@ async function setUp(
   answer: (body: Body, route: Route) => Promise<void> | void,
 ) {
   const bodies: Body[] = [];
-  await page.route("**/api/models", (route) =>
-    route.fulfill({
-      json: {
-        models: [
-          { default_min_temperature_k: 50, default_max_temperature_k: 800 },
-        ],
-      },
-    }),
-  );
+  await serveModels(page);
   await page.route("**/api/parse", (route) => {
     const body = route.request().postDataJSON() as Body;
     bodies.push(body);

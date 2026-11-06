@@ -1,5 +1,6 @@
 import { TransportChart } from "@/charts/TransportChart";
 import { DataPanel } from "@/data/DataPanel";
+import { ModelPanel } from "@/model/ModelPanel";
 import { PageHeading, Panel, TwoColumns } from "@/shell/layout";
 import { StatusBadge } from "@/shell/StatusBadge";
 import { STRINGS } from "@/strings";
@@ -16,7 +17,7 @@ export function FitPage() {
         side={
           <>
             <DataPanel />
-            <Panel title={fit.model} />
+            <ModelPanel />
           </>
         }
         main={

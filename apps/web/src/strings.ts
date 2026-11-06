@@ -14,6 +14,33 @@ export const STRINGS = {
     results: "Results",
     conventions: "Conventions",
   },
+  model: {
+    title: "Model",
+    subtitle: "Parabolic bands and scattering mechanism",
+    loading: "Loading the models…",
+    loadFailed: "The models could not be loaded. Reload the page to try again.",
+    bands: "Number of bands",
+    fitMode: "Fit mode",
+    scattering: "Scattering",
+    scatteringNames: {
+      acPh: "Acoustic phonons (acPh)",
+      dis: "Alloy disorder (dis)",
+      acPhDis: "Both mechanisms (acPhDis)",
+    },
+    disabledReason: "not available until a known error is fixed.",
+    disabledReasons: {
+      "known_issue.spb_hall_mode_disabled":
+        "not available until a known error is fixed. This fit fails on the desktop, and its mass and scales are wrong.",
+    },
+    degeneracyHint: "Band degeneracies are not fitted.",
+    range: "Fit range, K",
+    rangeMin: "Lower bound, K",
+    rangeMax: "Upper bound, K",
+    rangeInvalid:
+      "The lower bound must be below the upper, and both above 0 K. The last valid range stays in use.",
+    missingTitle: "Missing data:",
+    missingText: "Load a file or assign a column to run this fit mode.",
+  },
   data: {
     title: "Data",
     subtitle: {
@@ -139,7 +166,6 @@ export const STRINGS = {
     title: "Transport property fit",
     subtitle: "Fit S(T), ρ(T) and R_H(T) with a parabolic band model",
     data: "Data",
-    model: "Model",
     charts: "Charts",
     parameters: "Parameters",
     result: "Result",
