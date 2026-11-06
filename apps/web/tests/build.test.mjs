@@ -71,7 +71,8 @@ test("the root font size stays, as Tailwind's sizes in rem would otherwise shrin
   }
 });
 
-test("the design's values reach the styles", () => {
+// This shows that the tokens are built in, not that a component uses them.
+test("the design's tokens are in the styles", () => {
   for (const value of [
     "#18181b",
     "#e4e4e7",

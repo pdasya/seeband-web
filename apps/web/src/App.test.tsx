@@ -2,7 +2,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { App } from "@/App";
-import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
 
 // Radix's slider measures itself, and jsdom has no ResizeObserver.
 vi.stubGlobal(
@@ -31,12 +31,18 @@ describe("base components", () => {
     expect(screen.getByText("Converged in 7 iter.")).toBeTruthy();
   });
 
-  test("a button has the height and radius of the design", () => {
-    render(<Button>Run</Button>);
+  test("a slider with no value has one thumb, with a value and the name", () => {
+    render(<Slider aria-label="Only" />);
 
-    const { className } = screen.getByRole("button", { name: "Run" });
-    expect(className).toContain("h-9");
-    expect(className).toContain("rounded-md");
-    expect(className).toContain("bg-primary");
+    const thumbs = screen.getAllByRole("slider");
+    expect(thumbs).toHaveLength(1);
+    expect(thumbs[0]?.getAttribute("aria-valuenow")).toBe("0");
+    expect(thumbs[0]?.getAttribute("aria-label")).toBe("Only");
+  });
+
+  test("a slider has a thumb for each value", () => {
+    render(<Slider aria-label="Range" defaultValue={[20, 60]} />);
+
+    expect(screen.getAllByRole("slider", { name: "Range" })).toHaveLength(2);
   });
 });
