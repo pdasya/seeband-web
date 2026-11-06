@@ -67,7 +67,7 @@ export function SiteHeader({
         </nav>
         {hasLanguageChoice(languages) && (
           <div
-            role="radiogroup"
+            role="group"
             aria-label={languages.label}
             className="sb-header__languages"
           >
@@ -75,8 +75,7 @@ export function SiteHeader({
               <button
                 key={option.code}
                 type="button"
-                role="radio"
-                aria-checked={option.code === languages.current}
+                aria-pressed={option.code === languages.current}
                 aria-label={option.name}
                 data-language={option.code}
                 className="sb-header__language"

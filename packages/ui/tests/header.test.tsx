@@ -90,14 +90,16 @@ describe("the language switch", () => {
       <SiteHeader {...MODEL} {...(languages ? { languages } : {})} />,
     );
 
-    expect(html).not.toContain("radiogroup");
+    expect(html).not.toContain("sb-header__languages");
   });
 
   test("marks the current language", () => {
     const html = renderToStaticMarkup(<SiteHeader {...WITH_LANGUAGES} />);
 
-    expect(html).toContain('aria-checked="true" aria-label="Deutsch"');
-    expect(html).toContain('aria-checked="false" aria-label="English"');
+    expect(html).toContain('role="group" aria-label="Language"');
+    expect(html).toContain('aria-pressed="true" aria-label="Deutsch"');
+    expect(html).toContain('aria-pressed="false" aria-label="English"');
+    expect(html).not.toContain('role="radio');
   });
 });
 
@@ -112,6 +114,21 @@ describe("the language cookie", () => {
     [`not_${LANGUAGE_COOKIE}=de`, "en"],
   ])("from %j reads %s", (cookies, expected) => {
     expect(readLanguage(cookies, LANGUAGES, "en")).toBe(expected);
+  });
+
+  test.each(["de", "pt-BR", "a/b", "a=b", "ü"])(
+    "reads back what it wrote for %s",
+    (language) => {
+      const [pair] = languageCookie(language).split(";");
+
+      expect(readLanguage(pair ?? "", [language, "en"], "en")).toBe(language);
+    },
+  );
+
+  test("a value that cannot be decoded gives the fallback", () => {
+    expect(
+      readLanguage(`${LANGUAGE_COOKIE}=%E0%A4%A`, ["de", "en"], "en"),
+    ).toBe("en");
   });
 
   test("covers the site and the app, and lasts", () => {

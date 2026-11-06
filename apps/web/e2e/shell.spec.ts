@@ -77,5 +77,5 @@ test("there is no language switch while the app has one language", async ({
 }) => {
   await page.goto("/app/fit");
 
-  await expect(page.getByRole("radiogroup")).toHaveCount(0);
+  await expect(page.locator(".sb-header__languages")).toHaveCount(0);
 });

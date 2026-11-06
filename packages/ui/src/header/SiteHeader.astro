@@ -50,15 +50,14 @@ const choice = hasLanguageChoice(languages) ? languages : null;
     {
       choice !== null && (
         <div
-          role="radiogroup"
+          role="group"
           aria-label={choice.label}
           class="sb-header__languages"
         >
           {choice.options.map((option) => (
             <button
               type="button"
-              role="radio"
-              aria-checked={option.code === choice.current ? "true" : "false"}
+              aria-pressed={option.code === choice.current ? "true" : "false"}
               aria-label={option.name}
               data-language={option.code}
               class="sb-header__language"
@@ -74,6 +73,7 @@ const choice = hasLanguageChoice(languages) ? languages : null;
 
 <script>
   // A page with no language choice has no such buttons, so this does nothing there.
+  // A static page cannot read the cookie, so S1 must also go to the page in that language.
   import { languageCookie } from "./language";
 
   for (const button of document.querySelectorAll<HTMLElement>("[data-language]")) {
