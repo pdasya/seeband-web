@@ -14,6 +14,16 @@ export const STRINGS = {
     results: "Results",
     conventions: "Conventions",
   },
+  chart: {
+    temperatureAxis: "T, K",
+    toggleMeasurements: "Show measurements",
+    loadFailed:
+      "The chart could not load. Check your connection and reload the page.",
+    noDataTitle: "No data yet",
+    noDataText: "Curves appear here once measurements are loaded.",
+    fitDescription: "Chart of the measurements and model against temperature",
+    fitAxis: "S, µV/K",
+  },
   status: {
     manual: "Manual parameters",
     running: "Fitting…",

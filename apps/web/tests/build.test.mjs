@@ -1,7 +1,13 @@
 // Builds the app as production does, and checks what a browser would get at /app.
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import {
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, test } from "node:test";
@@ -65,6 +71,20 @@ test("the fonts' licenses are served with them", () => {
 
 test("the system's dark setting changes nothing, as there are no dark tokens", () => {
   assert.doesNotMatch(css, /prefers-color-scheme:\s*dark/);
+});
+
+test("Plotly loads on its own, and the test page is not built", () => {
+  const sizeOf = (name) => statSync(join(outDir, "assets", name)).size;
+  const scripts = assets.filter((name) => name.endsWith(".js"));
+  const entry = html.match(/src="\/app\/assets\/([^"]+\.js)"/)?.[1];
+  const plotly = scripts.find((name) => name.startsWith("plotly"));
+
+  assert.ok(plotly, scripts.join());
+  assert.notEqual(entry, plotly);
+  assert.ok(sizeOf(plotly) > 1_000_000);
+  assert.ok(sizeOf(entry) < 1_000_000, String(sizeOf(entry)));
+  assert.doesNotMatch(html, /plotly/);
+  assert.ok(!assets.some((name) => name.includes("fixture")));
 });
 
 test("the root font size stays, as Tailwind's sizes in rem would otherwise shrink", () => {
