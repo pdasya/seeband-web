@@ -5,7 +5,7 @@ import type { FitEvent } from "@/api/fitStream";
 
 type Schemas = components["schemas"];
 
-export type Quantity = keyof Schemas["ParseResponse"]["measurements"];
+export type Quantity = NonNullable<Schemas["ParseRequest"]["expected"]>;
 export type Measurement = Schemas["MeasurementResponse"];
 export type FitResult = Schemas["FitResponse"];
 export type FitFailure = Schemas["ErrorResponse"];

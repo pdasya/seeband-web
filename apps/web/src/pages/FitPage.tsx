@@ -1,4 +1,5 @@
 import { TransportChart } from "@/charts/TransportChart";
+import { DataPanel } from "@/data/DataPanel";
 import { PageHeading, Panel, TwoColumns } from "@/shell/layout";
 import { StatusBadge } from "@/shell/StatusBadge";
 import { STRINGS } from "@/strings";
@@ -14,7 +15,7 @@ export function FitPage() {
       <TwoColumns
         side={
           <>
-            <Panel title={fit.data} />
+            <DataPanel />
             <Panel title={fit.model} />
           </>
         }

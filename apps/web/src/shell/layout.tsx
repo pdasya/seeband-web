@@ -53,9 +53,11 @@ export function PageHeading({
 /** A card with a heading, as the design draws its sections. */
 export function Panel({
   title,
+  subtitle,
   children,
 }: {
   title: string;
+  subtitle?: string;
   children?: ReactNode;
 }) {
   return (
@@ -64,6 +66,11 @@ export function Panel({
         <h2 className="m-0 text-base font-semibold tracking-[-0.01em]">
           {title}
         </h2>
+        {subtitle !== undefined && (
+          <p className="mt-1 mb-0 text-[13px] text-muted-foreground">
+            {subtitle}
+          </p>
+        )}
         {children}
       </div>
     </section>
