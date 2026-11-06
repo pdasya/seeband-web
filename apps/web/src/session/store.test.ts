@@ -166,6 +166,43 @@ describe("a change after a result", () => {
   });
 });
 
+describe("the source of data", () => {
+  const FILE = { name: "a.csv", text: "T S", mapping: [], table: null };
+
+  test("changing it clears the data and the table, and leaves a running fit", () => {
+    state().setData("seebeck", DATA);
+    state().startSingleFile(FILE);
+    state().fitEvent(state().fitRequested(), { type: "started" });
+
+    state().setDataMode("single");
+
+    expect(state().dataMode).toBe("single");
+    expect(state().data).toEqual({});
+    expect(state().singleFile).toBeNull();
+    expect(state().fit.status).toBe("running");
+  });
+
+  test("choosing the same one again clears nothing", () => {
+    state().setData("seebeck", DATA);
+
+    state().setDataMode("separate");
+
+    expect(state().data).toEqual({ seebeck: DATA });
+  });
+
+  test("each read of a table has a new id, and failing keeps the last table", () => {
+    const first = state().startSingleFile(FILE);
+    const second = state().startSingleFile(FILE);
+    state().failSingleFile("message");
+
+    expect(second).toBeGreaterThan(first);
+    expect(state().singleFile).toMatchObject({
+      loading: false,
+      failure: "message",
+    });
+  });
+});
+
 describe("session values", () => {
   test("data keep their source, and removing one leaves the others", () => {
     state().setData("seebeck", DATA);

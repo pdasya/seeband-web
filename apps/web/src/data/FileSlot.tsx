@@ -1,20 +1,9 @@
-import {
-  AlertCircleIcon,
-  LoaderCircleIcon,
-  UploadIcon,
-  XIcon,
-} from "lucide-react";
-import {
-  useEffect,
-  useRef,
-  useState,
-  type ChangeEvent,
-  type DragEvent,
-} from "react";
+import { AlertCircleIcon, LoaderCircleIcon, XIcon } from "lucide-react";
+import { useEffect, useRef } from "react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { ACCEPTED_EXTENSIONS } from "@/data/readFile";
+import { DropArea, useFileDrop } from "@/data/DropArea";
 import { useFileUpload } from "@/data/useFileUpload";
 import { cn } from "@/lib/utils";
 import {
@@ -71,7 +60,6 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
   const names = text.quantities[quantity];
   const data = useSessionStore((state) => state.data[quantity]);
   const { state, upload, remove, fail } = useFileUpload(quantity);
-  const [dragging, setDragging] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   const removeButton = useRef<HTMLButtonElement>(null);
   // The element with focus goes away when a slot changes, so it comes back to the slot's control.
@@ -84,43 +72,21 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
     }
   });
 
-  const onChoose = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    // So that choosing the same file again, perhaps after editing it, reads it again.
-    event.target.value = "";
-    if (file !== undefined) {
+  const handlers = {
+    onFile: (file: File) => {
       keepFocus.current = true;
       void upload(file);
-    }
+    },
+    onSeveralFiles: () => {
+      fail(text.oneFile);
+    },
   };
   const onRemove = () => {
     keepFocus.current = true;
     remove();
   };
-  const onDrop = (event: DragEvent) => {
-    event.preventDefault();
-    setDragging(false);
-    const files = event.dataTransfer.files;
-    const [file] = files;
-    if (files.length > 1) {
-      fail(text.oneFile);
-    } else if (file !== undefined) {
-      void upload(file);
-    }
-  };
-  const dropTarget = {
-    "data-file-slot": quantity,
-    onDragOver: (event: DragEvent) => {
-      if (event.dataTransfer.types.includes("Files")) {
-        event.preventDefault();
-        setDragging(true);
-      }
-    },
-    onDragLeave: () => {
-      setDragging(false);
-    },
-    onDrop,
-  };
+  const { dragging, dropTarget: drop } = useFileDrop(handlers);
+  const dropTarget = { "data-file-slot": quantity, ...drop };
   const dropping = dragging && "border-ring bg-muted";
 
   // Always there, as a screen reader may not read out a live region that arrives filled.
@@ -156,6 +122,14 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
             className="size-4 flex-none animate-spin text-muted-foreground"
             aria-hidden="true"
           />
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={`${text.cancel} ${names.symbol}`}
+            onClick={onRemove}
+          >
+            <XIcon aria-hidden="true" />
+          </Button>
         </div>
       </>
     );
@@ -203,30 +177,13 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
   return (
     <div className="flex flex-col gap-1.5">
       {status}
-      <label
-        className={cn(
-          "relative flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-[var(--color-zinc-300)] bg-[var(--color-zinc-50)] px-3 py-2.5 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring",
-          dropping,
-        )}
-        {...dropTarget}
-      >
-        <Symbol filled={false}>{names.symbol}</Symbol>
-        <div className="min-w-0 flex-auto">
-          <div className="text-[13px] font-medium">{names.title}</div>
-          <div className="text-xs text-muted-foreground">{text.dropHint}</div>
-        </div>
-        <UploadIcon
-          className="size-4 flex-none text-muted-foreground"
-          aria-hidden="true"
-        />
-        <input
-          ref={input}
-          type="file"
-          accept={ACCEPTED_EXTENSIONS.join(",")}
-          className="sr-only"
-          onChange={onChoose}
-        />
-      </label>
+      <DropArea
+        slotId={quantity}
+        icon={<Symbol filled={false}>{names.symbol}</Symbol>}
+        title={names.title}
+        inputRef={input}
+        {...handlers}
+      />
       {state.status === "failed" && (
         <Alert variant="destructive">
           <AlertCircleIcon aria-hidden="true" />

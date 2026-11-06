@@ -1,6 +1,9 @@
 import { useEffect } from "react";
 
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileSlot } from "@/data/FileSlot";
+import { SingleFilePanel } from "@/data/SingleFilePanel";
+import { useSessionStore, type DataMode } from "@/session/store";
 import { Panel } from "@/shell/layout";
 import { STRINGS } from "@/strings";
 
@@ -25,13 +28,30 @@ function useNoDropOutsideSlots() {
 export function DataPanel() {
   useNoDropOutsideSlots();
   const { data } = STRINGS;
+  const mode = useSessionStore((state) => state.dataMode);
+  const setMode = useSessionStore((state) => state.setDataMode);
   return (
-    <Panel title={data.title} subtitle={data.subtitle}>
-      <div className="mt-3 flex flex-col gap-2.5">
-        <FileSlot quantity="seebeck" />
-        <FileSlot quantity="resistivity" />
-        <FileSlot quantity="hall" />
-      </div>
+    <Panel title={data.title} subtitle={data.subtitle[mode]}>
+      <Tabs
+        value={mode}
+        onValueChange={(value) => {
+          setMode(value as DataMode);
+        }}
+        className="mt-3 gap-2.5"
+      >
+        <TabsList className="w-full" aria-label={data.source.label}>
+          <TabsTrigger value="separate">{data.source.separate}</TabsTrigger>
+          <TabsTrigger value="single">{data.source.single}</TabsTrigger>
+        </TabsList>
+        <TabsContent value="separate" className="flex flex-col gap-2.5">
+          <FileSlot quantity="seebeck" />
+          <FileSlot quantity="resistivity" />
+          <FileSlot quantity="hall" />
+        </TabsContent>
+        <TabsContent value="single">
+          <SingleFilePanel />
+        </TabsContent>
+      </Tabs>
     </Panel>
   );
 }

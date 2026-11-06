@@ -65,3 +65,41 @@ test("a broken file shows a specific error from the real parser", async ({
   await expect(page.getByRole("alert")).toContainText("broken.txt");
   await expect(page.getByRole("alert")).toContainText("Line 4");
 });
+
+test("a single file maps its columns through the real parser", async ({
+  page,
+}) => {
+  await page.goto("/fit");
+  await page.getByRole("tab", { name: "Single file" }).click();
+  const table =
+    "T,S,rho\n100,1e-4,1e-5\n200,2e-4,2e-5\n300,3e-4,3e-5\n400,4e-4,4e-5\n500,5e-4,5e-5\n600,6e-4,6e-5\n";
+
+  await page.locator('input[type="file"]').setInputFiles({
+    name: "all.csv",
+    mimeType: "text/plain",
+    buffer: Buffer.from(table),
+  });
+
+  await expect(page.getByText("S · 6 points")).toBeVisible();
+  await expect(page.getByText("ρ · 6 points")).toBeVisible();
+  await expect(page.getByText("R_H · not found")).toBeVisible();
+
+  await page.getByRole("combobox", { name: "Quantity for column rho" }).click();
+  await page.getByRole("option", { name: "R_H", exact: true }).click();
+  await expect(page.getByText("R_H · 6 points")).toBeVisible();
+  await expect(page.getByText("ρ · not found")).toBeVisible();
+
+  await page.getByRole("combobox", { name: "Quantity for column T" }).click();
+  await page.getByRole("option", { name: "Ignore", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText(
+    "No column holds the temperature",
+  );
+
+  await page.getByRole("combobox", { name: "Quantity for column T" }).click();
+  await page.getByRole("option", { name: "T", exact: true }).click();
+  await expect(page.getByText("S · 6 points")).toBeVisible();
+
+  await page.getByRole("combobox", { name: "Quantity for column rho" }).click();
+  await page.getByRole("option", { name: "S", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("assigned twice");
+});

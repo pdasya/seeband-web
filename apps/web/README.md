@@ -57,12 +57,15 @@ The app always calls `/api` on its own origin, so there is no base URL to set, a
 
 ## Data
 
-`data/DataPanel.tsx` holds a slot for each of S, ρ and R_H. A file goes straight to `POST /api/parse`, as parsing belongs on the server, and it took 6 ms for 1000 rows through a test client on one Mac. Its text stays only for that request, and the result goes to the session store.
+`data/DataPanel.tsx` holds a slot for each of S, ρ and R_H. A file goes straight to `POST /api/parse`, as parsing belongs on the server, and it took 6 ms for 1000 rows through a test client on one Mac. With separate files, its text stays only for that request, and the result goes to the session store.
 
+- **A read can be cancelled** with the button on its card, which stops the request.
 - **A new file replaces the old one,** and stops a read under way. If it fails, the old data go too, as a fit from them would look like a fit from the new file.
 - **A file over 8 MB or 2000000 characters is refused before sending,** as a 413 for a large body can arrive as a network error.
 - **Text in UTF-16 with a byte order mark is decoded here.** Anything else is read as UTF-8, and the server reports what that spoils.
-- **Only the slot's quantity is taken.** Reading one file for all three, with its columns, is FS2.
+- **Only the slot's quantity is taken** from a file in a slot.
+- **One file can hold them all,** under Single file. The server suggests the columns, and a change sends the text again, as the API keeps nothing, so the text stays in memory until the file goes. The server also says if a mapping will not do: `missing_temperature` and `repeated_role`. A repeated temperature is only a warning, as a real example file measures 100 K twice.
+- **There is one source at a time.** Changing between separate files and a single file clears the data, as what the other way loaded no longer shows.
 
 `e2e/examples.spec.ts` loads the 9 example files through a real API, and runs only when `SEEBAND_API_TARGET` is set:
 

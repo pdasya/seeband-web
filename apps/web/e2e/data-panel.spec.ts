@@ -472,6 +472,28 @@ test("a read under way shows, and a second file takes over from it", async ({
   await expect(slots(page).getByText("first.txt")).toHaveCount(0);
 });
 
+test("a read can be cancelled, which stops its request and leaves the slot empty", async ({
+  page,
+}) => {
+  let answer: (() => Promise<void>) | undefined;
+  await page.route("**/api/parse", (route) => {
+    answer = () => route.fulfill({ json: parsed() });
+  });
+  const failed = page.waitForEvent("requestfailed");
+
+  await choose(page, "slow.txt");
+  await expect.poll(() => answer !== undefined).toBe(true);
+  await page.getByRole("button", { name: "Cancel reading S" }).click();
+
+  expect((await failed).failure()?.errorText).toContain("ABORTED");
+  await expect(slots(page).getByText("slow.txt")).toHaveCount(0);
+  await expect(page.locator('input[type="file"]')).toHaveCount(3);
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(seebeckInput(page)).toBeFocused();
+  await answer?.().catch(() => undefined);
+  await expect(slots(page).getByText("3 points")).toHaveCount(0);
+});
+
 test("choosing the same file again reads it again", async ({ page }) => {
   let requests = 0;
   await page.route("**/api/parse", (route) => {
@@ -515,7 +537,9 @@ test("data stay when moving to another screen and back", async ({ page }) => {
 });
 
 test("a slot shows focus when reached with the keyboard", async ({ page }) => {
-  await page.locator("nav a").last().focus();
+  // The switch of the source and its panel come first.
+  await page.getByRole("tab", { name: "Separate files" }).focus();
+  await page.keyboard.press("Tab");
   await page.keyboard.press("Tab");
 
   await expect(seebeckInput(page)).toBeFocused();
