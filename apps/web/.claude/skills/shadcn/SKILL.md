@@ -12,9 +12,9 @@ allowed-tools: Bash(pnpm dlx shadcn@4.23.0 info *), Bash(pnpm dlx shadcn@4.23.0 
 These win over the rest of this file.
 
 - Run the CLI as `pnpm dlx shadcn@4.23.0`, from `apps/web`, whatever the examples below say. Do not change the version without reading the upstream diff.
-- Components differ from upstream on purpose, to match the design. Follow "Adding a component" in `apps/web/README.md`. It covers the import of `cn`, and the differences to apply.
-- Do not run `init`, `apply`, `--preset`, `--overwrite` or `add --all`, as they overwrite those differences. Do not add from a URL or another registry without asking.
-- Tokens live in `packages/ui`, not in a `globals.css`. Visible text goes through i18n. Dark mode is not in the design.
+- Follow "Base components" and "Adding a component" in `apps/web/README.md`. They cover the import of `cn`, and the few differences from upstream to keep. Style through the tokens in `packages/ui`.
+- Do not run `init`, `apply`, `--preset` or `add --all`. If you use `--overwrite`, reapply those differences. Do not add from a URL or another registry without asking.
+- Tokens live in `packages/ui`, not in a `globals.css`. Visible text goes through i18n. Dark mode is not in the design, so it has no tokens yet.
 
 
 A framework for building ui, components and design systems. Components are added as source code to the user's project via the CLI.

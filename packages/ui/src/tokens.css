@@ -54,14 +54,7 @@
   --suggestion-background: #faf5ff;
   --suggestion-foreground: #6b21a8;
 
-  --radius-control: 6px;
-  --radius-group: 8px;
-  --radius-card: 12px;
-  --radius-pill: 9999px;
-
   --shadow-card: 0 1px 2px rgb(0 0 0 / 0.04);
-  --shadow-selected: 0 1px 3px rgb(0 0 0 / 0.1);
-  --shadow-knob: 0 1px 2px rgb(0 0 0 / 0.2);
 
   --font-family-sans: "Geist Variable", Geist, Inter, system-ui, sans-serif;
   --font-family-mono:

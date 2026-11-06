@@ -4,6 +4,9 @@
 @import "@seeband/ui/tokens.css";
 @import "@seeband/ui/theme.css";
 
+/* The components' `dark:` classes must not follow the system's setting, as there are no dark tokens. */
+@custom-variant dark (&:is(.dark *));
+
 @layer base {
   * {
     @apply border-border;

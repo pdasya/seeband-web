@@ -35,20 +35,8 @@
   --color-suggestion-background: var(--suggestion-background);
   --color-suggestion-foreground: var(--suggestion-foreground);
 
-  --radius-sm: var(--radius-control);
-  --radius-md: var(--radius-control);
-  --radius-lg: var(--radius-group);
-  --radius-xl: var(--radius-card);
-
   --font-sans: var(--font-family-sans);
   --font-mono: var(--font-family-mono);
 
-  --text-xs: 12px;
-  --text-sm: 13px;
-  --text-base: 14px;
-  --text-lg: 16px;
-  --text-2xl: 24px;
-
-  --shadow-xs: var(--shadow-selected);
   --shadow-card: var(--shadow-card);
 }

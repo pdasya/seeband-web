@@ -57,16 +57,15 @@ The app always calls `/api` on its own origin, so there is no base URL to set, a
 
 ## Base components
 
-`src/components/ui` holds Button, Input, Select, Switch, Slider, Tabs, Table, Badge and Alert. They are copies from [shadcn/ui](https://ui.shadcn.com), and they are ours to change. They differ from upstream, to match the design:
+`src/components/ui` holds Button, Input, Select, Switch, Slider, Tabs, Table, Badge and Alert. They are shadcn/ui as the CLI gives them, which build on Radix. **Style them through the tokens in `packages/ui`, not by changing their classes**, so that they stay easy to update.
 
-- Sizes, radii and colours are the design's. Badge has the status variants and Alert a `warning` variant.
-- There are no dark variants, as the design has none.
-- Focus comes from one rule in `src/index.css`, the design's outline, rather than a ring on each component. Select's options draw it inside themselves, as their menu would clip it. Transitions cover colours only, so that the outline appears at once.
-- Slider with no value has one thumb, as Radix treats it. Upstream draws a second one with no value.
-- Slider puts `aria-label` and `aria-labelledby` on its thumb, which is what has the role of slider. Upstream leaves them on the root, where a screen reader does not find them.
-- Slider is a Radix slider with the design's colours and size. The design uses the browser's own range input, so the two differ a little in look.
+They differ from upstream only here:
 
-**Rem stays 16 px.** The design's text is 14 px, set on `body`. Tailwind's sizes are in rem, so a smaller root makes a 36 px button 31.5 px.
+- **Badge** has the design's status variants, and **Alert** a `warning` variant.
+- **Slider** puts `aria-label` and `aria-labelledby` on its thumb, which is what has the role of slider, and with no value it has one thumb, as Radix treats it. Upstream leaves the name on the root, where a screen reader does not find it, and draws a second thumb with no value.
+- They import `cn` from `@/lib/utils`.
+
+So a few sizes differ a little from the design: for example, Switch is 32 × 18 px rather than 44 × 24, a button's padding is 16 px rather than 14, and tabs use 14 px text rather than 13.
 
 ## Adding a component
 
@@ -77,4 +76,4 @@ cd apps/web
 pnpm dlx shadcn@4.23.0 add <name> --dry-run
 ```
 
-**Check the result before keeping it.** With version 4.23.0, the registry's components import `cn` from the npm package `cn`, which shadcn publishes as a replacement for `clsx` and `tailwind-merge`, and the CLI installs it. This project keeps those two in `src/lib/utils.ts`, as `cn` is at 0.5 and its last release was days old when this was written. On 14 sample calls, the two gave the same classes. So after adding, change the import to `@/lib/utils`, run `pnpm --filter @seeband/web remove cn`, and apply the differences above. To move to `cn` later, change that import in `src/components/ui`, and remove `src/lib/utils.ts`.
+With version 4.23.0, the registry's components import `cn` from the npm package `cn`, which shadcn publishes as a replacement for `clsx` and `tailwind-merge`, and the CLI installs it. This project keeps those two in `src/lib/utils.ts`, as `cn` is at 0.5 and its last release was days old when this was written. So after adding, change the import to `@/lib/utils`, and run `pnpm --filter @seeband/web remove cn`. To move to `cn` later, change that import in `src/components/ui`, and remove `src/lib/utils.ts`.
