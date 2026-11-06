@@ -1,0 +1,70 @@
+/* The design's values, as plain CSS, for anything that shows them. */
+:root {
+  --color-zinc-50: #fafafa;
+  --color-zinc-100: #f4f4f5;
+  --color-zinc-200: #e4e4e7;
+  --color-zinc-300: #d4d4d8;
+  --color-zinc-400: #a1a1aa;
+  --color-zinc-500: #71717a;
+  --color-zinc-600: #52525b;
+  --color-zinc-700: #3f3f46;
+  --color-zinc-800: #27272a;
+  --color-zinc-900: #18181b;
+  --color-zinc-950: #09090b;
+
+  /* The chart accents the design offers. */
+  --accent-blue: #2563eb;
+  --accent-orange: #ea580c;
+  --accent-teal: #0d9488;
+
+  --background: #ffffff;
+  --foreground: var(--color-zinc-950);
+  --card: #ffffff;
+  --card-foreground: var(--color-zinc-950);
+  --popover: #ffffff;
+  --popover-foreground: var(--color-zinc-950);
+  --primary: var(--color-zinc-900);
+  --primary-foreground: var(--color-zinc-50);
+  --secondary: var(--color-zinc-100);
+  --secondary-foreground: var(--color-zinc-950);
+  --muted: var(--color-zinc-100);
+  --muted-foreground: var(--color-zinc-500);
+  --accent: var(--color-zinc-100);
+  --accent-foreground: var(--color-zinc-950);
+  --border: var(--color-zinc-200);
+  --input: var(--color-zinc-200);
+  --ring: var(--color-zinc-400);
+
+  /* Alerts and status badges: border, background and text. */
+  --destructive: #dc2626;
+  --destructive-border: #fecaca;
+  --destructive-background: #fef2f2;
+  --destructive-foreground: #7f1d1d;
+  --warning-border: #fed7aa;
+  --warning-background: #fff7ed;
+  --warning-foreground: #7c2d12;
+  --warning-badge-foreground: #9a3412;
+  --success-border: #bbf7d0;
+  --success-background: #f0fdf4;
+  --success-foreground: #166534;
+  --info-border: #bfdbfe;
+  --info-background: #eff6ff;
+  --info-foreground: #1d4ed8;
+  --suggestion-border: #e9d5ff;
+  --suggestion-background: #faf5ff;
+  --suggestion-foreground: #6b21a8;
+
+  --radius-control: 6px;
+  --radius-group: 8px;
+  --radius-card: 12px;
+  --radius-pill: 9999px;
+
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.04);
+  --shadow-selected: 0 1px 3px rgb(0 0 0 / 0.1);
+  --shadow-knob: 0 1px 2px rgb(0 0 0 / 0.2);
+
+  --font-family-sans: "Geist Variable", Geist, Inter, system-ui, sans-serif;
+  --font-family-mono:
+    "Geist Mono Variable", "Geist Mono", ui-monospace, monospace;
+  --layout-max-width: 1440px;
+}
