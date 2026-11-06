@@ -16,8 +16,9 @@ from seeband_api.calc_pool import CalcPoolDep
 from seeband_api.errors import ApiError, ErrorDetail
 from seeband_api.json_values import finite_or_none
 from seeband_api.parse_worker import FitRange, ParseOutcome, UnknownColumn, parse
+from seeband_api.request_checks import MaxPointsDep
 from seeband_api.request_logging import log_calculation_failure
-from seeband_api.routing import api_router
+from seeband_api.routing import api_router, too_many_requests
 
 router = api_router("parse")
 
@@ -288,10 +289,13 @@ PARSE_EXAMPLE_RESPONSES: dict[str, dict[str, Any]] = {
                     }
                 }
             }
-        }
+        },
+        429: too_many_requests(),
     },
 )
-async def post_parse(body: ParseRequest, pool: CalcPoolDep) -> ParseResponse:
+async def post_parse(
+    body: ParseRequest, pool: CalcPoolDep, max_points: MaxPointsDep
+) -> ParseResponse:
     fit_range = None
     if body.interpolate is not None:
         fit_range = FitRange(body.interpolate.min_temperature_k, body.interpolate.max_temperature_k)
@@ -307,6 +311,9 @@ async def post_parse(body: ParseRequest, pool: CalcPoolDep) -> ParseResponse:
         outcome = await pool.run(parse, body.text, body.expected, mapping, fit_range)
     except UnknownColumn:
         raise _refuse("unknown_column", "The text has no such column", ["mapping"]) from None
+    # Only reading the text can say how many rows it holds, and its size limits that work.
+    if len(outcome.table.lines) > max_points:
+        raise _refuse("too_many_rows", f"At most {max_points} rows", ["text"])
     for failure_type in outcome.failure_types:
         log_calculation_failure(failure_type)
     return _to_response(outcome)

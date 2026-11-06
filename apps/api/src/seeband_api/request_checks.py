@@ -4,6 +4,7 @@ from http import HTTPStatus
 from typing import Annotated, Self
 
 import numpy as np
+from fastapi import Depends, Request
 from pydantic import BaseModel, Field, model_validator
 from seeband_core.model_catalog import registry
 from seeband_core.model_interface import FitMode, Measurement, ModelDescription, Quantity
@@ -26,6 +27,29 @@ class MeasurementInput(BaseModel):
         if len(self.temperature_k) != len(self.values):
             raise ValueError("temperature_k and values must have the same length")
         return self
+
+
+def _get_max_points(request: Request) -> int:
+    max_points: int = request.app.state.settings.max_points
+    return max_points
+
+
+MaxPointsDep = Annotated[int, Depends(_get_max_points)]
+
+
+def too_many_points(max_points: int, location: list[str | int]) -> ErrorDetail:
+    return invalid("too_many_points", f"At most {max_points} points", location)
+
+
+def check_point_counts(
+    measurements: dict[Quantity, MeasurementInput], max_points: int
+) -> list[ErrorDetail]:
+    """Counts what a client sent, rather than what lies in its fit range, as all of it is parsed."""
+    return [
+        too_many_points(max_points, ["measurements", quantity])
+        for quantity, measurement in measurements.items()
+        if len(measurement.temperature_k) > max_points
+    ]
 
 
 def invalid(code: str, message: str, location: list[str | int]) -> ErrorDetail:

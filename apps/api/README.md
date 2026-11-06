@@ -8,16 +8,24 @@ A thin FastAPI layer over `seeband_core`. It holds routes, validation and proces
 uv run python -m seeband_api
 ```
 
-| Variable                      | Default     | Applies to                                 |
-| ----------------------------- | ----------- | ------------------------------------------ |
-| `SEEBAND_API_HOST`            | `127.0.0.1` | `python -m seeband_api` only               |
-| `SEEBAND_API_PORT`            | `8000`      | `python -m seeband_api` only               |
-| `SEEBAND_API_LOG_LEVEL`       | `INFO`      | the API's own log lines, not uvicorn's own |
-| `SEEBAND_API_CALC_WORKERS`    | `2`         | worker processes for calculations          |
-| `SEEBAND_API_CALC_TIMEOUT_S`  | `30`        | how long a calculation request waits       |
-| `SEEBAND_API_FIT_MAX_RUNNING` | `2`         | fits at once, in each server process       |
-| `SEEBAND_API_FIT_MAX_WAITING` | `4`         | fits waiting, before a 429                 |
-| `SEEBAND_API_FIT_TIMEOUT_S`   | `60`        | how long one fit can run                   |
+| Variable                         | Default         | Applies to                                                       |
+| -------------------------------- | --------------- | ---------------------------------------------------------------- |
+| `SEEBAND_API_HOST`               | `127.0.0.1`     | `python -m seeband_api` only                                     |
+| `SEEBAND_API_PORT`               | `8000`          | `python -m seeband_api` only                                     |
+| `SEEBAND_API_LOG_LEVEL`          | `INFO`          | the API's own log lines, not uvicorn's own                       |
+| `SEEBAND_API_CALC_WORKERS`       | `2`             | worker processes for calculations                                |
+| `SEEBAND_API_CALC_TIMEOUT_S`     | `30`            | how long a calculation request waits                             |
+| `SEEBAND_API_FIT_MAX_RUNNING`    | `2`             | fits at once, in each server process                             |
+| `SEEBAND_API_FIT_MAX_WAITING`    | `4`             | fits waiting, before a 429                                       |
+| `SEEBAND_API_FIT_TIMEOUT_S`      | `60`            | how long one fit can run                                         |
+| `SEEBAND_API_FIT_MAX_PER_CLIENT` | `2`             | fits running or waiting for one client                           |
+| `SEEBAND_API_MAX_BODY_BYTES`     | `10000000`      | size of a request                                                |
+| `SEEBAND_API_MAX_POINTS`         | `2000`          | points of a quantity, or rows of a text                          |
+| `SEEBAND_API_CALC_PER_MINUTE`    | `600`           | `POST /api/calc` for one client                                  |
+| `SEEBAND_API_PARSE_PER_MINUTE`   | `60`            | `POST /api/parse` for one client                                 |
+| `SEEBAND_API_GUESS_PER_MINUTE`   | `60`            | `POST /api/guess` for one client                                 |
+| `SEEBAND_API_FIT_PER_MINUTE`     | `30`            | `POST /api/fit` for one client                                   |
+| `SEEBAND_API_TRUSTED_PROXIES`    | `127.0.0.1,::1` | whose `X-Forwarded-For` to believe. `python -m seeband_api` only |
 
 | Route                   | Purpose                  |
 | ----------------------- | ------------------------ |
@@ -29,6 +37,28 @@ uv run python -m seeband_api
 | `POST /api/fit`         | fitting, as event stream |
 | `GET /api/openapi.json` | the contract             |
 | `GET /api/docs`         | Swagger UI over the same |
+
+## Limits
+
+Each limit answers in the usual error format. All the values are starting guesses, and should be checked on the VM and with real use.
+
+| Limit                                  | Answer                                           | Applies to                                 |
+| -------------------------------------- | ------------------------------------------------ | ------------------------------------------ |
+| Request rate of one client             | 429 `rate_limited`, with `Retry-After`           | the four `POST` routes, counted separately |
+| Size of a request                      | 413 `request_too_large`                          | every route                                |
+| Points of a quantity                   | 422 `too_many_points` in `details`, at the field | `/api/calc`, `/api/fit`, `/api/guess`      |
+| Rows of a text                         | 422 `too_many_rows` in `details`                 | `/api/parse`                               |
+| Fits running or waiting for one client | 429 `client_fit_limit`, with `Retry-After`       | `/api/fit`                                 |
+
+These are fixed by the contract instead of a setting: 2000000 characters of `text`, 1000 for `points` and `rmse_points`, and in the core 10000 points of an interpolation grid. A wide fit range can give a grid over `max_points`, which `POST /api/fit` then refuses.
+
+- **A 413 can arrive as a network error.** The server closes the connection without reading the rest. Node's `fetch` read the 413 for bodies of 11 and 40 MB, and got an `EPIPE` error at 200 MB. So a client should check a file's size before sending it. A browser was not tried.
+- **Why 2000 points:** the time of a fit grows with its points, and about 10000 reach the time limit of 60 s. Through a test client on an Apple Silicon Mac with 10 cores, DPB S and DPB S + ρ with `acPh` on points interpolated from the demo dataset took 7 and 11 s at 1000 points, and 29 and 49 s at 5000. The example files have at most a few dozen rows.
+- **The rate** is a bucket that refills steadily and holds a minute's requests, so a client can spend them at once. 600 curves a minute allow 10 a second for a slider, and FS6 and FS12 should check that. A refused request takes nothing from the bucket, and one that a route refuses does.
+- **Refusals come early:** rate and size are checked before the body is read or parsed. A row count needs the text to be read first, which for 2000000 characters takes about 0.5 s, or about 1.4 s for very short rows.
+- **A client is an address**, or one /64 for IPv6, as one user usually holds a whole /64. So users behind one router share a limit. The addresses stay in memory for at most a minute, and are not logged.
+- **Limits are per server process**, so `--workers 2` doubles them.
+- **Behind a proxy, set `SEEBAND_API_TRUSTED_PROXIES` to its address.** The server then takes the client's address from `X-Forwarded-For`, from the right, skipping trusted addresses, so a client cannot choose its own. Without this, the proxy is the only client, and all users share one limit. [I1](https://github.com/pdasya/seeband-web/issues/53) must set it, and must not expose the API directly if it trusts `*`. Plain `uvicorn` uses its own `FORWARDED_ALLOW_IPS` instead.
 
 ## Model descriptions
 
@@ -107,7 +137,7 @@ A `failed` fit's `message` is English text with no code, so a client cannot tran
 - **A file with problems is a 200,** with the problems in `errors` and a `preview`, so that a client can show them and let a user assign columns. `measurements` is empty with any error. A 422 means that the request itself is wrong.
 - **Assigning columns:** send the text again with `mapping`, as the API keeps nothing between calls. A choice is kept even while some rows have errors. A column that does not exist gives a 422 `invalid_parse_request` with `unknown_column`. With no readable rows, there is nothing to check it against, and `mapping` stays the suggestion.
 - **`interpolate`** gives each quantity on a grid over a fit range, in `interpolated`, next to the original `measurements`. A range the grid cannot use is a 422 `invalid_parse_request` with `invalid_interpolation_range`. A polynomial that overflows gives `null`, which a client must not send on to `POST /api/calc`, as it refuses it. One quantity that cannot be interpolated is named in `interpolation_failed`, and the others stay. Pass `extrapolated` on to `POST /api/calc` if any quantity sets it, as made-up points enter its results.
-- **Body size** has no general limit until [A10](https://github.com/pdasya/seeband-web/issues/33), so a larger body is read into memory before `text` is refused.
+- **Size:** a text over the limit gets a 422, and over 2000 rows a 422 `invalid_parse_request` with `too_many_rows`, even if some rows have errors. See [Limits](#limits).
 
 ## Curves
 
@@ -121,7 +151,7 @@ A `failed` fit's `message` is English text with no code, so a client cannot tran
 - **`calculation_unavailable`** is a 503: a worker died, and the next request gets a new pool.
 - **`calculation_timeout`** is a 504. A worker cannot be interrupted, so it stays busy until the calculation ends.
 
-Requests are parsed in the event loop, and there are no size limits until [A10](https://github.com/pdasya/seeband-web/issues/33). A body of 137 MB held up other requests for about a second, and the largest allowed grids, `points` and `rmse_points` of 1000, take about 1.3 s each.
+Requests are parsed in the event loop, up to the size in [Limits](#limits). A body of 9 MB of numbers took about 0.13 s in all, and the largest allowed grids, `points` and `rmse_points` of 1000, take about 1.3 s each.
 
 Median response time for a 50-point curve, through the app in one process with a test client, 20 calls each, on an Apple Silicon Mac with 10 cores and Python 3.13. The RMSE column uses the 31 points per quantity of the demo dataset. Network time is not included, and FS12 measures that.
 

@@ -367,3 +367,31 @@ def test_close_ends_running_fits(tmp_path: Path) -> None:
         assert raised.value.code == "fit_process_died"
 
     asyncio.run(main())
+
+
+def test_one_client_cannot_take_more_than_its_share() -> None:
+    runner = FitRunner(1, 5, 30.0, max_per_client=2)
+
+    async def main() -> None:
+        first = runner.submit(fit_functions.hang, client="x")
+        second = runner.submit(fit_functions.double, 1, client="x")
+        with pytest.raises(ApiError) as raised:
+            runner.submit(fit_functions.double, 1, client="x")
+        assert raised.value.status_code == 429
+        assert raised.value.code == "client_fit_limit"
+        assert raised.value.headers == {"Retry-After": "5"}
+        other = runner.submit(fit_functions.double, 2, client="y")
+
+        second.cancel()
+        await asyncio.wait([second])
+        await asyncio.sleep(0)
+        replacement = runner.submit(fit_functions.double, 3, client="x")
+
+        first.cancel()
+        await asyncio.wait([first])
+        assert await other == 4
+        assert await replacement == 6
+        await asyncio.sleep(0)
+        assert not runner._by_client
+
+    asyncio.run(main())

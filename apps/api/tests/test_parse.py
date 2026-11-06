@@ -451,7 +451,16 @@ def test_longest_text_allowed_is_read(client: TestClient) -> None:
 
     response = client.post("/api/parse", json={"text": rows})
 
+    # So it is not the size of the text that refuses it.
+    assert response.status_code == 422
+    assert response.json()["details"][0]["code"] == "too_many_rows"
+
+
+def test_longest_text_of_notes_is_a_file_with_problems(client: TestClient) -> None:
+    response = client.post("/api/parse", json={"text": "x" * MAX_TEXT_CHARACTERS})
+
     assert response.status_code == 200
+    assert response.json()["row_count"] == 0
 
 
 def test_lone_surrogate_in_the_text_is_refused(client: TestClient) -> None:

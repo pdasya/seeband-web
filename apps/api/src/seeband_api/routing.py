@@ -1,5 +1,8 @@
 """How routes join the API."""
 
+from collections.abc import Iterable
+from typing import Any
+
 from fastapi import APIRouter
 
 from seeband_api.errors import ERROR_EXAMPLES, ErrorResponse
@@ -9,6 +12,20 @@ _ERROR_CONTENT = {
         "examples": {name: {"value": example} for name, example in ERROR_EXAMPLES.items()}
     }
 }
+
+
+def too_many_requests(examples: Iterable[str] = ("rate_limited",)) -> dict[str, Any]:
+    """The 429 of a route with a rate limit, with the hint a client needs."""
+    return {
+        "model": ErrorResponse,
+        "description": "Too many requests from this client, or for the server",
+        "headers": {"Retry-After": {"schema": {"type": "integer"}, "example": 5}},
+        "content": {
+            "application/json": {
+                "examples": {name: {"value": ERROR_EXAMPLES[name]} for name in examples}
+            }
+        },
+    }
 
 
 def api_router(tag: str) -> APIRouter:

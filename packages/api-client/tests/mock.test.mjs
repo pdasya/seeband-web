@@ -182,6 +182,22 @@ describe("the mock of the real contract", async () => {
     assert.equal((await response.json()).code, "fit_queue_full");
   });
 
+  test("sends the retry hint of a rate limit", async () => {
+    const response = await fetch(`${url}/api/guess`, {
+      method: "POST",
+      headers: { ...JSON_HEADERS, prefer: "code=429, example=rate_limited" },
+      body: JSON.stringify({
+        model: "dpb",
+        temperature_k: [100],
+        seebeck_v_per_k: [1e-4],
+      }),
+    });
+
+    assert.equal(response.status, 429);
+    assert.equal(response.headers.get("retry-after"), "5");
+    assert.equal((await response.json()).code, "rate_limited");
+  });
+
   const FIT_REQUEST = JSON.stringify({
     model: "dpb",
     fit_mode: "dpb_s",
@@ -312,6 +328,9 @@ describe("the mock of the real contract", async () => {
     [422, "invalid_parse_request"],
     [422, "invalid_fit"],
     [429, "fit_queue_full"],
+    [429, "rate_limited"],
+    [429, "client_fit_limit"],
+    [413, "request_too_large"],
     [422, "guess_unavailable"],
   ]) {
     test(`returns the ${code} example on request`, async () => {

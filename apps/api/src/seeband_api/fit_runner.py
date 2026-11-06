@@ -8,6 +8,7 @@ fit, not the wait. The process always ends with its task, however the task ends.
 import asyncio
 import multiprocessing
 import threading
+from collections import Counter
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass, field
 from http import HTTPStatus
@@ -107,8 +108,16 @@ class _FitProcess:
 
 
 class FitRunner:
-    def __init__(self, max_running: int, max_waiting: int, timeout_s: float) -> None:
+    def __init__(
+        self,
+        max_running: int,
+        max_waiting: int,
+        timeout_s: float,
+        max_per_client: int | None = None,
+    ) -> None:
         self._max_admitted = max_running + max_waiting
+        self._max_per_client = max_per_client
+        self._by_client: Counter[str] = Counter()
         self._timeout_s = timeout_s
         self._semaphore = asyncio.Semaphore(max_running)
         self._admitted = 0
@@ -118,6 +127,7 @@ class FitRunner:
         self,
         function: Callable[..., T],
         *args: Any,
+        client: str | None = None,
         on_started: Callable[[], None] | None = None,
         on_iteration: Callable[[Any], None] | None = None,
     ) -> asyncio.Task[T]:
@@ -125,6 +135,7 @@ class FitRunner:
 
         The task runs `function(*args, send_iteration)` in a new process. `on_started` is called
         when the fit stops waiting. Cancelling the task ends the fit, and ends once its process has.
+        `client` says whose place this is, for the limit per client.
         """
         if self._admitted >= self._max_admitted:
             raise ApiError(
@@ -133,10 +144,23 @@ class FitRunner:
                 "Too many fits are running. Try again shortly.",
                 headers={"Retry-After": str(RETRY_AFTER_S)},
             )
+        if (
+            client is not None
+            and self._max_per_client is not None
+            and self._by_client[client] >= self._max_per_client
+        ):
+            raise ApiError(
+                HTTPStatus.TOO_MANY_REQUESTS,
+                "client_fit_limit",
+                "This client has too many fits running or waiting",
+                headers={"Retry-After": str(RETRY_AFTER_S)},
+            )
         self._admitted += 1
+        if client is not None:
+            self._by_client[client] += 1
         task = asyncio.create_task(self._wait_and_run(function, args, on_started, on_iteration))
         # A callback, as a task cancelled before its first step never runs its body.
-        task.add_done_callback(self._leave)
+        task.add_done_callback(lambda finished: self._leave(finished, client))
         return task
 
     async def run[T](
@@ -148,8 +172,12 @@ class FitRunner:
         """Submits a fit and waits for its result. Cancelling this cancels the fit."""
         return await self.submit(function, *args, on_iteration=on_iteration)
 
-    def _leave(self, task: asyncio.Task[Any]) -> None:
+    def _leave(self, task: asyncio.Task[Any], client: str | None) -> None:
         self._admitted -= 1
+        if client is not None:
+            self._by_client[client] -= 1
+            if not self._by_client[client]:
+                del self._by_client[client]
         # Marks the exception as retrieved. A client that has gone never reads it, and asyncio
         # would otherwise print it with its traceback.
         if not task.cancelled():
