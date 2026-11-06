@@ -1,8 +1,8 @@
 """Limits that apply before a request reaches its route: its rate by client, and its size.
 
 These run before the body is read or parsed, so that a refused request costs little. The store is
-in memory, for each server process. A client's address stays in it for at most a minute, and is
-not logged.
+in memory, for each server process. A client's address is not logged, and is dropped by the first
+request at least a minute after its client's last.
 """
 
 import ipaddress
