@@ -1,26 +1,26 @@
 # apps/web
 
-The application served at `/app`: Vite, React and TypeScript. It shows data and results and holds no physics formulas.
+The application served at `/fit` and `/results`: Vite, React and TypeScript. It shows data and results and holds no physics formulas.
 
 ```sh
-pnpm --filter @seeband/web dev      # http://localhost:5173/app/
-pnpm --filter @seeband/web build    # into apps/web/dist, every asset under /app/
-pnpm --filter @seeband/web preview  # the production build at /app/
+pnpm --filter @seeband/web dev      # http://localhost:5173/fit
+pnpm --filter @seeband/web build    # into apps/web/dist, every asset under /assets/
+pnpm --filter @seeband/web preview  # the production build
 ```
 
 ## Shell
 
-| Path           | Shows               |
-| -------------- | ------------------- |
-| `/app/`        | leads to `/app/fit` |
-| `/app/fit`     | the fit screen      |
-| `/app/results` | the results screen  |
-| anything else  | a not-found view    |
+| Path          | Shows                                                    |
+| ------------- | -------------------------------------------------------- |
+| `/fit`        | the fit screen                                           |
+| `/results`    | the results screen                                       |
+| `/`           | the public site. With no site, as in development, `/fit` |
+| anything else | a not-found view, where the server sends it to the app   |
 
 `src/routes.tsx` holds the routes, and `src/shell` what screens share: the header, the two columns that wrap, the page heading with its slot for a status badge, and panels. The fit and results screens are frames for now.
 
 - **Overview and Conventions** are plain links to the public site, which does not exist before S1, so they lead nowhere in development.
-- **A server must answer any path under `/app/` with `index.html`,** as a reload at `/app/results` otherwise gets a 404, and send `/app` to `/app/`. `vite preview` does the first, and answers `/app` and a path with broken percent-encoding with its own 404. [I1](https://github.com/pdasya/seeband-web/issues/53) must set it in Caddy.
+- **The app has no path prefix, so a server must list its paths.** [I1](https://github.com/pdasya/seeband-web/issues/53) must answer `/fit` and `/results` with `index.html`, as a reload there otherwise gets a 404, and serve `/assets/` and `/licenses/` from this build. `vite preview` answers any path with `index.html`. A new screen needs a line there, and in `robots.txt` ([S6](https://github.com/pdasya/seeband-web/issues/68)), and the site must not use these paths.
 - **The error views show no details,** as an error's message could quote a user's data. An error in a page appears inside the shell, and one in the shell appears without it.
 - **A move inside the app takes focus to `main`,** so that a screen reader follows it. Scroll position is not handled, as the pages are short so far.
 - **Headings on the fit screen come in the design's order:** Data and Model come before the `h1`, as the side panel does. V2 should check this with a screen reader.

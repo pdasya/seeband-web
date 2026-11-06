@@ -1,4 +1,4 @@
-// Builds the app as production does, and checks what a browser would get at /app.
+// Builds the app as production does, and checks what a browser would get.
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import {
@@ -38,12 +38,12 @@ before(() => {
 
 after(() => rmSync(outDir, { recursive: true, force: true }));
 
-test("every asset is requested under /app/", () => {
+test("every asset is requested under /assets/", () => {
   const paths = [...html.matchAll(/(?:src|href)="([^"]+)"/g)].map((m) => m[1]);
 
   assert.ok(paths.length >= 2);
   for (const path of paths) {
-    assert.match(path, /^\/app\/assets\//);
+    assert.match(path, /^\/assets\//);
   }
 });
 
@@ -58,7 +58,7 @@ test("the fonts are served with the app, not from another host", () => {
     assert.doesNotMatch(text, /fonts\.(googleapis|gstatic)\.com/);
   }
   for (const match of css.matchAll(/url\(([^)]+\.woff2)\)/g)) {
-    assert.match(match[1], /^\/app\/assets\//);
+    assert.match(match[1], /^\/assets\//);
   }
 });
 
@@ -76,7 +76,7 @@ test("the system's dark setting changes nothing, as there are no dark tokens", (
 test("Plotly loads on its own, and the test page is not built", () => {
   const sizeOf = (name) => statSync(join(outDir, "assets", name)).size;
   const scripts = assets.filter((name) => name.endsWith(".js"));
-  const entry = html.match(/src="\/app\/assets\/([^"]+\.js)"/)?.[1];
+  const entry = html.match(/src="\/assets\/([^"]+\.js)"/)?.[1];
   const plotly = scripts.find((name) => name.startsWith("plotly"));
 
   assert.ok(plotly, scripts.join());

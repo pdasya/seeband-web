@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-const FIXTURE = "/app/e2e/chart-fixture.html";
+const FIXTURE = "/e2e/chart-fixture.html";
 const POINTS = 9;
 
 async function openChart(page: Page) {

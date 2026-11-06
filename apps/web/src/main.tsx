@@ -11,9 +11,7 @@ const root = document.getElementById("root");
 if (root === null) {
   throw new Error("The page has no root element");
 }
-const router = createBrowserRouter(ROUTES, {
-  basename: import.meta.env.BASE_URL,
-});
+const router = createBrowserRouter(ROUTES);
 createRoot(root).render(
   <StrictMode>
     <QueryClientProvider client={createQueryClient()}>

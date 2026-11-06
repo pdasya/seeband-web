@@ -16,7 +16,7 @@ The [project overview](https://claude.ai/artifact/5WDV9nBj7G9vXTihrtkGmd) and [d
 
 | Folder                  | Purpose                                 |
 | ----------------------- | --------------------------------------- |
-| `apps/web`              | application at `/app`                   |
+| `apps/web`              | application at `/fit` and `/results`    |
 | `apps/site`             | public pages                            |
 | `apps/api`              | FastAPI layer over the core             |
 | `packages/seeband_core` | calculations and fits                   |

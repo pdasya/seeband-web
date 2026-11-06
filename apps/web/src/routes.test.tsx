@@ -154,27 +154,6 @@ test("the routes of the app use both error views", () => {
   expect(shell?.errorElement).not.toEqual(pages?.errorElement);
 });
 
-test("under the base path of production, links and the root redirect keep it", () => {
-  const router = createMemoryRouter(ROUTES, {
-    basename: "/app/",
-    initialEntries: ["/app/"],
-  });
-
-  render(<RouterProvider router={router} />);
-
-  expect(router.state.location.pathname).toBe("/app/fit");
-  expect(
-    screen
-      .getByRole("link", { name: STRINGS.navigation.results })
-      .getAttribute("href"),
-  ).toBe("/app/results");
-  expect(
-    screen
-      .getByRole("link", { name: STRINGS.navigation.overview })
-      .getAttribute("href"),
-  ).toBe("/");
-});
-
 test("a move inside the app takes focus to the content, and the first page leaves it alone", async () => {
   const router = renderAt("/fit");
   const main = screen.getByRole("main");

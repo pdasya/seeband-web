@@ -44,7 +44,7 @@ async function choose(page: Page, name: string, text = "T S\n100 1e-4\n") {
 }
 
 test.beforeEach(async ({ page }) => {
-  await page.goto("/app/fit");
+  await page.goto("/fit");
 });
 
 test("shows three slots, as the design does", async ({ page }) => {
