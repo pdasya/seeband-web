@@ -157,3 +157,22 @@ test("the real descriptions fill the parameters", async ({ page }) => {
     page.getByRole("slider", { name: "m", exact: true }),
   ).toHaveAttribute("aria-valuemin", "-3");
 });
+
+test("an example through the real API draws the curve, with its RMSE", async ({
+  page,
+}) => {
+  await page.goto("/fit");
+  await page
+    .locator('input[type="file"]')
+    .first()
+    .setInputFiles(`${EXAMPLES}01_Fe2VAl09Si01_see.txt`);
+
+  await expect(page.getByText("RMSE, S")).toBeVisible();
+  await expect(page.getByText(/^[\d,]+ µV\/K$/)).toBeVisible();
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  const before = await page.getByText(/^[\d,]+ µV\/K$/).textContent();
+
+  await page.getByRole("slider", { name: "E_F" }).press("PageUp");
+
+  await expect(page.getByText(/^[\d,]+ µV\/K$/)).not.toHaveText(before ?? "");
+});

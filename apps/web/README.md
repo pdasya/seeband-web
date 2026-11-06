@@ -83,6 +83,15 @@ SEEBAND_API_TARGET=http://127.0.0.1:8000 pnpm --filter @seeband/web exec playwri
 - **Each model keeps its own mode, scattering and degeneracies,** as the design does. The fit range is shared.
 - **A number being typed stays in its field.** It reaches the session on leaving the field or on Enter, and only if it holds, so the steps on the way to it send nothing and clear no result. N₁ and N₂ are any numbers above 0, and the two bounds of the range go together.
 
+## Live curves
+
+`model/useLiveCurves.ts` asks `POST /api/calc` for the current values whenever they change and data are loaded. Without data for the fit mode, nothing is sent.
+
+- **Rapid changes do not queue up.** A request waits for 120 ms of rest, or 300 ms at the latest during a long drag, so at most about 8 go out a second, within the API's 10. A new request aborts the one before it, and a run number ignores any late answer. FS12 tunes these delays over a real network.
+- **The chart keeps the last curve** while waiting and after an error. An indicator appears only after 300 ms, as a quick answer would make it flicker.
+- **A 429 with `Retry-After`** of up to 30 s tries again by itself. Any other error waits for the next change.
+- **Only points in the fit range** go with a request, for the RMSE, and the `extrapolated` flag goes with them.
+
 ## Numbers
 
 The app shows numbers with a decimal comma, in fields, labels, messages and charts, whatever the browser's region. `lib/numbers.ts` holds this. Number fields are text fields, because `type="number"` shows the separator of the computer's region. They accept a comma or a point. Files and the API keep their points.

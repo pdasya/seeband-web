@@ -171,7 +171,7 @@ export function ParametersPanel() {
   const mode = fitModeOf(model, selection.fitMode);
 
   return (
-    <Panel title={text.title}>
+    <Panel title={text.title} subtitle={text.subtitle}>
       {mode !== undefined && (
         <div className="mt-3 flex flex-col gap-[18px]">
           {visibleParameters(mode, selection.scattering).map((parameter) => (

@@ -34,6 +34,15 @@ export const MODELS = Object.values(
     .examples,
 )[0]?.value as { models: object[] };
 
+/** A curve of 3 points, for tests about other things. Later routes in a test take over from it. */
+export const CALC = {
+  temperature_k: [100, 300, 500],
+  curves: { seebeck_v_per_k: [1e-4, 2e-4, 1.5e-4] },
+  known_issues: [],
+  rmse: {},
+};
+
 export async function serveModels(page: Page) {
   await page.route("**/api/models", (route) => route.fulfill({ json: MODELS }));
+  await page.route("**/api/calc", (route) => route.fulfill({ json: CALC }));
 }

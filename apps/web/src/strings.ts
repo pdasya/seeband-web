@@ -16,6 +16,7 @@ export const STRINGS = {
   },
   parameters: {
     title: "Parameters",
+    subtitle: "Curve updates instantly",
     fixed: "not fitted",
     // How a parameter is written. Any other shows its name, so a new one needs no change here.
     symbols: {
@@ -173,6 +174,15 @@ export const STRINGS = {
     noDataText: "Curves appear here once measurements are loaded.",
     fitDescription: "Chart of the measurements and model against temperature",
     fitAxis: "S, µV/K",
+    model: "Model",
+    measurements: "Measurements",
+    updating: "Updating…",
+    lastCurveStays: "The last curve stays on the chart.",
+    noResult: "The calculation has no result for these parameters.",
+    rateLimited: "Too many updates in a short time. Trying again shortly.",
+    networkError: "The server could not be reached.",
+    serverUnavailable: "The server is not responding.",
+    calcFailed: "The curve could not be calculated.",
   },
   status: {
     manual: "Manual parameters",
@@ -190,6 +200,11 @@ export const STRINGS = {
     data: "Data",
     charts: "Charts",
     result: "Result",
+    rmse: "RMSE",
+    noRmse: "The RMSE appears here once measurements are loaded.",
+    rmseNotFinite: "not finite",
+    rmseUnits: { "uV/K": "µV/K" },
+    knownIssues: "Known errors apply to this result:",
   },
   results: {
     pageTitle: "Results",
