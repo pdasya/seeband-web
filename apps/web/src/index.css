@@ -3,6 +3,7 @@
 @import "@seeband/ui/fonts.css";
 @import "@seeband/ui/tokens.css";
 @import "@seeband/ui/theme.css";
+@import "@seeband/ui/header.css";
 
 /* The components' `dark:` classes must not follow the system's setting, as there are no dark tokens. */
 @custom-variant dark (&:is(.dark *));
