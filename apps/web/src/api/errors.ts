@@ -39,8 +39,9 @@ function isErrorBody(body: unknown): body is ErrorBody {
 }
 
 function retryAfterS(response: Response): number | null {
-  const seconds = Number(response.headers.get("retry-after") ?? Number.NaN);
-  return Number.isFinite(seconds) ? seconds : null;
+  // The other form is a date, which the API does not send.
+  const header = response.headers.get("retry-after");
+  return header !== null && /^\d+$/.test(header) ? Number(header) : null;
 }
 
 /** Reads an error response. Not every one is in the API's format, as when a proxy answers. */
@@ -48,7 +49,10 @@ export async function toApiError(response: Response): Promise<ApiError> {
   let body: unknown;
   try {
     body = await response.json();
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw error;
+    }
     body = undefined;
   }
   if (isErrorBody(body)) {

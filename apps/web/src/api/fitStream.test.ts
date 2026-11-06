@@ -87,6 +87,47 @@ describe("readEventData", () => {
     ).toEqual(["1", "2"]);
   });
 
+  test.each([
+    ["one chunk", ["data: 1\r\r"]],
+    ["two chunks", ["data: 1\r", "\r"]],
+  ])("an event ended by a final CR arrives, in %s", async (_, chunks) => {
+    expect(await collect(readEventData(streamOf(chunks)))).toEqual(["1"]);
+  });
+
+  test("a line too long stops, whether or not it ever ends", async () => {
+    const chunk = "x".repeat(600_000);
+
+    await expect(
+      collect(readEventData(streamOf([`data: ${chunk}`, chunk]))),
+    ).rejects.toMatchObject({ code: "unexpected_response" });
+    await expect(
+      collect(readEventData(streamOf([`data: ${chunk}\ndata: ${chunk}\n`]))),
+    ).rejects.toMatchObject({ code: "unexpected_response" });
+  });
+
+  test("the limit holds for each event, not for a stream", async () => {
+    const event = `data: ${"x".repeat(600_000)}\n\n`;
+
+    expect(await collect(readEventData(streamOf([event, event])))).toHaveLength(
+      2,
+    );
+  });
+
+  test("an event in many small chunks does not read them again each time", async () => {
+    const piece = "x".repeat(16_000);
+    const chunks = [
+      "data: ",
+      ...Array.from({ length: 60 }, () => piece),
+      "\n\n",
+    ];
+
+    const started = performance.now();
+    const data = await collect(readEventData(streamOf(chunks)));
+
+    expect(data[0]).toHaveLength(960_000);
+    expect(performance.now() - started).toBeLessThan(1_000);
+  });
+
   test("joins data lines, and ignores comments and other fields", async () => {
     const text = ": ping\n\nevent: x\nid: 3\ndata: a\ndata: b\n\n";
 
@@ -168,6 +209,19 @@ describe("streamFit", () => {
       code: "unexpected_response",
     });
   });
+
+  test.each(["null", "3", '"text"', "{}", '{"type":1}'])(
+    "an event of %s is an unexpected response, not a lost connection",
+    async (data) => {
+      const client = clientAnswering(
+        new Response(streamOf([`data: ${data}\n\n`])),
+      );
+
+      await expect(collect(streamFit(client, REQUEST))).rejects.toMatchObject({
+        code: "unexpected_response",
+      });
+    },
+  );
 
   test("a connection lost midway is an error", async () => {
     const encoder = new TextEncoder();

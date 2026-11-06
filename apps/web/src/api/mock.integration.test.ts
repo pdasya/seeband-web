@@ -16,6 +16,7 @@ const STARTUP_TIMEOUT_MS = 30_000;
 
 let mock: ChildProcess;
 let baseUrl: string;
+let mockErrors = "";
 
 function freePort(): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -51,7 +52,10 @@ beforeAll(async () => {
   baseUrl = `http://127.0.0.1:${String(port)}`;
   mock = spawn(process.execPath, [MOCK], {
     env: { ...process.env, MOCK_PORT: String(port) },
-    stdio: "ignore",
+    stdio: ["ignore", "ignore", "pipe"],
+  });
+  mock.stderr?.on("data", (chunk: Buffer) => {
+    mockErrors += chunk.toString();
   });
   const deadline = Date.now() + STARTUP_TIMEOUT_MS;
   while (Date.now() < deadline) {
@@ -65,7 +69,7 @@ beforeAll(async () => {
     }
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
-  throw new Error("The mock did not start");
+  throw new Error(`The mock did not start: ${mockErrors}`);
 }, STARTUP_TIMEOUT_MS + 5_000);
 
 afterAll(() => {
@@ -79,14 +83,14 @@ const FIT: FitRequest = {
   min_temperature_k: 100,
   max_temperature_k: 500,
   measurements: { seebeck: { temperature_k: [100], values: [1e-4] } },
-} as FitRequest;
-const CALC = {
+};
+const CALC: CalcRequest = {
   model: "dpb",
   fit_mode: "dpb_s",
   parameters: { m_eff: 1.01 },
   min_temperature_k: 100,
   max_temperature_k: 500,
-} as CalcRequest;
+};
 
 async function events(prefer?: string): Promise<FitEvent[]> {
   const found: FitEvent[] = [];
@@ -118,7 +122,7 @@ describe("against the mock", () => {
     ).toBe("guess");
   });
 
-  test("a fit gives its events, in each example of the contract", async () => {
+  test("a fit gives its events, in three examples of the contract", async () => {
     const single = await events();
     expect(single.map((event) => event.type)).toEqual(["started", "done"]);
 

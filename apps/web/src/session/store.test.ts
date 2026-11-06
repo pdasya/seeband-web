@@ -35,17 +35,17 @@ beforeEach(() => {
 
 describe("a fit", () => {
   test("goes from waiting through its events to a result", () => {
-    state().fitRequested();
+    const run = state().fitRequested();
     expect(state().fit).toEqual({ status: "waiting" });
 
-    state().fitEvent({ type: "started" });
+    state().fitEvent(run, { type: "started" });
     expect(state().fit).toEqual({
       status: "running",
       iteration: null,
       lastParameters: null,
     });
 
-    state().fitEvent({
+    state().fitEvent(run, {
       type: "iteration",
       iteration: 2,
       parameters: { m_eff: 0.5, A: null },
@@ -56,20 +56,20 @@ describe("a fit", () => {
       lastParameters: { m_eff: 0.5, A: null },
     });
 
-    state().fitEvent({ type: "done", result: RESULT });
+    state().fitEvent(run, { type: "done", result: RESULT });
     expect(state().fit).toEqual({ status: "done", result: RESULT });
   });
 
   test("after a stop, the last values received stay", () => {
-    state().fitRequested();
-    state().fitEvent({ type: "started" });
-    state().fitEvent({
+    const run = state().fitRequested();
+    state().fitEvent(run, { type: "started" });
+    state().fitEvent(run, {
       type: "iteration",
       iteration: 1,
       parameters: { m_eff: 0.5 },
     });
 
-    state().fitStopped();
+    state().fitStopped(run);
 
     expect(state().fit).toEqual({
       status: "stopped",
@@ -79,9 +79,9 @@ describe("a fit", () => {
   });
 
   test("a stop while waiting has no values", () => {
-    state().fitRequested();
+    const run = state().fitRequested();
 
-    state().fitStopped();
+    state().fitStopped(run);
 
     expect(state().fit).toEqual({
       status: "stopped",
@@ -91,27 +91,51 @@ describe("a fit", () => {
   });
 
   test("events after a stop do not change it", () => {
-    state().fitRequested();
-    state().fitStopped();
+    const run = state().fitRequested();
+    state().fitStopped(run);
     const stopped = state().fit;
 
-    state().fitEvent({ type: "done", result: RESULT });
-    state().fitFailed({ code: "stream_ended", message: "m", details: [] });
+    state().fitEvent(run, { type: "done", result: RESULT });
+    state().fitFailed(run, { code: "stream_ended", message: "m", details: [] });
 
     expect(state().fit).toBe(stopped);
   });
 
   test("an error event fails it, with the code to translate", () => {
     const error = { code: "fit_timeout", message: "m", details: [] };
-    state().fitRequested();
+    const run = state().fitRequested();
 
-    state().fitEvent({ type: "error", error });
+    state().fitEvent(run, { type: "error", error });
 
     expect(state().fit).toEqual({ status: "failed", failure: error });
   });
 
+  test("a second run ignores everything from the first", () => {
+    const first = state().fitRequested();
+    state().fitEvent(first, { type: "started" });
+    const second = state().fitRequested();
+    expect(state().fit).toEqual({ status: "waiting" });
+
+    state().fitEvent(first, { type: "done", result: RESULT });
+    state().fitEvent(first, {
+      type: "iteration",
+      iteration: 9,
+      parameters: {},
+    });
+    state().fitStopped(first);
+    state().fitFailed(first, {
+      code: "stream_ended",
+      message: "m",
+      details: [],
+    });
+    expect(state().fit).toEqual({ status: "waiting" });
+
+    state().fitEvent(second, { type: "done", result: RESULT });
+    expect(state().fit).toEqual({ status: "done", result: RESULT });
+  });
+
   test("a stop with no fit running does nothing", () => {
-    state().fitStopped();
+    state().fitStopped(0);
 
     expect(state().fit).toEqual({ status: "idle" });
   });
@@ -125,8 +149,7 @@ describe("a change after a result", () => {
     ["parameters", () => state().setParameters({ m_eff: 2 })],
     ["one parameter", () => state().setParameter("m_eff", 2)],
   ])("%s clears the result, which no longer matches", (_, change) => {
-    state().fitRequested();
-    state().fitEvent({ type: "done", result: RESULT });
+    state().fitEvent(state().fitRequested(), { type: "done", result: RESULT });
 
     change();
 
@@ -134,8 +157,7 @@ describe("a change after a result", () => {
   });
 
   test("it leaves a running fit alone, as stopping it is the caller's", () => {
-    state().fitRequested();
-    state().fitEvent({ type: "started" });
+    state().fitEvent(state().fitRequested(), { type: "started" });
 
     state().setParameter("m_eff", 2);
 

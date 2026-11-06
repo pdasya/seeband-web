@@ -74,10 +74,11 @@ export interface SessionState {
   setSelection: (selection: Partial<Selection>) => void;
   setParameters: (parameters: Record<string, number>) => void;
   setParameter: (name: string, value: number) => void;
-  fitRequested: () => void;
-  fitEvent: (event: FitEvent) => void;
-  fitStopped: () => void;
-  fitFailed: (failure: FitFailure) => void;
+  /** Starts a new run, which replaces any other, and returns its id for the calls below. */
+  fitRequested: () => number;
+  fitEvent: (run: number, event: FitEvent) => void;
+  fitStopped: (run: number) => void;
+  fitFailed: (run: number, failure: FitFailure) => void;
 }
 
 function isActive(fit: FitState): boolean {
@@ -112,6 +113,8 @@ function afterEvent(fit: FitState, event: FitEvent): FitState {
  */
 export const createSessionStore = () =>
   create<SessionState>()((set) => {
+    // Late events of an old run must not reach a newer one, or the wrong result would show.
+    let currentRun = 0;
     const withoutOldResult = (fit: FitState): FitState =>
       isActive(fit) ? fit : { status: "idle" };
 
@@ -151,16 +154,23 @@ export const createSessionStore = () =>
         }));
       },
       fitRequested: () => {
+        currentRun += 1;
         set({ fit: { status: "waiting" } });
+        return currentRun;
       },
       // An event after a stop belongs to a fit that no longer counts.
-      fitEvent: (event) => {
+      fitEvent: (run, event) => {
         set((state) =>
-          isActive(state.fit) ? { fit: afterEvent(state.fit, event) } : state,
+          run === currentRun && isActive(state.fit)
+            ? { fit: afterEvent(state.fit, event) }
+            : state,
         );
       },
-      fitStopped: () => {
+      fitStopped: (run) => {
         set((state) => {
+          if (run !== currentRun) {
+            return state;
+          }
           if (state.fit.status === "waiting") {
             return {
               fit: { status: "stopped", iteration: null, lastParameters: null },
@@ -172,9 +182,11 @@ export const createSessionStore = () =>
           return state;
         });
       },
-      fitFailed: (failure) => {
+      fitFailed: (run, failure) => {
         set((state) =>
-          isActive(state.fit) ? { fit: { status: "failed", failure } } : state,
+          run === currentRun && isActive(state.fit)
+            ? { fit: { status: "failed", failure } }
+            : state,
         );
       },
     };

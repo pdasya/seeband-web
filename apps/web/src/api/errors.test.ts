@@ -73,6 +73,47 @@ describe("errors of a call", () => {
     );
   });
 
+  test("an abort while reading an error's body stays an abort", async () => {
+    const abort = new DOMException("Aborted", "AbortError");
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.error(abort);
+      },
+    });
+    const client = new ApiClient({
+      fetch: () => Promise.resolve(new Response(body, { status: 429 })),
+    });
+
+    await expect(client.getHealth()).rejects.toBe(abort);
+  });
+
+  test.each([
+    ["5", 5],
+    ["0", 0],
+    ["", null],
+    ["-1", null],
+    ["Wed, 21 Oct 2026 07:28:00 GMT", null],
+  ])("a Retry-After of %j gives %j", async (header, expected) => {
+    const body = JSON.stringify({
+      code: "rate_limited",
+      message: "m",
+      details: [],
+    });
+    const client = new ApiClient({
+      fetch: () =>
+        Promise.resolve(
+          new Response(body, {
+            status: 429,
+            headers: { "Retry-After": header },
+          }),
+        ),
+    });
+
+    await expect(client.getHealth()).rejects.toMatchObject({
+      retryAfterS: expected,
+    });
+  });
+
   test("a request sends its body as JSON, and calls fetch with no other this", async () => {
     let seen: RequestInit | undefined;
     const client = new ApiClient({
