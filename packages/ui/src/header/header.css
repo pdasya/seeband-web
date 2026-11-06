@@ -1,0 +1,110 @@
+/* Plain CSS over the tokens, as the site and the app share it with no build step in common.
+   It needs `tokens.css`, and has no colours or width without it. */
+.sb-header {
+  border-bottom: 1px solid var(--border);
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-family-sans);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.sb-header__inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 24px;
+  box-sizing: border-box;
+  max-width: var(--layout-max-width);
+  margin: 0 auto;
+  padding: 12px 24px;
+}
+
+.sb-header__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sb-header__logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.sb-header__name {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.sb-header__stage {
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  color: var(--color-zinc-600);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.sb-header__nav {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.sb-header__link {
+  padding: 6px 12px;
+  border-radius: 6px;
+  color: var(--color-zinc-600);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.sb-header__link:hover {
+  color: var(--foreground);
+}
+
+.sb-header__link--current {
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.sb-header__languages {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 8px;
+  background: var(--muted);
+}
+
+.sb-header__language {
+  height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-zinc-600);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.sb-header__language[aria-pressed="true"] {
+  background: var(--background);
+  color: var(--foreground);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.1);
+}
+
+.sb-header a:focus-visible,
+.sb-header button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}

@@ -1,0 +1,85 @@
+---
+// The header for Astro. `SiteHeader.tsx` draws the same markup, and a test compares them.
+import {
+  hasLanguageChoice,
+  linkClass,
+  LOGO_PATHS,
+  type HeaderModel,
+} from "./model";
+
+type Props = HeaderModel;
+
+const { name, stage, navigationLabel, links, languages } = Astro.props;
+const choice = hasLanguageChoice(languages) ? languages : null;
+---
+
+<header class="sb-header">
+  <div class="sb-header__inner">
+    <div class="sb-header__brand">
+      <div class="sb-header__logo">
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          {LOGO_PATHS.map((path) => <path d={path} />)}
+        </svg>
+      </div>
+      <div class="sb-header__name">{name}</div>
+      <span class="sb-header__stage">{stage}</span>
+    </div>
+    <nav aria-label={navigationLabel} class="sb-header__nav">
+      {
+        links.map((link) => (
+          <a
+              href={link.href}
+              class={linkClass(link.current)}
+              aria-current={link.current === true ? "page" : undefined}
+            >
+              {link.label}
+            </a>
+        ))
+      }
+    </nav>
+    {
+      choice !== null && (
+        <div
+          role="group"
+          aria-label={choice.label}
+          class="sb-header__languages"
+        >
+          {choice.options.map((option) => (
+            <button
+              type="button"
+              aria-pressed={option.code === choice.current ? "true" : "false"}
+              aria-label={option.name}
+              data-language={option.code}
+              class="sb-header__language"
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      )
+    }
+  </div>
+</header>
+
+<script>
+  // A page with no language choice has no such buttons, so this does nothing there.
+  // A static page cannot read the cookie, so S1 must also go to the page in that language.
+  import { languageCookie } from "./language";
+
+  for (const button of document.querySelectorAll<HTMLElement>("[data-language]")) {
+    button.addEventListener("click", () => {
+      document.cookie = languageCookie(button.dataset.language ?? "");
+      location.reload();
+    });
+  }
+</script>

@@ -25,7 +25,7 @@ pnpm --filter @seeband/web preview  # the production build at /app/
 - **A move inside the app takes focus to `main`,** so that a screen reader follows it. Scroll position is not handled, as the pages are short so far.
 - **Headings on the fit screen come in the design's order:** Data and Model come before the `h1`, as the side panel does. V2 should check this with a screen reader.
 - **All text is in `src/strings.ts`** until [U3](https://github.com/pdasya/seeband-web/issues/36) brings i18n. Add new text there.
-- **The header stays here until [U6](https://github.com/pdasya/seeband-web/issues/37)** shares it with the site, and adds the language switch. The design's Export button comes with R4.
+- **The header comes from `packages/ui`,** shared with the site. `shell/AppHeader.tsx` only gives it the app's links. The language switch stays hidden until [U3](https://github.com/pdasya/seeband-web/issues/36), and the design's Export button comes with R4.
 
 ## Talking to the API
 

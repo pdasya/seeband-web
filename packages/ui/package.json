@@ -6,10 +6,31 @@
   "exports": {
     "./tokens.css": "./src/tokens.css",
     "./theme.css": "./src/theme.css",
-    "./fonts.css": "./src/fonts.css"
+    "./fonts.css": "./src/fonts.css",
+    "./header.css": "./src/header/header.css",
+    "./SiteHeader": "./src/header/SiteHeader.tsx",
+    "./SiteHeader.astro": "./src/header/SiteHeader.astro",
+    "./language": "./src/header/language.ts",
+    "./header-model": "./src/header/model.ts"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.3.0",
     "@fontsource-variable/geist-mono": "^5.3.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "astro": "^7.4.5",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "typescript": "^6.0.3",
+    "vitest": "^5.1.0"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "react": "^19.3.1"
   }
 }
