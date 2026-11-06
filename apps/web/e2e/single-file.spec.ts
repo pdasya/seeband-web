@@ -86,7 +86,7 @@ test("detected columns show, with chips and a preview", async ({ page }) => {
   await expect(page.getByText("R_H · 3 points")).toBeVisible();
   await expect(page.getByRole("columnheader", { name: "T ← T" })).toBeVisible();
   await expect(page.getByRole("row")).toHaveCount(4);
-  await expect(page.getByRole("cell", { name: "1.000e-4" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "1,000e-4" })).toBeVisible();
 });
 
 test("the panel says what each source expects, with its units", async ({

@@ -31,8 +31,8 @@ export const STRINGS = {
       dimensionless: "",
       unknown: "unit not known",
     },
-    outOfRange: (minimum: number, maximum: number) =>
-      `enter a number from ${String(minimum)} to ${String(maximum)}. The last valid value stays in use.`,
+    outOfRange: (minimum: string, maximum: string) =>
+      `enter a number from ${minimum} to ${maximum}. The last valid value stays in use.`,
   },
   model: {
     title: "Model",

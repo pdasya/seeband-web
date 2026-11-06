@@ -5,6 +5,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
 import { useFitRange } from "@/data/useInterpolation";
 import { QUANTITIES, useSessionStore, type Quantity } from "@/session/store";
+import { formatNumber } from "@/lib/numbers";
 import { STRINGS } from "@/strings";
 
 const { data: text } = STRINGS;
@@ -73,7 +74,7 @@ export function InterpolationSwitch() {
           ? text.interpolation.working
           : ""}
         {interpolation.enabled && !interpolation.loading && range !== null
-          ? `${text.interpolation.range} ${String(range.minK)}–${String(range.maxK)} K`
+          ? `${text.interpolation.range} ${formatNumber(range.minK)}–${formatNumber(range.maxK)} K`
           : ""}
         {interpolation.enabled && range === null
           ? text.interpolation.noRange

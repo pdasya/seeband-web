@@ -138,6 +138,44 @@ describe("conversion", () => {
   });
 });
 
+describe("displayToCore on whole control units", () => {
+  test("gives what the desktop's slider sends, for every position of every parameter", () => {
+    const wrong: string[] = [];
+    for (const model of models) {
+      for (const { id, parameters } of model.fit_modes) {
+        for (const p of parameters) {
+          const { minimum, maximum } = p.value_range;
+          const stride = Math.max(1, Math.floor((maximum - minimum) / 5000));
+          for (let units = minimum; units <= maximum; units += stride) {
+            const display = tidy(
+              p.display_scale < 1
+                ? units / Math.round(1 / p.display_scale)
+                : units * p.display_scale,
+            );
+            const expected =
+              p.fit_scale < 1
+                ? units / Math.round(1 / p.fit_scale)
+                : units * p.fit_scale;
+            if (displayToCore(p, display) !== expected) {
+              wrong.push(`${id} ${p.name} ${String(units)}`);
+            }
+          }
+        }
+      }
+    }
+    expect(wrong).toEqual([]);
+  });
+
+  test("keeps 2.55 from becoming 254.99999999999997", () => {
+    expect(displayToCore(parameter("spb_s_rho", "C"), 2.55)).toBe(255);
+    expect(displayToCore(parameter("spb_s_rho", "C"), 1.15)).toBe(115);
+  });
+
+  test("a value between units stays between them", () => {
+    expect(displayToCore(parameter("spb_s_rho", "C"), 1.234)).toBe(123.4);
+  });
+});
+
 describe("typedDisplayValue", () => {
   const mass = parameter("spb_s", "band_mass");
 
@@ -145,6 +183,7 @@ describe("typedDisplayValue", () => {
     expect(typedDisplayValue(mass, "-3")).toBe(-3);
     expect(typedDisplayValue(mass, "3")).toBe(3);
     expect(typedDisplayValue(mass, "1.2345")).toBe(1.2345);
+    expect(typedDisplayValue(mass, "1,2345")).toBe(1.2345);
   });
 
   test("refuses anything else", () => {

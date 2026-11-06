@@ -5,6 +5,7 @@ import { modelsQuery } from "@/api/queries";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
+import { formatNumber } from "@/lib/numbers";
 import {
   coreToDisplay,
   displayToCore,
@@ -33,7 +34,7 @@ function hint({ meaning, unit }: ParameterDescription): string {
   return shown === "" ? meaning : `${meaning}, ${shown}`;
 }
 
-// Arrows move by one step, and Page keys by ten, as the slider itself does.
+// Arrows move by one step, Page keys by ten, and so do Shift and an arrow, as in the slider itself.
 const KEY_STEPS: Readonly<Record<string, number>> = {
   ArrowRight: 1,
   ArrowUp: 1,
@@ -54,6 +55,8 @@ function ParameterControl({
   onChange: (value: number) => void;
 }) {
   const id = useId();
+  const hintId = useId();
+  const errorId = useId();
   // Text only while it is being typed, or while it cannot be used.
   const [draft, setDraft] = useState<string | null>(null);
   const [invalid, setInvalid] = useState(false);
@@ -94,13 +97,13 @@ function ParameterControl({
         </div>
         <Input
           id={id}
-          type="number"
-          step="any"
-          min={minimum}
-          max={maximum}
+          // As a text field, it shows the same format everywhere. Some keypads for decimals have no minus.
+          inputMode={minimum < 0 ? "text" : "decimal"}
+          autoComplete="off"
+          aria-describedby={invalid ? `${hintId} ${errorId}` : hintId}
           className="h-8 w-28 flex-none text-right font-mono text-[13px]"
           aria-invalid={invalid}
-          value={draft ?? String(displayed)}
+          value={draft ?? formatNumber(displayed)}
           onChange={(event) => {
             setDraft(event.target.value);
             setInvalid(false);
@@ -113,7 +116,9 @@ function ParameterControl({
           }}
         />
       </div>
-      <span className="text-xs text-muted-foreground">{hint(parameter)}</span>
+      <span id={hintId} className="text-xs text-muted-foreground">
+        {hint(parameter)}
+      </span>
       <Slider
         aria-label={label}
         min={minimum}
@@ -130,7 +135,7 @@ function ParameterControl({
           const steps = KEY_STEPS[event.key];
           if (steps !== undefined) {
             event.preventDefault();
-            const multiplier = event.shiftKey ? 10 : 1;
+            const multiplier = event.shiftKey && Math.abs(steps) === 1 ? 10 : 1;
             const next = steppedDisplayValue(
               parameter,
               displayed,
@@ -143,12 +148,12 @@ function ParameterControl({
         }}
       />
       <div className="flex justify-between font-mono text-[11px] text-muted-foreground">
-        <span>{minimum}</span>
-        <span>{maximum}</span>
+        <span>{formatNumber(minimum)}</span>
+        <span>{formatNumber(maximum)}</span>
       </div>
       {invalid && (
-        <span role="alert" className="text-xs text-destructive">
-          {`${label}: ${text.outOfRange(minimum, maximum)}`}
+        <span id={errorId} role="alert" className="text-xs text-destructive">
+          {`${label}: ${text.outOfRange(formatNumber(minimum), formatNumber(maximum))}`}
         </span>
       )}
     </div>

@@ -11,6 +11,7 @@ import {
   type Quantity,
   type SessionData,
 } from "@/session/store";
+import { withDecimalComma } from "@/lib/numbers";
 import { STRINGS } from "@/strings";
 
 const TEMPERATURE_FORMAT = new Intl.NumberFormat("en", {
@@ -33,8 +34,12 @@ function Symbol({ children, filled }: { children: string; filled: boolean }) {
 
 function fileSummary(quantity: Quantity, { measurement }: SessionData): string {
   const { data } = STRINGS;
-  const low = TEMPERATURE_FORMAT.format(measurement.min_temperature_k);
-  const high = TEMPERATURE_FORMAT.format(measurement.max_temperature_k);
+  const low = withDecimalComma(
+    TEMPERATURE_FORMAT.format(measurement.min_temperature_k),
+  );
+  const high = withDecimalComma(
+    TEMPERATURE_FORMAT.format(measurement.max_temperature_k),
+  );
   return `${String(measurement.points)} ${data.points} · ${low}–${high} K · ${data.quantities[quantity].unit}`;
 }
 

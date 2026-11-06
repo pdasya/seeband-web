@@ -9,7 +9,7 @@ async function open(page: Page) {
 }
 
 const field = (page: Page, name: string) =>
-  page.getByRole("spinbutton", { name, exact: true });
+  page.getByRole("textbox", { name, exact: true });
 const slider = (page: Page, name: string) =>
   page.getByRole("slider", { name, exact: true });
 const choose = (page: Page, name: string) =>
@@ -43,7 +43,7 @@ test("starts with the mode's parameters, defaults and ranges", async ({
 }) => {
   await open(page);
 
-  await expect(field(page, "m₂/m₁")).toHaveValue("1.01");
+  await expect(field(page, "m₂/m₁")).toHaveValue("1,01");
   await expect(field(page, "E_g")).toHaveValue("1000");
   await expect(field(page, "E_F")).toHaveValue("-100");
   await expect(field(page, "A")).toHaveValue("40000");
@@ -83,7 +83,7 @@ test("the SPB mass spans both signs, and is marked as not fitted", async ({
   await open(page);
   await choose(page, "SPB");
 
-  await expect(field(page, "m")).toHaveValue("1.01");
+  await expect(field(page, "m")).toHaveValue("1,01");
   await expect(slider(page, "m")).toHaveAttribute("aria-valuemin", "-3");
   await expect(slider(page, "m")).toHaveAttribute("aria-valuemax", "3");
   await expect(page.getByText("not fitted")).toHaveCount(1);
@@ -107,10 +107,10 @@ test("a typed value counts on leaving the field, and moves the slider", async ({
 
   await expect(slider(page, "E_g")).toHaveAttribute("aria-valuenow", "1234.5");
   await moveAway(page);
-  await expect(field(page, "E_g")).toHaveValue("1234.5");
+  await expect(field(page, "E_g")).toHaveValue("1234,5");
 });
 
-for (const typed of ["3001", "-3001", ""]) {
+for (const typed of ["3001", "-3001", "", "abc", "1,2,3"]) {
   test(`"${typed}" is refused, says why, and keeps the last value`, async ({
     page,
   }) => {
@@ -145,6 +145,53 @@ test("moving the slider replaces a refused number", async ({ page }) => {
   await expect(field(page, "E_g")).toHaveValue("1010");
 });
 
+test("numbers show a decimal comma, and take a comma or a point", async ({
+  page,
+}) => {
+  await open(page);
+
+  await expect(field(page, "m₂/m₁")).toHaveValue("1,01");
+  await expect(page.getByText("0,9", { exact: true })).toBeVisible();
+  await expect(page.getByText("1,1", { exact: true })).toBeVisible();
+
+  await field(page, "E_g").fill("12,5");
+  await field(page, "E_g").blur();
+  await expect(slider(page, "E_g")).toHaveAttribute("aria-valuenow", "12.5");
+  await expect(field(page, "E_g")).toHaveValue("12,5");
+
+  await field(page, "E_g").fill("13.5");
+  await field(page, "E_g").blur();
+  await expect(slider(page, "E_g")).toHaveAttribute("aria-valuenow", "13.5");
+  await expect(field(page, "E_g")).toHaveValue("13,5");
+});
+
+test("a message about a number is tied to its field", async ({ page }) => {
+  await open(page);
+
+  await field(page, "E_F").fill("9999");
+  await field(page, "E_F").blur();
+
+  await expect(field(page, "E_F")).toHaveAccessibleDescription(
+    /Fermi energy.*enter a number from -3000 to 3000/,
+  );
+});
+
+test("a slider's whole position reaches the session exactly", async ({
+  page,
+}) => {
+  await open(page);
+  await choose(page, "SPB");
+  await choose(page, "S + ρ");
+  await chooseScattering(page, /acPhDis/);
+  await field(page, "C").fill("2,54");
+  await field(page, "C").press("Enter");
+
+  await slider(page, "C").press("ArrowRight");
+
+  expect(await stored(page, "spb_s_rho")).toEqual({ C: 255 });
+  await expect(field(page, "C")).toHaveValue("2,55");
+});
+
 test("the keyboard moves by the description's step", async ({ page }) => {
   await open(page);
 
@@ -157,6 +204,9 @@ test("the keyboard moves by the description's step", async ({ page }) => {
   await expect(field(page, "A")).toHaveValue("49000");
   await slider(page, "A").press("Shift+ArrowLeft");
   await expect(field(page, "A")).toHaveValue("39000");
+  await slider(page, "A").press("Shift+PageUp");
+  await expect(field(page, "A")).toHaveValue("49000");
+  await slider(page, "A").press("PageDown");
   await slider(page, "A").press("Home");
   await expect(field(page, "A")).toHaveValue("0");
   await slider(page, "A").press("End");
@@ -173,7 +223,7 @@ test("a value between steps stays, and a step moves on from it", async ({
   await expect(slider(page, "m₂/m₁")).toHaveAttribute("aria-valuenow", "1.234");
   await slider(page, "m₂/m₁").press("ArrowRight");
 
-  await expect(field(page, "m₂/m₁")).toHaveValue("1.244");
+  await expect(field(page, "m₂/m₁")).toHaveValue("1,244");
 });
 
 test("G with R_H keeps its default off the large step", async ({ page }) => {
@@ -202,7 +252,7 @@ test("dragging moves by whole control units, not by the step", async ({
   await page.mouse.click(box.x + box.width * 0.4, box.y + box.height / 2);
 
   // With its step of 1 as a grid, only 0.5, 1.5 and so on could be reached.
-  const value = Number(await field(page, "G").inputValue());
+  const value = Number((await field(page, "G").inputValue()).replace(",", "."));
   expect(value).not.toBe(1);
   expect(value).toBeGreaterThan(1);
   expect(value).toBeLessThan(1.2);
@@ -223,7 +273,7 @@ test("where the two scales differ, the session holds core units", async ({
   await field(page, "C").press("Enter");
 
   expect(await stored(page, "spb_s_rho")).toEqual({ C: 150 });
-  await expect(field(page, "C")).toHaveValue("1.5");
+  await expect(field(page, "C")).toHaveValue("1,5");
 });
 
 test("each fit mode keeps its own values and defaults", async ({ page }) => {
@@ -294,7 +344,7 @@ test("leaving a field unchanged keeps a result and the exact value", async ({
   await field(page, "E_g").press("Enter");
   await field(page, "E_g").blur();
   // Typing the number that is shown, written differently, is no change either.
-  await field(page, "E_g").fill("1000.0");
+  await field(page, "E_g").fill("1000,0");
   await field(page, "E_g").blur();
 
   expect(await fitStatus()).not.toBe("idle");

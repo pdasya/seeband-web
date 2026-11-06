@@ -243,6 +243,8 @@ export function buildFigure(
     paper_bgcolor: theme.background,
     plot_bgcolor: theme.background,
     font: { family: theme.fontFamily },
+    // The decimal comma of the rest of the app, with no grouping.
+    separators: ",",
     showlegend: false,
     hovermode: "closest",
     xaxis: {

@@ -150,7 +150,7 @@ test("the real descriptions fill the parameters", async ({ page }) => {
   await page.goto("/fit");
 
   await expect(
-    page.getByRole("spinbutton", { name: "E_F", exact: true }),
+    page.getByRole("textbox", { name: "E_F", exact: true }),
   ).toHaveValue("-100");
   await page.getByRole("radio", { name: "SPB" }).click();
   await expect(

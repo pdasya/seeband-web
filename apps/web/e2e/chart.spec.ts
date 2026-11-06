@@ -196,3 +196,27 @@ test("a picture of the chart, to compare with the design", async ({ page }) => {
     .locator("figure")
     .screenshot({ path: "test-results/chart.png", animations: "disabled" });
 });
+
+test("ticks with decimals show a comma", async ({ page }) => {
+  await openChart(page);
+
+  await page.evaluate(async () => {
+    const path = "/src/charts/loadPlotly.ts";
+    const { loadPlotly } = (await import(/* @vite-ignore */ path)) as {
+      loadPlotly: () => Promise<{
+        relayout: (element: Element, update: object) => Promise<unknown>;
+      }>;
+    };
+    const plotly = await loadPlotly();
+    const element = document.querySelector(".js-plotly-plot");
+    if (element !== null) {
+      await plotly.relayout(element, {
+        "yaxis.range": [0, 0.5],
+        "yaxis.dtick": 0.1,
+      });
+    }
+  });
+
+  await expect(page.locator(".ytick text").getByText("0,1")).toBeVisible();
+  await expect(page.locator(".ytick text").getByText("0.1")).toHaveCount(0);
+});

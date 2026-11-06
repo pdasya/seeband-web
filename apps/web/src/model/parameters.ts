@@ -1,5 +1,6 @@
 import type { components } from "@seeband/api-client";
 
+import { parseNumber } from "@/lib/numbers";
 import type { FitModeDescription } from "@/model/selection";
 
 export type ParameterDescription = components["schemas"]["ParameterResponse"];
@@ -44,13 +45,17 @@ export function coreToDisplay(
     : scaled(value, parameter.display_scale / parameter.fit_scale);
 }
 
+/**
+ * Tidied where the scales differ, so 2.55 at a display scale of 0.01 and a fit scale of 1 gives 255,
+ * as the desktop's slider sends, where 2.55 * 100 is 254.99999999999997.
+ */
 export function displayToCore(
   parameter: ParameterDescription,
   value: number,
 ): number {
   return parameter.display_scale === parameter.fit_scale
     ? value
-    : scaled(value, parameter.fit_scale / parameter.display_scale);
+    : tidy(scaled(value, parameter.fit_scale / parameter.display_scale));
 }
 
 /** A displayed number, without the noise of binary fractions such as 1.1500000000000001. */
@@ -63,14 +68,9 @@ export function typedDisplayValue(
   parameter: ParameterDescription,
   text: string,
 ): number | null {
-  const value = Number(text);
+  const value = parseNumber(text);
   const { minimum, maximum } = parameter.display_range;
-  return text.trim() !== "" &&
-    Number.isFinite(value) &&
-    value >= minimum &&
-    value <= maximum
-    ? value
-    : null;
+  return value !== null && value >= minimum && value <= maximum ? value : null;
 }
 
 /** One keyboard step from a displayed value. A step is an increment, not a grid. */
