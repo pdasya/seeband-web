@@ -1,13 +1,25 @@
-import type { ReactNode } from "react";
-import { Outlet } from "react-router";
+import { useEffect, useRef } from "react";
+import { Outlet, useLocation } from "react-router";
 
 import { AppHeader } from "@/shell/AppHeader";
 import { STRINGS } from "@/strings";
 
 const MAIN_ID = "main";
 
-/** What every screen shares. `children` replaces the routed page, for the error view. */
-export function AppShell({ children }: { children?: ReactNode }) {
+/** What every screen shares. */
+export function AppShell() {
+  const { pathname } = useLocation();
+  const main = useRef<HTMLElement>(null);
+  const shownPath = useRef(pathname);
+
+  // After a move inside the app, focus would stay on a link, and a screen reader would say nothing.
+  useEffect(() => {
+    if (shownPath.current !== pathname) {
+      shownPath.current = pathname;
+      main.current?.focus();
+    }
+  }, [pathname]);
+
   return (
     <div className="min-h-screen">
       <a
@@ -18,11 +30,12 @@ export function AppShell({ children }: { children?: ReactNode }) {
       </a>
       <AppHeader />
       <main
+        ref={main}
         id={MAIN_ID}
         tabIndex={-1}
-        className="mx-auto box-border max-w-[var(--layout-max-width)] p-6"
+        className="mx-auto box-border max-w-[var(--layout-max-width)] p-6 outline-none"
       >
-        {children ?? <Outlet />}
+        <Outlet />
       </main>
     </div>
   );

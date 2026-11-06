@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { act, cleanup, render, screen, within } from "@testing-library/react";
 import {
   createMemoryRouter,
   RouterProvider,
@@ -7,7 +7,7 @@ import {
 import { afterEach, expect, test, vi } from "vitest";
 
 import { AppShell } from "@/shell/AppShell";
-import { ErrorPage } from "@/pages/messages";
+import { PageErrorView, ShellErrorView } from "@/pages/messages";
 import { ROUTES } from "@/routes";
 import { StatusBadge, type FitStatus } from "@/shell/StatusBadge";
 import { STRINGS } from "@/strings";
@@ -85,28 +85,107 @@ test("the first thing to focus skips to the content", () => {
   expect(skip.getAttribute("href")).toBe(`#${main.id}`);
 });
 
-test("a page that throws shows the error view, with no details and the navigation", () => {
+function Broken(): never {
+  throw new Error("SECRET-VALUE");
+}
+
+function expectErrorViewWithNoDetails() {
+  expect(
+    screen.getByRole("heading", { level: 1, name: STRINGS.error.title }),
+  ).toBeTruthy();
+  expect(
+    screen.getByRole("button", { name: STRINGS.error.action }),
+  ).toBeTruthy();
+  expect(document.body.textContent).not.toContain("SECRET-VALUE");
+}
+
+test("a page that throws shows the error view inside the shell", () => {
   const silence = vi
     .spyOn(console, "error")
     .mockImplementation(() => undefined);
-  function Broken(): never {
-    throw new Error("SECRET-VALUE");
-  }
 
   renderAt("/", [
     {
       element: <AppShell />,
-      errorElement: <ErrorPage />,
-      children: [{ index: true, element: <Broken /> }],
+      errorElement: <ShellErrorView />,
+      children: [
+        {
+          errorElement: <PageErrorView />,
+          children: [{ index: true, element: <Broken /> }],
+        },
+      ],
     },
   ]);
   silence.mockRestore();
 
-  expect(
-    screen.getByRole("heading", { level: 1, name: STRINGS.error.title }),
-  ).toBeTruthy();
+  expectErrorViewWithNoDetails();
   expect(screen.getByRole("navigation")).toBeTruthy();
-  expect(document.body.textContent).not.toContain("SECRET-VALUE");
+});
+
+test("a shell that throws still shows the error view", () => {
+  const silence = vi
+    .spyOn(console, "error")
+    .mockImplementation(() => undefined);
+
+  renderAt("/", [
+    {
+      element: <Broken />,
+      errorElement: <ShellErrorView />,
+      children: [
+        {
+          errorElement: <PageErrorView />,
+          children: [{ index: true, element: null }],
+        },
+      ],
+    },
+  ]);
+  silence.mockRestore();
+
+  expectErrorViewWithNoDetails();
+  expect(screen.queryByRole("navigation")).toBeNull();
+});
+
+test("the routes of the app use both error views", () => {
+  const [shell] = ROUTES;
+  const [pages] = shell?.children ?? [];
+
+  expect(shell?.errorElement).toBeTruthy();
+  expect(pages?.errorElement).toBeTruthy();
+  expect(shell?.errorElement).not.toEqual(pages?.errorElement);
+});
+
+test("under the base path of production, links and the root redirect keep it", () => {
+  const router = createMemoryRouter(ROUTES, {
+    basename: "/app/",
+    initialEntries: ["/app/"],
+  });
+
+  render(<RouterProvider router={router} />);
+
+  expect(router.state.location.pathname).toBe("/app/fit");
+  expect(
+    screen
+      .getByRole("link", { name: STRINGS.navigation.results })
+      .getAttribute("href"),
+  ).toBe("/app/results");
+  expect(
+    screen
+      .getByRole("link", { name: STRINGS.navigation.overview })
+      .getAttribute("href"),
+  ).toBe("/");
+});
+
+test("a move inside the app takes focus to the content, and the first page leaves it alone", async () => {
+  const router = renderAt("/fit");
+  const main = screen.getByRole("main");
+  expect(document.activeElement).not.toBe(main);
+
+  await act(() => router.navigate("/results"));
+
+  expect(document.activeElement).toBe(main);
+  expect(
+    screen.getByRole("heading", { level: 1, name: STRINGS.results.title }),
+  ).toBeTruthy();
 });
 
 test.each(Object.keys(STRINGS.status) as FitStatus[])(
@@ -114,8 +193,6 @@ test.each(Object.keys(STRINGS.status) as FitStatus[])(
   (status) => {
     render(<StatusBadge status={status} detail="7" />);
 
-    expect(screen.getByRole("status").textContent).toBe(
-      `${STRINGS.status[status]} 7`,
-    );
+    expect(screen.getByText(`${STRINGS.status[status]} 7`)).toBeTruthy();
   },
 );

@@ -1,7 +1,6 @@
 import { Link } from "react-router";
 
 import { Button } from "@/components/ui/button";
-import { AppShell } from "@/shell/AppShell";
 import { PageHeading } from "@/shell/layout";
 import { STRINGS } from "@/strings";
 
@@ -23,14 +22,10 @@ export function NotFoundPage() {
   );
 }
 
-/**
- * Shows no details of the error, whose message could quote a user's data. The shell stays, as the
- * error may lie in a page, and navigation is the way out of it.
- */
-export function ErrorPage() {
+function ErrorMessage() {
   const { error } = STRINGS;
   return (
-    <AppShell>
+    <>
       <title>{`${error.pageTitle} · ${STRINGS.appName}`}</title>
       <PageHeading
         title={error.title}
@@ -46,6 +41,24 @@ export function ErrorPage() {
           </Button>
         }
       />
-    </AppShell>
+    </>
+  );
+}
+
+/**
+ * For an error in a page. It appears inside the shell, as navigation is a way out.
+ *
+ * Neither view shows details of the error, whose message could quote a user's data.
+ */
+export function PageErrorView() {
+  return <ErrorMessage />;
+}
+
+/** For an error in the shell itself. So it uses nothing of the shell, or it would fail too. */
+export function ShellErrorView() {
+  return (
+    <main className="mx-auto box-border max-w-[var(--layout-max-width)] p-6">
+      <ErrorMessage />
+    </main>
   );
 }
