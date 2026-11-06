@@ -11,3 +11,4 @@ packages/seeband_core/tests/fixtures/golden/
 packages/seeband_core/docs/golden-results-summary.md
 packages/api-client/openapi.json
 packages/api-client/src/schema.d.ts
+apps/web/public/licenses/

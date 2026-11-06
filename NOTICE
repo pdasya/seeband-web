@@ -33,3 +33,12 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+--------------------------------------------------------------------------------
+
+The components in apps/web/src/components/ui are adapted from shadcn/ui,
+https://github.com/shadcn-ui/ui, under the MIT License.
+Copyright (c) 2023 shadcn
+
+Geist and Geist Mono, served with the app, are under the SIL Open Font License
+1.1. Their licenses are in apps/web/public/licenses, and are served with them.
