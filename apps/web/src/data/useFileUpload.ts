@@ -1,12 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { apiClient } from "@/api/client";
-import { issueMessage, failureMessage } from "@/data/messages";
+import { failureMessage, issueMessage, noDataMessages } from "@/data/messages";
 import { readFileText } from "@/data/readFile";
 import { useSessionStore, type Quantity } from "@/session/store";
-import { STRINGS } from "@/strings";
-
-const MAX_SHOWN_ERRORS = 3;
 
 export type UploadState =
   | { status: "idle"; warnings: readonly string[] }
@@ -14,14 +11,6 @@ export type UploadState =
   | { status: "failed"; name: string; errors: readonly string[] };
 
 const IDLE: UploadState = { status: "idle", warnings: [] };
-
-function shownErrors(errors: readonly string[], total: number): string[] {
-  const shown = errors.slice(0, MAX_SHOWN_ERRORS);
-  const more = total - shown.length;
-  return more > 0
-    ? [...shown, `${STRINGS.data.andMore} ${String(more)}`]
-    : shown;
-}
 
 /**
  * Loads a file into one quantity of the session. A new file replaces the last one, and stops a
@@ -64,16 +53,10 @@ export function useFileUpload(quantity: Quantity) {
         }
         const measurement = parsed.measurements[quantity];
         if (parsed.errors.length > 0 || measurement === undefined) {
-          const errors = [...parsed.errors, ...parsed.warnings].map(
-            issueMessage,
-          );
           setState({
             status: "failed",
             name: file.name,
-            errors: shownErrors(
-              errors.length > 0 ? errors : [STRINGS.data.quantityNotFound],
-              errors.length,
-            ),
+            errors: noDataMessages(parsed.errors, parsed.warnings),
           });
           return;
         }

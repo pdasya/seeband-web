@@ -1,13 +1,15 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 // Against a real API, as the mock's answers do not depend on the file. See the README.
 test.skip(
   process.env.SEEBAND_API_TARGET === undefined,
   "Needs a real API, through SEEBAND_API_TARGET",
 );
+
+const slots = (page: Page) => page.locator("[data-file-slot]");
 
 const EXAMPLES = fileURLToPath(
   new URL(
@@ -27,13 +29,19 @@ for (const example of ["01_Fe2VAl09Si01", "02_SiP", "03_AWI32_SI"]) {
         .locator('input[type="file"]')
         .first()
         .setInputFiles(`${EXAMPLES}${name}`);
-      await expect(page.getByText(name)).toBeVisible();
+      await expect(slots(page).getByText(name)).toBeVisible();
     }
 
     await expect(page.getByRole("alert")).toHaveCount(0);
-    await expect(page.getByText(/\d+ points · .* K · V\/K/)).toBeVisible();
-    await expect(page.getByText(/\d+ points · .* K · Ω·m/)).toBeVisible();
-    await expect(page.getByText(/\d+ points · .* K · m³\/C/)).toBeVisible();
+    await expect(
+      slots(page).getByText(/\d+ points · .* K · V\/K/),
+    ).toBeVisible();
+    await expect(
+      slots(page).getByText(/\d+ points · .* K · Ω·m/),
+    ).toBeVisible();
+    await expect(
+      slots(page).getByText(/\d+ points · .* K · m³\/C/),
+    ).toBeVisible();
   });
 }
 

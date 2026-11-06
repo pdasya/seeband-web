@@ -4,7 +4,13 @@ import {
   UploadIcon,
   XIcon,
 } from "lucide-react";
-import { useState, type ChangeEvent, type DragEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type DragEvent,
+} from "react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -55,6 +61,10 @@ function FileName({ children }: { children: string }) {
   );
 }
 
+function dataName({ source }: SessionData): string {
+  return source.kind === "file" ? source.name : STRINGS.data.demoSource;
+}
+
 /** One quantity's file: a place to drop or choose it, then its card. */
 export function FileSlot({ quantity }: { quantity: Quantity }) {
   const { data: text } = STRINGS;
@@ -62,14 +72,30 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
   const data = useSessionStore((state) => state.data[quantity]);
   const { state, upload, remove, fail } = useFileUpload(quantity);
   const [dragging, setDragging] = useState(false);
+  const input = useRef<HTMLInputElement>(null);
+  const removeButton = useRef<HTMLButtonElement>(null);
+  // The element with focus goes away when a slot changes, so it comes back to the slot's control.
+  const keepFocus = useRef(false);
+
+  useEffect(() => {
+    if (keepFocus.current && state.status !== "loading") {
+      keepFocus.current = false;
+      (input.current ?? removeButton.current)?.focus();
+    }
+  });
 
   const onChoose = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     // So that choosing the same file again, perhaps after editing it, reads it again.
     event.target.value = "";
     if (file !== undefined) {
+      keepFocus.current = true;
       void upload(file);
     }
+  };
+  const onRemove = () => {
+    keepFocus.current = true;
+    remove();
   };
   const onDrop = (event: DragEvent) => {
     event.preventDefault();
@@ -83,9 +109,12 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
     }
   };
   const dropTarget = {
+    "data-file-slot": quantity,
     onDragOver: (event: DragEvent) => {
-      event.preventDefault();
-      setDragging(true);
+      if (event.dataTransfer.types.includes("Files")) {
+        event.preventDefault();
+        setDragging(true);
+      }
     },
     onDragLeave: () => {
       setDragging(false);
@@ -94,30 +123,23 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
   };
   const dropping = dragging && "border-ring bg-muted";
 
+  // Always there, as a screen reader may not read out a live region that arrives filled.
+  let announcement = "";
+  if (state.status === "loading") {
+    announcement = `${state.name}: ${text.reading}`;
+  } else if (data !== undefined) {
+    announcement = `${names.title}: ${dataName(data)}, ${fileSummary(quantity, data)}`;
+  }
+  const status = (
+    <div role="status" className="sr-only">
+      {announcement}
+    </div>
+  );
+
   if (state.status === "loading") {
     return (
-      <div
-        role="status"
-        className="flex items-center gap-3 rounded-lg border px-3 py-2.5"
-        {...dropTarget}
-      >
-        <Symbol filled>{names.symbol}</Symbol>
-        <div className="min-w-0 flex-auto">
-          <FileName>{state.name}</FileName>
-          <div className="text-xs text-muted-foreground">{text.reading}</div>
-        </div>
-        <LoaderCircleIcon
-          className="size-4 flex-none animate-spin text-muted-foreground"
-          aria-hidden="true"
-        />
-      </div>
-    );
-  }
-
-  if (data !== undefined) {
-    const { source } = data;
-    return (
-      <div className="flex flex-col gap-1.5">
+      <>
+        {status}
         <div
           className={cn(
             "flex items-center gap-3 rounded-lg border px-3 py-2.5",
@@ -127,26 +149,50 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
         >
           <Symbol filled>{names.symbol}</Symbol>
           <div className="min-w-0 flex-auto">
-            <FileName>
-              {source.kind === "file" ? source.name : text.demoSource}
-            </FileName>
+            <FileName>{state.name}</FileName>
+            <div className="text-xs text-muted-foreground">{text.reading}</div>
+          </div>
+          <LoaderCircleIcon
+            className="size-4 flex-none animate-spin text-muted-foreground"
+            aria-hidden="true"
+          />
+        </div>
+      </>
+    );
+  }
+
+  if (data !== undefined) {
+    return (
+      <div className="flex flex-col gap-1.5">
+        {status}
+        <div
+          className={cn(
+            "flex items-center gap-3 rounded-lg border px-3 py-2.5",
+            dropping,
+          )}
+          {...dropTarget}
+        >
+          <Symbol filled>{names.symbol}</Symbol>
+          <div className="min-w-0 flex-auto">
+            <FileName>{dataName(data)}</FileName>
             <div className="text-xs text-muted-foreground">
               {fileSummary(quantity, data)}
             </div>
           </div>
           <Button
+            ref={removeButton}
             variant="ghost"
             size="icon-sm"
             aria-label={`${text.remove} ${names.symbol}`}
-            onClick={remove}
+            onClick={onRemove}
           >
             <XIcon aria-hidden="true" />
           </Button>
         </div>
         {state.status === "idle" && state.warnings.length > 0 && (
           <ul className="m-0 list-none p-0 text-xs text-muted-foreground">
-            {state.warnings.map((warning) => (
-              <li key={warning}>{warning}</li>
+            {state.warnings.map((warning, index) => (
+              <li key={index}>{warning}</li>
             ))}
           </ul>
         )}
@@ -156,9 +202,10 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
 
   return (
     <div className="flex flex-col gap-1.5">
+      {status}
       <label
         className={cn(
-          "relative flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-[var(--color-zinc-300)] bg-[var(--color-zinc-50)] px-3 py-2.5 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-ring",
+          "relative flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-[var(--color-zinc-300)] bg-[var(--color-zinc-50)] px-3 py-2.5 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring",
           dropping,
         )}
         {...dropTarget}
@@ -173,6 +220,7 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
           aria-hidden="true"
         />
         <input
+          ref={input}
           type="file"
           accept={ACCEPTED_EXTENSIONS.join(",")}
           className="sr-only"
@@ -187,8 +235,8 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
               <div className="font-mono break-all">{state.name}</div>
             )}
             <ul className="m-0 list-none p-0">
-              {state.errors.map((error) => (
-                <li key={error}>{error}</li>
+              {state.errors.map((error, index) => (
+                <li key={index}>{error}</li>
               ))}
             </ul>
           </AlertDescription>

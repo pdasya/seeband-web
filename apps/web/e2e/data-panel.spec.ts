@@ -30,6 +30,9 @@ const answerWith =
   (route: Route) =>
     route.fulfill({ status, json: body });
 
+// The name also appears in a hidden status for a screen reader, so this looks only at the cards.
+const slots = (page: Page) => page.locator("[data-file-slot]");
+
 const seebeckInput = (page: Page) => page.locator('input[type="file"]').nth(0);
 
 async function choose(page: Page, name: string, text = "T S\n100 1e-4\n") {
@@ -62,13 +65,15 @@ test("a file becomes a card with its name, points and range, and can go", async 
 
   await choose(page, "my_S.txt");
 
-  await expect(page.getByText("my_S.txt")).toBeVisible();
-  await expect(page.getByText("3 points · 100–300 K · V/K")).toBeVisible();
+  await expect(slots(page).getByText("my_S.txt")).toBeVisible();
+  await expect(
+    slots(page).getByText("3 points · 100–300 K · V/K"),
+  ).toBeVisible();
   await expect(page.locator('input[type="file"]')).toHaveCount(2);
 
   await page.getByRole("button", { name: "Remove file S" }).click();
 
-  await expect(page.getByText("my_S.txt")).toHaveCount(0);
+  await expect(slots(page).getByText("my_S.txt")).toHaveCount(0);
   await expect(page.locator('input[type="file"]')).toHaveCount(3);
 });
 
@@ -83,7 +88,7 @@ test("the request says which quantity the slot wants, and holds the text", async
 
   await choose(page, "a.txt", "T S\n100 1e-4\n");
 
-  await expect(page.getByText("3 points")).toBeVisible();
+  await expect(slots(page).getByText("3 points")).toBeVisible();
   expect(bodies).toEqual([{ text: "T S\n100 1e-4\n", expected: "seebeck" }]);
 });
 
@@ -113,7 +118,7 @@ test("a dropped file loads, and the page does not open it", async ({
     );
   });
 
-  await expect(page.getByText("dropped.csv")).toBeVisible();
+  await expect(slots(page).getByText("dropped.csv")).toBeVisible();
   expect(page.url()).toBe(url);
 });
 
@@ -145,14 +150,48 @@ test("several files dropped at once are refused, with no request", async ({
   expect(requests).toBe(0);
 });
 
-test("a drop beside the slots does not leave the page", async ({ page }) => {
-  const prevented = await page.evaluate(() => {
-    const event = new DragEvent("drop", { bubbles: true, cancelable: true });
-    document.body.dispatchEvent(event);
+test("a file dropped beside the slots does not leave the page, and text can go into a field", async ({
+  page,
+}) => {
+  const defaultPrevented = await page.evaluate(() => {
+    const drop = (build: (transfer: DataTransfer) => void) => {
+      const dataTransfer = new DataTransfer();
+      build(dataTransfer);
+      const event = new DragEvent("drop", {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer,
+      });
+      document.body.dispatchEvent(event);
+      return event.defaultPrevented;
+    };
+    return {
+      file: drop((transfer) => {
+        transfer.items.add(new File(["x"], "a.txt"));
+      }),
+      text: drop((transfer) => {
+        transfer.setData("text/plain", "words");
+      }),
+    };
+  });
+
+  expect(defaultPrevented).toEqual({ file: true, text: false });
+});
+
+test("dragged text does not light up a slot", async ({ page }) => {
+  const lit = await page.evaluate(() => {
+    const dataTransfer = new DataTransfer();
+    dataTransfer.setData("text/plain", "words");
+    const event = new DragEvent("dragover", {
+      bubbles: true,
+      cancelable: true,
+      dataTransfer,
+    });
+    document.querySelector("label")?.dispatchEvent(event);
     return event.defaultPrevented;
   });
 
-  expect(prevented).toBe(true);
+  expect(lit).toBe(false);
 });
 
 test("a broken file shows a specific error, with its line", async ({
@@ -217,7 +256,7 @@ test("warnings appear under the card, which stays", async ({ page }) => {
 
   await choose(page, "a.txt");
 
-  await expect(page.getByText("3 points")).toBeVisible();
+  await expect(slots(page).getByText("3 points")).toBeVisible();
   await expect(page.getByText("Rows were not in order of T")).toBeVisible();
 });
 
@@ -241,9 +280,19 @@ const REFUSALS = [
     text: "more than 2000 rows",
   },
   {
-    name: "any other",
+    name: "a server error",
     status: 500,
     body: { code: "internal_error", message: "SECRET-VALUE", details: [] },
+    text: "server is not responding",
+  },
+  {
+    name: "any other",
+    status: 422,
+    body: {
+      code: "invalid_parse_request",
+      message: "SECRET-VALUE",
+      details: [],
+    },
     text: "could not be read",
   },
 ];
@@ -260,6 +309,113 @@ for (const { name, status, body, text } of REFUSALS) {
     await expect(page.getByRole("alert")).not.toContainText("SECRET-VALUE");
   });
 }
+
+test("a server that is down does not blame the file", async ({ page }) => {
+  await page.route("**/api/parse", (route) =>
+    route.fulfill({ status: 502, contentType: "text/plain", body: "" }),
+  );
+
+  await choose(page, "fine.txt");
+
+  await expect(page.getByRole("alert")).toContainText(
+    "server is not responding",
+  );
+  await expect(page.getByRole("alert")).not.toContainText("could not be read");
+});
+
+test("two columns with the same problem are told apart, with no console error", async ({
+  page,
+}) => {
+  const problems: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error") {
+      problems.push(message.text());
+    }
+  });
+  await page.route(
+    "**/api/parse",
+    answerWith(
+      parsed({
+        warnings: [
+          { code: "unit_differs", column: 2 },
+          { code: "unit_differs", column: 3 },
+          { code: "few_rows" },
+          { code: "few_rows" },
+        ],
+      }),
+    ),
+  );
+
+  await choose(page, "a.txt");
+
+  await expect(
+    page.getByText("Column 3: A column with another unit"),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Column 4: A column with another unit"),
+  ).toBeVisible();
+  expect(problems.filter((text) => text.includes("same key"))).toEqual([]);
+});
+
+test("a file of another quantity says so, without unrelated warnings", async ({
+  page,
+}) => {
+  await page.route(
+    "**/api/parse",
+    answerWith(
+      parsed({
+        measurements: { resistivity: SEEBECK },
+        warnings: [{ code: "few_rows" }, { code: "expected_not_found" }],
+      }),
+    ),
+  );
+
+  await choose(page, "rho.txt");
+
+  await expect(page.getByRole("alert")).toContainText(
+    "no column for this quantity",
+  );
+  await expect(page.getByRole("alert")).not.toContainText("neural net");
+});
+
+test("a load is told to a screen reader, in a place that was already there", async ({
+  page,
+}) => {
+  await page.route("**/api/parse", answerWith(parsed()));
+  const status = page.getByRole("status").first();
+  await expect(status).toBeEmpty();
+
+  await choose(page, "a.txt");
+
+  await expect(status).toContainText("Seebeck coefficient: a.txt");
+  await expect(status).toContainText("3 points");
+});
+
+test("focus stays in the slot through a choice and a removal", async ({
+  page,
+}) => {
+  await page.route("**/api/parse", answerWith(parsed()));
+  await seebeckInput(page).focus();
+
+  await choose(page, "a.txt");
+
+  const remove = page.getByRole("button", { name: "Remove file S" });
+  await expect(remove).toBeFocused();
+
+  await page.keyboard.press("Enter");
+
+  await expect(seebeckInput(page)).toBeFocused();
+});
+
+test("focus comes back to the slot after a failure", async ({ page }) => {
+  await page.route("**/api/parse", (route) => route.abort());
+  await seebeckInput(page).focus();
+
+  await choose(page, "a.txt");
+
+  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(seebeckInput(page)).toBeFocused();
+});
 
 test("a lost connection has its message", async ({ page }) => {
   await page.route("**/api/parse", (route) => route.abort());
@@ -291,13 +447,14 @@ test("a read under way shows, and a second file takes over from it", async ({
   });
 
   await choose(page, "first.txt");
-  await expect(page.getByRole("status")).toContainText("first.txt");
-  await expect(page.getByRole("status")).toContainText("Reading");
+  const seebeckStatus = page.getByRole("status").first();
+  await expect(seebeckStatus).toContainText("first.txt");
+  await expect(seebeckStatus).toContainText("Reading");
 
   await page.evaluate(() => {
     const transfer = new DataTransfer();
     transfer.items.add(new File(["T S\n"], "second.txt"));
-    document.querySelector('[role="status"]')?.dispatchEvent(
+    document.querySelector('[data-file-slot="seebeck"]')?.dispatchEvent(
       new DragEvent("drop", {
         bubbles: true,
         cancelable: true,
@@ -305,14 +462,14 @@ test("a read under way shows, and a second file takes over from it", async ({
       }),
     );
   });
-  await expect(page.getByRole("status")).toContainText("second.txt");
+  await expect(seebeckStatus).toContainText("second.txt");
   await expect.poll(() => waiting.length).toBe(2);
 
   await waiting[1]?.fulfill({ json: parsed() });
-  await expect(page.getByText("second.txt")).toBeVisible();
+  await expect(slots(page).getByText("second.txt")).toBeVisible();
 
   await waiting[0]?.fulfill({ json: parsed() }).catch(() => undefined);
-  await expect(page.getByText("first.txt")).toHaveCount(0);
+  await expect(slots(page).getByText("first.txt")).toHaveCount(0);
 });
 
 test("choosing the same file again reads it again", async ({ page }) => {
@@ -323,11 +480,11 @@ test("choosing the same file again reads it again", async ({ page }) => {
   });
 
   await choose(page, "same.txt");
-  await expect(page.getByText("3 points")).toBeVisible();
+  await expect(slots(page).getByText("3 points")).toBeVisible();
   await page.getByRole("button", { name: "Remove file S" }).click();
   await choose(page, "same.txt");
 
-  await expect(page.getByText("3 points")).toBeVisible();
+  await expect(slots(page).getByText("3 points")).toBeVisible();
   expect(requests).toBe(2);
 });
 
@@ -342,26 +499,26 @@ test("after a failure, the same file can be chosen again", async ({ page }) => {
   await expect(page.getByRole("alert")).toBeVisible();
   await choose(page, "same.txt");
 
-  await expect(page.getByText("3 points")).toBeVisible();
+  await expect(slots(page).getByText("3 points")).toBeVisible();
   await expect(page.getByRole("alert")).toHaveCount(0);
 });
 
 test("data stay when moving to another screen and back", async ({ page }) => {
   await page.route("**/api/parse", answerWith(parsed()));
   await choose(page, "kept.txt");
-  await expect(page.getByText("kept.txt")).toBeVisible();
+  await expect(slots(page).getByText("kept.txt")).toBeVisible();
 
   await page.getByRole("link", { name: "Results" }).click();
   await page.getByRole("link", { name: "Model fit" }).click();
 
-  await expect(page.getByText("kept.txt")).toBeVisible();
+  await expect(slots(page).getByText("kept.txt")).toBeVisible();
 });
 
-test("a slot can be reached and shows focus with the keyboard", async ({
-  page,
-}) => {
-  await seebeckInput(page).focus();
+test("a slot shows focus when reached with the keyboard", async ({ page }) => {
+  await page.locator("nav a").last().focus();
+  await page.keyboard.press("Tab");
 
+  await expect(seebeckInput(page)).toBeFocused();
   const outline = await page
     .locator("label")
     .first()

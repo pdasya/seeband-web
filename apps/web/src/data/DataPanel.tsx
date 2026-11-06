@@ -4,11 +4,14 @@ import { FileSlot } from "@/data/FileSlot";
 import { Panel } from "@/shell/layout";
 import { STRINGS } from "@/strings";
 
-/** A file dropped just beside a slot would otherwise open in the tab, and lose the session. */
+/** A file dropped just beside a slot would otherwise open in the tab, and lose the session.
+ * Text is left alone, as a drop into a field is useful. */
 function useNoDropOutsideSlots() {
   useEffect(() => {
     const prevent = (event: DragEvent) => {
-      event.preventDefault();
+      if (event.dataTransfer?.types.includes("Files") === true) {
+        event.preventDefault();
+      }
     };
     window.addEventListener("dragover", prevent);
     window.addEventListener("drop", prevent);

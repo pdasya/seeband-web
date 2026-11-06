@@ -22,6 +22,7 @@ export const STRINGS = {
     remove: "Remove file",
     points: "points",
     line: "Line",
+    column: "Column",
     andMore: "More problems:",
     demoSource: "Demo data",
     oneFile: "Drop one file at a time.",
@@ -30,6 +31,8 @@ export const STRINGS = {
     rateLimited: "Too many files in a short time. Try again in a minute.",
     networkError: "The server could not be reached. Check your connection.",
     parseFailed: "The file could not be read. Try again.",
+    serverUnavailable:
+      "The server is not responding, so the file was not read. Try again shortly.",
     fileProblems: {
       wrong_file_type: "Choose a .txt, .csv or .dat file.",
       file_too_large: "This file is too large.",
