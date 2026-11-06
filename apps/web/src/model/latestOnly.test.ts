@@ -287,6 +287,17 @@ describe("stopping", () => {
     expect(results).toEqual([]);
   });
 
+  test("a request that was stopped does not count as stuck later", async () => {
+    const { failures, sender } = setUp();
+    sender.change("a", false);
+    await rest();
+
+    sender.change(null, false);
+    await vi.advanceTimersByTimeAsync(STUCK_AFTER_MS);
+
+    expect(failures).toEqual([]);
+  });
+
   test("the same values after that ask again", async () => {
     const { calls, sender } = setUp();
     sender.change("a", false);

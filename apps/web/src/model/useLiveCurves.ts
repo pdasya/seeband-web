@@ -71,7 +71,8 @@ export function useLiveCurves(): LiveCurves {
   // Leaving the page ends what is running, and no late answer can come in.
   useEffect(() => () => sender.dispose(), [sender]);
 
-  const pending = body !== null && (waiting || answers.settled !== body);
+  // While interpolated values are on their way, the request has no measurements, so it differs too.
+  const pending = body !== null && answers.settled !== body;
   const [longPending, setLongPending] = useState(false);
   if (!pending && longPending) {
     setLongPending(false);
