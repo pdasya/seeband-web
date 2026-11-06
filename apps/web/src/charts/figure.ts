@@ -31,6 +31,8 @@ export interface ReferenceLine {
 export interface FigureInput {
   curves: readonly ChartCurve[];
   measurements: ChartMeasurements | null;
+  /** Calculated from the measurements, so that they do not pass for measured points. */
+  interpolated?: ChartMeasurements | null;
   fitRange: ChartFitRange | null;
   referenceLines: readonly ReferenceLine[];
   xAxisTitle: string;
@@ -97,6 +99,7 @@ function axisMaxK(input: FigureInput): number {
     include(curve.temperatureK);
   }
   include(input.measurements?.temperatureK ?? []);
+  include(input.interpolated?.temperatureK ?? []);
   include(input.fitRange === null ? [] : [input.fitRange.maxK]);
   return maxK > 0 ? Math.ceil(maxK / AXIS_STEP_K) * AXIS_STEP_K : DEFAULT_MAX_K;
 }
@@ -129,6 +132,7 @@ function yAxisTicks(
     include(curve.values);
   }
   include(input.measurements?.values ?? []);
+  include(input.interpolated?.values ?? []);
   include(input.referenceLines.map((line) => line.value));
   if (low > high) {
     return null;
@@ -294,7 +298,22 @@ export function buildFigure(
       font: { size: 11, color: theme.titleText, family: theme.fontFamily },
     })),
   };
-  return { data: [...lines, ...points], layout };
+  const interpolated: Data[] =
+    input.interpolated == null
+      ? []
+      : [
+          {
+            type: "scatter",
+            mode: "markers",
+            cliponaxis: false,
+            name: input.interpolated.label,
+            x: [...input.interpolated.temperatureK],
+            y: [...input.interpolated.values],
+            marker: { size: 5, color: theme.curves.orange },
+          },
+        ];
+  // Measured points last, so that they stay in view above the rest.
+  return { data: [...lines, ...interpolated, ...points], layout };
 }
 
 export const PLOT_CONFIG: Partial<Config> = {

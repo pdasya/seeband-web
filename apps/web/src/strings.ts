@@ -176,6 +176,7 @@ export const STRINGS = {
     fitAxis: "S, µV/K",
     model: "Model",
     measurements: "Measurements",
+    interpolated: "Interpolated",
     updating: "Updating…",
     lastCurveStays: "The last curve stays on the chart.",
     noResult: "The calculation has no result for these parameters.",

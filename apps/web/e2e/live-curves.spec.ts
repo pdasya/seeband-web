@@ -655,6 +655,78 @@ test("the range holds the request back while interpolated values are on their wa
   expect(bodies[1]?.extrapolated).toBe(true);
 });
 
+test("with interpolation, measured and interpolated points are apart", async ({
+  page,
+}) => {
+  await open(page);
+  await collect(page);
+  await page.route("**/api/parse", (route) => {
+    const body = route.request().postDataJSON() as { interpolate?: object };
+    return route.fulfill({
+      json:
+        body.interpolate === undefined
+          ? PARSED
+          : {
+              ...PARSED,
+              interpolated: {
+                seebeck: {
+                  temperature_k: [100, 120, 140, 160],
+                  values: [1e-4, 2e-4, 2e-4, 1e-4],
+                  extrapolated: false,
+                  measured_points_in_range: 1,
+                  underdetermined: false,
+                },
+              },
+            },
+    });
+  });
+  await load(page);
+  const legend = (name: string) =>
+    page.getByRole("listitem").filter({ hasText: new RegExp(`^${name}$`) });
+  const points = page.locator(".scatterlayer .trace path.point");
+  await expect(legend("Measurements")).toBeVisible();
+  await expect(legend("Interpolated")).toHaveCount(0);
+  await expect(points).toHaveCount(3);
+
+  await page.getByRole("switch", { name: /Interpolation/ }).click();
+
+  // All 3 measured points stay, also the 2 outside the fit range, with the 4 interpolated.
+  await expect(legend("Interpolated")).toBeVisible();
+  await expect(legend("Measurements")).toBeVisible();
+  await expect(points).toHaveCount(7);
+
+  await page.getByRole("switch", { name: "Show measurements" }).click();
+  await expect(legend("Interpolated")).toHaveCount(0);
+  await expect(points).toHaveCount(0);
+  await page.getByRole("switch", { name: "Show measurements" }).click();
+
+  await page.getByRole("switch", { name: /Interpolation/ }).click();
+  await expect(legend("Interpolated")).toHaveCount(0);
+  await expect(points).toHaveCount(3);
+});
+
+test("a failed interpolation leaves the measured points only", async ({
+  page,
+}) => {
+  await open(page);
+  await collect(page);
+  await load(page);
+  await expect(page.locator(".scatterlayer .trace path.point")).toHaveCount(3);
+  await page.route("**/api/parse", (route) =>
+    route.fulfill({
+      json: { ...PARSED, interpolation_failed: ["seebeck"] },
+    }),
+  );
+
+  await page.getByRole("switch", { name: /Interpolation/ }).click();
+
+  await expect(page.getByText("no usable interpolated values")).toBeVisible();
+  await expect(page.locator(".scatterlayer .trace path.point")).toHaveCount(3);
+  await expect(
+    page.getByRole("listitem").filter({ hasText: /^Interpolated$/ }),
+  ).toHaveCount(0);
+});
+
 test("known errors of a result are named", async ({ page }) => {
   await open(page);
   await collect(page, (route) =>

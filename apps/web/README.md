@@ -91,6 +91,7 @@ SEEBAND_API_TARGET=http://127.0.0.1:8000 pnpm --filter @seeband/web exec playwri
 - **A request waits** for 250 ms of rest, or 300 ms at the latest during a long drag. FS12 tunes these over a real network.
 - **The chart keeps the last curve** while waiting and after an error, and the RMSE says then that it is not current. An indicator appears 600 ms after a change, as a quick answer would make it flicker.
 - **A 429 with `Retry-After`** of up to 30 s holds requests back until then, and sends the latest values by itself. Any other error waits for the next change.
+- **Measured and interpolated points are two series.** Measured points always show. With the switch on, interpolated points show too, in another colour, as these are what the RMSE and a fit use.
 - **Only points in the fit range** go with a request, for the RMSE, and the `extrapolated` flag goes with them. Points of ρ and R_H with a value of 0 stay out, as the API refuses a relative RMSE there, and the panel says so.
 
 ## Numbers

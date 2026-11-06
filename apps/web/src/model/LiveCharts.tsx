@@ -8,7 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { retriesByItself } from "@/model/latestOnly";
 import { SEEBECK_CURVE, toMicrovoltPerK } from "@/model/liveCurves";
 import type { LiveCurves } from "@/model/useLiveCurves";
-import { fitData, useSessionStore } from "@/session/store";
+import { useSessionStore } from "@/session/store";
 import { Panel } from "@/shell/layout";
 import { STRINGS } from "@/strings";
 
@@ -49,18 +49,29 @@ export function LiveCharts({ live }: { live: LiveCurves }) {
           },
         ];
   }, [result]);
+  const seebeck = data.seebeck?.measurement;
   const measurements = useMemo((): ChartMeasurements | null => {
-    // Interpolated values on their way leave the measured ones in view.
-    const shown =
-      fitData({ data, interpolation }, "seebeck") ?? data.seebeck?.measurement;
-    return shown === undefined
+    return seebeck === undefined
       ? null
       : {
           label: text.measurements,
+          temperatureK: seebeck.temperature_k,
+          values: toMicrovoltPerK(seebeck.values),
+        };
+  }, [seebeck]);
+  // What the RMSE and a fit really use with the switch on, kept apart from what was measured.
+  const interpolatedPoints = useMemo((): ChartMeasurements | null => {
+    const shown = interpolation.values.seebeck;
+    return !interpolation.enabled ||
+      interpolation.loading ||
+      shown === undefined
+      ? null
+      : {
+          label: text.interpolated,
           temperatureK: shown.temperature_k,
           values: toMicrovoltPerK(shown.values),
         };
-  }, [data, interpolation]);
+  }, [interpolation]);
   const fitRange = useMemo((): ChartFitRange | null => {
     return minK === null || maxK === null ? null : { minK, maxK };
   }, [minK, maxK]);
@@ -92,6 +103,7 @@ export function LiveCharts({ live }: { live: LiveCurves }) {
           }
           curves={curves}
           measurements={measurements}
+          interpolated={interpolatedPoints}
           fitRange={fitRange}
           xAxisTitle={text.temperatureAxis}
           yAxisTitle={text.fitAxis}
