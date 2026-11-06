@@ -123,8 +123,11 @@ const INITIAL_INTERPOLATION: InterpolationState = {
 export interface SessionState {
   data: Partial<Record<Quantity, SessionData>>;
   selection: Selection;
-  /** In core units, as the API takes them. */
-  parameters: Record<string, number>;
+  /**
+   * What was set, per fit mode, in core units as the API takes them. Modes have their own defaults
+   * and ranges, so a value of one does not carry to another. `parameterValues` adds the defaults.
+   */
+  parameters: Record<string, Record<string, number>>;
   fit: FitState;
   dataMode: DataMode;
   singleFile: SingleFile | null;
@@ -154,8 +157,8 @@ export interface SessionState {
   setData: (quantity: Quantity, data: SessionData) => void;
   removeData: (quantity: Quantity) => void;
   setSelection: (selection: Partial<Selection>) => void;
-  setParameters: (parameters: Record<string, number>) => void;
-  setParameter: (name: string, value: number) => void;
+  setParameters: (fitMode: string, values: Record<string, number>) => void;
+  setParameter: (fitMode: string, name: string, value: number) => void;
   /** Starts a new run, which replaces any other, and returns its id for the calls below. */
   fitRequested: () => number;
   fitEvent: (run: number, event: FitEvent) => void;
@@ -347,12 +350,18 @@ export const createSessionStore = () =>
           fit: withoutOldResult(state.fit),
         }));
       },
-      setParameters: (parameters) => {
-        set((state) => ({ parameters, fit: withoutOldResult(state.fit) }));
-      },
-      setParameter: (name, value) => {
+      setParameters: (fitMode, values) => {
         set((state) => ({
-          parameters: { ...state.parameters, [name]: value },
+          parameters: { ...state.parameters, [fitMode]: values },
+          fit: withoutOldResult(state.fit),
+        }));
+      },
+      setParameter: (fitMode, name, value) => {
+        set((state) => ({
+          parameters: {
+            ...state.parameters,
+            [fitMode]: { ...state.parameters[fitMode], [name]: value },
+          },
           fit: withoutOldResult(state.fit),
         }));
       },

@@ -14,6 +14,26 @@ export const STRINGS = {
     results: "Results",
     conventions: "Conventions",
   },
+  parameters: {
+    title: "Parameters",
+    fixed: "not fitted",
+    // How a parameter is written. Any other shows its name, so a new one needs no change here.
+    symbols: {
+      band_mass: "m",
+      m_eff: "m₂/m₁",
+      band_gap: "E_g",
+      fermi_energy: "E_F",
+      m1: "m₁",
+    },
+    units: {
+      m_e: "in mₑ",
+      K: "in K",
+      dimensionless: "",
+      unknown: "unit not known",
+    },
+    outOfRange: (minimum: number, maximum: number) =>
+      `enter a number from ${String(minimum)} to ${String(maximum)}. The last valid value stays in use.`,
+  },
   model: {
     title: "Model",
     subtitle: "Parabolic bands and scattering mechanism",
@@ -169,7 +189,6 @@ export const STRINGS = {
     subtitle: "Fit S(T), ρ(T) and R_H(T) with a parabolic band model",
     data: "Data",
     charts: "Charts",
-    parameters: "Parameters",
     result: "Result",
   },
   results: {
