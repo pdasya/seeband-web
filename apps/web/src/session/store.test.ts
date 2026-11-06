@@ -289,17 +289,49 @@ describe("interpolation", () => {
     expect(state().fit).toEqual({ status: "idle" });
   });
 
-  test("a failure says so, and leaves no values", () => {
+  test("a failure of one file says so, and leaves the others", () => {
     state().setInterpolationEnabled(true);
-    state().finishInterpolation({ seebeck: VALUES }, []);
 
-    state().failInterpolation("message");
+    state().finishInterpolation({ seebeck: VALUES }, ["hall"], "message");
 
     expect(state().interpolation).toMatchObject({
-      values: {},
+      values: { seebeck: VALUES },
+      failed: ["hall"],
       failure: "message",
       loading: false,
     });
+  });
+
+  test("while it waits for an answer, a fit reads nothing, as the values are old", () => {
+    state().setData("seebeck", DATA);
+    state().setInterpolationEnabled(true);
+    state().finishInterpolation({ seebeck: VALUES }, []);
+    expect(measured()).not.toBeNull();
+
+    state().startInterpolation();
+
+    expect(measured()).toBeNull();
+  });
+
+  test("stopping clears the wait, and leaves the rest", () => {
+    state().setInterpolationEnabled(true);
+    state().startInterpolation();
+
+    state().stopInterpolation();
+
+    expect(state().interpolation).toMatchObject({
+      enabled: true,
+      loading: false,
+    });
+  });
+
+  test("an answer does not clear a fit's result", () => {
+    state().setInterpolationEnabled(true);
+    state().fitEvent(state().fitRequested(), { type: "done", result: RESULT });
+
+    state().finishInterpolation({ seebeck: VALUES }, []);
+
+    expect(state().fit.status).toBe("done");
   });
 });
 

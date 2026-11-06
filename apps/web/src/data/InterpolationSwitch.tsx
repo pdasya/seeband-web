@@ -3,7 +3,7 @@ import { useId } from "react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
-import { useFitRange, useInterpolation } from "@/data/useInterpolation";
+import { useFitRange } from "@/data/useInterpolation";
 import { QUANTITIES, useSessionStore, type Quantity } from "@/session/store";
 import { STRINGS } from "@/strings";
 
@@ -47,7 +47,6 @@ export function InterpolationSwitch() {
   const interpolation = useSessionStore((state) => state.interpolation);
   const setEnabled = useSessionStore((state) => state.setInterpolationEnabled);
   const range = useFitRange();
-  useInterpolation(range);
 
   const flags = interpolation.enabled
     ? QUANTITIES.flatMap((quantity) =>

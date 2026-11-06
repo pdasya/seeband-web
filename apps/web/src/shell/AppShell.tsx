@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Outlet, useLocation } from "react-router";
 
+import { useInterpolation } from "@/data/useInterpolation";
 import { AppHeader } from "@/shell/AppHeader";
 import { STRINGS } from "@/strings";
 
@@ -9,6 +10,7 @@ const MAIN_ID = "main";
 /** What every screen shares. */
 export function AppShell() {
   const { pathname } = useLocation();
+  useInterpolation();
   const main = useRef<HTMLElement>(null);
   const shownPath = useRef(pathname);
 

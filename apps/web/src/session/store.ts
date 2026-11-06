@@ -128,11 +128,12 @@ export interface SessionState {
 
   setInterpolationEnabled: (enabled: boolean) => void;
   startInterpolation: () => void;
+  stopInterpolation: () => void;
   finishInterpolation: (
     values: InterpolatedQuantities,
     failed: readonly Quantity[],
+    failure?: string | null,
   ) => void;
-  failInterpolation: (failure: string) => void;
   /** Clears all the data, as what the other way loaded no longer shows. */
   setDataMode: (mode: DataMode) => void;
   /** Returns the id of this request, so that a late answer to an older one can be ignored. */
@@ -220,31 +221,25 @@ export const createSessionStore = () =>
           },
         }));
       },
-      finishInterpolation: (values, failed) => {
+      stopInterpolation: () => {
+        set((state) =>
+          state.interpolation.loading
+            ? { interpolation: { ...state.interpolation, loading: false } }
+            : state,
+        );
+      },
+      // What leads here has already cleared a fit's result: new data, a range or the switch.
+      finishInterpolation: (values, failed, failure = null) => {
         set((state) => ({
           interpolation: {
             ...state.interpolation,
             loading: false,
             values,
             failed,
-            failure: null,
-          },
-          fit: withoutOldResult(state.fit),
-        }));
-      },
-      failInterpolation: (failure) => {
-        set((state) => ({
-          interpolation: {
-            ...state.interpolation,
-            loading: false,
-            values: {},
-            failed: [],
             failure,
           },
-          fit: withoutOldResult(state.fit),
         }));
       },
-
       setDataMode: (mode) => {
         set((state) =>
           state.dataMode === mode
@@ -383,6 +378,10 @@ export function fitData(
   if (!state.interpolation.enabled) {
     const { temperature_k, values } = entry.measurement;
     return { temperature_k, values, extrapolated: entry.extrapolated };
+  }
+  // While it waits for an answer, the values are for an older range.
+  if (state.interpolation.loading) {
+    return null;
   }
   const result = state.interpolation.values[quantity];
   if (result?.values.some((value) => value === null) !== false) {

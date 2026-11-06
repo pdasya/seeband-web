@@ -253,16 +253,19 @@ test("a range it cannot use, and a server that is down, have their messages", as
 
   await interpolationSwitch(page).click();
 
-  await expect(page.getByRole("alert")).toContainText("span 20 to 200000 K");
-  await expect(page.getByRole("alert")).not.toContainText("SECRET-VALUE");
+  const refusal = page
+    .getByRole("alert")
+    .filter({ hasText: "span 20 to 200000 K" });
+  await expect(refusal).toBeVisible();
+  await expect(page.getByText("SECRET-VALUE")).toHaveCount(0);
 
   down = true;
   await interpolationSwitch(page).click();
   await expect(page.getByRole("alert")).toHaveCount(0);
   await interpolationSwitch(page).click();
-  await expect(page.getByRole("alert")).toContainText(
-    "server is not responding",
-  );
+  await expect(
+    page.getByRole("alert").filter({ hasText: "server is not responding" }),
+  ).toBeVisible();
 });
 
 test("a single file asks once, with its mapping", async ({ page }) => {
@@ -308,6 +311,134 @@ test("with no fit range to use, it says so", async ({ page }) => {
   await interpolationSwitch(page).click();
 
   await expect(page.getByText("The fit range is not known yet.")).toBeVisible();
+});
+
+test("removing a file during the wait does not leave the panel waiting", async ({
+  page,
+}) => {
+  await setUp(page, async (body, route) => {
+    if (body.interpolate === undefined) {
+      return route.fulfill({ json: parsed() });
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    return route.fulfill({
+      json: parsed({ interpolated: { seebeck: INTERPOLATED } }),
+    });
+  });
+  await loadSeebeck(page);
+  await interpolationSwitch(page).click();
+  await expect(page.getByText("Interpolating…")).toBeVisible();
+
+  await page.getByRole("button", { name: "Remove file S" }).click();
+
+  await expect(page.getByText("Interpolating…")).toHaveCount(0);
+  await expect(page.getByText("Fit range 50–800 K")).toBeVisible();
+});
+
+test("one file failing names it, and leaves the other's flags", async ({
+  page,
+}) => {
+  await setUp(page, (body, route) => {
+    if (body.interpolate === undefined) {
+      return route.fulfill({ json: parsed() });
+    }
+    return body.expected === "hall"
+      ? route.fulfill({
+          status: 429,
+          headers: { "Retry-After": "5" },
+          json: { code: "rate_limited", message: "x", details: [] },
+        })
+      : route.fulfill({
+          json: parsed({
+            interpolated: {
+              seebeck: { ...INTERPOLATED, extrapolated: true },
+            },
+          }),
+        });
+  });
+  await loadSeebeck(page);
+  await page.route("**/api/parse", (route) => {
+    const body = route.request().postDataJSON() as Body;
+    return body.interpolate === undefined
+      ? route.fulfill({
+          json: parsed({ measurements: { hall: MEASUREMENT } }),
+        })
+      : route.fallback();
+  });
+  await page
+    .locator('input[type="file"]')
+    .last()
+    .setInputFiles({
+      name: "h.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from("T R_H\n100 1e-7\n"),
+    });
+  await expect(slots(page).getByText("h.txt")).toBeVisible();
+
+  await interpolationSwitch(page).click();
+
+  const alerts = page.getByRole("alert");
+  await expect(alerts.filter({ hasText: "Too many files" })).toBeVisible();
+  const flags = alerts.filter({ hasText: "R_H:" });
+  await expect(flags).toContainText("R_H: could not be interpolated");
+  await expect(flags).toContainText("S: the grid goes beyond the data");
+});
+
+test("moving between screens sends nothing again, and it follows while away", async ({
+  page,
+}) => {
+  const bodies = await setUp(page, (body, route) =>
+    route.fulfill({
+      json: parsed(
+        body.interpolate === undefined
+          ? {}
+          : { interpolated: { seebeck: INTERPOLATED } },
+      ),
+    }),
+  );
+  await loadSeebeck(page);
+  await interpolationSwitch(page).click();
+  await expect.poll(() => bodies.length).toBe(2);
+
+  await page.getByRole("link", { name: "Results" }).click();
+  await page.getByRole("link", { name: "Model fit" }).click();
+  await expect(interpolationSwitch(page)).toBeChecked();
+  await page.waitForTimeout(600);
+
+  expect(bodies).toHaveLength(2);
+});
+
+test("a table with no data sends no request for values it cannot have", async ({
+  page,
+}) => {
+  const bodies = await setUp(page, (body, route) =>
+    route.fulfill({
+      json:
+        body.mapping === undefined
+          ? parsed()
+          : parsed({
+              mapping: body.mapping,
+              measurements: {},
+              errors: [{ code: "missing_temperature" }],
+            }),
+    }),
+  );
+  await page.getByRole("tab", { name: "Single file" }).click();
+  await page.locator('input[type="file"]').setInputFiles({
+    name: "all.csv",
+    mimeType: "text/plain",
+    buffer: Buffer.from("T,S\n100,1e-4\n"),
+  });
+  await expect(page.getByText("S · 3 points")).toBeVisible();
+  await page.getByRole("combobox", { name: "Quantity for column T" }).click();
+  await page.getByRole("option", { name: "Ignore", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("Check the mapping.");
+
+  await interpolationSwitch(page).click();
+  await page.waitForTimeout(600);
+
+  expect(bodies.filter((body) => body.interpolate !== undefined)).toEqual([]);
+  await expect(page.getByText("Interpolating…")).toHaveCount(0);
 });
 
 test("the switch stays when moving to another screen and back", async ({

@@ -43,7 +43,8 @@ function requestsFor(range: FitRange): InterpolationRequest[] {
     max_temperature_k: range.maxK,
   };
   if (dataMode === "single") {
-    return singleFile === null || singleFile.text === ""
+    // With no data, a table has errors, or is on its way, and an answer could only be empty.
+    return singleFile === null || Object.keys(data).length === 0
       ? []
       : [
           {
@@ -72,63 +73,67 @@ function requestsFor(range: FitRange): InterpolationRequest[] {
 /**
  * Keeps the interpolated values up to date with the switch, the data and the fit range. The API
  * keeps nothing, so each change asks again. The measured data stay as they are in the store.
+ *
+ * It runs in the app's shell rather than the data panel, so that moving between screens neither
+ * sends requests again nor stops following a change.
  */
-export function useInterpolation(range: FitRange | null) {
+export function useInterpolation() {
+  const range = useFitRange();
   const enabled = useSessionStore((state) => state.interpolation.enabled);
   const data = useSessionStore((state) => state.data);
-  const finish = useSessionStore((state) => state.finishInterpolation);
-  const fail = useSessionStore((state) => state.failInterpolation);
   const start = useSessionStore((state) => state.startInterpolation);
+  const stop = useSessionStore((state) => state.stopInterpolation);
+  const finish = useSessionStore((state) => state.finishInterpolation);
   const minK = range?.minK;
   const maxK = range?.maxK;
 
   useEffect(() => {
-    if (!enabled || minK === undefined || maxK === undefined) {
-      return;
-    }
-    const requests = requestsFor({ minK, maxK });
+    const requests =
+      enabled && minK !== undefined && maxK !== undefined
+        ? requestsFor({ minK, maxK })
+        : [];
     if (requests.length === 0) {
+      // A request stopped by this change must not leave the panel waiting for it.
+      stop();
       return;
     }
     const controller = new AbortController();
     const { signal } = controller;
     start();
     const timer = setTimeout(() => {
-      Promise.all(
-        requests.map(async ({ body, quantities }) => ({
-          quantities,
-          parsed: await apiClient.postParse(body, signal),
-        })),
-      ).then(
-        (answers) => {
-          if (signal.aborted) {
+      void Promise.allSettled(
+        requests.map(({ body }) => apiClient.postParse(body, signal)),
+      ).then((answers) => {
+        if (signal.aborted) {
+          return;
+        }
+        const values: InterpolatedQuantities = {};
+        const failed: Quantity[] = [];
+        let failure: string | null = null;
+        answers.forEach((answer, index) => {
+          const quantities = requests[index]?.quantities ?? [];
+          if (answer.status === "rejected") {
+            // One file's failure leaves the others, and the flags name it.
+            failed.push(...quantities);
+            failure ??= failureMessage(answer.reason);
             return;
           }
-          const values: InterpolatedQuantities = {};
-          const failed: Quantity[] = [];
-          for (const { quantities, parsed } of answers) {
-            for (const quantity of quantities) {
-              const result = parsed.interpolated[quantity];
-              if (result !== undefined) {
-                values[quantity] = result;
-              }
-              if (parsed.interpolation_failed.includes(quantity)) {
-                failed.push(quantity);
-              }
+          for (const quantity of quantities) {
+            const result = answer.value.interpolated[quantity];
+            if (result !== undefined) {
+              values[quantity] = result;
+            }
+            if (answer.value.interpolation_failed.includes(quantity)) {
+              failed.push(quantity);
             }
           }
-          finish(values, failed);
-        },
-        (error: unknown) => {
-          if (!signal.aborted) {
-            fail(failureMessage(error));
-          }
-        },
-      );
+        });
+        finish(values, failed, failure);
+      });
     }, DEBOUNCE_MS);
     return () => {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [enabled, minK, maxK, data, start, finish, fail]);
+  }, [enabled, minK, maxK, data, start, stop, finish]);
 }

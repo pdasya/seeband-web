@@ -37,6 +37,8 @@ Left for later tasks, and not to be lost:
 - **It follows the fit range and data.** The desktop's grid stays from the click (D23), so a comparison must click again after changing the range.
 - **A range it cannot use is an error shown to the user.** The desktop's button unchecks itself, and leaves the data raw (D23).
 - **A quantity that fails is named,** and a fit cannot read it. The desktop keeps it raw, and says nothing.
+- **A new file stays interpolated.** Loading a file on the desktop resets that quantity to raw data while its button stays checked. Here the switch stays on, and the new file is interpolated.
+- **All loaded quantities, for now.** The table above says that the switch applies to the quantities the fit mode uses. Until FS4 has a mode, it covers every loaded quantity, and FS8 reads only those of the mode.
 
 ## Known issues
 
