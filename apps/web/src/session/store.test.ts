@@ -4,7 +4,9 @@ import { beforeEach, describe, expect, test } from "vitest";
 import {
   createSessionStore,
   fitData,
+  holdsFiles,
   type FitResult,
+  type ParsedTable,
   type SessionData,
 } from "@/session/store";
 
@@ -170,6 +172,16 @@ describe("a change after a result", () => {
 
 describe("the source of data", () => {
   const FILE = { name: "a.csv", text: "T S", mapping: [], table: null };
+  const TABLE = {
+    column_count: 2,
+    row_count: 1,
+    preview: [],
+    mapping: [{ column: 0, role: "temperature" }],
+    measurements: {},
+    errors: [],
+    warnings: [],
+    warnings_omitted: 0,
+  } as unknown as ParsedTable;
 
   test("changing it clears the data and the table, and leaves a running fit", () => {
     state().setData("seebeck", DATA);
@@ -182,6 +194,70 @@ describe("the source of data", () => {
     expect(state().data).toEqual({});
     expect(state().singleFile).toBeNull();
     expect(state().fit.status).toBe("running");
+  });
+
+  test("coming back brings the files of that way", () => {
+    state().setData("seebeck", DATA);
+    state().setDataMode("single");
+    const request = state().startSingleFile(FILE);
+    state().finishSingleFile(TABLE);
+    state().setData("hall", DATA);
+
+    state().setDataMode("separate");
+    expect(state().data).toEqual({ seebeck: DATA });
+    expect(state().singleFile).toBeNull();
+
+    state().setDataMode("single");
+    expect(state().data).toEqual({ hall: DATA });
+    expect(state().singleFile).toMatchObject({ table: TABLE, loading: false });
+    expect(state().singleFile?.request).not.toBe(request);
+  });
+
+  test("a table still being read does not stay", () => {
+    state().setDataMode("single");
+    state().startSingleFile(FILE);
+
+    state().setDataMode("separate");
+    state().setDataMode("single");
+
+    expect(state().singleFile).toBeNull();
+  });
+
+  test("a change of mapping on its way leaves the last answer", () => {
+    state().setDataMode("single");
+    state().startSingleFile(FILE);
+    state().finishSingleFile(TABLE);
+    state().startSingleFile({ ...FILE, mapping: [], table: TABLE });
+
+    state().setDataMode("separate");
+    state().setDataMode("single");
+
+    expect(state().singleFile).toMatchObject({
+      table: TABLE,
+      mapping: TABLE.mapping,
+      loading: false,
+    });
+  });
+
+  test("files in either way count as files to lose", () => {
+    expect(holdsFiles(state())).toBe(false);
+
+    state().setData("seebeck", DATA);
+    expect(holdsFiles(state())).toBe(true);
+
+    state().setDataMode("single");
+    expect(holdsFiles(state())).toBe(true);
+
+    state().setDataMode("separate");
+    state().removeData("seebeck");
+    expect(holdsFiles(state())).toBe(false);
+  });
+
+  test("a read not yet answered is no file to lose", () => {
+    state().setDataMode("single");
+    state().startSingleFile(FILE);
+
+    expect(holdsFiles(state())).toBe(false);
   });
 
   test("choosing the same one again clears nothing", () => {

@@ -53,7 +53,7 @@ export interface FitData {
   extrapolated: boolean;
 }
 
-/** Data come from a file for each quantity, or from one table. Only one way at a time. */
+/** Data come from a file for each quantity, or from one table. Only one way counts at a time. */
 export type DataMode = "separate" | "single";
 
 /**
@@ -120,6 +120,35 @@ const INITIAL_INTERPOLATION: InterpolationState = {
   failure: null,
 };
 
+interface DataSourceFiles {
+  data: Partial<Record<Quantity, SessionData>>;
+  singleFile: SingleFile | null;
+}
+
+// Leaving a way of loading ends its read. A table on its way goes, and a change of mapping on its
+// way leaves the last answer, which the data belong to.
+function filesToKeep({
+  data,
+  singleFile,
+}: DataSourceFiles): DataSourceFiles | null {
+  if (singleFile?.loading === true && singleFile.table === null) {
+    return null;
+  }
+  return {
+    data,
+    singleFile:
+      singleFile === null
+        ? null
+        : {
+            ...singleFile,
+            mapping: singleFile.table?.mapping ?? singleFile.mapping,
+            loading: false,
+            // No later answer belongs to it, as ids of requests start at 1.
+            request: 0,
+          },
+  };
+}
+
 export interface SessionState {
   data: Partial<Record<Quantity, SessionData>>;
   selection: Selection;
@@ -131,6 +160,8 @@ export interface SessionState {
   fit: FitState;
   dataMode: DataMode;
   singleFile: SingleFile | null;
+  /** The files of the way not in use. */
+  otherSource: DataSourceFiles | null;
   interpolation: InterpolationState;
   /** What each model had when another was chosen, as the design keeps them apart. */
   savedModelSettings: Record<string, ModelSettings>;
@@ -145,7 +176,7 @@ export interface SessionState {
     failed: readonly Quantity[],
     failure?: string | null,
   ) => void;
-  /** Clears all the data, as what the other way loaded no longer shows. */
+  /** What the other way loaded stays for coming back, and does not count until then. */
   setDataMode: (mode: DataMode) => void;
   /** Returns the id of this request, so that a late answer to an older one can be ignored. */
   startSingleFile: (
@@ -193,6 +224,20 @@ function afterEvent(fit: FitState, event: FitEvent): FitState {
   }
 }
 
+/** Whether a reload would lose any file, in the way in use or the other. */
+export function holdsFiles(
+  state: Pick<SessionState, "data" | "singleFile" | "otherSource">,
+): boolean {
+  const { data, singleFile, otherSource } = state;
+  return (
+    Object.keys(data).length > 0 ||
+    singleFile?.table != null ||
+    (otherSource !== null &&
+      (Object.keys(otherSource.data).length > 0 ||
+        otherSource.singleFile?.table != null))
+  );
+}
+
 /**
  * The session, in memory only and with no persistence, as measurements must not be stored.
  *
@@ -215,6 +260,7 @@ export const createSessionStore = () =>
       fit: { status: "idle" },
       dataMode: "separate",
       singleFile: null,
+      otherSource: null,
       interpolation: INITIAL_INTERPOLATION,
       savedModelSettings: {},
 
@@ -282,8 +328,9 @@ export const createSessionStore = () =>
             ? state
             : {
                 dataMode: mode,
-                data: {},
-                singleFile: null,
+                data: state.otherSource?.data ?? {},
+                singleFile: state.otherSource?.singleFile ?? null,
+                otherSource: filesToKeep(state),
                 interpolation: withoutValues(state.interpolation),
                 fit: withoutOldResult(state.fit),
               },

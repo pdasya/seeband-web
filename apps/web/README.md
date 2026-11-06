@@ -51,7 +51,7 @@ The app always calls `/api` on its own origin, so there is no base URL to set, a
 - **Retries** are one, and only for a network failure or a 503. A 429 gives `retryAfterS`, for the screen to act on. A mutation never repeats by itself.
 - **Each fit is a run.** `fitRequested` returns its id, which goes with each call after it, so that late events of an old fit cannot reach a new one.
 - **Stop a fit by aborting** the signal of `streamFit`, then call `fitStopped`, which keeps the last values received. An abort throws an `AbortError`, so do not report it as a failure.
-- **Nothing persists.** Measurements stay in memory, as they must not be stored, so a reload clears them. The store holds codes and numbers, and no text in any language.
+- **Nothing persists.** Measurements stay in memory, as they must not be stored, so a reload clears them, and the browser asks first while any file is loaded. The two ways of loading keep their own files, and only the open one counts. The store holds codes and numbers, and no text in any language.
 - **The store does not call the API.** A change after a result clears it, but a change during a fit leaves it running, so FS8 decides whether to stop it.
 - **`tests` run the client against the real mock,** in `api/mock.integration.test.ts`.
 
