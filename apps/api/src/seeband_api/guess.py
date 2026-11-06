@@ -13,11 +13,11 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from seeband_core.model_catalog import registry
 from seeband_core.neural_nets import NET_RANGES_K, NoNeuralNet
 
-from seeband_api.calc import FiniteFloat, PositiveFloat
 from seeband_api.calc_pool import CalcPoolDep
 from seeband_api.calc_worker import CalculationFailed
 from seeband_api.errors import ApiError, ErrorDetail
 from seeband_api.guess_worker import GuessOutcome, guess
+from seeband_api.request_checks import FiniteFloat, PositiveFloat
 from seeband_api.request_logging import log_calculation_failure
 from seeband_api.routing import api_router
 

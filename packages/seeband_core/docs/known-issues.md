@@ -30,7 +30,7 @@ The caller sets `extrapolated`, from `InterpolatedData`, since a fit does not kn
 
 ## What is not here
 
-- **Disabled is a flag.** The model still runs `spb_s_rho_rh`, because tests and V1 need it. A8 must refuse it, and the API must not offer it.
+- **Disabled is a flag.** The model still runs `spb_s_rho_rh`, because tests and V1 need it. The API refuses it with a 409, and does not offer it.
 - **F₀ underflowing (#105)** gives NaN or infinity at low temperatures with large gaps, which a client can see as non-finite values. The flag would need the result, not its inputs.
 - **No chemical potential in DPB (#106)** has no simple condition on the inputs, unlike SPB.
 - **E_F inside the gap (#107)** cannot be told from a good fit by its inputs alone, and `at_bounds` and `parameter_errors` report part of it.

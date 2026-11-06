@@ -72,6 +72,33 @@ ERROR_EXAMPLES: dict[str, dict[str, Any]] = {
             }
         ],
     },
+    "invalid_fit": {
+        "code": "invalid_fit",
+        "message": "Invalid fit",
+        "details": [
+            {
+                "location": ["body", "bounds", "m_eff"],
+                "code": "parameter_not_fitted",
+                "message": "This fit does not fit it",
+            }
+        ],
+    },
+    "fit_queue_full": {
+        "code": "fit_queue_full",
+        "message": "Too many fits are running. Try again shortly.",
+        "details": [],
+    },
+    "fit_timeout": {"code": "fit_timeout", "message": "The fit took too long", "details": []},
+    "fit_process_died": {
+        "code": "fit_process_died",
+        "message": "The fit stopped unexpectedly. Try again.",
+        "details": [],
+    },
+    "fit_failed": {
+        "code": "fit_failed",
+        "message": "The fit ended with an internal error",
+        "details": [],
+    },
     "invalid_parse_request": {
         "code": "invalid_parse_request",
         "message": "Invalid request",
@@ -139,12 +166,14 @@ class ApiError(Exception):
         code: str,
         message: str,
         details: list[ErrorDetail] | None = None,
+        headers: dict[str, str] | None = None,
     ) -> None:
         super().__init__(code)
         self.status_code = status_code
         self.code = code
         self.message = message
         self.details = details
+        self.headers = headers
 
 
 def error_response(
@@ -173,6 +202,7 @@ def _handle_api_error(_: Request, error: Exception) -> Response:
     return error_response(
         error.status_code,
         ErrorResponse(code=error.code, message=error.message, details=error.details or []),
+        headers=error.headers,
     )
 
 

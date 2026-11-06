@@ -498,6 +498,13 @@ def test_degeneracy_is_refused_on_a_mode_without_one(client: TestClient) -> None
     assert _details(response) == [(["body", "band_1_degeneracy"], "degeneracy_not_in_mode")]
 
 
+def test_refused_model_uses_the_format_of_this_route(client: TestClient) -> None:
+    for changes in ({"model": "nope"}, {"fit_mode": "nope"}):
+        response = client.post("/api/calc", json=_body(**changes))
+
+        assert response.json()["message"] == "Invalid calculation"
+
+
 def test_zero_seebeck_value_is_allowed(client: TestClient) -> None:
     measurements = {"seebeck": {"temperature_k": [150.0, 450.0], "values": [0.0, 1.5e-4]}}
 

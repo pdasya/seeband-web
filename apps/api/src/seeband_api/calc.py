@@ -1,19 +1,14 @@
 """`POST /api/calc`: curves for given parameters, and optionally their RMSE. It keeps no state."""
 
-from collections.abc import Mapping
 from http import HTTPStatus
 from typing import Annotated, Self
 
-import numpy as np
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-from seeband_core.model_catalog import registry
 from seeband_core.model_interface import (
     CurveKind,
     CurveRequest,
     FitMode,
-    Measurement,
-    ModelDescription,
     Quantity,
 )
 
@@ -21,6 +16,17 @@ from seeband_api.calc_pool import CalcPoolDep
 from seeband_api.calc_worker import CalcOutcome, CalculationFailed, calculate
 from seeband_api.errors import ApiError, ErrorDetail
 from seeband_api.json_values import finite_or_none
+from seeband_api.request_checks import (
+    FiniteFloat,
+    MeasurementInput,
+    PositiveFloat,
+    check_degeneracy,
+    check_parameter_names,
+    check_scattering,
+    find_mode,
+    invalid,
+    to_measurements,
+)
 from seeband_api.request_logging import log_calculation_failure
 from seeband_api.routing import api_router
 
@@ -32,23 +38,7 @@ MAX_POINTS = 1000
 # the RMSE is small. Ask for 200 for a value to report.
 DEFAULT_RMSE_POINTS = 50
 
-# Strict, so that `true` or "1.5" are refused here as the contract and the mock refuse them.
-FiniteFloat = Annotated[float, Field(allow_inf_nan=False, strict=True)]
-PositiveFloat = Annotated[float, Field(gt=0, allow_inf_nan=False, strict=True)]
 GridPoints = Annotated[int, Field(ge=2, le=MAX_POINTS, strict=True)]
-
-
-class MeasurementInput(BaseModel):
-    """Measured points, with values in V/K for S, ohm m for rho and m^3/C for R_H."""
-
-    temperature_k: Annotated[list[PositiveFloat], Field(min_length=1)]
-    values: Annotated[list[FiniteFloat], Field(min_length=1)]
-
-    @model_validator(mode="after")
-    def _same_length(self) -> Self:
-        if len(self.temperature_k) != len(self.values):
-            raise ValueError("temperature_k and values must have the same length")
-        return self
 
 
 class CalcRequest(BaseModel):
@@ -159,75 +149,10 @@ class CalcResponse(BaseModel):
     rmse: dict[Quantity, RmseResponse]
 
 
-def _invalid(code: str, message: str, location: list[str | int]) -> ErrorDetail:
-    return ErrorDetail(location=["body", *location], code=code, message=message)
-
-
 def _refuse(details: list[ErrorDetail]) -> ApiError:
     return ApiError(
         HTTPStatus.UNPROCESSABLE_CONTENT, "invalid_calculation", "Invalid calculation", details
     )
-
-
-def _find_mode(body: CalcRequest) -> tuple[ModelDescription, FitMode]:
-    descriptions = {description.id: description for description in registry.descriptions()}
-    description = descriptions.get(body.model)
-    if description is None:
-        raise _refuse([_invalid("unknown_model", "This model does not exist", ["model"])])
-    try:
-        fit_mode = description.fit_mode(body.fit_mode)
-    except KeyError:
-        detail = _invalid("unknown_fit_mode", "This model has no such fit mode", ["fit_mode"])
-        raise _refuse([detail]) from None
-    if fit_mode.disabled:
-        raise ApiError(
-            HTTPStatus.CONFLICT,
-            "fit_mode_disabled",
-            "This fit mode is disabled until its known issue is fixed",
-            [
-                _invalid(issue.id, "A known issue disables this mode", ["fit_mode"])
-                for issue in fit_mode.known_issues
-                if issue.severity == "disabled"
-            ],
-        )
-    return description, fit_mode
-
-
-def _check_scattering(body: CalcRequest, fit_mode: FitMode) -> list[ErrorDetail]:
-    if body.scattering is None:
-        if fit_mode.scattering:
-            return [_invalid("missing_scattering", "This mode needs one", ["scattering"])]
-    elif body.scattering not in fit_mode.scattering:
-        return [_invalid("unknown_scattering", "This mode has no such type", ["scattering"])]
-    return []
-
-
-def _check_degeneracy(body: CalcRequest, fit_mode: FitMode) -> list[ErrorDetail]:
-    if fit_mode.degeneracy is not None:
-        return []
-    return [
-        _invalid("degeneracy_not_in_mode", "This mode has no band degeneracy", [field])
-        for field, value in (
-            ("band_1_degeneracy", body.band_1_degeneracy),
-            ("band_2_degeneracy", body.band_2_degeneracy),
-        )
-        if value != 1
-    ]
-
-
-def _check_parameters(body: CalcRequest, fit_mode: FitMode) -> list[ErrorDetail]:
-    expected = {spec.name for spec in fit_mode.parameters}
-    missing = [
-        _invalid("missing_parameter", "This mode needs it", ["parameters", spec.name])
-        for spec in fit_mode.parameters
-        if spec.name not in body.parameters
-    ]
-    unknown = [
-        _invalid("unknown_parameter", "This mode has no such parameter", ["parameters", name])
-        for name in body.parameters
-        if name not in expected
-    ]
-    return missing + unknown
 
 
 def _check_measurements(body: CalcRequest, fit_mode: FitMode) -> list[ErrorDetail]:
@@ -235,7 +160,7 @@ def _check_measurements(body: CalcRequest, fit_mode: FitMode) -> list[ErrorDetai
     for quantity, measurement in body.measurements.items():
         if quantity not in fit_mode.quantities:
             details.append(
-                _invalid(
+                invalid(
                     "quantity_not_in_mode",
                     "This mode has no such curve",
                     ["measurements", quantity],
@@ -245,7 +170,7 @@ def _check_measurements(body: CalcRequest, fit_mode: FitMode) -> list[ErrorDetai
             # The RMSE of rho and R_H is a percent of the data, which has no meaning at 0.
             index = measurement.values.index(0)
             details.append(
-                _invalid(
+                invalid(
                     "zero_measured_value",
                     "A relative RMSE needs values other than 0",
                     ["measurements", quantity, "values", index],
@@ -266,26 +191,21 @@ def _to_response(outcome: CalcOutcome) -> CalcResponse:
     )
 
 
-def _measurements(body: CalcRequest) -> Mapping[Quantity, Measurement]:
-    return {
-        quantity: Measurement(np.array(measurement.temperature_k), np.array(measurement.values))
-        for quantity, measurement in body.measurements.items()
-    }
-
-
 @router.post("/calc")
 async def post_calc(body: CalcRequest, pool: CalcPoolDep) -> CalcResponse:
-    description, fit_mode = _find_mode(body)
+    description, fit_mode = find_mode(
+        body.model, body.fit_mode, "invalid_calculation", "Invalid calculation"
+    )
     details = [
-        *_check_scattering(body, fit_mode),
-        *_check_degeneracy(body, fit_mode),
-        *_check_parameters(body, fit_mode),
+        *check_scattering(body.scattering, fit_mode),
+        *check_degeneracy(body.band_1_degeneracy, body.band_2_degeneracy, fit_mode),
+        *check_parameter_names(list(body.parameters), "parameters", fit_mode),
         *_check_measurements(body, fit_mode),
     ]
     if details:
         raise _refuse(details)
     if body.measurements and body.kind != "measured":
-        detail = _invalid(
+        detail = invalid(
             "measurements_need_measured_kind", "RMSE compares the measured curves", ["kind"]
         )
         raise _refuse([detail])
@@ -295,7 +215,7 @@ async def post_calc(body: CalcRequest, pool: CalcPoolDep) -> CalcResponse:
             HTTPStatus.UNPROCESSABLE_CONTENT,
             "curve_unavailable",
             "This fit mode does not offer this curve",
-            [_invalid(reason, "See curve_unavailable in the API's README", ["kind"])],
+            [invalid(reason, "See curve_unavailable in the API's README", ["kind"])],
         )
 
     request = CurveRequest(
@@ -312,7 +232,7 @@ async def post_calc(body: CalcRequest, pool: CalcPoolDep) -> CalcResponse:
     )
     try:
         outcome = await pool.run(
-            calculate, description.id, request, _measurements(body), body.rmse_points
+            calculate, description.id, request, to_measurements(body.measurements), body.rmse_points
         )
     except CalculationFailed as error:
         log_calculation_failure(str(error))

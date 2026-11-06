@@ -9,6 +9,7 @@ import signal
 import socket
 import subprocess
 import sys
+import threading
 import time
 from collections.abc import Callable, Coroutine, Iterator
 from contextlib import contextmanager
@@ -274,7 +275,7 @@ def _running_server(
                 yield client
         finally:
             server.send_signal(stop_signal)
-            server.wait(timeout=10)
+            server.wait(timeout=20)
 
 
 def _json_lines(text: str) -> list[dict[str, Any]]:
@@ -434,6 +435,105 @@ def test_parsing_through_real_workers_keeps_nothing(tmp_path: Path, support_dir:
     assert secret not in log_path.read_text(encoding="utf-8")
 
 
+def test_fit_through_a_real_process_logs_no_values_and_leaves_none(tmp_path: Path) -> None:
+    port = _free_port()
+    log_path = tmp_path / "server.log"
+    secret = "4.321987654e-05"
+    body = {
+        "model": "dpb",
+        "fit_mode": "dpb_s",
+        "start": {"m_eff": 1.01, "band_gap": 1000.0, "fermi_energy": -100.0},
+        "min_temperature_k": 100.0,
+        "max_temperature_k": 500.0,
+        "measurements": {
+            "seebeck": {
+                "temperature_k": [100.0, 200.0, 300.0, 400.0, 500.0],
+                "values": [float(secret), 2.0e-4, 1.0e-4, 5.0e-5, 2.0e-5],
+            }
+        },
+    }
+    env = {"SEEBAND_API_PORT": str(port), "SEEBAND_API_LOG_LEVEL": "DEBUG"}
+    command = [sys.executable, "-m", "seeband_api"]
+
+    with _running_server(command, port, log_path, env) as client:
+        assert client.post("/api/fit", json=body, timeout=60).status_code == 200
+        # Bounds that exclude the start make the core's solver raise.
+        failed = {**body, "bounds": {"band_gap": {"lower": 1.0, "upper": 2.0}}}
+        response = client.post("/api/fit", json=failed, timeout=60)
+        assert response.json()["status"] == "failed"
+        children = _worker_pids(_server_pid(port))
+
+    log = log_path.read_text(encoding="utf-8")
+    assert secret not in log
+    assert "Traceback" not in log
+    assert sum(line.get("route") == "/api/fit" for line in _json_lines(log)) == 2
+    deadline = time.monotonic() + 15
+    while any(_is_running(pid) for pid in children) and time.monotonic() < deadline:
+        time.sleep(0.05)
+    assert not any(_is_running(pid) for pid in children)
+
+
+def test_stopping_the_server_ends_a_running_fit_soon(tmp_path: Path) -> None:
+    """A stop must not wait for a fit's time limit. `G` of -1 with wide bounds takes over 60 s."""
+    port = _free_port()
+    log_path = tmp_path / "server.log"
+    temperature_k = [100.0 + 10.0 * row for row in range(40)]
+    body = {
+        "model": "dpb",
+        "fit_mode": "dpb_s_rho",
+        "scattering": "dis",
+        "start": {
+            "m_eff": 1.01,
+            "band_gap": 1000.0,
+            "fermi_energy": -100.0,
+            "A": 40000.0,
+            "B": 1.0,
+            "C": 1.0,
+            "D": 1.0,
+            "F": 1000.0,
+            "G": -1.0,
+        },
+        "bounds": {"G": {"lower": -1e6, "upper": 1e6}},
+        "min_temperature_k": 100.0,
+        "max_temperature_k": 500.0,
+        "measurements": {
+            "seebeck": {"temperature_k": temperature_k, "values": [1e-4] * 40},
+            "resistivity": {"temperature_k": temperature_k, "values": [1e-5] * 40},
+        },
+    }
+    command = [sys.executable, "-m", "seeband_api"]
+    errors: list[BaseException] = []
+
+    with _running_server(command, port, log_path, {"SEEBAND_API_PORT": str(port)}) as client:
+
+        def send_fit() -> None:
+            try:
+                client.post("/api/fit", json=body, timeout=120)
+            except httpx2.TransportError as error:
+                errors.append(error)
+
+        thread = threading.Thread(target=send_fit, daemon=True)
+        thread.start()
+        server_pid = _server_pid(port)
+        before = set(_worker_pids(server_pid))
+        deadline = time.monotonic() + 15
+        fit_pids: set[int] = set()
+        while time.monotonic() < deadline and len(fit_pids) < 1:
+            time.sleep(0.05)
+            fit_pids = set(_worker_pids(server_pid)) - before
+        assert fit_pids, "no fit process started"
+        started = time.monotonic()
+        os.kill(server_pid, signal.SIGTERM)
+        thread.join(timeout=25)
+        assert not thread.is_alive()
+        assert time.monotonic() - started < 15
+
+    deadline = time.monotonic() + 15
+    while any(_is_running(pid) for pid in fit_pids) and time.monotonic() < deadline:
+        time.sleep(0.05)
+    assert not any(_is_running(pid) for pid in fit_pids)
+
+
 def _worker_pids(server_pid: int) -> list[int]:
     found = subprocess.run(["pgrep", "-P", str(server_pid)], capture_output=True, text=True)
     return [int(pid) for pid in found.stdout.split()]
@@ -487,7 +587,14 @@ def test_entry_point_passes_its_settings_to_the_server(
     entry_point()
 
     assert calls == [
-        {"factory": True, "host": "0.0.0.0", "port": 9123, "access_log": False, "ws": "none"}
+        {
+            "factory": True,
+            "host": "0.0.0.0",
+            "port": 9123,
+            "access_log": False,
+            "ws": "none",
+            "timeout_graceful_shutdown": 5,
+        }
     ]
 
 

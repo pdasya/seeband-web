@@ -14,3 +14,7 @@ class Settings(BaseSettings):
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     calc_workers: int = Field(default=2, ge=1)
     calc_timeout_s: float = Field(default=30.0, gt=0)
+    # The planned machine has 2 vCPUs.
+    fit_max_running: int = Field(default=2, ge=1)
+    fit_max_waiting: int = Field(default=4, ge=0)
+    fit_timeout_s: float = Field(default=60.0, gt=0)

@@ -8,13 +8,16 @@ A thin FastAPI layer over `seeband_core`. It holds routes, validation and proces
 uv run python -m seeband_api
 ```
 
-| Variable                     | Default     | Applies to                                 |
-| ---------------------------- | ----------- | ------------------------------------------ |
-| `SEEBAND_API_HOST`           | `127.0.0.1` | `python -m seeband_api` only               |
-| `SEEBAND_API_PORT`           | `8000`      | `python -m seeband_api` only               |
-| `SEEBAND_API_LOG_LEVEL`      | `INFO`      | the API's own log lines, not uvicorn's own |
-| `SEEBAND_API_CALC_WORKERS`   | `2`         | worker processes for calculations          |
-| `SEEBAND_API_CALC_TIMEOUT_S` | `30`        | how long a calculation request waits       |
+| Variable                      | Default     | Applies to                                 |
+| ----------------------------- | ----------- | ------------------------------------------ |
+| `SEEBAND_API_HOST`            | `127.0.0.1` | `python -m seeband_api` only               |
+| `SEEBAND_API_PORT`            | `8000`      | `python -m seeband_api` only               |
+| `SEEBAND_API_LOG_LEVEL`       | `INFO`      | the API's own log lines, not uvicorn's own |
+| `SEEBAND_API_CALC_WORKERS`    | `2`         | worker processes for calculations          |
+| `SEEBAND_API_CALC_TIMEOUT_S`  | `30`        | how long a calculation request waits       |
+| `SEEBAND_API_FIT_MAX_RUNNING` | `2`         | fits at once, in each server process       |
+| `SEEBAND_API_FIT_MAX_WAITING` | `4`         | fits waiting, before a 429                 |
+| `SEEBAND_API_FIT_TIMEOUT_S`   | `60`        | how long one fit can run                   |
 
 | Route                   | Purpose                  |
 | ----------------------- | ------------------------ |
@@ -23,6 +26,7 @@ uv run python -m seeband_api
 | `POST /api/calc`        | curves and RMSE          |
 | `POST /api/parse`       | reading measured data    |
 | `POST /api/guess`       | neural net start values  |
+| `POST /api/fit`         | fitting a model          |
 | `GET /api/openapi.json` | the contract             |
 | `GET /api/docs`         | Swagger UI over the same |
 
@@ -37,6 +41,32 @@ A mode with `disabled: true` must not be offered, and `disabled_by` names the `k
 Requests and results use core units. Each parameter gives its control as `display_range`, what a user sees, and `core_range`, core units, both calculated by `seeband_core`. Send core values from `core_range` rather than calculating them from the scales, because the desktop divides where a multiplication changes the last bit. `step` is a keyboard increment, not a grid. `calc_scale` stays out, because it only reproduces a desktop path.
 
 The contract holds the real response as its example, so `pnpm mock` serves real descriptions, and a change to a description shows in the diff of `openapi.json`.
+
+## Fits
+
+`POST /api/fit` runs a fit in a new process, and answers with its result. Progress and stopping come with [A9](https://github.com/pdasya/seeband-web/issues/32), which may change this route to stream events.
+
+- **Status:** `converged` means that the fit ended normally, not that the result is sound, and the response flags what it can in `at_bounds` and `known_issues`. `failed` is a 200, as when a start value lies outside its bounds, and returns the start values with fixed text in `message`. `parameter_errors` hold other stages fixed, so in a staged fit they can be far too small.
+- **Data:** send each quantity of the mode. Only points inside the fit range enter the fit, and a quantity with none gets a 422 `no_points_in_range`.
+- **Bounds** are in core units, and override the description's. A parameter with `bounds_editable: false` refuses them, as on the desktop, as does one that this scattering type does not use.
+- **A disabled mode** gets a 409 before any process starts.
+
+| Answer                 | Meaning                                                                                           |
+| ---------------------- | ------------------------------------------------------------------------------------------------- |
+| 429 `fit_queue_full`   | 2 fits running and 4 waiting by default. It comes at once, with `Retry-After`                     |
+| 504 `fit_timeout`      | the fit ran past 60 s by default, and its process has ended. The wait in the queue does not count |
+| 503 `fit_process_died` | the process ended without a result, and trying again is reasonable                                |
+| 500 `fit_failed`       | the process raised something other than a fit's own failure. The API logs only its type           |
+
+A process starts for each fit, which takes about 0.5 s of the time below. It ends with its request, whichever way the request ends: past the time limit, on cancellation, or at a stop of the server. It is terminated, and killed if it stays. A process also exits if the server dies.
+
+Time for each fit of the 3 desktop examples, in all 11 working combinations of mode and scattering, from the default start values, 50 to 800 K, through a test client on an Apple Silicon Mac with 10 cores: median 1.0 s, at most 1.6 s, all `converged`. Set the limit after trying these on the VM, as a small VM will be slower.
+
+**Limits, until [A9](https://github.com/pdasya/seeband-web/issues/32):** a client that disconnects still holds its place. Its fit runs to its end, and one that was queued still starts, so 6 clients leaving can fill the queue for up to about 3 times the time limit.
+
+**Stopping the server** waits 5 s for requests through `python -m seeband_api`, then cancels them, and their fits end. Clients still waiting then get a plain text 500. Plain `uvicorn` has no such limit, so a stop waits for every running and queued fit.
+
+A `failed` fit's `message` is English text with no code, so a client cannot translate it by code.
 
 ## Reading data
 

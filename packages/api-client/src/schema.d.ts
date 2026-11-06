@@ -84,10 +84,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/fit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Fit */
+        post: operations["post_fit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** BoundsInput */
+        BoundsInput: {
+            /** Lower */
+            lower: number;
+            /** Upper */
+            upper: number;
+        };
         /** BoundsResponse */
         BoundsResponse: {
             /** Lower */
@@ -308,6 +332,90 @@ export interface components {
             details: components["schemas"]["ErrorDetail"][];
         };
         /**
+         * FitApiRequest
+         * @description What to fit.
+         *
+         *     `start` holds every parameter of the mode in core units, including those of other scattering
+         *     types. `bounds` overrides the description's bounds for fitted parameters, in core units.
+         *     `measurements` holds each quantity of the mode, and only points from `min_temperature_k` to
+         *     `max_temperature_k`, inclusive, enter the fit. `extrapolated` says that interpolation made up
+         *     some of these points, so that the result says so too.
+         * @example {
+         *       "bounds": {
+         *         "band_gap": {
+         *           "lower": 0,
+         *           "upper": 4000
+         *         }
+         *       },
+         *       "fit_mode": "dpb_s",
+         *       "max_temperature_k": 500,
+         *       "measurements": {
+         *         "seebeck": {
+         *           "temperature_k": [
+         *             100,
+         *             200,
+         *             300,
+         *             400,
+         *             500
+         *           ],
+         *           "values": [
+         *             0.0002,
+         *             0.00023,
+         *             0.000089,
+         *             0.000038,
+         *             0.000021
+         *           ]
+         *         }
+         *       },
+         *       "min_temperature_k": 100,
+         *       "model": "dpb",
+         *       "start": {
+         *         "band_gap": 1000,
+         *         "fermi_energy": -100,
+         *         "m_eff": 1.01
+         *       }
+         *     }
+         */
+        FitApiRequest: {
+            /** Model */
+            model: string;
+            /** Fit Mode */
+            fit_mode: string;
+            /** Scattering */
+            scattering?: string | null;
+            /** Start */
+            start: {
+                [key: string]: number;
+            };
+            /** Bounds */
+            bounds?: {
+                [key: string]: components["schemas"]["BoundsInput"];
+            };
+            /** Min Temperature K */
+            min_temperature_k: number;
+            /** Max Temperature K */
+            max_temperature_k: number;
+            /**
+             * Band 1 Degeneracy
+             * @default 1
+             */
+            band_1_degeneracy?: number;
+            /**
+             * Band 2 Degeneracy
+             * @default 1
+             */
+            band_2_degeneracy?: number;
+            /**
+             * Extrapolated
+             * @default false
+             */
+            extrapolated?: boolean;
+            /** Measurements */
+            measurements: {
+                [key: string]: components["schemas"]["MeasurementInput"];
+            };
+        };
+        /**
          * FitModeResponse
          * @description One way of fitting a model.
          *
@@ -344,6 +452,57 @@ export interface components {
             disabled_by: string[];
             /** Known Issues */
             known_issues: components["schemas"]["KnownIssueResponse"][];
+        };
+        /**
+         * FitResponse
+         * @description The outcome of a fit, in core units.
+         *
+         *     `converged` means that the fit ended normally, not that the result is sound. `iteration_limit`
+         *     is not a converged result. `failed` returns the start values, with fixed text in `message`.
+         *     `iterations` is left out for a single-pass mode. A value that is not finite is null.
+         *
+         *     `parameter_errors` holds standard errors from the last solver run of each stage, holding other
+         *     stages fixed, so in a staged fit they can be far too small, and are not plain uncertainties.
+         *     `at_bounds` names fitted parameters that ended at a bound, which may be what set them.
+         *     `known_issues` names known errors that apply, as in `GET /api/models`.
+         * @example {
+         *       "at_bounds": [],
+         *       "known_issues": [],
+         *       "parameter_errors": {
+         *         "band_gap": 12,
+         *         "fermi_energy": 4,
+         *         "m_eff": 0.02
+         *       },
+         *       "parameters": {
+         *         "band_gap": 910,
+         *         "fermi_energy": -35,
+         *         "m_eff": 0.57
+         *       },
+         *       "status": "converged"
+         *     }
+         */
+        FitResponse: {
+            /** Parameters */
+            parameters: {
+                [key: string]: number | null;
+            };
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "converged" | "iteration_limit" | "stopped" | "failed";
+            /** Iterations */
+            iterations?: number | null;
+            /** Message */
+            message?: string | null;
+            /** Parameter Errors */
+            parameter_errors: {
+                [key: string]: number;
+            };
+            /** At Bounds */
+            at_bounds: string[];
+            /** Known Issues */
+            known_issues: string[];
         };
         /**
          * GuessFound
@@ -910,6 +1069,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GuessFound"] | components["schemas"]["GuessNoNet"] | components["schemas"]["GuessNotFinite"];
+                };
+            };
+            /** @description Default Response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    post_fit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FitApiRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FitResponse"];
+                };
+            };
+            /** @description Too many fits are running or waiting */
+            429: {
+                headers: {
+                    /** @example 5 */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Default Response */

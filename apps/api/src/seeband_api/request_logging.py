@@ -69,7 +69,7 @@ def configure_logging(level: str) -> None:
 
 
 def log_calculation_failure(exception_type: str) -> None:
-    """Records a failure the client sees as a 422, as it could also be a bug in the core."""
+    """Records a failure in a calculation or fit, as it could also be a bug in the core."""
     _logger.warning("calculation_failed", extra={"fields": {"exception_type": exception_type}})
 
 
