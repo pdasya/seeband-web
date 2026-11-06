@@ -53,6 +53,10 @@ The client calls `/api` on its own origin, and the dev server forwards `/api` to
 | Disabled mode       | `Prefer: code=409, example=fit_mode_disabled`              |
 | Too slow            | `Prefer: code=504, example=calculation_timeout`            |
 | Worker died         | `Prefer: code=503, example=calculation_unavailable`        |
+| Iterative fit       | `Prefer: example=iterative`                                |
+| Fit past its limit  | `Prefer: example=fit_timeout`                              |
+| Fit process died    | `Prefer: example=fit_process_died`                         |
+| Fit failed          | `Prefer: example=fit_failed`                               |
 
 Give `example` with `code`, as otherwise Prism returns the first example whatever the status. An example name that does not exist gives `mock_error`. A request's own `Prefer` header replaces `MOCK_PREFER`. `MOCK_PORT` changes the port.
 
@@ -60,9 +64,9 @@ Give `example` with `code`, as otherwise Prism returns the first example whateve
 
 - Responses are the examples, and do not depend on the request, so `POST /api/calc` always returns the same 5-point curves and `POST /api/parse` the same 3 rows. A route's response cannot show `null` in a required field, because FastAPI drops `null` from examples. Check real curves against the API.
 - `POST /api/guess` always returns the same `guess` for DPB or SPB, unless `Prefer` asks for another answer. Its `warnings` are always empty, so check those against the API.
-- It does not stream events, and a `Prefer` failure with `Accept: text/event-stream` gives `mock_error`.
+- `POST /api/fit` sends its made-up events all at once, so a slow fit cannot be seen, and neither can a Stop. It serves `single_pass` by default. Check those against the API. `MOCK_DELAY_MS` delays the whole answer.
+- A `Prefer` for an error with `Accept: text/event-stream` alone gives `mock_error`, so send `Accept: text/event-stream, application/json`, as the API's own errors are JSON too.
 - A 405 has no `Allow` header, and `Accept: application/xml` gives a 406 `mock_error`, where the API answers with JSON.
 - `GET /api/models` sends its `ETag`, but never answers 304.
 - `POST /api/parse` checks only the shape of a request, so a mapping to a missing column or a range under 20 K passes. Its examples are `clean`, `with_errors` and `interpolated`, chosen with `Prefer: example=<name>`.
-- `POST /api/fit` answers with one made-up final result, and has no progress.
 - A body over 10 MB gets Prism's own 413 format.

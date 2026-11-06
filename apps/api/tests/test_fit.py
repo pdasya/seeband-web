@@ -1,15 +1,31 @@
+import asyncio
 import math
 from collections.abc import Iterator
 from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
-from seeband_api.fit import FitApiRequest, FitResponse, _to_response
+from jsonschema import Draft202012Validator
+from running_server import read_events
+from seeband_api.errors import ErrorResponse
+from seeband_api.fit import (
+    _STREAM_EXAMPLES,
+    FitApiRequest,
+    FitResponse,
+    _last_event,
+    _to_response,
+)
 from seeband_api.main import create_app
 from seeband_api.settings import Settings
 from seeband_core.demo_dataset import load_demo_dataset
 from seeband_core.model_catalog import registry
-from seeband_core.model_interface import Bounds, FitRequest, FitResult, Measurement
+from seeband_core.model_interface import (
+    Bounds,
+    FitRequest,
+    FitResult,
+    IterationUpdate,
+    Measurement,
+)
 from seeband_core.model_scales import default_start
 
 MODES = [
@@ -65,6 +81,20 @@ def _core_fit(model_id: str, fit_mode_id: str, **fields: Any) -> Any:
     )
 
 
+def _events(client: TestClient, body: dict[str, Any]) -> list[dict[str, Any]]:
+    response = client.post("/api/fit", json=body)
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/event-stream")
+    return list(read_events(iter(response.text.splitlines())))
+
+
+def _result(client: TestClient, body: dict[str, Any]) -> dict[str, Any]:
+    last = _events(client, body)[-1]
+    assert last["type"] == "done", last
+    result: dict[str, Any] = last["result"]
+    return result
+
+
 def _details(response: Any) -> list[tuple[list[str | int], str]]:
     return [(detail["location"], detail["code"]) for detail in response.json()["details"]]
 
@@ -75,10 +105,8 @@ def test_result_equals_the_core(
 ) -> None:
     expected = _core_fit(model_id, fit_mode_id, scattering=scattering)
 
-    response = client.post("/api/fit", json=_body(model_id, fit_mode_id, scattering=scattering))
+    body = _result(client, _body(model_id, fit_mode_id, scattering=scattering))
 
-    assert response.status_code == 200
-    body = response.json()
     assert body["parameters"] == expected.parameters
     assert body["status"] == expected.status
     assert body.get("iterations") == expected.iterations
@@ -87,11 +115,48 @@ def test_result_equals_the_core(
     assert body["known_issues"] == list(expected.known_issues)
 
 
-def test_single_pass_fit_leaves_out_iterations(client: TestClient) -> None:
-    body = client.post("/api/fit", json=_body()).json()
+@pytest.mark.parametrize(
+    ("model_id", "fit_mode_id", "scattering"),
+    [mode for mode in MODES if not _mode(mode[0], mode[1]).iterative],
+)
+def test_single_pass_fit_sends_no_iteration_counter(
+    client: TestClient, model_id: str, fit_mode_id: str, scattering: str | None
+) -> None:
+    events = _events(client, _body(model_id, fit_mode_id, scattering=scattering))
 
-    assert "iterations" not in body
-    assert "message" not in body
+    assert [event["type"] for event in events] == ["started", "done"]
+    assert "iterations" not in events[-1]["result"]
+    assert "message" not in events[-1]["result"]
+
+
+@pytest.mark.parametrize(
+    ("model_id", "fit_mode_id", "scattering"),
+    [mode for mode in MODES if _mode(mode[0], mode[1]).iterative],
+)
+def test_iterative_fit_sends_each_iteration_of_the_core(
+    client: TestClient, model_id: str, fit_mode_id: str, scattering: str | None
+) -> None:
+    updates: list[IterationUpdate] = []
+    mode = _mode(model_id, fit_mode_id)
+    registry.get(model_id).fit(
+        FitRequest(
+            fit_mode_id,
+            {quantity: DEMO[quantity] for quantity in mode.quantities},
+            default_start(mode),
+            scattering=scattering,
+        ),
+        updates.append,
+    )
+
+    events = _events(client, _body(model_id, fit_mode_id, scattering=scattering))
+
+    assert updates
+    assert events[0] == {"type": "started"}
+    assert events[1:-1] == [
+        {"type": "iteration", "iteration": update.iteration, "parameters": dict(update.parameters)}
+        for update in updates
+    ]
+    assert events[-1]["type"] == "done"
 
 
 def test_refused_model_uses_the_format_of_this_route(client: TestClient) -> None:
@@ -108,9 +173,7 @@ def test_custom_bounds_reach_the_fit(client: TestClient) -> None:
     expected = _core_fit("dpb", "dpb_s", bounds={"band_gap": bounds})
     assert free.parameters["band_gap"] != expected.parameters["band_gap"]
 
-    body = client.post(
-        "/api/fit", json=_body(bounds={"band_gap": {"lower": 990.0, "upper": 1010.0}})
-    ).json()
+    body = _result(client, _body(bounds={"band_gap": {"lower": 990.0, "upper": 1010.0}}))
 
     assert body["status"] == "converged"
     assert body["parameters"] == expected.parameters
@@ -118,9 +181,7 @@ def test_custom_bounds_reach_the_fit(client: TestClient) -> None:
 
 
 def test_start_outside_the_bounds_is_a_failed_fit(client: TestClient) -> None:
-    body = client.post(
-        "/api/fit", json=_body(bounds={"band_gap": {"lower": 1.0, "upper": 2.0}})
-    ).json()
+    body = _result(client, _body(bounds={"band_gap": {"lower": 1.0, "upper": 2.0}}))
 
     assert body["status"] == "failed"
     assert "bound" in body["message"].lower()
@@ -132,20 +193,18 @@ def test_degeneracies_reach_the_fit(client: TestClient) -> None:
         "dpb", "dpb_s_rho", scattering="acPh", band_1_degeneracy=2.0, band_2_degeneracy=3.0
     )
 
-    body = client.post(
-        "/api/fit",
-        json=_body(
-            "dpb", "dpb_s_rho", scattering="acPh", band_1_degeneracy=2.0, band_2_degeneracy=3.0
-        ),
-    ).json()
+    body = _result(
+        client,
+        _body("dpb", "dpb_s_rho", scattering="acPh", band_1_degeneracy=2.0, band_2_degeneracy=3.0),
+    )
 
     assert body["parameters"] == expected.parameters
     assert "dpb_loop_degeneracy" in body["known_issues"]
 
 
 def test_extrapolated_data_is_flagged(client: TestClient) -> None:
-    plain = client.post("/api/fit", json=_body()).json()
-    flagged = client.post("/api/fit", json=_body(extrapolated=True)).json()
+    plain = _result(client, _body())
+    flagged = _result(client, _body(extrapolated=True))
 
     assert "interpolation_extrapolates" not in plain["known_issues"]
     assert "interpolation_extrapolates" in flagged["known_issues"]
@@ -163,7 +222,7 @@ def test_only_points_in_the_fit_range_enter_the_fit(client: TestClient) -> None:
         )
     )
 
-    body = client.post("/api/fit", json=_body(min_temperature_k=low, max_temperature_k=high)).json()
+    body = _result(client, _body(min_temperature_k=low, max_temperature_k=high))
 
     assert body["parameters"] == expected.parameters
 
@@ -274,17 +333,17 @@ def test_invalid_requests_are_refused(client: TestClient, changes: dict[str, Any
 def test_full_queue_answers_429_with_a_retry_hint() -> None:
     settings = Settings(fit_max_running=1, fit_max_waiting=0)
     with TestClient(create_app(settings)) as client:
-        # This fills the only slot, without timing a fit against the request below.
-        semaphore = client.app.state.fit_runner._semaphore
-        client.portal.call(semaphore.acquire)  # type: ignore[union-attr]
+        # This fills the only place, without timing a fit against the request below.
+        client.app.state.fit_runner._admitted = 1
 
         response = client.post("/api/fit", json=_body())
 
-        client.portal.call(semaphore.release)  # type: ignore[union-attr]
+        client.app.state.fit_runner._admitted = 0
 
     assert response.status_code == 429
     assert response.json()["code"] == "fit_queue_full"
     assert response.headers["retry-after"] == "5"
+    assert response.headers["content-type"] == "application/json"
 
 
 def test_contract_declares_the_retry_hint() -> None:
@@ -292,6 +351,34 @@ def test_contract_declares_the_retry_hint() -> None:
     answer = contract["paths"]["/api/fit"]["post"]["responses"]["429"]
 
     assert "Retry-After" in answer["headers"]
+
+
+def test_contract_has_a_stream_for_the_200_and_json_for_errors() -> None:
+    responses = create_app().openapi()["paths"]["/api/fit"]["post"]["responses"]
+
+    assert list(responses["200"]["content"]) == ["text/event-stream"]
+    assert list(responses["429"]["content"]) == ["application/json"]
+    assert list(responses["default"]["content"]) == ["application/json"]
+
+
+@pytest.mark.parametrize("name", sorted(_STREAM_EXAMPLES))
+def test_stream_examples_fit_the_schema_of_the_events(name: str) -> None:
+    contract = create_app().openapi()
+    media = contract["paths"]["/api/fit"]["post"]["responses"]["200"]["content"][
+        "text/event-stream"
+    ]
+    schema = media["itemSchema"]["properties"]["data"]["contentSchema"]
+    validator = Draft202012Validator({**schema, "components": contract["components"]})
+
+    events = list(read_events(iter(media["examples"][name]["value"].splitlines())))
+
+    assert events[0] == {"type": "started"}
+    assert events[-1]["type"] in ("done", "error")
+    for event in events:
+        validator.validate(event)
+    if events[-1]["type"] == "error":
+        assert events[-1]["error"]["code"] == name
+        ErrorResponse.model_validate(events[-1]["error"])
 
 
 def test_stopping_the_app_closes_the_runner(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -308,21 +395,49 @@ def test_value_that_is_not_finite_comes_back_as_null() -> None:
     assert _to_response(result).parameters == {"m_eff": None, "band_gap": 5.0}
 
 
+def test_unexpected_failure_of_a_task_is_an_event_without_its_text(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    create_app()
+
+    async def fails() -> FitResult:
+        raise RuntimeError("SECRET-VALUE")
+
+    async def main() -> Any:
+        task = asyncio.create_task(fails())
+        await asyncio.wait([task])
+        return _last_event(task)
+
+    event = asyncio.run(main())
+
+    assert event.type == "error"
+    assert event.error.code == "internal_error"
+    assert "SECRET-VALUE" not in event.model_dump_json()
+    captured = capsys.readouterr()
+    assert "RuntimeError" in captured.err
+    assert "SECRET-VALUE" not in captured.err
+
+
 def test_settings_reach_the_runner() -> None:
     settings = Settings(fit_max_running=3, fit_max_waiting=7, fit_timeout_s=9.0)
     with TestClient(create_app(settings)) as client:
         runner = client.app.state.fit_runner
 
-    assert (runner._semaphore._value, runner._max_waiting, runner._timeout_s) == (3, 7, 9.0)
+    assert (runner._semaphore._value, runner._max_admitted, runner._timeout_s) == (3, 10, 9.0)
 
 
-def test_process_past_the_time_limit_answers_504() -> None:
+def test_process_past_the_time_limit_ends_the_stream_with_an_error() -> None:
     settings = Settings(fit_timeout_s=0.001)
     with TestClient(create_app(settings)) as client:
-        response = client.post("/api/fit", json=_body())
+        events = _events(client, _body())
 
-    assert response.status_code == 504
-    assert response.json()["code"] == "fit_timeout"
+    assert events == [
+        {"type": "started"},
+        {
+            "type": "error",
+            "error": {"code": "fit_timeout", "message": "The fit took too long", "details": []},
+        },
+    ]
 
 
 def test_examples_in_the_contract_fit_their_schemas() -> None:
@@ -337,7 +452,4 @@ def test_examples_in_the_contract_fit_their_schemas() -> None:
 def test_example_request_is_a_fit_the_api_accepts(client: TestClient) -> None:
     request = FitApiRequest.model_config["json_schema_extra"]["examples"][0]  # type: ignore[index]
 
-    response = client.post("/api/fit", json=request)
-
-    assert response.status_code == 200
-    assert set(response.json()["parameters"]) == set(request["start"])
+    assert set(_result(client, request)["parameters"]) == set(request["start"])

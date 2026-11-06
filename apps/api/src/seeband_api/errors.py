@@ -88,17 +88,6 @@ ERROR_EXAMPLES: dict[str, dict[str, Any]] = {
         "message": "Too many fits are running. Try again shortly.",
         "details": [],
     },
-    "fit_timeout": {"code": "fit_timeout", "message": "The fit took too long", "details": []},
-    "fit_process_died": {
-        "code": "fit_process_died",
-        "message": "The fit stopped unexpectedly. Try again.",
-        "details": [],
-    },
-    "fit_failed": {
-        "code": "fit_failed",
-        "message": "The fit ended with an internal error",
-        "details": [],
-    },
     "invalid_parse_request": {
         "code": "invalid_parse_request",
         "message": "Invalid request",

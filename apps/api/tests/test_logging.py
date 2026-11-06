@@ -6,8 +6,6 @@ import logging
 import os
 import re
 import signal
-import socket
-import subprocess
 import sys
 import threading
 import time
@@ -20,6 +18,17 @@ import httpx2
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from running_server import (
+    FAKE_FIT_BODY,
+    free_port,
+    is_running,
+    json_lines,
+    running_server,
+    server_pid,
+    wait_for_fit_pids,
+    wait_until_ended,
+    worker_pids,
+)
 from seeband_api.__main__ import main as entry_point
 from seeband_api.main import create_app
 from seeband_api.request_logging import RequestLoggingMiddleware
@@ -232,60 +241,6 @@ def test_log_level_setting_is_applied() -> None:
     create_app(Settings(log_level="INFO"))
 
 
-_SERVER_PIDS: dict[int, int] = {}
-
-
-def _server_pid(port: int) -> int:
-    return _SERVER_PIDS[port]
-
-
-def _free_port() -> int:
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return int(probe.getsockname()[1])
-
-
-@contextmanager
-def _running_server(
-    command: list[str],
-    port: int,
-    log_path: Path,
-    env: dict[str, str] | None = None,
-    stop_signal: signal.Signals = signal.SIGTERM,
-) -> Iterator[httpx2.Client]:
-    with log_path.open("wb") as log_file:
-        server = subprocess.Popen(
-            command,
-            stdout=log_file,
-            stderr=subprocess.STDOUT,
-            env={**os.environ, "PYTHONUNBUFFERED": "1", **(env or {})},
-        )
-        _SERVER_PIDS[port] = server.pid
-        try:
-            with httpx2.Client(base_url=f"http://127.0.0.1:{port}") as client:
-                deadline = time.monotonic() + 30
-                while True:
-                    try:
-                        client.get("/api/health")
-                        break
-                    except httpx2.TransportError:
-                        if time.monotonic() > deadline or server.poll() is not None:
-                            pytest.fail(log_path.read_text(encoding="utf-8"))
-                        time.sleep(0.05)
-                yield client
-        finally:
-            server.send_signal(stop_signal)
-            server.wait(timeout=20)
-
-
-def _json_lines(text: str) -> list[dict[str, Any]]:
-    lines = []
-    for line in text.splitlines():
-        if line.startswith("{"):
-            lines.append(json.loads(line))
-    return lines
-
-
 def _uvicorn_factory_command(support_dir: Path, port: int) -> list[str]:
     return [
         sys.executable,
@@ -315,11 +270,11 @@ def test_real_server_with_default_uvicorn_settings_logs_nothing_from_requests(
     protect itself even when someone starts it differently. The API's log level is the widest it
     can be, so that a debug line is checked too.
     """
-    port = _free_port()
+    port = free_port()
     log_path = tmp_path / "server.log"
     command = build_command(support_dir, port)
 
-    with _running_server(command, port, log_path, {"SEEBAND_API_LOG_LEVEL": "DEBUG"}) as client:
+    with running_server(command, port, log_path, {"SEEBAND_API_LOG_LEVEL": "DEBUG"}) as client:
         _send_requests_carrying_the_secret(client)
         with pytest.raises(httpx2.TransportError):
             client.post("/api/test/crash-while-streaming", json=BODY).read()
@@ -329,7 +284,7 @@ def test_real_server_with_default_uvicorn_settings_logs_nothing_from_requests(
     assert "first chunk" not in log
     assert "Traceback" not in log
     # Check that these logs really are the server's, and were not empty for some other reason.
-    lines = _json_lines(log)
+    lines = json_lines(log)
     assert sum(line.get("route") == "/api/test/crash" for line in lines) == 1
     assert sum(line.get("event") == "unhandled_exception" for line in lines) == 2
     assert not re.search(r'"(POST|GET) /', log), "the access log is on"
@@ -337,7 +292,7 @@ def test_real_server_with_default_uvicorn_settings_logs_nothing_from_requests(
 
 
 def test_calculation_through_real_workers_logs_no_values(tmp_path: Path) -> None:
-    port = _free_port()
+    port = free_port()
     log_path = tmp_path / "server.log"
     command = [sys.executable, "-m", "seeband_api"]
     env = {"SEEBAND_API_PORT": str(port), "SEEBAND_API_LOG_LEVEL": "DEBUG"}
@@ -354,7 +309,7 @@ def test_calculation_through_real_workers_logs_no_values(tmp_path: Path) -> None
         },
     }
 
-    with _running_server(command, port, log_path, env) as client:
+    with running_server(command, port, log_path, env) as client:
         response = client.post("/api/calc", json=body, timeout=30)
         assert response.status_code == 200
         # Few rows make the fit warn, and a Seebeck this large makes the prediction not finite.
@@ -389,8 +344,8 @@ def test_calculation_through_real_workers_logs_no_values(tmp_path: Path) -> None
         assert value not in log
     assert "RuntimeWarning" not in log
     assert "RankWarning" not in log
-    assert sum(line.get("route") == "/api/calc" for line in _json_lines(log)) == 1
-    assert sum(line.get("route") == "/api/guess" for line in _json_lines(log)) == 3
+    assert sum(line.get("route") == "/api/calc" for line in json_lines(log)) == 1
+    assert sum(line.get("route") == "/api/guess" for line in json_lines(log)) == 3
 
 
 def test_parsing_through_real_workers_keeps_nothing(tmp_path: Path, support_dir: Path) -> None:
@@ -398,7 +353,7 @@ def test_parsing_through_real_workers_keeps_nothing(tmp_path: Path, support_dir:
 
     The text is over 1 MB, where a multipart parser would have moved to a temporary file.
     """
-    port = _free_port()
+    port = free_port()
     log_path = tmp_path / "server.log"
     audit_path = tmp_path / "audit.log"
     secret = "4.321987654e-05"
@@ -413,7 +368,7 @@ def test_parsing_through_real_workers_keeps_nothing(tmp_path: Path, support_dir:
     }
     command = [sys.executable, str(support_dir / "serve_with_file_audit.py")]
 
-    with _running_server(command, port, log_path, env) as client:
+    with running_server(command, port, log_path, env) as client:
         # This request starts the workers, and their start-up is not what this test is about.
         assert client.post("/api/parse", json={"text": "T S\n1 2\n3 4\n"}).status_code == 200
         before = audit_path.read_text(encoding="utf-8")
@@ -436,7 +391,7 @@ def test_parsing_through_real_workers_keeps_nothing(tmp_path: Path, support_dir:
 
 
 def test_fit_through_a_real_process_logs_no_values_and_leaves_none(tmp_path: Path) -> None:
-    port = _free_port()
+    port = free_port()
     log_path = tmp_path / "server.log"
     secret = "4.321987654e-05"
     body = {
@@ -455,102 +410,62 @@ def test_fit_through_a_real_process_logs_no_values_and_leaves_none(tmp_path: Pat
     env = {"SEEBAND_API_PORT": str(port), "SEEBAND_API_LOG_LEVEL": "DEBUG"}
     command = [sys.executable, "-m", "seeband_api"]
 
-    with _running_server(command, port, log_path, env) as client:
+    with running_server(command, port, log_path, env) as client:
         assert client.post("/api/fit", json=body, timeout=60).status_code == 200
         # Bounds that exclude the start make the core's solver raise.
         failed = {**body, "bounds": {"band_gap": {"lower": 1.0, "upper": 2.0}}}
         response = client.post("/api/fit", json=failed, timeout=60)
-        assert response.json()["status"] == "failed"
-        children = _worker_pids(_server_pid(port))
+        assert '"status":"failed"' in response.text
+        children = worker_pids(server_pid(port))
 
     log = log_path.read_text(encoding="utf-8")
     assert secret not in log
     assert "Traceback" not in log
-    assert sum(line.get("route") == "/api/fit" for line in _json_lines(log)) == 2
+    assert sum(line.get("route") == "/api/fit" for line in json_lines(log)) == 2
     deadline = time.monotonic() + 15
-    while any(_is_running(pid) for pid in children) and time.monotonic() < deadline:
+    while any(is_running(pid) for pid in children) and time.monotonic() < deadline:
         time.sleep(0.05)
-    assert not any(_is_running(pid) for pid in children)
+    assert not any(is_running(pid) for pid in children)
 
 
-def test_stopping_the_server_ends_a_running_fit_soon(tmp_path: Path) -> None:
-    """A stop must not wait for a fit's time limit. `G` of -1 with wide bounds takes over 60 s."""
-    port = _free_port()
+def test_stopping_the_server_ends_a_running_fit_soon(tmp_path: Path, support_dir: Path) -> None:
+    """A stop must not wait for a fit's time limit, so this fit hangs until its process ends."""
+    port = free_port()
     log_path = tmp_path / "server.log"
-    temperature_k = [100.0 + 10.0 * row for row in range(40)]
-    body = {
-        "model": "dpb",
-        "fit_mode": "dpb_s_rho",
-        "scattering": "dis",
-        "start": {
-            "m_eff": 1.01,
-            "band_gap": 1000.0,
-            "fermi_energy": -100.0,
-            "A": 40000.0,
-            "B": 1.0,
-            "C": 1.0,
-            "D": 1.0,
-            "F": 1000.0,
-            "G": -1.0,
-        },
-        "bounds": {"G": {"lower": -1e6, "upper": 1e6}},
-        "min_temperature_k": 100.0,
-        "max_temperature_k": 500.0,
-        "measurements": {
-            "seebeck": {"temperature_k": temperature_k, "values": [1e-4] * 40},
-            "resistivity": {"temperature_k": temperature_k, "values": [1e-5] * 40},
-        },
+    pid_file = tmp_path / "fit_pids"
+    command = [sys.executable, str(support_dir / "serve_with_fake_fit.py")]
+    env = {
+        "SEEBAND_API_PORT": str(port),
+        "FAKE_FIT": "iterate_then_hang",
+        "FAKE_FIT_PID_FILE": str(pid_file),
     }
-    command = [sys.executable, "-m", "seeband_api"]
     errors: list[BaseException] = []
 
-    with _running_server(command, port, log_path, {"SEEBAND_API_PORT": str(port)}) as client:
+    with running_server(command, port, log_path, env) as client:
 
         def send_fit() -> None:
             try:
-                client.post("/api/fit", json=body, timeout=120)
+                client.post("/api/fit", json=FAKE_FIT_BODY, timeout=120)
             except httpx2.TransportError as error:
                 errors.append(error)
 
         thread = threading.Thread(target=send_fit, daemon=True)
         thread.start()
-        server_pid = _server_pid(port)
-        before = set(_worker_pids(server_pid))
-        deadline = time.monotonic() + 15
-        fit_pids: set[int] = set()
-        while time.monotonic() < deadline and len(fit_pids) < 1:
-            time.sleep(0.05)
-            fit_pids = set(_worker_pids(server_pid)) - before
-        assert fit_pids, "no fit process started"
+        fit_pids = wait_for_fit_pids(pid_file, 1)
         started = time.monotonic()
-        os.kill(server_pid, signal.SIGTERM)
+        os.kill(server_pid(port), signal.SIGTERM)
         thread.join(timeout=25)
         assert not thread.is_alive()
         assert time.monotonic() - started < 15
 
-    deadline = time.monotonic() + 15
-    while any(_is_running(pid) for pid in fit_pids) and time.monotonic() < deadline:
-        time.sleep(0.05)
-    assert not any(_is_running(pid) for pid in fit_pids)
-
-
-def _worker_pids(server_pid: int) -> list[int]:
-    found = subprocess.run(["pgrep", "-P", str(server_pid)], capture_output=True, text=True)
-    return [int(pid) for pid in found.stdout.split()]
-
-
-def _is_running(pid: int) -> bool:
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return False
-    return True
+    assert errors, "the fit answered, so it did not hang until the stop"
+    assert wait_until_ended(fit_pids)
 
 
 @pytest.mark.parametrize("stop_signal", [signal.SIGTERM, signal.SIGKILL])
 def test_workers_end_with_the_server(tmp_path: Path, stop_signal: signal.Signals) -> None:
     """A signal can end the server before it shuts its pool down."""
-    port = _free_port()
+    port = free_port()
     log_path = tmp_path / "server.log"
     body = {
         "model": "spb",
@@ -562,18 +477,18 @@ def test_workers_end_with_the_server(tmp_path: Path, stop_signal: signal.Signals
     }
     command = [sys.executable, "-m", "seeband_api"]
 
-    with _running_server(
+    with running_server(
         command, port, log_path, {"SEEBAND_API_PORT": str(port)}, stop_signal=stop_signal
     ) as client:
         assert client.post("/api/calc", json=body, timeout=30).status_code == 200
-        server_pid = _server_pid(port)
-        workers = _worker_pids(server_pid)
+        pid = server_pid(port)
+        workers = worker_pids(pid)
         assert workers
 
     deadline = time.monotonic() + 15
-    while any(_is_running(pid) for pid in workers) and time.monotonic() < deadline:
+    while any(is_running(pid) for pid in workers) and time.monotonic() < deadline:
         time.sleep(0.05)
-    assert not any(_is_running(pid) for pid in workers)
+    assert not any(is_running(pid) for pid in workers)
 
 
 def test_entry_point_passes_its_settings_to_the_server(
@@ -599,16 +514,16 @@ def test_entry_point_passes_its_settings_to_the_server(
 
 
 def test_entry_point_serves_with_settings_from_the_environment(tmp_path: Path) -> None:
-    port = _free_port()
+    port = free_port()
     log_path = tmp_path / "server.log"
     command = [sys.executable, "-m", "seeband_api"]
 
-    with _running_server(command, port, log_path, {"SEEBAND_API_PORT": str(port)}) as client:
+    with running_server(command, port, log_path, {"SEEBAND_API_PORT": str(port)}) as client:
         assert client.get("/api/health").json()["status"] == "ok"
 
     health_lines = [
         line
-        for line in _json_lines(log_path.read_text(encoding="utf-8"))
+        for line in json_lines(log_path.read_text(encoding="utf-8"))
         if line["event"] == "request"
     ]
     assert health_lines

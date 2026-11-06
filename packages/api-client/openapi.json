@@ -106,27 +106,6 @@
                       "details": []
                     }
                   },
-                  "fit_timeout": {
-                    "value": {
-                      "code": "fit_timeout",
-                      "message": "The fit took too long",
-                      "details": []
-                    }
-                  },
-                  "fit_process_died": {
-                    "value": {
-                      "code": "fit_process_died",
-                      "message": "The fit stopped unexpectedly. Try again.",
-                      "details": []
-                    }
-                  },
-                  "fit_failed": {
-                    "value": {
-                      "code": "fit_failed",
-                      "message": "The fit ended with an internal error",
-                      "details": []
-                    }
-                  },
                   "invalid_parse_request": {
                     "value": {
                       "code": "invalid_parse_request",
@@ -2444,27 +2423,6 @@
                       "details": []
                     }
                   },
-                  "fit_timeout": {
-                    "value": {
-                      "code": "fit_timeout",
-                      "message": "The fit took too long",
-                      "details": []
-                    }
-                  },
-                  "fit_process_died": {
-                    "value": {
-                      "code": "fit_process_died",
-                      "message": "The fit stopped unexpectedly. Try again.",
-                      "details": []
-                    }
-                  },
-                  "fit_failed": {
-                    "value": {
-                      "code": "fit_failed",
-                      "message": "The fit ended with an internal error",
-                      "details": []
-                    }
-                  },
                   "invalid_parse_request": {
                     "value": {
                       "code": "invalid_parse_request",
@@ -2669,27 +2627,6 @@
                     "value": {
                       "code": "fit_queue_full",
                       "message": "Too many fits are running. Try again shortly.",
-                      "details": []
-                    }
-                  },
-                  "fit_timeout": {
-                    "value": {
-                      "code": "fit_timeout",
-                      "message": "The fit took too long",
-                      "details": []
-                    }
-                  },
-                  "fit_process_died": {
-                    "value": {
-                      "code": "fit_process_died",
-                      "message": "The fit stopped unexpectedly. Try again.",
-                      "details": []
-                    }
-                  },
-                  "fit_failed": {
-                    "value": {
-                      "code": "fit_failed",
-                      "message": "The fit ended with an internal error",
                       "details": []
                     }
                   },
@@ -3073,27 +3010,6 @@
                       "details": []
                     }
                   },
-                  "fit_timeout": {
-                    "value": {
-                      "code": "fit_timeout",
-                      "message": "The fit took too long",
-                      "details": []
-                    }
-                  },
-                  "fit_process_died": {
-                    "value": {
-                      "code": "fit_process_died",
-                      "message": "The fit stopped unexpectedly. Try again.",
-                      "details": []
-                    }
-                  },
-                  "fit_failed": {
-                    "value": {
-                      "code": "fit_failed",
-                      "message": "The fit ended with an internal error",
-                      "details": []
-                    }
-                  },
                   "invalid_parse_request": {
                     "value": {
                       "code": "invalid_parse_request",
@@ -3376,27 +3292,6 @@
                       "details": []
                     }
                   },
-                  "fit_timeout": {
-                    "value": {
-                      "code": "fit_timeout",
-                      "message": "The fit took too long",
-                      "details": []
-                    }
-                  },
-                  "fit_process_died": {
-                    "value": {
-                      "code": "fit_process_died",
-                      "message": "The fit stopped unexpectedly. Try again.",
-                      "details": []
-                    }
-                  },
-                  "fit_failed": {
-                    "value": {
-                      "code": "fit_failed",
-                      "message": "The fit ended with an internal error",
-                      "details": []
-                    }
-                  },
                   "invalid_parse_request": {
                     "value": {
                       "code": "invalid_parse_request",
@@ -3505,11 +3400,73 @@
         },
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "Events of the fit. The last is `done` or `error`",
             "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FitResponse"
+              "text/event-stream": {
+                "examples": {
+                  "single_pass": {
+                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"done\",\"result\":{\"parameters\":{\"m_eff\":0.57,\"band_gap\":910.0,\"fermi_energy\":-35.0},\"status\":\"converged\",\"parameter_errors\":{\"m_eff\":0.02,\"band_gap\":12.0,\"fermi_energy\":4.0},\"at_bounds\":[],\"known_issues\":[]}}\n\n"
+                  },
+                  "iterative": {
+                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"iteration\",\"iteration\":1,\"parameters\":{\"m_eff\":0.8,\"band_gap\":950.0,\"fermi_energy\":-60.0}}\n\ndata: {\"type\":\"iteration\",\"iteration\":2,\"parameters\":{\"m_eff\":0.6,\"band_gap\":915.0,\"fermi_energy\":-38.0}}\n\ndata: {\"type\":\"done\",\"result\":{\"parameters\":{\"m_eff\":0.57,\"band_gap\":910.0,\"fermi_energy\":-35.0},\"status\":\"converged\",\"iterations\":2,\"parameter_errors\":{\"m_eff\":0.02,\"band_gap\":12.0,\"fermi_energy\":4.0},\"at_bounds\":[],\"known_issues\":[]}}\n\n"
+                  },
+                  "fit_timeout": {
+                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"error\",\"error\":{\"code\":\"fit_timeout\",\"message\":\"The fit took too long\",\"details\":[]}}\n\n"
+                  },
+                  "fit_process_died": {
+                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"error\",\"error\":{\"code\":\"fit_process_died\",\"message\":\"The fit stopped unexpectedly. Try again.\",\"details\":[]}}\n\n"
+                  },
+                  "fit_failed": {
+                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"error\",\"error\":{\"code\":\"fit_failed\",\"message\":\"The fit ended with an internal error\",\"details\":[]}}\n\n"
+                  }
+                },
+                "itemSchema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "string",
+                      "contentMediaType": "application/json",
+                      "contentSchema": {
+                        "oneOf": [
+                          {
+                            "$ref": "#/components/schemas/FitStarted"
+                          },
+                          {
+                            "$ref": "#/components/schemas/FitIteration"
+                          },
+                          {
+                            "$ref": "#/components/schemas/FitDone"
+                          },
+                          {
+                            "$ref": "#/components/schemas/FitError"
+                          }
+                        ],
+                        "discriminator": {
+                          "propertyName": "type",
+                          "mapping": {
+                            "started": "#/components/schemas/FitStarted",
+                            "iteration": "#/components/schemas/FitIteration",
+                            "done": "#/components/schemas/FitDone",
+                            "error": "#/components/schemas/FitError"
+                          }
+                        },
+                        "title": "Streamitem Post Fit"
+                      }
+                    },
+                    "event": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "retry": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
                 }
               }
             }
@@ -3594,27 +3551,6 @@
                     "value": {
                       "code": "fit_queue_full",
                       "message": "Too many fits are running. Try again shortly.",
-                      "details": []
-                    }
-                  },
-                  "fit_timeout": {
-                    "value": {
-                      "code": "fit_timeout",
-                      "message": "The fit took too long",
-                      "details": []
-                    }
-                  },
-                  "fit_process_died": {
-                    "value": {
-                      "code": "fit_process_died",
-                      "message": "The fit stopped unexpectedly. Try again.",
-                      "details": []
-                    }
-                  },
-                  "fit_failed": {
-                    "value": {
-                      "code": "fit_failed",
-                      "message": "The fit ended with an internal error",
                       "details": []
                     }
                   },
@@ -4292,6 +4228,79 @@
           }
         ]
       },
+      "FitDone": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "done",
+            "title": "Type",
+            "default": "done"
+          },
+          "result": {
+            "$ref": "#/components/schemas/FitResponse"
+          }
+        },
+        "type": "object",
+        "required": [
+          "result"
+        ],
+        "title": "FitDone",
+        "description": "The last event of a fit that ended, whatever its `status`."
+      },
+      "FitError": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "error",
+            "title": "Type",
+            "default": "error"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          }
+        },
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "title": "FitError",
+        "description": "The last event of a fit with no result: `fit_timeout`, `fit_process_died` or `fit_failed`."
+      },
+      "FitIteration": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "iteration",
+            "title": "Type",
+            "default": "iteration"
+          },
+          "iteration": {
+            "type": "integer",
+            "title": "Iteration"
+          },
+          "parameters": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Parameters"
+          }
+        },
+        "type": "object",
+        "required": [
+          "iteration",
+          "parameters"
+        ],
+        "title": "FitIteration",
+        "description": "Progress of an iterative fit, in core units. A single-pass mode sends none.\n\n`parameters` holds every parameter of the mode, in the form of a final result. One fitted after\nthe loop, such as m1, keeps its start value here. A value that is not finite is null."
+      },
       "FitModeResponse": {
         "properties": {
           "id": {
@@ -4527,6 +4536,19 @@
             "status": "converged"
           }
         ]
+      },
+      "FitStarted": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "started",
+            "title": "Type",
+            "default": "started"
+          }
+        },
+        "type": "object",
+        "title": "FitStarted",
+        "description": "The fit has left the queue, and its process is starting."
       },
       "GuessFound": {
         "properties": {

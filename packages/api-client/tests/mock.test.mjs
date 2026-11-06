@@ -182,22 +182,75 @@ describe("the mock of the real contract", async () => {
     assert.equal((await response.json()).code, "fit_queue_full");
   });
 
-  test("serves a fit result", async () => {
+  const FIT_REQUEST = JSON.stringify({
+    model: "dpb",
+    fit_mode: "dpb_s",
+    start: { m_eff: 1.01 },
+    min_temperature_k: 100,
+    max_temperature_k: 500,
+    measurements: { seebeck: { temperature_k: [100], values: [1e-4] } },
+  });
+  const STREAM_HEADERS = {
+    ...JSON_HEADERS,
+    accept: "text/event-stream, application/json",
+  };
+
+  async function fitEvents(prefer) {
     const response = await fetch(`${url}/api/fit`, {
       method: "POST",
-      headers: JSON_HEADERS,
-      body: JSON.stringify({
-        model: "dpb",
-        fit_mode: "dpb_s",
-        start: { m_eff: 1.01 },
-        min_temperature_k: 100,
-        max_temperature_k: 500,
-        measurements: { seebeck: { temperature_k: [100], values: [1e-4] } },
-      }),
+      headers: { ...STREAM_HEADERS, ...(prefer ? { prefer } : {}) },
+      body: FIT_REQUEST,
+    });
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get("content-type"), /^text\/event-stream/);
+    return (await response.text())
+      .split("\n\n")
+      .filter(Boolean)
+      .map((event) => JSON.parse(event.replace(/^data: /, "")));
+  }
+
+  test("serves the events of a single-pass fit by default", async () => {
+    const events = await fitEvents();
+
+    assert.deepEqual(
+      events.map(({ type }) => type),
+      ["started", "done"],
+    );
+    assert.equal(events[1].result.status, "converged");
+    assert.equal(events[1].result.iterations, undefined);
+  });
+
+  test("serves the events of an iterative fit on request", async () => {
+    const events = await fitEvents("example=iterative");
+
+    assert.deepEqual(
+      events.map(({ type }) => type),
+      ["started", "iteration", "iteration", "done"],
+    );
+    assert.equal(events[3].result.iterations, 2);
+  });
+
+  for (const code of ["fit_timeout", "fit_process_died", "fit_failed"]) {
+    test(`ends a stream with ${code} on request`, async () => {
+      const events = await fitEvents(`example=${code}`);
+
+      assert.equal(events.at(-1).type, "error");
+      assert.equal(events.at(-1).error.code, code);
+    });
+  }
+
+  test("refuses a fit with a plain error for a client that accepts a stream", async () => {
+    const response = await fetch(`${url}/api/fit`, {
+      method: "POST",
+      headers: {
+        ...STREAM_HEADERS,
+        prefer: "code=409, example=fit_mode_disabled",
+      },
+      body: FIT_REQUEST,
     });
 
-    assert.equal(response.status, 200);
-    assert.equal((await response.json()).status, "converged");
+    assert.equal(response.status, 409);
+    assert.equal((await response.json()).code, "fit_mode_disabled");
   });
 
   test("refuses a curve request that breaks the contract", async () => {
@@ -259,9 +312,6 @@ describe("the mock of the real contract", async () => {
     [422, "invalid_parse_request"],
     [422, "invalid_fit"],
     [429, "fit_queue_full"],
-    [504, "fit_timeout"],
-    [503, "fit_process_died"],
-    [500, "fit_failed"],
     [422, "guess_unavailable"],
   ]) {
     test(`returns the ${code} example on request`, async () => {
