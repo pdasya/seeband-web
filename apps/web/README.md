@@ -87,10 +87,11 @@ SEEBAND_API_TARGET=http://127.0.0.1:8000 pnpm --filter @seeband/web exec playwri
 
 `model/useLiveCurves.ts` asks `POST /api/calc` for the current values whenever they change and data are loaded. Without data for the fit mode, nothing is sent.
 
-- **Rapid changes do not queue up.** A request waits for 120 ms of rest, or 300 ms at the latest during a long drag, so at most about 8 go out a second, within the API's 10. A new request aborts the one before it, and a run number ignores any late answer. FS12 tunes these delays over a real network.
-- **The chart keeps the last curve** while waiting and after an error. An indicator appears only after 300 ms, as a quick answer would make it flicker.
-- **A 429 with `Retry-After`** of up to 30 s tries again by itself. Any other error waits for the next change.
-- **Only points in the fit range** go with a request, for the RMSE, and the `extrapolated` flag goes with them.
+- **One request at a time.** `model/latestOnly.ts` sends the latest values when the running request has its answer, so requests cannot pile up on a slower server. A change does not abort a running request, because the server cannot stop a calculation that has started. So an old answer cannot arrive after a newer one. Only leaving the page or removing the data aborts one, and a request with no answer ends after 60 s.
+- **A request waits** for 250 ms of rest, or 300 ms at the latest during a long drag. FS12 tunes these over a real network.
+- **The chart keeps the last curve** while waiting and after an error, and the RMSE says then that it is not current. An indicator appears 600 ms after a change, as a quick answer would make it flicker.
+- **A 429 with `Retry-After`** of up to 30 s holds requests back until then, and sends the latest values by itself. Any other error waits for the next change.
+- **Only points in the fit range** go with a request, for the RMSE, and the `extrapolated` flag goes with them. Points of ρ and R_H with a value of 0 stay out, as the API refuses a relative RMSE there, and the panel says so.
 
 ## Numbers
 

@@ -143,28 +143,41 @@ test("a mode with no scattering sends none", async ({ page }) => {
   expect(bodies.at(-1)?.scattering).toBeNull();
 });
 
-test("rapid slider moves do not queue up, and the last one counts", async ({
+test("rapid moves do not queue up: one request at a time, then the latest", async ({
   page,
 }) => {
   await open(page);
-  const bodies = await collect(page);
+  let release: () => void = () => undefined;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let running = 0;
+  let mostRunning = 0;
+  const bodies = await collect(page, async (route, index) => {
+    running += 1;
+    mostRunning = Math.max(mostRunning, running);
+    if (index === 0) {
+      await held;
+    }
+    running -= 1;
+    await route.fulfill({ json: CALC });
+  });
   await load(page);
   await expect.poll(() => bodies.length).toBe(1);
-  const before = bodies.length;
 
-  const startedAt = Date.now();
   for (let move = 0; move < 30; move += 1) {
     await eg(page).press("ArrowRight");
   }
-  const elapsedMs = Date.now() - startedAt;
+  await page.waitForTimeout(500);
+  expect(bodies).toHaveLength(1);
 
-  await expect.poll(() => bodies.at(-1)?.parameters.band_gap).toBe(1300);
-  await page.waitForTimeout(400);
-  // At most one per debounce, and one to finish, against 30 without it.
-  expect(bodies.length - before).toBeLessThanOrEqual(
-    Math.ceil(elapsedMs / 120) + 1,
-  );
-  expect(bodies.length - before).toBeLessThan(30);
+  release();
+
+  await expect.poll(() => bodies.length).toBe(2);
+  expect(bodies[1]?.parameters.band_gap).toBe(1300);
+  await page.waitForTimeout(500);
+  expect(bodies).toHaveLength(2);
+  expect(mostRunning).toBe(1);
 });
 
 test("a long drag still updates the curve on its way", async ({ page }) => {
@@ -183,9 +196,7 @@ test("a long drag still updates the curve on its way", async ({ page }) => {
   expect(bodies.length - before).toBeGreaterThanOrEqual(2);
 });
 
-test("an old answer never replaces a newer one, and a request is aborted", async ({
-  page,
-}) => {
+test("answers come in order, and a change aborts nothing", async ({ page }) => {
   await open(page);
   let releaseFirst: () => void = () => undefined;
   const firstHeld = new Promise<void>((resolve) => {
@@ -200,7 +211,7 @@ test("an old answer never replaces a newer one, and a request is aborted", async
   const bodies = await collect(page, async (route, index) => {
     if (index === 0) {
       await firstHeld;
-      await route.fulfill({ json: withRmse(111) }).catch(() => undefined);
+      await route.fulfill({ json: withRmse(111) });
     } else {
       await route.fulfill({ json: withRmse(222) });
     }
@@ -209,13 +220,16 @@ test("an old answer never replaces a newer one, and a request is aborted", async
   await expect.poll(() => bodies.length).toBe(1);
 
   await eg(page).press("ArrowRight");
+  await page.waitForTimeout(400);
+  expect(bodies).toHaveLength(1);
+
+  releaseFirst();
 
   await expect(page.getByText("222 µV/K")).toBeVisible();
-  releaseFirst();
-  await page.waitForTimeout(300);
+  await page.waitForTimeout(200);
   await expect(page.getByText("222 µV/K")).toBeVisible();
-  await expect(page.getByText("111 µV/K")).toHaveCount(0);
-  expect(aborted).toEqual(["net::ERR_ABORTED"]);
+  expect(bodies).toHaveLength(2);
+  expect(aborted).toEqual([]);
 });
 
 test("the last curve stays while waiting, with an indicator only after a delay", async ({
@@ -347,32 +361,200 @@ test("a limit with Retry-After tries again by itself", async ({ page }) => {
   );
   await load(page);
 
-  await expect(page.getByRole("alert")).toContainText("Too many updates");
+  await expect(page.getByRole("alert")).toContainText("Trying again shortly");
   await expect(page.getByText("111 µV/K")).toBeVisible({ timeout: 3000 });
   await expect(page.getByRole("alert")).toHaveCount(0);
   expect(bodies).toHaveLength(2);
 });
 
-test("no second try runs after the values change", async ({ page }) => {
+test("a limit in a newer change's wait sends only the newer values", async ({
+  page,
+}) => {
   await open(page);
-  const bodies = await collect(page, (route, index) =>
-    index === 0
-      ? route.fulfill({
-          status: 429,
-          headers: { "Retry-After": "1" },
-          json: { code: "rate_limited", message: "x", details: [] },
-        })
-      : route.fulfill({ json: CALC }),
-  );
+  let release: () => void = () => undefined;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const bodies = await collect(page, async (route, index) => {
+    if (index === 0) {
+      await held;
+      await route.fulfill({
+        status: 429,
+        headers: { "Retry-After": "1" },
+        json: { code: "rate_limited", message: "x", details: [] },
+      });
+    } else {
+      await route.fulfill({ json: withRmse(222) });
+    }
+  });
   await load(page);
-  await expect(page.getByRole("alert")).toBeVisible();
+  await expect.poll(() => bodies.length).toBe(1);
 
   await eg(page).press("ArrowRight");
-  await expect.poll(() => bodies.length).toBe(2);
-  await page.waitForTimeout(1200);
+  release();
 
+  await expect(page.getByText("222 µV/K")).toBeVisible({ timeout: 4000 });
+  await page.waitForTimeout(1200);
   expect(bodies).toHaveLength(2);
   expect(bodies[1]?.parameters.band_gap).toBe(1010);
+  await expect(page.getByText("222 µV/K")).toBeVisible();
+});
+
+test("a limit with no time says to change a value, and does not repeat", async ({
+  page,
+}) => {
+  await open(page);
+  const bodies = await collect(page, (route) =>
+    route.fulfill({
+      status: 429,
+      json: { code: "rate_limited", message: "x", details: [] },
+    }),
+  );
+  await load(page);
+
+  await expect(page.getByRole("alert")).toContainText("Change a value");
+  await page.waitForTimeout(1200);
+  expect(bodies).toHaveLength(1);
+});
+
+test("after an error, the RMSE says that it is not current", async ({
+  page,
+}) => {
+  await open(page);
+  await collect(page, (route, index) =>
+    index === 0
+      ? route.fulfill({ json: withRmse(111) })
+      : route.fulfill({
+          status: 422,
+          json: { code: "calculation_failed", message: "x", details: [] },
+        }),
+  );
+  await load(page);
+  await expect(page.getByText("111 µV/K")).toBeVisible();
+  await expect(page.getByText("not from the current values")).toHaveCount(0);
+
+  await eg(page).press("ArrowRight");
+
+  await expect(page.getByText("not from the current values")).toBeVisible();
+});
+
+test("a slider moved during interpolation waits, and then the latest goes", async ({
+  page,
+}) => {
+  await open(page);
+  const bodies = await collect(page);
+  await load(page);
+  await expect.poll(() => bodies.length).toBe(1);
+  let release: () => void = () => undefined;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/parse", async (route) => {
+    await held;
+    await route.fulfill({
+      json: {
+        ...PARSED,
+        interpolated: {
+          seebeck: {
+            temperature_k: [100, 120],
+            values: [1e-4, 2e-4],
+            extrapolated: false,
+            measured_points_in_range: 1,
+            underdetermined: false,
+          },
+        },
+      },
+    });
+  });
+  await page.getByRole("switch", { name: /Interpolation/ }).click();
+  await page.waitForTimeout(500);
+
+  await eg(page).press("ArrowRight");
+
+  // The curve is out of date, and the page says that something is on its way.
+  await expect(page.getByText("Updating…")).toBeVisible();
+  expect(bodies).toHaveLength(1);
+
+  release();
+
+  await expect.poll(() => bodies.length).toBe(2);
+  expect(bodies[1]?.parameters.band_gap).toBe(1010);
+  await expect(page.getByText("Updating…")).toHaveCount(0);
+});
+
+test("a failed interpolation says why there is no RMSE, and the curve still goes", async ({
+  page,
+}) => {
+  await open(page);
+  const bodies = await collect(page);
+  await load(page);
+  await expect.poll(() => bodies.length).toBe(1);
+  await page.route("**/api/parse", (route) =>
+    route.fulfill({
+      json: { ...PARSED, interpolation_failed: ["seebeck"] },
+    }),
+  );
+
+  await page.getByRole("switch", { name: /Interpolation/ }).click();
+
+  await expect(page.getByText("no usable interpolated values")).toBeVisible();
+  await expect(page.getByText("appears here once")).toHaveCount(0);
+  await expect.poll(() => bodies.at(-1)?.measurements).toEqual({});
+});
+
+test("no points in the fit range say so, rather than ask for data", async ({
+  page,
+}) => {
+  await open(page);
+  const bodies = await collect(page);
+  await load(page);
+  await expect.poll(() => bodies.length).toBe(1);
+
+  await page.getByLabel("Lower bound, K").fill("200");
+  await page.getByLabel("Upper bound, K").fill("300");
+  await page.getByLabel("Upper bound, K").blur();
+
+  await expect(page.getByText("no points in the fit range")).toBeVisible();
+  await expect(page.getByText("appears here once")).toHaveCount(0);
+  await expect.poll(() => bodies.at(-1)?.measurements).toEqual({});
+});
+
+test("zeros in resistivity stay out of the request, and the panel says so", async ({
+  page,
+}) => {
+  await open(page);
+  const bodies = await collect(page);
+  await page.route("**/api/parse", (route) =>
+    route.fulfill({
+      json: {
+        ...PARSED,
+        measurements: {
+          resistivity: {
+            temperature_k: [100, 200, 300],
+            values: [1e-5, 0, 2e-5],
+            points: 3,
+            min_temperature_k: 100,
+            max_temperature_k: 300,
+          },
+        },
+      },
+    }),
+  );
+
+  await page
+    .locator('input[type="file"]')
+    .nth(1)
+    .setInputFiles({
+      name: "rho.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from("T rho\n100 1\n"),
+    });
+
+  await expect.poll(() => bodies.length).toBe(1);
+  expect(bodies[0]?.measurements).toEqual({
+    resistivity: { temperature_k: [100, 300], values: [1e-5, 2e-5] },
+  });
+  await expect(page.getByText("ρ: points with a value of 0")).toBeVisible();
 });
 
 test("removing the data clears the curve and the RMSE, and ends what runs", async ({

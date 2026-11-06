@@ -16,7 +16,7 @@ export const STRINGS = {
   },
   parameters: {
     title: "Parameters",
-    subtitle: "Curve updates instantly",
+    subtitle: "The curve follows the values",
     fixed: "not fitted",
     // How a parameter is written. Any other shows its name, so a new one needs no change here.
     symbols: {
@@ -180,6 +180,8 @@ export const STRINGS = {
     lastCurveStays: "The last curve stays on the chart.",
     noResult: "The calculation has no result for these parameters.",
     rateLimited: "Too many updates in a short time. Trying again shortly.",
+    rateLimitedWait:
+      "Too many updates in a short time. Change a value to try again.",
     networkError: "The server could not be reached.",
     serverUnavailable: "The server is not responding.",
     calcFailed: "The curve could not be calculated.",
@@ -203,6 +205,11 @@ export const STRINGS = {
     rmse: "RMSE",
     noRmse: "The RMSE appears here once measurements are loaded.",
     rmseNotFinite: "not finite",
+    rmseOutdated: "These are from the last curve, not from the current values.",
+    noPointsInRange: "no points in the fit range, so no RMSE.",
+    notInterpolated: "no usable interpolated values, so no RMSE.",
+    zerosLeftOut:
+      "points with a value of 0 are left out of the RMSE, as it is relative.",
     rmseUnits: { "uV/K": "µV/K" },
     knownIssues: "Known errors apply to this result:",
   },

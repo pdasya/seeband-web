@@ -5,6 +5,7 @@ import { ApiError, NETWORK_ERROR } from "@/api/errors";
 import { TransportChart } from "@/charts/TransportChart";
 import type { ChartFitRange, ChartMeasurements } from "@/charts/figure";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { retriesByItself } from "@/model/latestOnly";
 import { SEEBECK_CURVE, toMicrovoltPerK } from "@/model/liveCurves";
 import type { LiveCurves } from "@/model/useLiveCurves";
 import { fitData, useSessionStore } from "@/session/store";
@@ -18,7 +19,7 @@ function failureText(error: ApiError): string {
     case "calculation_failed":
       return text.noResult;
     case "rate_limited":
-      return text.rateLimited;
+      return retriesByItself(error) ? text.rateLimited : text.rateLimitedWait;
     case NETWORK_ERROR:
       return text.networkError;
     default:
