@@ -55,6 +55,19 @@ The app always calls `/api` on its own origin, so there is no base URL to set, a
 - **The store does not call the API.** A change after a result clears it, but a change during a fit leaves it running, so FS8 decides whether to stop it.
 - **`tests` run the client against the real mock,** in `api/mock.integration.test.ts`.
 
+## Charts
+
+`charts/TransportChart.tsx` draws a quantity against temperature with Plotly: measurements, model curves, the area outside the fit range, reference lines, a legend and a switch for the measurements. `charts/figure.ts` turns those into Plotly's terms, and calculates no physics. All text comes in as props, for i18n, and is English for now.
+
+- **Plotly loads on first use,** as it is 400 KB compressed, and an empty state does not load it. This is the `basic` bundle, the smallest published: scatter, bar and pie.
+- **Colours and fonts come from the tokens,** read from CSS when drawing, so a token change reaches the chart.
+- **New data goes through `Plotly.react`,** which updates the drawing. Keep `curves` and the other props stable between renders, for example with `useMemo`, as new arrays draw again.
+- **If Plotly cannot load or draw,** the chart shows a message rather than taking the page with it. It stays until the chart next appears.
+- **The y axis ends on round ticks beyond the values,** so its top and bottom have labels: a largest value of 121 gives an axis up to 140.
+- **A value of null leaves a gap,** and the switch for measurements is the chart's own state.
+
+`e2e/` tests the chart in a browser with fixed data, through `pnpm --filter @seeband/web test`. It uses your Chrome, and in CI Playwright's Chromium. `test-results/chart.png` is a picture of it.
+
 ## Base components
 
 `src/components/ui` holds Button, Input, Select, Switch, Slider, Tabs, Table, Badge and Alert. They are shadcn/ui as the CLI gives them, which build on Radix. **Style them through the tokens in `packages/ui`, not by changing their classes**, so that they stay easy to update.

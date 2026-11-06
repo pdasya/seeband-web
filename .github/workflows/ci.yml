@@ -68,5 +68,7 @@ jobs:
         run: pnpm lint
       - name: Type check
         run: pnpm typecheck
+      - name: Browser for the tests of the app
+        run: pnpm --filter @seeband/web exec playwright install --with-deps chromium
       - name: Tests, including that generated API types are up to date
         run: pnpm test
