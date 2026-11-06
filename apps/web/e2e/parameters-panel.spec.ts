@@ -193,6 +193,7 @@ test("dragging moves by whole control units, not by the step", async ({
   await open(page);
   await choose(page, "S + ρ + R_H");
   await chooseScattering(page, /dis\)/);
+  await slider(page, "G").scrollIntoViewIfNeeded();
   const box = await slider(page, "G").locator("..").locator("..").boundingBox();
   if (box === null) {
     throw new Error("No slider");
@@ -200,9 +201,10 @@ test("dragging moves by whole control units, not by the step", async ({
 
   await page.mouse.click(box.x + box.width * 0.4, box.y + box.height / 2);
 
-  // With its step of 1 as a grid, only 0.5 and 1.5 could be reached.
+  // With its step of 1 as a grid, only 0.5, 1.5 and so on could be reached.
   const value = Number(await field(page, "G").inputValue());
-  expect(value).toBeGreaterThan(0.9);
+  expect(value).not.toBe(1);
+  expect(value).toBeGreaterThan(1);
   expect(value).toBeLessThan(1.2);
   expect(value * 100).toBeCloseTo(Math.round(value * 100), 6);
 });
@@ -243,6 +245,20 @@ test("each fit mode keeps its own values and defaults", async ({ page }) => {
   await expect(field(page, "E_F")).toHaveValue("700");
 });
 
+test("a refused number does not follow to another fit mode", async ({
+  page,
+}) => {
+  await open(page);
+  await field(page, "E_g").fill("9999");
+  await field(page, "E_g").blur();
+  await expect(page.getByRole("alert")).toBeVisible();
+
+  await choose(page, "S");
+
+  await expect(field(page, "E_g")).toHaveValue("1000");
+  await expect(page.getByRole("alert")).toHaveCount(0);
+});
+
 test("leaving a field unchanged keeps a result and the exact value", async ({
   page,
 }) => {
@@ -277,8 +293,8 @@ test("leaving a field unchanged keeps a result and the exact value", async ({
   await field(page, "E_g").focus();
   await field(page, "E_g").press("Enter");
   await field(page, "E_g").blur();
-  // Typing the same number that is shown is no change either.
-  await field(page, "E_g").fill("1000");
+  // Typing the number that is shown, written differently, is no change either.
+  await field(page, "E_g").fill("1000.0");
   await field(page, "E_g").blur();
 
   expect(await fitStatus()).not.toBe("idle");
