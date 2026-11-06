@@ -1,6 +1,7 @@
 """The runner, with functions that misbehave in their own process."""
 
 import asyncio
+import gc
 import logging
 import multiprocessing
 import os
@@ -27,6 +28,75 @@ def no_fit_process_left() -> Iterator[None]:
 
 def _run(main: Callable[[], Awaitable[Any]]) -> Any:
     return asyncio.run(main())  # type: ignore[arg-type]
+
+
+def test_cancelling_a_fit_before_its_first_step_gives_back_its_place() -> None:
+    runner = FitRunner(1, 0, 30.0)
+
+    async def main() -> int:
+        task = runner.submit(fit_functions.double, 1)
+        task.cancel()
+        await asyncio.wait([task])
+        await asyncio.sleep(0)
+        assert task.cancelled()
+        assert runner._admitted == 0
+        return await runner.run(fit_functions.double, 4)
+
+    assert asyncio.run(main()) == 8
+
+
+def test_cancelling_a_waiting_fit_gives_back_its_place_and_starts_nothing() -> None:
+    runner = FitRunner(1, 1, 30.0)
+    started: list[str] = []
+
+    async def main() -> None:
+        running = runner.submit(fit_functions.hang, on_started=lambda: started.append("first"))
+        waiting = runner.submit(
+            fit_functions.double, 1, on_started=lambda: started.append("second")
+        )
+        await asyncio.sleep(0.05)
+        waiting.cancel()
+        await asyncio.wait([waiting])
+        await asyncio.sleep(0)
+        assert runner._admitted == 1
+        replacement = runner.submit(fit_functions.double, 2)
+        running.cancel()
+        await asyncio.wait([running])
+        assert await replacement == 4
+
+    asyncio.run(main())
+
+    assert started == ["first"]
+
+
+def test_a_refused_fit_raises_before_a_task_exists() -> None:
+    runner = FitRunner(1, 0, 30.0)
+
+    async def main() -> None:
+        running = runner.submit(fit_functions.hang)
+        before = len(asyncio.all_tasks())
+        with pytest.raises(ApiError) as raised:
+            runner.submit(fit_functions.double, 1)
+        assert raised.value.status_code == 429
+        assert len(asyncio.all_tasks()) == before
+        running.cancel()
+        await asyncio.wait([running])
+
+    asyncio.run(main())
+
+
+def test_a_failure_nobody_reads_is_not_printed(caplog: pytest.LogCaptureFixture) -> None:
+    """A client can leave before reading. asyncio would print the exception with its traceback."""
+    runner = FitRunner(1, 0, 30.0)
+
+    async def main() -> None:
+        task = runner.submit(fit_functions.die)
+        await asyncio.wait([task])
+
+    asyncio.run(main())
+    gc.collect()
+
+    assert "never retrieved" not in caplog.text
 
 
 def test_returns_the_result() -> None:

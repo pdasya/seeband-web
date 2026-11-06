@@ -26,7 +26,7 @@ uv run python -m seeband_api
 | `POST /api/calc`        | curves and RMSE          |
 | `POST /api/parse`       | reading measured data    |
 | `POST /api/guess`       | neural net start values  |
-| `POST /api/fit`         | fitting a model          |
+| `POST /api/fit`         | fitting, as event stream |
 | `GET /api/openapi.json` | the contract             |
 | `GET /api/docs`         | Swagger UI over the same |
 
@@ -44,27 +44,56 @@ The contract holds the real response as its example, so `pnpm mock` serves real 
 
 ## Fits
 
-`POST /api/fit` runs a fit in a new process, and answers with its result. Progress and stopping come with [A9](https://github.com/pdasya/seeband-web/issues/32), which may change this route to stream events.
+`POST /api/fit` runs a fit in a new process, and answers with a stream of Server-Sent Events.
 
 - **Status:** `converged` means that the fit ended normally, not that the result is sound, and the response flags what it can in `at_bounds` and `known_issues`. `failed` is a 200, as when a start value lies outside its bounds, and returns the start values with fixed text in `message`. `parameter_errors` hold other stages fixed, so in a staged fit they can be far too small.
 - **Data:** send each quantity of the mode. Only points inside the fit range enter the fit, and a quantity with none gets a 422 `no_points_in_range`.
 - **Bounds** are in core units, and override the description's. A parameter with `bounds_editable: false` refuses them, as on the desktop, as does one that this scattering type does not use.
 - **A disabled mode** gets a 409 before any process starts.
 
-| Answer                 | Meaning                                                                                           |
-| ---------------------- | ------------------------------------------------------------------------------------------------- |
-| 429 `fit_queue_full`   | 2 fits running and 4 waiting by default. It comes at once, with `Retry-After`                     |
-| 504 `fit_timeout`      | the fit ran past 60 s by default, and its process has ended. The wait in the queue does not count |
-| 503 `fit_process_died` | the process ended without a result, and trying again is reasonable                                |
-| 500 `fit_failed`       | the process raised something other than a fit's own failure. The API logs only its type           |
+Each event is a line `data: <JSON>`, and `type` says which it is. The types are `FitStarted`, `FitIteration`, `FitDone` and `FitError` in the contract. The generated type of the stream itself is `unknown`, so a client names these four.
 
-A process starts for each fit, which takes about 0.5 s of the time below. It ends with its request, whichever way the request ends: past the time limit, on cancellation, or at a stop of the server. It is terminated, and killed if it stays. A process also exits if the server dies.
+| `type`      | Holds                     | Meaning                                                                                 |
+| ----------- | ------------------------- | --------------------------------------------------------------------------------------- |
+| `started`   |                           | the fit has left the queue, and its process is starting                                 |
+| `iteration` | `iteration`, `parameters` | one iteration, in core units. A single-pass mode sends none, so it shows no counter     |
+| `done`      | `result`                  | last event: the fit ended, whatever `result.status` says                                |
+| `error`     | `error`                   | last event: no result, with the usual error body in `error`. See the second table below |
+
+**Reading it:** use `fetch`, as `EventSource` cannot POST, and send `Accept: text/event-stream, application/json`. Check the status first, then read the body as it arrives. Ignore lines that start with `:`, which keep an idle connection open every 15 s. There is nothing to resume: another request starts another fit.
+
+**Stop** is closing the connection, with `AbortController` in a browser. The server ends the process, and sends nothing more, so a client keeps the `parameters` of the last `iteration` it received, or its start values if none came. m1 keeps its start value there, because it is fitted after the loop. So the core's status `stopped` never reaches a client. Any disconnect counts as Stop. A client that was waiting gives back its place, and its fit never starts.
+
+**A stream that ends with no `done` or `error`** means that the connection was lost or the server stopped. Show it as a failure, not as a Stop.
+
+Refusals come before the stream, as plain errors in JSON:
+
+| Answer                  | Meaning                                                                       |
+| ----------------------- | ----------------------------------------------------------------------------- |
+| 422 `invalid_fit`       | the request does not fit this mode. See `details`                             |
+| 409 `fit_mode_disabled` | the mode is disabled, and no process starts                                   |
+| 429 `fit_queue_full`    | 2 fits running and 4 waiting by default. It comes at once, with `Retry-After` |
+
+So a 200 only means that the fit has a place. A waiting client has its 200 and no event until `started`. These come afterwards, as the code of an `error` event:
+
+| Code               | Meaning                                                                                           |
+| ------------------ | ------------------------------------------------------------------------------------------------- |
+| `fit_timeout`      | the fit ran past 60 s by default, and its process has ended. The wait in the queue does not count |
+| `fit_process_died` | the process ended without a result, and trying again is reasonable                                |
+| `fit_failed`       | the process raised something other than a fit's own failure. The API logs only its type           |
+| `internal_error`   | the API itself failed, and logs the type and code location                                        |
+
+The log line of a fit says 200 whichever event came last, or if the client left, since the response had already started.
+
+A process starts for each fit, which takes about 0.5 s of the time below. It ends with its request, whichever way the request ends: past the time limit, on a disconnect, or at a stop of the server. It is terminated, and killed if it stays. A process also exits if the server dies.
 
 Time for each fit of the 3 desktop examples, in all 11 working combinations of mode and scattering, from the default start values, 50 to 800 K, through a test client on an Apple Silicon Mac with 10 cores: median 1.0 s, at most 1.6 s, all `converged`. Set the limit after trying these on the VM, as a small VM will be slower.
 
-**Limits, until [A9](https://github.com/pdasya/seeband-web/issues/32):** a client that disconnects still holds its place. Its fit runs to its end, and one that was queued still starts, so 6 clients leaving can fill the queue for up to about 3 times the time limit.
+**A client that stops reading** keeps its connection open until it closes, as the API has no limit on that. Its fit still ends by the time limit and gives back its place, and its unread events stay in memory until then, at most a few per iteration.
 
-**Stopping the server** waits 5 s for requests through `python -m seeband_api`, then cancels them, and their fits end. Clients still waiting then get a plain text 500. Plain `uvicorn` has no such limit, so a stop waits for every running and queued fit.
+**Behind a proxy:** a proxy must pass events on as they come, and must close its connection to the API when the client closes its own, or a Stop will not reach the fit. The API sends `Cache-Control: no-cache` and `X-Accel-Buffering: no`. Neither has been tried through Caddy yet: [I1](https://github.com/pdasya/seeband-web/issues/53) should check both with a real request.
+
+**Stopping the server** waits 5 s for requests through `python -m seeband_api`, then cancels them, and their fits end. Their streams end with no last event. Plain `uvicorn` has no such limit, so a stop waits for every running and queued fit.
 
 A `failed` fit's `message` is English text with no code, so a client cannot translate it by code.
 

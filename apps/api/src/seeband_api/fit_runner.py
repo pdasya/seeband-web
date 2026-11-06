@@ -2,7 +2,7 @@
 
 A pipe carries events from the process. At most `max_running` fits run at once and `max_waiting`
 wait, and a request beyond those is refused at once with a 429. The time limit covers the running
-fit, not the wait. The process always ends with the call, however the call ends.
+fit, not the wait. The process always ends with its task, however the task ends.
 """
 
 import asyncio
@@ -23,6 +23,9 @@ from seeband_api.request_logging import log_calculation_failure
 
 RETRY_AFTER_S = 5
 TERMINATE_GRACE_S = 1.0
+FIT_TIMEOUT_MESSAGE = "The fit took too long"
+FIT_PROCESS_DIED_MESSAGE = "The fit stopped unexpectedly. Try again."
+FIT_FAILED_MESSAGE = "The fit ended with an internal error"
 
 _context = multiprocessing.get_context("spawn")
 
@@ -91,7 +94,8 @@ class _FitProcess:
         self.started.wait()
         _stop(self.process)
 
-    def close_pipes(self) -> None:
+    def release(self) -> None:
+        """Closes what the fit holds open now, rather than whenever garbage collection runs."""
         for connection in (
             self.job_reader,
             self.job_writer,
@@ -99,15 +103,41 @@ class _FitProcess:
             self.events_writer,
         ):
             connection.close()
+        self.process.close()
 
 
 class FitRunner:
     def __init__(self, max_running: int, max_waiting: int, timeout_s: float) -> None:
-        self._max_waiting = max_waiting
+        self._max_admitted = max_running + max_waiting
         self._timeout_s = timeout_s
         self._semaphore = asyncio.Semaphore(max_running)
-        self._waiting = 0
+        self._admitted = 0
         self._running: set[_FitProcess] = set()
+
+    def submit[T](
+        self,
+        function: Callable[..., T],
+        *args: Any,
+        on_started: Callable[[], None] | None = None,
+        on_iteration: Callable[[Any], None] | None = None,
+    ) -> asyncio.Task[T]:
+        """Takes a place at once, or refuses, and returns a task that runs the fit.
+
+        The task runs `function(*args, send_iteration)` in a new process. `on_started` is called
+        when the fit stops waiting. Cancelling the task ends the fit, and ends once its process has.
+        """
+        if self._admitted >= self._max_admitted:
+            raise ApiError(
+                HTTPStatus.TOO_MANY_REQUESTS,
+                "fit_queue_full",
+                "Too many fits are running. Try again shortly.",
+                headers={"Retry-After": str(RETRY_AFTER_S)},
+            )
+        self._admitted += 1
+        task = asyncio.create_task(self._wait_and_run(function, args, on_started, on_iteration))
+        # A callback, as a task cancelled before its first step never runs its body.
+        task.add_done_callback(self._leave)
+        return task
 
     async def run[T](
         self,
@@ -115,24 +145,27 @@ class FitRunner:
         *args: Any,
         on_iteration: Callable[[Any], None] | None = None,
     ) -> T:
-        """Runs `function(*args, send_iteration)` in a new process, and returns its result."""
-        if self._semaphore.locked() and self._waiting >= self._max_waiting:
-            raise ApiError(
-                HTTPStatus.TOO_MANY_REQUESTS,
-                "fit_queue_full",
-                "Too many fits are running. Try again shortly.",
-                headers={"Retry-After": str(RETRY_AFTER_S)},
-            )
-        self._waiting += 1
-        try:
-            await self._semaphore.acquire()
-        finally:
-            self._waiting -= 1
-        try:
-            result: T = await self._run_in_process(function, args, on_iteration)
-            return result
-        finally:
-            self._semaphore.release()
+        """Submits a fit and waits for its result. Cancelling this cancels the fit."""
+        return await self.submit(function, *args, on_iteration=on_iteration)
+
+    def _leave(self, task: asyncio.Task[Any]) -> None:
+        self._admitted -= 1
+        # Marks the exception as retrieved. A client that has gone never reads it, and asyncio
+        # would otherwise print it with its traceback.
+        if not task.cancelled():
+            task.exception()
+
+    async def _wait_and_run(
+        self,
+        function: Callable[..., Any],
+        args: tuple[Any, ...],
+        on_started: Callable[[], None] | None,
+        on_iteration: Callable[[Any], None] | None,
+    ) -> Any:
+        async with self._semaphore:
+            if on_started is not None:
+                on_started()
+            return await self._run_in_process(function, args, on_iteration)
 
     async def _run_in_process(
         self,
@@ -153,9 +186,7 @@ class FitRunner:
                 await asyncio.shield(launching)
                 return await _read_events(events_reader, on_iteration)
         except TimeoutError:
-            raise ApiError(
-                HTTPStatus.GATEWAY_TIMEOUT, "fit_timeout", "The fit took too long"
-            ) from None
+            raise ApiError(HTTPStatus.GATEWAY_TIMEOUT, "fit_timeout", FIT_TIMEOUT_MESSAGE) from None
         finally:
             await _finish_despite_cancellation(self._end(fit, launching))
 
@@ -167,8 +198,8 @@ class FitRunner:
             await asyncio.wait([launching])
             if not launching.cancelled():
                 launching.exception()
-            fit.close_pipes()
             self._running.discard(fit)
+            fit.release()
 
     def close(self) -> None:
         """Ends the fits still running when the app stops."""
@@ -209,7 +240,7 @@ async def _read_events(receiver: Connection, on_iteration: Callable[[Any], None]
                 raise ApiError(
                     HTTPStatus.SERVICE_UNAVAILABLE,
                     "fit_process_died",
-                    "The fit stopped unexpectedly. Try again.",
+                    FIT_PROCESS_DIED_MESSAGE,
                 )
             kind, value = event
             if kind == "result":
@@ -219,7 +250,7 @@ async def _read_events(receiver: Connection, on_iteration: Callable[[Any], None]
                 raise ApiError(
                     HTTPStatus.INTERNAL_SERVER_ERROR,
                     "fit_failed",
-                    "The fit ended with an internal error",
+                    FIT_FAILED_MESSAGE,
                 )
             if on_iteration is not None:
                 on_iteration(value)

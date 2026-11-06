@@ -416,6 +416,50 @@ export interface components {
             };
         };
         /**
+         * FitDone
+         * @description The last event of a fit that ended, whatever its `status`.
+         */
+        FitDone: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "done";
+            result: components["schemas"]["FitResponse"];
+        };
+        /**
+         * FitError
+         * @description The last event of a fit with no result: `fit_timeout`, `fit_process_died` or `fit_failed`.
+         */
+        FitError: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "error";
+            error: components["schemas"]["ErrorResponse"];
+        };
+        /**
+         * FitIteration
+         * @description Progress of an iterative fit, in core units. A single-pass mode sends none.
+         *
+         *     `parameters` holds every parameter of the mode, in the form of a final result. One fitted after
+         *     the loop, such as m1, keeps its start value here. A value that is not finite is null.
+         */
+        FitIteration: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "iteration";
+            /** Iteration */
+            iteration: number;
+            /** Parameters */
+            parameters: {
+                [key: string]: number | null;
+            };
+        };
+        /**
          * FitModeResponse
          * @description One way of fitting a model.
          *
@@ -503,6 +547,17 @@ export interface components {
             at_bounds: string[];
             /** Known Issues */
             known_issues: string[];
+        };
+        /**
+         * FitStarted
+         * @description The fit has left the queue, and its process is starting.
+         */
+        FitStarted: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "started";
         };
         /**
          * GuessFound
@@ -1095,13 +1150,13 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Successful Response */
+            /** @description Events of the fit. The last is `done` or `error` */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["FitResponse"];
+                    "text/event-stream": unknown;
                 };
             };
             /** @description Too many fits are running or waiting */

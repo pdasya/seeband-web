@@ -73,7 +73,7 @@ def log_calculation_failure(exception_type: str) -> None:
     _logger.warning("calculation_failed", extra={"fields": {"exception_type": exception_type}})
 
 
-def _log_unhandled_exception(error: Exception) -> None:
+def log_unhandled_exception(error: Exception) -> None:
     frames = [
         f"{Path(frame.filename).name}:{frame.lineno}:{frame.name}"
         for frame in traceback.extract_tb(error.__traceback__)
@@ -114,7 +114,7 @@ class RequestLoggingMiddleware:
             try:
                 await self._app(scope, receive, send_and_record_status)
             except Exception as error:
-                _log_unhandled_exception(error)
+                log_unhandled_exception(error)
             else:
                 return
             # This runs outside the `except` block, so that a failure here does not carry the
