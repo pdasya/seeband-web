@@ -90,6 +90,7 @@ export function ResultPanel({ live }: { live: LiveCurves }) {
   const data = useSessionStore((state) => state.data);
   const interpolation = useSessionStore((state) => state.interpolation);
   const fitState = useSessionStore((state) => state.fit);
+  const customBounds = useSessionStore((state) => state.customBounds);
   const setChartTab = useSessionStore((state) => state.setChartTab);
   const gaps = rmseGaps(
     { selection, parameters, data, interpolation },
@@ -120,6 +121,7 @@ export function ResultPanel({ live }: { live: LiveCurves }) {
           selection.scattering,
           parameters[mode.id],
           fitState,
+          customBounds[mode.id],
         );
   const { minTemperatureK: minK, maxTemperatureK: maxK } = selection;
   const subtitle = [

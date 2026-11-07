@@ -16,8 +16,10 @@ import {
   tidy,
   typedDisplayValue,
   visibleParameters,
+  withCustomRange,
   type ParameterDescription,
 } from "@/model/parameters";
+import { BoundsEditor } from "@/model/BoundsEditor";
 import { fitModeOf } from "@/model/selection";
 import { isFitActive, useSessionStore } from "@/session/store";
 import { Panel } from "@/shell/layout";
@@ -178,13 +180,22 @@ export function ParametersPanel() {
   const saved = useSessionStore((state) => state.parameters);
   const setParameter = useSessionStore((state) => state.setParameter);
   const resets = useSessionStore((state) => state.parameterResets);
+  const customBounds = useSessionStore((state) => state.customBounds);
   const active = useSessionStore((state) => isFitActive(state.fit));
 
   const model = data?.models.find(({ id }) => id === selection.model);
   const mode = fitModeOf(model, selection.fitMode);
 
   return (
-    <Panel title={text.title} subtitle={text.subtitle}>
+    <Panel
+      title={text.title}
+      subtitle={text.subtitle}
+      action={
+        mode !== undefined && (
+          <BoundsEditor mode={mode} scattering={selection.scattering} />
+        )
+      }
+    >
       {mode !== undefined && (
         <div className="mt-3 flex flex-col gap-[18px]">
           {visibleParameters(mode, selection.scattering).map((parameter) => (
@@ -192,7 +203,10 @@ export function ParametersPanel() {
               // A new mode or a reset starts its fields again.
               key={`${mode.id}:${parameter.name}:${String(resets)}`}
               disabled={active}
-              parameter={parameter}
+              parameter={withCustomRange(
+                parameter,
+                customBounds[mode.id]?.[parameter.name],
+              )}
               value={
                 parameterValues(mode, saved[mode.id])[parameter.name] ??
                 parameter.core_range.default

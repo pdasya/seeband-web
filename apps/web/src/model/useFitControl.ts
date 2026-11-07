@@ -2,7 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef } from "react";
 
 import { modelsQuery } from "@/api/queries";
-import { fitInputsKey, fitRequest } from "@/model/fitRequest";
+import {
+  fitInputsKey,
+  fitRequest,
+  startsOutsideBounds,
+  type FitBlocker,
+} from "@/model/fitRequest";
 import { runFit, stopFit } from "@/model/fitRun";
 import { dropGuess } from "@/model/guessRun";
 import { fitModeOf } from "@/model/selection";
@@ -15,6 +20,7 @@ export function useFitControl() {
   const parameters = useSessionStore((state) => state.parameters);
   const data = useSessionStore((state) => state.data);
   const interpolation = useSessionStore((state) => state.interpolation);
+  const customBounds = useSessionStore((state) => state.customBounds);
   const fit = useSessionStore((state) => state.fit);
   const resetParameters = useSessionStore((state) => state.resetParameters);
 
@@ -25,14 +31,21 @@ export function useFitControl() {
   const prepared = useMemo(
     () =>
       fitRequest(
-        { selection, parameters, data, interpolation },
+        { selection, parameters, data, interpolation, customBounds },
         models?.models,
       ),
-    [selection, parameters, data, interpolation, models],
+    [selection, parameters, data, interpolation, customBounds, models],
   );
   const request = "request" in prepared ? prepared.request : null;
   const inputs = request === null ? null : fitInputsKey(request);
   const active = isFitActive(fit);
+  const outside = request === null ? [] : startsOutsideBounds(request);
+  const blocker: FitBlocker | null =
+    "blocked" in prepared
+      ? prepared.blocked
+      : outside.length > 0
+        ? { reason: "start_outside_bounds", parameters: outside }
+        : null;
 
   // A change of data, mode or range makes the running fit one of something no longer on screen.
   // Leaving this screen is no such change, and a fit goes on.
@@ -50,7 +63,7 @@ export function useFitControl() {
     fit,
     active,
     iterative: mode?.iterative === true,
-    blocker: "blocked" in prepared ? prepared.blocked : null,
+    blocker,
     run: () => {
       if (request !== null) {
         dropGuess();

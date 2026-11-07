@@ -18,6 +18,7 @@ export type ModelSettings = Pick<
   "fitMode" | "scattering" | "band1Degeneracy" | "band2Degeneracy"
 >;
 export type Measurement = Schemas["MeasurementResponse"];
+export type FitBounds = Schemas["BoundsInput"];
 export type FitResult = Schemas["FitResponse"];
 export type FitFailure = Schemas["ErrorResponse"];
 
@@ -196,6 +197,8 @@ export interface SessionState {
   guess: GuessRecord | null;
   /** Counts resets, so that fields can start again even if the values do not change. */
   parameterResets: number;
+  /** Bounds a fit of each mode uses in place of the description's, in core units. */
+  customBounds: Record<string, Record<string, FitBounds>>;
   /** Files of the separate slots on their way, which are the user's though not yet in `data`. */
   fileReads: number;
   /** What each model had when another was chosen, as the design keeps them apart. */
@@ -228,6 +231,13 @@ export interface SessionState {
   setParameter: (fitMode: string, name: string, value: number) => void;
   /** Back to the defaults of a fit mode, also for a number being typed. */
   resetParameters: (fitMode: string) => void;
+  /** With null, the parameter goes back to the bounds of its description. */
+  setCustomBounds: (
+    fitMode: string,
+    parameter: string,
+    bounds: FitBounds | null,
+  ) => void;
+  clearCustomBounds: (fitMode: string) => void;
   fileReadStarted: () => void;
   fileReadEnded: () => void;
   guessStarted: () => void;
@@ -249,6 +259,15 @@ export interface SessionState {
   fitEvent: (run: number, event: FitEvent) => void;
   fitStopped: (run: number) => void;
   fitFailed: (run: number, failure: FitFailure) => void;
+}
+
+function withoutMode(
+  customBounds: SessionState["customBounds"],
+  fitMode: string,
+): SessionState["customBounds"] {
+  return Object.fromEntries(
+    Object.entries(customBounds).filter(([name]) => name !== fitMode),
+  );
 }
 
 function withoutValues(interpolation: InterpolationState): InterpolationState {
@@ -370,6 +389,7 @@ export const createSessionStore = () =>
       guessPending: false,
       guess: null,
       parameterResets: 0,
+      customBounds: {},
       fileReads: 0,
       savedModelSettings: {},
 
@@ -561,8 +581,31 @@ export const createSessionStore = () =>
           fit: withoutOldResult(state.fit),
         }));
       },
+      setCustomBounds: (fitMode, parameter, bounds) => {
+        set((state) => {
+          const kept = Object.entries(state.customBounds[fitMode] ?? {}).filter(
+            ([name]) => name !== parameter,
+          );
+          return {
+            customBounds: {
+              ...state.customBounds,
+              [fitMode]: Object.fromEntries(
+                bounds === null ? kept : [...kept, [parameter, bounds]],
+              ),
+            },
+            fit: withoutOldResult(state.fit),
+          };
+        });
+      },
+      clearCustomBounds: (fitMode) => {
+        set((state) => ({
+          customBounds: withoutMode(state.customBounds, fitMode),
+          fit: withoutOldResult(state.fit),
+        }));
+      },
       resetParameters: (fitMode) => {
         set((state) => ({
+          customBounds: withoutMode(state.customBounds, fitMode),
           parameters: Object.fromEntries(
             Object.entries(state.parameters).filter(
               ([name]) => name !== fitMode,

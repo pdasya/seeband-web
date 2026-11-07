@@ -120,6 +120,17 @@ describe("fitFailureText", () => {
   });
 });
 
+describe("fitBlockerText, for bounds", () => {
+  test("names each parameter as the user sees it", () => {
+    expect(
+      fitBlockerText({
+        reason: "start_outside_bounds",
+        parameters: ["band_gap", "B"],
+      }),
+    ).toBe("A fit cannot start outside its bounds: E_g, B.");
+  });
+});
+
 describe("fitBlockerText", () => {
   test("names the quantities", () => {
     expect(

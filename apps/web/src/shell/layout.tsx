@@ -54,18 +54,24 @@ export function PageHeading({
 export function Panel({
   title,
   subtitle,
+  action,
   children,
 }: {
   title: string;
   subtitle?: string;
+  /** Beside the title, for what acts on the whole section. */
+  action?: ReactNode;
   children?: ReactNode;
 }) {
   return (
     <section className="rounded-xl border bg-card shadow-card">
       <div className="p-5">
-        <h2 className="m-0 text-base font-semibold tracking-[-0.01em]">
-          {title}
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="m-0 text-base font-semibold tracking-[-0.01em]">
+            {title}
+          </h2>
+          {action}
+        </div>
         {subtitle !== undefined && (
           <p className="mt-1 mb-0 text-[13px] text-muted-foreground">
             {subtitle}

@@ -3,7 +3,11 @@ import { describe, expect, test } from "vitest";
 
 import { MODELS } from "../../e2e/support/models";
 
-import { fitInputsKey, fitRequest } from "@/model/fitRequest";
+import {
+  fitInputsKey,
+  fitRequest,
+  startsOutsideBounds,
+} from "@/model/fitRequest";
 import type { ModelDescription } from "@/model/selection";
 import type { SessionData } from "@/session/store";
 
@@ -30,6 +34,7 @@ const STATE = {
     maxTemperatureK: 800,
   },
   parameters: {},
+  customBounds: {},
   data: { seebeck: entry([100, 900]), resistivity: entry([100]) },
   interpolation: {
     enabled: false,
@@ -173,6 +178,84 @@ describe("fitRequest", () => {
   });
 });
 
+describe("bounds of the user's", () => {
+  const withBounds = (
+    customBounds: Record<string, Record<string, object>>,
+    extra: object = {},
+  ) => fitRequest({ ...STATE, customBounds, ...extra } as never, models);
+  const GAP = { band_gap: { lower: 500, upper: 1500 } };
+
+  test("are left out with none, and sent as they are with some", () => {
+    const none = fitRequest(STATE, models);
+    expect("request" in none && "bounds" in none.request).toBe(false);
+
+    const answer = withBounds({ dpb_s_rho: GAP });
+    expect("request" in answer && answer.request.bounds).toEqual(GAP);
+  });
+
+  test("of another mode do not go with this one", () => {
+    const answer = withBounds({ dpb_s: GAP });
+    expect("request" in answer && "bounds" in answer.request).toBe(false);
+  });
+
+  test("of another scattering neither go nor stop it", () => {
+    const answer = withBounds({
+      dpb_s_rho: { G: { lower: 1.5, upper: 2 } },
+    });
+    expect("request" in answer && "bounds" in answer.request).toBe(false);
+  });
+
+  const outside = (bounds: object, extra: object = {}) => {
+    const answer = withBounds({ dpb_s_rho: { band_gap: bounds } }, extra);
+    if (!("request" in answer)) {
+      throw new Error("blocked");
+    }
+    return startsOutsideBounds(answer.request);
+  };
+
+  test("name a start outside them, at either end", () => {
+    expect(outside({ lower: 1500, upper: 2000 })).toEqual(["band_gap"]);
+    expect(outside({ lower: 100, upper: 500 })).toEqual(["band_gap"]);
+  });
+
+  test("let a start on them through, as a bound is inside its range", () => {
+    expect(outside({ lower: 1000, upper: 2000 })).toEqual([]);
+    expect(outside({ lower: 100, upper: 1000 })).toEqual([]);
+  });
+
+  test("check the value set, not the default", () => {
+    expect(
+      outside(
+        { lower: 1500, upper: 2000 },
+        { parameters: { dpb_s_rho: { band_gap: 1700 } } },
+      ),
+    ).toEqual([]);
+  });
+
+  test("do not check a start with no bounds of the user's", () => {
+    const answer = withBounds({}, { parameters: { dpb_s_rho: { m_eff: 6 } } });
+    expect("request" in answer && startsOutsideBounds(answer.request)).toEqual(
+      [],
+    );
+  });
+
+  test("a start outside them leaves the same inputs, for a fit that runs", () => {
+    const key = (parameters: object) => {
+      const answer = withBounds(
+        { dpb_s_rho: { m_eff: { lower: 0.5, upper: 3 } } },
+        { parameters },
+      );
+      if (!("request" in answer)) {
+        throw new Error("blocked");
+      }
+      return fitInputsKey(answer.request);
+    };
+    expect(key({ dpb_s_rho: { m_eff: 4 } })).toBe(
+      key({ dpb_s_rho: { m_eff: 1 } }),
+    );
+  });
+});
+
 describe("fitInputsKey", () => {
   const key = (state: typeof STATE) => {
     const answer = fitRequest(state, models);
@@ -181,6 +264,17 @@ describe("fitInputsKey", () => {
     }
     return fitInputsKey(answer.request);
   };
+
+  test("follows bounds, as a fit would use them", () => {
+    expect(
+      key({
+        ...STATE,
+        customBounds: {
+          dpb_s_rho: { band_gap: { lower: 500, upper: 1500 } },
+        },
+      } as never),
+    ).not.toBe(key(STATE));
+  });
 
   test("does not follow the start values, which a fit itself moves", () => {
     expect(

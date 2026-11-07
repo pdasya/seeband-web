@@ -550,6 +550,54 @@ describe("a guess", () => {
   });
 });
 
+describe("bounds of the user's", () => {
+  const GAP = { lower: 500, upper: 1500 };
+
+  test("belong to one mode, and null ends one of them", () => {
+    state().setCustomBounds("dpb_s", "band_gap", GAP);
+    state().setCustomBounds("dpb_s", "B", { lower: 0.95, upper: 1.05 });
+    state().setCustomBounds("spb_s", "fermi_energy", GAP);
+
+    state().setCustomBounds("dpb_s", "B", null);
+
+    expect(state().customBounds).toEqual({
+      dpb_s: { band_gap: GAP },
+      spb_s: { fermi_energy: GAP },
+    });
+  });
+
+  test("clearing and a reset end those of that mode alone", () => {
+    state().setCustomBounds("dpb_s", "band_gap", GAP);
+    state().setCustomBounds("spb_s", "fermi_energy", GAP);
+    state().setCustomBounds("dpb_s_rho", "band_gap", GAP);
+
+    state().clearCustomBounds("dpb_s");
+    expect(Object.keys(state().customBounds).sort()).toEqual([
+      "dpb_s_rho",
+      "spb_s",
+    ]);
+
+    state().resetParameters("spb_s");
+    expect(Object.keys(state().customBounds)).toEqual(["dpb_s_rho"]);
+  });
+
+  test("a change ends the last result, not a fit that runs", () => {
+    state().fitEvent(state().fitRequested(), {
+      type: "done",
+      result: { status: "converged" },
+    } as never);
+    state().setCustomBounds("dpb_s", "band_gap", GAP);
+    expect(state().fit.status).toBe("idle");
+
+    state().fitRequested();
+    state().setCustomBounds("dpb_s", "band_gap", null);
+    expect(state().fit.status).toBe("waiting");
+
+    state().clearCustomBounds("dpb_s");
+    expect(state().fit.status).toBe("waiting");
+  });
+});
+
 describe("resetting parameters", () => {
   test("clears only that fit mode, and an old result, and counts", () => {
     state().setParameter("dpb_s", "m_eff", 2);
