@@ -1,4 +1,4 @@
-import type { CalcResponse } from "@/api/client";
+import type { BandDiagramResponse, CalcResponse } from "@/api/client";
 import type {
   ChartCurve,
   ChartMeasurements,
@@ -71,6 +71,7 @@ export function drawsMeasuredCurves(
   }
   return (
     tab !== "chemical_potential" &&
+    tab !== "band_diagram" &&
     data[tab] !== undefined &&
     mode?.quantities.includes(tab) === true
   );
@@ -117,8 +118,10 @@ export interface ChartTabView {
   referenceLines: ReferenceLine[];
   yAxisTitle: string;
   description: string;
-  /** Says what a chart with points only leaves out. */
+  /** Says what a chart with points only leaves out, or what is known to be wrong with it. */
   note: string | null;
+  /** For a chart that is not against temperature. */
+  xAxis?: { title: string; span: readonly [number, number] | null };
 }
 
 const NO_CHART = {
@@ -280,14 +283,59 @@ function bandsView(
 }
 
 /** What a tab shows, from the answers and session. It calculates nothing but units. */
+function bandDiagramView(
+  mode: FitModeDescription | undefined,
+  diagram: BandDiagramResponse | null,
+): ChartTabView {
+  const { fit } = STRINGS;
+  const labels: Record<string, string> = text.diagramCurves;
+  const issueTexts: Record<string, string> = fit.knownIssueTexts;
+  const first = diagram?.wavevector[0];
+  const last = diagram?.wavevector.at(-1);
+  return {
+    ...NO_CHART,
+    yAxisTitle: text.axes.energy,
+    description: text.diagramDescription,
+    empty: null,
+    xAxis: {
+      title: text.wavevectorAxis,
+      span: first === undefined || last === undefined ? null : [first, last],
+    },
+    // Each name comes from the server, so a model with other bands needs no change here.
+    curves: Object.entries(diagram?.curves ?? {}).map(([name, values]) => ({
+      id: name,
+      label: labels[name] ?? name,
+      temperatureK: diagram?.wavevector ?? [],
+      values,
+      dashed: name === "fermi_energy_k",
+    })),
+    note:
+      diagram === null || diagram.known_issues.length === 0
+        ? null
+        : diagram.known_issues
+            .map((id) => {
+              const issue = mode?.known_issues.find((item) => item.id === id);
+              const severity =
+                fit.issueSeverity[issue?.severity ?? "unreliable"];
+              const said =
+                issueTexts[`known_issue.${id}`] ?? fit.knownIssueOther;
+              return `${severity}: ${said}`;
+            })
+            .join(" "),
+  };
+}
+
 export function chartTabView(
   tab: ChartTab,
   mode: FitModeDescription | undefined,
   state: ViewState,
   measured: CalcResponse | null,
   derived: CalcResponse | null,
+  diagram: BandDiagramResponse | null = null,
 ): ChartTabView {
   switch (tab) {
+    case "band_diagram":
+      return bandDiagramView(mode, diagram);
     case "chemical_potential":
       return chemicalPotentialView(mode, state, derived);
     case "bands":

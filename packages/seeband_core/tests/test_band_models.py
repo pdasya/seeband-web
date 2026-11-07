@@ -3,6 +3,8 @@ import dataclasses
 import json
 import subprocess
 import sys
+import warnings
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 from unittest.mock import ANY
@@ -13,6 +15,8 @@ from seeband_core import band_models, fit_module
 from seeband_core.band_models import parabolic_band
 from seeband_core.model_catalog import registry
 from seeband_core.model_interface import (
+    BandDiagramRequest,
+    BandDiagramResult,
     Bounds,
     CurveKind,
     CurveRequest,
@@ -285,6 +289,95 @@ def test_a_fit_needs_its_measurements() -> None:
     only_seebeck = {"seebeck": recorded_measurements(fit_mode)["seebeck"]}
     with pytest.raises(ValueError, match="Missing measurement: resistivity"):
         model.fit(FitRequest("dpb_s_rho", only_seebeck, default_start(fit_mode), scattering="acPh"))
+
+
+def _golden_runs() -> Iterator[tuple[str, dict[str, Any]]]:
+    for path in sorted(GOLDEN.glob("*.json")):
+        for run in json.loads(path.read_text(encoding="utf-8"))["runs"]:
+            yield path.stem, run
+
+
+def _band_calls(run: dict[str, Any]) -> list[dict[str, Any]]:
+    return [call for call in run["manual_curve_calls"] if call["function"] == "get_parabolic_band"]
+
+
+def _diagram_of(run: dict[str, Any]) -> tuple[BandDiagramResult, list[dict[str, Any]]]:
+    """The diagram for the values of a run's recorded calls, with those calls."""
+    mode_id = run["mode"]
+    model = registry.get(mode_id.partition("_")[0])
+    fit_mode = model.describe().fit_mode(mode_id)
+    band, fermi = _band_calls(run)
+    mass, energy = band["args"][3:5]
+    parameters = {
+        **default_start(fit_mode),
+        "fermi_energy": fermi["args"][4],
+    }
+    if model.describe().id == "spb":
+        parameters["band_mass"] = mass
+    else:
+        parameters |= {"m_eff": mass, "band_gap": energy}
+    return model.band_diagram(BandDiagramRequest(mode_id, parameters)), [band, fermi]
+
+
+def test_the_diagram_is_what_the_desktop_draws() -> None:
+    compared = 0
+    for _, run in _golden_runs():
+        if not _band_calls(run) or run["mode"] == "spb_s_rho_rh":
+            continue
+        result, (band, fermi) = _diagram_of(run)
+        name = "band_1_energy_k" if run["mode"].startswith("spb") else "band_2_energy_k"
+        assert result.wavevector.tolist() == band["result"][0]
+        assert result.curves[name].tolist() == band["result"][1]
+        assert result.curves["fermi_energy_k"].tolist() == fermi["result"][1]
+        compared += 1
+    assert compared > 10
+
+
+def test_the_diagram_scales_band_2_as_the_desktop_does() -> None:
+    fit_mode = registry.get("dpb").describe().fit_mode("dpb_s")
+    result = registry.get("dpb").band_diagram(
+        BandDiagramRequest(
+            "dpb_s",
+            {**default_start(fit_mode), "m_eff": 1.5, "band_gap": 700.0},
+            band_1_degeneracy=2.0,
+            band_2_degeneracy=3.0,
+        )
+    )
+
+    # As `seeband.py:3585`: the mass over N1/N2.
+    expected = parabolic_band(-40, 40, 100, 1.5 / (2 / 3), 700.0)[1]
+    assert result.curves["band_2_energy_k"].tolist() == expected.tolist()
+    assert result.curves["band_1_energy_k"].tolist() == (
+        parabolic_band(-40, 40, 100, -1, 0)[1].tolist()
+    )
+
+
+def test_the_diagram_shows_a_mass_as_the_user_sees_it() -> None:
+    # This disabled mode holds its mass 100 times larger in core units (D3).
+    fit_mode = registry.get("spb").describe().fit_mode("spb_s_rho_rh")
+    result = registry.get("spb").band_diagram(
+        BandDiagramRequest("spb_s_rho_rh", {**default_start(fit_mode), "band_mass": 150.0})
+    )
+
+    expected = parabolic_band(-40, 40, 100, 1.5, 0)[1]
+    assert result.curves["band_1_energy_k"].tolist() == expected.tolist()
+
+
+def test_the_diagram_lists_its_own_known_error() -> None:
+    fit_mode = registry.get("dpb").describe().fit_mode("dpb_s")
+    result = registry.get("dpb").band_diagram(BandDiagramRequest("dpb_s", default_start(fit_mode)))
+    assert result.known_issues == ("band_diagram_formula",)
+
+
+def test_a_mass_of_0_has_no_finite_band_and_no_warning() -> None:
+    fit_mode = registry.get("dpb").describe().fit_mode("dpb_s")
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        result = registry.get("dpb").band_diagram(
+            BandDiagramRequest("dpb_s", {**default_start(fit_mode), "m_eff": 0.0})
+        )
+    assert not np.isfinite(result.curves["band_2_energy_k"]).any()
+    assert np.isfinite(result.curves["band_1_energy_k"]).all()
 
 
 def test_band_diagram_is_available_without_a_model() -> None:

@@ -1,4 +1,4 @@
-import type { CalcRequest } from "@/api/client";
+import type { BandDiagramRequest, CalcRequest } from "@/api/client";
 import { parameterValues } from "@/model/parameters";
 import { fitModeOf, type ModelDescription } from "@/model/selection";
 import {
@@ -105,6 +105,30 @@ export function requestScope(request: CalcRequest): string {
     request.scattering,
     request.kind ?? "measured",
   ]);
+}
+
+/** The sketch of the bands for the current values, which needs no data, or null with no mode. */
+export function bandDiagramRequest(
+  state: RequestState,
+  models: readonly ModelDescription[] | undefined,
+): BandDiagramRequest | null {
+  const { selection } = state;
+  const model = models?.find(({ id }) => id === selection.model);
+  const mode = fitModeOf(model, selection.fitMode);
+  return model === undefined || mode === undefined || mode.disabled
+    ? null
+    : {
+        model: model.id,
+        fit_mode: mode.id,
+        parameters: parameterValues(mode, state.parameters[mode.id]),
+        band_1_degeneracy: selection.band1Degeneracy,
+        band_2_degeneracy: selection.band2Degeneracy,
+      };
+}
+
+/** As `requestScope`: another mode has other bands, and must not pass for this one's. */
+export function bandDiagramScope(request: BandDiagramRequest): string {
+  return JSON.stringify([request.model, request.fit_mode]);
 }
 
 /** Other curves of the same values. These take no measurements, and need no data. */

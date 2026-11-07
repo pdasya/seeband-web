@@ -231,6 +231,28 @@ class CurveRequest:
     extrapolated: bool = False
 
 
+@dataclass(frozen=True)
+class BandDiagramRequest:
+    """Ask for the sketch of E(k). `parameters` holds every parameter of the mode, in core units."""
+
+    fit_mode: str
+    parameters: Mapping[str, float]
+    band_1_degeneracy: float = 1.0
+    band_2_degeneracy: float = 1.0
+
+
+@dataclass(frozen=True, eq=False)
+class BandDiagramResult:
+    """Curves over `wavevector`, by name, where each name ends in its unit.
+
+    `wavevector` has no unit, as the formula states none (`band_diagram_formula`).
+    """
+
+    wavevector: np.ndarray
+    curves: Mapping[str, np.ndarray]
+    known_issues: tuple[str, ...] = ()
+
+
 @dataclass(frozen=True, eq=False)
 class CurveResult:
     """Curves by name, where each name ends in its unit, such as `seebeck_v_per_k`."""
@@ -317,6 +339,8 @@ class Model(Protocol):
     def describe(self) -> ModelDescription: ...
 
     def calculate(self, request: CurveRequest) -> CurveResult: ...
+
+    def band_diagram(self, request: BandDiagramRequest) -> BandDiagramResult: ...
 
     def fit(self, request: FitRequest, on_iteration: IterationCallback | None = None) -> FitResult:
         """Run a fit. The callback is apart from the request, which stays picklable for a worker.

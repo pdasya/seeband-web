@@ -41,11 +41,12 @@ const TABS: readonly ChartTab[] = [
   "hall",
   "chemical_potential",
   "bands",
+  "band_diagram",
 ];
 
 /** The chart of the open tab, which keeps its last curve while waiting and after an error. */
 export function LiveCharts({ live }: { live: LiveCurves }) {
-  const { measured, derived } = live;
+  const { measured, derived, diagram } = live;
   const { data: models } = useQuery(modelsQuery);
   const tab = useSessionStore((state) => state.chartTab);
   const setTab = useSessionStore((state) => state.setChartTab);
@@ -62,7 +63,11 @@ export function LiveCharts({ live }: { live: LiveCurves }) {
   );
   const bandGapK = bandGapForTab(tab, mode, parameters);
   // μ draws none of these, so an answer for them does not redraw it.
-  const measuredCurves = tab === "chemical_potential" ? null : measured.result;
+  const measuredCurves =
+    tab === "chemical_potential" || tab === "band_diagram"
+      ? null
+      : measured.result;
+  const diagramResult = tab === "band_diagram" ? diagram.result : null;
   const view = useMemo(
     () =>
       chartTabView(
@@ -71,8 +76,18 @@ export function LiveCharts({ live }: { live: LiveCurves }) {
         { data, interpolation, bandGapK },
         measuredCurves,
         derived.result,
+        diagramResult,
       ),
-    [tab, mode, data, interpolation, bandGapK, measuredCurves, derived.result],
+    [
+      tab,
+      mode,
+      data,
+      interpolation,
+      bandGapK,
+      measuredCurves,
+      derived.result,
+      diagramResult,
+    ],
   );
   const fitRange = useMemo((): ChartFitRange | null => {
     return minK === null || maxK === null ? null : { minK, maxK };
@@ -80,9 +95,10 @@ export function LiveCharts({ live }: { live: LiveCurves }) {
 
   // Only what this tab draws. An RMSE has its own note, and other curves end with their tab.
   const usesMeasured = drawsMeasuredCurves(tab, mode, data);
-  const failed = usesMeasured && measured.error !== null ? measured : derived;
+  const onTab = tab === "band_diagram" ? diagram : derived;
+  const failed = usesMeasured && measured.error !== null ? measured : onTab;
   const { error } = failed;
-  const busy = (usesMeasured && measured.busy) || derived.busy;
+  const busy = (usesMeasured && measured.busy) || onTab.busy;
 
   return (
     <Panel title={fit.charts}>
@@ -126,8 +142,9 @@ export function LiveCharts({ live }: { live: LiveCurves }) {
             measurements={view.measurements}
             interpolated={view.interpolated}
             referenceLines={view.referenceLines}
-            fitRange={fitRange}
-            xAxisTitle={text.temperatureAxis}
+            fitRange={view.xAxis === undefined ? fitRange : null}
+            xAxisTitle={view.xAxis?.title ?? text.temperatureAxis}
+            xAxisSpan={view.xAxis?.span ?? null}
             yAxisTitle={view.yAxisTitle}
             description={view.description}
             toggleMeasurementsLabel={text.toggleMeasurements}

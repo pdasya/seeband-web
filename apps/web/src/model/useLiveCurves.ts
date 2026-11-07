@@ -1,12 +1,24 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 
-import { apiClient, type CalcRequest, type CalcResponse } from "@/api/client";
+import {
+  apiClient,
+  type BandDiagramRequest,
+  type BandDiagramResponse,
+  type CalcRequest,
+  type CalcResponse,
+} from "@/api/client";
 import type { ApiError } from "@/api/errors";
 import { modelsQuery } from "@/api/queries";
 import { derivedKind, needsMeasuredCurves } from "@/model/chartTabs";
 import { LatestOnly } from "@/model/latestOnly";
-import { calcRequest, derivedRequest, requestScope } from "@/model/liveCurves";
+import {
+  bandDiagramRequest,
+  bandDiagramScope,
+  calcRequest,
+  derivedRequest,
+  requestScope,
+} from "@/model/liveCurves";
 import { fitModeOf } from "@/model/selection";
 import { useSessionStore } from "@/session/store";
 
@@ -14,9 +26,9 @@ import { useSessionStore } from "@/session/store";
 // only flicker.
 const BUSY_AFTER_MS = 600;
 
-export interface LiveCalc {
+export interface LiveCalc<Result = CalcResponse> {
   /** The latest answer, kept through later requests and errors, so that the chart stays. */
-  result: CalcResponse | null;
+  result: Result | null;
   busy: boolean;
   error: ApiError | null;
 }
@@ -26,10 +38,12 @@ export interface LiveCurves {
   measured: LiveCalc;
   /** The curves that the open tab needs on top of those. */
   derived: LiveCalc;
+  /** The sketch of the bands, while its tab is open. */
+  diagram: LiveCalc<BandDiagramResponse>;
 }
 
-interface Answers {
-  result: CalcResponse | null;
+interface Answers<Result> {
+  result: Result | null;
   resultScope: string | null;
   error: ApiError | null;
   errorScope: string | null;
@@ -37,7 +51,7 @@ interface Answers {
   settled: string | null;
 }
 
-const NOTHING: Answers = {
+const NOTHING: Answers<never> = {
   result: null,
   resultScope: null,
   error: null,
@@ -45,17 +59,32 @@ const NOTHING: Answers = {
   settled: null,
 };
 
-function scopeOfBody(body: string): string {
-  return requestScope(JSON.parse(body) as CalcRequest);
+/** What to send a request's body with, and what its answer is of. */
+interface Route<Result> {
+  send: (body: string, signal: AbortSignal) => Promise<Result>;
+  scopeOf: (body: string) => string;
 }
 
+const CALC: Route<CalcResponse> = {
+  send: (body, signal) =>
+    apiClient.postCalc(JSON.parse(body) as CalcRequest, signal),
+  scopeOf: (body) => requestScope(JSON.parse(body) as CalcRequest),
+};
+
+const BAND_DIAGRAM: Route<BandDiagramResponse> = {
+  send: (body, signal) =>
+    apiClient.postBandDiagram(JSON.parse(body) as BandDiagramRequest, signal),
+  scopeOf: (body) => bandDiagramScope(JSON.parse(body) as BandDiagramRequest),
+};
+
 /** One request at a time for these values, with the state to show while it lasts. */
-function useLatestCalc(
+function useLatest<Result>(
+  route: Route<Result>,
   body: string | null,
   scope: string | null,
   waiting: boolean,
-): LiveCalc {
-  const [answers, setAnswers] = useState(NOTHING);
+): LiveCalc<Result> {
+  const [answers, setAnswers] = useState<Answers<Result>>(NOTHING);
   // With nothing to ask, the old curve goes at once, and does not return with new data.
   if (body === null && answers !== NOTHING) {
     setAnswers(NOTHING);
@@ -63,13 +92,12 @@ function useLatestCalc(
 
   const [sender] = useState(
     () =>
-      new LatestOnly<CalcResponse>({
-        send: (values, signal) =>
-          apiClient.postCalc(JSON.parse(values) as CalcRequest, signal),
+      new LatestOnly<Result>({
+        send: route.send,
         onResult: (result, settled) => {
           setAnswers({
             result,
-            resultScope: scopeOfBody(settled),
+            resultScope: route.scopeOf(settled),
             error: null,
             errorScope: null,
             settled,
@@ -79,7 +107,7 @@ function useLatestCalc(
           setAnswers((previous) => ({
             ...previous,
             error,
-            errorScope: scopeOfBody(sent),
+            errorScope: route.scopeOf(sent),
             settled,
           }));
         },
@@ -125,31 +153,42 @@ export function useLiveCurves(): LiveCurves {
   const interpolation = useSessionStore((state) => state.interpolation);
   const tab = useSessionStore((state) => state.chartTab);
 
-  const { measuredBody, measuredScope, derivedBody, derivedScope } =
-    useMemo(() => {
-      const state = { selection, parameters, data, interpolation };
-      const model = models?.models.find(({ id }) => id === selection.model);
-      const mode = fitModeOf(model, selection.fitMode);
-      const measured = calcRequest(
-        state,
-        models?.models,
-        needsMeasuredCurves(tab, mode),
-      );
-      const kind = derivedKind(tab, mode);
-      const derived =
-        kind === null ? null : derivedRequest(state, models?.models, kind);
-      return {
-        measuredBody: measured && JSON.stringify(measured),
-        measuredScope: measured && requestScope(measured),
-        derivedBody: derived && JSON.stringify(derived),
-        derivedScope: derived && requestScope(derived),
-      };
-    }, [selection, parameters, data, interpolation, models, tab]);
+  const {
+    measuredBody,
+    measuredScope,
+    derivedBody,
+    derivedScope,
+    diagramBody,
+    diagramScope,
+  } = useMemo(() => {
+    const state = { selection, parameters, data, interpolation };
+    const model = models?.models.find(({ id }) => id === selection.model);
+    const mode = fitModeOf(model, selection.fitMode);
+    const measured = calcRequest(
+      state,
+      models?.models,
+      needsMeasuredCurves(tab, mode),
+    );
+    const kind = derivedKind(tab, mode);
+    const derived =
+      kind === null ? null : derivedRequest(state, models?.models, kind);
+    const diagram =
+      tab === "band_diagram" ? bandDiagramRequest(state, models?.models) : null;
+    return {
+      measuredBody: measured && JSON.stringify(measured),
+      measuredScope: measured && requestScope(measured),
+      derivedBody: derived && JSON.stringify(derived),
+      derivedScope: derived && requestScope(derived),
+      diagramBody: diagram && JSON.stringify(diagram),
+      diagramScope: diagram && bandDiagramScope(diagram),
+    };
+  }, [selection, parameters, data, interpolation, models, tab]);
   // New interpolated values are on their way, and the old ones are for another range.
   const waiting = interpolation.enabled && interpolation.loading;
 
   return {
-    measured: useLatestCalc(measuredBody, measuredScope, waiting),
-    derived: useLatestCalc(derivedBody, derivedScope, false),
+    measured: useLatest(CALC, measuredBody, measuredScope, waiting),
+    derived: useLatest(CALC, derivedBody, derivedScope, false),
+    diagram: useLatest(BAND_DIAGRAM, diagramBody, diagramScope, false),
   };
 }

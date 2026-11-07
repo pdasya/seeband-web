@@ -8,6 +8,8 @@ import pytest
 from seeband_core.model_descriptions import load_desktop_descriptions
 from seeband_core.model_interface import (
     ALL_CURVE_KINDS,
+    BandDiagramRequest,
+    BandDiagramResult,
     Bounds,
     CurveRequest,
     CurveResult,
@@ -58,6 +60,10 @@ class LinearModel:
 
     def describe(self) -> ModelDescription:
         return description(LINEAR_MODE)
+
+    def band_diagram(self, request: BandDiagramRequest) -> BandDiagramResult:
+        # A model with no bands draws none, and a client shows an empty sketch.
+        return BandDiagramResult(np.linspace(-1.0, 1.0, 3), {})
 
     def calculate(self, request: CurveRequest) -> CurveResult:
         temperature_k = np.linspace(

@@ -6,6 +6,7 @@ export type CurveColor = "blue" | "orange" | "teal";
 export interface ChartCurve {
   id: string;
   label: string;
+  /** The values along the x axis, which is temperature on all but one chart. */
   temperatureK: readonly number[];
   values: readonly (number | null)[];
   color?: CurveColor;
@@ -37,6 +38,8 @@ export interface FigureInput {
   referenceLines: readonly ReferenceLine[];
   xAxisTitle: string;
   yAxisTitle: string;
+  /** For an axis that is not temperature, with no unit, so it has no ticks. */
+  xAxisSpan?: readonly [number, number] | null | undefined;
 }
 
 /** Colours and fonts from the tokens, as Plotly draws with values rather than CSS variables. */
@@ -253,7 +256,7 @@ export function buildFigure(
     hovermode: "closest",
     xaxis: {
       title: { text: input.xAxisTitle, font: titleFont },
-      range: [0, maxK],
+      range: input.xAxisSpan == null ? [0, maxK] : [...input.xAxisSpan],
       showgrid: false,
       zeroline: false,
       showline: true,
@@ -262,7 +265,11 @@ export function buildFigure(
       ticklen: 5,
       tickcolor: theme.axis,
       tickfont: tickFont,
-      ...(maxK <= MAX_TICKED_K ? { dtick: AXIS_STEP_K } : {}),
+      ...(input.xAxisSpan != null
+        ? { ticks: "", showticklabels: false }
+        : maxK <= MAX_TICKED_K
+          ? { dtick: AXIS_STEP_K }
+          : {}),
     },
     yaxis: {
       // An SI letter such as µ would read as part of the unit in the axis title.

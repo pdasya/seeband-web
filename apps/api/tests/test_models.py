@@ -10,6 +10,8 @@ from seeband_api.main import create_app
 from seeband_api.models import _registry_response, build_models_response
 from seeband_core.model_catalog import registry
 from seeband_core.model_interface import (
+    BandDiagramRequest,
+    BandDiagramResult,
     Bounds,
     CurveRequest,
     CurveResult,
@@ -293,6 +295,9 @@ class _FakeModel:
 
     def describe(self) -> ModelDescription:
         return self._description
+
+    def band_diagram(self, request: BandDiagramRequest) -> BandDiagramResult:
+        raise NotImplementedError
 
     def calculate(self, request: CurveRequest) -> CurveResult:
         raise NotImplementedError

@@ -3,7 +3,7 @@
 A new model needs one class and one registration. API and client code find models through the registry, so a typical model needs no changes there.
 
 1. **Describe it.** Return a `ModelDescription` from `describe()`. It lists the fit modes, the data each one needs, and each parameter with its unit, range, scales and bounds. Clients build their forms from this.
-2. **Calculate curves.** `calculate(CurveRequest)` returns a `CurveResult`, with a curve for each quantity.
+2. **Calculate curves.** `calculate(CurveRequest)` returns a `CurveResult`, with a curve for each quantity. `band_diagram(BandDiagramRequest)` returns the sketch of its bands, with each curve by name.
 3. **Fit.** `fit(FitRequest)` returns a `FitResult` with the fitted parameters.
 4. **Register it.** Add `registry.register(model)` to `seeband_core.model_catalog`, and import `registry` from there.
 
