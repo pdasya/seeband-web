@@ -83,6 +83,17 @@ SEEBAND_API_TARGET=http://127.0.0.1:8000 pnpm --filter @seeband/web exec playwri
 - **Each model keeps its own mode, scattering and degeneracies,** as the design does. The fit range is shared.
 - **A number being typed stays in its field.** It reaches the session on leaving the field or on Enter, and only if it holds, so the steps on the way to it send nothing and clear no result. N₁ and N₂ are any numbers above 0, and the two bounds of the range go together.
 
+## Live curves
+
+`model/useLiveCurves.ts` asks `POST /api/calc` for the current values whenever they change and data are loaded. Without data for the fit mode, nothing is sent.
+
+- **One request at a time.** `model/latestOnly.ts` sends the latest values when the running request has its answer, so requests cannot pile up on a slower server. A change does not abort a running request, because the server cannot stop a calculation that has started. So an old answer cannot arrive after a newer one. Only leaving the page or removing the data aborts one, and a request with no answer ends after 60 s.
+- **A request waits** for 250 ms of rest, or 300 ms at the latest during a long drag. FS12 tunes these over a real network.
+- **The chart keeps the last curve** while waiting and after an error, and the RMSE says then that it is not current. An indicator appears 600 ms after a change, as a quick answer would make it flicker.
+- **A 429 with `Retry-After`** of up to 30 s holds requests back until then, and sends the latest values by itself. Any other error waits for the next change.
+- **Measured and interpolated points are two series.** Measured points always show. With the switch on, interpolated points show too, in another colour, as these are what the RMSE and a fit use.
+- **Only points in the fit range** go with a request, for the RMSE, and the `extrapolated` flag goes with them. Points of ρ and R_H with a value of 0 stay out, as the API refuses a relative RMSE there, and the panel says so.
+
 ## Numbers
 
 The app shows numbers with a decimal comma, in fields, labels, messages and charts, whatever the browser's region. `lib/numbers.ts` holds this. Number fields are text fields, because `type="number"` shows the separator of the computer's region. They accept a comma or a point. Files and the API keep their points.
