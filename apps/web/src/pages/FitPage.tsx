@@ -35,7 +35,9 @@ export function FitPage() {
               actions={<FitActions control={control} guess={guess} />}
             />
             <FitMessages control={control} guess={guess} />
-            <LiveCharts live={live} />
+            <div id="charts">
+              <LiveCharts live={live} />
+            </div>
             <div className="flex flex-wrap items-stretch gap-4">
               <div className="min-w-0 flex-[1_1_320px]">
                 <ParametersPanel />

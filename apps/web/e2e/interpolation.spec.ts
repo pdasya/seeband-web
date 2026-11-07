@@ -394,7 +394,7 @@ test("moving between screens sends nothing again, and it follows while away", as
   await interpolationSwitch(page).click();
   await expect.poll(() => bodies.length).toBe(2);
 
-  await page.getByRole("link", { name: "Results" }).click();
+  await page.getByRole("link", { name: "Results", exact: true }).click();
   await page.getByRole("link", { name: "Model fit" }).click();
   await expect(interpolationSwitch(page)).toBeChecked();
   await page.waitForTimeout(600);
@@ -451,7 +451,7 @@ test("the switch stays when moving to another screen and back", async ({
   await interpolationSwitch(page).click();
   await expect(page.getByText("Fit range 50–800 K")).toBeVisible();
 
-  await page.getByRole("link", { name: "Results" }).click();
+  await page.getByRole("link", { name: "Results", exact: true }).click();
   await page.getByRole("link", { name: "Model fit" }).click();
 
   await expect(interpolationSwitch(page)).toBeChecked();

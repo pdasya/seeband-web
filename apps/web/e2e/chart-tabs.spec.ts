@@ -336,10 +336,10 @@ test("known errors of a tab's curves are named while it is open", async ({
   });
 
   await tab(page, "Band contributions").click();
-  await expect(page.getByText(/acphdis_curve_scale/)).toBeVisible();
+  await expect(page.getByText(/σ, κ and S by band/)).toBeVisible();
 
   await tab(page, "S(T)").click();
-  await expect(page.getByText(/acphdis_curve_scale/)).toHaveCount(0);
+  await expect(page.getByText(/σ, κ and S by band/)).toHaveCount(0);
 });
 
 function hold() {
@@ -371,7 +371,7 @@ test("known errors of a tab go with it at once, also if the next curve fails", a
     });
   });
   await tab(page, "Band contributions").click();
-  await expect(page.getByText(/acphdis_curve_scale/)).toBeVisible();
+  await expect(page.getByText(/σ, κ and S by band/)).toBeVisible();
   const gate = hold();
   await page.route("**/api/calc", async (route) => {
     await gate.held;
@@ -382,11 +382,11 @@ test("known errors of a tab go with it at once, also if the next curve fails", a
   });
 
   await tab(page, "μ(T)").click();
-  await expect(page.getByText(/acphdis_curve_scale/)).toHaveCount(0);
+  await expect(page.getByText(/σ, κ and S by band/)).toHaveCount(0);
 
   gate.release();
   await expect(page.getByRole("alert")).toContainText("no result");
-  await expect(page.getByText(/acphdis_curve_scale/)).toHaveCount(0);
+  await expect(page.getByText(/σ, κ and S by band/)).toHaveCount(0);
   await expect(page.getByRole("alert")).not.toContainText("last curve");
 });
 
@@ -657,7 +657,7 @@ test("the open tab stays when moving to another screen and back", async ({
   await open(page);
   await tab(page, "μ(T)").click();
 
-  await page.getByRole("link", { name: "Results" }).click();
+  await page.getByRole("link", { name: "Results", exact: true }).click();
   await page.getByRole("link", { name: "Model fit" }).click();
 
   await expect(tab(page, "μ(T)")).toHaveAttribute("aria-selected", "true");

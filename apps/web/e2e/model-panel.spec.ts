@@ -224,7 +224,7 @@ for (const value of ["0.5", "2.5"]) {
     );
     await expect(page.getByRole("alert")).toHaveCount(0);
 
-    await page.getByRole("link", { name: "Results" }).click();
+    await page.getByRole("link", { name: "Results", exact: true }).click();
     await page.getByRole("link", { name: "Model fit" }).click();
     await expect(page.getByLabel("N₁")).toHaveValue(value.replace(".", ","));
   });
@@ -248,7 +248,7 @@ for (const value of ["0", "-1", "", "abc"]) {
     );
     await expect(page.getByRole("alert")).toContainText("must be above 0");
 
-    await page.getByRole("link", { name: "Results" }).click();
+    await page.getByRole("link", { name: "Results", exact: true }).click();
     await page.getByRole("link", { name: "Model fit" }).click();
     await expect(page.getByLabel("N₁")).toHaveValue("2");
     await expect(page.getByRole("alert")).toHaveCount(0);
@@ -323,7 +323,7 @@ test("a fractional range is kept", async ({ page }) => {
 
   await expect(page.getByRole("alert")).toHaveCount(0);
 
-  await page.getByRole("link", { name: "Results" }).click();
+  await page.getByRole("link", { name: "Results", exact: true }).click();
   await page.getByRole("link", { name: "Model fit" }).click();
   await expect(page.getByLabel("Lower bound, K")).toHaveValue("50,5");
   await expect(page.getByLabel("Upper bound, K")).toHaveValue("600,25");
@@ -386,7 +386,13 @@ test("leaving a field unchanged keeps a result, and changing one clears it", asy
     const state = useSessionStore.getState();
     state.fitEvent(state.fitRequested(), {
       type: "done",
-      result: { status: "converged" },
+      result: {
+        parameters: {},
+        status: "converged",
+        parameter_errors: {},
+        at_bounds: [],
+        known_issues: [],
+      },
     });
   });
   expect(await fitStatus()).not.toBe("idle");
@@ -410,7 +416,7 @@ test("the choices stay when moving to another screen and back", async ({
   await mode(page, "S").click();
   await page.getByLabel("Upper bound, K").fill("700");
 
-  await page.getByRole("link", { name: "Results" }).click();
+  await page.getByRole("link", { name: "Results", exact: true }).click();
   await page.getByRole("link", { name: "Model fit" }).click();
 
   await expect(mode(page, "S")).toBeChecked();

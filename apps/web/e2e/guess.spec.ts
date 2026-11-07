@@ -234,7 +234,7 @@ test("coming back to a tab does not guess again, or undo edits", async ({
   await page.getByRole("tab", { name: "Single file" }).click();
   await page.getByRole("tab", { name: "Separate files" }).click();
   await expect(page.getByText(/^3 points/)).toBeVisible();
-  await page.getByRole("link", { name: "Results" }).click();
+  await page.getByRole("link", { name: "Results", exact: true }).click();
   await page.getByRole("link", { name: "Model fit" }).click();
   await page.waitForTimeout(300);
 
@@ -348,7 +348,7 @@ test("an answer that comes while another screen is open still counts", async ({
     await route.fulfill({ json: GUESS });
   });
   await load(page);
-  await page.getByRole("link", { name: "Results" }).click();
+  await page.getByRole("link", { name: "Results", exact: true }).click();
 
   const answered = page.waitForResponse("**/api/guess");
   gate.release();

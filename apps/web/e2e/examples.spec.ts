@@ -249,6 +249,13 @@ test("a real fit stops, converges and resets through the real API", async ({
   });
   await expect(gap).not.toHaveValue("1000");
   await expect(page.getByRole("alert")).toHaveCount(0);
+  // The result panel counts them, and shows the values the fit reached.
+  const iterations = page.locator("dl > div").filter({ hasText: "Iterations" });
+  const parameters = page.getByRole("table", { name: "Parameters in use" });
+  await expect(iterations).toContainText(/^Iterations\d+limit 1000$/);
+  await expect(
+    parameters.getByRole("row").filter({ hasText: /^E_g/ }),
+  ).toContainText("-3000 … 3000");
 
   await page.getByRole("button", { name: "Reset" }).click();
   await expect(gap).toHaveValue("1000");
@@ -262,6 +269,28 @@ test("a real fit stops, converges and resets through the real API", async ({
   });
   await expect(gap).not.toHaveValue("554");
   await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(iterations).toHaveCount(0);
+
+  // acPhDis has known errors of both kinds, each beside what it is about.
+  await page.getByRole("radio", { name: "S + ρ", exact: true }).click();
+  await page.getByRole("combobox", { name: "Scattering" }).click();
+  await page.getByRole("option", { name: /acPhDis/ }).click();
+  await run.click();
+  await expect(badge(/^Converged in \d+ iter\.$/)).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(
+    page.getByText(/^Unreliable: With acPhDis, this fit stops/),
+  ).toBeVisible();
+  await expect(
+    page.getByText(/^Unreliable: With acPhDis, the band weight/),
+  ).toBeVisible();
+  await expect(
+    page
+      .locator("dl > div")
+      .filter({ hasText: "RMSE, S" })
+      .getByText("unreliable"),
+  ).toBeVisible();
 });
 
 // From `packages/seeband_core/tests/fixtures/neural_net_references.json`, recorded on the desktop.
