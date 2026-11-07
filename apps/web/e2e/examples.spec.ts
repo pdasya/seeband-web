@@ -196,3 +196,23 @@ test("a zero in resistivity does not stop the real API from answering", async ({
   await expect(page.getByText("ρ: points with a value of 0")).toBeVisible();
   await expect(page.getByRole("alert")).toHaveCount(0);
 });
+
+test("the tabs draw real curves through the real API", async ({ page }) => {
+  await page.goto("/fit");
+  await expect(page.getByRole("slider", { name: "E_F" })).toBeVisible();
+  const lines = page.locator(".scatterlayer .trace path.js-line");
+
+  await page.getByRole("tab", { name: "μ(T)" }).click();
+  await expect(lines).toHaveCount(1);
+  await expect(page.getByText("band 2 bottom (E_g)")).toBeVisible();
+
+  await page.getByRole("tab", { name: "Band contributions" }).click();
+  await expect(lines).toHaveCount(3);
+
+  await page.getByRole("radio", { name: "SPB" }).click();
+  await expect(page.getByText("DPB only")).toBeVisible();
+  await page.getByRole("tab", { name: "μ(T)" }).click();
+  await expect(lines).toHaveCount(1);
+  await expect(page.getByText("band edge")).toBeVisible();
+  await expect(page.getByRole("alert")).toHaveCount(0);
+});

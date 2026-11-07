@@ -94,6 +94,14 @@ SEEBAND_API_TARGET=http://127.0.0.1:8000 pnpm --filter @seeband/web exec playwri
 - **Measured and interpolated points are two series.** Measured points always show. With the switch on, interpolated points show too, in another colour, as these are what the RMSE and a fit use.
 - **Only points in the fit range** go with a request, for the RMSE, and the `extrapolated` flag goes with them. Points of ρ and R_H with a value of 0 stay out, as the API refuses a relative RMSE there, and the panel says so.
 
+## Chart tabs
+
+`model/chartTabs.ts` says what each tab of the fit screen draws, in the units of its axis: S in µV/K, ρ in µΩ·m, R_H in m³/C and μ in K.
+
+- **S, ρ and R_H** use the curves that measurements go with. With no data, a tab says so. With data that the fit mode does not use, it shows the points and says that the mode has no model for them.
+- **μ and band contributions** are other kinds of curve, which the API refuses to mix with measurements. So they are a second request, only while their tab is open, and also one at a time. They need no data. The contributions take their total S from the first request.
+- **Whether a mode offers a curve** comes from `curves` in `GET /api/models`, with its text from the reason. μ draws the band edges, and E_g comes from a mode's `band_gap` where it has one.
+
 ## Numbers
 
 The app shows numbers with a decimal comma, in fields, labels, messages and charts, whatever the browser's region. `lib/numbers.ts` holds this. Number fields are text fields, because `type="number"` shows the separator of the computer's region. They accept a comma or a point. Files and the API keep their points.

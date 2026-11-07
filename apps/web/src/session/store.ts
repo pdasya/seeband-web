@@ -56,6 +56,9 @@ export interface FitData {
 /** Data come from a file for each quantity, or from one table. Only one way counts at a time. */
 export type DataMode = "separate" | "single";
 
+/** What the fit screen's chart shows. */
+export type ChartTab = Quantity | "chemical_potential" | "bands";
+
 /**
  * One table, kept with its text in memory only, as a new mapping sends it again. `table` is the
  * last answer, which stays on screen during the next.
@@ -163,9 +166,11 @@ export interface SessionState {
   /** The files of the way not in use. */
   otherSource: DataSourceFiles | null;
   interpolation: InterpolationState;
+  chartTab: ChartTab;
   /** What each model had when another was chosen, as the design keeps them apart. */
   savedModelSettings: Record<string, ModelSettings>;
 
+  setChartTab: (tab: ChartTab) => void;
   /** Keeps the current model's settings, and takes up these for the new one. */
   chooseModel: (model: string, settings: ModelSettings) => void;
   setInterpolationEnabled: (enabled: boolean) => void;
@@ -262,8 +267,12 @@ export const createSessionStore = () =>
       singleFile: null,
       otherSource: null,
       interpolation: INITIAL_INTERPOLATION,
+      chartTab: "seebeck",
       savedModelSettings: {},
 
+      setChartTab: (chartTab) => {
+        set({ chartTab });
+      },
       chooseModel: (model, settings) => {
         set((state) => {
           const { selection } = state;

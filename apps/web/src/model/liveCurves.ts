@@ -8,19 +8,6 @@ import {
   type SessionState,
 } from "@/session/store";
 
-/** What the chart's axis shows, from the core's V/K. */
-const MICROVOLT_PER_VOLT = 1e6;
-
-export function toMicrovoltPerK(
-  values: readonly (number | null)[],
-): (number | null)[] {
-  return values.map((value) =>
-    value === null ? null : value * MICROVOLT_PER_VOLT,
-  );
-}
-
-export const SEEBECK_CURVE = "seebeck_v_per_k";
-
 function pointsInRange(
   data: FitData,
   minK: number,
@@ -59,6 +46,7 @@ type RequestState = Pick<
 export function calcRequest(
   state: RequestState,
   models: readonly ModelDescription[] | undefined,
+  evenWithoutData = false,
 ): CalcRequest | null {
   const { selection } = state;
   const model = models?.find(({ id }) => id === selection.model);
@@ -71,7 +59,8 @@ export function calcRequest(
     mode.disabled ||
     minK === null ||
     maxK === null ||
-    !mode.quantities.some((quantity) => state.data[quantity] !== undefined)
+    (!evenWithoutData &&
+      !mode.quantities.some((quantity) => state.data[quantity] !== undefined))
   ) {
     return null;
   }
@@ -103,6 +92,23 @@ export function calcRequest(
     extrapolated,
     measurements,
   };
+}
+
+/** Other curves of the same values. These take no measurements, and need no data. */
+export function derivedRequest(
+  state: RequestState,
+  models: readonly ModelDescription[] | undefined,
+  kind: NonNullable<CalcRequest["kind"]>,
+): CalcRequest | null {
+  const request = calcRequest(state, models, true);
+  return (
+    request && {
+      ...request,
+      kind,
+      measurements: {},
+      extrapolated: false,
+    }
+  );
 }
 
 export interface RmseGaps {

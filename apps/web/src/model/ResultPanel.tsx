@@ -31,7 +31,7 @@ function Note({ children }: { children: string }) {
 
 /** The RMSE of the current values. The rest of a fit's result comes in with the fit. */
 export function ResultPanel({ live }: { live: LiveCurves }) {
-  const { result, error } = live;
+  const { result, error } = live.measured;
   const { data: models } = useQuery(modelsQuery);
   const selection = useSessionStore((state) => state.selection);
   const parameters = useSessionStore((state) => state.parameters);
@@ -46,7 +46,13 @@ export function ResultPanel({ live }: { live: LiveCurves }) {
     const rmse = result?.rmse?.[quantity];
     return rmse === undefined ? [] : [{ quantity, rmse }];
   });
-  const issues = result?.known_issues ?? [];
+  // Curves of the open tab can have known errors of their own.
+  const issues = [
+    ...new Set([
+      ...(result?.known_issues ?? []),
+      ...(live.derived.result?.known_issues ?? []),
+    ]),
+  ];
   const explained =
     gaps.noPointsInRange.length > 0 || gaps.notInterpolated.length > 0;
 

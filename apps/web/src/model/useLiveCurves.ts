@@ -4,19 +4,28 @@ import { useEffect, useMemo, useState } from "react";
 import { apiClient, type CalcRequest, type CalcResponse } from "@/api/client";
 import type { ApiError } from "@/api/errors";
 import { modelsQuery } from "@/api/queries";
+import { derivedKind, needsMeasuredCurves } from "@/model/chartTabs";
 import { LatestOnly } from "@/model/latestOnly";
-import { calcRequest } from "@/model/liveCurves";
+import { calcRequest, derivedRequest } from "@/model/liveCurves";
+import { fitModeOf } from "@/model/selection";
 import { useSessionStore } from "@/session/store";
 
 // From the change, which includes the debounce. A quick answer shows no indicator, as it would
 // only flicker.
 const BUSY_AFTER_MS = 600;
 
-export interface LiveCurves {
+export interface LiveCalc {
   /** The latest answer, kept through later requests and errors, so that the chart stays. */
   result: CalcResponse | null;
   busy: boolean;
   error: ApiError | null;
+}
+
+export interface LiveCurves {
+  /** The curves that measurements go with, and their RMSE. */
+  measured: LiveCalc;
+  /** The curves that the open tab needs on top of those. */
+  derived: LiveCalc;
 }
 
 interface Answers {
@@ -28,24 +37,8 @@ interface Answers {
 
 const NOTHING: Answers = { result: null, error: null, settled: null };
 
-/** Curves and RMSE for the current values, from the server. */
-export function useLiveCurves(): LiveCurves {
-  const { data: models } = useQuery(modelsQuery);
-  const selection = useSessionStore((state) => state.selection);
-  const parameters = useSessionStore((state) => state.parameters);
-  const data = useSessionStore((state) => state.data);
-  const interpolation = useSessionStore((state) => state.interpolation);
-
-  const body = useMemo(() => {
-    const request = calcRequest(
-      { selection, parameters, data, interpolation },
-      models?.models,
-    );
-    return request === null ? null : JSON.stringify(request);
-  }, [selection, parameters, data, interpolation, models]);
-  // New interpolated values are on their way, and the old ones are for another range.
-  const waiting = interpolation.enabled && interpolation.loading;
-
+/** One request at a time for these values, with the state to show while it lasts. */
+function useLatestCalc(body: string | null, waiting: boolean): LiveCalc {
   const [answers, setAnswers] = useState(NOTHING);
   // With nothing to ask, the old curve goes at once, and does not return with new data.
   if (body === null && answers !== NOTHING) {
@@ -93,5 +86,40 @@ export function useLiveCurves(): LiveCurves {
     result: answers.result,
     busy: pending && longPending,
     error: answers.error,
+  };
+}
+
+/** Curves and RMSE for the current values, from the server. */
+export function useLiveCurves(): LiveCurves {
+  const { data: models } = useQuery(modelsQuery);
+  const selection = useSessionStore((state) => state.selection);
+  const parameters = useSessionStore((state) => state.parameters);
+  const data = useSessionStore((state) => state.data);
+  const interpolation = useSessionStore((state) => state.interpolation);
+  const tab = useSessionStore((state) => state.chartTab);
+
+  const { measuredBody, derivedBody } = useMemo(() => {
+    const state = { selection, parameters, data, interpolation };
+    const model = models?.models.find(({ id }) => id === selection.model);
+    const mode = fitModeOf(model, selection.fitMode);
+    const measured = calcRequest(
+      state,
+      models?.models,
+      needsMeasuredCurves(tab, mode),
+    );
+    const kind = derivedKind(tab, mode);
+    const derived =
+      kind === null ? null : derivedRequest(state, models?.models, kind);
+    return {
+      measuredBody: measured === null ? null : JSON.stringify(measured),
+      derivedBody: derived === null ? null : JSON.stringify(derived),
+    };
+  }, [selection, parameters, data, interpolation, models, tab]);
+  // New interpolated values are on their way, and the old ones are for another range.
+  const waiting = interpolation.enabled && interpolation.loading;
+
+  return {
+    measured: useLatestCalc(measuredBody, waiting),
+    derived: useLatestCalc(derivedBody, false),
   };
 }

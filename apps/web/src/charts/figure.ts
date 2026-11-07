@@ -265,6 +265,8 @@ export function buildFigure(
       ...(maxK <= MAX_TICKED_K ? { dtick: AXIS_STEP_K } : {}),
     },
     yaxis: {
+      // An SI letter such as µ would read as part of the unit in the axis title.
+      exponentformat: "e",
       title: { text: input.yAxisTitle, font: titleFont },
       gridcolor: theme.grid,
       zeroline: false,

@@ -86,7 +86,7 @@ test("nothing is asked without data, and the empty state stays", async ({
   await page.waitForTimeout(500);
 
   expect(bodies).toHaveLength(0);
-  await expect(page.getByText("No data yet")).toBeVisible();
+  await expect(page.getByText("No data for this quantity")).toBeVisible();
   await expect(
     page.getByText("The RMSE appears here once measurements are loaded."),
   ).toBeVisible();
@@ -583,7 +583,7 @@ test("removing the data clears the curve and the RMSE, and ends what runs", asyn
     .first()
     .click();
 
-  await expect(page.getByText("No data yet")).toBeVisible();
+  await expect(page.getByText("No data for this quantity")).toBeVisible();
   await expect(page.getByText("111 µV/K")).toHaveCount(0);
   release();
   await page.waitForTimeout(200);
