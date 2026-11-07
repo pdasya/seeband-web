@@ -21,8 +21,8 @@ export function retriesByItself(error: ApiError): boolean {
 export interface LatestOnlyHandlers<Result> {
   send: (body: string, signal: AbortSignal) => Promise<Result>;
   onResult: (result: Result, body: string) => void;
-  /** `settled` is the body this ends, or null if another try is on its way. */
-  onFailure: (error: ApiError, settled: string | null) => void;
+  /** `settled` is the body this ends, or null if another try is on its way. `sent` is the body. */
+  onFailure: (error: ApiError, settled: string | null, sent: string) => void;
 }
 
 /**
@@ -174,9 +174,9 @@ export class LatestOnly<Result> {
         this.retryTimer = null;
         this.sendLatest();
       }, delayMs);
-      this.handlers.onFailure(error, null);
+      this.handlers.onFailure(error, null, body);
     } else {
-      this.handlers.onFailure(error, body);
+      this.handlers.onFailure(error, body, body);
       this.next();
     }
   }

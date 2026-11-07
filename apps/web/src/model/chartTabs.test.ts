@@ -5,8 +5,10 @@ import { MODELS } from "../../e2e/support/models";
 
 import type { CalcResponse } from "@/api/client";
 import {
+  bandGapForTab,
   chartTabView,
   derivedKind,
+  drawsMeasuredCurves,
   needsMeasuredCurves,
 } from "@/model/chartTabs";
 import type { FitModeDescription, ModelDescription } from "@/model/selection";
@@ -48,7 +50,7 @@ function loaded(...quantities: Quantity[]) {
       text: "",
     } as unknown as SessionData;
   }
-  return { data, interpolation: NO_INTERPOLATION, parameters: {} };
+  return { data, interpolation: NO_INTERPOLATION };
 }
 
 const answer = (curves: Record<string, (number | null)[]>): CalcResponse => ({
@@ -76,6 +78,35 @@ describe("what a tab asks for", () => {
       false,
     );
     expect(needsMeasuredCurves("seebeck", mode("dpb_s"))).toBe(false);
+  });
+});
+
+describe("what a tab draws from the measured request", () => {
+  const data = loaded("seebeck").data;
+
+  test("a quantity with data, in the mode", () => {
+    expect(drawsMeasuredCurves("seebeck", mode("dpb_s"), data)).toBe(true);
+  });
+
+  test("not with no data of its own, or outside the mode", () => {
+    expect(drawsMeasuredCurves("resistivity", mode("dpb_s_rho"), data)).toBe(
+      false,
+    );
+    expect(
+      drawsMeasuredCurves(
+        "resistivity",
+        mode("dpb_s"),
+        loaded("resistivity").data,
+      ),
+    ).toBe(false);
+  });
+
+  test("not on μ, or on contributions that a mode lacks", () => {
+    expect(drawsMeasuredCurves("chemical_potential", mode("dpb_s"), data)).toBe(
+      false,
+    );
+    expect(drawsMeasuredCurves("bands", mode("spb_s"), data)).toBe(false);
+    expect(drawsMeasuredCurves("bands", mode("dpb_s"), data)).toBe(true);
   });
 });
 
@@ -211,7 +242,11 @@ describe("the chemical potential", () => {
         mode("dpb_s"),
         {
           ...loaded(),
-          parameters: band_gap === undefined ? {} : { dpb_s: { band_gap } },
+          bandGapK: bandGapForTab(
+            "chemical_potential",
+            mode("dpb_s"),
+            band_gap === undefined ? {} : { dpb_s: { band_gap } },
+          ),
         },
         null,
         derived,
@@ -222,6 +257,12 @@ describe("the chemical potential", () => {
       { value: 1000, label: "band 2 bottom (E_g)" },
     ]);
     expect(at(750)[1]?.value).toBe(750);
+  });
+
+  test("other tabs do not follow E_g", () => {
+    expect(
+      bandGapForTab("seebeck", mode("dpb_s"), { dpb_s: { band_gap: 750 } }),
+    ).toBeUndefined();
   });
 
   test("a curve of another tab draws nothing", () => {

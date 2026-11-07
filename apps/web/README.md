@@ -100,6 +100,7 @@ SEEBAND_API_TARGET=http://127.0.0.1:8000 pnpm --filter @seeband/web exec playwri
 
 - **S, ρ and R_H** use the curves that measurements go with. With no data, a tab says so. With data that the fit mode does not use, it shows the points and says that the mode has no model for them.
 - **μ and band contributions** are other kinds of curve, which the API refuses to mix with measurements. So they are a second request, only while their tab is open, and also one at a time. They need no data. The contributions take their total S from the first request.
+- **An answer shows only for its own curve.** It counts while the model, mode, scattering and kind match, so a new value keeps the curve while waiting, and a change of mode takes it away at once. A tab shows the state of a request only if it draws its curves.
 - **Whether a mode offers a curve** comes from `curves` in `GET /api/models`, with its text from the reason. μ draws the band edges, and E_g comes from a mode's `band_gap` where it has one.
 
 ## Numbers

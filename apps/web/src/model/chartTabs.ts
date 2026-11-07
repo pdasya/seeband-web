@@ -55,6 +55,33 @@ export function derivedKind(
     : null;
 }
 
+/** Whether what the open tab draws comes from the measured request. */
+export function drawsMeasuredCurves(
+  tab: ChartTab,
+  mode: FitModeDescription | undefined,
+  data: SessionState["data"],
+): boolean {
+  if (tab === "bands") {
+    return needsMeasuredCurves(tab, mode);
+  }
+  return (
+    tab !== "chemical_potential" &&
+    data[tab] !== undefined &&
+    mode?.quantities.includes(tab) === true
+  );
+}
+
+/** E_g for the line on μ, and for that tab only, so that other tabs do not follow its value. */
+export function bandGapForTab(
+  tab: ChartTab,
+  mode: FitModeDescription | undefined,
+  parameters: SessionState["parameters"],
+): number | undefined {
+  return tab === "chemical_potential" && mode !== undefined
+    ? parameterValues(mode, parameters[mode.id]).band_gap
+    : undefined;
+}
+
 /** The total of S goes with the contributions, so that tab needs it even with no data. */
 export function needsMeasuredCurves(
   tab: ChartTab,
@@ -97,7 +124,9 @@ const NO_CHART = {
   note: null,
 };
 
-type ViewState = Pick<SessionState, "data" | "interpolation" | "parameters">;
+type ViewState = Pick<SessionState, "data" | "interpolation"> & {
+  bandGapK?: number | undefined;
+};
 
 function curveOf(
   result: CalcResponse | null,
@@ -179,7 +208,7 @@ function chemicalPotentialView(
     yAxisTitle: text.axes.chemicalPotential,
     description: text.chemicalPotentialDescription,
   };
-  if (derivedKind("chemical_potential", mode) === null || mode === undefined) {
+  if (derivedKind("chemical_potential", mode) === null) {
     return {
       ...NO_CHART,
       ...base,
@@ -187,7 +216,7 @@ function chemicalPotentialView(
     };
   }
   // Band 2 lies at E_g in a mode with one, and an edge of a band lies at 0.
-  const bandGapK = parameterValues(mode, state.parameters[mode.id]).band_gap;
+  const { bandGapK } = state;
   return {
     ...NO_CHART,
     ...base,

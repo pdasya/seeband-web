@@ -160,6 +160,7 @@ test("μ needs no data, has band edges, and follows E_g", async ({ page }) => {
   await tab(page, "μ(T)").click();
 
   await expect.poll(() => bodies.at(-1)?.kind).toBe("chemical_potential");
+  await page.waitForTimeout(400);
   expect(bodies).toHaveLength(1);
   expect(bodies[0]?.measurements).toEqual({});
   await expect(yTitle(page)).toHaveText("μ, K");
@@ -184,6 +185,8 @@ test("contributions draw the total and each band, with no data", async ({
   await expect(legend(page, "band 2 contribution")).toBeVisible();
   await expect(lines(page)).toHaveCount(3);
   await expect(yTitle(page)).toHaveText("S, µV/K");
+  await page.waitForTimeout(400);
+  expect(bodies).toHaveLength(2);
   expect(bodies.map(({ kind }) => kind).sort()).toEqual([
     "seebeck_by_band",
     undefined,
@@ -213,6 +216,8 @@ test("other curves are asked for only while their tab is open", async ({
   const count = bodies.length;
   await page.getByRole("slider", { name: "E_g" }).press("ArrowRight");
   await expect.poll(() => bodies.length).toBe(count + 1);
+  await page.waitForTimeout(400);
+  expect(bodies).toHaveLength(count + 1);
   expect(bodies.at(-1)?.kind).toBeUndefined();
   expect(bodies.at(-1)?.parameters.band_gap).toBe(1010);
 });
@@ -231,6 +236,8 @@ test("a change on a tab asks for both, and the RMSE stays live", async ({
   await page.getByRole("slider", { name: "E_g" }).press("ArrowRight");
 
   await expect.poll(() => bodies.length).toBe(count + 2);
+  await page.waitForTimeout(400);
+  expect(bodies).toHaveLength(count + 2);
   expect(
     bodies
       .slice(-2)
@@ -333,6 +340,224 @@ test("known errors of a tab's curves are named while it is open", async ({
 
   await tab(page, "S(T)").click();
   await expect(page.getByText(/acphdis_curve_scale/)).toHaveCount(0);
+});
+
+function hold() {
+  let release: () => void = () => undefined;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  return { held, release: () => release() };
+}
+
+const answerFor = (body: CalcBody, issues: string[] = []) => ({
+  temperature_k: [100, 300, 500],
+  curves: CURVES[body.kind ?? "measured"],
+  known_issues: issues,
+  rmse: {},
+});
+
+test("known errors of a tab go with it at once, also if the next curve fails", async ({
+  page,
+}) => {
+  await open(page);
+  await page.route("**/api/calc", (route) => {
+    const body = route.request().postDataJSON() as CalcBody;
+    return route.fulfill({
+      json: answerFor(
+        body,
+        body.kind === "seebeck_by_band" ? ["acphdis_curve_scale"] : [],
+      ),
+    });
+  });
+  await tab(page, "Band contributions").click();
+  await expect(page.getByText(/acphdis_curve_scale/)).toBeVisible();
+  const gate = hold();
+  await page.route("**/api/calc", async (route) => {
+    await gate.held;
+    await route.fulfill({
+      status: 422,
+      json: { code: "calculation_failed", message: "x", details: [] },
+    });
+  });
+
+  await tab(page, "μ(T)").click();
+  await expect(page.getByText(/acphdis_curve_scale/)).toHaveCount(0);
+
+  gate.release();
+  await expect(page.getByRole("alert")).toContainText("no result");
+  await expect(page.getByText(/acphdis_curve_scale/)).toHaveCount(0);
+  await expect(page.getByRole("alert")).not.toContainText("last curve");
+});
+
+test("a change of mode takes the old curve away at once, and says it waits", async ({
+  page,
+}) => {
+  await open(page);
+  await tab(page, "μ(T)").click();
+  await expect(lines(page)).toHaveCount(1);
+  const gate = hold();
+  await page.route("**/api/calc", async (route) => {
+    const body = route.request().postDataJSON() as CalcBody;
+    await gate.held;
+    await route.fulfill({ json: answerFor(body) });
+  });
+
+  await page.getByRole("radio", { name: "S", exact: true }).click();
+
+  await expect(lines(page)).toHaveCount(0);
+  await expect(page.getByText("Updating…")).toBeVisible();
+
+  gate.release();
+  await expect(lines(page)).toHaveCount(1);
+  await expect(page.getByText("Updating…")).toHaveCount(0);
+});
+
+test("a failed curve of a new mode leaves no old curve", async ({ page }) => {
+  await open(page);
+  await load(page, 0);
+  await expect(lines(page)).toHaveCount(1);
+  await page.route("**/api/calc", (route) =>
+    route.fulfill({
+      status: 422,
+      json: { code: "calculation_failed", message: "x", details: [] },
+    }),
+  );
+
+  await page.getByRole("radio", { name: "S", exact: true }).click();
+
+  await expect(page.getByRole("alert")).toContainText("no result");
+  await expect(page.getByRole("alert")).not.toContainText("last curve");
+  await expect(lines(page)).toHaveCount(0);
+});
+
+test("a failure of the last mode goes at once with the change of mode", async ({
+  page,
+}) => {
+  await open(page);
+  await page.route("**/api/calc", (route) =>
+    route.fulfill({
+      status: 422,
+      json: { code: "calculation_failed", message: "x", details: [] },
+    }),
+  );
+  await load(page, 0);
+  await expect(page.getByRole("alert")).toContainText("no result");
+  const gate = hold();
+  await page.route("**/api/calc", async (route) => {
+    const body = route.request().postDataJSON() as CalcBody;
+    await gate.held;
+    await route.fulfill({ json: answerFor(body) });
+  });
+
+  await page.getByRole("radio", { name: "S", exact: true }).click();
+
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  gate.release();
+});
+
+test("failed contributions beside the total do not call it the last curve", async ({
+  page,
+}) => {
+  await open(page);
+  await page.route("**/api/calc", (route) => {
+    const body = route.request().postDataJSON() as CalcBody;
+    return body.kind === "seebeck_by_band"
+      ? route.fulfill({
+          status: 422,
+          json: { code: "calculation_failed", message: "x", details: [] },
+        })
+      : route.fulfill({ json: answerFor(body) });
+  });
+
+  await tab(page, "Band contributions").click();
+
+  await expect(lines(page)).toHaveCount(1);
+  await expect(page.getByRole("alert")).toContainText("no result");
+  await expect(page.getByRole("alert")).not.toContainText("last curve");
+});
+
+test("a new value keeps the curve while waiting", async ({ page }) => {
+  await open(page);
+  await tab(page, "μ(T)").click();
+  await expect(lines(page)).toHaveCount(1);
+  const gate = hold();
+  await page.route("**/api/calc", async (route) => {
+    const body = route.request().postDataJSON() as CalcBody;
+    await gate.held;
+    await route.fulfill({ json: answerFor(body) });
+  });
+
+  await page.getByRole("slider", { name: "E_g" }).press("ArrowRight");
+  await page.waitForTimeout(400);
+
+  await expect(lines(page)).toHaveCount(1);
+  gate.release();
+});
+
+test("a tab says nothing about curves it does not draw", async ({ page }) => {
+  await open(page);
+  await load(page, 0);
+  await expect(lines(page)).toHaveCount(1);
+  const gate = hold();
+  await page.route("**/api/calc", async (route) => {
+    await gate.held;
+    await route.fulfill({
+      status: 422,
+      json: { code: "calculation_failed", message: "x", details: [] },
+    });
+  });
+  await page.getByRole("radio", { name: "SPB" }).click();
+
+  await tab(page, "Band contributions").click();
+  await expect(page.getByText("DPB only")).toBeVisible();
+  await page.waitForTimeout(800);
+  await expect(page.getByText("Updating…")).toHaveCount(0);
+
+  await tab(page, "ρ(T)").click();
+  gate.release();
+  await page.waitForTimeout(300);
+  await expect(page.getByRole("alert")).toHaveCount(0);
+
+  await tab(page, "S(T)").click();
+  await expect(page.getByRole("alert")).toContainText("no result");
+});
+
+test("a slider does not redraw a chart whose values have not changed", async ({
+  page,
+}) => {
+  await open(page);
+  await load(page, 0);
+  await expect(lines(page)).toHaveCount(1);
+  await page.waitForTimeout(300);
+  const gate = hold();
+  await page.route("**/api/calc", async (route) => {
+    const body = route.request().postDataJSON() as CalcBody;
+    await gate.held;
+    await route.fulfill({ json: answerFor(body) });
+  });
+  await page.evaluate(() => {
+    const plot = document.querySelector(".js-plotly-plot") as unknown as {
+      on: (event: string, listener: () => void) => void;
+    };
+    Object.assign(window, { redraws: 0 });
+    plot.on("plotly_afterplot", () => {
+      const counter = window as unknown as { redraws: number };
+      counter.redraws += 1;
+    });
+  });
+
+  for (let move = 0; move < 5; move += 1) {
+    await page.getByRole("slider", { name: "E_g" }).press("ArrowRight");
+  }
+  await page.waitForTimeout(300);
+
+  expect(
+    await page.evaluate(
+      () => (window as unknown as { redraws: number }).redraws,
+    ),
+  ).toBe(0);
+  gate.release();
 });
 
 test("the open tab stays when moving to another screen and back", async ({

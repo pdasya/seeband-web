@@ -6,7 +6,7 @@ import type { ApiError } from "@/api/errors";
 import { modelsQuery } from "@/api/queries";
 import { derivedKind, needsMeasuredCurves } from "@/model/chartTabs";
 import { LatestOnly } from "@/model/latestOnly";
-import { calcRequest, derivedRequest } from "@/model/liveCurves";
+import { calcRequest, derivedRequest, requestScope } from "@/model/liveCurves";
 import { fitModeOf } from "@/model/selection";
 import { useSessionStore } from "@/session/store";
 
@@ -30,15 +30,31 @@ export interface LiveCurves {
 
 interface Answers {
   result: CalcResponse | null;
+  resultScope: string | null;
   error: ApiError | null;
+  errorScope: string | null;
   /** The values that the last answer or failure ended. */
   settled: string | null;
 }
 
-const NOTHING: Answers = { result: null, error: null, settled: null };
+const NOTHING: Answers = {
+  result: null,
+  resultScope: null,
+  error: null,
+  errorScope: null,
+  settled: null,
+};
+
+function scopeOfBody(body: string): string {
+  return requestScope(JSON.parse(body) as CalcRequest);
+}
 
 /** One request at a time for these values, with the state to show while it lasts. */
-function useLatestCalc(body: string | null, waiting: boolean): LiveCalc {
+function useLatestCalc(
+  body: string | null,
+  scope: string | null,
+  waiting: boolean,
+): LiveCalc {
   const [answers, setAnswers] = useState(NOTHING);
   // With nothing to ask, the old curve goes at once, and does not return with new data.
   if (body === null && answers !== NOTHING) {
@@ -51,10 +67,21 @@ function useLatestCalc(body: string | null, waiting: boolean): LiveCalc {
         send: (values, signal) =>
           apiClient.postCalc(JSON.parse(values) as CalcRequest, signal),
         onResult: (result, settled) => {
-          setAnswers({ result, error: null, settled });
+          setAnswers({
+            result,
+            resultScope: scopeOfBody(settled),
+            error: null,
+            errorScope: null,
+            settled,
+          });
         },
-        onFailure: (error, settled) => {
-          setAnswers((previous) => ({ ...previous, error, settled }));
+        onFailure: (error, settled, sent) => {
+          setAnswers((previous) => ({
+            ...previous,
+            error,
+            errorScope: scopeOfBody(sent),
+            settled,
+          }));
         },
       }),
   );
@@ -83,9 +110,9 @@ function useLatestCalc(body: string | null, waiting: boolean): LiveCalc {
   }, [pending]);
 
   return {
-    result: answers.result,
+    result: answers.resultScope === scope ? answers.result : null,
     busy: pending && longPending,
-    error: answers.error,
+    error: answers.errorScope === scope ? answers.error : null,
   };
 }
 
@@ -98,28 +125,31 @@ export function useLiveCurves(): LiveCurves {
   const interpolation = useSessionStore((state) => state.interpolation);
   const tab = useSessionStore((state) => state.chartTab);
 
-  const { measuredBody, derivedBody } = useMemo(() => {
-    const state = { selection, parameters, data, interpolation };
-    const model = models?.models.find(({ id }) => id === selection.model);
-    const mode = fitModeOf(model, selection.fitMode);
-    const measured = calcRequest(
-      state,
-      models?.models,
-      needsMeasuredCurves(tab, mode),
-    );
-    const kind = derivedKind(tab, mode);
-    const derived =
-      kind === null ? null : derivedRequest(state, models?.models, kind);
-    return {
-      measuredBody: measured === null ? null : JSON.stringify(measured),
-      derivedBody: derived === null ? null : JSON.stringify(derived),
-    };
-  }, [selection, parameters, data, interpolation, models, tab]);
+  const { measuredBody, measuredScope, derivedBody, derivedScope } =
+    useMemo(() => {
+      const state = { selection, parameters, data, interpolation };
+      const model = models?.models.find(({ id }) => id === selection.model);
+      const mode = fitModeOf(model, selection.fitMode);
+      const measured = calcRequest(
+        state,
+        models?.models,
+        needsMeasuredCurves(tab, mode),
+      );
+      const kind = derivedKind(tab, mode);
+      const derived =
+        kind === null ? null : derivedRequest(state, models?.models, kind);
+      return {
+        measuredBody: measured && JSON.stringify(measured),
+        measuredScope: measured && requestScope(measured),
+        derivedBody: derived && JSON.stringify(derived),
+        derivedScope: derived && requestScope(derived),
+      };
+    }, [selection, parameters, data, interpolation, models, tab]);
   // New interpolated values are on their way, and the old ones are for another range.
   const waiting = interpolation.enabled && interpolation.loading;
 
   return {
-    measured: useLatestCalc(measuredBody, waiting),
-    derived: useLatestCalc(derivedBody, false),
+    measured: useLatestCalc(measuredBody, measuredScope, waiting),
+    derived: useLatestCalc(derivedBody, derivedScope, false),
   };
 }

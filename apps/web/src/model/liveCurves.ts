@@ -94,6 +94,19 @@ export function calcRequest(
   };
 }
 
+/**
+ * What a curve is of. An answer for other values of the same scope may stay while waiting, as it
+ * only lags behind. One of another scope is a different curve, and must not pass for this one.
+ */
+export function requestScope(request: CalcRequest): string {
+  return JSON.stringify([
+    request.model,
+    request.fit_mode,
+    request.scattering,
+    request.kind ?? "measured",
+  ]);
+}
+
 /** Other curves of the same values. These take no measurements, and need no data. */
 export function derivedRequest(
   state: RequestState,

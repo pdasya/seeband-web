@@ -9,9 +9,9 @@ import type { ChartFitRange } from "@/charts/figure";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  bandGapForTab,
   chartTabView,
-  derivedKind,
-  needsMeasuredCurves,
+  drawsMeasuredCurves,
 } from "@/model/chartTabs";
 import { retriesByItself } from "@/model/latestOnly";
 import { fitModeOf } from "@/model/selection";
@@ -60,33 +60,26 @@ export function LiveCharts({ live }: { live: LiveCurves }) {
     models?.models.find(({ id }) => id === selection.model),
     selection.fitMode,
   );
+  const bandGapK = bandGapForTab(tab, mode, parameters);
   const view = useMemo(
     () =>
       chartTabView(
         tab,
         mode,
-        { data, interpolation, parameters },
+        { data, interpolation, bandGapK },
         measured.result,
         derived.result,
       ),
-    [
-      tab,
-      mode,
-      data,
-      interpolation,
-      parameters,
-      measured.result,
-      derived.result,
-    ],
+    [tab, mode, data, interpolation, bandGapK, measured.result, derived.result],
   );
   const fitRange = useMemo((): ChartFitRange | null => {
     return minK === null || maxK === null ? null : { minK, maxK };
   }, [minK, maxK]);
 
   // Only what this tab draws. An RMSE has its own note, and other curves end with their tab.
-  const usesMeasured =
-    derivedKind(tab, mode) === null || needsMeasuredCurves(tab, mode);
-  const error = (usesMeasured ? measured.error : null) ?? derived.error;
+  const usesMeasured = drawsMeasuredCurves(tab, mode, data);
+  const failed = usesMeasured && measured.error !== null ? measured : derived;
+  const { error } = failed;
   const busy = (usesMeasured && measured.busy) || derived.busy;
 
   return (
@@ -119,7 +112,7 @@ export function LiveCharts({ live }: { live: LiveCurves }) {
             <Alert variant="destructive">
               <AlertCircleIcon aria-hidden="true" />
               <AlertDescription>
-                {view.curves.length === 0
+                {failed.result === null
                   ? failureText(error)
                   : `${failureText(error)} ${text.lastCurveStays}`}
               </AlertDescription>
