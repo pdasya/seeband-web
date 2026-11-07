@@ -243,7 +243,7 @@ test("a failed fit marks no bounds, and says the values are not fitted", async (
   });
 
   await expect(
-    page.getByText("The fit failed, so these are not fitted values."),
+    page.getByText(/^The fit failed, so these are not a fitted result/),
   ).toBeVisible();
   await expect(table(page).getByText("at bound")).toHaveCount(0);
 });
@@ -259,8 +259,103 @@ test("a refused fit also says the values are not fitted", async ({ page }) => {
 
   await page.getByRole("button", { name: "Run fit" }).click();
 
-  await expect(page.getByText(/these are not fitted values/)).toBeVisible();
+  await expect(page.getByText(/these are not a fitted result/)).toBeVisible();
 });
+
+test("a fit that fails after iterations does not call its values start values", async ({
+  page,
+}) => {
+  await open(page);
+  await startFit(page);
+  await send(page, {
+    type: "iteration",
+    iteration: 2,
+    parameters: { band_gap: 850 },
+  });
+  await expect(row(page, "E_g")).toContainText("850 K");
+
+  await send(page, {
+    type: "error",
+    error: { code: "calculation_failed", message: "x", details: [] },
+  });
+
+  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(row(page, "E_g")).toContainText("850 K");
+  await expect(
+    page.getByText(/they are its start values or those of its last iteration/),
+  ).toBeVisible();
+});
+
+test("a value past its bounds from N₂/N₁ says what its mark is about", async ({
+  page,
+}) => {
+  await open(page);
+
+  await finishWith(page, {
+    parameters: { ...RESULT.parameters, m_eff: 6 },
+    at_bounds: ["m_eff"],
+    known_issues: ["dpb_loop_degeneracy"],
+  });
+
+  await expect(row(page, "m₂/m₁")).toContainText("6");
+  await expect(row(page, "m₂/m₁")).toContainText("-3 … 3");
+  await expect(row(page, "m₂/m₁").getByText("at bound")).toBeVisible();
+  await expect(
+    page.getByText(
+      /^Caution: .*The bounds and the at-bound mark apply to the value before that factor\.$/,
+    ),
+  ).toBeVisible();
+});
+
+test("a fit the server ended early keeps its marks and flags", async ({
+  page,
+}) => {
+  await open(page);
+
+  await finishWith(page, {
+    status: "stopped",
+    at_bounds: ["band_gap"],
+    known_issues: ["acphdis_early_stop"],
+  });
+
+  await expect(page.getByText(/these are its last values/)).toBeVisible();
+  await expect(row(page, "E_g").getByText("at bound")).toBeVisible();
+  await expect(page.getByText(/stops when C and D alone settle/)).toBeVisible();
+});
+
+for (const [name, change] of [
+  [
+    "Reset",
+    (page: Page) => page.getByRole("button", { name: "Reset" }).click(),
+  ],
+  ["a change of mode", (page: Page) => choose(page, "S + ρ + R_H")],
+  [
+    "a change of scattering",
+    async (page: Page) => {
+      await page.getByRole("combobox", { name: "Scattering" }).click();
+      await page.getByRole("option", { name: /acPhDis/ }).click();
+    },
+  ],
+] as const) {
+  test(`${name} ends what was said about the fit`, async ({ page }) => {
+    await open(page);
+    await finishWith(page, {
+      at_bounds: ["band_gap"],
+      known_issues: ["acphdis_early_stop"],
+    });
+    await expect(
+      page.getByText(/stops when C and D alone settle/),
+    ).toBeVisible();
+
+    await change(page);
+
+    await expect(page.getByText(/stops when C and D alone settle/)).toHaveCount(
+      0,
+    );
+    await expect(table(page).getByText("at bound")).toHaveCount(0);
+    await expect(page.getByText(/may have been set/)).toHaveCount(0);
+  });
+}
 
 test("an error of one quantity marks that RMSE, with its text beside it", async ({
   page,

@@ -83,7 +83,8 @@ describe("fitEndNote", () => {
   });
 
   test("a failure of either kind is no fitted result", () => {
-    const text = "The fit failed, so these are not fitted values.";
+    const text =
+      "The fit failed, so these are not a fitted result: they are its start values or those of its last iteration.";
     expect(fitEndNote(done({ status: "failed" }), 20)).toBe(text);
     expect(
       fitEndNote(

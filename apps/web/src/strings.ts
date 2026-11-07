@@ -351,7 +351,7 @@ export const STRINGS = {
       "known_issue.dpb_s_degeneracy":
         "With N₂/N₁ other than 1, a fitted m₂/m₁ does not match its curves.",
       "known_issue.dpb_loop_degeneracy":
-        "With N₂/N₁ other than 1, the fit returns m₂/m₁ times N₂/N₁, which can leave its bounds.",
+        "With N₂/N₁ other than 1, the fit returns m₂/m₁ times N₂/N₁, so the value shown can leave its bounds. The bounds and the at-bound mark apply to the value before that factor.",
       "known_issue.negative_m_eff_weight":
         "With m₂/m₁ below 0, band 2 gets a negative weight, for a physicist to check.",
       "known_issue.collapsed_m_eff":
@@ -361,7 +361,7 @@ export const STRINGS = {
       "known_issue.hall_dis_no_reference":
         "This fit fails on the desktop, and runs here with other bounds of G, so there is no desktop result to compare with.",
       "known_issue.interpolation_extrapolates":
-        "Interpolation made up points beyond the data, and they enter the fit.",
+        "Interpolation made up points beyond the data, and they count in the RMSE and in a fit.",
     },
     iterations: "Iterations",
     noIterations: "—",
@@ -376,7 +376,8 @@ export const STRINGS = {
         "The fit was stopped, so these are its last values, not a converged result.",
       stoppedAtStart:
         "The fit was stopped before its first result, so these are the values it started from.",
-      failed: "The fit failed, so these are not fitted values.",
+      failed:
+        "The fit failed, so these are not a fitted result: they are its start values or those of its last iteration.",
     },
     parameterTable: "Parameters in use",
     columns: { parameter: "Parameter", value: "Value", bounds: "Bounds" },

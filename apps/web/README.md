@@ -126,7 +126,7 @@ SEEBAND_API_TARGET=http://127.0.0.1:8000 pnpm --filter @seeband/web exec playwri
 
 - **Metrics:** the RMSE of each measured quantity, and the iterations with their limit. A single-pass mode has no iterations, so it shows neither.
 - **Parameters:** the values in use, with the bounds a fit uses, in the units the user sees. A parameter a fit does not change says so. A value at a bound is marked, unless the fit failed.
-- **A fit that did not converge** says what the values are: last values, start values, or not fitted. The status stays in the heading.
+- **A fit that did not converge** says what the values are: last values, start values, or, after a failure, not a fitted result. The status badge stays beside the page title.
 - **Known errors** show their text from `fit.knownIssueTexts`, never their id. The flags of the fit and of the curves count together, as curves from a fit carry its errors. One that changes a measured curve marks that RMSE and goes under the metrics. One about the fit alone goes under the parameters. A new id shows a general text until it has its own.
 
 ## Numbers
