@@ -1,3 +1,5 @@
+import { Link } from "react-router";
+
 import { Button } from "@/components/ui/button";
 import { useDemoData } from "@/data/useDemoData";
 import { QUANTITIES, holdsFiles, useSessionStore } from "@/session/store";
@@ -16,7 +18,7 @@ function Line({ children }: { children: string }) {
 
 /** Says that demo data are not a measurement, for as long as any are in use. */
 export function DemoNotice() {
-  const { loading, failed } = useDemoData();
+  const { wanted, loading, failed } = useDemoData();
   const data = useSessionStore((state) => state.data);
   const hasFiles = useSessionStore(holdsFiles);
   const removeData = useSessionStore((state) => state.removeData);
@@ -34,6 +36,11 @@ export function DemoNotice() {
         </p>
       )}
       {failed && !hasFiles && <Line>{text.demoFailed}</Line>}
+      {!wanted && !hasFiles && (
+        <Button variant="link" size="sm" className="self-start px-0" asChild>
+          <Link to="/fit?demo=1">{text.demoTry}</Link>
+        </Button>
+      )}
       {source?.kind === "demo" && (
         <div
           role="status"

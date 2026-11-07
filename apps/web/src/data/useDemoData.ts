@@ -45,6 +45,8 @@ function applyDemo(demo: DemoResponse, models: readonly ModelDescription[]) {
   if (holdsFiles(state)) {
     return;
   }
+  // Interpolating a table needs its text, so the demo's slots must be the ones on screen.
+  state.setDataMode("separate");
   const model = models.find(({ id }) => id === demo.model);
   if (model !== undefined) {
     state.setSelection({
@@ -96,5 +98,5 @@ export function useDemoData() {
     }
   }, [wanted, selected, demo, descriptions, setParams]);
 
-  return { loading: wanted && !isError, failed: wanted && isError };
+  return { wanted, loading: wanted && !isError, failed: wanted && isError };
 }

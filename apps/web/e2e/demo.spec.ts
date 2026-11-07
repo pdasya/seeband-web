@@ -100,6 +100,73 @@ test("a demo that comes before the model descriptions still opens its fit", asyn
   await expect(radio(page, "S + ρ + R_H")).toBeChecked();
 });
 
+test("the link in the panel loads the demo, and comes back once it is cleared", async ({
+  page,
+}) => {
+  const demos = await open(page, "/fit");
+  const link = page.getByRole("link", { name: "Try demo data" });
+  await expect(link).toBeVisible();
+  expect(demos).toEqual([]);
+
+  await link.click();
+
+  await expect(notice(page)).toBeVisible();
+  await expect(slots(page).getByText("Demo data")).toHaveCount(3);
+  await expect(page).toHaveURL(/\/fit$/);
+  await expect(link).toHaveCount(0);
+
+  await clear(page).click();
+  await expect(slots(page).getByText("Demo data")).toHaveCount(0);
+  await link.click();
+  await expect(slots(page).getByText("Demo data")).toHaveCount(3);
+  await expect(radio(page, "S + ρ + R_H")).toBeChecked();
+});
+
+test("the link is there only with no files, of either way of loading", async ({
+  page,
+}) => {
+  await open(page, "/fit");
+  await page.route("**/api/parse", (route) => route.fulfill({ json: PARSED }));
+  const link = page.getByRole("link", { name: "Try demo data" });
+  await expect(link).toBeVisible();
+
+  await page
+    .locator('input[type="file"]')
+    .first()
+    .setInputFiles({
+      name: "mine.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from("T S\n100 1\n"),
+    });
+  await expect(slots(page).getByText("mine.txt")).toBeVisible();
+  await expect(link).toHaveCount(0);
+
+  await page.getByRole("tab", { name: "Single file" }).click();
+  await expect(link).toHaveCount(0);
+});
+
+test("the link from the Single file tab goes to the slots, where interpolating works", async ({
+  page,
+}) => {
+  const parses: unknown[] = [];
+  await open(page, "/fit");
+  await page.route("**/api/parse", (route) => {
+    parses.push(route.request().postDataJSON());
+    return route.fulfill({ json: PARSED });
+  });
+  await page.getByRole("tab", { name: "Single file" }).click();
+
+  await page.getByRole("link", { name: "Try demo data" }).click();
+
+  await expect(
+    page.getByRole("tab", { name: "Separate files" }),
+  ).toHaveAttribute("aria-selected", "true");
+  await expect(slots(page).getByText("Demo data")).toHaveCount(3);
+
+  await page.getByRole("switch", { name: /Interpolation/ }).click();
+  await expect.poll(() => parses.length).toBe(3);
+});
+
 test("the chart says its points are demo data", async ({ page }) => {
   await open(page);
 
@@ -221,6 +288,9 @@ test("it says it is loading, and a user's file that comes first stays", async ({
   });
   await page.route("**/api/parse", (route) => route.fulfill({ json: PARSED }));
   await expect(page.getByText("Loading the demo data…")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Try demo data" })).toHaveCount(
+    0,
+  );
 
   await page
     .locator('input[type="file"]')
@@ -258,6 +328,9 @@ test("a failure says so, a reload tries again, and own data end the message", as
   const message = page.getByText(/^The demo data could not be loaded/);
   await expect(message).toBeVisible();
   await expect(page.getByText("Loading the demo data…")).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Try demo data" })).toHaveCount(
+    0,
+  );
   await expect(page.getByText("SECRET")).toHaveCount(0);
   await expect(page).toHaveURL(/demo=1/);
 

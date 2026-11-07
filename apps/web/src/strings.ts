@@ -123,6 +123,7 @@ export const STRINGS = {
     demoFailed:
       "The demo data could not be loaded. Reload to try again, or load your own data.",
     demoClear: "Clear demo data",
+    demoTry: "Try demo data",
     demoNoticeOther: "These are demo data, not a measurement.",
     demoNotices: {
       "demo_dataset.synthetic":
