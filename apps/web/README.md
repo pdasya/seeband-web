@@ -120,6 +120,14 @@ SEEBAND_API_TARGET=http://127.0.0.1:8000 pnpm --filter @seeband/web exec playwri
 - **An edit or a fit while it waits wins,** as the user has moved on, and so does S going away, as the values would describe nothing on screen. Edits before a new file are overwritten, as on the desktop. Coming back to a tab or reading the same S under a new mapping is no new load, and keeps what was edited.
 - **The badge shows the net's real range,** from the API, while its values stand. With no net, a prediction that is not finite, or `m_eff` of about 0, the values stay, and a line says why.
 
+## Demo data
+
+`/fit?demo=1` loads `GET /api/demo` into the slots of S, ρ and R_H, and opens the fit the data were made for, as the link from Overview will (S2). The address then drops that, so that coming back cannot replace what the user did since. After a failure it stays, so a reload tries again.
+
+- **They say what they are wherever they appear:** "Demo data" on each card, "Measurements (demo)" in the chart legend, and a notice for as long as any are in use. Results and exports must keep this (R1, R4).
+- **They take the path of a file.** S starts the initial guess. Interpolating sends their rows as text, because the API has no text of them, and a reload warns as it does for a file.
+- **Files of the user's are never replaced.** One loaded while the demo is on its way stays. Clear demo data removes only the demo.
+
 ## Result
 
 `model/ResultPanel.tsx` shows what the values on screen give, from `model/resultSummary.ts`.
