@@ -1,11 +1,11 @@
 import type { FitRequest } from "@/api/client";
-import { parameterValues } from "@/model/parameters";
+import { editableParameters, parameterValues } from "@/model/parameters";
 import { fitModeOf, type ModelDescription } from "@/model/selection";
 import { fitData, type Quantity, type SessionState } from "@/session/store";
 
 type FitInputs = Pick<
   SessionState,
-  "selection" | "parameters" | "data" | "interpolation"
+  "selection" | "parameters" | "data" | "interpolation" | "customBounds"
 >;
 
 /** Why a fit cannot start, for a text that names the quantities. */
@@ -14,7 +14,8 @@ export type FitBlocker =
   | { reason: "missing_data"; quantities: Quantity[] }
   | { reason: "interpolating" }
   | { reason: "not_interpolated"; quantities: Quantity[] }
-  | { reason: "no_points_in_range"; quantities: Quantity[] };
+  | { reason: "no_points_in_range"; quantities: Quantity[] }
+  | { reason: "start_outside_bounds"; parameters: string[] };
 
 /** A request for the current values, or why there can be none. */
 export function fitRequest(
@@ -73,12 +74,32 @@ export function fitRequest(
     return { blocked: { reason: "no_points_in_range", quantities: noPoints } };
   }
 
+  // Only what the user set here: a start outside the description's own bounds is the API's to report.
+  const start = parameterValues(mode, state.parameters[mode.id]);
+  const custom = state.customBounds[mode.id] ?? {};
+  const bounds = Object.fromEntries(
+    editableParameters(mode, selection.scattering).flatMap(({ parameter }) => {
+      const chosen = custom[parameter.name];
+      return chosen === undefined ? [] : [[parameter.name, chosen] as const];
+    }),
+  );
+  const outside = Object.entries(bounds).flatMap(([name, { lower, upper }]) => {
+    const value = start[name];
+    return value !== undefined && (value < lower || value > upper)
+      ? [name]
+      : [];
+  });
+  if (outside.length > 0) {
+    return { blocked: { reason: "start_outside_bounds", parameters: outside } };
+  }
+
   return {
     request: {
       model: model.id,
       fit_mode: mode.id,
       scattering: selection.scattering,
-      start: parameterValues(mode, state.parameters[mode.id]),
+      start,
+      ...(Object.keys(bounds).length === 0 ? {} : { bounds }),
       min_temperature_k: minK,
       max_temperature_k: maxK,
       band_1_degeneracy: selection.band1Degeneracy,

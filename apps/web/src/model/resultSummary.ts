@@ -2,6 +2,7 @@ import { formatNumber } from "@/lib/numbers";
 import { quantityCurve } from "@/model/chartTabs";
 import {
   coreToDisplay,
+  type FitBounds,
   parameterSymbol,
   parameterValues,
   shortened,
@@ -79,6 +80,7 @@ export function parameterRows(
   scattering: string | null,
   saved: Readonly<Record<string, number>> | undefined,
   fit: FitState,
+  custom?: Readonly<Record<string, FitBounds>>,
 ): ParameterRow[] {
   const values = parameterValues(mode, saved);
   // A failed fit has fitted nothing, so it has reached no bound.
@@ -87,7 +89,8 @@ export function parameterRows(
       ? fit.result.at_bounds
       : [];
   return visibleParameters(mode, scattering).map((parameter) => {
-    const { name, fit_bounds: bounds, role, unit } = parameter;
+    const { name, role, unit } = parameter;
+    const bounds = custom?.[name] ?? parameter.fit_bounds;
     const value = values[name] ?? parameter.core_range.default;
     const inDisplay = (core: number) => coreToDisplay(parameter, core);
     return {

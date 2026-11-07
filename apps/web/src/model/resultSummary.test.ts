@@ -127,6 +127,22 @@ describe("parameterRows", () => {
     expect(row).toMatchObject({ value: "1,5", bounds: "0,00001 … 10" });
   });
 
+  test("shows bounds of the user's in place of the description's", () => {
+    const rows = parameterRows(
+      modeOf("dpb_s_rho"),
+      "acPh",
+      undefined,
+      { status: "idle" },
+      { band_gap: { lower: 500, upper: 1500 } },
+    );
+    expect(rows.find(({ name }) => name === "band_gap")?.bounds).toBe(
+      "500 … 1500",
+    );
+    expect(rows.find(({ name }) => name === "fermi_energy")?.bounds).toBe(
+      "-3000 … 3000",
+    );
+  });
+
   test("a value with no fit bounds says it is not fitted", () => {
     const row = parameterRows(modeOf("spb_s"), null, undefined, {
       status: "idle",

@@ -1,4 +1,5 @@
 import type { FitBlocker } from "@/model/fitRequest";
+import { parameterSymbol } from "@/model/parameters";
 import type { FitState, Quantity } from "@/session/store";
 import type { FitStatus } from "@/shell/StatusBadge";
 import { STRINGS } from "@/strings";
@@ -91,6 +92,8 @@ export function fitBlockerText(blocker: FitBlocker): string {
       return `${text.blockers.notInterpolated} ${symbols(blocker.quantities)}.`;
     case "no_points_in_range":
       return `${text.blockers.noPointsInRange} ${symbols(blocker.quantities)}.`;
+    case "start_outside_bounds":
+      return `${text.blockers.startOutsideBounds} ${blocker.parameters.map(parameterSymbol).join(", ")}.`;
     default:
       return text.blockers.noMode;
   }

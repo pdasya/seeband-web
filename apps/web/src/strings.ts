@@ -32,6 +32,19 @@ export const STRINGS = {
       dimensionless: "",
       unknown: "unit not known",
     },
+    editBounds: "Edit bounds",
+    boundsTitle: "Bounds of the fit",
+    boundsDone: "Done",
+    closeBounds: "Close",
+    defaultBounds: "Default bounds",
+    boundsHint:
+      "What a fit of this mode may reach. Values do not move with them, and each slider follows.",
+    boundLowerTitle: "Lower",
+    boundUpperTitle: "Upper",
+    boundLower: (symbol: string) => `${symbol}, lower bound`,
+    boundUpper: (symbol: string) => `${symbol}, upper bound`,
+    boundsInvalid:
+      "The lower bound must be below the upper. The last valid bounds stay in use.",
     outOfRange: (minimum: string, maximum: string) =>
       `enter a number from ${minimum} to ${maximum}. The last valid value stays in use.`,
   },
@@ -324,6 +337,7 @@ export const STRINGS = {
       missingData: "This fit mode needs data for",
       notInterpolated: "No usable interpolated values for",
       noPointsInRange: "No points in the fit range for",
+      startOutsideBounds: "A fit cannot start outside its bounds:",
     },
     rmse: "RMSE",
     noRmse: "The RMSE appears here once measurements are loaded.",

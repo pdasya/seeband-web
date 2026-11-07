@@ -30,6 +30,7 @@ const STATE = {
     maxTemperatureK: 800,
   },
   parameters: {},
+  customBounds: {},
   data: { seebeck: entry([100, 900]), resistivity: entry([100]) },
   interpolation: {
     enabled: false,
@@ -173,6 +174,66 @@ describe("fitRequest", () => {
   });
 });
 
+describe("bounds of the user's", () => {
+  const withBounds = (
+    customBounds: Record<string, Record<string, object>>,
+    extra: object = {},
+  ) => fitRequest({ ...STATE, customBounds, ...extra } as never, models);
+  const GAP = { band_gap: { lower: 500, upper: 1500 } };
+
+  test("are left out with none, and sent as they are with some", () => {
+    const none = fitRequest(STATE, models);
+    expect("request" in none && "bounds" in none.request).toBe(false);
+
+    const answer = withBounds({ dpb_s_rho: GAP });
+    expect("request" in answer && answer.request.bounds).toEqual(GAP);
+  });
+
+  test("of another mode do not go with this one", () => {
+    const answer = withBounds({ dpb_s: GAP });
+    expect("request" in answer && "bounds" in answer.request).toBe(false);
+  });
+
+  test("of another scattering neither go nor stop it", () => {
+    const answer = withBounds({
+      dpb_s_rho: { G: { lower: 1.5, upper: 2 } },
+    });
+    expect("request" in answer && "bounds" in answer.request).toBe(false);
+  });
+
+  test("stop a fit from a start outside them, at either end, and name it", () => {
+    const outside = {
+      blocked: { reason: "start_outside_bounds", parameters: ["band_gap"] },
+    };
+    expect(
+      withBounds({ dpb_s_rho: { band_gap: { lower: 1500, upper: 2000 } } }),
+    ).toEqual(outside);
+    expect(
+      withBounds({ dpb_s_rho: { band_gap: { lower: 100, upper: 500 } } }),
+    ).toEqual(outside);
+  });
+
+  test("let a start on them through, as a bound is inside its range", () => {
+    for (const bounds of [
+      { lower: 1000, upper: 2000 },
+      { lower: 100, upper: 1000 },
+    ]) {
+      expect(withBounds({ dpb_s_rho: { band_gap: bounds } })).toHaveProperty(
+        "request",
+      );
+    }
+  });
+
+  test("check the value set, not the default", () => {
+    expect(
+      withBounds(
+        { dpb_s_rho: { band_gap: { lower: 1500, upper: 2000 } } },
+        { parameters: { dpb_s_rho: { band_gap: 1700 } } },
+      ),
+    ).toHaveProperty("request");
+  });
+});
+
 describe("fitInputsKey", () => {
   const key = (state: typeof STATE) => {
     const answer = fitRequest(state, models);
@@ -181,6 +242,17 @@ describe("fitInputsKey", () => {
     }
     return fitInputsKey(answer.request);
   };
+
+  test("follows bounds, as a fit would use them", () => {
+    expect(
+      key({
+        ...STATE,
+        customBounds: {
+          dpb_s_rho: { band_gap: { lower: 500, upper: 1500 } },
+        },
+      } as never),
+    ).not.toBe(key(STATE));
+  });
 
   test("does not follow the start values, which a fit itself moves", () => {
     expect(
