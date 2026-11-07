@@ -1,8 +1,14 @@
+import { useEffect, useRef } from "react";
 import { Link } from "react-router";
 
 import { Button } from "@/components/ui/button";
 import { useDemoData } from "@/data/useDemoData";
-import { QUANTITIES, holdsFiles, useSessionStore } from "@/session/store";
+import {
+  QUANTITIES,
+  holdsFiles,
+  readsFiles,
+  useSessionStore,
+} from "@/session/store";
 import { STRINGS } from "@/strings";
 
 const { data: text } = STRINGS;
@@ -21,7 +27,21 @@ export function DemoNotice() {
   const { wanted, loading, failed } = useDemoData();
   const data = useSessionStore((state) => state.data);
   const hasFiles = useSessionStore(holdsFiles);
+  const reading = useSessionStore(readsFiles);
   const removeData = useSessionStore((state) => state.removeData);
+  // The button goes away with the demo, so focus moves on to the first slot's control.
+  const moveFocus = useRef(false);
+
+  useEffect(() => {
+    if (moveFocus.current) {
+      moveFocus.current = false;
+      document
+        .querySelector<HTMLElement>(
+          "[data-file-slot] input, [data-file-slot] button",
+        )
+        ?.focus();
+    }
+  });
 
   const demo = QUANTITIES.filter(
     (quantity) => data[quantity]?.source.kind === "demo",
@@ -36,7 +56,7 @@ export function DemoNotice() {
         </p>
       )}
       {failed && !hasFiles && <Line>{text.demoFailed}</Line>}
-      {!wanted && !hasFiles && (
+      {!wanted && !hasFiles && !reading && (
         <Button variant="link" size="sm" className="self-start px-0" asChild>
           <Link to="/fit?demo=1">{text.demoTry}</Link>
         </Button>
@@ -51,6 +71,7 @@ export function DemoNotice() {
             variant="outline"
             size="sm"
             onClick={() => {
+              moveFocus.current = true;
               for (const quantity of demo) {
                 removeData(quantity);
               }

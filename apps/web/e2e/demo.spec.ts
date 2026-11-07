@@ -49,6 +49,17 @@ async function open(
   return demos;
 }
 
+async function upload(page: Page) {
+  await page
+    .locator('input[type="file"]')
+    .first()
+    .setInputFiles({
+      name: "mine.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from("T S\n100 1\n"),
+    });
+}
+
 const notice = (page: Page) => page.getByText(/^Synthetic data/);
 const clear = (page: Page) =>
   page.getByRole("button", { name: "Clear demo data" });
@@ -167,6 +178,175 @@ test("the link from the Single file tab goes to the slots, where interpolating w
   await expect.poll(() => parses.length).toBe(3);
 });
 
+test("Back does not bring back a demo the user cleared", async ({ page }) => {
+  const demos = await open(page, "/fit");
+  await page.getByRole("link", { name: "Try demo data" }).click();
+  await expect(notice(page)).toBeVisible();
+  await clear(page).click();
+  await expect(notice(page)).toHaveCount(0);
+  const asked = demos.length;
+
+  await page.goBack();
+  await expect(page).toHaveURL(/\/fit$/);
+  await page.waitForTimeout(300);
+  await expect(slots(page).getByText("Demo data")).toHaveCount(0);
+
+  await page.goForward();
+  await expect(page).toHaveURL(/\/fit$/);
+  await page.waitForTimeout(300);
+  await expect(slots(page).getByText("Demo data")).toHaveCount(0);
+  expect(demos).toHaveLength(asked);
+});
+
+test("clearing moves focus to the first slot, for the keyboard", async ({
+  page,
+}) => {
+  await open(page);
+  await expect(notice(page)).toBeVisible();
+
+  await clear(page).click();
+
+  await expect(slots(page).first().locator("input")).toBeFocused();
+
+  // Only that once: a later change of the data leaves focus where the user took it.
+  const field = page.getByLabel("Lower bound, K");
+  await field.focus();
+  await page.evaluate(async () => {
+    const path = "/src/session/store.ts";
+    const { useSessionStore } = (await import(/* @vite-ignore */ path)) as {
+      useSessionStore: {
+        getState: () => { removeData: (quantity: string) => void };
+      };
+    };
+    useSessionStore.getState().removeData("hall");
+  });
+  await page.waitForTimeout(100);
+  await expect(field).toBeFocused();
+});
+
+for (const [name, answer, shows] of [
+  [
+    "that then loads",
+    (route: Route) => route.fulfill({ json: PARSED }),
+    (page: Page) => slots(page).getByText("mine.txt"),
+  ],
+  [
+    "that then fails",
+    (route: Route) =>
+      route.fulfill({
+        status: 422,
+        json: { code: "calculation_failed", message: "x", details: [] },
+      }),
+    (page: Page) => page.getByRole("alert"),
+  ],
+] as const) {
+  test(`a demo that arrives during a read leaves the file alone, ${name}`, async ({
+    page,
+  }) => {
+    const demoGate = hold();
+    const parseGate = hold();
+    await open(page, "/fit?demo=1", async (route) => {
+      await demoGate.held;
+      await route.fulfill({ json: DEMO });
+    });
+    await page.route("**/api/parse", async (route) => {
+      await parseGate.held;
+      await answer(route);
+    });
+    await upload(page);
+    await expect(page.getByText("Reading…", { exact: true })).toBeVisible();
+
+    const answered = page.waitForResponse("**/api/demo");
+    demoGate.release();
+    await answered;
+    await expect(page).toHaveURL(/\/fit$/);
+    await expect(slots(page).getByText("Demo data")).toHaveCount(0);
+
+    parseGate.release();
+
+    await expect(shows(page)).toBeVisible();
+    await expect(slots(page).getByText("Demo data")).toHaveCount(0);
+    await expect(notice(page)).toHaveCount(0);
+  });
+}
+
+test("a demo that arrives during a read of a table leaves it alone", async ({
+  page,
+}) => {
+  const demoGate = hold();
+  const parseGate = hold();
+  await open(page, "/fit?demo=1", async (route) => {
+    await demoGate.held;
+    await route.fulfill({ json: DEMO });
+  });
+  await page.route("**/api/parse", async (route) => {
+    await parseGate.held;
+    await route.fulfill({ json: PARSED });
+  });
+  await page.getByRole("tab", { name: "Single file" }).click();
+  await upload(page);
+  await expect(page.getByText("mine.txt", { exact: true })).toBeVisible();
+
+  const answered = page.waitForResponse("**/api/demo");
+  demoGate.release();
+  await answered;
+  await expect(page).toHaveURL(/\/fit$/);
+  parseGate.release();
+
+  await expect(page.getByText(/^S · 2 points/)).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Single file" })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await expect(notice(page)).toHaveCount(0);
+});
+
+test("the link goes away during a read, and comes back if the file fails", async ({
+  page,
+}) => {
+  await open(page, "/fit");
+  const gate = hold();
+  await page.route("**/api/parse", async (route) => {
+    await gate.held;
+    await route.fulfill({
+      status: 422,
+      json: { code: "calculation_failed", message: "x", details: [] },
+    });
+  });
+  const link = page.getByRole("link", { name: "Try demo data" });
+  await expect(link).toBeVisible();
+
+  await upload(page);
+  await expect(page.getByText("Reading…", { exact: true })).toBeVisible();
+  await expect(link).toHaveCount(0);
+
+  // A file that failed left nothing, so the link is on offer again.
+  gate.release();
+  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(link).toBeVisible();
+});
+
+test("with no model descriptions it says the demo failed, not that it is loading", async ({
+  page,
+}) => {
+  await serveModels(page);
+  await page.route("**/api/models", (route) =>
+    route.fulfill({
+      status: 422,
+      json: { code: "calculation_failed", message: "x", details: [] },
+    }),
+  );
+  await page.route("**/api/demo", (route) => route.fulfill({ json: DEMO }));
+
+  await page.goto("/fit?demo=1");
+
+  await expect(
+    page.getByText(/^The demo data could not be loaded/),
+  ).toBeVisible();
+  await expect(page.getByText("Loading the demo data…")).toHaveCount(0);
+  await expect(page).toHaveURL(/demo=1/);
+});
+
 test("the chart says its points are demo data", async ({ page }) => {
   await open(page);
 
@@ -258,7 +438,7 @@ test("the notice comes back with the data, after the other way of loading", asyn
   await expect(slots(page).getByText("Demo data")).toHaveCount(3);
 });
 
-test("coming back to the screen keeps what the user did to the demo", async ({
+test("another screen and back keeps what the user did to the demo", async ({
   page,
 }) => {
   const demos = await open(page);

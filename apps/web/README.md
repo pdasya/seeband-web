@@ -127,7 +127,7 @@ SEEBAND_API_TARGET=http://127.0.0.1:8000 pnpm --filter @seeband/web exec playwri
 - **The panel has a link to them,** Try demo data, while no file is loaded, so that they can be reached with no Overview.
 - **They say what they are wherever they appear:** "Demo data" on each card, "Measurements (demo)" in the chart legend, and a notice for as long as any are in use. Results and exports must keep this (R1, R4).
 - **They take the path of a file.** S starts the initial guess. Interpolating sends their rows as text, because the API has no text of them, and a reload warns as it does for a file.
-- **Files of the user's are never replaced.** One loaded while the demo is on its way stays. Clear demo data removes only the demo.
+- **Files of the user's are never replaced, or mixed with the demo.** With one loaded or still being read when the demo arrives, the demo does not load, and the link is not offered. Clear demo data removes only the demo.
 
 ## Result
 

@@ -8,6 +8,7 @@ import { settingsFor, type ModelDescription } from "@/model/selection";
 import {
   holdsFiles,
   QUANTITIES,
+  readsFiles,
   useSessionStore,
   type Measurement,
   type Quantity,
@@ -39,10 +40,10 @@ export function demoEntries(demo: DemoResponse): [Quantity, SessionData][] {
   });
 }
 
-/** Opens the fit the demo was made for. Files of the user's are never replaced. */
+/** Opens the fit the demo was made for. Files of the user's are never replaced, or mixed with it. */
 function applyDemo(demo: DemoResponse, models: readonly ModelDescription[]) {
   const state = useSessionStore.getState();
-  if (holdsFiles(state)) {
+  if (holdsFiles(state) || readsFiles(state)) {
     return;
   }
   // Interpolating a table needs its text, so the demo's slots must be the ones on screen.
@@ -70,8 +71,8 @@ function applyDemo(demo: DemoResponse, models: readonly ModelDescription[]) {
 export function useDemoData() {
   const [params, setParams] = useSearchParams();
   const wanted = params.get("demo") === "1";
-  const { data: models } = useQuery(modelsQuery);
-  const { data: demo, isError } = useQuery({
+  const { data: models, isError: modelsFailed } = useQuery(modelsQuery);
+  const { data: demo, isError: demoFailed } = useQuery({
     ...demoQuery,
     enabled: wanted,
   });
@@ -98,5 +99,7 @@ export function useDemoData() {
     }
   }, [wanted, selected, demo, descriptions, setParams]);
 
-  return { wanted, loading: wanted && !isError, failed: wanted && isError };
+  // With no descriptions it cannot open a fit, however the demo's own request went.
+  const failed = wanted && (demoFailed || modelsFailed);
+  return { wanted, loading: wanted && !failed, failed };
 }
