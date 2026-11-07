@@ -28,6 +28,8 @@ export interface TransportChartProps {
   empty?: EmptyState | null;
   curves: readonly ChartCurve[];
   measurements?: ChartMeasurements | null;
+  /** Shown and hidden together with the measurements, as they stand for them. */
+  interpolated?: ChartMeasurements | null;
   fitRange?: ChartFitRange | null;
   referenceLines?: readonly ReferenceLine[];
   xAxisTitle: string;
@@ -54,9 +56,11 @@ function ChartEmptyState({ title, text }: EmptyState) {
 function Legend({
   curves,
   measurementsLabel,
+  interpolatedLabel,
 }: {
   curves: readonly ChartCurve[];
   measurementsLabel: string | null;
+  interpolatedLabel: string | null;
 }) {
   if (curves.length === 0 && measurementsLabel === null) {
     return null;
@@ -70,6 +74,16 @@ function Legend({
             className="inline-block size-2 rounded-full border-[1.5px] border-foreground bg-background"
           />
           {measurementsLabel}
+        </li>
+      )}
+      {interpolatedLabel !== null && (
+        <li className="inline-flex items-center gap-1.5">
+          <span
+            aria-hidden="true"
+            className="inline-block size-2 rounded-full"
+            style={{ backgroundColor: "var(--accent-orange)" }}
+          />
+          {interpolatedLabel}
         </li>
       )}
       {curves.map((curve, index) => (
@@ -92,6 +106,7 @@ function Legend({
 function Plot({
   curves,
   measurements,
+  interpolated,
   fitRange,
   referenceLines,
   xAxisTitle,
@@ -101,6 +116,7 @@ function Plot({
 }: {
   curves: readonly ChartCurve[];
   measurements: ChartMeasurements | null;
+  interpolated: ChartMeasurements | null;
   fitRange: ChartFitRange | null;
   referenceLines: readonly ReferenceLine[];
   xAxisTitle: string;
@@ -135,12 +151,21 @@ function Plot({
     () => ({
       curves,
       measurements,
+      interpolated,
       fitRange,
       referenceLines,
       xAxisTitle,
       yAxisTitle,
     }),
-    [curves, measurements, fitRange, referenceLines, xAxisTitle, yAxisTitle],
+    [
+      curves,
+      measurements,
+      interpolated,
+      fitRange,
+      referenceLines,
+      xAxisTitle,
+      yAxisTitle,
+    ],
   );
 
   // `react` updates the existing drawing, so that a moving slider stays smooth.
@@ -195,6 +220,7 @@ export function TransportChart({
   empty = null,
   curves,
   measurements = null,
+  interpolated = null,
   fitRange = null,
   referenceLines = NO_REFERENCE_LINES,
   xAxisTitle,
@@ -210,12 +236,14 @@ export function TransportChart({
     return <ChartEmptyState title={empty.title} text={empty.text} />;
   }
   const shownMeasurements = showMeasurements ? measurements : null;
+  const shownInterpolated = showMeasurements ? interpolated : null;
   return (
     <figure className="m-0 flex flex-col gap-2">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <Legend
           curves={curves}
           measurementsLabel={shownMeasurements?.label ?? null}
+          interpolatedLabel={shownInterpolated?.label ?? null}
         />
         {measurements !== null && (
           <label
@@ -234,6 +262,7 @@ export function TransportChart({
       <Plot
         curves={curves}
         measurements={shownMeasurements}
+        interpolated={shownInterpolated}
         fitRange={fitRange}
         referenceLines={referenceLines}
         xAxisTitle={xAxisTitle}

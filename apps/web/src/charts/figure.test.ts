@@ -247,6 +247,37 @@ describe("the y axis", () => {
   });
 });
 
+describe("interpolated points", () => {
+  const measurements = { label: "M", temperatureK: [100], values: [10] };
+  const interpolated = { label: "I", temperatureK: [900], values: [80, null] };
+
+  test("are a series of their own, below the measured points", () => {
+    const { data } = buildFigure(
+      { ...INPUT, measurements, interpolated },
+      THEME,
+    );
+
+    expect(data.map(({ name }) => name)).toEqual(["I", "M"]);
+    expect(data[0]).toMatchObject({
+      mode: "markers",
+      marker: { color: THEME.curves.orange },
+    });
+  });
+
+  test("count towards both axes", () => {
+    const { layout } = buildFigure({ ...INPUT, interpolated }, THEME);
+
+    expect(layout.xaxis?.range).toEqual([0, 900]);
+    expect(layout.yaxis?.range?.[1]).toBeGreaterThanOrEqual(80);
+  });
+
+  test("with none, no series", () => {
+    const { data } = buildFigure({ ...INPUT, measurements }, THEME);
+
+    expect(data.map(({ name }) => name)).toEqual(["M"]);
+  });
+});
+
 describe("the area outside the fit range", () => {
   test("is shaded on both sides, below the data", () => {
     expect(
