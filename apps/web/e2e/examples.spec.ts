@@ -233,11 +233,14 @@ test("a real fit stops, converges and resets through the real API", async ({
   const badge = (text: RegExp) =>
     page.locator('[data-slot="badge"]').filter({ hasText: text });
 
+  // The net has set its start values from S, as on the desktop.
+  await expect(gap).toHaveValue("554");
+
   // A real fit takes about a second here, so a Stop can only come right at its start.
   await run.click();
   await page.getByRole("button", { name: "Stop" }).click();
   await expect(badge(/^Stopped/)).toBeVisible();
-  await expect(gap).toHaveValue("1000");
+  await expect(gap).toHaveValue("554");
 
   // S + ρ is iterative, so its result counts them.
   await run.click();
@@ -252,11 +255,53 @@ test("a real fit stops, converges and resets through the real API", async ({
 
   // S is single-pass, so it ends with no counter, on values other than its start.
   await page.getByRole("radio", { name: "S", exact: true }).click();
-  await expect(gap).toHaveValue("1000");
+  await expect(gap).toHaveValue("554");
   await run.click();
   await expect(badge(/^Converged$/)).toBeVisible({
     timeout: 30_000,
   });
-  await expect(gap).not.toHaveValue("1000");
+  await expect(gap).not.toHaveValue("554");
   await expect(page.getByRole("alert")).toHaveCount(0);
+});
+
+// From `packages/seeband_core/tests/fixtures/neural_net_references.json`, recorded on the desktop.
+for (const [example, mass, gap, fermi] of [
+  ["01_Fe2VAl09Si01", "1,57", "554", "1170"],
+  ["03_AWI32_SI", "1,22", "1947", "-350"],
+] as const) {
+  test(`the net's start values for ${example} match the desktop`, async ({
+    page,
+  }) => {
+    await page.goto("/fit");
+    await page
+      .locator('input[type="file"]')
+      .first()
+      .setInputFiles(`${EXAMPLES}${example}_see.txt`);
+    const field = (name: string) =>
+      page.getByRole("textbox", { name, exact: true });
+
+    await expect(field("m₂/m₁")).toHaveValue(mass);
+    await expect(field("E_g")).toHaveValue(gap);
+    await expect(field("E_F")).toHaveValue(fermi);
+    await expect(
+      page
+        .locator('[data-slot="badge"]')
+        .filter({ hasText: /^Initial guess · net \d+–\d+ K$/ }),
+    ).toBeVisible();
+  });
+}
+
+test("02_SiP has no net for its span, and keeps the desktop's values", async ({
+  page,
+}) => {
+  await page.goto("/fit");
+  await page
+    .locator('input[type="file"]')
+    .first()
+    .setInputFiles(`${EXAMPLES}02_SiP_see.txt`);
+
+  await expect(page.getByText(/No neural net covers/)).toBeVisible();
+  await expect(
+    page.getByRole("textbox", { name: "E_g", exact: true }),
+  ).toHaveValue("1000");
 });

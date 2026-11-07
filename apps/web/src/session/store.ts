@@ -152,6 +152,31 @@ function filesToKeep({
   };
 }
 
+type GuessWarnings = Schemas["GuessFound"]["warnings"];
+type NetRange = Schemas["NetRange"];
+
+/** How the last initial guess ended. Only `applied` changed any value. */
+export type GuessOutcome =
+  | { kind: "applied"; netRange: NetRange; warnings: GuessWarnings }
+  | {
+      kind: "no_net";
+      firstK: number;
+      lastK: number;
+      available: NetRange[];
+      warnings: GuessWarnings;
+    }
+  | { kind: "not_finite"; warnings: GuessWarnings }
+  | { kind: "needs_mass"; warnings: GuessWarnings }
+  | { kind: "failed"; code: string; warnings: GuessWarnings };
+
+interface GuessRecord {
+  outcome: GuessOutcome;
+  model: string;
+  measurement: Measurement;
+  /** The values it left, as a badge about it holds only while they stand. */
+  parameters: SessionState["parameters"];
+}
+
 export interface SessionState {
   data: Partial<Record<Quantity, SessionData>>;
   selection: Selection;
@@ -167,6 +192,8 @@ export interface SessionState {
   otherSource: DataSourceFiles | null;
   interpolation: InterpolationState;
   chartTab: ChartTab;
+  guessPending: boolean;
+  guess: GuessRecord | null;
   /** Counts resets, so that fields can start again even if the values do not change. */
   parameterResets: number;
   /** What each model had when another was chosen, as the design keeps them apart. */
@@ -199,6 +226,20 @@ export interface SessionState {
   setParameter: (fitMode: string, name: string, value: number) => void;
   /** Back to the defaults of a fit mode, also for a number being typed. */
   resetParameters: (fitMode: string) => void;
+  guessStarted: () => void;
+  guessFinished: (
+    outcome: GuessOutcome,
+    model: string,
+    measurement: Measurement,
+  ) => void;
+  /** It ended with nothing to say, as the user moved on from it. */
+  guessDropped: () => void;
+  guessApplied: (
+    modes: readonly { fitMode: string; values: Record<string, number> }[],
+    outcome: GuessOutcome,
+    model: string,
+    measurement: Measurement,
+  ) => void;
   /** Starts a new run, which replaces any other, and returns its id for the calls below. */
   fitRequested: (fitMode?: string) => number;
   fitEvent: (run: number, event: FitEvent) => void;
@@ -258,6 +299,23 @@ function afterEvent(fit: FitState, event: FitEvent): FitState {
   }
 }
 
+/**
+ * The last guess, while what it says still holds. New data end any of them, and new values end the
+ * badge of one that was applied, as these are no longer its values.
+ */
+export function currentGuess(
+  state: Pick<SessionState, "guess" | "data" | "parameters">,
+): GuessOutcome | null {
+  const { guess } = state;
+  if (guess === null || state.data.seebeck?.measurement !== guess.measurement) {
+    return null;
+  }
+  return guess.outcome.kind === "applied" &&
+    guess.parameters !== state.parameters
+    ? null
+    : guess.outcome;
+}
+
 /** Whether a reload would lose any file, in the way in use or the other. */
 export function holdsFiles(
   state: Pick<SessionState, "data" | "singleFile" | "otherSource">,
@@ -298,9 +356,42 @@ export const createSessionStore = () =>
       otherSource: null,
       interpolation: INITIAL_INTERPOLATION,
       chartTab: "seebeck",
+      guessPending: false,
+      guess: null,
       parameterResets: 0,
       savedModelSettings: {},
 
+      guessStarted: () => {
+        set({ guessPending: true, guess: null });
+      },
+      guessFinished: (outcome, model, measurement) => {
+        set((state) => ({
+          guessPending: false,
+          guess: {
+            outcome,
+            model,
+            measurement,
+            parameters: state.parameters,
+          },
+        }));
+      },
+      guessDropped: () => {
+        set({ guessPending: false, guess: null });
+      },
+      guessApplied: (modes, outcome, model, measurement) => {
+        set((state) => {
+          const parameters = { ...state.parameters };
+          for (const { fitMode, values } of modes) {
+            parameters[fitMode] = { ...parameters[fitMode], ...values };
+          }
+          return {
+            parameters,
+            guessPending: false,
+            guess: { outcome, model, measurement, parameters },
+            fit: withoutOldResult(state.fit),
+          };
+        });
+      },
       setChartTab: (chartTab) => {
         set({ chartTab });
       },

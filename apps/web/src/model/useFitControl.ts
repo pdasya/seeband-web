@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { modelsQuery } from "@/api/queries";
 import { fitInputsKey, fitRequest } from "@/model/fitRequest";
 import { runFit, stopFit } from "@/model/fitRun";
+import { dropGuess } from "@/model/guessRun";
 import { fitModeOf } from "@/model/selection";
 import { isFitActive, useSessionStore } from "@/session/store";
 
@@ -52,6 +53,7 @@ export function useFitControl() {
     blocker: "blocked" in prepared ? prepared.blocked : null,
     run: () => {
       if (request !== null) {
+        dropGuess();
         void runFit(request);
       }
     },
