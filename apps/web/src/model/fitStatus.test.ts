@@ -92,6 +92,10 @@ describe("fitFailureText", () => {
     expect(fitFailureText(failed("fit_timeout"))).toContain("time limit");
     expect(fitFailureText(failed("stream_ended"))).toContain("connection");
     expect(fitFailureText(failed("fit_queue_full"))).toContain("Too many");
+    expect(fitFailureText(failed("client_fit_limit"))).toContain(
+      "too many fits running",
+    );
+    expect(fitFailureText(failed("invalid_fit"))).toContain("refused");
     expect(fitFailureText(failed("anything"))).toBe(
       "The fit failed on the server. Try again.",
     );

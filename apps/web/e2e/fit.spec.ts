@@ -261,6 +261,48 @@ test("an iterative fit: status, counter, moving values and Stop", async ({
   await expect(page.getByRole("alert")).toHaveCount(0);
 });
 
+test("a double click on Run does not stop the fit", async ({ page }) => {
+  await openWithData(page);
+
+  await run(page).dblclick();
+
+  await expect(stop(page)).toBeVisible();
+  expect(await aborted(page)).toBe(0);
+  expect(await fitBodies(page)).toHaveLength(1);
+
+  // A single click after that does stop it.
+  await page.waitForTimeout(600);
+  await stop(page).click();
+  await expect(run(page)).toBeEnabled();
+  expect(await aborted(page)).toBe(1);
+});
+
+test("a held key on Run does not stop the fit", async ({ page }) => {
+  await openWithData(page);
+  await run(page).focus();
+
+  await page.keyboard.down("Enter");
+  await expect(stop(page)).toBeVisible();
+  await page.keyboard.down("Enter");
+  await page.keyboard.down("Enter");
+  await page.keyboard.up("Enter");
+
+  await expect(stop(page)).toBeVisible();
+  expect(await aborted(page)).toBe(0);
+  expect(await fitBodies(page)).toHaveLength(1);
+});
+
+test("a press of Enter stops the fit", async ({ page }) => {
+  await openWithData(page);
+  await run(page).click();
+  await stop(page).focus();
+
+  await page.keyboard.press("Enter");
+
+  await expect(run(page)).toBeEnabled();
+  expect(await aborted(page)).toBe(1);
+});
+
 test("Stop before any iteration keeps the start values", async ({ page }) => {
   await openWithData(page);
   await run(page).click();
@@ -371,7 +413,8 @@ test("a long value shows short, and stays exact", async ({ page }) => {
   await field(page, "E_g").fill("651,5540");
   await field(page, "E_g").blur();
 
-  await page.waitForTimeout(400);
+  // Well past the debounce of up to 300 ms.
+  await page.waitForTimeout(1000);
   expect(bodies).toHaveLength(count);
   await expect(page.getByText("Converged in 5 iter.")).toBeVisible();
 });
@@ -488,6 +531,20 @@ test("a refusal says so, with nothing left running", async ({ page }) => {
   await expect(run(page)).toBeEnabled();
 });
 
+test("the limit of fits for one client says so", async ({ page }) => {
+  await openWithData(page);
+  await page.evaluate(() => {
+    window.fitTest.refuse = {
+      status: 429,
+      body: { code: "client_fit_limit", message: "SECRET-VALUE", details: [] },
+    };
+  });
+
+  await run(page).click();
+
+  await expect(page.getByRole("alert")).toContainText("too many fits running");
+});
+
 test("Reset goes back to the defaults, and to manual", async ({ page }) => {
   await openWithData(page);
   await field(page, "E_g").fill("500");
@@ -572,7 +629,8 @@ test("its own values moving do not stop a fit", async ({ page }) => {
   });
 
   await expect(field(page, "E_g")).toHaveValue("850");
-  await page.waitForTimeout(300);
+  // Well past what a change of inputs would take to stop it.
+  await page.waitForTimeout(800);
   expect(await aborted(page)).toBe(0);
   await expect(stop(page)).toBeVisible();
 });

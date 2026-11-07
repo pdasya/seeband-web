@@ -278,6 +278,9 @@ export const STRINGS = {
       fit_timeout: "The fit ran past its time limit, and has ended.",
       fit_process_died: "The fit stopped unexpectedly. Try again.",
       fit_queue_full: "Too many fits are running. Try again in a moment.",
+      client_fit_limit:
+        "You have too many fits running. Wait a moment, and try again.",
+      invalid_fit: "The server refused this fit. Check the data and values.",
       rate_limited: "Too many fits in a short time. Try again in a moment.",
       network_error: "The connection was lost during the fit. Try again.",
       stream_ended: "The connection was lost during the fit. Try again.",

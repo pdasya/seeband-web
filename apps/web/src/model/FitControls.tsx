@@ -1,3 +1,4 @@
+import type { KeyboardEvent } from "react";
 import {
   AlertCircleIcon,
   PlayIcon,
@@ -29,6 +30,12 @@ export function FitStatusBadge({ control }: { control: Control }) {
   );
 }
 
+function ignoreHeldKey(event: KeyboardEvent) {
+  if (event.repeat) {
+    event.preventDefault();
+  }
+}
+
 export function FitActions({ control }: { control: Control }) {
   return (
     <>
@@ -37,12 +44,24 @@ export function FitActions({ control }: { control: Control }) {
         {text.reset}
       </Button>
       {control.active ? (
-        <Button onClick={control.stop}>
+        <Button
+          onClick={(event) => {
+            // Run turns into this in place, so the rest of a double click must not stop the fit.
+            if (event.detail <= 1) {
+              control.stop();
+            }
+          }}
+          onKeyDown={ignoreHeldKey}
+        >
           <SquareIcon aria-hidden="true" />
           {text.stop}
         </Button>
       ) : (
-        <Button disabled={control.blocker !== null} onClick={control.run}>
+        <Button
+          disabled={control.blocker !== null}
+          onClick={control.run}
+          onKeyDown={ignoreHeldKey}
+        >
           <PlayIcon aria-hidden="true" />
           {text.run}
         </Button>
