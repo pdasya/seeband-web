@@ -3,7 +3,11 @@ import { describe, expect, test } from "vitest";
 
 import { MODELS } from "../../e2e/support/models";
 
-import { fitInputsKey, fitRequest } from "@/model/fitRequest";
+import {
+  fitInputsKey,
+  fitRequest,
+  startsOutsideBounds,
+} from "@/model/fitRequest";
 import type { ModelDescription } from "@/model/selection";
 import type { SessionData } from "@/session/store";
 
@@ -201,36 +205,54 @@ describe("bounds of the user's", () => {
     expect("request" in answer && "bounds" in answer.request).toBe(false);
   });
 
-  test("stop a fit from a start outside them, at either end, and name it", () => {
-    const outside = {
-      blocked: { reason: "start_outside_bounds", parameters: ["band_gap"] },
-    };
-    expect(
-      withBounds({ dpb_s_rho: { band_gap: { lower: 1500, upper: 2000 } } }),
-    ).toEqual(outside);
-    expect(
-      withBounds({ dpb_s_rho: { band_gap: { lower: 100, upper: 500 } } }),
-    ).toEqual(outside);
+  const outside = (bounds: object, extra: object = {}) => {
+    const answer = withBounds({ dpb_s_rho: { band_gap: bounds } }, extra);
+    if (!("request" in answer)) {
+      throw new Error("blocked");
+    }
+    return startsOutsideBounds(answer.request);
+  };
+
+  test("name a start outside them, at either end", () => {
+    expect(outside({ lower: 1500, upper: 2000 })).toEqual(["band_gap"]);
+    expect(outside({ lower: 100, upper: 500 })).toEqual(["band_gap"]);
   });
 
   test("let a start on them through, as a bound is inside its range", () => {
-    for (const bounds of [
-      { lower: 1000, upper: 2000 },
-      { lower: 100, upper: 1000 },
-    ]) {
-      expect(withBounds({ dpb_s_rho: { band_gap: bounds } })).toHaveProperty(
-        "request",
-      );
-    }
+    expect(outside({ lower: 1000, upper: 2000 })).toEqual([]);
+    expect(outside({ lower: 100, upper: 1000 })).toEqual([]);
   });
 
   test("check the value set, not the default", () => {
     expect(
-      withBounds(
-        { dpb_s_rho: { band_gap: { lower: 1500, upper: 2000 } } },
+      outside(
+        { lower: 1500, upper: 2000 },
         { parameters: { dpb_s_rho: { band_gap: 1700 } } },
       ),
-    ).toHaveProperty("request");
+    ).toEqual([]);
+  });
+
+  test("do not check a start with no bounds of the user's", () => {
+    const answer = withBounds({}, { parameters: { dpb_s_rho: { m_eff: 6 } } });
+    expect("request" in answer && startsOutsideBounds(answer.request)).toEqual(
+      [],
+    );
+  });
+
+  test("a start outside them leaves the same inputs, for a fit that runs", () => {
+    const key = (parameters: object) => {
+      const answer = withBounds(
+        { dpb_s_rho: { m_eff: { lower: 0.5, upper: 3 } } },
+        { parameters },
+      );
+      if (!("request" in answer)) {
+        throw new Error("blocked");
+      }
+      return fitInputsKey(answer.request);
+    };
+    expect(key({ dpb_s_rho: { m_eff: 4 } })).toBe(
+      key({ dpb_s_rho: { m_eff: 1 } }),
+    );
   });
 });
 

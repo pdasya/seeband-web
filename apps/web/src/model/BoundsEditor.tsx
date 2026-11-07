@@ -1,9 +1,8 @@
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -33,12 +32,14 @@ function BoundsRow({
   bounds,
   disabled,
   onChange,
+  onValidity,
 }: {
   parameter: ParameterDescription;
   /** In core units. */
   bounds: FitBounds;
   disabled: boolean;
   onChange: (bounds: FitBounds) => void;
+  onValidity: (invalid: boolean) => void;
 }) {
   const errorId = useId();
   const [lowerDraft, setLowerDraft] = useState<string | null>(null);
@@ -48,27 +49,37 @@ function BoundsRow({
   const shown = (core: number) =>
     formatNumber(shortened(coreToDisplay(parameter, core)));
 
-  // Both ends count together, so that moving a range past its old end takes two entries.
+  const markInvalid = (next: boolean) => {
+    setInvalid(next);
+    onValidity(next);
+  };
+
+  // Both ends count together, so they are checked as focus leaves the row, not each field.
   const commit = () => {
     const lowerText = lowerDraft ?? shown(bounds.lower);
     const upperText = upperDraft ?? shown(bounds.upper);
-    const lower = parseNumber(lowerText);
-    const upper = parseNumber(upperText);
-    if (lower === null || upper === null || lower >= upper) {
-      setInvalid(true);
+    const lowerTyped = parseNumber(lowerText);
+    const upperTyped = parseNumber(upperText);
+    if (lowerTyped === null || upperTyped === null) {
+      markInvalid(true);
       return;
     }
-    setInvalid(false);
-    setLowerDraft(null);
-    setUpperDraft(null);
     // An unchanged text keeps the exact value, which it shows shortened.
     const lowerSame = lowerText === shown(bounds.lower);
     const upperSame = upperText === shown(bounds.upper);
+    const next = {
+      lower: lowerSame ? bounds.lower : displayToCore(parameter, lowerTyped),
+      upper: upperSame ? bounds.upper : displayToCore(parameter, upperTyped),
+    };
+    if (next.lower >= next.upper) {
+      markInvalid(true);
+      return;
+    }
+    markInvalid(false);
+    setLowerDraft(null);
+    setUpperDraft(null);
     if (!lowerSame || !upperSame) {
-      onChange({
-        lower: lowerSame ? bounds.lower : displayToCore(parameter, lower),
-        upper: upperSame ? bounds.upper : displayToCore(parameter, upper),
-      });
+      onChange(next);
     }
   };
   const fieldProps = {
@@ -78,7 +89,6 @@ function BoundsRow({
     "aria-invalid": invalid,
     "aria-describedby": invalid ? errorId : undefined,
     className: "h-8 text-right font-mono text-[13px]",
-    onBlur: commit,
     onKeyDown: (event: { key: string }) => {
       if (event.key === "Enter") {
         commit();
@@ -88,7 +98,14 @@ function BoundsRow({
 
   return (
     <div className="flex flex-col gap-1">
-      <div className="grid grid-cols-[3.5rem_1fr_1fr] items-center gap-2">
+      <div
+        className="grid grid-cols-[3.5rem_1fr_1fr] items-center gap-2"
+        onBlur={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget)) {
+            commit();
+          }
+        }}
+      >
         <span className="text-[13px] font-medium">{symbol}</span>
         <Input
           {...fieldProps}
@@ -96,7 +113,7 @@ function BoundsRow({
           value={lowerDraft ?? shown(bounds.lower)}
           onChange={(event) => {
             setLowerDraft(event.target.value);
-            setInvalid(false);
+            markInvalid(false);
           }}
         />
         <Input
@@ -105,7 +122,7 @@ function BoundsRow({
           value={upperDraft ?? shown(bounds.upper)}
           onChange={(event) => {
             setUpperDraft(event.target.value);
-            setInvalid(false);
+            markInvalid(false);
           }}
         />
       </div>
@@ -126,8 +143,14 @@ export function BoundsEditor({
   mode: FitModeDescription;
   scattering: string | null;
 }) {
+  const [open, setOpen] = useState(false);
   // Starts the rows again, as Default bounds also ends what was being typed.
   const [generation, setGeneration] = useState(0);
+  // Rows that hold no valid bounds, which Done will not close on, so as not to drop them unsaid.
+  const [invalidRows, setInvalidRows] = useState<ReadonlySet<string>>(
+    new Set(),
+  );
+  const done = useRef<HTMLButtonElement>(null);
   const custom = useSessionStore((state) => state.customBounds[mode.id]);
   const setBounds = useSessionStore((state) => state.setCustomBounds);
   const clearBounds = useSessionStore((state) => state.clearCustomBounds);
@@ -139,13 +162,25 @@ export function BoundsEditor({
     return null;
   }
   return (
-    <Dialog>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        setInvalidRows(new Set());
+      }}
+    >
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
           {text.editBounds}
         </Button>
       </DialogTrigger>
-      <DialogContent closeLabel={text.closeBounds}>
+      <DialogContent
+        closeLabel={text.closeBounds}
+        // A click beside it is too easily made to close it on what was being typed.
+        onInteractOutside={(event) => {
+          event.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>{text.boundsTitle}</DialogTitle>
           <DialogDescription>{text.boundsHint}</DialogDescription>
@@ -168,6 +203,17 @@ export function BoundsEditor({
                   bounds.upper === defaults.upper;
                 setBounds(mode.id, parameter.name, same ? null : bounds);
               }}
+              onValidity={(invalid) => {
+                setInvalidRows((rows) => {
+                  const next = new Set(rows);
+                  if (invalid) {
+                    next.add(parameter.name);
+                  } else {
+                    next.delete(parameter.name);
+                  }
+                  return next;
+                });
+              }}
             />
           ))}
         </div>
@@ -179,14 +225,24 @@ export function BoundsEditor({
               onClick={() => {
                 clearBounds(mode.id);
                 setGeneration(generation + 1);
+                setInvalidRows(new Set());
+                // This button goes away now, and focus must not go with it.
+                done.current?.focus();
               }}
             >
               {text.defaultBounds}
             </Button>
           )}
-          <DialogClose asChild>
-            <Button>{text.boundsDone}</Button>
-          </DialogClose>
+          <Button
+            ref={done}
+            onClick={() => {
+              if (invalidRows.size === 0) {
+                setOpen(false);
+              }
+            }}
+          >
+            {text.boundsDone}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

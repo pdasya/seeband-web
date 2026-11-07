@@ -112,13 +112,8 @@ async function setBounds(
   high: string,
 ) {
   await openEditor(page);
-  // The upper first, or a move past the old end would be refused on the way.
-  const moving = Number(low.replace(",", ".")) > 0;
-  const fields = moving
-    ? [upper(page, symbol), lower(page, symbol)]
-    : [lower(page, symbol), upper(page, symbol)];
-  await fields[0]?.fill(moving ? high : low);
-  await fields[1]?.fill(moving ? low : high);
+  await lower(page, symbol).fill(low);
+  await upper(page, symbol).fill(high);
   await done(page);
   await expect(editor(page)).toHaveCount(0);
 }
@@ -236,12 +231,202 @@ test("bounds that do not make a range are refused, and the last ones stay", asyn
   await expect(message).toHaveCount(0);
   await done(page);
   await expect(row(page, "E_g")).toContainText("-3000 … 2500");
+});
 
-  // Closed on bounds that make no range, the last valid ones stay.
+test("Done keeps the dialog open on bounds that make no range, and says why", async ({
+  page,
+}) => {
+  await open(page);
   await openEditor(page);
   await upper(page, "E_g").fill("-4000");
+
   await done(page);
+
+  await expect(editor(page)).toBeVisible();
+  const message = page.getByText(/^The lower bound must be below the upper/);
+  await expect(message).toBeVisible();
+
+  await upper(page, "E_g").fill("2500");
+  await lower(page, "E_g").focus();
+  await done(page);
+  await expect(editor(page)).toHaveCount(0);
   await expect(row(page, "E_g")).toContainText("-3000 … 2500");
+});
+
+test("a click beside the dialog does not close it, and Escape or the corner do", async ({
+  page,
+}) => {
+  await open(page);
+  await openEditor(page);
+  await upper(page, "E_g").fill("-4000");
+
+  await page.mouse.click(5, 5);
+  await expect(editor(page)).toBeVisible();
+
+  await page.getByRole("button", { name: "Close" }).click();
+  await expect(editor(page)).toHaveCount(0);
+  await expect(row(page, "E_g")).toContainText("-3000 … 3000");
+
+  await openEditor(page);
+  await expect(page.getByText(/^The lower bound must/)).toHaveCount(0);
+  await expect(upper(page, "E_g")).toHaveValue("3000");
+  await done(page);
+  await expect(editor(page)).toHaveCount(0);
+});
+
+test("going from the lower field to the upper says nothing until the row is left", async ({
+  page,
+}) => {
+  await open(page);
+  await openEditor(page);
+  const message = page.getByText(/^The lower bound must/);
+
+  await lower(page, "E_g").fill("5000");
+  await lower(page, "E_g").press("Tab");
+  await expect(upper(page, "E_g")).toBeFocused();
+  await expect(message).toHaveCount(0);
+
+  await upper(page, "E_g").fill("6000");
+  await upper(page, "E_g").press("Tab");
+  await expect(message).toHaveCount(0);
+  await done(page);
+  await expect(row(page, "E_g")).toContainText("5000 … 6000");
+});
+
+test("leaving a row with bounds that make no range says so at once", async ({
+  page,
+}) => {
+  await open(page);
+  await openEditor(page);
+
+  await lower(page, "E_g").fill("5000");
+  await lower(page, "m₂/m₁").focus();
+
+  await expect(page.getByText(/^The lower bound must/)).toBeVisible();
+  await expect(lower(page, "E_g")).toHaveAttribute("aria-invalid", "true");
+});
+
+const setStoredBounds = (page: Page, bounds: object) =>
+  page.evaluate(async (value) => {
+    const path = "/src/session/store.ts";
+    const { useSessionStore } = (await import(/* @vite-ignore */ path)) as {
+      useSessionStore: {
+        getState: () => {
+          setCustomBounds: (mode: string, name: string, bounds: object) => void;
+        };
+      };
+    };
+    useSessionStore.getState().setCustomBounds("dpb_s_rho", "band_gap", value);
+  }, bounds);
+
+test("an end left as it is keeps its exact value, and the check uses that", async ({
+  page,
+}) => {
+  await open(page);
+  await setStoredBounds(page, { lower: 1000.0004, upper: 2000 });
+  await openEditor(page);
+  await expect(lower(page, "E_g")).toHaveValue("1000");
+
+  // Above what the field shows, but below the exact value it stands for.
+  await upper(page, "E_g").fill("1000.0002");
+  await upper(page, "E_g").blur();
+  await expect(page.getByText(/^The lower bound must/)).toBeVisible();
+
+  await upper(page, "E_g").fill("3000");
+  await upper(page, "E_g").blur();
+  await expect(page.getByText(/^The lower bound must/)).toHaveCount(0);
+  await done(page);
+
+  // E_g starts at 1000, just below the exact bound, so a fit is held back by it.
+  await value(page, "E_g").fill("1500");
+  await value(page, "E_g").blur();
+  await run(page).click();
+  expect((await fitBodies(page))[0]?.bounds).toEqual({
+    band_gap: { lower: 1000.0004, upper: 3000 },
+  });
+});
+
+test("the slider's keys stop at the bounds, not at its old range", async ({
+  page,
+}) => {
+  await open(page);
+  await setBounds(page, "E_g", "900", "1002");
+  const thumb = slider(page, "E_g");
+
+  await thumb.press("ArrowRight");
+  await thumb.press("ArrowRight");
+  await thumb.press("ArrowRight");
+  await expect(value(page, "E_g")).toHaveValue("1002");
+
+  await thumb.press("PageDown");
+  await thumb.press("PageDown");
+  await thumb.press("PageDown");
+  await thumb.press("PageDown");
+  await thumb.press("PageDown");
+  await thumb.press("PageDown");
+  await expect(value(page, "E_g")).toHaveValue("900");
+});
+
+test("a fit whose values read past the bounds goes on, and only the next is stopped", async ({
+  page,
+}) => {
+  await open(page);
+  await setBounds(page, "m₂/m₁", "0,5", "3");
+  await run(page).click();
+  await send(page, { type: "started" });
+  await expect(stop(page)).toBeVisible();
+
+  // With N₂/N₁ of 2, a value of 2 is reported as 4 (D12).
+  await send(page, {
+    type: "iteration",
+    iteration: 1,
+    parameters: { m_eff: 4 },
+  });
+  await expect(value(page, "m₂/m₁")).toHaveValue("4");
+  await page.waitForTimeout(200);
+
+  await expect(stop(page)).toBeVisible();
+  expect(await page.evaluate(() => window.fitTest.aborted)).toBe(0);
+  await expect(page.getByText(/cannot start outside/)).toHaveCount(0);
+
+  await send(page, {
+    type: "done",
+    result: { ...RESULT, parameters: { m_eff: 4 } },
+  });
+  await expect(
+    page.locator('[data-slot="badge"]').filter({ hasText: /^Converged/ }),
+  ).toBeVisible();
+  await expect(run(page)).toBeDisabled();
+  await expect(
+    page.getByText("A fit cannot start outside its bounds: m₂/m₁."),
+  ).toBeVisible();
+});
+
+test("a guess outside the bounds shows, and stops Run as any value would", async ({
+  page,
+}) => {
+  await open(page);
+  await setBounds(page, "E_g", "900", "1100");
+  await page.route("**/api/guess", (route) =>
+    route.fulfill({
+      json: {
+        status: "guess",
+        net_range: { min_temperature_k: 25, max_temperature_k: 750 },
+        prediction: { m_eff: 1.57, band_gap_k: 554, fermi_energy_k: 1170 },
+        start_values: { m_eff: 1.57, band_gap: 554, fermi_energy: 1170 },
+        warnings: [],
+      },
+    }),
+  );
+
+  await page.getByRole("button", { name: "Initial guess" }).click();
+
+  await expect(value(page, "E_g")).toHaveValue("554");
+  await expect(row(page, "E_g")).toContainText("900 … 1100");
+  await expect(run(page)).toBeDisabled();
+  await expect(
+    page.getByText("A fit cannot start outside its bounds: E_g."),
+  ).toBeVisible();
 });
 
 test("Enter sets them too, and a range can move past its old end", async ({
@@ -332,6 +517,7 @@ test("Default bounds ends a change and what was being typed, and keeps the value
 
   await defaults(page).click();
 
+  await expect(page.getByRole("button", { name: "Done" })).toBeFocused();
   await expect(lower(page, "E_g")).toHaveValue("-3000");
   await expect(lower(page, "m₂/m₁")).toHaveValue("-3");
   await expect(page.getByText(/^The lower bound must/)).toHaveCount(0);

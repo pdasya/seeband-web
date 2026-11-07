@@ -2,7 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef } from "react";
 
 import { modelsQuery } from "@/api/queries";
-import { fitInputsKey, fitRequest } from "@/model/fitRequest";
+import {
+  fitInputsKey,
+  fitRequest,
+  startsOutsideBounds,
+  type FitBlocker,
+} from "@/model/fitRequest";
 import { runFit, stopFit } from "@/model/fitRun";
 import { dropGuess } from "@/model/guessRun";
 import { fitModeOf } from "@/model/selection";
@@ -34,6 +39,13 @@ export function useFitControl() {
   const request = "request" in prepared ? prepared.request : null;
   const inputs = request === null ? null : fitInputsKey(request);
   const active = isFitActive(fit);
+  const outside = request === null ? [] : startsOutsideBounds(request);
+  const blocker: FitBlocker | null =
+    "blocked" in prepared
+      ? prepared.blocked
+      : outside.length > 0
+        ? { reason: "start_outside_bounds", parameters: outside }
+        : null;
 
   // A change of data, mode or range makes the running fit one of something no longer on screen.
   // Leaving this screen is no such change, and a fit goes on.
@@ -51,7 +63,7 @@ export function useFitControl() {
     fit,
     active,
     iterative: mode?.iterative === true,
-    blocker: "blocked" in prepared ? prepared.blocked : null,
+    blocker,
     run: () => {
       if (request !== null) {
         dropGuess();

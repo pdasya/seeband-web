@@ -133,8 +133,8 @@ SEEBAND_API_TARGET=http://127.0.0.1:8000 pnpm --filter @seeband/web exec playwri
 
 `model/BoundsEditor.tsx`, a dialog opened beside the title of the parameters, sets the bounds of a fit for each mode, where the description has `bounds_editable`. They go in `bounds` on `POST /api/fit` in core units, only those that differ from the description, and only for the scattering in use. The result table shows them, and the parameter's slider and field take them as their range, as on the desktop.
 
-- **Values do not move with them,** unlike on the desktop (D27). A start outside its bounds stops Run, and says which. Only bounds the user set are checked here: a start outside the description's own is for the API to report.
-- **The lower bound must be below the upper.** Both ends count together, so a range can move past its old end. Otherwise the last valid bounds stay.
+- **Values do not move with them,** unlike on the desktop (D27). A start outside its bounds stops Run, and says which, but does not stop a fit that runs, whose own values can read past them when N₂/N₁ is not 1 (D12). Only bounds the user set are checked here: a start outside the description's own is for the API to report.
+- **The lower bound must be below the upper.** Both ends count together, and are checked as focus leaves the row, so a range can move past its old end. Otherwise the last valid bounds stay, and Done does not close the dialog on them. Escape and the corner button do, and a click beside it does not.
 - **Reset restores them,** with the values. Default bounds restores only them.
 - **The fit range** is in the model panel, shared by all modes, as on the desktop.
 
