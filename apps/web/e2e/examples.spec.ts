@@ -259,6 +259,30 @@ test("02_SiP has no net for its span, and keeps the desktop's values", async ({
   ).toHaveValue("1000");
 });
 
+test("the real API draws the sketch of the bands, and it follows the values", async ({
+  page,
+}) => {
+  await page.goto("/fit");
+  await expect(page.getByRole("slider", { name: "E_F" })).toBeVisible();
+  await page.getByRole("tab", { name: "E(k)" }).click();
+  await expect(page.getByText(/^Caution: This is a sketch/)).toBeVisible();
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(
+    page.locator(".js-plotly-plot .scatterlayer .trace"),
+  ).toHaveCount(3);
+
+  const answered = page.waitForResponse("**/api/band-diagram");
+  const field = page.getByRole("textbox", { name: "E_g", exact: true });
+  await field.fill("500");
+  await field.blur();
+  const response = await answered;
+  const body = (await response.json()) as {
+    curves: Record<string, number[]>;
+  };
+  expect(response.status()).toBe(200);
+  expect(Math.min(...(body.curves.band_2_energy_k ?? []))).toBeGreaterThan(500);
+});
+
 // One after another, as the API limits the fits of a client, and all tests here are one client.
 test.describe("real fits", () => {
   test.describe.configure({ mode: "serial" });

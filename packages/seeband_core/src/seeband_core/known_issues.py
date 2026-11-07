@@ -170,6 +170,14 @@ KNOWN_ISSUES: tuple[KnownIssue, ...] = (
         "there is no desktop result to compare with",
     ),
     KnownIssue(
+        id="band_diagram_formula",
+        severity="caution",
+        fixed_by="#108",
+        fit_modes=(*_SPB_MODES, *_DPB_MODES),
+        explanation="The sketch of E(k) follows no E = hbar^2 k^2 / 2m in any stated units. It "
+        "enters no fit or curve, so no result lists this, only the diagram itself",
+    ),
+    KnownIssue(
         id="interpolation_extrapolates",
         severity="unreliable",
         fixed_by="#86",

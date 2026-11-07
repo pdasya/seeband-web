@@ -172,6 +172,7 @@ def test_every_route_that_takes_a_body_has_a_rate_limit() -> None:
 
     assert {path for path, operations in paths.items() if "post" in operations} == {
         "/api/calc",
+        "/api/band-diagram",
         "/api/parse",
         "/api/guess",
         "/api/fit",

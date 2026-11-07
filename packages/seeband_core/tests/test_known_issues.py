@@ -105,6 +105,7 @@ EXPECTED: dict[str, tuple[Any, ...]] = {
         "fermi_energy_outside_band",
     ),
     "hall_dis_no_reference": ("caution", "#71", ("dpb_s_rho_rh",), ("dis",), (), True, None),
+    "band_diagram_formula": ("caution", "#108", (*SPB, *DPB), (), (), False, None),
     "interpolation_extrapolates": (
         "unreliable",
         "#86",
@@ -175,7 +176,11 @@ def test_a_description_serialises_with_its_keys() -> None:
 
 def test_issues_for_mode_selects_by_mode() -> None:
     names = {issue.id for issue in issues_for_mode("spb_s")}
-    assert names == {"no_chemical_potential", "interpolation_extrapolates"}
+    assert names == {
+        "no_chemical_potential",
+        "band_diagram_formula",
+        "interpolation_extrapolates",
+    }
 
 
 @pytest.mark.parametrize("name", [*SPB, *DPB])

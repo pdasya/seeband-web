@@ -8,36 +8,38 @@ A thin FastAPI layer over `seeband_core`. It holds routes, validation and proces
 uv run python -m seeband_api
 ```
 
-| Variable                         | Default         | Applies to                                                       |
-| -------------------------------- | --------------- | ---------------------------------------------------------------- |
-| `SEEBAND_API_HOST`               | `127.0.0.1`     | `python -m seeband_api` only                                     |
-| `SEEBAND_API_PORT`               | `8000`          | `python -m seeband_api` only                                     |
-| `SEEBAND_API_LOG_LEVEL`          | `INFO`          | the API's own log lines, not uvicorn's own                       |
-| `SEEBAND_API_CALC_WORKERS`       | `2`             | worker processes for calculations                                |
-| `SEEBAND_API_CALC_TIMEOUT_S`     | `30`            | how long a calculation request waits                             |
-| `SEEBAND_API_FIT_MAX_RUNNING`    | `2`             | fits at once, in each server process                             |
-| `SEEBAND_API_FIT_MAX_WAITING`    | `4`             | fits waiting, before a 429                                       |
-| `SEEBAND_API_FIT_TIMEOUT_S`      | `60`            | how long one fit can run                                         |
-| `SEEBAND_API_FIT_MAX_PER_CLIENT` | `2`             | fits running or waiting for one client                           |
-| `SEEBAND_API_MAX_BODY_BYTES`     | `10000000`      | size of a request                                                |
-| `SEEBAND_API_MAX_POINTS`         | `2000`          | points of a quantity, or rows of a text                          |
-| `SEEBAND_API_CALC_PER_MINUTE`    | `600`           | `POST /api/calc` for one client                                  |
-| `SEEBAND_API_PARSE_PER_MINUTE`   | `60`            | `POST /api/parse` for one client                                 |
-| `SEEBAND_API_GUESS_PER_MINUTE`   | `60`            | `POST /api/guess` for one client                                 |
-| `SEEBAND_API_FIT_PER_MINUTE`     | `30`            | `POST /api/fit` for one client                                   |
-| `SEEBAND_API_TRUSTED_PROXIES`    | `127.0.0.1,::1` | whose `X-Forwarded-For` to believe. `python -m seeband_api` only |
+| Variable                              | Default         | Applies to                                                       |
+| ------------------------------------- | --------------- | ---------------------------------------------------------------- |
+| `SEEBAND_API_HOST`                    | `127.0.0.1`     | `python -m seeband_api` only                                     |
+| `SEEBAND_API_PORT`                    | `8000`          | `python -m seeband_api` only                                     |
+| `SEEBAND_API_LOG_LEVEL`               | `INFO`          | the API's own log lines, not uvicorn's own                       |
+| `SEEBAND_API_CALC_WORKERS`            | `2`             | worker processes for calculations                                |
+| `SEEBAND_API_CALC_TIMEOUT_S`          | `30`            | how long a calculation request waits                             |
+| `SEEBAND_API_FIT_MAX_RUNNING`         | `2`             | fits at once, in each server process                             |
+| `SEEBAND_API_FIT_MAX_WAITING`         | `4`             | fits waiting, before a 429                                       |
+| `SEEBAND_API_FIT_TIMEOUT_S`           | `60`            | how long one fit can run                                         |
+| `SEEBAND_API_FIT_MAX_PER_CLIENT`      | `2`             | fits running or waiting for one client                           |
+| `SEEBAND_API_MAX_BODY_BYTES`          | `10000000`      | size of a request                                                |
+| `SEEBAND_API_MAX_POINTS`              | `2000`          | points of a quantity, or rows of a text                          |
+| `SEEBAND_API_CALC_PER_MINUTE`         | `600`           | `POST /api/calc` for one client                                  |
+| `SEEBAND_API_BAND_DIAGRAM_PER_MINUTE` | `600`           | `POST /api/band-diagram` for one client                          |
+| `SEEBAND_API_PARSE_PER_MINUTE`        | `60`            | `POST /api/parse` for one client                                 |
+| `SEEBAND_API_GUESS_PER_MINUTE`        | `60`            | `POST /api/guess` for one client                                 |
+| `SEEBAND_API_FIT_PER_MINUTE`          | `30`            | `POST /api/fit` for one client                                   |
+| `SEEBAND_API_TRUSTED_PROXIES`         | `127.0.0.1,::1` | whose `X-Forwarded-For` to believe. `python -m seeband_api` only |
 
-| Route                   | Purpose                  |
-| ----------------------- | ------------------------ |
-| `GET /api/health`       | status and version       |
-| `GET /api/models`       | model descriptions       |
-| `POST /api/calc`        | curves and RMSE          |
-| `POST /api/parse`       | reading measured data    |
-| `POST /api/guess`       | neural net start values  |
-| `POST /api/fit`         | fitting, as event stream |
-| `GET /api/demo`         | synthetic dataset        |
-| `GET /api/openapi.json` | the contract             |
-| `GET /api/docs`         | Swagger UI over the same |
+| Route                    | Purpose                  |
+| ------------------------ | ------------------------ |
+| `GET /api/health`        | status and version       |
+| `GET /api/models`        | model descriptions       |
+| `POST /api/calc`         | curves and RMSE          |
+| `POST /api/band-diagram` | the sketch of E(k)       |
+| `POST /api/parse`        | reading measured data    |
+| `POST /api/guess`        | neural net start values  |
+| `POST /api/fit`          | fitting, as event stream |
+| `GET /api/demo`          | synthetic dataset        |
+| `GET /api/openapi.json`  | the contract             |
+| `GET /api/docs`          | Swagger UI over the same |
 
 ## Limits
 
@@ -45,7 +47,7 @@ Each limit answers in the usual error format. All the values are starting guesse
 
 | Limit                                  | Answer                                           | Applies to                                 |
 | -------------------------------------- | ------------------------------------------------ | ------------------------------------------ |
-| Request rate of one client             | 429 `rate_limited`, with `Retry-After`           | the four `POST` routes, counted separately |
+| Request rate of one client             | 429 `rate_limited`, with `Retry-After`           | the five `POST` routes, counted separately |
 | Size of a request                      | 413 `request_too_large`                          | every route                                |
 | Points of a quantity                   | 422 `too_many_points` in `details`, at the field | `/api/calc`, `/api/fit`, `/api/guess`      |
 | Rows of a text                         | 422 `too_many_rows` in `details`                 | `/api/parse`                               |

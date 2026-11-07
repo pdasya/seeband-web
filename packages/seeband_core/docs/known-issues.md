@@ -24,6 +24,7 @@ To remove a flag once its error is fixed, delete its entry and its row here, and
 | `collapsed_m_eff`            | unreliable | DPB, when m_eff is near 0, as on `02_SiP` (D19)                                                    | #107     |
 | `no_chemical_potential`      | unreliable | SPB, when the Fermi energy is outside the band                                                     | #106     |
 | `hall_dis_no_reference`      | caution    | DPB S + ρ + R_H with `dis`. This is a missing reference, not an error: the desktop fails here (D1) | #71      |
+| `band_diagram_formula`       | caution    | the sketch of E(k), in `band_diagram` alone, and in no fit or curve                                | #108     |
 | `interpolation_extrapolates` | unreliable | any result, when `extrapolated` is set on its request                                              | #86      |
 
 The caller sets `extrapolated`, from `InterpolatedData`, since a fit does not know where its data came from.
@@ -36,6 +37,5 @@ The caller sets `extrapolated`, from `InterpolatedData`, since a fit does not kn
 - **E_F inside the gap (#107)** cannot be told from a good fit by its inputs alone, and `at_bounds` and `parameter_errors` report part of it.
 - **`underdetermined` interpolation** has no issue that fixes it, because it describes the data. `InterpolatedData` reports it.
 - **Choosing a net by the first and last rows (P9)** does not reach this path, because the parser sorts (D22). A client can send `POST /api/guess` unsorted rows, and its answer then carries the warning `unsorted_temperature`. It belongs to no mode, so it is not an entry here.
-- **The band diagram (#108)** belongs to no mode, so a client must treat it with care until then.
 - **D4 asks to flag acPhDis results.** In core units, S and ρ of SPB use one scale, so only `acphdis_curve_scale` applies.
 - **The Conventions page** does not exist yet, so S3 takes its note on known issues from this list.

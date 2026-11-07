@@ -129,6 +129,10 @@ SEEBAND_API_TARGET=http://127.0.0.1:8000 pnpm --filter @seeband/web exec playwri
 - **They take the path of a file.** S starts the initial guess. Interpolating sends their rows as text, because the API has no text of them, and a reload warns as it does for a file.
 - **Files of the user's are never replaced, or mixed with the demo.** With one loaded or still being read when the demo arrives, the demo does not load, and the link is not offered. Clear demo data removes only the demo.
 
+## Band diagram
+
+The E(k) tab draws `POST /api/band-diagram` for the current values, with one request at a time like the curves, and only while it is open. It is the desktop's sketch, with no ticks on k and the same curves for the same values. Its formula is a known error (`band_diagram_formula`, #108), so a note under it says so. It needs no data.
+
 ## Bounds
 
 `model/BoundsEditor.tsx`, a dialog opened beside the title of the parameters, sets the bounds of a fit for each mode, where the description has `bounds_editable`. They go in `bounds` on `POST /api/fit` in core units, only those that differ from the description, and only for the scattering in use. The result table shows them, and the parameter's slider and field take them as their range, as on the desktop.
