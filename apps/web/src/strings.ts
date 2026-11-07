@@ -260,6 +260,7 @@ export const STRINGS = {
     rmse: "RMSE",
     noRmse: "The RMSE appears here once measurements are loaded.",
     rmseNotFinite: "not finite",
+    rmseFailed: "The RMSE could not be calculated for the current values.",
     rmseOutdated: "These are from the last curve, not from the current values.",
     noPointsInRange: "no points in the fit range, so no RMSE.",
     notInterpolated: "no usable interpolated values, so no RMSE.",

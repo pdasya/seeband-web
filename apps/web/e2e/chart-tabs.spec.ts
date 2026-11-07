@@ -508,20 +508,38 @@ test("a tab says nothing about curves it does not draw", async ({ page }) => {
     });
   });
   await page.getByRole("radio", { name: "SPB" }).click();
-
   await tab(page, "Band contributions").click();
   await expect(page.getByText("DPB only")).toBeVisible();
-  await page.waitForTimeout(800);
+
+  // Well past the indicator's delay, which the next tab shows has come.
+  await page.waitForTimeout(1000);
   await expect(page.getByText("Updating…")).toHaveCount(0);
-
-  await tab(page, "ρ(T)").click();
-  gate.release();
-  await page.waitForTimeout(300);
-  await expect(page.getByRole("alert")).toHaveCount(0);
-
   await tab(page, "S(T)").click();
+  await expect(page.getByText("Updating…")).toBeVisible();
+
+  gate.release();
   await expect(page.getByRole("alert")).toContainText("no result");
+
+  // With the failure known to have arrived, the tabs that do not draw it stay quiet.
+  await tab(page, "ρ(T)").click();
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await tab(page, "Band contributions").click();
+  await expect(page.getByRole("alert")).toHaveCount(0);
 });
+
+const countRedraws = (page: Page) =>
+  page.evaluate(() => {
+    const plot = document.querySelector(".js-plotly-plot") as unknown as {
+      on: (event: string, listener: () => void) => void;
+    };
+    Object.assign(window, { redraws: 0 });
+    plot.on("plotly_afterplot", () => {
+      const counter = window as unknown as { redraws: number };
+      counter.redraws += 1;
+    });
+  });
+const redraws = (page: Page) =>
+  page.evaluate(() => (window as unknown as { redraws: number }).redraws);
 
 test("a slider does not redraw a chart whose values have not changed", async ({
   page,
@@ -536,28 +554,101 @@ test("a slider does not redraw a chart whose values have not changed", async ({
     await gate.held;
     await route.fulfill({ json: answerFor(body) });
   });
-  await page.evaluate(() => {
-    const plot = document.querySelector(".js-plotly-plot") as unknown as {
-      on: (event: string, listener: () => void) => void;
-    };
-    Object.assign(window, { redraws: 0 });
-    plot.on("plotly_afterplot", () => {
-      const counter = window as unknown as { redraws: number };
-      counter.redraws += 1;
-    });
-  });
+  await countRedraws(page);
 
   for (let move = 0; move < 5; move += 1) {
     await page.getByRole("slider", { name: "E_g" }).press("ArrowRight");
   }
   await page.waitForTimeout(300);
 
-  expect(
-    await page.evaluate(
-      () => (window as unknown as { redraws: number }).redraws,
-    ),
-  ).toBe(0);
+  expect(await redraws(page)).toBe(0);
+
+  // The same plot is still there, as an answer does redraw it.
   gate.release();
+  await expect.poll(() => redraws(page)).toBeGreaterThan(0);
+});
+
+test("on μ, an answer about S does not redraw the chart", async ({ page }) => {
+  await open(page);
+  await load(page, 0);
+  await tab(page, "μ(T)").click();
+  await expect(lines(page)).toHaveCount(1);
+  await expect(page.getByText("band 1 top")).toBeVisible();
+  await page.waitForTimeout(300);
+  const gate = hold();
+  await page.route("**/api/calc", async (route) => {
+    const body = route.request().postDataJSON() as CalcBody;
+    if (body.kind !== undefined) {
+      await gate.held;
+    }
+    await route.fulfill({
+      json: {
+        ...answerFor(body),
+        rmse: { seebeck: { value: 333, unit: "uV/K" } },
+      },
+    });
+  });
+  await countRedraws(page);
+
+  // E_F does not reach this tab's lines, unlike E_g.
+  await page.getByRole("slider", { name: "E_F" }).press("ArrowRight");
+
+  await expect(page.getByText("333 µV/K")).toBeVisible();
+  expect(await redraws(page)).toBe(0);
+
+  gate.release();
+  await expect.poll(() => redraws(page)).toBeGreaterThan(0);
+});
+
+test("the panel does not ask for data that are loaded", async ({ page }) => {
+  await open(page);
+  await expect(page.getByText("appears here once")).toBeVisible();
+  await page.route("**/api/calc", (route) => {
+    const body = route.request().postDataJSON() as CalcBody;
+    return route.fulfill({
+      json: {
+        ...answerFor(body),
+        rmse: { seebeck: { value: 111, unit: "uV/K" } },
+      },
+    });
+  });
+  await load(page, 0);
+  await expect(page.getByText("111 µV/K")).toBeVisible();
+  const gate = hold();
+  await page.route("**/api/calc", async (route) => {
+    await gate.held;
+    await route.fulfill({
+      status: 422,
+      json: { code: "calculation_failed", message: "x", details: [] },
+    });
+  });
+
+  await page.getByRole("radio", { name: "S", exact: true }).click();
+
+  // While it waits, the old value has gone, and nothing asks for data.
+  await expect(page.getByText("111 µV/K")).toHaveCount(0);
+  await expect(page.getByText("appears here once")).toHaveCount(0);
+  await expect(page.getByText("could not be calculated")).toHaveCount(0);
+
+  gate.release();
+
+  await expect(
+    page.getByText("The RMSE could not be calculated for the current values."),
+  ).toBeVisible();
+  await expect(page.getByText("appears here once")).toHaveCount(0);
+});
+
+test("removing the data asks for them again", async ({ page }) => {
+  await open(page);
+  await load(page, 0);
+  await expect(page.getByText("appears here once")).toHaveCount(0);
+
+  await page
+    .getByRole("button", { name: /Remove/ })
+    .first()
+    .click();
+
+  await expect(page.getByText("appears here once")).toBeVisible();
 });
 
 test("the open tab stays when moving to another screen and back", async ({

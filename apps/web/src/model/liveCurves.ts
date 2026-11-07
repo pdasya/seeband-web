@@ -125,6 +125,8 @@ export function derivedRequest(
 }
 
 export interface RmseGaps {
+  /** Whether any data of this fit mode are loaded. */
+  hasData: boolean;
   /** Data are loaded, and no point lies in the fit range. */
   noPointsInRange: Quantity[];
   /** The switch is on, and these have no usable interpolated values. */
@@ -139,6 +141,7 @@ export function rmseGaps(
   models: readonly ModelDescription[] | undefined,
 ): RmseGaps {
   const gaps: RmseGaps = {
+    hasData: false,
     noPointsInRange: [],
     notInterpolated: [],
     zerosLeftOut: [],
@@ -155,6 +158,7 @@ export function rmseGaps(
     if (state.data[quantity] === undefined) {
       continue;
     }
+    gaps.hasData = true;
     const data = fitData(state, quantity);
     if (data === null) {
       if (!state.interpolation.loading) {

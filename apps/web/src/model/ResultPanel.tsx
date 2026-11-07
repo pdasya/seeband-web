@@ -58,7 +58,10 @@ export function ResultPanel({ live }: { live: LiveCurves }) {
 
   return (
     <Panel title={fit.result}>
-      {rows.length === 0 && !explained && <Note>{fit.noRmse}</Note>}
+      {rows.length === 0 && !gaps.hasData && <Note>{fit.noRmse}</Note>}
+      {rows.length === 0 && gaps.hasData && !explained && error !== null && (
+        <Note>{fit.rmseFailed}</Note>
+      )}
       {rows.length > 0 && (
         <dl className="mt-3 mb-0 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-[13px]">
           {rows.map(({ quantity, rmse }) => (

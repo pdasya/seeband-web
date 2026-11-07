@@ -61,16 +61,18 @@ export function LiveCharts({ live }: { live: LiveCurves }) {
     selection.fitMode,
   );
   const bandGapK = bandGapForTab(tab, mode, parameters);
+  // μ draws none of these, so an answer for them does not redraw it.
+  const measuredCurves = tab === "chemical_potential" ? null : measured.result;
   const view = useMemo(
     () =>
       chartTabView(
         tab,
         mode,
         { data, interpolation, bandGapK },
-        measured.result,
+        measuredCurves,
         derived.result,
       ),
-    [tab, mode, data, interpolation, bandGapK, measured.result, derived.result],
+    [tab, mode, data, interpolation, bandGapK, measuredCurves, derived.result],
   );
   const fitRange = useMemo((): ChartFitRange | null => {
     return minK === null || maxK === null ? null : { minK, maxK };
