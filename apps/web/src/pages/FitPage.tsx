@@ -5,6 +5,7 @@ import { ModelPanel } from "@/model/ModelPanel";
 import { ParametersPanel } from "@/model/ParametersPanel";
 import { ResultPanel } from "@/model/ResultPanel";
 import { useFitControl } from "@/model/useFitControl";
+import { useGuess } from "@/model/useGuess";
 import { useLiveCurves } from "@/model/useLiveCurves";
 import { PageHeading, TwoColumns } from "@/shell/layout";
 import { STRINGS } from "@/strings";
@@ -14,6 +15,7 @@ export function FitPage() {
   const { fit } = STRINGS;
   const live = useLiveCurves();
   const control = useFitControl();
+  const guess = useGuess();
   return (
     <>
       <title>{`${fit.pageTitle} · ${STRINGS.appName}`}</title>
@@ -29,10 +31,10 @@ export function FitPage() {
             <PageHeading
               title={fit.title}
               subtitle={fit.subtitle}
-              status={<FitStatusBadge control={control} />}
-              actions={<FitActions control={control} />}
+              status={<FitStatusBadge control={control} guess={guess} />}
+              actions={<FitActions control={control} guess={guess} />}
             />
-            <FitMessages control={control} />
+            <FitMessages control={control} guess={guess} />
             <LiveCharts live={live} />
             <div className="flex flex-wrap items-stretch gap-4">
               <div className="min-w-0 flex-[1_1_320px]">

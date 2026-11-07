@@ -257,6 +257,27 @@ export const STRINGS = {
     data: "Data",
     charts: "Charts",
     result: "Result",
+    guess: "Initial guess",
+    guessHint: "The neural net proposes m₂/m₁, E_g and E_F from S(T)",
+    guessOnlyWithNets: "The neural net is used for DPB only",
+    guessNeedsData: "Load S data to use the neural net",
+    guessNet: (minK: string, maxK: string) => `· net ${minK}–${maxK} K`,
+    guessNoNet: (firstK: string, lastK: string, available: string) =>
+      `No neural net covers ${firstK}–${lastK} K, so the values stay as they are. The nets cover ${available}.`,
+    guessNotFinite:
+      "The neural net gave no usable values for these data, so the values stay as they are.",
+    guessNeedsMass:
+      "The neural net predicts m₂/m₁ of about 0, which cannot be calculated, so the values stay as they are. Set a mass by hand.",
+    guessFailed:
+      "The initial guess could not be calculated, so the values stay as they are.",
+    guessLimited:
+      "Too many initial guesses in a short time, so the values stay as they are. Try again in a moment.",
+    guessWarnings: {
+      unsorted_temperature:
+        "The temperatures in these data do not rise, so the net may not suit them.",
+      underdetermined_fit:
+        "These data have too few temperatures to set the net's input, so its values mean little.",
+    },
     reset: "Reset",
     run: "Run fit",
     stop: "Stop",

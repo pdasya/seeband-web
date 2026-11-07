@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, test } from "vitest";
 
 import {
   createSessionStore,
+  currentGuess,
   fitData,
   holdsFiles,
   type FitResult,
@@ -475,6 +476,77 @@ describe("a fit's values", () => {
 
     expect(state().parameters).toEqual({});
     expect(state().fit.status).toBe("stopped");
+  });
+});
+
+describe("a guess", () => {
+  const MEASUREMENT = DATA.measurement;
+  const APPLIED = {
+    kind: "applied" as const,
+    netRange: { min_temperature_k: 100, max_temperature_k: 400 },
+    warnings: [],
+  };
+
+  test("writes to each mode it names, and keeps the rest", () => {
+    state().setParameter("dpb_s", "A", 7);
+    state().setParameter("spb_s", "fermi_energy", 5);
+
+    state().guessApplied(
+      [
+        { fitMode: "dpb_s", values: { m_eff: 2 } },
+        { fitMode: "dpb_s_rho", values: { m_eff: 2 } },
+      ],
+      APPLIED,
+      "dpb",
+      MEASUREMENT,
+    );
+
+    expect(state().parameters).toEqual({
+      dpb_s: { A: 7, m_eff: 2 },
+      dpb_s_rho: { m_eff: 2 },
+      spb_s: { fermi_energy: 5 },
+    });
+  });
+
+  test("clears an old result, and holds until new values or data", () => {
+    state().setData("seebeck", DATA);
+    state().fitEvent(state().fitRequested(), { type: "done", result: RESULT });
+
+    state().guessApplied([], APPLIED, "dpb", MEASUREMENT);
+
+    expect(state().fit.status).toBe("idle");
+    expect(currentGuess(state())).toEqual(APPLIED);
+
+    state().setParameter("dpb_s", "m_eff", 3);
+    expect(currentGuess(state())).toBeNull();
+  });
+
+  test("one that changed nothing holds through new values, and not new data", () => {
+    state().setData("seebeck", DATA);
+    const outcome = { kind: "not_finite" as const, warnings: [] };
+
+    state().guessFinished(outcome, "dpb", MEASUREMENT);
+    state().setParameter("dpb_s", "m_eff", 3);
+    expect(currentGuess(state())).toEqual(outcome);
+
+    state().removeData("seebeck");
+    expect(currentGuess(state())).toBeNull();
+  });
+
+  test("starting another ends the last, and an empty end leaves nothing", () => {
+    state().guessFinished(
+      { kind: "not_finite", warnings: [] },
+      "dpb",
+      MEASUREMENT,
+    );
+
+    state().guessStarted();
+    expect(state().guessPending).toBe(true);
+    expect(state().guess).toBeNull();
+
+    state().guessFinished(null, "dpb", MEASUREMENT);
+    expect(state().guessPending).toBe(false);
+    expect(state().guess).toBeNull();
   });
 });
 

@@ -42,7 +42,20 @@ export const CALC = {
   rmse: {},
 };
 
+/** Leaves the values as they are, for tests about other things. */
+export const NO_GUESS = {
+  status: "no_net",
+  reason: "temperature_span",
+  first_temperature_k: 100,
+  last_temperature_k: 200,
+  available_ranges: [{ min_temperature_k: 300, max_temperature_k: 800 }],
+  warnings: [],
+};
+
 export async function serveModels(page: Page) {
   await page.route("**/api/models", (route) => route.fulfill({ json: MODELS }));
   await page.route("**/api/calc", (route) => route.fulfill({ json: CALC }));
+  await page.route("**/api/guess", (route) =>
+    route.fulfill({ json: NO_GUESS }),
+  );
 }
