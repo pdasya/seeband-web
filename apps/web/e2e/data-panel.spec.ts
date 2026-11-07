@@ -45,6 +45,37 @@ async function choose(page: Page, name: string, text = "T S\n100 1e-4\n") {
   });
 }
 
+// A browser skips its question on \`page.reload()\`, which comes from outside the page.
+async function reloadAsAUserWould(page: Page) {
+  await Promise.all([
+    page.waitForEvent("load"),
+    page.evaluate(() => {
+      location.reload();
+    }),
+  ]);
+}
+
+const PARSED_FOR_RELOAD = {
+  column_count: 2,
+  row_count: 1,
+  preview: [],
+  mapping: [],
+  measurements: {
+    seebeck: {
+      temperature_k: [100],
+      values: [1e-4],
+      points: 1,
+      min_temperature_k: 100,
+      max_temperature_k: 100,
+    },
+  },
+  errors: [],
+  warnings: [],
+  warnings_omitted: 0,
+  interpolated: {},
+  interpolation_failed: [],
+};
+
 test.beforeEach(async ({ page }) => {
   await serveModels(page);
   await page.goto("/fit");
@@ -552,4 +583,69 @@ test("a slot shows focus when reached with the keyboard", async ({ page }) => {
     .evaluate((label) => getComputedStyle(label).outlineStyle);
 
   expect(outline).toBe("solid");
+});
+
+test("a reload with files asks first, and with none it does not", async ({
+  page,
+}) => {
+  const dialogs: string[] = [];
+  page.on("dialog", (dialog) => {
+    dialogs.push(dialog.type());
+    void dialog.accept();
+  });
+  await page.route("**/api/parse", (route) =>
+    route.fulfill({ json: PARSED_FOR_RELOAD }),
+  );
+  // A browser asks only after the page had some interaction.
+  await page.getByRole("heading", { name: "Data" }).click();
+
+  await reloadAsAUserWould(page);
+  expect(dialogs).toEqual([]);
+
+  await page.getByRole("heading", { name: "Data" }).click();
+  await page
+    .locator('input[type="file"]')
+    .first()
+    .setInputFiles({
+      name: "s.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from("T S\n100 1\n"),
+    });
+  // Its name shows while it is read, and only this says that it has loaded.
+  await expect(page.getByText(/^1 points/)).toBeVisible();
+
+  await reloadAsAUserWould(page);
+  expect(dialogs).toEqual(["beforeunload"]);
+  await expect(page.getByText("s.txt", { exact: true })).toHaveCount(0);
+});
+
+test("removing the last file ends the question", async ({ page }) => {
+  const dialogs: string[] = [];
+  page.on("dialog", (dialog) => {
+    dialogs.push(dialog.type());
+    void dialog.accept();
+  });
+  await page.route("**/api/parse", (route) =>
+    route.fulfill({ json: PARSED_FOR_RELOAD }),
+  );
+  await page.getByRole("heading", { name: "Data" }).click();
+  await page
+    .locator('input[type="file"]')
+    .first()
+    .setInputFiles({
+      name: "s.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from("T S\n100 1\n"),
+    });
+  // Its name shows while it is read, and only this says that it has loaded.
+  await expect(page.getByText(/^1 points/)).toBeVisible();
+  await page
+    .getByRole("button", { name: /Remove/ })
+    .first()
+    .click();
+  await expect(page.getByText("s.txt", { exact: true })).toHaveCount(0);
+
+  await reloadAsAUserWould(page);
+
+  expect(dialogs).toEqual([]);
 });

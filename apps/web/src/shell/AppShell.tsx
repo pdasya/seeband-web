@@ -3,6 +3,7 @@ import { Outlet, useLocation } from "react-router";
 
 import { useInterpolation } from "@/data/useInterpolation";
 import { AppHeader } from "@/shell/AppHeader";
+import { useLeaveWarning } from "@/shell/useLeaveWarning";
 import { STRINGS } from "@/strings";
 
 const MAIN_ID = "main";
@@ -11,6 +12,7 @@ const MAIN_ID = "main";
 export function AppShell() {
   const { pathname } = useLocation();
   useInterpolation();
+  useLeaveWarning();
   const main = useRef<HTMLElement>(null);
   const shownPath = useRef(pathname);
 

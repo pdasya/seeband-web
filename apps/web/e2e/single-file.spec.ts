@@ -551,7 +551,7 @@ test("a late answer to an older mapping does not overwrite a newer one", async (
   await expect(page.getByText("S · 3 points")).toBeVisible();
 });
 
-test("removing the file clears everything, and changing source clears data", async ({
+test("removing the file clears everything, and changing source keeps it", async ({
   page,
 }) => {
   await page.route("**/api/parse", (route) =>
@@ -572,8 +572,85 @@ test("removing the file clears everything, and changing source clears data", asy
   await page.getByRole("tab", { name: "Separate files" }).click();
 
   await expect(page.locator('input[type="file"]')).toHaveCount(3);
+  await expect(page.getByRole("note")).toContainText("Missing data: S, ρ.");
   await page.getByRole("tab", { name: "Single file" }).click();
-  await expect(page.getByText("A table with several columns")).toBeVisible();
+  await expect(page.getByText("S · 3 points")).toBeVisible();
+  await expect(slot(page).getByText("all.csv")).toBeVisible();
+});
+
+test("each way keeps its own files, and only the open one counts", async ({
+  page,
+}) => {
+  await page.route("**/api/parse", (route) => {
+    const body = route.request().postDataJSON() as { expected?: string };
+    return route.fulfill({
+      json:
+        body.expected === "seebeck"
+          ? parsed({
+              measurements: {
+                seebeck: {
+                  temperature_k: [100],
+                  values: [1e-4],
+                  points: 1,
+                  min_temperature_k: 100,
+                  max_temperature_k: 100,
+                },
+              },
+            })
+          : parsed(),
+    });
+  });
+  await serveModels(page);
+  await page.goto("/fit");
+  await page
+    .locator('input[type="file"]')
+    .first()
+    .setInputFiles({
+      name: "s.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from("T S\n100 1\n"),
+    });
+  await expect(page.getByText("s.txt", { exact: true })).toBeVisible();
+
+  await page.getByRole("tab", { name: "Single file" }).click();
+  await expect(page.getByText("s.txt", { exact: true })).toHaveCount(0);
+  await choose(page);
+  await expect(page.getByText("S · 3 points")).toBeVisible();
+
+  await page.getByRole("tab", { name: "Separate files" }).click();
+  await expect(page.getByText("s.txt", { exact: true })).toBeVisible();
+  await expect(page.getByText("all.csv")).toHaveCount(0);
+
+  await page.getByRole("tab", { name: "Single file" }).click();
+  await expect(page.getByText("S · 3 points")).toBeVisible();
+  await expect(page.getByText("s.txt", { exact: true })).toHaveCount(0);
+});
+
+test("the chosen mapping stays when coming back", async ({ page }) => {
+  const bodies: { mapping?: string[] }[] = [];
+  await page.route("**/api/parse", (route) => {
+    const body = route.request().postDataJSON() as { mapping?: string[] };
+    bodies.push(body);
+    return route.fulfill({
+      json: parsed(body.mapping === undefined ? {} : { mapping: body.mapping }),
+    });
+  });
+  await openSingleFile(page);
+  await choose(page);
+  await expect(page.getByText("S · 3 points")).toBeVisible();
+  await page.getByRole("combobox", { name: "Quantity for column R_H" }).click();
+  await page.getByRole("option", { name: "Ignore", exact: true }).click();
+  await expect.poll(() => bodies.length).toBe(2);
+  const requests = bodies.length;
+
+  await page.getByRole("tab", { name: "Separate files" }).click();
+  await page.getByRole("tab", { name: "Single file" }).click();
+
+  await expect(
+    page.getByRole("combobox", { name: "Quantity for column R_H" }),
+  ).toHaveText("Ignore");
+  // The file is not read again.
+  expect(bodies).toHaveLength(requests);
 });
 
 test("the table stays when moving to another screen and back", async ({
