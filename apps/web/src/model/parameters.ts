@@ -63,6 +63,11 @@ export function tidy(value: number): number {
   return Number(value.toPrecision(12));
 }
 
+/** What a field shows, as a fit's value has more digits than fit. The session keeps them all. */
+export function shortened(value: number): number {
+  return Number(value.toPrecision(6));
+}
+
 /** The displayed number a typed text stands for, or null if it is not one within the range. */
 export function typedDisplayValue(
   parameter: ParameterDescription,

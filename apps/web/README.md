@@ -103,6 +103,15 @@ SEEBAND_API_TARGET=http://127.0.0.1:8000 pnpm --filter @seeband/web exec playwri
 - **An answer shows only for its own curve.** It counts while the model, mode, scattering and kind match, so a new value keeps the curve while waiting, and a change of mode takes it away at once. A tab shows the state of a request only if it draws its curves.
 - **Whether a mode offers a curve** comes from `curves` in `GET /api/models`, with its text from the reason. μ draws the band edges, and E_g comes from a mode's `band_gap` where it has one.
 
+## Fits
+
+`model/fitRun.ts` runs a fit through `POST /api/fit`, outside any component, so it goes on while another screen is open. `model/fitRequest.ts` builds the request, or says why there can be none, which shows beside Run fit.
+
+- **A fit moves the values on screen.** Each iteration's parameters go into the session in the store, so the sliders follow, the live curves redraw at their own pace, and a Stop keeps the last ones. The last answer's parameters do the same, so the curve on screen is the fitted one. A value that is not finite leaves the last one.
+- **Parameters cannot be changed while a fit runs,** as it would overwrite them. A change of data, mode, scattering, degeneracies or range stops the fit, as it would be one of something no longer on screen.
+- **Stop is closing the connection,** and a stream that ends by itself is a failure, not a Stop. A single-pass mode shows no counter.
+- **Failures show in our own words,** as the server's text is for developers. Reset goes back to a mode's defaults, and stops a fit.
+
 ## Numbers
 
 The app shows numbers with a decimal comma, in fields, labels, messages and charts, whatever the browser's region. `lib/numbers.ts` holds this. Number fields are text fields, because `type="number"` shows the separator of the computer's region. They accept a comma or a point. Files and the API keep their points.
@@ -113,6 +122,7 @@ The app shows numbers with a decimal comma, in fields, labels, messages and char
 
 - **Values are in core units, per fit mode.** `model/parameters.ts` holds the only conversion to what a user sees, and `parameterValues` gives every parameter of a mode for a request, with defaults from `core_range`.
 - **The slider moves by whole control units,** as on the desktop. Arrow keys move by the description's `step`, and Page keys or Shift with an arrow by ten. `step` is not a grid, so values between steps stay as they are.
+- **A field shows 6 digits,** with the full value on hover, as a fit's values have more than fit. The session and requests keep them all.
 - **A typed number** counts on leaving the field or on Enter, and only within the range. It may lie between whole control units, unlike on the desktop (D26). Advanced ranges come in FS13.
 - **Whole control units reach the core exactly,** as from the desktop's slider, so 2.55 at a display scale of 0.01 gives 255, not 254.99999999999997.
 - **The SPB mass is one slider across negative and positive,** as on the desktop, where the sign sets the carrier type.

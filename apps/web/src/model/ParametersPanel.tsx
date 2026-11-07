@@ -10,6 +10,7 @@ import {
   coreToDisplay,
   displayToCore,
   parameterValues,
+  shortened,
   steppedDisplayValue,
   tidy,
   typedDisplayValue,
@@ -17,7 +18,7 @@ import {
   type ParameterDescription,
 } from "@/model/parameters";
 import { fitModeOf } from "@/model/selection";
-import { useSessionStore } from "@/session/store";
+import { isFitActive, useSessionStore } from "@/session/store";
 import { Panel } from "@/shell/layout";
 import { STRINGS } from "@/strings";
 
@@ -47,9 +48,12 @@ const KEY_STEPS: Readonly<Record<string, number>> = {
 function ParameterControl({
   parameter,
   value,
+  disabled,
   onChange,
 }: {
   parameter: ParameterDescription;
+  /** While a fit moves the values, as it would overwrite a change. */
+  disabled: boolean;
   /** In core units. */
   value: number;
   onChange: (value: number) => void;
@@ -63,6 +67,13 @@ function ParameterControl({
   const { minimum, maximum } = parameter.display_range;
   const label = symbol(parameter.name);
   const displayed = tidy(coreToDisplay(parameter, value));
+  // A value moved from elsewhere, such as by a fit, ends what was being typed.
+  const [typedOver, setTypedOver] = useState(displayed);
+  if (typedOver !== displayed) {
+    setTypedOver(displayed);
+    setDraft(null);
+    setInvalid(false);
+  }
 
   const commitDraft = () => {
     if (draft === null) {
@@ -73,7 +84,7 @@ function ParameterControl({
     if (typed !== null) {
       setDraft(null);
       // An unchanged number keeps the value as it is, to the last bit, and any result.
-      if (typed !== displayed) {
+      if (typed !== displayed && typed !== shortened(displayed)) {
         onChange(displayToCore(parameter, typed));
       }
     }
@@ -97,13 +108,15 @@ function ParameterControl({
         </div>
         <Input
           id={id}
+          disabled={disabled}
           // As a text field, it shows the same format everywhere. Some keypads for decimals have no minus.
           inputMode={minimum < 0 ? "text" : "decimal"}
           autoComplete="off"
           aria-describedby={invalid ? `${hintId} ${errorId}` : hintId}
           className="h-8 w-28 flex-none text-right font-mono text-[13px]"
           aria-invalid={invalid}
-          value={draft ?? formatNumber(displayed)}
+          title={formatNumber(displayed)}
+          value={draft ?? formatNumber(shortened(displayed))}
           onChange={(event) => {
             setDraft(event.target.value);
             setInvalid(false);
@@ -121,11 +134,13 @@ function ParameterControl({
       </span>
       <Slider
         aria-label={label}
+        disabled={disabled}
         min={minimum}
         max={maximum}
         // By whole control units, as on the desktop. The description's step is for the keyboard.
         step={parameter.display_scale}
-        value={[displayed]}
+        // A fit can end outside the control's range, and the number shows where.
+        value={[Math.min(maximum, Math.max(minimum, displayed))]}
         onValueChange={([next]) => {
           if (next !== undefined && next !== displayed) {
             setDisplayed(next);
@@ -166,6 +181,8 @@ export function ParametersPanel() {
   const selection = useSessionStore((state) => state.selection);
   const saved = useSessionStore((state) => state.parameters);
   const setParameter = useSessionStore((state) => state.setParameter);
+  const resets = useSessionStore((state) => state.parameterResets);
+  const active = useSessionStore((state) => isFitActive(state.fit));
 
   const model = data?.models.find(({ id }) => id === selection.model);
   const mode = fitModeOf(model, selection.fitMode);
@@ -176,8 +193,9 @@ export function ParametersPanel() {
         <div className="mt-3 flex flex-col gap-[18px]">
           {visibleParameters(mode, selection.scattering).map((parameter) => (
             <ParameterControl
-              // A new mode starts its fields again.
-              key={`${mode.id}:${parameter.name}`}
+              // A new mode or a reset starts its fields again.
+              key={`${mode.id}:${parameter.name}:${String(resets)}`}
+              disabled={active}
               parameter={parameter}
               value={
                 parameterValues(mode, saved[mode.id])[parameter.name] ??

@@ -1,17 +1,19 @@
 import { DataPanel } from "@/data/DataPanel";
+import { FitActions, FitMessages, FitStatusBadge } from "@/model/FitControls";
 import { LiveCharts } from "@/model/LiveCharts";
 import { ModelPanel } from "@/model/ModelPanel";
 import { ParametersPanel } from "@/model/ParametersPanel";
 import { ResultPanel } from "@/model/ResultPanel";
+import { useFitControl } from "@/model/useFitControl";
 import { useLiveCurves } from "@/model/useLiveCurves";
 import { PageHeading, TwoColumns } from "@/shell/layout";
-import { StatusBadge } from "@/shell/StatusBadge";
 import { STRINGS } from "@/strings";
 
 /** The frame of the fit screen. The panels fill up from FS1 onwards. */
 export function FitPage() {
   const { fit } = STRINGS;
   const live = useLiveCurves();
+  const control = useFitControl();
   return (
     <>
       <title>{`${fit.pageTitle} · ${STRINGS.appName}`}</title>
@@ -27,8 +29,10 @@ export function FitPage() {
             <PageHeading
               title={fit.title}
               subtitle={fit.subtitle}
-              status={<StatusBadge status="manual" />}
+              status={<FitStatusBadge control={control} />}
+              actions={<FitActions control={control} />}
             />
+            <FitMessages control={control} />
             <LiveCharts live={live} />
             <div className="flex flex-wrap items-stretch gap-4">
               <div className="min-w-0 flex-[1_1_320px]">

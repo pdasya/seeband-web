@@ -257,6 +257,39 @@ export const STRINGS = {
     data: "Data",
     charts: "Charts",
     result: "Result",
+    reset: "Reset",
+    run: "Run fit",
+    stop: "Stop",
+    queued: "waiting in the queue",
+    atIteration: (iteration: number) => `iteration ${String(iteration)}`,
+    stoppedAt: (iteration: number) => `at iteration ${String(iteration)}`,
+    convergedIn: (iterations: number) => `in ${String(iterations)} iter.`,
+    resultFailed: "The fit could not finish. Change the values, and try again.",
+    // The API's fixed text for a fit that ends without a result.
+    resultFailures: {
+      "The start values do not fit the bounds.":
+        "The start values do not fit the bounds.",
+      "The model gave values that are not finite during the fit.":
+        "The model gave values that are not finite during the fit.",
+      "The fit reached its limit of function evaluations.":
+        "The fit reached its limit of function evaluations.",
+    },
+    failures: {
+      fit_timeout: "The fit ran past its time limit, and has ended.",
+      fit_process_died: "The fit stopped unexpectedly. Try again.",
+      fit_queue_full: "Too many fits are running. Try again in a moment.",
+      rate_limited: "Too many fits in a short time. Try again in a moment.",
+      network_error: "The connection was lost during the fit. Try again.",
+      stream_ended: "The connection was lost during the fit. Try again.",
+    },
+    failureOther: "The fit failed on the server. Try again.",
+    blockers: {
+      noMode: "Choose a fit mode to run a fit.",
+      interpolating: "Waiting for interpolated values.",
+      missingData: "This fit mode needs data for",
+      notInterpolated: "No usable interpolated values for",
+      noPointsInRange: "No points in the fit range for",
+    },
     rmse: "RMSE",
     noRmse: "The RMSE appears here once measurements are loaded.",
     rmseNotFinite: "not finite",
