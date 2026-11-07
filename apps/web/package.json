@@ -32,7 +32,7 @@
     "@seeband/ui": "workspace:*",
     "@tanstack/react-query": "^5.106.1",
     "class-variance-authority": "^0.7.1",
-    "clИsx": "^2.1.1",
+    "clsx": "^2.1.1",
     "lucide-react": "^1.69.0",
     "plotly.js-basic-dist-min": "^4.2.0",
     "radix-ui": "^1.8.1",
