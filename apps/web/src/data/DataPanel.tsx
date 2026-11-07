@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DemoNotice } from "@/data/DemoNotice";
 import { FileSlot } from "@/data/FileSlot";
 import { InterpolationSwitch } from "@/data/InterpolationSwitch";
 import { SingleFilePanel } from "@/data/SingleFilePanel";
@@ -53,6 +54,7 @@ export function DataPanel() {
           <SingleFilePanel />
         </TabsContent>
       </Tabs>
+      <DemoNotice />
       <InterpolationSwitch />
     </Panel>
   );

@@ -12,6 +12,19 @@ const contract = JSON.parse(
   ),
 ) as {
   paths: {
+    "/api/demo": {
+      get: {
+        responses: {
+          "200": {
+            content: {
+              "application/json": {
+                examples: Record<string, { value: unknown }>;
+              };
+            };
+          };
+        };
+      };
+    };
     "/api/models": {
       get: {
         responses: {
@@ -33,6 +46,12 @@ export const MODELS = Object.values(
   contract.paths["/api/models"].get.responses["200"].content["application/json"]
     .examples,
 )[0]?.value as { models: object[] };
+
+/** The demo, as the contract's example holds it. */
+export const DEMO = Object.values(
+  contract.paths["/api/demo"].get.responses["200"].content["application/json"]
+    .examples,
+)[0]?.value as { measurements: Record<string, { points: number }> };
 
 /** A curve of 3 points, for tests about other things. Later routes in a test take over from it. */
 export const CALC = {

@@ -196,6 +196,8 @@ export interface SessionState {
   guess: GuessRecord | null;
   /** Counts resets, so that fields can start again even if the values do not change. */
   parameterResets: number;
+  /** Files of the separate slots on their way, which are the user's though not yet in `data`. */
+  fileReads: number;
   /** What each model had when another was chosen, as the design keeps them apart. */
   savedModelSettings: Record<string, ModelSettings>;
 
@@ -226,6 +228,8 @@ export interface SessionState {
   setParameter: (fitMode: string, name: string, value: number) => void;
   /** Back to the defaults of a fit mode, also for a number being typed. */
   resetParameters: (fitMode: string) => void;
+  fileReadStarted: () => void;
+  fileReadEnded: () => void;
   guessStarted: () => void;
   guessFinished: (
     outcome: GuessOutcome,
@@ -316,6 +320,13 @@ export function currentGuess(
     : guess.outcome;
 }
 
+/** Whether a file of the user's is on its way, in either way of loading. */
+export function readsFiles(
+  state: Pick<SessionState, "fileReads" | "singleFile">,
+): boolean {
+  return state.fileReads > 0 || state.singleFile?.loading === true;
+}
+
 /** Whether a reload would lose any file, in the way in use or the other. */
 export function holdsFiles(
   state: Pick<SessionState, "data" | "singleFile" | "otherSource">,
@@ -359,8 +370,15 @@ export const createSessionStore = () =>
       guessPending: false,
       guess: null,
       parameterResets: 0,
+      fileReads: 0,
       savedModelSettings: {},
 
+      fileReadStarted: () => {
+        set((state) => ({ fileReads: state.fileReads + 1 }));
+      },
+      fileReadEnded: () => {
+        set((state) => ({ fileReads: state.fileReads - 1 }));
+      },
       guessStarted: () => {
         set({ guessPending: true, guess: null });
       },

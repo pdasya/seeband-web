@@ -293,6 +293,36 @@ test("a real fit stops, converges and resets through the real API", async ({
   ).toBeVisible();
 });
 
+test("the demo goes through the real API like a file: curve, interpolation and fit", async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  await page.goto("/fit?demo=1");
+  await expect(page.getByText(/^Synthetic data/)).toBeVisible();
+  await expect(
+    page.locator("[data-file-slot]").getByText("Demo data"),
+  ).toHaveCount(3);
+  await expect(page.getByText(/^31 points/)).toHaveCount(3);
+  await expect(page.getByText("Measurements (demo)")).toBeVisible();
+
+  // Its rows are sent again as text, and the real parser reads them.
+  await page.getByRole("switch", { name: /Interpolation/ }).click();
+  await expect(page.getByText("Measurements (demo)")).toBeVisible();
+  await expect(page.getByText("Interpolated", { exact: true })).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await page.getByRole("switch", { name: /Interpolation/ }).click();
+
+  await page.getByRole("button", { name: "Run fit" }).click();
+  await expect(
+    page.locator('[data-slot="badge"]').filter({ hasText: /^Converged/ }),
+  ).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(page.getByText(/^Unreliable: DPB R_H is half/)).toBeVisible();
+  await expect(page.getByText(/^Synthetic data/)).toBeVisible();
+});
+
 // From `packages/seeband_core/tests/fixtures/neural_net_references.json`, recorded on the desktop.
 for (const [example, mass, gap, fermi] of [
   ["01_Fe2VAl09Si01", "1,57", "554", "1170"],

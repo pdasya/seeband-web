@@ -20,6 +20,8 @@ const IDLE: UploadState = { status: "idle", warnings: [] };
 export function useFileUpload(quantity: Quantity) {
   const setData = useSessionStore((state) => state.setData);
   const removeData = useSessionStore((state) => state.removeData);
+  const readStarted = useSessionStore((state) => state.fileReadStarted);
+  const readEnded = useSessionStore((state) => state.fileReadEnded);
   const [state, setState] = useState<UploadState>(IDLE);
   const current = useRef<AbortController | null>(null);
 
@@ -38,6 +40,7 @@ export function useFileUpload(quantity: Quantity) {
       const { signal } = controller;
       setState({ status: "loading", name: file.name });
       removeData(quantity);
+      readStarted();
 
       try {
         const text = await readFileText(file);
@@ -78,9 +81,11 @@ export function useFileUpload(quantity: Quantity) {
             errors: [failureMessage(error)],
           });
         }
+      } finally {
+        readEnded();
       }
     },
-    [quantity, removeData, setData],
+    [quantity, readEnded, readStarted, removeData, setData],
   );
 
   const remove = useCallback(() => {

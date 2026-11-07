@@ -163,7 +163,8 @@ function quantityView(
   const { curve, factor, axis } = QUANTITY_TABS[quantity];
   const words = text.quantityTabs[quantity];
   const base = { yAxisTitle: axis, description: words.description };
-  const entry = state.data[quantity]?.measurement;
+  const data = state.data[quantity];
+  const entry = data?.measurement;
   if (entry === undefined) {
     return {
       ...NO_CHART,
@@ -179,7 +180,11 @@ function quantityView(
     empty: null,
     curves: inMode ? curveOf(measured, curve, factor, text.model) : [],
     measurements: {
-      label: text.measurements,
+      // Demo data say what they are wherever they appear.
+      label:
+        data?.source.kind === "demo"
+          ? text.measurementsDemo
+          : text.measurements,
       temperatureK: entry.temperature_k,
       values: scaled(entry.values, factor),
     },
