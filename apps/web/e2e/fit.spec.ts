@@ -366,8 +366,9 @@ test("a long value shows short, and stays exact", async ({ page }) => {
     .toBe(651.553903512);
   const count = bodies.length;
 
-  // Typing what is shown is no change, so the exact value and the result stay.
-  await field(page, "E_g").fill("651,554");
+  // Typing what is shown is no change, so the exact value and the result stay. It is written
+  // differently, as filling in the same text sends no input event.
+  await field(page, "E_g").fill("651,5540");
   await field(page, "E_g").blur();
 
   await page.waitForTimeout(400);
