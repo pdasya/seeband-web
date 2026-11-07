@@ -9,6 +9,7 @@ import { formatNumber } from "@/lib/numbers";
 import {
   coreToDisplay,
   displayToCore,
+  parameterSymbol,
   parameterValues,
   shortened,
   steppedDisplayValue,
@@ -23,11 +24,6 @@ import { Panel } from "@/shell/layout";
 import { STRINGS } from "@/strings";
 
 const { parameters: text } = STRINGS;
-
-function symbol(name: string): string {
-  const known: Record<string, string> = text.symbols;
-  return known[name] ?? name;
-}
 
 function hint({ meaning, unit }: ParameterDescription): string {
   const known: Record<string, string> = text.units;
@@ -65,7 +61,7 @@ function ParameterControl({
   const [draft, setDraft] = useState<string | null>(null);
   const [invalid, setInvalid] = useState(false);
   const { minimum, maximum } = parameter.display_range;
-  const label = symbol(parameter.name);
+  const label = parameterSymbol(parameter.name);
   const displayed = tidy(coreToDisplay(parameter, value));
   // A value moved from elsewhere, such as by a fit, ends what was being typed.
   const [typedOver, setTypedOver] = useState(displayed);

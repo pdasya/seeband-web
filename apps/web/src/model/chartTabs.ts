@@ -25,6 +25,11 @@ const QUANTITY_TABS: Record<
   hall: { curve: "hall_m3_per_c", factor: 1, axis: text.axes.hall },
 };
 
+/** The column of a quantity in a measured result. */
+export function quantityCurve(quantity: Quantity): string {
+  return QUANTITY_TABS[quantity].curve;
+}
+
 const SEEBECK_TOTAL = QUANTITY_TABS.seebeck.curve;
 const SEEBECK_BAND_1 = "seebeck_band_1_v_per_k";
 const SEEBECK_BAND_2 = "seebeck_band_2_v_per_k";

@@ -85,7 +85,11 @@ test("detected columns show, with chips and a preview", async ({ page }) => {
   await expect(page.getByText("S · 3 points")).toBeVisible();
   await expect(page.getByText("R_H · 3 points")).toBeVisible();
   await expect(page.getByRole("columnheader", { name: "T ← T" })).toBeVisible();
-  await expect(page.getByRole("row")).toHaveCount(4);
+  await expect(
+    page
+      .locator('table:not([aria-label="Parameters in use"])')
+      .getByRole("row"),
+  ).toHaveCount(4);
   await expect(page.getByRole("cell", { name: "1,000e-4" })).toBeVisible();
 });
 
@@ -284,7 +288,9 @@ test("a broken file shows its error, with no columns to map", async ({
   await expect(
     page.getByRole("combobox", { name: /^Quantity for column/ }),
   ).toHaveCount(0);
-  await expect(page.getByRole("table")).toHaveCount(0);
+  await expect(
+    page.locator('table:not([aria-label="Parameters in use"])'),
+  ).toHaveCount(0);
 });
 
 test("a server that is down says so, and a wrong type sends nothing", async ({
@@ -663,7 +669,7 @@ test("the table stays when moving to another screen and back", async ({
   await choose(page);
   await expect(page.getByText("S · 3 points")).toBeVisible();
 
-  await page.getByRole("link", { name: "Results" }).click();
+  await page.getByRole("link", { name: "Results", exact: true }).click();
   await page.getByRole("link", { name: "Model fit" }).click();
 
   await expect(page.getByRole("tab", { name: "Single file" })).toHaveAttribute(

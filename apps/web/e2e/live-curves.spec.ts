@@ -598,7 +598,7 @@ test("leaving the page ends a request, and coming back asks again", async ({
   await load(page);
   await expect.poll(() => bodies.length).toBe(1);
 
-  await page.getByRole("link", { name: "Results" }).click();
+  await page.getByRole("link", { name: "Results", exact: true }).click();
   await page.getByRole("link", { name: "Model fit" }).click();
 
   await expect.poll(() => bodies.length).toBe(2);
@@ -727,7 +727,7 @@ test("a failed interpolation leaves the measured points only", async ({
   ).toHaveCount(0);
 });
 
-test("known errors of a result are named", async ({ page }) => {
+test("known errors of a result are described", async ({ page }) => {
   await open(page);
   await collect(page, (route) =>
     route.fulfill({
@@ -738,7 +738,7 @@ test("known errors of a result are named", async ({ page }) => {
   await load(page);
 
   await expect(
-    page.getByText("Known errors apply to this result: dpb_hall_prefactor."),
+    page.getByText("Unreliable: DPB R_H is half of what it should be"),
   ).toBeVisible();
 });
 

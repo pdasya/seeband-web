@@ -2,8 +2,15 @@ import type { components } from "@seeband/api-client";
 
 import { parseNumber } from "@/lib/numbers";
 import type { FitModeDescription } from "@/model/selection";
+import { STRINGS } from "@/strings";
 
 export type ParameterDescription = components["schemas"]["ParameterResponse"];
+
+/** How a parameter is written. Any other shows its name, so a new one needs no change. */
+export function parameterSymbol(name: string): string {
+  const known: Record<string, string> = STRINGS.parameters.symbols;
+  return known[name] ?? name;
+}
 
 /** A mode with no choice of scattering uses all its parameters, whatever they list. */
 export function visibleParameters(

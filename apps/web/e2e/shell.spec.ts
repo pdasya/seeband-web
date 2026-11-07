@@ -45,13 +45,12 @@ test("links inside the app stay in the page, and the current one moves", async (
     (window as unknown as { sameDocument: boolean }).sameDocument = true;
   });
 
-  await page.getByRole("link", { name: "Results" }).click();
+  await page.getByRole("link", { name: "Results", exact: true }).click();
 
   await expect(page).toHaveURL(/\/results$/);
-  await expect(page.getByRole("link", { name: "Results" })).toHaveAttribute(
-    "aria-current",
-    "page",
-  );
+  await expect(
+    page.getByRole("link", { name: "Results", exact: true }),
+  ).toHaveAttribute("aria-current", "page");
   expect(
     await page.evaluate(
       () => (window as unknown as { sameDocument?: boolean }).sameDocument,

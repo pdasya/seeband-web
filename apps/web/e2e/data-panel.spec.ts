@@ -564,7 +564,7 @@ test("data stay when moving to another screen and back", async ({ page }) => {
   await choose(page, "kept.txt");
   await expect(slots(page).getByText("kept.txt")).toBeVisible();
 
-  await page.getByRole("link", { name: "Results" }).click();
+  await page.getByRole("link", { name: "Results", exact: true }).click();
   await page.getByRole("link", { name: "Model fit" }).click();
 
   await expect(slots(page).getByText("kept.txt")).toBeVisible();

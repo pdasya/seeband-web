@@ -120,6 +120,15 @@ SEEBAND_API_TARGET=http://127.0.0.1:8000 pnpm --filter @seeband/web exec playwri
 - **An edit or a fit while it waits wins,** as the user has moved on, and so does S going away, as the values would describe nothing on screen. Edits before a new file are overwritten, as on the desktop. Coming back to a tab or reading the same S under a new mapping is no new load, and keeps what was edited.
 - **The badge shows the net's real range,** from the API, while its values stand. With no net, a prediction that is not finite, or `m_eff` of about 0, the values stay, and a line says why.
 
+## Result
+
+`model/ResultPanel.tsx` shows what the values on screen give, from `model/resultSummary.ts`.
+
+- **Metrics:** the RMSE of each measured quantity, and the iterations with their limit. A single-pass mode has no iterations, so it shows neither.
+- **Parameters:** the values in use, with the bounds a fit uses, in the units the user sees. A parameter a fit does not change says so. A value at a bound is marked, unless the fit failed.
+- **A fit that did not converge** says what the values are: last values, start values, or, after a failure, not a fitted result. The status badge stays beside the page title.
+- **Known errors** show their text from `fit.knownIssueTexts`, never their id. The flags of the fit and of the curves count together, as curves from a fit carry its errors. One that changes a measured curve marks that RMSE and goes under the metrics. One about the fit alone goes under the parameters. A new id shows a general text until it has its own.
+
 ## Numbers
 
 The app shows numbers with a decimal comma, in fields, labels, messages and charts, whatever the browser's region. `lib/numbers.ts` holds this. Number fields are text fields, because `type="number"` shows the separator of the computer's region. They accept a comma or a point. Files and the API keep their points.

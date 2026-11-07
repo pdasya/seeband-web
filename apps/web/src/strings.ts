@@ -324,7 +324,71 @@ export const STRINGS = {
     zerosLeftOut:
       "points with a value of 0 are left out of the RMSE, as it is relative.",
     rmseUnits: { "uV/K": "µV/K" },
-    knownIssues: "Known errors apply to this result:",
+    issueSeverity: {
+      disabled: "Not available",
+      unreliable: "Unreliable",
+      caution: "Caution",
+    },
+    issueMark: {
+      disabled: "not available",
+      unreliable: "unreliable",
+      caution: "caution",
+    },
+    knownIssueOther: "A known error applies to this result.",
+    knownIssueTexts: {
+      "known_issue.spb_hall_mode_disabled":
+        "This fit fails on the desktop, and its mass and scales are wrong.",
+      "known_issue.spb_hall_uses_fermi_energy":
+        "SPB R_H uses the Fermi energy at 0 K instead of the chemical potential, which also affects this fit.",
+      "known_issue.dpb_hall_prefactor":
+        "DPB R_H is half of what it should be, so m₁ and n from it are too low.",
+      "known_issue.acphdis_curve_scale":
+        "With acPhDis, σ, κ and S by band use another scale of C and D than ρ and S, so σ·ρ is not 1, and band contributions do not sum to S.",
+      "known_issue.acphdis_band_weight":
+        "With acPhDis, the band weight of the last temperature applies to all of S.",
+      "known_issue.acphdis_early_stop":
+        "With acPhDis, this fit stops when C and D alone settle, so it can end before the other values do.",
+      "known_issue.dpb_s_degeneracy":
+        "With N₂/N₁ other than 1, a fitted m₂/m₁ does not match its curves.",
+      "known_issue.dpb_loop_degeneracy":
+        "With N₂/N₁ other than 1, the fit returns m₂/m₁ times N₂/N₁, so the value shown can leave its bounds. The bounds and the at-bound mark apply to the value before that factor.",
+      "known_issue.negative_m_eff_weight":
+        "With m₂/m₁ below 0, band 2 gets a negative weight, for a physicist to check.",
+      "known_issue.collapsed_m_eff":
+        "With m₂/m₁ near 0, the other band has no weight left, so the data do not settle the fit, and it can differ between machines.",
+      "known_issue.no_chemical_potential":
+        "With the Fermi energy outside the band, there are no carriers, so the chemical potential and the curves from it mean nothing.",
+      "known_issue.hall_dis_no_reference":
+        "This fit fails on the desktop, and runs here with other bounds of G, so there is no desktop result to compare with.",
+      "known_issue.interpolation_extrapolates":
+        "Interpolation made up points beyond the data, and they count in the RMSE and in a fit.",
+    },
+    iterations: "Iterations",
+    noIterations: "—",
+    iterationLimit: (limit: number) => `limit ${String(limit)}`,
+    rangeSummary: (minK: string, maxK: string) => `range ${minK}–${maxK} K`,
+    endNotes: {
+      iterationLimit: (limit: number | null) =>
+        limit === null
+          ? "The fit reached its iteration limit before it converged, so these values are not a converged result."
+          : `The fit reached its limit of ${String(limit)} iterations before it converged, so these values are not a converged result.`,
+      stopped:
+        "The fit was stopped, so these are its last values, not a converged result.",
+      stoppedAtStart:
+        "The fit was stopped before its first result, so these are the values it started from.",
+      failed:
+        "The fit failed, so these are not a fitted result: they are its start values or those of its last iteration.",
+    },
+    parameterTable: "Parameters in use",
+    columns: { parameter: "Parameter", value: "Value", bounds: "Bounds" },
+    valueUnits: { K: "K", m_e: "mₑ" },
+    boundsRange: (lower: string, upper: string) => `${lower} … ${upper}`,
+    noBounds: "—",
+    atBound: "at bound",
+    atBoundNote:
+      "A value at a bound may have been set by that bound, not by the data.",
+    moreGraphs: "More graphs",
+    openResults: "Open results",
   },
   results: {
     pageTitle: "Results",

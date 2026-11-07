@@ -21,7 +21,7 @@ async function chooseScattering(page: Page, name: RegExp) {
 }
 
 async function moveAway(page: Page) {
-  await page.getByRole("link", { name: "Results" }).click();
+  await page.getByRole("link", { name: "Results", exact: true }).click();
   await page.getByRole("link", { name: "Model fit" }).click();
 }
 
@@ -86,7 +86,12 @@ test("the SPB mass spans both signs, and is marked as not fitted", async ({
   await expect(field(page, "m")).toHaveValue("1,01");
   await expect(slider(page, "m")).toHaveAttribute("aria-valuemin", "-3");
   await expect(slider(page, "m")).toHaveAttribute("aria-valuemax", "3");
-  await expect(page.getByText("not fitted")).toHaveCount(1);
+  await expect(
+    page
+      .locator("section")
+      .filter({ has: page.getByRole("heading", { name: "Parameters" }) })
+      .getByText("not fitted"),
+  ).toHaveCount(1);
 
   await field(page, "m").fill("-2.5");
   await field(page, "m").press("Enter");
@@ -336,7 +341,13 @@ test("leaving a field unchanged keeps a result and the exact value", async ({
     state.setParameter("dpb_s_rho", "band_gap", 1000.0000000000001);
     state.fitEvent(state.fitRequested(), {
       type: "done",
-      result: { status: "converged" },
+      result: {
+        parameters: {},
+        status: "converged",
+        parameter_errors: {},
+        at_bounds: [],
+        known_issues: [],
+      },
     });
   });
 
