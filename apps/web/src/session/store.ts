@@ -167,6 +167,8 @@ export interface SessionState {
   otherSource: DataSourceFiles | null;
   interpolation: InterpolationState;
   chartTab: ChartTab;
+  /** Counts resets, so that fields can start again even if the values do not change. */
+  parameterResets: number;
   /** What each model had when another was chosen, as the design keeps them apart. */
   savedModelSettings: Record<string, ModelSettings>;
 
@@ -195,8 +197,10 @@ export interface SessionState {
   setSelection: (selection: Partial<Selection>) => void;
   setParameters: (fitMode: string, values: Record<string, number>) => void;
   setParameter: (fitMode: string, name: string, value: number) => void;
+  /** Back to the defaults of a fit mode, also for a number being typed. */
+  resetParameters: (fitMode: string) => void;
   /** Starts a new run, which replaces any other, and returns its id for the calls below. */
-  fitRequested: () => number;
+  fitRequested: (fitMode?: string) => number;
   fitEvent: (run: number, event: FitEvent) => void;
   fitStopped: (run: number) => void;
   fitFailed: (run: number, failure: FitFailure) => void;
@@ -206,8 +210,33 @@ function withoutValues(interpolation: InterpolationState): InterpolationState {
   return { ...interpolation, values: {}, failed: [], failure: null };
 }
 
-function isActive(fit: FitState): boolean {
+export function isFitActive(fit: FitState): boolean {
   return fit.status === "waiting" || fit.status === "running";
+}
+
+// A fit moves the values on screen as it goes, so a Stop keeps the last ones. A value that is not
+// finite has nothing to show, and the last one stays.
+function withFitValues(
+  parameters: SessionState["parameters"],
+  fitMode: string | null,
+  event: FitEvent,
+): SessionState["parameters"] {
+  const values =
+    event.type === "iteration"
+      ? event.parameters
+      : event.type === "done"
+        ? event.result.parameters
+        : null;
+  if (fitMode === null || values === null) {
+    return parameters;
+  }
+  const finite: Record<string, number> = {};
+  for (const [name, value] of Object.entries(values)) {
+    if (value !== null) {
+      finite[name] = value;
+    }
+  }
+  return { ...parameters, [fitMode]: { ...parameters[fitMode], ...finite } };
 }
 
 function afterEvent(fit: FitState, event: FitEvent): FitState {
@@ -254,9 +283,10 @@ export const createSessionStore = () =>
   create<SessionState>()((set) => {
     // Late events of an old run must not reach a newer one, or the wrong result would show.
     let currentRun = 0;
+    let currentFitMode: string | null = null;
     let lastRequest = 0;
     const withoutOldResult = (fit: FitState): FitState =>
-      isActive(fit) ? fit : { status: "idle" };
+      isFitActive(fit) ? fit : { status: "idle" };
 
     return {
       data: {},
@@ -268,6 +298,7 @@ export const createSessionStore = () =>
       otherSource: null,
       interpolation: INITIAL_INTERPOLATION,
       chartTab: "seebeck",
+      parameterResets: 0,
       savedModelSettings: {},
 
       setChartTab: (chartTab) => {
@@ -421,16 +452,35 @@ export const createSessionStore = () =>
           fit: withoutOldResult(state.fit),
         }));
       },
-      fitRequested: () => {
+      resetParameters: (fitMode) => {
+        set((state) => ({
+          parameters: Object.fromEntries(
+            Object.entries(state.parameters).filter(
+              ([name]) => name !== fitMode,
+            ),
+          ),
+          parameterResets: state.parameterResets + 1,
+          fit: withoutOldResult(state.fit),
+        }));
+      },
+      fitRequested: (fitMode) => {
         currentRun += 1;
+        currentFitMode = fitMode ?? null;
         set({ fit: { status: "waiting" } });
         return currentRun;
       },
       // An event after a stop belongs to a fit that no longer counts.
       fitEvent: (run, event) => {
         set((state) =>
-          run === currentRun && isActive(state.fit)
-            ? { fit: afterEvent(state.fit, event) }
+          run === currentRun && isFitActive(state.fit)
+            ? {
+                fit: afterEvent(state.fit, event),
+                parameters: withFitValues(
+                  state.parameters,
+                  currentFitMode,
+                  event,
+                ),
+              }
             : state,
         );
       },
@@ -452,7 +502,7 @@ export const createSessionStore = () =>
       },
       fitFailed: (run, failure) => {
         set((state) =>
-          run === currentRun && isActive(state.fit)
+          run === currentRun && isFitActive(state.fit)
             ? { fit: { status: "failed", failure } }
             : state,
         );

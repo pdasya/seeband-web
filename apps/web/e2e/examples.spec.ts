@@ -216,3 +216,47 @@ test("the tabs draw real curves through the real API", async ({ page }) => {
   await expect(page.getByText("band edge")).toBeVisible();
   await expect(page.getByRole("alert")).toHaveCount(0);
 });
+
+test("a real fit stops, converges and resets through the real API", async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  await page.goto("/fit");
+  const files = page.locator('input[type="file"]');
+  await files.first().setInputFiles(`${EXAMPLES}01_Fe2VAl09Si01_see.txt`);
+  await expect(page.getByText(/^\d+ points/)).toBeVisible();
+  await files.first().setInputFiles(`${EXAMPLES}01_Fe2VAl09Si01_rho.txt`);
+  await expect(page.getByText(/^\d+ points/)).toHaveCount(2);
+  const run = page.getByRole("button", { name: "Run fit" });
+  const gap = page.getByRole("textbox", { name: "E_g", exact: true });
+
+  const badge = (text: RegExp) =>
+    page.locator('[data-slot="badge"]').filter({ hasText: text });
+
+  // A real fit takes about a second here, so a Stop can only come right at its start.
+  await run.click();
+  await page.getByRole("button", { name: "Stop" }).click();
+  await expect(badge(/^Stopped/)).toBeVisible();
+  await expect(gap).toHaveValue("1000");
+
+  // S + ρ is iterative, so its result counts them.
+  await run.click();
+  await expect(badge(/^Converged in \d+ iter\.$/)).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(gap).not.toHaveValue("1000");
+  await expect(page.getByRole("alert")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Reset" }).click();
+  await expect(gap).toHaveValue("1000");
+
+  // S is single-pass, so it ends with no counter, on values other than its start.
+  await page.getByRole("radio", { name: "S", exact: true }).click();
+  await expect(gap).toHaveValue("1000");
+  await run.click();
+  await expect(badge(/^Converged$/)).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(gap).not.toHaveValue("1000");
+  await expect(page.getByRole("alert")).toHaveCount(0);
+});

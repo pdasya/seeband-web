@@ -424,6 +424,75 @@ describe("parameters", () => {
   });
 });
 
+describe("a fit's values", () => {
+  const ITERATION = {
+    type: "iteration" as const,
+    iteration: 1,
+    parameters: { m_eff: 2, band_gap: null },
+  };
+
+  test("go to its fit mode, and one that is not finite leaves the last", () => {
+    state().setParameter("dpb_s", "band_gap", 900);
+    state().setParameter("spb_s", "fermi_energy", 5);
+    const run = state().fitRequested("dpb_s");
+    state().fitEvent(run, { type: "started" });
+
+    state().fitEvent(run, ITERATION);
+
+    expect(state().parameters).toEqual({
+      dpb_s: { band_gap: 900, m_eff: 2 },
+      spb_s: { fermi_energy: 5 },
+    });
+  });
+
+  test("the last answer's go there too", () => {
+    const run = state().fitRequested("dpb_s");
+
+    state().fitEvent(run, {
+      type: "done",
+      result: { ...RESULT, parameters: { m_eff: 3 } },
+    });
+
+    expect(state().parameters).toEqual({ dpb_s: { m_eff: 3 } });
+    expect(state().fit.status).toBe("done");
+  });
+
+  test("with no fit mode named, stay out of the session", () => {
+    const run = state().fitRequested();
+
+    state().fitEvent(run, { type: "started" });
+    state().fitEvent(run, ITERATION);
+
+    expect(state().parameters).toEqual({});
+  });
+
+  test("of a run that was stopped do not count", () => {
+    const run = state().fitRequested("dpb_s");
+    state().fitEvent(run, { type: "started" });
+    state().fitStopped(run);
+
+    state().fitEvent(run, ITERATION);
+
+    expect(state().parameters).toEqual({});
+    expect(state().fit.status).toBe("stopped");
+  });
+});
+
+describe("resetting parameters", () => {
+  test("clears only that fit mode, and an old result, and counts", () => {
+    state().setParameter("dpb_s", "m_eff", 2);
+    state().setParameter("spb_s", "fermi_energy", 5);
+    state().fitEvent(state().fitRequested(), { type: "done", result: RESULT });
+    const before = state().parameterResets;
+
+    state().resetParameters("dpb_s");
+
+    expect(state().parameters).toEqual({ spb_s: { fermi_energy: 5 } });
+    expect(state().fit.status).toBe("idle");
+    expect(state().parameterResets).toBe(before + 1);
+  });
+});
+
 describe("choosing a model", () => {
   const DPB = {
     fitMode: "dpb_s",

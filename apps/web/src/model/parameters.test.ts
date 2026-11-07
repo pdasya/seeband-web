@@ -7,6 +7,7 @@ import {
   coreToDisplay,
   displayToCore,
   parameterValues,
+  shortened,
   steppedDisplayValue,
   tidy,
   typedDisplayValue,
@@ -173,6 +174,16 @@ describe("displayToCore on whole control units", () => {
 
   test("a value between units stays between them", () => {
     expect(displayToCore(parameter("spb_s_rho", "C"), 1.234)).toBe(123.4);
+  });
+});
+
+describe("shortened", () => {
+  test("keeps 6 digits, and leaves what fits", () => {
+    expect(shortened(1.25646323123)).toBe(1.25646);
+    expect(shortened(651.553903512)).toBe(651.554);
+    expect(shortened(1000000)).toBe(1000000);
+    expect(shortened(1.01)).toBe(1.01);
+    expect(shortened(0)).toBe(0);
   });
 });
 
