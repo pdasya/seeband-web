@@ -170,10 +170,64 @@ export const STRINGS = {
     temperatureAxis: "T, K",
     toggleMeasurements: "Show measurements",
     failed: "The chart could not be shown. Try reloading the page.",
-    noDataTitle: "No data yet",
-    noDataText: "Curves appear here once measurements are loaded.",
-    fitDescription: "Chart of the measurements and model against temperature",
-    fitAxis: "S, µV/K",
+    tabsLabel: "Charts",
+    tabs: {
+      seebeck: "S(T)",
+      resistivity: "ρ(T)",
+      hall: "R_H(T)",
+      chemical_potential: "μ(T)",
+      bands: "Band contributions",
+    },
+    axes: {
+      seebeck: "S, µV/K",
+      resistivity: "ρ, µΩ·m",
+      hall: "R_H, m³/C",
+      chemicalPotential: "μ, K",
+    },
+    quantityTabs: {
+      seebeck: {
+        description: "Chart of S against temperature",
+        noDataTitle: "No data for this quantity",
+        noDataText:
+          "Load a file or assign a column in the single-file mapping.",
+        notInMode: "The S model is not calculated in this fit mode.",
+      },
+      resistivity: {
+        description: "Chart of ρ against temperature",
+        noDataTitle: "No data for this quantity",
+        noDataText:
+          "Load a file or assign a column in the single-file mapping.",
+        notInMode: "The ρ model is not calculated in this fit mode.",
+      },
+      hall: {
+        description: "Chart of R_H against temperature",
+        noDataTitle: "No R_H(T) data",
+        noDataText:
+          "Load a Hall coefficient file (m³/C). R_H sets the overall scale E = m₁^(3/2) and determines the absolute mass m₁.",
+        notInMode: "The R_H model is not calculated in this fit mode.",
+      },
+    },
+    chemicalPotential: "μ",
+    chemicalPotentialDescription:
+      "Chart of the chemical potential μ against temperature, with band edges",
+    bandEdge: "band edge",
+    band1Top: "band 1 top",
+    band2Bottom: "band 2 bottom (E_g)",
+    bandsDescription:
+      "Chart of the total S and the contribution of each band against temperature",
+    totalS: "Total S",
+    band1Contribution: "band 1 contribution",
+    band2Contribution: "band 2 contribution",
+    notInThisMode: {
+      title: "Not available in this mode",
+      text: "This fit mode has no such curve.",
+    },
+    unavailable: {
+      single_band: {
+        title: "DPB only",
+        text: "Band contributions are computed for the two-parabolic-band model.",
+      },
+    },
     model: "Model",
     measurements: "Measurements",
     interpolated: "Interpolated",
@@ -206,6 +260,7 @@ export const STRINGS = {
     rmse: "RMSE",
     noRmse: "The RMSE appears here once measurements are loaded.",
     rmseNotFinite: "not finite",
+    rmseFailed: "The RMSE could not be calculated for the current values.",
     rmseOutdated: "These are from the last curve, not from the current values.",
     noPointsInRange: "no points in the fit range, so no RMSE.",
     notInterpolated: "no usable interpolated values, so no RMSE.",

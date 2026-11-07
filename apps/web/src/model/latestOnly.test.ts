@@ -20,15 +20,19 @@ function setUp() {
   const calls: Call[] = [];
   const results: [string, string][] = [];
   const failures: [string, string | null][] = [];
+  const sentBodies: string[] = [];
   const sender = new LatestOnly<string>({
     send: (body, signal) =>
       new Promise((resolve, reject) => {
         calls.push({ body, signal, resolve, reject });
       }),
     onResult: (result, body) => results.push([result, body]),
-    onFailure: (error, settled) => failures.push([error.code, settled]),
+    onFailure: (error, settled, sent) => {
+      failures.push([error.code, settled]);
+      sentBodies.push(sent);
+    },
   });
-  return { calls, results, failures, sender };
+  return { calls, results, failures, sentBodies, sender };
 }
 
 const rest = () => vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
@@ -229,6 +233,18 @@ describe("a limit with Retry-After", () => {
       await rest();
       expect(calls).toHaveLength(2);
     }
+  });
+
+  test("says which values failed, also while another try is on its way", async () => {
+    const { calls, failures, sentBodies, sender } = setUp();
+    sender.change("a", false);
+    await rest();
+
+    calls[0]?.reject(limit(1));
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(failures).toEqual([["rate_limited", null]]);
+    expect(sentBodies).toEqual(["a"]);
   });
 
   test("does not fire once there is nothing to ask", async () => {

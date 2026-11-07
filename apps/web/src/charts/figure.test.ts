@@ -33,6 +33,10 @@ function shapes(input: Partial<FigureInput>): Partial<Shape>[] {
   return buildFigure({ ...INPUT, ...input }, THEME).layout.shapes ?? [];
 }
 
+test("small values on the y axis have no SI letter next to the unit", () => {
+  expect(buildFigure(INPUT, THEME).layout.yaxis?.exponentformat).toBe("e");
+});
+
 test("uses the decimal comma of the rest of the app", () => {
   expect(buildFigure(INPUT, THEME).layout.separators).toBe(",");
 });

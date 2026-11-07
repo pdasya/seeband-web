@@ -31,7 +31,7 @@ function Note({ children }: { children: string }) {
 
 /** The RMSE of the current values. The rest of a fit's result comes in with the fit. */
 export function ResultPanel({ live }: { live: LiveCurves }) {
-  const { result, error } = live;
+  const { result, error } = live.measured;
   const { data: models } = useQuery(modelsQuery);
   const selection = useSessionStore((state) => state.selection);
   const parameters = useSessionStore((state) => state.parameters);
@@ -46,13 +46,22 @@ export function ResultPanel({ live }: { live: LiveCurves }) {
     const rmse = result?.rmse?.[quantity];
     return rmse === undefined ? [] : [{ quantity, rmse }];
   });
-  const issues = result?.known_issues ?? [];
+  // Curves of the open tab can have known errors of their own.
+  const issues = [
+    ...new Set([
+      ...(result?.known_issues ?? []),
+      ...(live.derived.result?.known_issues ?? []),
+    ]),
+  ];
   const explained =
     gaps.noPointsInRange.length > 0 || gaps.notInterpolated.length > 0;
 
   return (
     <Panel title={fit.result}>
-      {rows.length === 0 && !explained && <Note>{fit.noRmse}</Note>}
+      {rows.length === 0 && !gaps.hasData && <Note>{fit.noRmse}</Note>}
+      {rows.length === 0 && gaps.hasData && !explained && error !== null && (
+        <Note>{fit.rmseFailed}</Note>
+      )}
       {rows.length > 0 && (
         <dl className="mt-3 mb-0 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-[13px]">
           {rows.map(({ quantity, rmse }) => (
