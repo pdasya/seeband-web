@@ -117,7 +117,7 @@ SEEBAND_API_TARGET=http://127.0.0.1:8000 pnpm --filter @seeband/web exec playwri
 `model/guessRun.ts` asks `POST /api/guess` for start values, with every row of S, whatever the fit range. The Initial guess button does this, for a model with `has_initial_guess`, and so does each new file of S, as on the desktop.
 
 - **It writes to every mode of the model,** as the desktop does to all its DPB windows, so also from another model's screen. Only the parameters a mode has, and the rest keep their values.
-- **An edit or a fit while it waits wins,** as the user has moved on. Edits before a new file are overwritten, as on the desktop. Coming back to a tab or reading the same S under a new mapping is no new load, and keeps what was edited.
+- **An edit or a fit while it waits wins,** as the user has moved on, and so does S going away, as the values would describe nothing on screen. Edits before a new file are overwritten, as on the desktop. Coming back to a tab or reading the same S under a new mapping is no new load, and keeps what was edited.
 - **The badge shows the net's real range,** from the API, while its values stand. With no net, a prediction that is not finite, or `m_eff` of about 0, the values stay, and a line says why.
 
 ## Numbers

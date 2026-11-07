@@ -28,10 +28,19 @@ function failure(error: unknown): GuessOutcome {
   };
 }
 
+function sameRows(a: Measurement, b: Measurement): boolean {
+  return (
+    a.temperature_k.length === b.temperature_k.length &&
+    a.temperature_k.every((value, index) => value === b.temperature_k[index]) &&
+    a.values.every((value, index) => value === b.values[index])
+  );
+}
+
 /**
  * Asks the nets for start values from every row of S, as the desktop does, whatever the fit range.
- * Like the desktop, it writes to every mode of the model. An edit or a fit while it waits wins, as
- * the user has moved on from these values.
+ * Like the desktop, it writes to every mode of the model. An edit while it waits wins, as the user
+ * has moved on from these values, and so does S going away, as they would describe nothing on
+ * screen. A new mapping that reads the same S is no such thing.
  */
 export async function runGuess(
   model: ModelDescription,
@@ -42,6 +51,15 @@ export async function runGuess(
   controller = own;
   const { parameters } = store();
   store().guessStarted();
+  // The data this answer is still about, if the user has not moved on.
+  const current = (): Measurement | null => {
+    const now = store().data.seebeck?.measurement;
+    return store().parameters === parameters &&
+      now !== undefined &&
+      sameRows(now, measurement)
+      ? now
+      : null;
+  };
   try {
     const answer = await apiClient.postGuess(
       {
@@ -54,14 +72,15 @@ export async function runGuess(
     if (own.signal.aborted) {
       return;
     }
-    if (store().parameters !== parameters) {
-      store().guessFinished(null, model.id, measurement);
+    const now = current();
+    if (now === null) {
+      store().guessDropped();
     } else if (answer.status === "guess") {
       if (answer.warnings.includes("m_eff_rounds_to_zero")) {
         store().guessFinished(
           { kind: "needs_mass", warnings: answer.warnings },
           model.id,
-          measurement,
+          now,
         );
       } else {
         store().guessApplied(
@@ -80,7 +99,7 @@ export async function runGuess(
             warnings: answer.warnings,
           },
           model.id,
-          measurement,
+          now,
         );
       }
     } else if (answer.status === "no_net") {
@@ -93,22 +112,23 @@ export async function runGuess(
           warnings: answer.warnings,
         },
         model.id,
-        measurement,
+        now,
       );
     } else {
       store().guessFinished(
         { kind: "not_finite", warnings: answer.warnings },
         model.id,
-        measurement,
+        now,
       );
     }
   } catch (error) {
     if (!own.signal.aborted) {
-      store().guessFinished(
-        store().parameters === parameters ? failure(error) : null,
-        model.id,
-        measurement,
-      );
+      const now = current();
+      if (now === null) {
+        store().guessDropped();
+      } else {
+        store().guessFinished(failure(error), model.id, now);
+      }
     }
   } finally {
     if (controller === own) {
@@ -117,16 +137,20 @@ export async function runGuess(
   }
 }
 
+/**
+ * Ends a guess on its way, for a fit: that starts from the values on screen, so they must stay the
+ * ones it uses, even if it ends before the answer comes.
+ */
+export function dropGuess(): void {
+  if (controller !== null) {
+    controller.abort();
+    controller = null;
+    store().guessDropped();
+  }
+}
+
 const seen = new WeakSet<Measurement>();
 let last: Measurement | null = null;
-
-function sameRows(a: Measurement, b: Measurement): boolean {
-  return (
-    a.temperature_k.length === b.temperature_k.length &&
-    a.temperature_k.every((value, index) => value === b.temperature_k[index]) &&
-    a.values.every((value, index) => value === b.values[index])
-  );
-}
 
 /**
  * Whether S just came from a new load, as the desktop guesses on each. Coming back to a tab brings

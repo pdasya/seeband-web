@@ -544,7 +544,7 @@ describe("a guess", () => {
     expect(state().guessPending).toBe(true);
     expect(state().guess).toBeNull();
 
-    state().guessFinished(null, "dpb", MEASUREMENT);
+    state().guessDropped();
     expect(state().guessPending).toBe(false);
     expect(state().guess).toBeNull();
   });

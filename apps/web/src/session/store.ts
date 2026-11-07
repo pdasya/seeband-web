@@ -227,12 +227,13 @@ export interface SessionState {
   /** Back to the defaults of a fit mode, also for a number being typed. */
   resetParameters: (fitMode: string) => void;
   guessStarted: () => void;
-  /** With a null outcome, it ended with nothing to say. */
   guessFinished: (
-    outcome: GuessOutcome | null,
+    outcome: GuessOutcome,
     model: string,
     measurement: Measurement,
   ) => void;
+  /** It ended with nothing to say, as the user moved on from it. */
+  guessDropped: () => void;
   guessApplied: (
     modes: readonly { fitMode: string; values: Record<string, number> }[],
     outcome: GuessOutcome,
@@ -366,16 +367,16 @@ export const createSessionStore = () =>
       guessFinished: (outcome, model, measurement) => {
         set((state) => ({
           guessPending: false,
-          guess:
-            outcome === null
-              ? null
-              : {
-                  outcome,
-                  model,
-                  measurement,
-                  parameters: state.parameters,
-                },
+          guess: {
+            outcome,
+            model,
+            measurement,
+            parameters: state.parameters,
+          },
         }));
+      },
+      guessDropped: () => {
+        set({ guessPending: false, guess: null });
       },
       guessApplied: (modes, outcome, model, measurement) => {
         set((state) => {
