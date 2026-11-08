@@ -143,6 +143,14 @@ function pair(
 }
 
 /**
+ * Whether the interpolated values are those a fit uses now: not while new ones for another range
+ * are on their way, as the session treats them then.
+ */
+function inUse(interpolation: SessionState["interpolation"]): boolean {
+  return interpolation.enabled && !interpolation.loading;
+}
+
+/**
  * The data and curves of each quantity of the mode, as the desktop's data file has them: measured
  * points, then the interpolated values a fit used, the curve before the fit, and the fitted one.
  */
@@ -157,7 +165,7 @@ export function dataFile(
     const name = text.quantities[quantity];
     const curve = quantityCurve(quantity);
     const measured = session.data[quantity]?.measurement;
-    const interpolated = session.interpolation.enabled
+    const interpolated = inUse(session.interpolation)
       ? session.interpolation.values[quantity]
       : undefined;
     return [
@@ -363,7 +371,7 @@ function series(
   return mode.quantities.flatMap((quantity) => {
     const column = quantityCurve(quantity);
     const measured = session.data[quantity]?.measurement;
-    const interpolated = session.interpolation.enabled
+    const interpolated = inUse(session.interpolation)
       ? session.interpolation.values[quantity]
       : undefined;
     const of = (

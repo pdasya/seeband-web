@@ -234,6 +234,33 @@ describe("the data file", () => {
     expect(legends).toMatch(/Pre-fit Seebeck/);
   });
 
+  test("interpolated values on their way for another range stay out", () => {
+    const legends = dataFile(
+      [],
+      modeOf("dpb_s"),
+      {
+        ...session,
+        interpolation: {
+          ...session.interpolation,
+          enabled: true,
+          loading: true,
+          values: {
+            seebeck: {
+              temperature_k: [100],
+              values: [1e-4],
+              extrapolated: false,
+              measured_points_in_range: 1,
+              underdetermined: false,
+            },
+          },
+        },
+      },
+      null,
+      null,
+    ).split("\n")[0];
+    expect(legends).not.toMatch(/Interpolated/);
+  });
+
   test("interpolated values a fit used come after the measured ones", () => {
     const legends = dataFile(
       [],
