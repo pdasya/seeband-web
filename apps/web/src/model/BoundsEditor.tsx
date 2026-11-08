@@ -150,6 +150,10 @@ export function BoundsEditor({
   scattering: string | null;
 }) {
   const [open, setOpen] = useState(false);
+  const [tipOpen, setTipOpen] = useState(false);
+  const gear = useRef<HTMLButtonElement>(null);
+  // Focus comes back to the gear as the dialog closes, which is no reason to name it again.
+  const refocusing = useRef(false);
   // Starts the rows again, as Default bounds also ends what was being typed.
   const [generation, setGeneration] = useState(0);
   // Rows that hold no valid bounds, which Done will not close on, so as not to drop them unsaid.
@@ -175,10 +179,18 @@ export function BoundsEditor({
         setInvalidRows(new Set());
       }}
     >
-      <Tooltip>
+      <Tooltip
+        open={tipOpen}
+        onOpenChange={(next) => {
+          if (!(next && refocusing.current)) {
+            setTipOpen(next);
+          }
+        }}
+      >
         <TooltipTrigger asChild>
           <DialogTrigger asChild>
             <Button
+              ref={gear}
               variant="outline"
               size="icon-sm"
               aria-label={text.editBounds}
@@ -194,6 +206,12 @@ export function BoundsEditor({
         // A click beside it is too easily made to close it on what was being typed.
         onInteractOutside={(event) => {
           event.preventDefault();
+        }}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          refocusing.current = true;
+          gear.current?.focus();
+          refocusing.current = false;
         }}
       >
         <DialogHeader>

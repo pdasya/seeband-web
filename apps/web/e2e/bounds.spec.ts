@@ -156,7 +156,12 @@ test("the button is beside the title, and the bounds open in a dialog", async ({
 
   await done(page);
   await expect(editor(page)).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Edit bounds" })).toBeFocused();
+  await expect(gear).toBeFocused();
+  // Focus coming back does not name the gear again, and a pointer on it still does.
+  await page.waitForTimeout(300);
+  await expect(page.getByRole("tooltip")).toHaveCount(0);
+  await gear.hover();
+  await expect(page.getByRole("tooltip")).toHaveText("Edit bounds");
 });
 
 test("Escape closes the dialog, and drops what was being typed", async ({
@@ -169,6 +174,9 @@ test("Escape closes the dialog, and drops what was being typed", async ({
   await lower(page, "E_g").press("Escape");
 
   await expect(editor(page)).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Edit bounds" })).toBeFocused();
+  await page.waitForTimeout(300);
+  await expect(page.getByRole("tooltip")).toHaveCount(0);
   await expect(row(page, "E_g")).toContainText("-3000 … 3000");
   await openEditor(page);
   await expect(lower(page, "E_g")).toHaveValue("-3000");
