@@ -127,6 +127,27 @@ describe("the header", () => {
     );
   });
 
+  test("a fit under way or failed says so, as no fitted curve goes with it", () => {
+    expect(exportHeader({ ...CONTEXT, fit: { status: "waiting" } })).toContain(
+      "A fit is running: no fitted curve yet",
+    );
+    expect(
+      exportHeader({
+        ...CONTEXT,
+        fit: { status: "running", iteration: 3, lastParameters: {} },
+      }),
+    ).toContain("A fit is running, at iteration 3: no fitted curve yet");
+    expect(
+      exportHeader({
+        ...CONTEXT,
+        fit: {
+          status: "failed",
+          failure: { code: "fit_failed", message: "x", details: [] },
+        },
+      }),
+    ).toContain("The fit failed: no fitted curve");
+  });
+
   test("a stopped fit says after which iteration", () => {
     expect(
       exportHeader({

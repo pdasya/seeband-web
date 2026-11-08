@@ -696,3 +696,48 @@ test("the dialog of Data to file starts on text, says what each format is, and c
     page.getByRole("button", { name: "Data to file" }),
   ).toBeFocused();
 });
+
+test("during a fit, the curve before it still comes from its start, and the file says it runs", async ({
+  page,
+}) => {
+  // A curve that shows the E_g it was calculated with.
+  await openFit(page, (opened) =>
+    opened.route("**/api/calc", (route) => {
+      const body = route.request().postDataJSON() as {
+        parameters: Record<string, number>;
+      };
+      const gap = body.parameters.band_gap ?? 0;
+      return route.fulfill({
+        json: {
+          ...CALC,
+          curves: {
+            seebeck_v_per_k: [gap, gap, gap],
+            resistivity_ohm_m: [1, 1, 1],
+          },
+          rmse: RMSE,
+        },
+      });
+    }),
+  );
+  await page.getByRole("button", { name: "Run fit" }).click();
+  await send(page, { type: "started" });
+  await send(page, {
+    type: "iteration",
+    iteration: 2,
+    parameters: { band_gap: 950 },
+  });
+  await expect(
+    page.getByRole("textbox", { name: "E_g", exact: true }),
+  ).toHaveValue("950");
+
+  const lines = (await inFormat(page, "Text")).toString("utf8").split("\n");
+  expect(lines).toContain(
+    "# A fit is running, at iteration 2: no fitted curve yet",
+  );
+  const legends =
+    lines.find((line) => line.startsWith("Temperature"))?.split("\t") ?? [];
+  const preFit = legends.indexOf("Pre-fit Seebeck coefficient [V/K]");
+  expect(legends).not.toContain("Fit Seebeck coefficient [V/K]");
+  const first = lines[lines.indexOf(legends.join("\t")) + 1]?.split("\t") ?? [];
+  expect(first[preFit]).toBe("1000");
+});

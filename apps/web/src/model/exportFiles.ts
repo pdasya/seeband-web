@@ -77,6 +77,12 @@ function fitLine(fit: FitState): string {
       return text.header.fit(fit.result.status, fit.result.iterations ?? null);
     case "stopped":
       return text.header.fit("stopped", fit.iteration);
+    case "waiting":
+      return text.header.running(null);
+    case "running":
+      return text.header.running(fit.iteration);
+    case "failed":
+      return text.header.failed;
     default:
       return text.header.noFit;
   }

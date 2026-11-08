@@ -502,6 +502,11 @@ export const STRINGS = {
           ? `Fit ${status}`
           : `Fit ${status}, ${String(iterations)} iterations`,
       noFit: "No fit: the values are those on the screen",
+      running: (iteration: number | null) =>
+        iteration === null
+          ? "A fit is running: no fitted curve yet"
+          : `A fit is running, at iteration ${String(iteration)}: no fitted curve yet`,
+      failed: "The fit failed: no fitted curve",
       issue: (severity: string, issue: string, id: string) =>
         `${severity}: ${issue} (${id})`,
     },

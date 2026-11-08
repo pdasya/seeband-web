@@ -50,10 +50,14 @@ async function apiVersion(): Promise<string | null> {
   }
 }
 
-/** The values a fit started from, so that the curve before it can be drawn again. */
+/**
+ * The values a fit started from, so that the curve before it can be drawn again: also while it
+ * runs, or after it failed, as each iteration writes its values on screen. A change of values ends
+ * a fit's state, so with none the values on screen are those before any fit.
+ */
 function preFitState(state: SessionState, modeId: string): SessionState {
   const start = state.fitStartValues;
-  return hasFittedValues(state.fit) && start !== null
+  return state.fit.status !== "idle" && start !== null
     ? { ...state, parameters: { ...state.parameters, [modeId]: start } }
     : state;
 }
