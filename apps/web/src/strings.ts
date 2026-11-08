@@ -609,6 +609,8 @@ export const STRINGS = {
       preFit: "curves/pre-fit.txt",
       fit: "curves/fit.txt",
       graph: (kind: string) => `graphs/${kind}.txt`,
+      missing: (file: string) =>
+        `Not in this ZIP: ${file}, as its curve could not be asked for`,
     },
   },
   results: {

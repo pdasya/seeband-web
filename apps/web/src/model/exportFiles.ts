@@ -448,10 +448,17 @@ export function zipEntries(
   fitted: CalcResponse | null,
   parameters: string,
   graphs: readonly { kind: string; result: CalcResponse }[],
+  /** Kinds the mode offers that have no curve here, so that metadata says why a file is missing. */
+  missing: readonly string[] = [],
 ): Record<string, string> {
   const head = commented(header);
   const entries: Record<string, string> = {
-    [text.zip.metadata]: header.map((line) => `${line}\n`).join(""),
+    [text.zip.metadata]: [
+      ...header,
+      ...missing.map((kind) => text.zip.missing(text.zip.graph(kind))),
+    ]
+      .map((line) => `${line}\n`)
+      .join(""),
     [text.zip.parameters]: parameters,
   };
   for (const { quantity, curve, temperatureK, values } of series(

@@ -165,11 +165,14 @@ export function useExport() {
       const result = answers[at];
       return result === null || result === undefined ? [] : [{ kind, result }];
     });
+    const missing = kinds.filter(
+      (kind) => !graphs.some((graph) => graph.kind === kind),
+    );
     const made = await context(now, {
       measured: [...(preFit?.known_issues ?? []), ...(fit?.known_issues ?? [])],
       derived: graphs.flatMap(({ result }) => result.known_issues),
     });
-    return { ...made, preFit, fit, graphs };
+    return { ...made, preFit, fit, graphs, missing };
   };
 
   const parametersAs = (
@@ -225,7 +228,7 @@ export function useExport() {
       run(async () => {
         const made = await everything(true);
         if (made !== null) {
-          const { header, mode, state, preFit, fit, graphs } = made;
+          const { header, mode, state, preFit, fit, graphs, missing } = made;
           const entries = zipEntries(
             header,
             mode,
@@ -240,6 +243,7 @@ export function useExport() {
               state.fit,
             ),
             graphs,
+            missing,
           );
           download(
             text.zipFile,

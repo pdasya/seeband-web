@@ -405,6 +405,23 @@ describe("the other formats", () => {
     expect(lines).toHaveLength(2 + 2 + 2 * 4);
   });
 
+  test("a graph the ZIP lacks is named in its metadata", () => {
+    const entries = zipEntries(
+      ["head"],
+      modeOf("dpb_s"),
+      session,
+      null,
+      null,
+      "parameters",
+      [],
+      ["seebeck_by_band"],
+    );
+    expect(entries["metadata.txt"]).toBe(
+      "head\nNot in this ZIP: graphs/seebeck_by_band.txt, as its curve could not be asked for\n",
+    );
+    expect(entries["graphs/seebeck_by_band.txt"]).toBeUndefined();
+  });
+
   test("ZIP has a plain table for each part, with names the parser reads", () => {
     const entries = zipEntries(
       ["head"],
