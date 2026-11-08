@@ -148,6 +148,41 @@ function useLatest<Result>(
   };
 }
 
+type DerivedRequests = Record<
+  DerivedKind,
+  { body: string | null; scope: string | null }
+>;
+
+/** The latest answer for each kind of curve, asked in a fixed order, as hooks must be. */
+function useDerivedCurves(
+  requests: DerivedRequests,
+): Record<DerivedKind, LiveCalc> {
+  const {
+    chemical_potential: chemical,
+    seebeck_by_band: bands,
+    electrical_conductivity: electrical,
+    thermal_conductivity: thermal,
+    carrier_concentration_by_band: carriers,
+  } = requests;
+  return {
+    chemical_potential: useLatest(CALC, chemical.body, chemical.scope, false),
+    seebeck_by_band: useLatest(CALC, bands.body, bands.scope, false),
+    electrical_conductivity: useLatest(
+      CALC,
+      electrical.body,
+      electrical.scope,
+      false,
+    ),
+    thermal_conductivity: useLatest(CALC, thermal.body, thermal.scope, false),
+    carrier_concentration_by_band: useLatest(
+      CALC,
+      carriers.body,
+      carriers.scope,
+      false,
+    ),
+  };
+}
+
 /** Curves and RMSE for the current values, from the server. */
 export function useLiveCurves(): LiveCurves {
   const { data: models } = useQuery(modelsQuery);
@@ -205,38 +240,7 @@ export function useLiveCurves(): LiveCurves {
 
   return {
     measured: useLatest(CALC, measured.body, measured.scope, waiting),
-    derived: {
-      chemical_potential: useLatest(
-        CALC,
-        derived.chemical_potential.body,
-        derived.chemical_potential.scope,
-        false,
-      ),
-      seebeck_by_band: useLatest(
-        CALC,
-        derived.seebeck_by_band.body,
-        derived.seebeck_by_band.scope,
-        false,
-      ),
-      electrical_conductivity: useLatest(
-        CALC,
-        derived.electrical_conductivity.body,
-        derived.electrical_conductivity.scope,
-        false,
-      ),
-      thermal_conductivity: useLatest(
-        CALC,
-        derived.thermal_conductivity.body,
-        derived.thermal_conductivity.scope,
-        false,
-      ),
-      carrier_concentration_by_band: useLatest(
-        CALC,
-        derived.carrier_concentration_by_band.body,
-        derived.carrier_concentration_by_band.scope,
-        false,
-      ),
-    },
+    derived: useDerivedCurves(derived),
     diagram: useLatest(BAND_DIAGRAM, diagram.body, diagram.scope, false),
   };
 }
@@ -279,15 +283,6 @@ export function useResultCurves(enabled: boolean): {
     };
   }, [enabled, selection, parameters, data, interpolation, models]);
   const waiting = interpolation.enabled && interpolation.loading;
-  const latest = (kind: DerivedKind) => ({
-    body: requests[kind].body,
-    scope: requests[kind].scope,
-  });
-  const chemical = latest("chemical_potential");
-  const bands = latest("seebeck_by_band");
-  const electrical = latest("electrical_conductivity");
-  const thermal = latest("thermal_conductivity");
-  const carriers = latest("carrier_concentration_by_band");
   return {
     measured: useLatest(
       CALC,
@@ -295,22 +290,6 @@ export function useResultCurves(enabled: boolean): {
       requests.measured.scope,
       waiting,
     ),
-    derived: {
-      chemical_potential: useLatest(CALC, chemical.body, chemical.scope, false),
-      seebeck_by_band: useLatest(CALC, bands.body, bands.scope, false),
-      electrical_conductivity: useLatest(
-        CALC,
-        electrical.body,
-        electrical.scope,
-        false,
-      ),
-      thermal_conductivity: useLatest(CALC, thermal.body, thermal.scope, false),
-      carrier_concentration_by_band: useLatest(
-        CALC,
-        carriers.body,
-        carriers.scope,
-        false,
-      ),
-    },
+    derived: useDerivedCurves(requests),
   };
 }
