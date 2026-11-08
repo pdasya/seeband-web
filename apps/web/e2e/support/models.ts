@@ -61,6 +61,17 @@ export const CALC = {
   rmse: {},
 };
 
+/** A sketch of the bands, for tests about other things. */
+export const BAND_DIAGRAM = {
+  wavevector: [-40, 0, 40],
+  curves: {
+    band_1_energy_k: [-1954, 0, -1954],
+    band_2_energy_k: [2954, 1000, 2954],
+    fermi_energy_k: [-100, -100, -100],
+  },
+  known_issues: [],
+};
+
 /** Leaves the values as they are, for tests about other things. */
 export const NO_GUESS = {
   status: "no_net",
@@ -76,5 +87,9 @@ export async function serveModels(page: Page) {
   await page.route("**/api/calc", (route) => route.fulfill({ json: CALC }));
   await page.route("**/api/guess", (route) =>
     route.fulfill({ json: NO_GUESS }),
+  );
+  // A chart shows the bands from the start.
+  await page.route("**/api/band-diagram", (route) =>
+    route.fulfill({ json: BAND_DIAGRAM }),
   );
 }

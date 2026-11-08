@@ -21,6 +21,7 @@ import {
   parameterRows,
   quantityMark,
   resultIssues,
+  rmseText,
   type ResultIssue,
 } from "@/model/resultSummary";
 import { fitModeOf } from "@/model/selection";
@@ -30,15 +31,6 @@ import { Panel } from "@/shell/layout";
 import { STRINGS } from "@/strings";
 
 const { fit, data: dataText } = STRINGS;
-
-function rmseText(rmse: { value: number | null; unit: string }): string {
-  if (rmse.value === null) {
-    return fit.rmseNotFinite;
-  }
-  const units: Record<string, string> = fit.rmseUnits;
-  const value = formatNumber(Number(rmse.value.toPrecision(4)));
-  return `${value} ${units[rmse.unit] ?? rmse.unit}`;
-}
 
 function symbols(quantities: readonly Quantity[]): string {
   return quantities
@@ -91,7 +83,8 @@ export function ResultPanel({ live }: { live: LiveCurves }) {
   const interpolation = useSessionStore((state) => state.interpolation);
   const fitState = useSessionStore((state) => state.fit);
   const customBounds = useSessionStore((state) => state.customBounds);
-  const setChartTab = useSessionStore((state) => state.setChartTab);
+  const setChartPanel = useSessionStore((state) => state.setChartPanel);
+  const panels = useSessionStore((state) => state.chartPanels);
   const gaps = rmseGaps(
     { selection, parameters, data, interpolation },
     models?.models,
@@ -106,7 +99,9 @@ export function ResultPanel({ live }: { live: LiveCurves }) {
   const issues = resultIssues(mode, {
     fit: fitState.status === "done" ? fitState.result.known_issues : [],
     measured: result?.known_issues ?? [],
-    derived: live.derived.result?.known_issues ?? [],
+    derived: Object.values(live.derived).flatMap(
+      ({ result: curves }) => curves?.known_issues ?? [],
+    ),
   });
   const explained =
     gaps.noPointsInRange.length > 0 || gaps.notInterpolated.length > 0;
@@ -135,7 +130,7 @@ export function ResultPanel({ live }: { live: LiveCurves }) {
     .join(" · ");
 
   const openMoreGraphs = () => {
-    setChartTab("chemical_potential");
+    setChartPanel(panels.length - 1, "chemical_potential");
     document.getElementById("charts")?.scrollIntoView({ block: "nearest" });
   };
 

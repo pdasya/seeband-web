@@ -10,7 +10,11 @@ import {
 } from "@/api/client";
 import type { ApiError } from "@/api/errors";
 import { modelsQuery } from "@/api/queries";
-import { derivedKind, needsMeasuredCurves } from "@/model/chartTabs";
+import {
+  derivedKind,
+  needsMeasuredCurves,
+  type DerivedKind,
+} from "@/model/chartTabs";
 import { LatestOnly } from "@/model/latestOnly";
 import {
   bandDiagramRequest,
@@ -36,9 +40,9 @@ export interface LiveCalc<Result = CalcResponse> {
 export interface LiveCurves {
   /** The curves that measurements go with, and their RMSE. */
   measured: LiveCalc;
-  /** The curves that the open tab needs on top of those. */
-  derived: LiveCalc;
-  /** The sketch of the bands, while its tab is open. */
+  /** Other curves, of each kind that a chart shows. */
+  derived: Record<DerivedKind, LiveCalc>;
+  /** The sketch of the bands, while a chart shows it. */
   diagram: LiveCalc<BandDiagramResponse>;
 }
 
@@ -151,44 +155,72 @@ export function useLiveCurves(): LiveCurves {
   const parameters = useSessionStore((state) => state.parameters);
   const data = useSessionStore((state) => state.data);
   const interpolation = useSessionStore((state) => state.interpolation);
-  const tab = useSessionStore((state) => state.chartTab);
+  const panels = useSessionStore((state) => state.chartPanels);
 
-  const {
-    measuredBody,
-    measuredScope,
-    derivedBody,
-    derivedScope,
-    diagramBody,
-    diagramScope,
-  } = useMemo(() => {
+  // Each kind of curve is asked for once, whichever charts show it, and only while one does.
+  const { measured, derived, diagram } = useMemo(() => {
     const state = { selection, parameters, data, interpolation };
     const model = models?.models.find(({ id }) => id === selection.model);
     const mode = fitModeOf(model, selection.fitMode);
-    const measured = calcRequest(
+    const measuredRequest = calcRequest(
       state,
       models?.models,
-      needsMeasuredCurves(tab, mode),
+      panels.some((tab) => needsMeasuredCurves(tab, mode)),
     );
-    const kind = derivedKind(tab, mode);
-    const derived =
-      kind === null ? null : derivedRequest(state, models?.models, kind);
-    const diagram =
-      tab === "band_diagram" ? bandDiagramRequest(state, models?.models) : null;
-    return {
-      measuredBody: measured && JSON.stringify(measured),
-      measuredScope: measured && requestScope(measured),
-      derivedBody: derived && JSON.stringify(derived),
-      derivedScope: derived && requestScope(derived),
-      diagramBody: diagram && JSON.stringify(diagram),
-      diagramScope: diagram && bandDiagramScope(diagram),
+    const asked = new Set(panels.map((tab) => derivedKind(tab, mode)));
+    const derivedOf = (kind: DerivedKind) => {
+      const request = asked.has(kind)
+        ? derivedRequest(state, models?.models, kind)
+        : null;
+      return {
+        body: request && JSON.stringify(request),
+        scope: request && requestScope(request),
+      };
     };
-  }, [selection, parameters, data, interpolation, models, tab]);
+    const diagramRequest = panels.includes("band_diagram")
+      ? bandDiagramRequest(state, models?.models)
+      : null;
+    return {
+      measured: {
+        body: measuredRequest && JSON.stringify(measuredRequest),
+        scope: measuredRequest && requestScope(measuredRequest),
+      },
+      derived: {
+        chemical_potential: derivedOf("chemical_potential"),
+        seebeck_by_band: derivedOf("seebeck_by_band"),
+        electrical_conductivity: derivedOf("electrical_conductivity"),
+      },
+      diagram: {
+        body: diagramRequest && JSON.stringify(diagramRequest),
+        scope: diagramRequest && bandDiagramScope(diagramRequest),
+      },
+    };
+  }, [selection, parameters, data, interpolation, models, panels]);
   // New interpolated values are on their way, and the old ones are for another range.
   const waiting = interpolation.enabled && interpolation.loading;
 
   return {
-    measured: useLatest(CALC, measuredBody, measuredScope, waiting),
-    derived: useLatest(CALC, derivedBody, derivedScope, false),
-    diagram: useLatest(BAND_DIAGRAM, diagramBody, diagramScope, false),
+    measured: useLatest(CALC, measured.body, measured.scope, waiting),
+    derived: {
+      chemical_potential: useLatest(
+        CALC,
+        derived.chemical_potential.body,
+        derived.chemical_potential.scope,
+        false,
+      ),
+      seebeck_by_band: useLatest(
+        CALC,
+        derived.seebeck_by_band.body,
+        derived.seebeck_by_band.scope,
+        false,
+      ),
+      electrical_conductivity: useLatest(
+        CALC,
+        derived.electrical_conductivity.body,
+        derived.electrical_conductivity.scope,
+        false,
+      ),
+    },
+    diagram: useLatest(BAND_DIAGRAM, diagram.body, diagram.scope, false),
   };
 }

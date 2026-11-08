@@ -1,5 +1,6 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
 
+import { chart, show } from "./support/fitScreen";
 import { serveModels } from "./support/models";
 
 const answerFor = (curves: Record<string, (number | null)[]>) => ({
@@ -50,25 +51,23 @@ async function open(
   return bodies;
 }
 
-const tab = (page: Page, name = "E(k)") => page.getByRole("tab", { name });
-const legend = (page: Page) => page.locator("ul li");
+// The last chart shows the bands from the start.
+const diagram = (page: Page) => chart(page, 4);
+const legend = (page: Page) => diagram(page).locator("ul li");
 const traces = (page: Page) =>
-  page.locator(".js-plotly-plot .scatterlayer .trace");
+  diagram(page).locator(".js-plotly-plot .scatterlayer .trace");
 const field = (page: Page, name: string) =>
   page.getByRole("textbox", { name, exact: true });
 const choose = (page: Page, name: string) =>
   page.getByRole("radio", { name, exact: true }).click();
 
-test("it asks for nothing until its tab is open, and needs no data", async ({
+test("the last chart shows it from the start, with no data, in one request", async ({
   page,
 }) => {
   const bodies = await open(page);
-  await page.waitForTimeout(400);
-  expect(bodies).toEqual([]);
-
-  await tab(page).click();
 
   await expect(traces(page)).toHaveCount(3);
+  await page.waitForTimeout(400);
   expect(bodies).toHaveLength(1);
   expect(bodies[0]).toMatchObject({
     model: "dpb",
@@ -84,41 +83,38 @@ test("it draws each band and E_F, with a k axis with no ticks or range shading",
 }) => {
   await open(page);
 
-  await tab(page).click();
-
   await expect(traces(page)).toHaveCount(3);
   await expect(legend(page)).toHaveText(["Band 1", "Band 2", "E_F"]);
-  await expect(page.locator(".xtitle")).toHaveText("k");
-  await expect(page.locator(".ytitle")).toHaveText("E, K");
-  await expect(page.locator(".xtick text")).toHaveCount(0);
-  await expect(page.locator(".shapelayer path")).toHaveCount(0);
-  await expect(page.getByText(/^Show measurements/)).toHaveCount(0);
+  await expect(diagram(page).locator(".xtitle")).toHaveText("k");
+  await expect(diagram(page).locator(".ytitle")).toHaveText("E, K");
+  await expect(diagram(page).locator(".xtick text")).toHaveCount(0);
+  await expect(diagram(page).locator(".shapelayer path")).toHaveCount(0);
 });
 
 test("the axis spans k, and a temperature tab goes back to its own", async ({
   page,
 }) => {
   await open(page);
-  await tab(page).click();
   await expect(traces(page)).toHaveCount(3);
   const range = () =>
-    page.evaluate(() => {
-      const plot = document.querySelector(".js-plotly-plot") as unknown as {
-        layout: { xaxis: { range: number[] } };
-      };
-      return plot.layout.xaxis.range;
-    });
+    diagram(page)
+      .locator(".js-plotly-plot")
+      .evaluate((element) => {
+        const plot = element as unknown as {
+          layout: { xaxis: { range: number[] } };
+        };
+        return plot.layout.xaxis.range;
+      });
   expect(await range()).toEqual([-40, 40]);
 
-  await tab(page, "μ(T)").click();
-  await expect(page.locator(".xtitle")).toHaveText("T, K");
-  await expect(page.locator(".xtick text").first()).toBeVisible();
+  await show(page, "Chemical potential μ(T)", 4);
+  await expect(diagram(page).locator(".xtitle")).toHaveText("T, K");
+  await expect(diagram(page).locator(".xtick text").first()).toBeVisible();
   expect((await range())[0]).toBe(0);
 });
 
 test("it follows the parameters and the degeneracies", async ({ page }) => {
   const bodies = await open(page);
-  await tab(page).click();
   await expect(traces(page)).toHaveCount(3);
 
   await field(page, "E_g").fill("500");
@@ -142,7 +138,6 @@ test("SPB draws what its answer holds, and an old mode's bands do not stay", asy
       await route.fulfill({ json: DPB });
     }
   });
-  await tab(page).click();
   await expect(traces(page)).toHaveCount(3);
 
   await choose(page, "SPB");
@@ -153,11 +148,12 @@ test("SPB draws what its answer holds, and an old mode's bands do not stay", asy
   await expect(traces(page)).toHaveCount(2);
 });
 
-test("it stops asking when another tab opens", async ({ page }) => {
+test("it stops asking when no chart shows it, and asks again when one does", async ({
+  page,
+}) => {
   const bodies = await open(page);
-  await tab(page).click();
   await expect(traces(page)).toHaveCount(3);
-  await tab(page, "S(T)").click();
+  await show(page, "Seebeck S(T)", 4);
   const asked = bodies.length;
 
   await field(page, "E_g").fill("500");
@@ -165,12 +161,18 @@ test("it stops asking when another tab opens", async ({ page }) => {
   await page.waitForTimeout(500);
 
   expect(bodies).toHaveLength(asked);
+
+  // In two charts at once, it is still one request.
+  await show(page, "Band diagram E(k)", 1);
+  await show(page, "Band diagram E(k)", 4);
+  await expect(traces(page)).toHaveCount(3);
+  await page.waitForTimeout(400);
+  expect(bodies).toHaveLength(asked + 1);
+  expect(bodies.at(-1)?.parameters.band_gap).toBe(500);
 });
 
 test("it says what is known to be wrong with it", async ({ page }) => {
   await open(page);
-
-  await tab(page).click();
 
   await expect(
     page.getByText(/^Caution: This is a sketch, as on the desktop\./),
@@ -191,16 +193,16 @@ test("a band with no finite values leaves a gap, and the rest stay", async ({
     }),
   );
 
-  await tab(page).click();
-
   await expect(legend(page)).toHaveText(["Band 1", "Band 2", "E_F"]);
-  await expect(page.getByRole("alert")).toHaveCount(0);
-  const ys = await page.evaluate(() => {
-    const plot = document.querySelector(".js-plotly-plot") as unknown as {
-      data: { y: (number | null)[] }[];
-    };
-    return plot.data.map(({ y }) => y);
-  });
+  await expect(diagram(page).getByRole("alert")).toHaveCount(0);
+  const ys = await diagram(page)
+    .locator(".js-plotly-plot")
+    .evaluate((element) => {
+      const plot = element as unknown as {
+        data: { y: (number | null)[] }[];
+      };
+      return plot.data.map(({ y }) => y);
+    });
   expect(ys).toEqual([
     [-1954, 0, -1954],
     [null, null, null],
@@ -217,13 +219,11 @@ test("k has no ticks also while its first answer is on its way", async ({
     await route.fulfill({ json: DPB });
   });
 
-  await tab(page).click();
-
-  await expect(page.locator(".xtitle")).toHaveText("k");
-  await expect(page.locator(".xtick text")).toHaveCount(0);
+  await expect(diagram(page).locator(".xtitle")).toHaveText("k");
+  await expect(diagram(page).locator(".xtick text")).toHaveCount(0);
   gate.release();
   await expect(traces(page)).toHaveCount(3);
-  await expect(page.locator(".xtick text")).toHaveCount(0);
+  await expect(diagram(page).locator(".xtick text")).toHaveCount(0);
 });
 
 test("a failure says so, and the last sketch stays", async ({ page }) => {
@@ -236,20 +236,19 @@ test("a failure says so, and the last sketch stays", async ({ page }) => {
         })
       : route.fulfill({ json: DPB }),
   );
-  await tab(page).click();
   await expect(traces(page)).toHaveCount(3);
 
   failing = true;
   await field(page, "E_g").fill("500");
   await field(page, "E_g").blur();
 
-  await expect(page.getByRole("alert")).toContainText(
+  await expect(diagram(page).getByRole("alert")).toContainText(
     "The last curve stays on the chart.",
   );
   await expect(traces(page)).toHaveCount(3);
 
-  await tab(page, "S(T)").click();
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  await show(page, "Seebeck S(T)", 4);
+  await expect(diagram(page).getByRole("alert")).toHaveCount(0);
 });
 
 test("a failure of the curves does not show on it", async ({ page }) => {
@@ -295,12 +294,10 @@ test("a failure of the curves does not show on it", async ({ page }) => {
       mimeType: "text/plain",
       buffer: Buffer.from("T S\n100 1\n"),
     });
-  await expect(page.getByRole("alert")).toBeVisible();
-
-  await tab(page).click();
+  await expect(chart(page).getByRole("alert")).toBeVisible();
 
   await expect(traces(page)).toHaveCount(3);
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(diagram(page).getByRole("alert")).toHaveCount(0);
   expect(asked.length).toBeGreaterThan(0);
 });
 
@@ -312,16 +309,16 @@ test("a disabled mode asks for nothing", async ({ page }) => {
       useSessionStore: {
         getState: () => {
           setSelection: (selection: object) => void;
-          setChartTab: (tab: string) => void;
         };
       };
     };
     const state = useSessionStore.getState();
     state.setSelection({ model: "spb", fitMode: "spb_s_rho_rh" });
-    state.setChartTab("band_diagram");
   });
-  await expect(tab(page)).toHaveAttribute("aria-selected", "true");
+  const asked = bodies.length;
+  await field(page, "E_F").fill("500");
+  await field(page, "E_F").blur();
   await page.waitForTimeout(400);
 
-  expect(bodies).toEqual([]);
+  expect(bodies).toHaveLength(asked);
 });

@@ -3,6 +3,8 @@ import { fileURLToPath } from "node:url";
 
 import { expect, test, type Page } from "@playwright/test";
 
+import { chart, show } from "./support/fitScreen";
+
 // Against a real API, as the mock's answers do not depend on the file. See the README.
 test.skip(
   process.env.SEEBAND_API_TARGET === undefined,
@@ -234,23 +236,28 @@ test("a zero in resistivity does not stop the real API from answering", async ({
   await expect(page.getByRole("alert")).toHaveCount(0);
 });
 
-test("the tabs draw real curves through the real API", async ({ page }) => {
+test("the charts draw real curves through the real API", async ({ page }) => {
   await page.goto("/fit");
   await expect(page.getByRole("slider", { name: "E_F" })).toBeVisible();
-  const lines = page.locator(".scatterlayer .trace path.js-line");
+  const lines = chart(page).locator(".scatterlayer .trace path.js-line");
 
-  await page.getByRole("tab", { name: "μ(T)" }).click();
+  await show(page, "Chemical potential μ(T)");
   await expect(lines).toHaveCount(1);
-  await expect(page.getByText("band 2 bottom (E_g)")).toBeVisible();
+  await expect(chart(page).getByText("band 2 bottom (E_g)")).toBeVisible();
 
-  await page.getByRole("tab", { name: "Band contributions" }).click();
+  await show(page, "Band contributions");
   await expect(lines).toHaveCount(3);
 
-  await page.getByRole("radio", { name: "SPB" }).click();
-  await expect(page.getByText("DPB only")).toBeVisible();
-  await page.getByRole("tab", { name: "μ(T)" }).click();
+  await show(page, "Conductivity σ(T)");
   await expect(lines).toHaveCount(1);
-  await expect(page.getByText("band edge")).toBeVisible();
+  await expect(chart(page).locator(".ytitle")).toHaveText("σ, S/m");
+
+  await page.getByRole("radio", { name: "SPB" }).click();
+  await show(page, "Band contributions");
+  await expect(chart(page).getByText("DPB only")).toBeVisible();
+  await show(page, "Chemical potential μ(T)");
+  await expect(lines).toHaveCount(1);
+  await expect(chart(page).getByText("band edge")).toBeVisible();
   await expect(page.getByRole("alert")).toHaveCount(0);
 });
 
@@ -295,11 +302,11 @@ test("the real API draws the sketch of the bands, and it follows the values", as
 }) => {
   await page.goto("/fit");
   await expect(page.getByRole("slider", { name: "E_F" })).toBeVisible();
-  await page.getByRole("tab", { name: "E(k)" }).click();
+  // The last chart shows it from the start.
   await expect(page.getByText(/^Caution: This is a sketch/)).toBeVisible();
   await expect(page.getByRole("alert")).toHaveCount(0);
   await expect(
-    page.locator(".js-plotly-plot .scatterlayer .trace"),
+    chart(page, 4).locator(".js-plotly-plot .scatterlayer .trace"),
   ).toHaveCount(3);
 
   const answered = page.waitForResponse("**/api/band-diagram");

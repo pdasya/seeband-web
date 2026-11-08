@@ -97,22 +97,14 @@ test("the second curve is dashed, with its own colour", async ({ page }) => {
   expect(look.stroke).toBe("rgb(234, 88, 12)");
 });
 
-test("the legend names each series, and the toggle hides measurements", async ({
+test("the legend names each series, and there is no toggle of measurements", async ({
   page,
 }) => {
   await openChart(page);
   const legend = page.locator("figure ul");
   await expect(legend).toContainText("Measurements");
   await expect(legend).toContainText("Band 2");
-
-  await page.getByRole("switch", { name: "Show measurements" }).click();
-
-  await expect(page.locator(".scatterlayer .points path")).toHaveCount(0);
-  await expect(legend).not.toContainText("Measurements");
-  await expect(page.locator(".scatterlayer .trace")).toHaveCount(2);
-
-  await page.getByRole("switch", { name: "Show measurements" }).click();
-
+  await expect(page.getByRole("switch")).toHaveCount(0);
   await expect(page.locator(".scatterlayer .points path")).toHaveCount(POINTS);
 });
 

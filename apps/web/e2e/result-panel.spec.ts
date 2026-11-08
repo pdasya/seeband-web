@@ -425,7 +425,7 @@ test("an unknown error is shown without its id", async ({ page }) => {
   await expect(page.getByText(/some_new_issue/)).toHaveCount(0);
 });
 
-test("More graphs opens μ with the chart in view, and Results is a link", async ({
+test("More graphs shows μ on the last chart, in view, and Results is a link", async ({
   page,
 }) => {
   await open(page);
@@ -434,9 +434,11 @@ test("More graphs opens μ with the chart in view, and Results is a link", async
 
   await more.click();
 
-  const tab = page.getByRole("tab", { name: "μ(T)" });
-  await expect(tab).toHaveAttribute("aria-selected", "true");
-  await expect(tab).toBeInViewport();
+  const select = page.getByRole("combobox", {
+    name: "Quantity shown in chart 4",
+  });
+  await expect(select).toHaveText("Chemical potential μ(T)");
+  await expect(select).toBeInViewport();
 
   await page.getByRole("link", { name: "Open results" }).click();
   await expect(page).toHaveURL(/\/results$/);

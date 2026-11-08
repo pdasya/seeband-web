@@ -89,7 +89,7 @@ test("shows three slots, as the design does", async ({ page }) => {
     "Resistivity",
     "Hall coefficient",
   ]) {
-    await expect(page.getByText(title)).toBeVisible();
+    await expect(page.getByText(title, { exact: true })).toBeVisible();
   }
 });
 

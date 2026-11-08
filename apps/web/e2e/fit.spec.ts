@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { openData } from "./support/fitScreen";
 
 import { fakeFit } from "./support/fakeFit";
 import { CALC, serveModels } from "./support/models";
@@ -537,6 +538,7 @@ test("a change of what the fit is of stops it", async ({ page }) => {
   expect(await aborted(page)).toBe(2);
 
   await startFit(page);
+  await openData(page);
   await page
     .getByRole("button", { name: /Remove/ })
     .first()

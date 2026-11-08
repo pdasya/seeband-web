@@ -1,4 +1,5 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
+import { chart, openData } from "./support/fitScreen";
 
 import { DEMO, MODELS, serveModels } from "./support/models";
 
@@ -61,6 +62,17 @@ async function upload(page: Page) {
     });
 }
 
+/** The notice, in the data, which fold as the demo gives the fit mode all it needs. */
+async function seeNotice(page: Page) {
+  await expect(
+    notice(page)
+      .or(page.getByRole("button", { name: "Details" }))
+      .filter({ visible: true }),
+  ).toBeVisible();
+  await openData(page);
+  await expect(notice(page)).toBeVisible();
+}
+
 const notice = (page: Page) => page.getByText(/^Synthetic data/);
 const clear = (page: Page) =>
   page.getByRole("button", { name: "Clear demo data" });
@@ -73,7 +85,7 @@ test("the link opens the fit with all the demo's data, labelled as synthetic", a
 }) => {
   await open(page);
 
-  await expect(notice(page)).toBeVisible();
+  await seeNotice(page);
   await expect(slots(page).getByText("Demo data")).toHaveCount(3);
   await expect(page.getByText(new RegExp(`^${POINTS} points`))).toHaveCount(3);
   await expect(page).toHaveURL(/\/fit$/);
@@ -81,7 +93,7 @@ test("the link opens the fit with all the demo's data, labelled as synthetic", a
 
 test("it opens the fit the demo was made for", async ({ page }) => {
   await open(page);
-  await expect(notice(page)).toBeVisible();
+  await seeNotice(page);
 
   await expect(radio(page, "DPB")).toBeChecked();
   await expect(radio(page, "S + ρ + R_H")).toBeChecked();
@@ -108,7 +120,7 @@ test("a demo that comes before the model descriptions still opens its fit", asyn
 
   gate.release();
 
-  await expect(notice(page)).toBeVisible();
+  await seeNotice(page);
   await expect(radio(page, "S + ρ + R_H")).toBeChecked();
 });
 
@@ -122,7 +134,7 @@ test("the link in the panel loads the demo, and comes back once it is cleared", 
 
   await link.click();
 
-  await expect(notice(page)).toBeVisible();
+  await seeNotice(page);
   await expect(slots(page).getByText("Demo data")).toHaveCount(3);
   await expect(page).toHaveURL(/\/fit$/);
   await expect(link).toHaveCount(0);
@@ -170,6 +182,8 @@ test("the link from the Single file tab goes to the slots, where interpolating w
 
   await page.getByRole("link", { name: "Try demo data" }).click();
 
+  // The demo gives the fit mode all it needs, so the data fold once it is in.
+  await page.getByRole("button", { name: "Details" }).click();
   await expect(
     page.getByRole("tab", { name: "Separate files" }),
   ).toHaveAttribute("aria-selected", "true");
@@ -182,7 +196,7 @@ test("the link from the Single file tab goes to the slots, where interpolating w
 test("Back does not bring back a demo the user cleared", async ({ page }) => {
   const demos = await open(page, "/fit");
   await page.getByRole("link", { name: "Try demo data" }).click();
-  await expect(notice(page)).toBeVisible();
+  await seeNotice(page);
   await clear(page).click();
   await expect(notice(page)).toHaveCount(0);
   const asked = demos.length;
@@ -203,7 +217,7 @@ test("clearing moves focus to the first slot, for the keyboard", async ({
   page,
 }) => {
   await open(page);
-  await expect(notice(page)).toBeVisible();
+  await seeNotice(page);
 
   await clear(page).click();
 
@@ -351,7 +365,7 @@ test("with no model descriptions it says the demo failed, not that it is loading
 test("the chart says its points are demo data", async ({ page }) => {
   await open(page);
 
-  await expect(page.getByText("Measurements (demo)")).toBeVisible();
+  await expect(chart(page).getByText("Measurements (demo)")).toBeVisible();
 });
 
 test("a fit screen with no link asks for no demo", async ({ page }) => {
@@ -370,7 +384,7 @@ test("clearing takes the demo away, and a user's own file goes in its place", as
 }) => {
   await open(page);
   await page.route("**/api/parse", (route) => route.fulfill({ json: PARSED }));
-  await expect(notice(page)).toBeVisible();
+  await seeNotice(page);
 
   await clear(page).click();
 
@@ -396,14 +410,14 @@ test("the notice stays while any demo data remain, and clearing keeps a user's f
 }) => {
   await open(page);
   await page.route("**/api/parse", (route) => route.fulfill({ json: PARSED }));
-  await expect(notice(page)).toBeVisible();
+  await seeNotice(page);
 
   await page
     .getByRole("button", { name: /Remove/ })
     .first()
     .click();
   await expect(slots(page).getByText("Demo data")).toHaveCount(2);
-  await expect(notice(page)).toBeVisible();
+  await seeNotice(page);
 
   await page
     .locator('input[type="file"]')
@@ -415,8 +429,8 @@ test("the notice stays while any demo data remain, and clearing keeps a user's f
     });
   await expect(slots(page).getByText("mine.txt")).toBeVisible();
   // S is the user's now, so its points are not called demo data.
-  await expect(page.getByText("Measurements (demo)")).toHaveCount(0);
-  await expect(notice(page)).toBeVisible();
+  await expect(chart(page).getByText("Measurements (demo)")).toHaveCount(0);
+  await seeNotice(page);
 
   await clear(page).click();
 
@@ -429,13 +443,13 @@ test("the notice comes back with the data, after the other way of loading", asyn
   page,
 }) => {
   await open(page);
-  await expect(notice(page)).toBeVisible();
+  await seeNotice(page);
 
   await page.getByRole("tab", { name: "Single file" }).click();
   await expect(notice(page)).toHaveCount(0);
 
   await page.getByRole("tab", { name: "Separate files" }).click();
-  await expect(notice(page)).toBeVisible();
+  await seeNotice(page);
   await expect(slots(page).getByText("Demo data")).toHaveCount(3);
 });
 
@@ -443,7 +457,7 @@ test("another screen and back keeps what the user did to the demo", async ({
   page,
 }) => {
   const demos = await open(page);
-  await expect(notice(page)).toBeVisible();
+  await seeNotice(page);
   await page
     .getByRole("button", { name: /Remove/ })
     .first()
@@ -452,7 +466,7 @@ test("another screen and back keeps what the user did to the demo", async ({
 
   await page.getByRole("link", { name: "Results", exact: true }).click();
   await page.getByRole("link", { name: "Model fit" }).click();
-  await expect(notice(page)).toBeVisible();
+  await seeNotice(page);
 
   await expect(slots(page).getByText("Demo data")).toHaveCount(2);
   await page.waitForTimeout(200);
@@ -532,7 +546,7 @@ test("a failure says so, a reload tries again, and own data end the message", as
   await page.evaluate(() => {
     location.reload();
   });
-  await expect(notice(page)).toBeVisible();
+  await seeNotice(page);
   await expect(slots(page).getByText("Demo data")).toHaveCount(3);
 });
 
@@ -564,7 +578,7 @@ test("its data take the same paths as a file: guess, curve and interpolation", a
   });
 
   await page.goto("/fit?demo=1");
-  await expect(notice(page)).toBeVisible();
+  await seeNotice(page);
   await expect.poll(() => guesses.length).toBe(1);
   // Loading it is no parse: only interpolating sends its text again.
   expect(parses).toEqual([]);

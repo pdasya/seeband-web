@@ -132,6 +132,14 @@ export const STRINGS = {
     column: "Column",
     andMore: "More problems:",
     demoSource: "Demo data",
+    bar: {
+      loaded: "Data loaded",
+      details: "Details",
+      hide: "Hide",
+      points: (symbol: string, points: number) =>
+        `${symbol} · ${String(points)} pts`,
+      notLoaded: (symbol: string) => `${symbol} · not loaded`,
+    },
     demoLoading: "Loading the demo data…",
     demoFailed:
       "The demo data could not be loaded. Reload to try again, or load your own data.",
@@ -209,17 +217,23 @@ export const STRINGS = {
   },
   chart: {
     temperatureAxis: "T, K",
-    toggleMeasurements: "Show measurements",
     failed: "The chart could not be shown. Try reloading the page.",
     tabsLabel: "Charts",
     tabs: {
-      seebeck: "S(T)",
-      resistivity: "ρ(T)",
-      hall: "R_H(T)",
-      chemical_potential: "μ(T)",
+      seebeck: "Seebeck S(T)",
+      conductivity: "Conductivity σ(T)",
+      resistivity: "Resistivity ρ(T)",
+      hall: "Hall coefficient R_H(T)",
+      chemical_potential: "Chemical potential μ(T)",
       bands: "Band contributions",
-      band_diagram: "E(k)",
+      band_diagram: "Band diagram E(k)",
     },
+    panelLabel: (index: number) => `Chart ${String(index)}`,
+    panelSelect: (index: number) => `Quantity shown in chart ${String(index)}`,
+    bandGapMetric: (gap: string) => `E_g = ${gap} K`,
+    conductivityDescription: "Chart of σ against temperature",
+    conductivityNote:
+      "The model's σ only. Measured points would be 1/ρ, which the ρ chart shows.",
     diagramCurves: {
       band_1_energy_k: "Band 1",
       band_2_energy_k: "Band 2",
@@ -233,6 +247,7 @@ export const STRINGS = {
       hall: "R_H, m³/C",
       chemicalPotential: "μ, K",
       energy: "E, K",
+      conductivity: "σ, S/m",
     },
     quantityTabs: {
       seebeck: {
@@ -303,11 +318,10 @@ export const STRINGS = {
   },
   fit: {
     pageTitle: "Model fit",
-    title: "Transport property fit",
-    subtitle: "Fit S(T), ρ(T) and R_H(T) with a parabolic band model",
     data: "Data",
     charts: "Charts",
     result: "Result",
+    panelTitle: "Fit",
     guess: "Initial guess",
     guessHint: "The neural net proposes m₂/m₁, E_g and E_F from S(T)",
     guessOnlyWithNets: "The neural net is used for DPB only",

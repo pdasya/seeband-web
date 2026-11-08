@@ -11,6 +11,17 @@ import { STRINGS } from "@/strings";
 
 const { chart: text } = STRINGS;
 
+/** Every choice of a chart, in the order of its select. */
+export const CHART_TABS: readonly ChartTab[] = [
+  "seebeck",
+  "conductivity",
+  "resistivity",
+  "hall",
+  "chemical_potential",
+  "bands",
+  "band_diagram",
+];
+
 /** What each tab with measurements draws, from the core's units to those of its axis. */
 const QUANTITY_TABS: Record<
   Quantity,
@@ -34,13 +45,23 @@ const SEEBECK_TOTAL = QUANTITY_TABS.seebeck.curve;
 const SEEBECK_BAND_1 = "seebeck_band_1_v_per_k";
 const SEEBECK_BAND_2 = "seebeck_band_2_v_per_k";
 const CHEMICAL_POTENTIAL = "chemical_potential_k";
+const CONDUCTIVITY = "electrical_conductivity_s_per_m";
 
 type CurveKind = FitModeDescription["curves"][number]["kind"];
 
+/** The kinds of curve that charts ask for on top of the measured ones. */
+export const DERIVED_KINDS_ASKED = [
+  "chemical_potential",
+  "seebeck_by_band",
+  "electrical_conductivity",
+] as const;
+export type DerivedKind = (typeof DERIVED_KINDS_ASKED)[number];
+
 /** The kind of curve a tab asks for on top of the measured ones, as measurements need those. */
-const DERIVED_KINDS: Partial<Record<ChartTab, CurveKind>> = {
+const DERIVED_KINDS: Partial<Record<ChartTab, DerivedKind>> = {
   chemical_potential: "chemical_potential",
   bands: "seebeck_by_band",
+  conductivity: "electrical_conductivity",
 };
 
 function availabilityOf(mode: FitModeDescription, kind: CurveKind) {
@@ -51,7 +72,7 @@ function availabilityOf(mode: FitModeDescription, kind: CurveKind) {
 export function derivedKind(
   tab: ChartTab,
   mode: FitModeDescription | undefined,
-): CurveKind | null {
+): DerivedKind | null {
   const kind = DERIVED_KINDS[tab];
   return kind !== undefined &&
     mode !== undefined &&
@@ -72,6 +93,7 @@ export function drawsMeasuredCurves(
   return (
     tab !== "chemical_potential" &&
     tab !== "band_diagram" &&
+    tab !== "conductivity" &&
     data[tab] !== undefined &&
     mode?.quantities.includes(tab) === true
   );
@@ -245,6 +267,31 @@ function chemicalPotentialView(
   };
 }
 
+// σ has no measured points: they would be 1/ρ, which the client does not calculate.
+function conductivityView(
+  mode: FitModeDescription | undefined,
+  derived: CalcResponse | null,
+): ChartTabView {
+  const base = {
+    yAxisTitle: text.axes.conductivity,
+    description: text.conductivityDescription,
+  };
+  if (derivedKind("conductivity", mode) === null) {
+    return {
+      ...NO_CHART,
+      ...base,
+      empty: unavailable(mode, "electrical_conductivity"),
+    };
+  }
+  return {
+    ...NO_CHART,
+    ...base,
+    empty: null,
+    curves: curveOf(derived, CONDUCTIVITY, 1, text.model),
+    note: text.conductivityNote,
+  };
+}
+
 function bandsView(
   mode: FitModeDescription | undefined,
   measured: CalcResponse | null,
@@ -336,6 +383,8 @@ export function chartTabView(
   switch (tab) {
     case "band_diagram":
       return bandDiagramView(mode, diagram);
+    case "conductivity":
+      return conductivityView(mode, derived);
     case "chemical_potential":
       return chemicalPotentialView(mode, state, derived);
     case "bands":

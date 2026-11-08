@@ -46,7 +46,6 @@ function Fixture() {
         xAxisTitle="T, K"
         yAxisTitle="S, µV/K"
         description="Chart of S against temperature"
-        toggleMeasurementsLabel="Show measurements"
         failedText="The chart could not load"
       />
     </main>

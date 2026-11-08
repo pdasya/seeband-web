@@ -1,8 +1,7 @@
 import { ChartLineIcon } from "lucide-react";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Switch } from "@/components/ui/switch";
 import {
   buildFigure,
   CHART_HEIGHT_PX,
@@ -38,7 +37,6 @@ export interface TransportChartProps {
   yAxisTitle: string;
   /** What a screen reader says about the chart, as it cannot read the drawing. */
   description: string;
-  toggleMeasurementsLabel: string;
   /** Shown if Plotly cannot load, or cannot draw this data. */
   failedText: string;
 }
@@ -238,43 +236,22 @@ export function TransportChart({
   xAxisUnitless,
   yAxisTitle,
   description,
-  toggleMeasurementsLabel,
   failedText,
 }: TransportChartProps) {
-  const [showMeasurements, setShowMeasurements] = useState(true);
-  const toggleId = useId();
-
   if (empty !== null) {
     return <ChartEmptyState title={empty.title} text={empty.text} />;
   }
-  const shownMeasurements = showMeasurements ? measurements : null;
-  const shownInterpolated = showMeasurements ? interpolated : null;
   return (
     <figure className="m-0 flex flex-col gap-2">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <Legend
-          curves={curves}
-          measurementsLabel={shownMeasurements?.label ?? null}
-          interpolatedLabel={shownInterpolated?.label ?? null}
-        />
-        {measurements !== null && (
-          <label
-            htmlFor={toggleId}
-            className="inline-flex items-center gap-2 text-xs text-muted-foreground"
-          >
-            {toggleMeasurementsLabel}
-            <Switch
-              id={toggleId}
-              checked={showMeasurements}
-              onCheckedChange={setShowMeasurements}
-            />
-          </label>
-        )}
-      </div>
+      <Legend
+        curves={curves}
+        measurementsLabel={measurements?.label ?? null}
+        interpolatedLabel={interpolated?.label ?? null}
+      />
       <Plot
         curves={curves}
-        measurements={shownMeasurements}
-        interpolated={shownInterpolated}
+        measurements={measurements}
+        interpolated={interpolated}
         fitRange={fitRange}
         referenceLines={referenceLines}
         xAxisTitle={xAxisTitle}

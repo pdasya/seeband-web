@@ -56,12 +56,13 @@ export function FitActions({
 }) {
   return (
     <>
-      <Button variant="ghost" onClick={control.reset}>
+      <Button variant="ghost" size="sm" onClick={control.reset}>
         <RotateCcwIcon aria-hidden="true" />
         {text.reset}
       </Button>
       <Button
         variant="outline"
+        size="sm"
         disabled={guess.disabled}
         title={guess.title}
         onClick={guess.run}
@@ -71,6 +72,7 @@ export function FitActions({
       </Button>
       {control.active ? (
         <Button
+          size="sm"
           onClick={(event) => {
             // Run turns into this in place, so the rest of a double click must not stop the fit.
             if (event.detail <= 1) {
@@ -84,6 +86,7 @@ export function FitActions({
         </Button>
       ) : (
         <Button
+          size="sm"
           disabled={control.blocker !== null}
           onClick={control.run}
           onKeyDown={ignoreHeldKey}
@@ -111,13 +114,13 @@ export function FitMessages({
         <p
           key={message}
           aria-live="polite"
-          className="m-0 text-right text-xs text-muted-foreground"
+          className="m-0 text-xs text-muted-foreground"
         >
           {message}
         </p>
       ))}
       {control.blocker !== null && !control.active && (
-        <p className="m-0 text-right text-xs text-muted-foreground">
+        <p className="m-0 text-xs text-muted-foreground">
           {fitBlockerText(control.blocker)}
         </p>
       )}
