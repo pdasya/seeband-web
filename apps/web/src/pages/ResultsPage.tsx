@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/table";
 import { noticeText } from "@/data/DemoNotice";
 import { formatNumber } from "@/lib/numbers";
+import { fitLog, type LogStep } from "@/model/fitLog";
 import { fitBadge } from "@/model/fitStatus";
 import {
   fitEndNote,
@@ -86,6 +87,43 @@ function StatusCell({ status }: { status: ParameterStatus }) {
   }
 }
 
+/** The steps of a fit, numbered and joined by a line, as the design draws them. */
+function FitLog({ steps }: { steps: readonly LogStep[] }) {
+  return (
+    <ol
+      aria-label={text.log.title}
+      className="m-0 mt-3 flex list-none flex-col p-0"
+    >
+      {steps.map((step, at) => {
+        const last = at === steps.length - 1;
+        return (
+          <li key={step.title} className="flex gap-3">
+            <div className="flex flex-none flex-col items-center">
+              <span
+                aria-hidden="true"
+                className={
+                  last
+                    ? "flex size-6 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground"
+                    : "flex size-6 items-center justify-center rounded-full border bg-muted text-xs font-semibold"
+                }
+              >
+                {at + 1}
+              </span>
+              {!last && <span className="min-h-3 w-px flex-auto bg-border" />}
+            </div>
+            <div className="min-w-0 pb-4">
+              <div className="font-medium">{step.title}</div>
+              <div className="text-[13px] text-muted-foreground">
+                {step.text}
+              </div>
+            </div>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
 /** Where the page stands before there is a fit to sum up. */
 function NoResult({ message }: { message: string }) {
   return (
@@ -106,6 +144,7 @@ export function ResultsPage() {
   const data = useSessionStore((state) => state.data);
   const fit = useSessionStore((state) => state.fit);
   const customBounds = useSessionStore((state) => state.customBounds);
+  const startNet = useSessionStore((state) => state.fitStartNet);
   const measured = useMeasuredCurves();
 
   const model = models?.models.find(({ id }) => id === selection.model);
@@ -247,53 +286,65 @@ export function ResultsPage() {
           />
         )}
       </dl>
-      <Panel title={text.parametersTitle} subtitle={text.parametersSubtitle}>
-        <div className="mt-3">
-          <Table aria-label={text.parameterTable}>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{text.columns.parameter}</TableHead>
-                <TableHead>{text.columns.meaning}</TableHead>
-                <TableHead className="text-right">
-                  {text.columns.value}
-                </TableHead>
-                <TableHead className="text-right">
-                  {text.columns.bounds}
-                </TableHead>
-                <TableHead className="text-right">
-                  {text.columns.status}
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((row) => (
-                <TableRow key={row.name}>
-                  <TableCell className="font-medium">
-                    <span className="inline-flex flex-wrap items-center gap-1.5">
-                      {row.symbol}
-                      {row.atBound && (
-                        <Badge variant="outline">{fitText.atBound}</Badge>
-                      )}
-                    </span>
-                  </TableCell>
-                  <TableCell className="whitespace-normal text-muted-foreground">
-                    {row.meaning}
-                  </TableCell>
-                  <TableCell className="text-right font-mono">
-                    {row.value === "" ? text.noValue : row.value}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-muted-foreground">
-                    {row.bounds === "" ? text.noValue : row.bounds}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <StatusCell status={row.status} />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+      <div className="flex flex-wrap items-stretch gap-4">
+        <div className="min-w-0 flex-[999_1_520px]">
+          <Panel
+            title={text.parametersTitle}
+            subtitle={text.parametersSubtitle}
+          >
+            <div className="mt-3">
+              <Table aria-label={text.parameterTable}>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{text.columns.parameter}</TableHead>
+                    <TableHead>{text.columns.meaning}</TableHead>
+                    <TableHead className="text-right">
+                      {text.columns.value}
+                    </TableHead>
+                    <TableHead className="text-right">
+                      {text.columns.bounds}
+                    </TableHead>
+                    <TableHead className="text-right">
+                      {text.columns.status}
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rows.map((row) => (
+                    <TableRow key={row.name}>
+                      <TableCell className="font-medium">
+                        <span className="inline-flex flex-wrap items-center gap-1.5">
+                          {row.symbol}
+                          {row.atBound && (
+                            <Badge variant="outline">{fitText.atBound}</Badge>
+                          )}
+                        </span>
+                      </TableCell>
+                      <TableCell className="whitespace-normal text-muted-foreground">
+                        {row.meaning}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {row.value === "" ? text.noValue : row.value}
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-muted-foreground">
+                        {row.bounds === "" ? text.noValue : row.bounds}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <StatusCell status={row.status} />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </Panel>
         </div>
-      </Panel>
+        <div className="min-w-0 flex-[1_1_320px]">
+          <Panel title={text.log.title} subtitle={text.log.subtitle}>
+            <FitLog steps={fitLog(mode, scattering, fit, startNet)} />
+          </Panel>
+        </div>
+      </div>
       {notes.length > 0 && (
         <section
           aria-label={text.notes}
