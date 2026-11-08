@@ -791,3 +791,32 @@ test("σ draws 1/ρ of the data as points, from the server, beside the model", a
     ),
   ).toBe(true);
 });
+
+test("σ says each failure of the requests it draws from, as one hides no other", async ({
+  page,
+}) => {
+  await open(page);
+  await load(page, 1);
+  await show(page, "Conductivity σ(T)");
+  await page.unroute("**/api/calc");
+  await page.route("**/api/calc", (route) => {
+    const { kind } = route.request().postDataJSON() as CalcBody;
+    return kind === undefined
+      ? route.fulfill({
+          status: 422,
+          json: { code: "calculation_failed", message: "x", details: [] },
+        })
+      : route.fulfill({
+          status: 500,
+          json: { code: "internal_error", message: "x", details: [] },
+        });
+  });
+  await page.getByRole("slider", { name: "E_g" }).press("ArrowRight");
+
+  const alerts = chart(page).getByRole("alert");
+  await expect(alerts).toHaveCount(2);
+  await expect(alerts.nth(0)).toContainText(
+    "The calculation has no result for these parameters.",
+  );
+  await expect(alerts.nth(1)).toContainText("The server is not responding.");
+});
