@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
+import { strFromU8, unzipSync } from "fflate";
+
 import { expect, test, type Page } from "@playwright/test";
 
 import { chart, show, fitBadges } from "./support/fitScreen";
@@ -435,6 +437,60 @@ test.describe("real fits", () => {
     await expect(page.getByRole("alert")).toHaveCount(0);
     await expect(page.getByText(/^Unreliable: DPB R_H is half/)).toBeVisible();
     await expect(page.getByText(/^Synthetic data/)).toBeVisible();
+  });
+
+  test("a ZIP of a real fit holds data and curves the real parser reads again", async ({
+    page,
+  }) => {
+    test.setTimeout(60_000);
+    await page.goto("/fit?demo=1");
+    await page.getByRole("button", { name: "Details" }).click();
+    await page.getByRole("radio", { name: "S + ρ", exact: true }).click();
+    await page.getByRole("button", { name: "Run fit" }).click();
+    await expect(
+      page.locator('[data-slot="badge"]').filter({ hasText: /^Converged/ }),
+    ).toBeVisible({ timeout: 30_000 });
+    await page.getByRole("link", { name: "Results", exact: true }).click();
+    await page.getByRole("button", { name: "Data to file" }).click();
+    await page.getByRole("radio", { name: /^ZIP, a file each/ }).click();
+    const [file] = await Promise.all([
+      page.waitForEvent("download"),
+      page.getByRole("button", { name: "Download" }).click(),
+    ]);
+    const zip = unzipSync(new Uint8Array(readFileSync(await file.path())));
+
+    for (const [name, expected, quantities] of [
+      ["data/seebeck.txt", "seebeck", ["seebeck"]],
+      ["data/resistivity.txt", "resistivity", ["resistivity"]],
+      ["curves/fit.txt", "seebeck", ["seebeck", "resistivity"]],
+    ] as const) {
+      const answer = await page.request.post("/api/parse", {
+        data: { text: strFromU8(zip[name] ?? new Uint8Array()), expected },
+      });
+      expect(answer.status(), name).toBe(200);
+      const parsed = (await answer.json()) as {
+        measurements: Record<string, { points: number }>;
+        errors: unknown[];
+      };
+      expect(parsed.errors, name).toEqual([]);
+      expect(Object.keys(parsed.measurements).sort(), name).toEqual(
+        [...quantities].sort(),
+      );
+    }
+    // The demo has 31 points of each.
+    const again = await page.request.post("/api/parse", {
+      data: {
+        text: strFromU8(zip["data/seebeck.txt"] ?? new Uint8Array()),
+        expected: "seebeck",
+      },
+    });
+    expect(
+      (
+        (await again.json()) as {
+          measurements: { seebeck: { points: number } };
+        }
+      ).measurements.seebeck.points,
+    ).toBe(31);
   });
 
   test("a real fit stays inside bounds set by the user, and says so at the bound", async ({

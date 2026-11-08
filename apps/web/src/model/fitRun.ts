@@ -23,7 +23,7 @@ export async function runFit(request: FitRequest): Promise<void> {
   controller?.abort();
   const own = new AbortController();
   controller = own;
-  const run = store().fitRequested(request.fit_mode);
+  const run = store().fitRequested(request.fit_mode, request.start);
   currentRun = run;
   try {
     for await (const event of streamFit(apiClient, request, own.signal)) {

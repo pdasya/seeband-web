@@ -1,3 +1,7 @@
+import { readFileSync } from "node:fs";
+
+import { strFromU8, unzipSync } from "fflate";
+
 import { expect, test, type Page } from "@playwright/test";
 
 import { fakeFit } from "./support/fakeFit";
@@ -462,6 +466,12 @@ test("in S mode, the graphs that need ρ say so, and nothing is asked for them",
   for (const name of ["Conductivity σ(T)", "Thermal conductivity"]) {
     await expect(graph(page, name)).toContainText("Needs ρ(T)");
   }
+  // A graph the mode does not offer has nothing to download.
+  await expect(
+    page.getByRole("button", {
+      name: "Download the data of Conductivity σ(T)",
+    }),
+  ).toBeDisabled();
   // Once the others are drawn, their requests are all out.
   await expect(
     graph(page, "Chemical potential")
@@ -471,4 +481,299 @@ test("in S mode, the graphs that need ρ say so, and nothing is asked for them",
   await page.waitForTimeout(400);
   expect(kinds).not.toContain("electrical_conductivity");
   expect(kinds).not.toContain("thermal_conductivity");
+});
+
+async function downloaded(page: Page, button: string): Promise<string> {
+  const [file] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: button }).click(),
+  ]);
+  const path = await file.path();
+  return readFileSync(path, "utf8");
+}
+
+test("Data to file has the data, and the curves before and after the fit", async ({
+  page,
+}) => {
+  const bodies: { parameters: Record<string, number> }[] = [];
+  await openFit(page, (opened) =>
+    opened.route("**/api/calc", (route) => {
+      const body = route.request().postDataJSON() as {
+        kind?: string;
+        parameters: Record<string, number>;
+      };
+      if (body.kind === undefined) {
+        bodies.push(body);
+      }
+      return route.fulfill({
+        json: {
+          ...CALC,
+          curves: {
+            seebeck_v_per_k: [1e-4, 2e-4, 3e-4],
+            resistivity_ohm_m: [1e-5, 2e-5, 3e-5],
+          },
+          rmse: RMSE,
+        },
+      });
+    }),
+  );
+  await finishWith(page);
+  await toResults(page);
+
+  bodies.length = 0;
+  const file = (await inFormat(page, "Text")).toString("utf8");
+  const lines = file.split("\n");
+  expect(lines[0]).toMatch(/^# SeeBand Web /);
+  expect(lines).toContain("# Model DPB, fit mode S + ρ");
+  expect(lines).toContain("# Fit converged, 5 iterations");
+  const legends = lines.find((line) => line.startsWith("Temperature"));
+  expect(legends?.split("\t")).toEqual([
+    "Temperature [K]",
+    "Experimental Seebeck coefficient [V/K]",
+    "Temperature [K]",
+    "Pre-fit Seebeck coefficient [V/K]",
+    "Temperature [K]",
+    "Fit Seebeck coefficient [V/K]",
+    "Temperature [K]",
+    "Experimental electrical resistivity [Ohm*m]",
+    "Temperature [K]",
+    "Pre-fit electrical resistivity [Ohm*m]",
+    "Temperature [K]",
+    "Fit electrical resistivity [Ohm*m]",
+  ]);
+  // The curve before the fit is of the values it started from, E_g = 1000 K by default, and the
+  // other of the fitted ones.
+  // The page's own live curve may ask once more for the fitted values.
+  expect(new Set(bodies.map(({ parameters }) => parameters.band_gap))).toEqual(
+    new Set([1000, 900]),
+  );
+});
+
+test("Parameters to file has each value, its unit and how it was found", async ({
+  page,
+}) => {
+  await openFit(page);
+  await finishWith(page, { at_bounds: ["band_gap"] });
+
+  // From the fit screen, as from the results.
+  const file = (await inFormat(page, "Text", "Parameters to file")).toString(
+    "utf8",
+  );
+  const lines = file.split("\n");
+  expect(lines).toContain("Parameter\tValue\tStatus");
+  expect(lines).toContain(
+    "E_g (position of band 2) [K]\t900\tfitted, at bound",
+  );
+  expect(lines).toContain("N1, N2 (band degeneracies)\t1, 1\tfixed");
+
+  const csv = (
+    await inFormat(page, "CSV, one table", "Parameters to file")
+  ).toString("utf8");
+  expect(csv.split("\n")).toContain(
+    'band_gap,E_g,position of band 2,K,900,"fitted, at bound"',
+  );
+});
+
+test("each additional graph downloads its own curves and flags", async ({
+  page,
+}) => {
+  await openFit(page, serveCurves);
+  await page.getByRole("combobox", { name: "Scattering" }).click();
+  await page.getByRole("option", { name: /acPhDis/ }).click();
+  await finishWith(page);
+  await toResults(page);
+  await expect(
+    graph(page, "Band contributions")
+      .locator(".scatterlayer .trace path.js-line")
+      .first(),
+  ).toBeVisible();
+
+  const file = await downloaded(
+    page,
+    "Download the data of Band contributions",
+  );
+  const lines = file.split("\n");
+  expect(lines).toContain(
+    "# Unreliable: With acPhDis, the band weight of the last temperature applies to all of S. (acphdis_band_weight)",
+  );
+  expect(
+    lines.find((line) => line.startsWith("Temperature"))?.split("\t"),
+  ).toEqual([
+    "Temperature [K]",
+    "Total Seebeck coefficient [V/K]",
+    "Seebeck coefficient of band 1 [V/K]",
+    "Seebeck coefficient of band 2 [V/K]",
+  ]);
+});
+
+test("a failed export says so, and downloads nothing", async ({ page }) => {
+  await openFit(page);
+  await finishWith(page);
+  await toResults(page);
+  await page.unroute("**/api/calc");
+  await page.route("**/api/calc", (route) =>
+    route.fulfill({ status: 500, json: { code: "internal_error" } }),
+  );
+  let downloads = 0;
+  page.on("download", () => {
+    downloads += 1;
+  });
+
+  await page.getByRole("button", { name: "Data to file" }).click();
+  await page.getByRole("button", { name: "Download" }).click();
+
+  await expect(
+    page.getByText(
+      "The file could not be made, as the server did not answer. Try again.",
+    ),
+  ).toBeVisible();
+  expect(downloads).toBe(0);
+});
+
+/** An export, in a format chosen in its dialog. */
+async function inFormat(
+  page: Page,
+  format: string,
+  button = "Data to file",
+): Promise<Buffer> {
+  await page.getByRole("button", { name: button }).click();
+  await page.getByRole("radio", { name: new RegExp(`^${format}`) }).click();
+  const [file] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Download" }).click(),
+  ]);
+  return readFileSync(await file.path());
+}
+
+test("Data to file also gives a CSV, and a ZIP of plain tables", async ({
+  page,
+}) => {
+  await openFit(page, serveCurves);
+  await finishWith(page);
+  await toResults(page);
+
+  const csv = (await inFormat(page, "CSV, one table")).toString("utf8");
+  expect(csv).toContain("\nquantity,curve,temperature_k,value,unit\n");
+  expect(csv).toMatch(/\nseebeck,fit,100,0\.0001,V\/K\n/);
+
+  const zip = unzipSync(
+    new Uint8Array(await inFormat(page, "ZIP, a file each")),
+  );
+  expect(Object.keys(zip)).toEqual(
+    expect.arrayContaining([
+      "metadata.txt",
+      "parameters.txt",
+      "data/seebeck.txt",
+      "data/resistivity.txt",
+      "curves/pre-fit.txt",
+      "curves/fit.txt",
+      "graphs/chemical_potential.txt",
+      "graphs/carrier_concentration_by_band.txt",
+    ]),
+  );
+  expect(strFromU8(zip["data/seebeck.txt"] ?? new Uint8Array())).toMatch(
+    /\nT \[K\]\tS \[V\/K\]\n/,
+  );
+});
+
+test("the dialog of Data to file starts on text, says what each format is, and closes", async ({
+  page,
+}) => {
+  await openFit(page);
+  await page.getByRole("button", { name: "Data to file" }).click();
+
+  const dialog = page.getByRole("dialog", { name: "Data to file" });
+  await expect(dialog.getByRole("radio")).toHaveCount(3);
+  await expect(dialog.getByRole("radio", { name: /^Text/ })).toBeChecked();
+  await expect(
+    dialog.getByRole("radio", { name: /^CSV, one table/ }),
+  ).toHaveAccessibleDescription(/for pandas or R/);
+  await expect(dialog.getByText(/JSON/)).toHaveCount(0);
+
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Data to file" }),
+  ).toBeFocused();
+});
+
+test("during a fit, the curve before it still comes from its start, and the file says it runs", async ({
+  page,
+}) => {
+  // A curve that shows the E_g it was calculated with.
+  await openFit(page, (opened) =>
+    opened.route("**/api/calc", (route) => {
+      const body = route.request().postDataJSON() as {
+        parameters: Record<string, number>;
+      };
+      const gap = body.parameters.band_gap ?? 0;
+      return route.fulfill({
+        json: {
+          ...CALC,
+          curves: {
+            seebeck_v_per_k: [gap, gap, gap],
+            resistivity_ohm_m: [1, 1, 1],
+          },
+          rmse: RMSE,
+        },
+      });
+    }),
+  );
+  await page.getByRole("button", { name: "Run fit" }).click();
+  await send(page, { type: "started" });
+  await send(page, {
+    type: "iteration",
+    iteration: 2,
+    parameters: { band_gap: 950 },
+  });
+  await expect(
+    page.getByRole("textbox", { name: "E_g", exact: true }),
+  ).toHaveValue("950");
+
+  const lines = (await inFormat(page, "Text")).toString("utf8").split("\n");
+  expect(lines).toContain(
+    "# A fit is running, at iteration 2: no fitted curve yet",
+  );
+  const legends =
+    lines.find((line) => line.startsWith("Temperature"))?.split("\t") ?? [];
+  const preFit = legends.indexOf("Pre-fit Seebeck coefficient [V/K]");
+  expect(legends).not.toContain("Fit Seebeck coefficient [V/K]");
+  const first = lines[lines.indexOf(legends.join("\t")) + 1]?.split("\t") ?? [];
+  expect(first[preFit]).toBe("1000");
+});
+
+test("a fit that ends while the server answers does not change the file's header", async ({
+  page,
+}) => {
+  await openFit(page);
+  await page.getByRole("button", { name: "Run fit" }).click();
+  await send(page, { type: "started" });
+  // The export's curves wait until the fit has ended.
+  const held: (() => void)[] = [];
+  await page.unroute("**/api/calc");
+  await page.route("**/api/calc", async (route) => {
+    await new Promise<void>((resolve) => {
+      held.push(resolve);
+    });
+    await route.fulfill({ json: { ...CALC, rmse: RMSE } });
+  });
+
+  await page.getByRole("button", { name: "Data to file" }).click();
+  await page.getByRole("radio", { name: /^Text/ }).click();
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download" }).click();
+  await expect.poll(() => held.length).toBeGreaterThan(0);
+  await send(page, { type: "done", result: RESULT });
+  await expect(page.getByRole("button", { name: "Run fit" })).toBeVisible();
+  for (const release of held.splice(0)) {
+    release();
+  }
+  await page.unroute("**/api/calc");
+  await page.route("**/api/calc", (route) =>
+    route.fulfill({ json: { ...CALC, rmse: RMSE } }),
+  );
+
+  const lines = readFileSync(await (await download).path(), "utf8").split("\n");
+  expect(lines).toContain("# A fit is running: no fitted curve yet");
+  expect(lines).not.toContain("# Fit converged, 5 iterations");
 });

@@ -477,6 +477,142 @@ export const STRINGS = {
     moreGraphs: "More graphs",
     openResults: "Open results",
   },
+  export: {
+    data: "Data to file",
+    parameters: "Parameters to file",
+    graph: (graph: string) => `Download the data of ${graph}`,
+    failed:
+      "The file could not be made, as the server did not answer. Try again.",
+    dataFile: "seeband-data.txt",
+    parametersFile: "seeband-parameters.txt",
+    graphFile: (graph: string) => `seeband-${graph}.txt`,
+    header: {
+      app: (app: string, api: string | null) =>
+        api === null ? `SeeBand Web ${app}` : `SeeBand Web ${app}, API ${api}`,
+      date: (date: string) => `Exported ${date}`,
+      demo: "Demo data: synthetic, made with the DPB model and noise. Not a measurement.",
+      model: (model: string, mode: string) =>
+        `Model ${model}, fit mode ${mode}`,
+      scattering: (scattering: string) => `Scattering ${scattering}`,
+      range: (minK: string, maxK: string) => `Fit range ${minK}-${maxK} K`,
+      degeneracies: (n1: string, n2: string) =>
+        `Band degeneracies N1 = ${n1}, N2 = ${n2}`,
+      fit: (status: string, iterations: number | null) =>
+        iterations === null
+          ? `Fit ${status}`
+          : `Fit ${status}, ${String(iterations)} iterations`,
+      noFit: "No fit: the values are those on the screen",
+      running: (iteration: number | null) =>
+        iteration === null
+          ? "A fit is running: no fitted curve yet"
+          : `A fit is running, at iteration ${String(iteration)}: no fitted curve yet`,
+      failed: "The fit failed: no fitted curve",
+      issue: (severity: string, issue: string, id: string) =>
+        `${severity}: ${issue} (${id})`,
+    },
+    columns: {
+      temperature: "Temperature [K]",
+      experimental: (quantity: string) => `Experimental ${quantity}`,
+      interpolated: (quantity: string) => `Interpolated ${quantity}`,
+      preFit: (quantity: string) => `Pre-fit ${quantity}`,
+      fit: (quantity: string) => `Fit ${quantity}`,
+    },
+    // As the desktop names them, in SI units.
+    quantities: {
+      seebeck: "Seebeck coefficient [V/K]",
+      resistivity: "electrical resistivity [Ohm*m]",
+      hall: "Hall coefficient [m^3/C]",
+    },
+    // Each column of an additional graph. Any other keeps the API's name, which states its unit.
+    curves: {
+      chemical_potential_k: "Chemical potential [K]",
+      electrical_conductivity_s_per_m: "Electrical conductivity [S/m]",
+      thermal_conductivity_w_per_m_k:
+        "Electronic thermal conductivity [W/(m*K)]",
+      seebeck_v_per_k: "Total Seebeck coefficient [V/K]",
+      seebeck_band_1_v_per_k: "Seebeck coefficient of band 1 [V/K]",
+      seebeck_band_2_v_per_k: "Seebeck coefficient of band 2 [V/K]",
+      carrier_concentration_band_1_per_cm3:
+        "Carrier concentration of band 1 [1/cm^3]",
+      carrier_concentration_band_2_per_cm3:
+        "Carrier concentration of band 2 [1/cm^3]",
+    },
+    parameterColumns: "Parameter\tValue\tStatus",
+    parameterCsvColumns: "parameter,symbol,meaning,unit,value,status",
+    parametersCsvFile: "seeband-parameters.csv",
+    parameterFormats: {
+      data: {
+        label: "Text",
+        text: "A line for each parameter, with its unit and status, as the desktop's file has them.",
+      },
+      csv: {
+        label: "CSV, one table",
+        text: "A row for each parameter, N1 and N2 included, for pandas or R.",
+      },
+    },
+    parameter: (symbol: string, meaning: string, unit: string) =>
+      unit === ""
+        ? `${symbol} (${meaning})`
+        : `${symbol} (${meaning}) [${unit}]`,
+    status: {
+      fitted: "fitted",
+      fixed: "fixed",
+      atBound: "fitted, at bound",
+      free: "not fitted yet",
+    },
+    // A unit as a file writes it, plain text.
+    units: {
+      m_e: "m_e",
+      K: "K",
+      dimensionless: "",
+      unknown: "unit not known",
+    },
+    quantityUnits: { seebeck: "V/K", resistivity: "Ohm*m", hall: "m^3/C" },
+    dialogText:
+      "Every file starts with lines on the fit and its known issues. Values are in SI, with a decimal point.",
+    parametersDialogText:
+      "Every file starts with lines on the fit and its known issues. Values are as the screen shows them, with a decimal point.",
+    format: "Format",
+    download: "Download",
+    close: "Close",
+    formats: {
+      data: {
+        label: "Text",
+        text: "Pairs of temperature and value columns for each quantity, for a spreadsheet or Origin.",
+      },
+      csv: {
+        label: "CSV, one table",
+        text: "A row for each point, with its quantity, curve and unit, for pandas or R.",
+      },
+      zip: {
+        label: "ZIP, a file each",
+        text: "Plain tables of the data, curves, parameters and additional graphs. The app loads the data and curves again.",
+      },
+    },
+    csvFile: "seeband-data.csv",
+    zipFile: "seeband-export.zip",
+    csvColumns: "quantity,curve,temperature_k,value,unit",
+    // Names the app's parser reads, so that a file of them loads again.
+    readable: {
+      temperature: "T [K]",
+      seebeck: "S [V/K]",
+      resistivity: "rho [Ohm*m]",
+      hall: "R_H [m^3/C]",
+    },
+    zip: {
+      metadata: "metadata.txt",
+      parameters: "parameters.txt",
+      data: (quantity: string, interpolated: boolean) =>
+        interpolated
+          ? `data/${quantity}-interpolated.txt`
+          : `data/${quantity}.txt`,
+      preFit: "curves/pre-fit.txt",
+      fit: "curves/fit.txt",
+      graph: (kind: string) => `graphs/${kind}.txt`,
+      missing: (file: string) =>
+        `Not in this ZIP: ${file}, as its curve could not be asked for`,
+    },
+  },
   results: {
     pageTitle: "Results",
     title: "Results",
