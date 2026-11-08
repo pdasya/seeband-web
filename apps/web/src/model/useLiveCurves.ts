@@ -189,6 +189,10 @@ export function useLiveCurves(): LiveCurves {
         chemical_potential: derivedOf("chemical_potential"),
         seebeck_by_band: derivedOf("seebeck_by_band"),
         electrical_conductivity: derivedOf("electrical_conductivity"),
+        thermal_conductivity: derivedOf("thermal_conductivity"),
+        carrier_concentration_by_band: derivedOf(
+          "carrier_concentration_by_band",
+        ),
       },
       diagram: {
         body: diagramRequest && JSON.stringify(diagramRequest),
@@ -220,28 +224,93 @@ export function useLiveCurves(): LiveCurves {
         derived.electrical_conductivity.scope,
         false,
       ),
+      thermal_conductivity: useLatest(
+        CALC,
+        derived.thermal_conductivity.body,
+        derived.thermal_conductivity.scope,
+        false,
+      ),
+      carrier_concentration_by_band: useLatest(
+        CALC,
+        derived.carrier_concentration_by_band.body,
+        derived.carrier_concentration_by_band.scope,
+        false,
+      ),
     },
     diagram: useLatest(BAND_DIAGRAM, diagram.body, diagram.scope, false),
   };
 }
 
-/** The measured curves alone, for their RMSE, whatever the charts show. */
-export function useMeasuredCurves(): LiveCalc {
+/**
+ * Curves for a summary of a fit: the measured ones, with their RMSE and the total of S, and each
+ * other kind the mode offers. With `enabled` false it asks for nothing.
+ */
+export function useResultCurves(enabled: boolean): {
+  measured: LiveCalc;
+  derived: Record<DerivedKind, LiveCalc>;
+} {
   const { data: models } = useQuery(modelsQuery);
   const selection = useSessionStore((state) => state.selection);
   const parameters = useSessionStore((state) => state.parameters);
   const data = useSessionStore((state) => state.data);
   const interpolation = useSessionStore((state) => state.interpolation);
-  const { body, scope } = useMemo(() => {
-    const request = calcRequest(
-      { selection, parameters, data, interpolation },
-      models?.models,
-    );
-    return {
+  const requests = useMemo(() => {
+    const state = { selection, parameters, data, interpolation };
+    const model = models?.models.find(({ id }) => id === selection.model);
+    const mode = fitModeOf(model, selection.fitMode);
+    const of = (request: CalcRequest | null) => ({
       body: request && JSON.stringify(request),
       scope: request && requestScope(request),
+    });
+    const derivedOf = (kind: DerivedKind) =>
+      of(
+        enabled &&
+          mode?.curves.some((curve) => curve.kind === kind && curve.available)
+          ? derivedRequest(state, models?.models, kind)
+          : null,
+      );
+    return {
+      measured: of(enabled ? calcRequest(state, models?.models, true) : null),
+      chemical_potential: derivedOf("chemical_potential"),
+      seebeck_by_band: derivedOf("seebeck_by_band"),
+      electrical_conductivity: derivedOf("electrical_conductivity"),
+      thermal_conductivity: derivedOf("thermal_conductivity"),
+      carrier_concentration_by_band: derivedOf("carrier_concentration_by_band"),
     };
-  }, [selection, parameters, data, interpolation, models]);
+  }, [enabled, selection, parameters, data, interpolation, models]);
   const waiting = interpolation.enabled && interpolation.loading;
-  return useLatest(CALC, body, scope, waiting);
+  const latest = (kind: DerivedKind) => ({
+    body: requests[kind].body,
+    scope: requests[kind].scope,
+  });
+  const chemical = latest("chemical_potential");
+  const bands = latest("seebeck_by_band");
+  const electrical = latest("electrical_conductivity");
+  const thermal = latest("thermal_conductivity");
+  const carriers = latest("carrier_concentration_by_band");
+  return {
+    measured: useLatest(
+      CALC,
+      requests.measured.body,
+      requests.measured.scope,
+      waiting,
+    ),
+    derived: {
+      chemical_potential: useLatest(CALC, chemical.body, chemical.scope, false),
+      seebeck_by_band: useLatest(CALC, bands.body, bands.scope, false),
+      electrical_conductivity: useLatest(
+        CALC,
+        electrical.body,
+        electrical.scope,
+        false,
+      ),
+      thermal_conductivity: useLatest(CALC, thermal.body, thermal.scope, false),
+      carrier_concentration_by_band: useLatest(
+        CALC,
+        carriers.body,
+        carriers.scope,
+        false,
+      ),
+    },
+  };
 }

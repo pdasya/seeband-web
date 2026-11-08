@@ -18,7 +18,9 @@ export const CHART_TABS: readonly ChartTab[] = [
   "resistivity",
   "hall",
   "chemical_potential",
+  "thermal_conductivity",
   "bands",
+  "carrier_concentration",
   "band_diagram",
 ];
 
@@ -46,6 +48,9 @@ const SEEBECK_BAND_1 = "seebeck_band_1_v_per_k";
 const SEEBECK_BAND_2 = "seebeck_band_2_v_per_k";
 const CHEMICAL_POTENTIAL = "chemical_potential_k";
 const CONDUCTIVITY = "electrical_conductivity_s_per_m";
+const THERMAL_CONDUCTIVITY = "thermal_conductivity_w_per_m_k";
+const CARRIERS_BAND_1 = "carrier_concentration_band_1_per_cm3";
+const CARRIERS_BAND_2 = "carrier_concentration_band_2_per_cm3";
 
 type CurveKind = FitModeDescription["curves"][number]["kind"];
 
@@ -54,6 +59,8 @@ export const DERIVED_KINDS_ASKED = [
   "chemical_potential",
   "seebeck_by_band",
   "electrical_conductivity",
+  "thermal_conductivity",
+  "carrier_concentration_by_band",
 ] as const;
 export type DerivedKind = (typeof DERIVED_KINDS_ASKED)[number];
 
@@ -62,6 +69,8 @@ const DERIVED_KINDS: Partial<Record<ChartTab, DerivedKind>> = {
   chemical_potential: "chemical_potential",
   bands: "seebeck_by_band",
   conductivity: "electrical_conductivity",
+  thermal_conductivity: "thermal_conductivity",
+  carrier_concentration: "carrier_concentration_by_band",
 };
 
 function availabilityOf(mode: FitModeDescription, kind: CurveKind) {
@@ -91,12 +100,15 @@ export function drawsMeasuredCurves(
     return needsMeasuredCurves(tab, mode);
   }
   return (
-    tab !== "chemical_potential" &&
-    tab !== "band_diagram" &&
-    tab !== "conductivity" &&
+    isQuantityTab(tab) &&
     data[tab] !== undefined &&
     mode?.quantities.includes(tab) === true
   );
+}
+
+/** Whether a tab shows a measured quantity, with its points. */
+export function isQuantityTab(tab: ChartTab): tab is Quantity {
+  return tab in QUANTITY_TABS;
 }
 
 /** E_g for the line on μ, and for that tab only, so that other tabs do not follow its value. */
@@ -292,6 +304,77 @@ function conductivityView(
   };
 }
 
+/** A curve the derived request gives alone, with what is said about it. */
+function derivedView(
+  tab: ChartTab,
+  mode: FitModeDescription | undefined,
+  derived: CalcResponse | null,
+  shown: {
+    curves: (result: CalcResponse | null) => ChartCurve[];
+    yAxisTitle: string;
+    description: string;
+    note: string | null;
+  },
+): ChartTabView {
+  const base = {
+    yAxisTitle: shown.yAxisTitle,
+    description: shown.description,
+  };
+  const kind = DERIVED_KINDS[tab];
+  if (kind === undefined || derivedKind(tab, mode) === null) {
+    return {
+      ...NO_CHART,
+      ...base,
+      empty: unavailable(mode, kind ?? "measured"),
+    };
+  }
+  return {
+    ...NO_CHART,
+    ...base,
+    empty: null,
+    curves: shown.curves(derived),
+    note: shown.note,
+  };
+}
+
+function thermalConductivityView(
+  mode: FitModeDescription | undefined,
+  derived: CalcResponse | null,
+): ChartTabView {
+  return derivedView("thermal_conductivity", mode, derived, {
+    curves: (result) =>
+      curveOf(result, THERMAL_CONDUCTIVITY, 1, text.thermalConductivity),
+    yAxisTitle: text.axes.thermalConductivity,
+    description: text.thermalConductivityDescription,
+    note: text.thermalConductivityNote,
+  });
+}
+
+// Without R_H data, the core sizes n with m₁ = 1, and the description marks the curve relative.
+function carrierConcentrationView(
+  mode: FitModeDescription | undefined,
+  derived: CalcResponse | null,
+): ChartTabView {
+  const relative =
+    mode !== undefined &&
+    availabilityOf(mode, "carrier_concentration_by_band")?.relative === true;
+  return derivedView("carrier_concentration", mode, derived, {
+    curves: (result) => [
+      ...curveOf(result, CARRIERS_BAND_1, 1, text.band1, {
+        color: "orange",
+        dashed: true,
+      }),
+      ...curveOf(result, CARRIERS_BAND_2, 1, text.band2, {
+        color: "teal",
+        dashed: true,
+      }),
+    ],
+    yAxisTitle: text.axes.carrierConcentration,
+    description: text.carrierConcentrationDescription,
+    note: relative ? text.carrierConcentrationRelative : null,
+  });
+}
+
 function bandsView(
   mode: FitModeDescription | undefined,
   measured: CalcResponse | null,
@@ -385,11 +468,17 @@ export function chartTabView(
       return bandDiagramView(mode, diagram);
     case "conductivity":
       return conductivityView(mode, derived);
+    case "thermal_conductivity":
+      return thermalConductivityView(mode, derived);
+    case "carrier_concentration":
+      return carrierConcentrationView(mode, derived);
     case "chemical_potential":
       return chemicalPotentialView(mode, state, derived);
     case "bands":
       return bandsView(mode, measured, derived);
     default:
-      return quantityView(tab, mode, state, measured);
+      return isQuantityTab(tab)
+        ? quantityView(tab, mode, state, measured)
+        : { ...NO_CHART, yAxisTitle: "", description: "", empty: null };
   }
 }
