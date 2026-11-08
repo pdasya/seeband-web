@@ -116,7 +116,7 @@ function ChoiceGroup({
                 option.hint === undefined ? undefined : `${hintId}-${option.id}`
               }
               // A tooltip's trigger sets its own data-state, so being chosen shows from aria-checked.
-              className="flex-1 aria-checked:bg-accent aria-checked:text-accent-foreground"
+              className="flex-auto aria-checked:bg-accent aria-checked:text-accent-foreground"
             >
               {option.label}
             </ToggleGroupItem>
