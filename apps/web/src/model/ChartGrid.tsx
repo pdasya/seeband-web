@@ -22,6 +22,7 @@ import {
   chartTabView,
   derivedKind,
   drawsMeasuredCurves,
+  ENERGY_IN_K,
   isQuantityTab,
 } from "@/model/chartTabs";
 import { retriesByItself } from "@/model/latestOnly";
@@ -55,6 +56,7 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
   const { measured, diagram } = live;
   const labelId = useId();
   const { data: models } = useQuery(modelsQuery);
+  const energy = models?.energy_display ?? ENERGY_IN_K;
   const tab = useSessionStore((state) => state.chartPanels[index] ?? "seebeck");
   const setPanel = useSessionStore((state) => state.setChartPanel);
   const data = useSessionStore((state) => state.data);
@@ -83,7 +85,7 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
       chartTabView(
         tab,
         mode,
-        { data, interpolation, bandGapK },
+        { data, interpolation, bandGapK, energy },
         measuredCurves,
         derived.result,
         diagramResult,
@@ -94,6 +96,7 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
       data,
       interpolation,
       bandGapK,
+      energy,
       measuredCurves,
       derived.result,
       diagramResult,
@@ -132,7 +135,10 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
     rmse !== undefined
       ? `${STRINGS.fit.rmse} ${rmseText(rmse)}`
       : gap !== undefined
-        ? text.bandGapMetric(formatNumber(gap))
+        ? text.bandGapMetric(
+            formatNumber(Number((gap * energy.per_kelvin).toFixed(2)) + 0),
+            energy.unit,
+          )
         : "";
 
   return (
