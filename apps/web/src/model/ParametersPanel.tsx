@@ -68,6 +68,7 @@ function ParameterControl({
   // Text only while it is being typed, or while it cannot be used.
   const [draft, setDraft] = useState<string | null>(null);
   const [invalid, setInvalid] = useState(false);
+  const [hintOpen, setHintOpen] = useState(false);
   const { minimum, maximum } = parameter.display_range;
   const label = parameterSymbol(parameter.name);
   const displayed = tidy(coreToDisplay(parameter, value));
@@ -106,12 +107,18 @@ function ParameterControl({
           <label htmlFor={id} className="text-[13px] font-medium">
             {label}
           </label>
-          <Tooltip>
+          {/* Hover and focus open it, and so does a tap, as a touch screen has no hover. */}
+          <Tooltip open={hintOpen} onOpenChange={setHintOpen}>
             <TooltipTrigger asChild>
               <button
                 type="button"
                 aria-label={text.about(label)}
-                className="inline-flex size-4 items-center justify-center rounded-full text-muted-foreground outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                onClick={(event) => {
+                  // The trigger would close it on a click.
+                  event.preventDefault();
+                  setHintOpen(true);
+                }}
+                className="-m-1 inline-flex size-6 items-center justify-center rounded-full text-muted-foreground outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
               >
                 <InfoIcon className="size-3.5" aria-hidden="true" />
               </button>

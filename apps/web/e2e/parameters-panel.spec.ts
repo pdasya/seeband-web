@@ -388,3 +388,33 @@ test("leaving a field unchanged keeps a result and the exact value", async ({
   await slider(page, "E_g").press("ArrowRight");
   await expect.poll(fitStatus).toBe("idle");
 });
+
+test.describe("on a touch screen", () => {
+  test.use({ hasTouch: true });
+
+  test("a tap on (i) shows the meaning, and a tap beside it hides it", async ({
+    page,
+  }) => {
+    // Safari on iOS does not focus a button that is tapped, so focus cannot open it there.
+    await page.addInitScript(() => {
+      document.addEventListener(
+        "mousedown",
+        (event) => {
+          event.preventDefault();
+        },
+        true,
+      );
+    });
+    await open(page);
+    const tip = page.getByRole("tooltip");
+
+    await page.getByRole("button", { name: "About E_g" }).tap();
+    await expect(
+      page.getByRole("button", { name: "About E_g" }),
+    ).not.toBeFocused();
+    await expect(tip).toContainText("in K");
+
+    await page.getByRole("heading", { name: "Parameters" }).tap();
+    await expect(tip).toHaveCount(0);
+  });
+});
