@@ -22,3 +22,9 @@ export async function openData(page: Page) {
   }
   await expect(page.getByRole("heading", { name: "Data" })).toBeVisible();
 }
+
+/** The badges of the fit panel: its status, or the data it still needs. None before a fit. */
+export const fitBadges = (page: Page) =>
+  page
+    .getByRole("region", { name: "Fit", exact: true })
+    .locator('[data-slot="badge"]');

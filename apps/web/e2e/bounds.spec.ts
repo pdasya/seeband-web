@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { fitBadges } from "./support/fitScreen";
 import { fakeFit } from "./support/fakeFit";
 import { MODELS, serveModels } from "./support/models";
 
@@ -586,7 +587,7 @@ test("a change of bounds ends the last result, and a fit locks them", async ({
   await setBounds(page, "E_g", "0", "4000");
 
   await expect(row(page, "E_g").getByText("at bound")).toHaveCount(0);
-  await expect(page.getByText("Manual parameters")).toBeVisible();
+  await expect(fitBadges(page)).toHaveCount(0);
 });
 
 test("only editable bounds can be changed", async ({ page }) => {

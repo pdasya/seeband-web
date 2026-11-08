@@ -8,8 +8,14 @@ import {
 } from "lucide-react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { fitBadge, fitBlockerText, fitFailureText } from "@/model/fitStatus";
+import {
+  fitBadge,
+  fitBlockerText,
+  fitFailureText,
+  missingDataText,
+} from "@/model/fitStatus";
 import { guessBadge, guessMessages } from "@/model/guessStatus";
 import type { useFitControl } from "@/model/useFitControl";
 import type { useGuess } from "@/model/useGuess";
@@ -31,9 +37,13 @@ export function FitStatusBadge({
   const badge =
     guessBadge(guess.outcome, control.fit) ??
     fitBadge(control.fit, control.iterative);
+  // Before any fit there is no status to show, only what keeps one from running.
+  const missing =
+    badge.status === "manual" ? missingDataText(control.blocker) : null;
   return (
     <>
-      <StatusBadge {...badge} />
+      {badge.status !== "manual" && <StatusBadge {...badge} />}
+      {missing !== null && <Badge variant="warning">{missing}</Badge>}
       <span role="status" className="sr-only">
         {badge.status === "manual" ? "" : STRINGS.status[badge.status]}
       </span>
@@ -119,11 +129,13 @@ export function FitMessages({
           {message}
         </p>
       ))}
-      {control.blocker !== null && !control.active && (
-        <p className="m-0 text-xs text-muted-foreground">
-          {fitBlockerText(control.blocker)}
-        </p>
-      )}
+      {control.blocker !== null &&
+        control.blocker.reason !== "missing_data" &&
+        !control.active && (
+          <p className="m-0 text-xs text-muted-foreground">
+            {fitBlockerText(control.blocker)}
+          </p>
+        )}
       {failure !== null && (
         <Alert variant="destructive">
           <AlertCircleIcon aria-hidden="true" />

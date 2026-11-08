@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 
 import { expect, test, type Page } from "@playwright/test";
 
-import { chart, show } from "./support/fitScreen";
+import { chart, show, fitBadges } from "./support/fitScreen";
 
 // Against a real API, as the mock's answers do not depend on the file. See the README.
 test.skip(
@@ -93,9 +93,7 @@ test("a ρ file in the S slot asks first, and says what its name names", async (
     ),
   ).toBeVisible();
   await expect(page.getByText("Its name suggests Resistivity.")).toBeVisible();
-  await expect(
-    page.getByText("This fit mode needs data for S, ρ."),
-  ).toBeVisible();
+  await expect(fitBadges(page)).toHaveText("Missing data: S, ρ");
 });
 
 test("the real parser refuses a negative resistivity", async ({ page }) => {

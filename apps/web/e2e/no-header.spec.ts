@@ -1,5 +1,6 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
 
+import { fitBadges } from "./support/fitScreen";
 import { DEMO, serveModels } from "./support/models";
 
 interface ParseBody {
@@ -175,9 +176,7 @@ test("two columns come chosen, and wait for one click before any use", async ({
   await expect(role(page, 2)).toBeFocused();
   await expect(load(page)).toHaveText("Load as S");
   await expect(page.getByText(/^Its name suggests/)).toHaveCount(0);
-  await expect(
-    page.getByText("This fit mode needs data for S, ρ."),
-  ).toBeVisible();
+  await expect(fitBadges(page)).toHaveText("Missing data: S, ρ");
   await page.waitForTimeout(300);
   expect(guesses).toEqual([]);
 
@@ -185,7 +184,7 @@ test("two columns come chosen, and wait for one click before any use", async ({
 
   await expect(question(page)).toHaveCount(0);
   await expect(slot(page, "seebeck").getByText("mine.txt")).toBeVisible();
-  await expect(page.getByText("This fit mode needs data for ρ.")).toBeVisible();
+  await expect(fitBadges(page)).toHaveText("Missing data: ρ");
   await expect(page.getByText(/^Fewer than 6 temperatures/)).toBeVisible();
   await expect.poll(() => guesses.length).toBe(1);
   expect(await fileReads(page)).toBe(0);
@@ -529,9 +528,7 @@ test("the choice cannot change while it is read, and a removal then ends it", as
   await page.waitForTimeout(300);
 
   await expect(slot(page, "seebeck")).toContainText("Drop a file");
-  await expect(
-    page.getByText("This fit mode needs data for S, ρ."),
-  ).toBeVisible();
+  await expect(fitBadges(page)).toHaveText("Missing data: S, ρ");
   expect(await fileReads(page)).toBe(0);
 });
 

@@ -371,10 +371,10 @@ export const STRINGS = {
       stream_ended: "The connection was lost during the fit. Try again.",
     },
     failureOther: "The fit failed on the server. Try again.",
+    missingData: (symbols: string) => `Missing data: ${symbols}`,
     blockers: {
       noMode: "Choose a fit mode to run a fit.",
       interpolating: "Waiting for interpolated values.",
-      missingData: "This fit mode needs data for",
       notInterpolated: "No usable interpolated values for",
       noPointsInRange: "No points in the fit range for",
       startOutsideBounds: "A fit cannot start outside its bounds:",

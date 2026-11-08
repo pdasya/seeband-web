@@ -79,7 +79,14 @@ function symbols(quantities: readonly Quantity[]): string {
     .join(", ");
 }
 
-/** Why Run fit cannot be pressed. */
+/** The data that a fit mode still lacks, in place of a status while nothing has been fitted. */
+export function missingDataText(blocker: FitBlocker | null): string | null {
+  return blocker?.reason === "missing_data"
+    ? text.missingData(symbols(blocker.quantities))
+    : null;
+}
+
+/** Why Run fit cannot be pressed. The panel shows missing data as a badge instead. */
 export function fitBlockerText(blocker: FitBlocker): string {
   switch (blocker.reason) {
     case "no_mode":
@@ -87,7 +94,7 @@ export function fitBlockerText(blocker: FitBlocker): string {
     case "interpolating":
       return text.blockers.interpolating;
     case "missing_data":
-      return `${text.blockers.missingData} ${symbols(blocker.quantities)}.`;
+      return text.missingData(symbols(blocker.quantities));
     case "not_interpolated":
       return `${text.blockers.notInterpolated} ${symbols(blocker.quantities)}.`;
     case "no_points_in_range":
