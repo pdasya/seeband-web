@@ -1,13 +1,12 @@
-import {
-  buildFigure,
-  CHART_HEIGHT_PX,
-  readChartTheme,
-  type FigureInput,
-} from "@/charts/figure";
+import { buildFigure, readChartTheme, type FigureInput } from "@/charts/figure";
 import { loadPlotly } from "@/charts/loadPlotly";
 
-/** The size a chart prints at, in CSS pixels, and drawn at twice that for a sharp page. */
-export const PRINT_WIDTH_PX = 720;
+/**
+ * The size a chart prints at, in CSS pixels: half the width of an A4 page within its margins, so
+ * that two to a row keep the chart's text near its size on screen. Drawn at twice that, for paper.
+ */
+export const PRINT_WIDTH_PX = 360;
+const PRINT_HEIGHT_PX = 260;
 const PRINT_SCALE = 2;
 // Plotly leaves its promise open when the browser cannot make the picture, so a report would wait
 // for ever without this.
@@ -45,12 +44,12 @@ export async function chartImage(input: FigureInput): Promise<string> {
     plotly.toImage(
       {
         data,
-        layout: { ...layout, width: PRINT_WIDTH_PX, height: CHART_HEIGHT_PX },
+        layout: { ...layout, width: PRINT_WIDTH_PX, height: PRINT_HEIGHT_PX },
       },
       {
         format: "png",
         width: PRINT_WIDTH_PX,
-        height: CHART_HEIGHT_PX,
+        height: PRINT_HEIGHT_PX,
         scale: PRINT_SCALE,
       },
     ),

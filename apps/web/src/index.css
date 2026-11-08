@@ -52,6 +52,15 @@
     break-inside: avoid;
   }
 
+  main h2 {
+    break-after: avoid;
+  }
+
+  /* Longer than a page, so it breaks between its figures, which each stay whole. */
+  main section[data-report-charts] {
+    break-inside: auto;
+  }
+
   .shadow-card {
     box-shadow: none;
   }
