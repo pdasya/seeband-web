@@ -130,6 +130,18 @@ export function shownValue(
   return Number(value.toFixed(decimals)) + 0;
 }
 
+/**
+ * Whether a typed number is what a field shows for a value, such as 0,12 for a fitted 1234.567 K,
+ * so that leaving a field as it is changes nothing, to the last bit.
+ */
+export function isShownValue(
+  parameter: ParameterDescription,
+  displayed: number,
+  typed: number,
+): boolean {
+  return typed === displayed || typed === shownValue(parameter, displayed);
+}
+
 /** What a field shows, as a fit's value has more digits than fit. The session keeps them all. */
 export function shortened(value: number): number {
   return Number(value.toPrecision(6));

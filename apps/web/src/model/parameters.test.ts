@@ -7,6 +7,7 @@ import {
   editableParameters,
   withCustomRange,
   coreToDisplay,
+  isShownValue,
   displayToCore,
   parameterValues,
   shortened,
@@ -232,6 +233,23 @@ describe("typedDisplayValue", () => {
     expect(typedDisplayValue(gap, "0,26")).toBe(gap.display_range.maximum);
     expect(typedDisplayValue(gap, "-0,26")).toBe(gap.display_range.minimum);
     expect(typedDisplayValue(gap, "0,27")).toBeNull();
+  });
+});
+
+describe("isShownValue", () => {
+  test("a fitted energy typed as it shows is no change, and anything else is one", () => {
+    const gap = parameter("dpb_s_rho", "band_gap");
+    const displayed = coreToDisplay(gap, 1234.567);
+    expect(isShownValue(gap, displayed, 0.11)).toBe(true);
+    expect(isShownValue(gap, displayed, displayed)).toBe(true);
+    expect(isShownValue(gap, displayed, 0.1)).toBe(false);
+    expect(isShownValue(gap, displayed, 0.12)).toBe(false);
+  });
+
+  test("a value with more digits than its field shows, typed as shown, is no change", () => {
+    const mass = parameter("dpb_s_rho", "m_eff");
+    expect(isShownValue(mass, 1.2569432, 1.25694)).toBe(true);
+    expect(isShownValue(mass, 1.2569432, 1.26)).toBe(false);
   });
 });
 

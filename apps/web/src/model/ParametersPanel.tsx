@@ -17,6 +17,7 @@ import {
   displayToCore,
   parameterSymbol,
   parameterValues,
+  isShownValue,
   shownValue,
   steppedDisplayValue,
   tidy,
@@ -89,7 +90,7 @@ function ParameterControl({
     if (typed !== null) {
       setDraft(null);
       // An unchanged number keeps the value as it is, to the last bit, and any result.
-      if (typed !== displayed && typed !== shownValue(parameter, displayed)) {
+      if (!isShownValue(parameter, displayed, typed)) {
         onChange(displayToCore(parameter, typed));
       }
     }
