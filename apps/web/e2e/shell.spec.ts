@@ -84,6 +84,8 @@ test("there is no language switch while the app has one language", async ({
 test("a move to another screen starts at its top, with the header in view", async ({
   page,
 }) => {
+  // Low enough that the short screen of results can scroll too.
+  await page.setViewportSize({ width: 1440, height: 260 });
   await serveModels(page);
   const link = (name: string) => page.getByRole("link", { name, exact: true });
   await page.goto("/results");
@@ -95,11 +97,19 @@ test("a move to another screen starts at its top, with the header in view", asyn
   expect(await page.evaluate(() => scrollY)).toBe(0);
   await expect(page.getByRole("banner")).toBeInViewport();
 
-  // Nor does a new screen start where the last one was scrolled to.
+  // Nor does a new screen start where the last one was scrolled to. The click goes to the link
+  // as it is, as Playwright would otherwise scroll it into view first.
   await page.evaluate(() => {
-    scrollTo(0, 400);
+    scrollTo(0, 200);
   });
-  await link("Results").click();
+  await link("Results").evaluate((element) => {
+    (element as HTMLElement).click();
+  });
   await expect(page.getByRole("heading", { name: "Results" })).toBeVisible();
   expect(await page.evaluate(() => scrollY)).toBe(0);
+
+  // Back keeps the place the browser gives it.
+  await page.goBack();
+  await expect(page.getByRole("slider", { name: "E_F" })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => scrollY)).toBe(200);
 });
