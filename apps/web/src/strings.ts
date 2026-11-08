@@ -304,7 +304,7 @@ export const STRINGS = {
     thermalConductivity: "κ_e",
     thermalConductivityDescription: "Chart of κ_e against temperature",
     thermalConductivityNote:
-      "The electronic part only: the lattice part is not modelled.",
+      "The electronic part only, with the bipolar part in a two-band model. The lattice part is not modelled.",
     carrierConcentrationDescription:
       "Chart of the carrier concentration of each band against temperature",
     carrierConcentrationRelative:
