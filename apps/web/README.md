@@ -131,7 +131,7 @@ SEEBAND_API_TARGET=http://127.0.0.1:8000 pnpm --filter @seeband/web exec playwri
 
 ## Band diagram
 
-The E(k) tab draws `POST /api/band-diagram` for the current values, with one request at a time like the curves, and only while it is open. It is the desktop's sketch, with no ticks on k and the same curves for the same values. Its formula is a known error (`band_diagram_formula`, #108), so a note under it says so. It needs no data.
+The E(k) tab draws `POST /api/band-diagram` for the current values, with one request at a time like the curves, and only while it is open. It is the desktop's sketch, with no ticks on k and the same formula, grid and bands, which a test checks against the desktop's recorded calls. It differs where the desktop rounds values to its sliders, also after Adjust to fit, draws 200 points before the first change, and takes N₁ and N₂ as whole numbers (D24). Its formula is a known error (`band_diagram_formula`, #108), so a note under it says so. It needs no data.
 
 ## Bounds
 

@@ -3,7 +3,7 @@ import { describe, expect, test } from "vitest";
 
 import { MODELS } from "../../e2e/support/models";
 
-import type { CalcResponse } from "@/api/client";
+import type { BandDiagramResponse, CalcResponse } from "@/api/client";
 import {
   bandGapForTab,
   chartTabView,
@@ -324,5 +324,64 @@ describe("band contributions", () => {
     ]);
     expect(view.curves[1]?.values[0]).toBeCloseTo(200);
     expect(view.curves[2]?.values[0]).toBeCloseTo(-100);
+  });
+});
+
+describe("the band diagram", () => {
+  const DIAGRAM: BandDiagramResponse = {
+    wavevector: [-40, 0, 40],
+    curves: {
+      band_1_energy_k: [-1, 0, -1],
+      something_new_k: [1, 2, 1],
+      fermi_energy_k: [5, 5, 5],
+    },
+    known_issues: ["band_diagram_formula", "made_up"],
+  };
+  const view = (diagram: BandDiagramResponse | null) =>
+    chartTabView(
+      "band_diagram",
+      mode("dpb_s"),
+      { data: {}, interpolation: NO_INTERPOLATION },
+      null,
+      null,
+      diagram,
+    );
+
+  test("draws each curve by its name over k, with E_F dashed", () => {
+    const { curves, xAxis, yAxisTitle, measurements, empty } = view(DIAGRAM);
+
+    expect(curves.map(({ label }) => label)).toEqual([
+      "Band 1",
+      "something_new_k",
+      "E_F",
+    ]);
+    expect(curves.map(({ dashed }) => dashed)).toEqual([false, false, true]);
+    expect(curves[0]?.temperatureK).toEqual([-40, 0, 40]);
+    expect(xAxis).toEqual({ title: "k", span: [-40, 40] });
+    expect(yAxisTitle).toBe("E, K");
+    expect(measurements).toBeNull();
+    expect(empty).toBeNull();
+  });
+
+  test("says what is known to be wrong, with no ids", () => {
+    const { note } = view(DIAGRAM);
+
+    expect(note).toMatch(/^Caution: This is a sketch/);
+    expect(note).toContain("Unreliable: A known error applies");
+    expect(note).not.toMatch(/band_diagram_formula|made_up/);
+  });
+
+  test("before an answer, has the k axis with no span, and nothing on it", () => {
+    const { curves, xAxis, note } = view(null);
+
+    expect(curves).toEqual([]);
+    expect(xAxis).toEqual({ title: "k", span: null });
+    expect(note).toBeNull();
+  });
+
+  test("asks for no curves of temperature", () => {
+    expect(derivedKind("band_diagram", mode("dpb_s"))).toBeNull();
+    expect(needsMeasuredCurves("band_diagram", mode("dpb_s"))).toBe(false);
+    expect(drawsMeasuredCurves("band_diagram", mode("dpb_s"), {})).toBe(false);
   });
 });

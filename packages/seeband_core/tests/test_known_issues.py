@@ -10,6 +10,7 @@ from seeband_core.known_issues import (
     COLLAPSED_M_EFF,
     KNOWN_ISSUES,
     active_issue_ids,
+    band_diagram_issue_ids,
     issues_for_mode,
 )
 from seeband_core.model_catalog import registry
@@ -172,6 +173,20 @@ def test_a_description_serialises_with_its_keys() -> None:
     description = registry.get("dpb").describe()
     text = json.dumps(dataclasses.asdict(description), allow_nan=False)
     assert "known_issue.dpb_hall_prefactor" in text
+
+
+@pytest.mark.parametrize("name", [*SPB, *DPB])
+@pytest.mark.parametrize("kind", [*ALL_CURVES, None])
+def test_the_band_diagram_flag_is_on_no_fit_or_curve(name: str, kind: Any) -> None:
+    mode = fit_mode(name)
+    for scattering in mode.scattering or [None]:
+        found = active_issue_ids(mode, scattering, {}, 2.0, kind, extrapolated=True)
+        assert "band_diagram_formula" not in found
+
+
+@pytest.mark.parametrize("name", [*SPB, *DPB])
+def test_the_band_diagram_carries_what_the_registry_marks(name: str) -> None:
+    assert band_diagram_issue_ids(fit_mode(name)) == ("band_diagram_formula",)
 
 
 def test_issues_for_mode_selects_by_mode() -> None:

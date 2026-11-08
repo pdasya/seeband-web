@@ -15,7 +15,11 @@ from typing import Any
 import numpy as np
 
 from seeband_core import fit_module
-from seeband_core.known_issues import active_issue_ids, disabled_issue_ids
+from seeband_core.known_issues import (
+    active_issue_ids,
+    band_diagram_issue_ids,
+    disabled_issue_ids,
+)
 from seeband_core.model_descriptions import load_desktop_descriptions
 from seeband_core.model_interface import (
     BandDiagramRequest,
@@ -80,7 +84,6 @@ def parabolic_band(
 _DIAGRAM_K_RANGE = (-40, 40)
 _DIAGRAM_POINTS = 100
 _FLAT_MASS = 100000000
-_DIAGRAM_ISSUES = ("band_diagram_formula",)
 
 
 def _values(parameters: Mapping[str, float], names: Iterable[str]) -> list[float]:
@@ -375,14 +378,14 @@ class _BandModel:
         ]
         wavevector: np.ndarray | None = None
         curves: dict[str, np.ndarray] = {}
-        # A mass of 0, which the controls allow, has no finite band.
-        with np.errstate(divide="ignore", invalid="ignore"):
+        # A mass of 0, which the controls allow, has no finite band, and a tiny one overflows.
+        with np.errstate(all="ignore"):
             for name, mass, energy in bands:
                 wavevector, curves[name] = parabolic_band(
                     *_DIAGRAM_K_RANGE, _DIAGRAM_POINTS, mass, energy
                 )
         assert wavevector is not None
-        return BandDiagramResult(wavevector, curves, _DIAGRAM_ISSUES)
+        return BandDiagramResult(wavevector, curves, band_diagram_issue_ids(fit_mode))
 
     def _diagram_bands(
         self, request: BandDiagramRequest, specs: Mapping[str, ParameterSpec]

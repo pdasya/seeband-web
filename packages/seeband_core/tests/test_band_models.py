@@ -380,6 +380,17 @@ def test_a_mass_of_0_has_no_finite_band_and_no_warning() -> None:
     assert np.isfinite(result.curves["band_1_energy_k"]).all()
 
 
+@pytest.mark.parametrize("m_eff", [1e-310, 1e300, -1e-310])
+def test_extreme_masses_give_no_warning(m_eff: float) -> None:
+    fit_mode = registry.get("dpb").describe().fit_mode("dpb_s")
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        result = registry.get("dpb").band_diagram(
+            BandDiagramRequest("dpb_s", {**default_start(fit_mode), "m_eff": m_eff})
+        )
+    assert np.isfinite(result.curves["fermi_energy_k"]).all()
+
+
 def test_band_diagram_is_available_without_a_model() -> None:
     wavevector, energy = parabolic_band(-1.0, 1.0, 3, 1.0, 5.0)
     assert wavevector.tolist() == [-1.0, 0.0, 1.0]

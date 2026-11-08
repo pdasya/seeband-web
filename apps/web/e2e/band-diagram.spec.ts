@@ -195,6 +195,35 @@ test("a band with no finite values leaves a gap, and the rest stay", async ({
 
   await expect(legend(page)).toHaveText(["Band 1", "Band 2", "E_F"]);
   await expect(page.getByRole("alert")).toHaveCount(0);
+  const ys = await page.evaluate(() => {
+    const plot = document.querySelector(".js-plotly-plot") as unknown as {
+      data: { y: (number | null)[] }[];
+    };
+    return plot.data.map(({ y }) => y);
+  });
+  expect(ys).toEqual([
+    [-1954, 0, -1954],
+    [null, null, null],
+    [-100, -100, -100],
+  ]);
+});
+
+test("k has no ticks also while its first answer is on its way", async ({
+  page,
+}) => {
+  const gate = hold();
+  await open(page, async (route) => {
+    await gate.held;
+    await route.fulfill({ json: DPB });
+  });
+
+  await tab(page).click();
+
+  await expect(page.locator(".xtitle")).toHaveText("k");
+  await expect(page.locator(".xtick text")).toHaveCount(0);
+  gate.release();
+  await expect(traces(page)).toHaveCount(3);
+  await expect(page.locator(".xtick text")).toHaveCount(0);
 });
 
 test("a failure says so, and the last sketch stays", async ({ page }) => {

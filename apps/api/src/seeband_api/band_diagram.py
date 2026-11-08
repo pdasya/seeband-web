@@ -1,5 +1,7 @@
 """`POST /api/band-diagram`: the sketch of E(k) for given parameters. It keeps no state."""
 
+import math
+
 from pydantic import BaseModel, ConfigDict
 from seeband_core.model_catalog import registry
 from seeband_core.model_interface import BandDiagramRequest as CoreRequest
@@ -12,6 +14,7 @@ from seeband_api.request_checks import (
     check_degeneracy,
     check_parameter_names,
     find_mode,
+    invalid,
 )
 from seeband_api.routing import api_router, too_many_requests
 
@@ -77,6 +80,16 @@ def post_band_diagram(body: BandDiagramRequest) -> BandDiagramResponse:
         *check_degeneracy(body.band_1_degeneracy, body.band_2_degeneracy, fit_mode),
         *check_parameter_names(list(body.parameters), "parameters", fit_mode),
     ]
+    # The mass of band 2 takes this ratio, which a float holds only within its range.
+    ratio = body.band_1_degeneracy / body.band_2_degeneracy
+    if not (math.isfinite(ratio) and ratio > 0):
+        details.append(
+            invalid(
+                "degeneracy_ratio_out_of_range",
+                "N1 / N2 must be a finite number above 0",
+                ["band_2_degeneracy"],
+            )
+        )
     if details:
         raise ApiError(422, ERROR_CODE, ERROR_MESSAGE, details)
     result = registry.get(description.id).band_diagram(

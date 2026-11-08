@@ -27,6 +27,8 @@ To remove a flag once its error is fixed, delete its entry and its row here, and
 | `band_diagram_formula`       | caution    | the sketch of E(k), in `band_diagram` alone, and in no fit or curve                                | #108     |
 | `interpolation_extrapolates` | unreliable | any result, when `extrapolated` is set on its request                                              | #86      |
 
+`affects_band_diagram` puts an entry on the sketch of E(k) alone, through `band_diagram_issue_ids`.
+
 The caller sets `extrapolated`, from `InterpolatedData`, since a fit does not know where its data came from.
 
 ## What is not here

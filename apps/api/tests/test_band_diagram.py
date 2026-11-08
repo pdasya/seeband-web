@@ -92,6 +92,20 @@ def test_what_is_wrong_is_named(client: TestClient, change: dict[str, Any], code
     assert code in {detail["code"] for detail in body["details"]}
 
 
+@pytest.mark.parametrize(("band_1", "band_2"), [(1e-308, 1e308), (1e308, 1e-308)])
+def test_a_ratio_of_degeneracies_past_a_float_is_refused(
+    client: TestClient, band_1: float, band_2: float
+) -> None:
+    body = _body("dpb", "dpb_s") | {"band_1_degeneracy": band_1, "band_2_degeneracy": band_2}
+
+    response = client.post("/api/band-diagram", json=body)
+
+    assert response.status_code == 422
+    assert [detail["code"] for detail in response.json()["details"]] == [
+        "degeneracy_ratio_out_of_range"
+    ]
+
+
 def test_a_mode_with_no_degeneracy_refuses_one(client: TestClient) -> None:
     body = _body("spb", "spb_s") | {"band_2_degeneracy": 2.0}
 
