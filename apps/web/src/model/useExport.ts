@@ -5,7 +5,7 @@ import { apiClient, type CalcResponse } from "@/api/client";
 import { modelsQuery } from "@/api/queries";
 import { strToU8, zipSync } from "fflate";
 
-import { DERIVED_KINDS_ASKED } from "@/model/chartTabs";
+import { DERIVED_KINDS_ASKED, ENERGY_IN_K } from "@/model/chartTabs";
 import {
   csvFile,
   dataFile,
@@ -77,6 +77,7 @@ function preFitState(state: SessionState, modeId: string): SessionState {
  */
 export function useExport() {
   const { data: models } = useQuery(modelsQuery);
+  const energy = models?.energy_display ?? ENERGY_IN_K;
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -243,6 +244,7 @@ export function useExport() {
               state.fit,
             ),
             graphs,
+            energy,
             missing,
           );
           download(
@@ -281,7 +283,7 @@ export function useExport() {
           const { header } = await context(now, { derived: issues });
           download(
             text.graphFile(name),
-            graphFile(header, temperatureK, curves),
+            graphFile(header, temperatureK, curves, energy),
           );
         }
       }),

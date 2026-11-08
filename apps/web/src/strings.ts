@@ -530,7 +530,6 @@ export const STRINGS = {
     },
     // Each column of an additional graph. Any other keeps the API's name, which states its unit.
     curves: {
-      chemical_potential_k: "Chemical potential [K]",
       electrical_conductivity_s_per_m: "Electrical conductivity [S/m]",
       thermal_conductivity_w_per_m_k:
         "Electronic thermal conductivity [W/(m*K)]",
@@ -541,6 +540,10 @@ export const STRINGS = {
         "Carrier concentration of band 1 [1/cm^3]",
       carrier_concentration_band_2_per_cm3:
         "Carrier concentration of band 2 [1/cm^3]",
+    },
+    // Curves of an energy, which the API gives in K, in the unit the screen shows them in.
+    energyCurves: {
+      chemical_potential_k: (unit: string) => `Chemical potential [${unit}]`,
     },
     parameterColumns: "Parameter\tValue\tStatus",
     parameterCsvColumns: "parameter,symbol,meaning,unit,value,status",

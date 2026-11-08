@@ -1,5 +1,5 @@
 import type { CalcResponse } from "@/api/client";
-import { quantityCurve } from "@/model/chartTabs";
+import { quantityCurve, type EnergyDisplay } from "@/model/chartTabs";
 import {
   coreToDisplay,
   parameterSymbol,
@@ -344,16 +344,27 @@ export function graphFile(
   header: readonly string[],
   temperatureK: readonly number[],
   curves: readonly { name: string; values: readonly (number | null)[] }[],
+  energy: EnergyDisplay,
 ): string {
   const labels: Record<string, string | undefined> = text.curves;
+  const energyLabels: Record<string, ((unit: string) => string) | undefined> =
+    text.energyCurves;
   return (
     commented(header) +
     table([
       { legend: text.columns.temperature, values: temperatureK },
-      ...curves.map(({ name, values }) => ({
-        legend: labels[name] ?? name,
-        values,
-      })),
+      ...curves.map(({ name, values }) => {
+        // An energy is in the unit the screen shows, as the parameters are.
+        const energyLabel = energyLabels[name];
+        return energyLabel === undefined
+          ? { legend: labels[name] ?? name, values }
+          : {
+              legend: energyLabel(energy.unit),
+              values: values.map((value) =>
+                value === null ? null : value * energy.per_kelvin,
+              ),
+            };
+      }),
     ])
   );
 }
@@ -448,6 +459,7 @@ export function zipEntries(
   fitted: CalcResponse | null,
   parameters: string,
   graphs: readonly { kind: string; result: CalcResponse }[],
+  energy: EnergyDisplay,
   /** Kinds the mode offers that have no curve here, so that metadata says why a file is missing. */
   missing: readonly string[] = [],
 ): Record<string, string> {
@@ -494,6 +506,7 @@ export function zipEntries(
         name,
         values,
       })),
+      energy,
     );
   }
   return entries;

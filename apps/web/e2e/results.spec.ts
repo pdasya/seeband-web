@@ -606,6 +606,32 @@ test("each additional graph downloads its own curves and flags", async ({
   ]);
 });
 
+test("μ downloads in eV, as the screen shows it", async ({ page }) => {
+  await openFit(page, serveCurves);
+  await finishWith(page);
+  await toResults(page);
+  await expect(
+    graph(page, "Chemical potential μ(T)")
+      .locator(".scatterlayer .trace path.js-line")
+      .first(),
+  ).toBeVisible();
+
+  const file = await downloaded(
+    page,
+    "Download the data of Chemical potential μ(T)",
+  );
+  const rows = file
+    .split("\n")
+    .filter((line) => line !== "" && !line.startsWith("#"));
+  // From -100, 0 and 100 K.
+  expect(rows[0]).toBe("Temperature [K]\tChemical potential [eV]");
+  expect(rows.slice(1).map((row) => row.split("\t")[1])).toEqual([
+    "-0.008617333262",
+    "0",
+    "0.008617333262",
+  ]);
+});
+
 test("a failed export says so, and downloads nothing", async ({ page }) => {
   await openFit(page);
   await finishWith(page);
