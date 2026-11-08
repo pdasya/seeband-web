@@ -129,7 +129,6 @@ export function ResultsPage() {
         {title}
         <PageHeading
           title={text.title}
-          subtitle=""
           {...(badge === null ? {} : { status: <StatusBadge {...badge} /> })}
         />
         <NoResult message={message} />

@@ -8,7 +8,7 @@ export function PageHeading({
   actions,
 }: {
   title: string;
-  subtitle: string;
+  subtitle?: string;
   status?: ReactNode;
   actions?: ReactNode;
 }) {
@@ -21,7 +21,9 @@ export function PageHeading({
           </h1>
           {status}
         </div>
-        <p className="mt-1 mb-0 text-muted-foreground">{subtitle}</p>
+        {subtitle !== undefined && (
+          <p className="mt-1 mb-0 text-muted-foreground">{subtitle}</p>
+        )}
       </div>
       {actions !== undefined && (
         <div className="flex flex-wrap gap-2">{actions}</div>

@@ -114,6 +114,8 @@ test("with no fit, it says so and leads to the fit", async ({ page }) => {
     ),
   ).toBeVisible();
   await expect(table(page)).toHaveCount(0);
+  // No empty line under the title.
+  await expect(page.locator("main p:empty")).toHaveCount(0);
   await page.getByRole("link", { name: "Run a fit" }).click();
   await expect(page).toHaveURL(/\/fit$/);
 });
