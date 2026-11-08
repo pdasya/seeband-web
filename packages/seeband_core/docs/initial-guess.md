@@ -32,3 +32,21 @@ fits, and a mass ratio rounding to zero remain in place.
 
 Retraining is deferred until data collection is complete; see
 [issue #168](https://github.com/pdasya/seeband-web/issues/168).
+
+## Input domain and quality
+
+SPB uses lambda = 0 and assumes E_F lies inside the band at T = 0 (#106).
+Rows below E_F,max / 700 (about 4.29 K) are omitted with a warning to avoid
+existing F0 overflow. Transport formulas are unchanged. At least three usable
+distinct temperatures must remain. Unsupported signals return a typed reason:
+sign_change, zero_seebeck, or too_few_temperatures.
+
+The response includes RMS error in V/K, a bound warning, and a residual warning
+when RMS error exceeds 20% of RMS signal. This is a quality heuristic, not a
+physics threshold for single-band validity. Near 300 K the bounded search cannot
+represent arbitrarily small/large |S| (roughly below 30 or above 900 microvolts/K).
+
+Automatic guesses are tracked per dataset and model. Changing models estimates
+its starts once; returning to a previously guessed model keeps edits. The server
+marks sign-only parameters; the generic client preserves their magnitude, using
+each parameter's core default magnitude for zero. See D28 for automatic SPB sign.

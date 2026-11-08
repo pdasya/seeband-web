@@ -809,7 +809,7 @@ export interface components {
                 [key: string]: number;
             };
             /** Warnings */
-            warnings: ("unsorted_temperature" | "underdetermined_fit" | "m_eff_rounds_to_zero")[];
+            warnings: ("unsorted_temperature" | "underdetermined_fit" | "m_eff_rounds_to_zero" | "estimate_at_bound" | "large_estimate_residual" | "low_temperature_omitted")[];
         };
         /**
          * GuessNoNet
@@ -835,7 +835,7 @@ export interface components {
             /** Available Ranges */
             available_ranges: components["schemas"]["NetRange"][];
             /** Warnings */
-            warnings: ("unsorted_temperature" | "underdetermined_fit" | "m_eff_rounds_to_zero")[];
+            warnings: ("unsorted_temperature" | "underdetermined_fit" | "m_eff_rounds_to_zero" | "estimate_at_bound" | "large_estimate_residual" | "low_temperature_omitted")[];
         };
         /**
          * GuessNotFinite
@@ -851,7 +851,7 @@ export interface components {
             status: "not_finite";
             net_range: components["schemas"]["NetRange"];
             /** Warnings */
-            warnings: ("unsorted_temperature" | "underdetermined_fit" | "m_eff_rounds_to_zero")[];
+            warnings: ("unsorted_temperature" | "underdetermined_fit" | "m_eff_rounds_to_zero" | "estimate_at_bound" | "large_estimate_residual" | "low_temperature_omitted")[];
         };
         /**
          * GuessRequest
@@ -894,6 +894,21 @@ export interface components {
             temperature_k: number[];
             /** Seebeck V Per K */
             seebeck_v_per_k: number[];
+        };
+        /** GuessUnsupported */
+        GuessUnsupported: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            status: "unsupported";
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "sign_change" | "too_few_temperatures" | "zero_seebeck";
+            /** Warnings */
+            warnings: ("unsorted_temperature" | "underdetermined_fit" | "m_eff_rounds_to_zero" | "estimate_at_bound" | "large_estimate_residual" | "low_temperature_omitted")[];
         };
         /**
          * HealthResponse
@@ -1067,6 +1082,15 @@ export interface components {
          */
         NumericalGuessFound: {
             /**
+             * Sign Only Parameters
+             * @default [
+             *       "band_mass"
+             *     ]
+             */
+            sign_only_parameters?: string[];
+            /** Rmse V Per K */
+            rmse_v_per_k: number;
+            /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
              */
@@ -1076,7 +1100,7 @@ export interface components {
                 [key: string]: number;
             };
             /** Warnings */
-            warnings: ("unsorted_temperature" | "underdetermined_fit" | "m_eff_rounds_to_zero")[];
+            warnings: ("unsorted_temperature" | "underdetermined_fit" | "m_eff_rounds_to_zero" | "estimate_at_bound" | "large_estimate_residual" | "low_temperature_omitted")[];
         };
         /**
          * ParameterResponse
@@ -1450,7 +1474,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["GuessFound"] | components["schemas"]["NumericalGuessFound"] | components["schemas"]["GuessNoNet"] | components["schemas"]["GuessNotFinite"];
+                    "application/json": components["schemas"]["GuessFound"] | components["schemas"]["NumericalGuessFound"] | components["schemas"]["GuessUnsupported"] | components["schemas"]["GuessNoNet"] | components["schemas"]["GuessNotFinite"];
                 };
             };
             /** @description Too many requests from this client, or for the server */

@@ -95,10 +95,15 @@ export async function runGuess(
             values: Object.fromEntries(
               specs.flatMap(({ name, core_range }) => {
                 let value = answer.start_values[name];
-                if (name === "band_mass" && value !== undefined) {
-                  const previous =
-                    parameters[id]?.band_mass ?? core_range.default;
-                  value = Math.sign(value) * (Math.abs(previous) || 1);
+                if (
+                  answer.status === "numerical_guess" &&
+                  answer.sign_only_parameters?.includes(name) &&
+                  value !== undefined
+                ) {
+                  const previous = parameters[id]?.[name] ?? core_range.default;
+                  value =
+                    Math.sign(value) *
+                    (Math.abs(previous) || Math.abs(core_range.default));
                 }
                 return value === undefined ? [] : [[name, value]];
               }),
@@ -115,6 +120,16 @@ export async function runGuess(
           now,
         );
       }
+    } else if (answer.status === "unsupported") {
+      store().guessFinished(
+        {
+          kind: "unsupported",
+          reason: answer.reason,
+          warnings: answer.warnings,
+        },
+        model.id,
+        now,
+      );
     } else if (answer.status === "no_net") {
       store().guessFinished(
         {
@@ -144,6 +159,11 @@ export async function runGuess(
       }
     }
   } finally {
+    if (own.signal.aborted) {
+      seenByModel.get(model.id)?.delete(measurement);
+      if (lastByModel.get(model.id) === measurement)
+        lastByModel.delete(model.id);
+    }
     if (controller === own) {
       controller = null;
     }
@@ -162,20 +182,26 @@ export function dropGuess(): void {
   }
 }
 
-const seen = new WeakSet<Measurement>();
-let last: Measurement | null = null;
+const seenByModel = new Map<string, WeakSet<Measurement>>();
+const lastByModel = new Map<string, Measurement>();
 
 /**
  * Whether S just came from a new load, as the desktop guesses on each. Coming back to a tab brings
  * back the same data, and a new mapping of a table can read the same S, which are no such thing.
  */
-export function isNewLoad(measurement: Measurement | undefined): boolean {
+export function isNewLoad(
+  measurement: Measurement | undefined,
+  model = "dpb",
+): boolean {
+  const seen = seenByModel.get(model) ?? new WeakSet<Measurement>();
+  seenByModel.set(model, seen);
+  const last = lastByModel.get(model);
   if (measurement === undefined) {
-    last = null;
+    lastByModel.delete(model);
     return false;
   }
   const known = seen.has(measurement) || (last && sameRows(last, measurement));
   seen.add(measurement);
-  last = measurement;
+  lastByModel.set(model, measurement);
   return known !== true;
 }

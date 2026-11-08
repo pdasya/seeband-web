@@ -205,10 +205,10 @@ Median response time for a 50-point curve, through the app in one process with a
 - **`prediction` is the net's own result**, before rounding and limits, in `m_eff`, `band_gap_k` and `fermi_energy_k`. It equals the core's exactly.
 - **`net_range` is the real range of the net that was used.** Show it, rather than a fixed text.
 - **Send every row of the Seebeck data, in V/K.** The desktop reads the whole file, not the fit range, unlike `POST /api/calc`.
-- **Read `has_initial_guess` in `GET /api/models`.** An unknown model gets a 422 `invalid_guess`. SPB needs at least three distinct positive temperatures, a nonzero S signal and no sign reversal; unsupported signals return 422 `calculation_failed`.
+- **Read `has_initial_guess` in `GET /api/models`.** An unknown model gets a 422 `invalid_guess`. SPB needs at least three distinct positive temperatures, a nonzero S signal and no sign reversal; unsupported signals return 200 `unsupported` with a reason code.
 - **`calculation_failed`** is a 422 for a fit that fails. It did not happen in 20000 random requests with extreme finite values, run through the core on one Mac, so it should be rare. `calculation_unavailable` and `calculation_timeout` are as in `POST /api/calc`.
 
-For SPB, `start_values.band_mass` is a signed unit reference, not a measured mass. Clients preserve the existing nonzero mass magnitude in each mode and apply the returned sign (zero is replaced by unit mass). `fermi_energy` is in K. The bounded search uses up to 24 measured points and does not require a network temperature interval.
+For SPB, `sign_only_parameters` marks parameters whose magnitude must be preserved. `start_values.band_mass` is a signed reference, not a measured mass. `rmse_v_per_k` reports residual error; warnings identify search bounds, omitted low-temperature rows and a relative RMS residual above 20% (a quality heuristic, not a band-count diagnosis). Clients preserve the existing nonzero mass magnitude in each mode and apply the returned sign (zero uses the parameter's own core default magnitude). `fermi_energy` is in K. The bounded search uses up to 24 measured points and does not require a network temperature interval.
 
 `warnings` holds codes for a client to show through i18n, as `guess_warning.<code>`. The answer still follows the data:
 

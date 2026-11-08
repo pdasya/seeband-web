@@ -212,6 +212,7 @@ class ModelDescription:
     default_curve_points: int
     # Whether initial estimates are available (DPB neural net or SPB numerical search).
     has_initial_guess: bool = False
+    initial_guess_method: str | None = None
 
     def fit_mode(self, fit_mode_id: str) -> FitMode:
         for fit_mode in self.fit_modes:

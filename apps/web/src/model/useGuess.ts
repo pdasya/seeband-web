@@ -24,14 +24,18 @@ export function useGuess() {
 
   useEffect(() => {
     // Without the descriptions it cannot run yet, so this load still counts when they come.
-    if (model !== undefined && isNewLoad(measurement) && measurement) {
+    if (
+      model !== undefined &&
+      isNewLoad(measurement, model.id) &&
+      measurement
+    ) {
       void runGuess(model, measurement);
     }
   }, [model, measurement]);
 
   const offered = model !== undefined && selected === model.id;
   const title = !offered
-    ? text.guessOnlyWithNets
+    ? text.guessUnavailable
     : measurement === undefined
       ? text.guessNeedsData
       : text.guessHint;

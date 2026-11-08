@@ -596,10 +596,11 @@ def test_contract_lists_neural_and_numerical_answers() -> None:
 
     assert operation["operationId"] == "post_guess"
     media = operation["responses"]["200"]["content"]["application/json"]
-    assert set(media["examples"]) == {"guess", "no_net", "not_finite"}
+    assert set(media["examples"]) == {"guess", "numerical_guess", "no_net", "not_finite"}
     assert set(media["schema"]["discriminator"]["mapping"]) == {
         "guess",
         "numerical_guess",
+        "unsupported",
         "no_net",
         "not_finite",
     }
@@ -621,7 +622,8 @@ def test_spb_numerical_guess_is_available_without_a_network_range(client):
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "numerical_guess"
-    assert body["start_values"]["fermi_energy"] == pytest.approx(-700.0, abs=1)
+    assert body["start_values"] == RESPONSE_EXAMPLES["numerical_guess"]["start_values"]
+    assert body["rmse_v_per_k"] == pytest.approx(0, abs=1e-12)
 
 
 def test_invalid_spb_signal_is_a_controlled_error(client):
@@ -633,5 +635,18 @@ def test_invalid_spb_signal_is_a_controlled_error(client):
             "seebeck_v_per_k": [-1e-4, 0.0, 1e-4],
         },
     )
-    assert response.status_code == 422
-    assert response.json()["code"] == "calculation_failed"
+    assert response.status_code == 200
+    assert response.json()["status"] == "unsupported"
+    assert response.json()["reason"] == "sign_change"
+
+
+def test_unavailable_model_is_checked_before_calculation(monkeypatch):
+    from dataclasses import replace
+
+    from seeband_api.errors import ApiError
+    from seeband_api.guess import _check_model
+
+    description = replace(registry.get("spb").describe(), has_initial_guess=False)
+    monkeypatch.setattr(registry, "descriptions", lambda: [description])
+    with pytest.raises(ApiError):
+        _check_model("spb")

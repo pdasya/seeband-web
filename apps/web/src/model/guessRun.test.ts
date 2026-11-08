@@ -191,6 +191,8 @@ describe("single-band initial estimates", () => {
     });
     vi.spyOn(apiClient, "postGuess").mockResolvedValue({
       status: "numerical_guess",
+      sign_only_parameters: ["band_mass"],
+      rmse_v_per_k: 0,
       start_values: { band_mass: -1, fermi_energy: -700 },
       warnings: [],
     });
@@ -201,4 +203,11 @@ describe("single-band initial estimates", () => {
     );
     expect(currentGuess(useSessionStore.getState())?.kind).toBe("applied");
   });
+});
+
+test("a load is tracked independently for each model", () => {
+  const measurement = rows(9, 8, 7);
+  expect(isNewLoad(measurement, "spb")).toBe(true);
+  expect(isNewLoad(measurement, "dpb")).toBe(true);
+  expect(isNewLoad(measurement, "spb")).toBe(false);
 });
