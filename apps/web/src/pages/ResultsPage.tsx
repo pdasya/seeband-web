@@ -100,7 +100,7 @@ function NoResult({ message }: { message: string }) {
 
 /** The last fit: what was fitted, how well, and what is known to be wrong with it. */
 export function ResultsPage() {
-  const { data: models } = useQuery(modelsQuery);
+  const { data: models, isPending, isError } = useQuery(modelsQuery);
   const selection = useSessionStore((state) => state.selection);
   const parameters = useSessionStore((state) => state.parameters);
   const data = useSessionStore((state) => state.data);
@@ -114,12 +114,16 @@ export function ResultsPage() {
   const title = <title>{`${text.pageTitle} · ${STRINGS.appName}`}</title>;
 
   if (model === undefined || mode === undefined || !hasFittedValues(fit)) {
-    const message =
-      fit.status === "idle"
-        ? text.noFit
-        : fit.status === "waiting" || fit.status === "running"
-          ? text.running
-          : text.noValues;
+    // A change of values on the fit screen ends its result, so "no fit" is about these values.
+    const message = isPending
+      ? modelText.loading
+      : isError
+        ? modelText.loadFailed
+        : fit.status === "idle"
+          ? text.noFit
+          : fit.status === "waiting" || fit.status === "running"
+            ? text.running
+            : text.noValues;
     return (
       <div className="flex flex-col gap-4">
         {title}

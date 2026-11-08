@@ -458,7 +458,7 @@ export const STRINGS = {
   results: {
     pageTitle: "Results",
     title: "Results",
-    noFit: "No fit yet. Run one on the model fit page.",
+    noFit: "No fit for the current values. Run one on the model fit page.",
     running: "A fit is running. Its results appear here once it ends.",
     noValues: "The last fit gave no values. The model fit page says why.",
     toFit: "Run a fit",

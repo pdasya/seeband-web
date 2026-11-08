@@ -109,7 +109,9 @@ test("with no fit, it says so and leads to the fit", async ({ page }) => {
   await page.goto("/results");
 
   await expect(
-    page.getByText("No fit yet. Run one on the model fit page."),
+    page.getByText(
+      "No fit for the current values. Run one on the model fit page.",
+    ),
   ).toBeVisible();
   await expect(table(page)).toHaveCount(0);
   await page.getByRole("link", { name: "Run a fit" }).click();
@@ -228,4 +230,32 @@ test("an RMSE that is on its way or failed says so, not that data are missing", 
   await expect(
     page.getByText("The RMSE could not be calculated for the current values."),
   ).toBeVisible();
+});
+
+test("a change after the fit leaves no summary, for values it did not fit", async ({
+  page,
+}) => {
+  await openFit(page);
+  await finishWith(page);
+  await page.getByRole("slider", { name: "E_g" }).press("ArrowRight");
+  await toResults(page);
+
+  await expect(
+    page.getByText(
+      "No fit for the current values. Run one on the model fit page.",
+    ),
+  ).toBeVisible();
+  await expect(table(page)).toHaveCount(0);
+});
+
+test("while the models load or fail, it says that, not that a fit gave nothing", async ({
+  page,
+}) => {
+  await page.route("**/api/models", (route) =>
+    route.fulfill({ status: 500, json: { code: "internal_error" } }),
+  );
+  await page.goto("/results");
+
+  await expect(page.getByText(/^The models could not be loaded/)).toBeVisible();
+  await expect(page.getByText(/gave no values/)).toHaveCount(0);
 });
