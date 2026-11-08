@@ -143,10 +143,16 @@ export const STRINGS = {
         "Synthetic data, generated with the DPB model and added noise. They are not a measurement of any material.",
     },
     oneFile: "Drop one file at a time.",
-    noHeaderQuestion: (title: string, symbol: string) =>
-      `This file has no column names. Does its second column hold ${title} (${symbol})?`,
+    noHeaderQuestion:
+      "This file has no column names. Choose what its columns hold.",
     nameSuggests: (title: string) => `Its name suggests ${title}.`,
-    confirmQuantity: (symbol: string) => `Yes, it holds ${symbol}`,
+    chooseColumns: "Choose T and one quantity.",
+    goesToSlot: (title: string) => `It goes to the slot of ${title}.`,
+    slotTaken: (title: string) =>
+      `The slot of ${title} holds a file. Remove it first, or choose another quantity.`,
+    loadAs: (symbol: string) => `Load as ${symbol}`,
+    tableSize: (rows: number, columns: number) =>
+      `${String(rows)} rows · ${String(columns)} columns`,
     quantityNotFound: "This file has no column for this quantity.",
     tooManyRows: "This file has more than 2000 rows.",
     rateLimited: "Too many files in a short time. Try again in a minute.",

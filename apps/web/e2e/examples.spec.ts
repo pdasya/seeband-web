@@ -18,13 +18,13 @@ const EXAMPLES = fileURLToPath(
   ),
 );
 
-/** Chooses a file for the next empty slot, and confirms its quantity, as the examples have no header. */
+/** Chooses a file for the next empty slot, and loads it as chosen already, as the examples have no header. */
 async function loadExample(page: Page, name: string) {
   await page
     .locator('input[type="file"]')
     .first()
     .setInputFiles(`${EXAMPLES}${name}`);
-  await page.getByRole("button", { name: /^Yes, it holds / }).click();
+  await page.getByRole("button", { name: /^Load as / }).click();
 }
 
 for (const example of ["01_Fe2VAl09Si01", "02_SiP", "03_AWI32_SI"]) {
@@ -83,7 +83,8 @@ test("a ρ file in the S slot asks first, and says what its name names", async (
 
   await expect(
     page.getByText(
-      /^This file has no column names\. Does its second column hold Seebeck/,
+      "This file has no column names. Choose what its columns hold.",
+      { exact: true },
     ),
   ).toBeVisible();
   await expect(page.getByText("Its name suggests Resistivity.")).toBeVisible();
