@@ -22,20 +22,22 @@ import {
   chartTabView,
   derivedKind,
   drawsMeasuredCurves,
+  isQuantityTab,
 } from "@/model/chartTabs";
 import { retriesByItself } from "@/model/latestOnly";
 import { parameterValues } from "@/model/parameters";
 import { rmseText } from "@/model/resultSummary";
 import { fitModeOf } from "@/model/selection";
 import type { LiveCalc, LiveCurves } from "@/model/useLiveCurves";
-import { QUANTITIES, useSessionStore, type ChartTab } from "@/session/store";
+import { useSessionStore, type ChartTab } from "@/session/store";
 import { STRINGS } from "@/strings";
 
 const { chart: text } = STRINGS;
 
 const NOTHING: LiveCalc = { result: null, busy: false, error: null };
 
-function failureText(error: ApiError): string {
+/** What a chart says of a failed curve, in our own words. */
+export function failureText(error: ApiError): string {
   switch (error.code) {
     case "calculation_failed":
       return text.noResult;
@@ -46,10 +48,6 @@ function failureText(error: ApiError): string {
     default:
       return error.status >= 500 ? text.serverUnavailable : text.calcFailed;
   }
-}
-
-function isQuantity(tab: ChartTab): tab is (typeof QUANTITIES)[number] {
-  return (QUANTITIES as readonly ChartTab[]).includes(tab);
 }
 
 /** One chart of the grid, with its own choice of what it shows. */
@@ -73,13 +71,10 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
   const kind = derivedKind(tab, mode);
   const derived = kind === null ? NOTHING : live.derived[kind];
   const bandGapK = bandGapForTab(tab, mode, parameters);
-  // These draw none of the measured curves, so an answer for them does not redraw them.
+  // Only the measured quantities and the total of S draw the measured curves, so an answer for
+  // them does not redraw the others.
   const measuredCurves =
-    tab === "chemical_potential" ||
-    tab === "band_diagram" ||
-    tab === "conductivity"
-      ? null
-      : measured.result;
+    isQuantityTab(tab) || tab === "bands" ? measured.result : null;
   const diagramResult = tab === "band_diagram" ? diagram.result : null;
   const view = useMemo(
     () =>
@@ -113,7 +108,7 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
   const { error } = failed;
   const busy = (usesMeasured && measured.busy) || onTab.busy;
 
-  const rmse = isQuantity(tab) ? measured.result?.rmse?.[tab] : undefined;
+  const rmse = isQuantityTab(tab) ? measured.result?.rmse?.[tab] : undefined;
   const gap =
     tab === "band_diagram" && mode !== undefined
       ? parameterValues(mode, parameters[mode.id]).band_gap

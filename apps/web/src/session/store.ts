@@ -61,7 +61,13 @@ export type DataMode = "separate" | "single";
 
 /** What the fit screen's chart shows. */
 export type ChartTab =
-  Quantity | "conductivity" | "chemical_potential" | "bands" | "band_diagram";
+  | Quantity
+  | "conductivity"
+  | "chemical_potential"
+  | "thermal_conductivity"
+  | "bands"
+  | "carrier_concentration"
+  | "band_diagram";
 
 /** What the four charts show at first: the measured quantities, and the bands. */
 export const INITIAL_CHART_PANELS: readonly ChartTab[] = [

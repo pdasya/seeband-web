@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { InfoIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import { useId, useMemo, type ReactNode } from "react";
 import { Link } from "react-router";
 
 import { modelsQuery } from "@/api/queries";
+import { TransportChart } from "@/charts/TransportChart";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +17,8 @@ import {
 } from "@/components/ui/table";
 import { noticeText } from "@/data/DemoNotice";
 import { formatNumber } from "@/lib/numbers";
+import { failureText } from "@/model/ChartGrid";
+import { bandGapForTab, chartTabView, derivedKind } from "@/model/chartTabs";
 import { fitLog, type LogStep } from "@/model/fitLog";
 import { fitBadge } from "@/model/fitStatus";
 import {
@@ -27,9 +30,14 @@ import {
   rmseText,
   type ParameterStatus,
 } from "@/model/resultSummary";
-import { fitModeOf } from "@/model/selection";
-import { useMeasuredCurves } from "@/model/useLiveCurves";
-import { QUANTITIES, useSessionStore, type Quantity } from "@/session/store";
+import { fitModeOf, type FitModeDescription } from "@/model/selection";
+import { useResultCurves, type LiveCalc } from "@/model/useLiveCurves";
+import {
+  QUANTITIES,
+  useSessionStore,
+  type ChartTab,
+  type Quantity,
+} from "@/session/store";
 import { PageHeading, Panel } from "@/shell/layout";
 import { StatusBadge } from "@/shell/StatusBadge";
 import { STRINGS } from "@/strings";
@@ -39,6 +47,7 @@ const {
   fit: fitText,
   data: dataText,
   model: modelText,
+  chart: chartText,
 } = STRINGS;
 
 function symbols(quantities: readonly Quantity[]): string {
@@ -124,6 +133,109 @@ function FitLog({ steps }: { steps: readonly LogStep[] }) {
   );
 }
 
+const NOTHING: LiveCalc = { result: null, busy: false, error: null };
+
+/** The design's additional graphs, each in a chart of its own. */
+const MORE_GRAPHS: readonly ChartTab[] = [
+  "chemical_potential",
+  "conductivity",
+  "thermal_conductivity",
+  "bands",
+  "carrier_concentration",
+];
+
+/** One additional graph, with what is known to be wrong with its curve. */
+function MoreGraph({
+  tab,
+  mode,
+  measured,
+  derived,
+}: {
+  tab: ChartTab;
+  mode: FitModeDescription;
+  measured: LiveCalc;
+  derived: LiveCalc;
+}) {
+  const data = useSessionStore((state) => state.data);
+  const interpolation = useSessionStore((state) => state.interpolation);
+  const parameters = useSessionStore((state) => state.parameters);
+  const bandGapK = bandGapForTab(tab, mode, parameters);
+  const titleId = useId();
+  const total = tab === "bands" ? measured.result : null;
+  // Kept between renders, as a new view redraws the chart.
+  const view = useMemo(
+    () =>
+      chartTabView(
+        tab,
+        mode,
+        { data, interpolation, bandGapK },
+        total,
+        derived.result,
+      ),
+    [tab, mode, data, interpolation, bandGapK, total, derived.result],
+  );
+  // Each flag of its own curve, by the severity the mode gives it.
+  // Each flag of the curves it draws: its own kind, and for S by band also the total of S, which
+  // comes with the measured curves and their flags of other quantities.
+  const drawn = view.empty === null;
+  const own = drawn ? (derived.result?.known_issues ?? []) : [];
+  const issues = resultIssues(mode, {
+    fit: [],
+    measured:
+      drawn && tab === "bands" ? (measured.result?.known_issues ?? []) : [],
+    derived: own,
+  }).filter(
+    ({ id, quantities }) => own.includes(id) || quantities.includes("seebeck"),
+  );
+  const failed =
+    derived.error ?? (tab === "bands" ? measured.error : null) ?? null;
+  return (
+    <section
+      aria-labelledby={titleId}
+      className="flex min-w-0 flex-col gap-2 rounded-lg border p-3"
+    >
+      <h3
+        id={titleId}
+        className="m-0 flex flex-wrap items-center gap-1.5 text-sm font-medium"
+      >
+        {chartText.tabs[tab]}
+        {issues.map(({ id, severity }) => (
+          <Badge key={id} variant="outline">
+            {fitText.issueMark[severity]}
+          </Badge>
+        ))}
+      </h3>
+      {failed !== null && (
+        <p role="alert" className="m-0 text-xs text-destructive">
+          {failureText(failed)}
+        </p>
+      )}
+      <TransportChart
+        empty={view.empty}
+        curves={view.curves}
+        measurements={null}
+        interpolated={null}
+        referenceLines={view.referenceLines}
+        fitRange={null}
+        xAxisTitle={chartText.temperatureAxis}
+        xAxisSpan={null}
+        xAxisUnitless={false}
+        yAxisTitle={view.yAxisTitle}
+        description={view.description}
+        failedText={chartText.failed}
+      />
+      {view.note !== null && (
+        <p className="m-0 text-xs text-muted-foreground">{view.note}</p>
+      )}
+      {issues.map(({ id, severity, text: issue }) => (
+        <p key={id} className="m-0 text-xs text-muted-foreground">
+          {text.issue(fitText.issueSeverity[severity], issue)}
+        </p>
+      ))}
+    </section>
+  );
+}
+
 /** Where the page stands before there is a fit to sum up. */
 function NoResult({ message }: { message: string }) {
   return (
@@ -145,14 +257,17 @@ export function ResultsPage() {
   const fit = useSessionStore((state) => state.fit);
   const customBounds = useSessionStore((state) => state.customBounds);
   const startNet = useSessionStore((state) => state.fitStartNet);
-  const measured = useMeasuredCurves();
 
   const model = models?.models.find(({ id }) => id === selection.model);
   const mode = fitModeOf(model, selection.fitMode);
+  const summed =
+    model !== undefined && mode !== undefined && hasFittedValues(fit);
+  const { measured, derived } = useResultCurves(summed);
+  const graphsId = useId();
   const badge = fitBadge(fit, mode?.iterative === true);
   const title = <title>{`${text.pageTitle} · ${STRINGS.appName}`}</title>;
 
-  if (model === undefined || mode === undefined || !hasFittedValues(fit)) {
+  if (!summed || model === undefined || mode === undefined) {
     // A change of values on the fit screen ends its result, so "no fit" is about these values.
     const message = isPending
       ? modelText.loading
@@ -345,6 +460,34 @@ export function ResultsPage() {
           </Panel>
         </div>
       </div>
+      <section
+        aria-labelledby={graphsId}
+        className="rounded-xl border bg-card p-5 shadow-card"
+      >
+        <h2
+          id={graphsId}
+          className="m-0 text-base font-semibold tracking-[-0.01em]"
+        >
+          {text.graphs.title}
+        </h2>
+        <p className="mt-1 mb-0 text-[13px] text-muted-foreground">
+          {text.graphs.subtitle}
+        </p>
+        <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {MORE_GRAPHS.map((tab) => {
+            const kind = derivedKind(tab, mode);
+            return (
+              <MoreGraph
+                key={tab}
+                tab={tab}
+                mode={mode}
+                measured={measured}
+                derived={kind === null ? NOTHING : derived[kind]}
+              />
+            );
+          })}
+        </div>
+      </section>
       {notes.length > 0 && (
         <section
           aria-label={text.notes}

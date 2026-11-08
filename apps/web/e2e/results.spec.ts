@@ -326,3 +326,149 @@ test("a start from the neural net says which net", async ({ page }) => {
     /^\dStart values\s*The neural net's guess, from its net for 300–800 K$/,
   );
 });
+
+// Each kind of curve, with flags the server would add for acPhDis.
+const DERIVED: Record<string, Record<string, number[]>> = {
+  chemical_potential: { chemical_potential_k: [-100, 0, 100] },
+  electrical_conductivity: { electrical_conductivity_s_per_m: [1e5, 8e4, 6e4] },
+  thermal_conductivity: { thermal_conductivity_w_per_m_k: [0.5, 1, 1.5] },
+  seebeck_by_band: {
+    seebeck_band_1_v_per_k: [2e-4, 3e-4, 2e-4],
+    seebeck_band_2_v_per_k: [-1e-4, -1e-4, -5e-5],
+  },
+  carrier_concentration_by_band: {
+    carrier_concentration_band_1_per_cm3: [1e19, 2e19, 3e19],
+    carrier_concentration_band_2_per_cm3: [1e18, 2e18, 3e18],
+  },
+};
+const SCALED = [
+  "electrical_conductivity",
+  "thermal_conductivity",
+  "seebeck_by_band",
+];
+
+async function serveCurves(page: Page) {
+  const kinds: string[] = [];
+  await page.route("**/api/calc", (route) => {
+    const body = route.request().postDataJSON() as {
+      kind?: string;
+      scattering: string | null;
+    };
+    const kind = body.kind ?? "measured";
+    kinds.push(kind);
+    return route.fulfill({
+      json: {
+        ...CALC,
+        curves:
+          kind === "measured"
+            ? { ...CALC.curves, resistivity_ohm_m: [1e-5, 2e-5, 3e-5] }
+            : DERIVED[kind],
+        rmse: kind === "measured" ? RMSE : {},
+        known_issues:
+          body.scattering !== "acPhDis"
+            ? []
+            : SCALED.includes(kind)
+              ? ["acphdis_curve_scale"]
+              : // On the total of S, and on R_H, which no additional graph draws.
+                kind === "measured"
+                ? ["acphdis_band_weight", "dpb_hall_prefactor"]
+                : [],
+      },
+    });
+  });
+  return kinds;
+}
+
+const graph = (page: Page, name: string) =>
+  page.getByRole("region", { name: "Additional graphs" }).getByRole("region", {
+    name: new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`),
+  });
+
+test("the additional graphs draw each curve the mode offers", async ({
+  page,
+}) => {
+  await openFit(page, serveCurves);
+  await finishWith(page);
+  await toResults(page);
+
+  for (const name of [
+    "Chemical potential μ(T)",
+    "Conductivity σ(T)",
+    "Thermal conductivity κ_e(T)",
+    "Band contributions",
+    "Carrier concentration by band",
+  ]) {
+    await expect(
+      graph(page, name).locator(".scatterlayer .trace path.js-line").first(),
+    ).toBeVisible();
+  }
+  await expect(graph(page, "Thermal conductivity")).toContainText(
+    "The electronic part only",
+  );
+  // DPB S + ρ has no R_H data to size n.
+  await expect(graph(page, "Carrier concentration")).toContainText(
+    "uses m₁ = 1",
+  );
+  await expect(page.getByText("unreliable")).toHaveCount(0);
+});
+
+test("with acPhDis, σ, κ_e and S by band are flagged as unreliable", async ({
+  page,
+}) => {
+  await openFit(page, serveCurves);
+  await page.getByRole("combobox", { name: "Scattering" }).click();
+  await page.getByRole("option", { name: /acPhDis/ }).click();
+  await finishWith(page);
+  await toResults(page);
+
+  for (const name of [
+    "Conductivity σ(T)",
+    "Thermal conductivity",
+    "Band contributions",
+  ]) {
+    await expect(
+      graph(page, name).getByRole("heading").getByText("unreliable").first(),
+    ).toBeVisible();
+    await expect(graph(page, name)).toContainText(
+      /Unreliable: With acPhDis, σ, κ and S by band use another scale/,
+    );
+  }
+  await expect(
+    graph(page, "Chemical potential").getByText("unreliable"),
+  ).toHaveCount(0);
+  // The total of S drawn with the bands has its own flag, and σ, which does not draw it, has not.
+  await expect(graph(page, "Band contributions")).toContainText(
+    "Unreliable: With acPhDis, the band weight of the last temperature applies to all of S.",
+  );
+  await expect(graph(page, "Conductivity σ(T)")).not.toContainText(
+    "band weight of the last temperature",
+  );
+  await expect(graph(page, "Band contributions")).not.toContainText(
+    "DPB R_H is half",
+  );
+});
+
+test("in S mode, the graphs that need ρ say so, and nothing is asked for them", async ({
+  page,
+}) => {
+  let kinds: string[] = [];
+  await openFit(page, async (opened) => {
+    kinds = await serveCurves(opened);
+  });
+  await page.getByRole("radio", { name: "S", exact: true }).click();
+  await finishWith(page);
+  await toResults(page);
+
+  for (const name of ["Conductivity σ(T)", "Thermal conductivity"]) {
+    await expect(graph(page, name)).toContainText("Needs ρ(T)");
+  }
+  // Once the others are drawn, their requests are all out.
+  await expect(
+    graph(page, "Chemical potential")
+      .locator(".scatterlayer .trace path.js-line")
+      .first(),
+  ).toBeVisible();
+  await page.waitForTimeout(400);
+  expect(kinds).not.toContain("electrical_conductivity");
+  expect(kinds).not.toContain("thermal_conductivity");
+});

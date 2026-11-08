@@ -221,7 +221,9 @@ export const STRINGS = {
       resistivity: "Resistivity ρ(T)",
       hall: "Hall coefficient R_H(T)",
       chemical_potential: "Chemical potential μ(T)",
+      thermal_conductivity: "Thermal conductivity κ_e(T)",
       bands: "Band contributions",
+      carrier_concentration: "Carrier concentration by band",
       band_diagram: "Band diagram E(k)",
     },
     panelLabel: (index: number) => `Chart ${String(index)}`,
@@ -229,7 +231,7 @@ export const STRINGS = {
     bandGapMetric: (gap: string) => `E_g = ${gap} K`,
     conductivityDescription: "Chart of σ against temperature",
     conductivityNote:
-      "The model's σ only. Measured points would be 1/ρ, which the ρ chart shows.",
+      "The model's σ only: measured points would be 1/ρ, which the ρ data give.",
     diagramCurves: {
       band_1_energy_k: "Band 1",
       band_2_energy_k: "Band 2",
@@ -244,6 +246,8 @@ export const STRINGS = {
       chemicalPotential: "μ, K",
       energy: "E, K",
       conductivity: "σ, S/m",
+      thermalConductivity: "κ_e, W/(m·K)",
+      carrierConcentration: "n, cm⁻³",
     },
     quantityTabs: {
       seebeck: {
@@ -288,7 +292,25 @@ export const STRINGS = {
         title: "DPB only",
         text: "Band contributions are computed for the two-parabolic-band model.",
       },
+      needs_resistivity: {
+        title: "Needs ρ(T)",
+        text: "This curve takes the scattering, which only a fit mode with ρ finds.",
+      },
+      not_on_desktop: {
+        title: "Not in SeeBand",
+        text: "The desktop application has no such curve for this model.",
+      },
     },
+    thermalConductivity: "κ_e",
+    thermalConductivityDescription: "Chart of κ_e against temperature",
+    thermalConductivityNote:
+      "The electronic part only, with the bipolar part in a two-band model. The lattice part is not modelled.",
+    carrierConcentrationDescription:
+      "Chart of the carrier concentration of each band against temperature",
+    carrierConcentrationRelative:
+      "With no R_H data, n uses m₁ = 1, so its size is not measured. Compare the bands, not the values.",
+    band1: "band 1",
+    band2: "band 2",
     model: "Model",
     measurements: "Measurements",
     measurementsDemo: "Measurements (demo)",
@@ -491,6 +513,10 @@ export const STRINGS = {
       needs: (symbols: string) => `needs ${symbols}`,
     },
     notes: "Notes",
+    graphs: {
+      title: "Additional graphs",
+      subtitle: "From the values in use, for the fit mode and scattering",
+    },
     log: {
       title: "Fit log",
       subtitle: "The solver runs of this fit, in their order",

@@ -385,3 +385,112 @@ describe("the band diagram", () => {
     expect(drawsMeasuredCurves("band_diagram", mode("dpb_s"), {})).toBe(false);
   });
 });
+
+describe("the additional graphs", () => {
+  const TABS = {
+    chemical_potential: "chemical_potential",
+    conductivity: "electrical_conductivity",
+    thermal_conductivity: "thermal_conductivity",
+    bands: "seebeck_by_band",
+    carrier_concentration: "carrier_concentration_by_band",
+  } as const;
+  const state = { data: {}, interpolation: NO_INTERPOLATION };
+  // The columns each graph draws, so that a graph with another kind's answer draws nothing.
+  const COLUMNS = {
+    chemical_potential: ["chemical_potential_k"],
+    conductivity: ["electrical_conductivity_s_per_m"],
+    thermal_conductivity: ["thermal_conductivity_w_per_m_k"],
+    bands: [
+      "seebeck_v_per_k",
+      "seebeck_band_1_v_per_k",
+      "seebeck_band_2_v_per_k",
+    ],
+    carrier_concentration: [
+      "carrier_concentration_band_1_per_cm3",
+      "carrier_concentration_band_2_per_cm3",
+    ],
+  };
+  // One answer of a kind holds only its own columns, as the API's does.
+  const answerOf = (columns: readonly string[]): CalcResponse => ({
+    temperature_k: [100],
+    curves: Object.fromEntries(columns.map((column) => [column, [1]])),
+    known_issues: [],
+    rmse: {},
+  });
+
+  // Every model, mode and graph: a chart where the API offers the curve, and why not where not.
+  for (const fitMode of modes) {
+    for (const [tab, kind] of Object.entries(TABS)) {
+      test(`${fitMode.id}: ${tab}`, () => {
+        const offered = fitMode.curves.find((curve) => curve.kind === kind);
+        const columns = COLUMNS[tab as keyof typeof TABS];
+        const view = chartTabView(
+          tab as keyof typeof TABS,
+          fitMode,
+          state,
+          answerOf(["seebeck_v_per_k"]),
+          answerOf(columns.filter((column) => column !== "seebeck_v_per_k")),
+        );
+        if (offered?.available === true) {
+          expect(view.empty).toBeNull();
+          expect(view.curves.map(({ id }) => id)).toEqual(columns);
+        } else {
+          expect(view.empty?.title).not.toBe("Not available in this mode");
+        }
+      });
+    }
+  }
+
+  test("κ_e draws its curve in W/(m·K), and says the lattice is left out", () => {
+    const view = chartTabView(
+      "thermal_conductivity",
+      mode("dpb_s_rho"),
+      { data: {}, interpolation: NO_INTERPOLATION },
+      null,
+      {
+        temperature_k: [100, 200],
+        curves: { thermal_conductivity_w_per_m_k: [0.5, 1] },
+        known_issues: [],
+        rmse: {},
+      },
+    );
+    expect(view.yAxisTitle).toBe("κ_e, W/(m·K)");
+    expect(view.curves.map(({ values }) => values)).toEqual([[0.5, 1]]);
+    expect(view.note).toMatch(/lattice part is not modelled/);
+  });
+
+  test("n says it is relative with no R_H data, and not with them", () => {
+    const result = {
+      temperature_k: [100],
+      curves: {
+        carrier_concentration_band_1_per_cm3: [1e19],
+        carrier_concentration_band_2_per_cm3: [2e19],
+      },
+      known_issues: [],
+      rmse: {},
+    } satisfies CalcResponse;
+    const view = (id: string) =>
+      chartTabView(
+        "carrier_concentration",
+        mode(id),
+        { data: {}, interpolation: NO_INTERPOLATION },
+        null,
+        result,
+      );
+    expect(view("dpb_s_rho").note).toMatch(/uses m₁ = 1/);
+    expect(view("dpb_s_rho_rh").note).toBeNull();
+    expect(view("dpb_s_rho_rh").curves.map(({ label }) => label)).toEqual([
+      "band 1",
+      "band 2",
+    ]);
+  });
+
+  test("each reason says why", () => {
+    const empty = (id: string, tab: keyof typeof TABS) =>
+      chartTabView(tab, mode(id), state, null, null).empty?.title;
+    expect(empty("dpb_s", "conductivity")).toBe("Needs ρ(T)");
+    expect(empty("spb_s", "thermal_conductivity")).toBe("Needs ρ(T)");
+    expect(empty("spb_s_rho", "bands")).toBe("DPB only");
+    expect(empty("spb_s_rho", "carrier_concentration")).toBe("Not in SeeBand");
+  });
+});

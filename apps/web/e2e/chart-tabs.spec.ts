@@ -110,7 +110,9 @@ test("each chart has a choice of what it shows, by name", async ({ page }) => {
     "Resistivity ρ(T)",
     "Hall coefficient R_H(T)",
     "Chemical potential μ(T)",
+    "Thermal conductivity κ_e(T)",
     "Band contributions",
+    "Carrier concentration by band",
     "Band diagram E(k)",
   ]);
   await page.keyboard.press("Escape");
@@ -227,9 +229,7 @@ test("σ draws the model alone, says why, and needs ρ in the mode", async ({
   await expect(legend(page, "Model")).toBeVisible();
   await expect(legend(page, "Measurements")).toHaveCount(0);
   await expect(
-    chart(page).getByText(
-      /^The model's σ only\. Measured points would be 1\/ρ/,
-    ),
+    chart(page).getByText(/^The model's σ only: measured points would be 1\/ρ/),
   ).toBeVisible();
   await expect
     .poll(() => bodies.map(({ kind }) => kind))
@@ -239,8 +239,9 @@ test("σ draws the model alone, says why, and needs ρ in the mode", async ({
   ).toEqual({});
 
   await page.getByRole("radio", { name: "S", exact: true }).click();
+  await expect(chart(page).getByText("Needs ρ(T)")).toBeVisible();
   await expect(
-    chart(page).getByText("Not available in this mode"),
+    chart(page).getByText(/only a fit mode with ρ finds/),
   ).toBeVisible();
   await expect(lines(page)).toHaveCount(0);
 });
