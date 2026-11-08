@@ -323,7 +323,9 @@ export interface components {
          * @description Curves by name, where each name ends in its unit, and null marks a value that is not finite.
          *
          *     `known_issues` names known errors that apply to this result, as in `GET /api/models`. `rmse` is
-         *     empty without measurements.
+         *     empty without measurements. `measured_points` holds points made from the measurements sent,
+         *     by name with its unit: `electrical_conductivity_s_per_m` is 1/rho, with null for a rho of 0 or
+         *     below. They use no model, so they go with the data the request sent, interpolated or not.
          * @example {
          *       "curves": {
          *         "resistivity_ohm_m": [
@@ -369,6 +371,10 @@ export interface components {
             /** Rmse */
             rmse: {
                 [key: string]: components["schemas"]["RmseResponse"];
+            };
+            /** Measured Points */
+            measured_points?: {
+                [key: string]: components["schemas"]["MeasuredPointsResponse"];
             };
         };
         /**
@@ -957,6 +963,16 @@ export interface components {
             affects_fit: boolean;
             /** Condition */
             condition?: ("degeneracy_not_one" | "negative_m_eff" | "collapsed_m_eff" | "fermi_energy_outside_band" | "interpolation_extrapolated") | null;
+        };
+        /**
+         * MeasuredPointsResponse
+         * @description Points made from measurements alone, at their temperatures. Null marks one with no value.
+         */
+        MeasuredPointsResponse: {
+            /** Temperature K */
+            temperature_k: number[];
+            /** Values */
+            values: (number | null)[];
         };
         /**
          * MeasurementInput

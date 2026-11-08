@@ -5,6 +5,7 @@ from typing import Annotated, Self
 
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from seeband_core.measured_points import CONDUCTIVITY_COLUMN, conductivity_points
 from seeband_core.model_interface import (
     CurveKind,
     CurveRequest,
@@ -116,11 +117,20 @@ class RmseResponse(BaseModel):
     unit: str
 
 
+class MeasuredPointsResponse(BaseModel):
+    """Points made from measurements alone, at their temperatures. Null marks one with no value."""
+
+    temperature_k: list[float]
+    values: list[float | None]
+
+
 class CalcResponse(BaseModel):
     """Curves by name, where each name ends in its unit, and null marks a value that is not finite.
 
     `known_issues` names known errors that apply to this result, as in `GET /api/models`. `rmse` is
-    empty without measurements.
+    empty without measurements. `measured_points` holds points made from the measurements sent,
+    by name with its unit: `electrical_conductivity_s_per_m` is 1/rho, with null for a rho of 0 or
+    below. They use no model, so they go with the data the request sent, interpolated or not.
     """
 
     model_config = ConfigDict(
@@ -149,6 +159,19 @@ class CalcResponse(BaseModel):
     curves: dict[str, list[float | None]]
     known_issues: list[str]
     rmse: dict[Quantity, RmseResponse]
+    measured_points: dict[str, MeasuredPointsResponse] = Field(default_factory=dict)
+
+
+def _measured_points(body: CalcRequest) -> dict[str, MeasuredPointsResponse]:
+    resistivity = body.measurements.get("resistivity")
+    if resistivity is None:
+        return {}
+    return {
+        CONDUCTIVITY_COLUMN: MeasuredPointsResponse(
+            temperature_k=list(resistivity.temperature_k),
+            values=conductivity_points(resistivity.values),
+        )
+    }
 
 
 def _refuse(details: list[ErrorDetail]) -> ApiError:
@@ -181,7 +204,9 @@ def _check_measurements(body: CalcRequest, fit_mode: FitMode) -> list[ErrorDetai
     return details
 
 
-def _to_response(outcome: CalcOutcome) -> CalcResponse:
+def _to_response(
+    outcome: CalcOutcome, points: dict[str, MeasuredPointsResponse] | None = None
+) -> CalcResponse:
     return CalcResponse(
         temperature_k=finite_or_none(outcome.curve.temperature_k),  # type: ignore[arg-type]
         curves={name: finite_or_none(values) for name, values in outcome.curve.curves.items()},
@@ -190,6 +215,7 @@ def _to_response(outcome: CalcOutcome) -> CalcResponse:
             quantity: RmseResponse(value=rmse.value, unit=rmse.unit)
             for quantity, rmse in outcome.rmse.items()
         },
+        measured_points=points or {},
     )
 
 
@@ -245,4 +271,4 @@ async def post_calc(body: CalcRequest, pool: CalcPoolDep, max_points: MaxPointsD
             "The calculation has no result for these parameters and temperatures",
         ) from None
     # A long list takes a moment to convert, so this leaves the event loop free too.
-    return await run_in_threadpool(_to_response, outcome)
+    return await run_in_threadpool(_to_response, outcome, _measured_points(body))
