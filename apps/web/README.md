@@ -219,7 +219,7 @@ With version 4.23.0, the registry's components import `cn` from the npm package 
 | Data to file       | Text             | `seeband-data.txt`, as the desktop's: for each quantity, pairs of temperature and value columns, for the measured data, the interpolated values in use, the curve before the fit and the fitted one |
 |                    | CSV, one table   | `seeband-data.csv`: the same points, a row each, as `quantity,curve,temperature_k,value,unit`                                                                                                       |
 |                    | ZIP, a file each | `seeband-export.zip`: `metadata.txt`, `parameters.txt`, `data/<quantity>.txt`, `curves/pre-fit.txt`, `curves/fit.txt` and `graphs/<kind>.txt`, each a plain table                                   |
-| Parameters to file | Text             | `seeband-parameters.txt`: each parameter as the screen shows it, with its meaning, unit and status (`fitted`, `fixed` or `fitted, at bound`), and N1, N2                                            |
+| Parameters to file | Text             | `seeband-parameters.txt`: each parameter as the screen shows it, with its meaning, unit and status (`fitted`, `fixed`, `fitted, at bound`, or `not fitted yet` with no fit), and N1, N2             |
 |                    | CSV, one table   | `seeband-parameters.csv`: the same, a row each, with N1 and N2 as rows of their own                                                                                                                 |
 | Each graph         | Text             | `seeband-<graph>.txt`: its curves on one temperature grid, with the flags of those curves                                                                                                           |
 

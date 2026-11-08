@@ -558,6 +558,7 @@ export const STRINGS = {
       fitted: "fitted",
       fixed: "fixed",
       atBound: "fitted, at bound",
+      free: "not fitted yet",
     },
     // A unit as a file writes it, plain text.
     units: {

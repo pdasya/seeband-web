@@ -6,7 +6,7 @@ import {
   parameterValues,
   visibleParameters,
 } from "@/model/parameters";
-import type { ResultIssue } from "@/model/resultSummary";
+import { hasFittedValues, type ResultIssue } from "@/model/resultSummary";
 import type { FitModeDescription } from "@/model/selection";
 import type {
   FitState,
@@ -225,6 +225,7 @@ function parameterRecords(
       ? fit.result.at_bounds
       : [];
   const units: Record<string, string | undefined> = text.units;
+  const fitted = hasFittedValues(fit);
   return visibleParameters(mode, scattering).map((parameter) => {
     const value = values[parameter.name] ?? parameter.core_range.default;
     return {
@@ -233,12 +234,15 @@ function parameterRecords(
       meaning: parameter.meaning,
       unit: units[parameter.unit] ?? parameter.unit,
       value: coreToDisplay(parameter, value),
+      // With no fit, a value the mode fits is the user's, so a file read alone does not mislead.
       status:
         parameter.role === "fixed"
           ? text.status.fixed
-          : atBounds.includes(parameter.name)
-            ? text.status.atBound
-            : text.status.fitted,
+          : !fitted
+            ? text.status.free
+            : atBounds.includes(parameter.name)
+              ? text.status.atBound
+              : text.status.fitted,
     };
   });
 }

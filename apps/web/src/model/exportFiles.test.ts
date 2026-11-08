@@ -313,6 +313,20 @@ describe("the parameters file", () => {
     expect(lines.at(-1)).toBe("N1, N2 (band degeneracies)\t1, 2\tfixed");
   });
 
+  test("with no fit, a value the mode fits is not called fitted", () => {
+    const lines = parametersFile(
+      [],
+      modeOf("dpb_s_rho"),
+      SELECTION,
+      { band_gap: 900 },
+      { status: "idle" },
+    ).split("\n");
+    expect(lines).toContain(
+      "E_g (position of band 2) [K]\t900\tnot fitted yet",
+    );
+    expect(lines.some((line) => line.endsWith("\tfitted"))).toBe(false);
+  });
+
   test("a value the mode holds is fixed, and SPB has no degeneracies", () => {
     const lines = parametersFile(
       [],
