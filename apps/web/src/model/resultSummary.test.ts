@@ -391,6 +391,24 @@ describe("resultRows", () => {
     expect(statuses(rows)).not.toHaveProperty("C");
   });
 
+  test("a mode that cannot run makes nothing needed", () => {
+    const dpb = modelOf("dpb");
+    const withoutHall = {
+      ...dpb,
+      fit_modes: dpb.fit_modes.map((mode) =>
+        mode.id === "dpb_s_rho_rh" ? { ...mode, disabled: true } : mode,
+      ),
+    };
+    const rows = resultRows(
+      withoutHall,
+      modeOf("dpb_s_rho"),
+      selection("acPh"),
+      undefined,
+      done({}),
+    );
+    expect(statuses(rows)).not.toHaveProperty("m1");
+  });
+
   test("with all data, nothing is needed", () => {
     const rows = rowsOf("dpb", "dpb_s_rho_rh", "acPh");
     expect(rows.filter(({ status }) => status.kind === "needs")).toEqual([]);

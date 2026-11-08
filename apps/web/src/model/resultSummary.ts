@@ -204,7 +204,9 @@ export function resultRows(
   // From the mode that needs the fewest data on top of these.
   const needed = new Map<string, { meaning: string; quantities: Quantity[] }>();
   for (const other of model.fit_modes) {
+    // A mode that cannot run finds nothing, so it is no reason to load more data.
     if (
+      other.disabled ||
       !mode.quantities.every((quantity) => other.quantities.includes(quantity))
     ) {
       continue;
