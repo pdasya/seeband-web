@@ -1,3 +1,4 @@
+import { SettingsIcon } from "lucide-react";
 import { useId, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,11 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { formatNumber, parseNumber } from "@/lib/numbers";
 import {
   coreToDisplay,
@@ -169,11 +175,20 @@ export function BoundsEditor({
         setInvalidRows(new Set());
       }}
     >
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          {text.editBounds}
-        </Button>
-      </DialogTrigger>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DialogTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon-sm"
+              aria-label={text.editBounds}
+            >
+              <SettingsIcon aria-hidden="true" />
+            </Button>
+          </DialogTrigger>
+        </TooltipTrigger>
+        <TooltipContent>{text.editBounds}</TooltipContent>
+      </Tooltip>
       <DialogContent
         closeLabel={text.closeBounds}
         // A click beside it is too easily made to close it on what was being typed.

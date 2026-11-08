@@ -132,6 +132,11 @@ test("the button is beside the title, and the bounds open in a dialog", async ({
   expect(button?.y).toBeLessThanOrEqual(
     (heading?.y ?? 0) + (heading?.height ?? 0),
   );
+  // A gear, which says what it does on hover.
+  const gear = page.getByRole("button", { name: "Edit bounds" });
+  await expect(gear).toHaveText("");
+  await gear.hover();
+  await expect(page.getByRole("tooltip")).toHaveText("Edit bounds");
   expect((button?.y ?? 0) + (button?.height ?? 0)).toBeGreaterThanOrEqual(
     heading?.y ?? Infinity,
   );
