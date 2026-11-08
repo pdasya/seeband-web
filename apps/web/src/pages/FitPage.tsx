@@ -21,8 +21,8 @@ export function FitPage() {
   return (
     <>
       <title>{`${fit.pageTitle} · ${STRINGS.appName}`}</title>
-      {/* The charts take what the right column leaves, and above 1200 px it stands beside them. */}
-      <div className="grid grid-cols-1 items-start gap-4 min-[1200px]:grid-cols-[minmax(0,1fr)_600px]">
+      {/* From 1264 px the charts and the right column take half each; below, one goes under the other. */}
+      <div className="grid grid-cols-1 items-start gap-4 min-[1264px]:grid-cols-2">
         <div className="flex min-w-0 flex-col gap-3">
           <DataBar />
           <ChartGrid live={live} />
