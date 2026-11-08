@@ -26,6 +26,9 @@ function mode(id: string): FitModeDescription {
   return found;
 }
 
+// Energies as the core has them, so that expected values stay those of the curves.
+const KELVIN = { unit: "K", per_kelvin: 1 };
+
 const NO_INTERPOLATION = {
   enabled: false,
   loading: false,
@@ -50,7 +53,7 @@ function loaded(...quantities: Quantity[]) {
       text: "",
     } as unknown as SessionData;
   }
-  return { data, interpolation: NO_INTERPOLATION };
+  return { data, interpolation: NO_INTERPOLATION, energy: KELVIN };
 }
 
 const answer = (curves: Record<string, (number | null)[]>): CalcResponse => ({
@@ -341,7 +344,7 @@ describe("the band diagram", () => {
     chartTabView(
       "band_diagram",
       mode("dpb_s"),
-      { data: {}, interpolation: NO_INTERPOLATION },
+      { data: {}, interpolation: NO_INTERPOLATION, energy: KELVIN },
       null,
       null,
       diagram,
@@ -394,7 +397,7 @@ describe("the additional graphs", () => {
     bands: "seebeck_by_band",
     carrier_concentration: "carrier_concentration_by_band",
   } as const;
-  const state = { data: {}, interpolation: NO_INTERPOLATION };
+  const state = { data: {}, interpolation: NO_INTERPOLATION, energy: KELVIN };
   // The columns each graph draws, so that a graph with another kind's answer draws nothing.
   const COLUMNS = {
     chemical_potential: ["chemical_potential_k"],
@@ -445,7 +448,7 @@ describe("the additional graphs", () => {
     const view = chartTabView(
       "thermal_conductivity",
       mode("dpb_s_rho"),
-      { data: {}, interpolation: NO_INTERPOLATION },
+      { data: {}, interpolation: NO_INTERPOLATION, energy: KELVIN },
       null,
       {
         temperature_k: [100, 200],
@@ -473,7 +476,7 @@ describe("the additional graphs", () => {
       chartTabView(
         "carrier_concentration",
         mode(id),
-        { data: {}, interpolation: NO_INTERPOLATION },
+        { data: {}, interpolation: NO_INTERPOLATION, energy: KELVIN },
         null,
         result,
       );
@@ -535,7 +538,7 @@ describe("the points of σ", () => {
     chartTabView(
       "conductivity",
       mode("dpb_s_rho"),
-      { data: loaded("resistivity").data, interpolation },
+      { data: loaded("resistivity").data, interpolation, energy: KELVIN },
       answer,
       derived,
     );

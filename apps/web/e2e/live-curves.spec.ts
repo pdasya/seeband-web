@@ -169,7 +169,8 @@ test("rapid moves do not queue up: one request at a time, then the latest", asyn
   await load(page);
   await expect.poll(() => bodies.length).toBe(1);
 
-  for (let move = 0; move < 30; move += 1) {
+  // Fewer than the 17 steps to the end of the range, so that the latest value is the last move's.
+  for (let move = 0; move < 10; move += 1) {
     await eg(page).press("ArrowRight");
   }
   await page.waitForTimeout(500);
@@ -178,7 +179,8 @@ test("rapid moves do not queue up: one request at a time, then the latest", asyn
   release();
 
   await expect.poll(() => bodies.length).toBe(2);
-  expect(bodies[1]?.parameters.band_gap).toBe(1300);
+  // 10 steps of 0,01 eV from 1000 K.
+  expect(bodies[1]?.parameters.band_gap).toBe(2160.45181217);
   await page.waitForTimeout(500);
   expect(bodies).toHaveLength(2);
   expect(mostRunning).toBe(1);
@@ -404,7 +406,8 @@ test("a limit in a newer change's wait sends only the newer values", async ({
   });
   await page.waitForTimeout(1200);
   expect(bodies).toHaveLength(2);
-  expect(bodies[1]?.parameters.band_gap).toBe(1010);
+  // One step of 0,01 eV from 1000 K.
+  expect(bodies[1]?.parameters.band_gap).toBe(1116.04518122);
   await expect(page.getByText("222 µV/K", { exact: true })).toBeVisible();
 });
 
@@ -486,7 +489,8 @@ test("a slider moved during interpolation waits, and then the latest goes", asyn
   release();
 
   await expect.poll(() => bodies.length).toBe(2);
-  expect(bodies[1]?.parameters.band_gap).toBe(1010);
+  // One step of 0,01 eV from 1000 K.
+  expect(bodies[1]?.parameters.band_gap).toBe(1116.04518122);
   await expect(page.getByText("Updating…")).toHaveCount(0);
 });
 

@@ -1,16 +1,20 @@
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
 import { apiClient } from "@/api/client";
+import { modelsQuery } from "@/api/queries";
 import { chartImage } from "@/charts/chartImage";
 import {
   bandGapForTab,
   chartTabView,
+  DERIVED_KINDS_ASKED,
   derivedKind,
+  ENERGY_IN_K,
   isQuantityTab,
+  type DerivedKind,
 } from "@/model/chartTabs";
 import type { FitModeDescription } from "@/model/selection";
 import type { LiveCalc } from "@/model/useLiveCurves";
-import { DERIVED_KINDS_ASKED, type DerivedKind } from "@/model/chartTabs";
 import { QUANTITIES, useSessionStore, type ChartTab } from "@/session/store";
 import { STRINGS } from "@/strings";
 
@@ -58,6 +62,8 @@ export function useReport({
   measured: LiveCalc;
   derived: Record<DerivedKind, LiveCalc>;
 }) {
+  const { data: models } = useQuery(modelsQuery);
+  const energy = models?.energy_display ?? ENERGY_IN_K;
   const [charts, setCharts] = useState<readonly ReportChart[] | null>(null);
   const [apiVersion, setApiVersion] = useState<string | null>(null);
   const [preparing, setPreparing] = useState(false);
@@ -103,6 +109,7 @@ export function useReport({
               data,
               interpolation,
               bandGapK: bandGapForTab(tab, mode, parameters),
+              energy,
             },
             isQuantityTab(tab) || tab === "bands" || tab === "conductivity"
               ? measured.result

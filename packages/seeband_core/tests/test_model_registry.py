@@ -536,3 +536,39 @@ def test_contradictory_curve_descriptions_are_refused(changes: dict[str, Any]) -
 
     with pytest.raises(ValueError, match="Fit mode"):
         ModelRegistry().register(model)
+
+
+def test_energies_show_in_ev_and_go_back_to_the_same_k() -> None:
+    from seeband_core.model_scales import (
+        BOLTZMANN_EV_PER_K,
+        core_to_display,
+        display_range,
+        display_to_core,
+    )
+
+    gap = next(spec for spec in fit_mode_named("dpb_s_rho").parameters if spec.name == "band_gap")
+    assert gap.unit == "K"
+    assert gap.shown_unit == "eV"
+    assert core_to_display(gap, 1000.0) == pytest.approx(0.08617333262)
+    assert display_to_core(gap, core_to_display(gap, 1234.5)) == pytest.approx(1234.5, rel=1e-12)
+    shown = display_range(gap)
+    assert shown.minimum == pytest.approx(-3000 * BOLTZMANN_EV_PER_K)
+    assert shown.maximum == pytest.approx(3000 * BOLTZMANN_EV_PER_K)
+    assert shown.default == pytest.approx(1000 * BOLTZMANN_EV_PER_K)
+    assert shown.step == 0.01
+
+
+def test_every_parameter_in_k_is_shown_in_ev_and_others_as_they_were() -> None:
+    from seeband_core.model_scales import core_to_display
+
+    for description in load_desktop_descriptions().values():
+        for mode in description.fit_modes:
+            for spec in mode.parameters:
+                if spec.unit == "K":
+                    assert spec.shown_unit == "eV", (mode.id, spec.name)
+                else:
+                    assert spec.shown_unit == spec.unit
+                    assert spec.display_factor == 1.0
+                    assert core_to_display(spec, 2.0) == pytest.approx(
+                        2.0 * spec.display_scale / spec.fit_scale
+                    )

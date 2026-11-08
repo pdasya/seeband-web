@@ -29,6 +29,7 @@ export const STRINGS = {
     units: {
       m_e: "in mₑ",
       K: "in K",
+      eV: "in eV",
       dimensionless: "",
       unknown: "unit not known",
     },
@@ -228,7 +229,7 @@ export const STRINGS = {
     },
     panelLabel: (index: number) => `Chart ${String(index)}`,
     panelSelect: (index: number) => `Quantity shown in chart ${String(index)}`,
-    bandGapMetric: (gap: string) => `E_g = ${gap} K`,
+    bandGapMetric: (gap: string, unit: string) => `E_g = ${gap} ${unit}`,
     conductivityDescription: "Chart of σ against temperature",
     conductivityPoints: "1/ρ of the data",
     conductivityPointsInterpolated: "1/ρ of the interpolated data",
@@ -247,8 +248,8 @@ export const STRINGS = {
       seebeck: "S, µV/K",
       resistivity: "ρ, µΩ·m",
       hall: "R_H, m³/C",
-      chemicalPotential: "μ, K",
-      energy: "E, K",
+      chemicalPotential: (unit: string) => `μ, ${unit}`,
+      energy: (unit: string) => `E, ${unit}`,
       conductivity: "σ, S/m",
       thermalConductivity: "κ_e, W/(m·K)",
       carrierConcentration: "n, cm⁻³",
@@ -472,7 +473,7 @@ export const STRINGS = {
     },
     parameterTable: "Parameters in use",
     columns: { parameter: "Parameter", value: "Value", bounds: "Bounds" },
-    valueUnits: { K: "K", m_e: "mₑ" },
+    valueUnits: { K: "K", eV: "eV", m_e: "mₑ" },
     boundsRange: (lower: string, upper: string) => `${lower} … ${upper}`,
     noBounds: "—",
     atBound: "at bound",
@@ -529,7 +530,6 @@ export const STRINGS = {
     },
     // Each column of an additional graph. Any other keeps the API's name, which states its unit.
     curves: {
-      chemical_potential_k: "Chemical potential [K]",
       electrical_conductivity_s_per_m: "Electrical conductivity [S/m]",
       thermal_conductivity_w_per_m_k:
         "Electronic thermal conductivity [W/(m*K)]",
@@ -540,6 +540,10 @@ export const STRINGS = {
         "Carrier concentration of band 1 [1/cm^3]",
       carrier_concentration_band_2_per_cm3:
         "Carrier concentration of band 2 [1/cm^3]",
+    },
+    // Curves of an energy, which the API gives in K, in the unit the screen shows them in.
+    energyCurves: {
+      chemical_potential_k: (unit: string) => `Chemical potential [${unit}]`,
     },
     parameterColumns: "Parameter\tValue\tStatus",
     parameterCsvColumns: "parameter,symbol,meaning,unit,value,status",
@@ -568,6 +572,7 @@ export const STRINGS = {
     units: {
       m_e: "m_e",
       K: "K",
+      eV: "eV",
       dimensionless: "",
       unknown: "unit not known",
     },

@@ -94,8 +94,9 @@ test("a new file of S applies the net's values, and shows its real range", async
   await load(page);
 
   await expect(field(page, "m₂/m₁")).toHaveValue("1,57");
-  await expect(field(page, "E_g")).toHaveValue("554");
-  await expect(field(page, "E_F")).toHaveValue("1170");
+  // 554 K and 1170 K, in eV.
+  await expect(field(page, "E_g")).toHaveValue("0,05");
+  await expect(field(page, "E_F")).toHaveValue("0,1");
   await expect(badge(page, "Initial guess · net 25–750 K")).toBeVisible();
   // Every row of S, also outside the fit range, in V/K.
   expect(bodies).toEqual([
@@ -112,15 +113,15 @@ test("the values go to every mode of the model, and stay out of others", async (
 }) => {
   await open(page);
   await load(page);
-  await expect(field(page, "E_g")).toHaveValue("554");
+  await expect(field(page, "E_g")).toHaveValue("0,05");
 
   await choose(page, "S");
-  await expect(field(page, "E_g")).toHaveValue("554");
+  await expect(field(page, "E_g")).toHaveValue("0,05");
   await choose(page, "S + ρ + R_H");
-  await expect(field(page, "E_g")).toHaveValue("554");
+  await expect(field(page, "E_g")).toHaveValue("0,05");
 
   await choose(page, "SPB");
-  await expect(field(page, "E_F")).toHaveValue("100");
+  await expect(field(page, "E_F")).toHaveValue("0,01");
   await expect(badge(page, "Initial guess")).toHaveCount(0);
 });
 
@@ -131,7 +132,7 @@ test("the other parameters keep their values", async ({ page }) => {
 
   await load(page);
 
-  await expect(field(page, "E_g")).toHaveValue("554");
+  await expect(field(page, "E_g")).toHaveValue("0,05");
   await expect(field(page, "A")).toHaveValue("50000");
 });
 
@@ -143,10 +144,10 @@ test("loading while SPB is open still sets the DPB values", async ({
 
   await load(page);
   await expect(button(page)).toBeDisabled();
-  await expect(field(page, "E_F")).toHaveValue("100");
+  await expect(field(page, "E_F")).toHaveValue("0,01");
 
   await choose(page, "DPB");
-  await expect(field(page, "E_g")).toHaveValue("554");
+  await expect(field(page, "E_g")).toHaveValue("0,05");
 });
 
 test("the button is for a model with nets and S data, and says so", async ({
@@ -169,13 +170,13 @@ test("the button is for a model with nets and S data, and says so", async ({
 test("the button applies the net again after edits", async ({ page }) => {
   const bodies = await open(page);
   await load(page);
-  await field(page, "E_g").fill("700");
+  await field(page, "E_g").fill("0,06");
   await field(page, "E_g").blur();
   await expect(badge(page, "Initial guess")).toHaveCount(0);
 
   await button(page).click();
 
-  await expect(field(page, "E_g")).toHaveValue("554");
+  await expect(field(page, "E_g")).toHaveValue("0,05");
   await expect(badge(page, "Initial guess · net 25–750 K")).toBeVisible();
   expect(bodies).toHaveLength(2);
 });
@@ -203,13 +204,13 @@ test("edits after the file are kept, if the answer comes later", async ({
   });
   await load(page);
 
-  await field(page, "E_g").fill("700");
+  await field(page, "E_g").fill("0,06");
   await field(page, "E_g").blur();
   gate.release();
 
   await expect(button(page)).toBeEnabled();
-  await expect(field(page, "E_g")).toHaveValue("700");
-  await expect(field(page, "E_F")).toHaveValue("-100");
+  await expect(field(page, "E_g")).toHaveValue("0,06");
+  await expect(field(page, "E_F")).toHaveValue("-0,01");
   await expect(badge(page, "Initial guess")).toHaveCount(0);
 });
 
@@ -217,12 +218,12 @@ test("edits before the file are overwritten, as on the desktop", async ({
   page,
 }) => {
   await open(page);
-  await field(page, "E_g").fill("700");
+  await field(page, "E_g").fill("0,06");
   await field(page, "E_g").blur();
 
   await load(page);
 
-  await expect(field(page, "E_g")).toHaveValue("554");
+  await expect(field(page, "E_g")).toHaveValue("0,05");
 });
 
 test("coming back to a tab does not guess again, or undo edits", async ({
@@ -230,8 +231,8 @@ test("coming back to a tab does not guess again, or undo edits", async ({
 }) => {
   const bodies = await open(page);
   await load(page);
-  await expect(field(page, "E_g")).toHaveValue("554");
-  await field(page, "E_g").fill("700");
+  await expect(field(page, "E_g")).toHaveValue("0,05");
+  await field(page, "E_g").fill("0,06");
   await field(page, "E_g").blur();
 
   await page.getByRole("tab", { name: "Single file" }).click();
@@ -242,14 +243,14 @@ test("coming back to a tab does not guess again, or undo edits", async ({
   await page.waitForTimeout(300);
 
   expect(bodies).toHaveLength(1);
-  await expect(field(page, "E_g")).toHaveValue("700");
+  await expect(field(page, "E_g")).toHaveValue("0,06");
 });
 
 test("a removed file loaded again guesses again", async ({ page }) => {
   const bodies = await open(page);
   await load(page);
-  await expect(field(page, "E_g")).toHaveValue("554");
-  await field(page, "E_g").fill("700");
+  await expect(field(page, "E_g")).toHaveValue("0,05");
+  await field(page, "E_g").fill("0,06");
   await field(page, "E_g").blur();
 
   await page
@@ -259,7 +260,7 @@ test("a removed file loaded again guesses again", async ({ page }) => {
   await expect(page.getByText(/^3 points/)).toHaveCount(0);
   await load(page);
 
-  await expect(field(page, "E_g")).toHaveValue("554");
+  await expect(field(page, "E_g")).toHaveValue("0,05");
   expect(bodies).toHaveLength(2);
 });
 
@@ -288,7 +289,7 @@ test("a late answer about a file that was replaced does not count", async ({
   gate.release();
   await page.waitForTimeout(300);
 
-  await expect(field(page, "E_g")).toHaveValue("1000");
+  await expect(field(page, "E_g")).toHaveValue("0,09");
   await expect(page.getByText(/No neural net covers/)).toBeVisible();
 });
 
@@ -310,12 +311,12 @@ test("a late answer about a removed file changes nothing", async ({ page }) => {
   await answered;
   await page.waitForTimeout(300);
 
-  await expect(field(page, "E_g")).toHaveValue("1000");
-  await expect(field(page, "E_F")).toHaveValue("-100");
+  await expect(field(page, "E_g")).toHaveValue("0,09");
+  await expect(field(page, "E_F")).toHaveValue("-0,01");
 
   // The file can still be loaded and guessed from.
   await load(page);
-  await expect(field(page, "E_g")).toHaveValue("554");
+  await expect(field(page, "E_g")).toHaveValue("0,05");
   expect(bodies).toHaveLength(2);
 });
 
@@ -334,11 +335,11 @@ test("an answer that comes while another model is open waits for it", async ({
   gate.release();
   await answered;
   await expect(button(page)).toHaveAttribute("title", /DPB only/);
-  await expect(field(page, "E_F")).toHaveValue("100");
+  await expect(field(page, "E_F")).toHaveValue("0,01");
   await expect(badge(page, "Initial guess")).toHaveCount(0);
 
   await choose(page, "DPB");
-  await expect(field(page, "E_g")).toHaveValue("554");
+  await expect(field(page, "E_g")).toHaveValue("0,05");
   await expect(badge(page, "Initial guess · net 25–750 K")).toBeVisible();
 });
 
@@ -358,7 +359,7 @@ test("an answer that comes while another screen is open still counts", async ({
   await answered;
   await page.getByRole("link", { name: "Model fit" }).click();
 
-  await expect(field(page, "E_g")).toHaveValue("554");
+  await expect(field(page, "E_g")).toHaveValue("0,05");
   await expect(badge(page, "Initial guess · net 25–750 K")).toBeVisible();
   expect(bodies).toHaveLength(1);
 });
@@ -373,7 +374,7 @@ test("no net keeps the values, and names the real ranges", async ({ page }) => {
       "No neural net covers 100–200 K, so the values stay as they are. The nets cover 300–800 K.",
     ),
   ).toBeVisible();
-  await expect(field(page, "E_g")).toHaveValue("1000");
+  await expect(field(page, "E_g")).toHaveValue("0,09");
   await expect(badge(page, "Initial guess")).toHaveCount(0);
   await expect(fitBadges(page)).toHaveText("Missing data: ρ");
 });
@@ -388,7 +389,7 @@ test("a prediction that is not finite keeps the values", async ({ page }) => {
   await load(page);
 
   await expect(page.getByText("no usable values")).toBeVisible();
-  await expect(field(page, "E_g")).toHaveValue("1000");
+  await expect(field(page, "E_g")).toHaveValue("0,09");
 });
 
 test("a mass of about 0 is not applied, and asks for one", async ({ page }) => {
@@ -406,7 +407,7 @@ test("a mass of about 0 is not applied, and asks for one", async ({ page }) => {
 
   await expect(page.getByText("Set a mass by hand.")).toBeVisible();
   await expect(field(page, "m₂/m₁")).toHaveValue("1,01");
-  await expect(field(page, "E_g")).toHaveValue("1000");
+  await expect(field(page, "E_g")).toHaveValue("0,09");
 });
 
 test("a weak guess is applied, and says so", async ({ page }) => {
@@ -418,7 +419,7 @@ test("a weak guess is applied, and says so", async ({ page }) => {
 
   await load(page);
 
-  await expect(field(page, "E_g")).toHaveValue("554");
+  await expect(field(page, "E_g")).toHaveValue("0,05");
   await expect(page.getByText("too few temperatures")).toBeVisible();
 });
 
@@ -440,7 +441,7 @@ test("a failure keeps the values and says so, without the server's text", async 
 
   await expect(page.getByText("could not be calculated")).toBeVisible();
   await expect(page.getByText("SECRET-VALUE")).toHaveCount(0);
-  await expect(field(page, "E_g")).toHaveValue("1000");
+  await expect(field(page, "E_g")).toHaveValue("0,09");
   await expect(button(page)).toBeEnabled();
   await expect(page.getByRole("alert")).toHaveCount(0);
 });
@@ -457,7 +458,7 @@ test("a limit keeps the values and says so", async ({ page }) => {
 
   await expect(page.getByText("Too many initial guesses")).toBeVisible();
   await expect(page.getByText("SECRET-VALUE")).toHaveCount(0);
-  await expect(field(page, "E_g")).toHaveValue("1000");
+  await expect(field(page, "E_g")).toHaveValue("0,09");
   await expect(button(page)).toBeEnabled();
 });
 
@@ -480,7 +481,7 @@ test("a fit started while the answer is on its way keeps its values", async ({
   await page.waitForTimeout(300);
   await page.getByRole("button", { name: "Stop" }).click();
 
-  await expect(field(page, "E_g")).toHaveValue("1000");
+  await expect(field(page, "E_g")).toHaveValue("0,09");
   await expect(badge(page, "Initial guess")).toHaveCount(0);
   await expect(button(page)).toBeEnabled();
 });
@@ -508,7 +509,7 @@ test("a fit that fails before the answer keeps its message", async ({
   await page.waitForTimeout(300);
 
   await expect(page.getByRole("alert")).toBeVisible();
-  await expect(field(page, "E_g")).toHaveValue("1000");
+  await expect(field(page, "E_g")).toHaveValue("0,09");
 });
 
 test("the button cannot be pressed during a fit", async ({ page }) => {
@@ -544,10 +545,10 @@ test("the curve follows the values it applies", async ({ page }) => {
 test("Reset goes back to the defaults, not to the guess", async ({ page }) => {
   await open(page);
   await load(page);
-  await expect(field(page, "E_g")).toHaveValue("554");
+  await expect(field(page, "E_g")).toHaveValue("0,05");
 
   await page.getByRole("button", { name: "Reset" }).click();
 
-  await expect(field(page, "E_g")).toHaveValue("1000");
+  await expect(field(page, "E_g")).toHaveValue("0,09");
   await expect(badge(page, "Initial guess")).toHaveCount(0);
 });

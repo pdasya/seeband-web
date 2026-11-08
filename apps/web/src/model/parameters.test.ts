@@ -7,6 +7,7 @@ import {
   editableParameters,
   withCustomRange,
   coreToDisplay,
+  isShownValue,
   displayToCore,
   parameterValues,
   shortened,
@@ -146,7 +147,10 @@ describe("displayToCore on whole control units", () => {
     const wrong: string[] = [];
     for (const model of models) {
       for (const { id, parameters } of model.fit_modes) {
-        for (const p of parameters) {
+        // Energies shown in eV have a test of their own below.
+        for (const p of parameters.filter(
+          ({ display_factor: factor }) => factor === 1,
+        )) {
           const { minimum, maximum } = p.value_range;
           const stride = Math.max(1, Math.floor((maximum - minimum) / 5000));
           for (let units = minimum; units <= maximum; units += stride) {
@@ -163,6 +167,25 @@ describe("displayToCore on whole control units", () => {
               wrong.push(`${id} ${p.name} ${String(units)}`);
             }
           }
+        }
+      }
+    }
+    expect(wrong).toEqual([]);
+  });
+
+  test("an energy in eV comes back to the same kelvin", () => {
+    const energies = models.flatMap(({ fit_modes: modes }) =>
+      modes.flatMap(({ parameters }) =>
+        parameters.filter(({ display_unit: unit }) => unit === "eV"),
+      ),
+    );
+    expect(energies.length).toBeGreaterThan(0);
+    const wrong: string[] = [];
+    for (const p of energies) {
+      const { minimum, maximum } = p.core_range;
+      for (let kelvin = minimum; kelvin <= maximum; kelvin += 1) {
+        if (displayToCore(p, coreToDisplay(p, kelvin)) !== kelvin) {
+          wrong.push(`${p.name} ${String(kelvin)}`);
         }
       }
     }
@@ -203,6 +226,30 @@ describe("typedDisplayValue", () => {
     for (const text of ["", " ", "3.01", "-3.01", "abc", "1e400"]) {
       expect(typedDisplayValue(mass, text)).toBeNull();
     }
+  });
+
+  test("takes a bound in eV as the screen shows it, as that bound", () => {
+    const gap = parameter("dpb_s", "band_gap");
+    expect(typedDisplayValue(gap, "0,26")).toBe(gap.display_range.maximum);
+    expect(typedDisplayValue(gap, "-0,26")).toBe(gap.display_range.minimum);
+    expect(typedDisplayValue(gap, "0,27")).toBeNull();
+  });
+});
+
+describe("isShownValue", () => {
+  test("a fitted energy typed as it shows is no change, and anything else is one", () => {
+    const gap = parameter("dpb_s_rho", "band_gap");
+    const displayed = coreToDisplay(gap, 1234.567);
+    expect(isShownValue(gap, displayed, 0.11)).toBe(true);
+    expect(isShownValue(gap, displayed, displayed)).toBe(true);
+    expect(isShownValue(gap, displayed, 0.1)).toBe(false);
+    expect(isShownValue(gap, displayed, 0.12)).toBe(false);
+  });
+
+  test("a value with more digits than its field shows, typed as shown, is no change", () => {
+    const mass = parameter("dpb_s_rho", "m_eff");
+    expect(isShownValue(mass, 1.2569432, 1.25694)).toBe(true);
+    expect(isShownValue(mass, 1.2569432, 1.26)).toBe(false);
   });
 });
 
@@ -267,9 +314,13 @@ describe("withCustomRange", () => {
 
   test("sets the range the control uses, and only that", () => {
     const next = withCustomRange(parameter, { lower: 500, upper: 4000 });
-    expect(next.display_range).toMatchObject({ minimum: 500, maximum: 4000 });
+    // In eV, as an energy is shown: 500 K and 4000 K.
+    expect(next.display_range).toMatchObject({
+      minimum: 0.04308666631,
+      maximum: 0.34469333048,
+    });
     expect(next.display_range.step).toBe(parameter.display_range.step);
     expect(next.core_range).toEqual(parameter.core_range);
-    expect(parameter.display_range.maximum).toBe(3000);
+    expect(parameter.display_range.maximum).toBe(0.25851999786);
   });
 });
