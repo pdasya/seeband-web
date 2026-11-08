@@ -21,19 +21,20 @@ export function FitPage() {
   return (
     <>
       <title>{`${fit.pageTitle} · ${STRINGS.appName}`}</title>
-      <div className="flex flex-wrap items-start gap-4">
-        <div className="flex min-w-0 flex-[1_1_560px] flex-col gap-3">
+      {/* The charts take what the right column leaves, and above 1200 px it stands beside them. */}
+      <div className="grid grid-cols-1 items-start gap-4 min-[1200px]:grid-cols-[minmax(0,1fr)_600px]">
+        <div className="flex min-w-0 flex-col gap-3">
           <DataBar />
           <ChartGrid live={live} />
           <ResultPanel live={live} />
         </div>
         <aside
           aria-label={fit.panelTitle}
-          className="flex max-w-full min-w-0 flex-[1_1_592px] flex-col gap-3"
+          className="flex min-w-0 flex-col gap-3"
         >
           <FitPanel control={control} guess={guess} />
           {/* Side by side and of one size where both fit, one under the other where they do not. */}
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(290px,1fr))] gap-3">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(294px,1fr))] gap-3">
             <ParametersPanel />
             <ModelPanel />
           </div>
