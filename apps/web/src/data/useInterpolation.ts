@@ -63,7 +63,15 @@ function requestsFor(range: FitRange): InterpolationRequest[] {
       ? []
       : [
           {
-            body: { text: entry.text, expected: quantity, interpolate },
+            // A user's choice of columns goes again, or the server would guess anew.
+            body:
+              entry.mapping === undefined
+                ? { text: entry.text, expected: quantity, interpolate }
+                : {
+                    text: entry.text,
+                    mapping: [...entry.mapping],
+                    interpolate,
+                  },
             quantities: [quantity],
           },
         ];

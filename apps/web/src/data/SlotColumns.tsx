@@ -56,7 +56,14 @@ export function SlotColumns({
   );
   return (
     <div className="flex flex-col gap-2">
-      <p className="m-0 text-xs">{text.noHeaderQuestion}</p>
+      <p className="m-0 text-xs">
+        {choice.mismatch ? text.headerMismatchQuestion : text.noHeaderQuestion}
+      </p>
+      {choice.negative && (
+        <p className="m-0 text-xs text-muted-foreground">
+          {text.belowZeroForRho}
+        </p>
+      )}
       {named !== null && (
         <p className="m-0 text-xs text-muted-foreground">
           {text.nameSuggests(named.title)}
@@ -79,6 +86,7 @@ export function SlotColumns({
               </div>
             </div>
             <Select
+              disabled={choice.applying}
               value={role ?? IGNORE}
               onValueChange={(value) => {
                 onRole(column, value === IGNORE ? null : (value as Role));

@@ -32,6 +32,8 @@ export interface SessionData {
   extrapolated: boolean;
   /** The file's text, in memory only, as interpolating sends it again. */
   text: string;
+  /** The columns a user chose for a file with no header, sent again with the text. */
+  mapping?: readonly ColumnRole[] | undefined;
 }
 
 export type InterpolatedQuantities = Partial<
@@ -200,8 +202,8 @@ export interface SessionState {
   parameterResets: number;
   /** Bounds a fit of each mode uses in place of the description's, in core units. */
   customBounds: Record<string, Record<string, FitBounds>>;
-  /** Files of the separate slots on their way, which are the user's though not yet in `data`. */
-  fileReads: number;
+  /** Slots with a file on its way or waiting for a choice, which is the user's though not in `data`. */
+  slotsReading: readonly Quantity[];
   /** What each model had when another was chosen, as the design keeps them apart. */
   savedModelSettings: Record<string, ModelSettings>;
 
@@ -239,8 +241,8 @@ export interface SessionState {
     bounds: FitBounds | null,
   ) => void;
   clearCustomBounds: (fitMode: string) => void;
-  fileReadStarted: () => void;
-  fileReadEnded: () => void;
+  fileReadStarted: (quantity: Quantity) => void;
+  fileReadEnded: (quantity: Quantity) => void;
   guessStarted: () => void;
   guessFinished: (
     outcome: GuessOutcome,
@@ -342,9 +344,9 @@ export function currentGuess(
 
 /** Whether a file of the user's is on its way, in either way of loading. */
 export function readsFiles(
-  state: Pick<SessionState, "fileReads" | "singleFile">,
+  state: Pick<SessionState, "slotsReading" | "singleFile">,
 ): boolean {
-  return state.fileReads > 0 || state.singleFile?.loading === true;
+  return state.slotsReading.length > 0 || state.singleFile?.loading === true;
 }
 
 /** Whether a reload would lose any file, in the way in use or the other. */
@@ -391,14 +393,21 @@ export const createSessionStore = () =>
       guess: null,
       parameterResets: 0,
       customBounds: {},
-      fileReads: 0,
+      slotsReading: [],
       savedModelSettings: {},
 
-      fileReadStarted: () => {
-        set((state) => ({ fileReads: state.fileReads + 1 }));
+      fileReadStarted: (quantity) => {
+        set((state) => ({
+          slotsReading: [
+            ...state.slotsReading.filter((slot) => slot !== quantity),
+            quantity,
+          ],
+        }));
       },
-      fileReadEnded: () => {
-        set((state) => ({ fileReads: state.fileReads - 1 }));
+      fileReadEnded: (quantity) => {
+        set((state) => ({
+          slotsReading: state.slotsReading.filter((slot) => slot !== quantity),
+        }));
       },
       guessStarted: () => {
         set({ guessPending: true, guess: null });

@@ -2,8 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { apiClient } from "@/api/client";
 import {
-  errorsAreAboutTheMapping,
+  errorsAChoiceCanMend,
   failureMessage,
+  fileWarnings,
   issueMessage,
   noDataMessages,
 } from "@/data/messages";
@@ -29,6 +30,12 @@ export interface ColumnChoice {
   roles: readonly (Role | null)[];
   /** Another quantity the file's name names, if any. */
   named: Quantity | null;
+  /** Values below 0 in a ρ slot, which a resistivity cannot have. */
+  negative: boolean;
+  /** A header that does not fit the columns, so the parser named none. */
+  mismatch: boolean;
+  /** What stays true of the file whatever its columns hold. */
+  fileWarnings: readonly string[];
   problems: readonly string[];
   applying: boolean;
 }
@@ -61,15 +68,15 @@ export function useFileUpload(quantity: Quantity) {
   const startRead = useCallback(() => {
     if (!reading.current) {
       reading.current = true;
-      readStarted();
+      readStarted(quantity);
     }
-  }, [readStarted]);
+  }, [quantity, readStarted]);
   const endRead = useCallback(() => {
     if (reading.current) {
       reading.current = false;
-      readEnded();
+      readEnded(quantity);
     }
-  }, [readEnded]);
+  }, [quantity, readEnded]);
 
   useEffect(
     () => () => {
@@ -106,12 +113,13 @@ export function useFileUpload(quantity: Quantity) {
         if (signal.aborted) {
           return;
         }
-        const fileErrors =
-          parsed.errors.length > 0 && !errorsAreAboutTheMapping(parsed.errors);
         // The API leaves `headers` out where no header matches, as its contract says.
-        if (!fileErrors && parsed.headers == null) {
+        if (parsed.headers == null && errorsAChoiceCanMend(parsed.errors)) {
           const named = quantityFromName(file.name);
           const other = named === quantity ? null : named;
+          const negative = parsed.errors.some(
+            ({ code }) => code === "negative_resistivity",
+          );
           choosing = true;
           setState({
             status: "choose",
@@ -120,8 +128,17 @@ export function useFileUpload(quantity: Quantity) {
             columns: parsed.column_count,
             rows: parsed.row_count,
             firstRow: parsed.preview[0] ?? [],
-            roles: initialRoles(parsed.column_count, quantity, other),
+            roles: initialRoles(
+              parsed.column_count,
+              quantity,
+              other !== null || negative,
+            ),
             named: other,
+            negative,
+            mismatch: parsed.warnings.some(
+              ({ code }) => code === "header_mismatch",
+            ),
+            fileWarnings: fileWarnings(parsed.warnings).map(issueMessage),
             problems: [],
             applying: false,
           });
@@ -190,21 +207,27 @@ export function useFileUpload(quantity: Quantity) {
       return;
     }
     const { data: text } = STRINGS;
-    if (
-      target !== quantity &&
-      useSessionStore.getState().data[target] !== undefined
-    ) {
-      setState({
-        ...choice,
-        problems: [text.slotTaken(text.quantities[target].title)],
-      });
+    const title = text.quantities[target].title;
+    const session = useSessionStore.getState();
+    // Another slot with a file of its own on the way would write over this one later.
+    const problem =
+      target === quantity
+        ? null
+        : session.slotsReading.includes(target)
+          ? text.slotBusy(title)
+          : session.data[target] !== undefined
+            ? text.slotTaken(title)
+            : null;
+    if (problem !== null) {
+      setState({ ...choice, problems: [problem] });
       return;
     }
     const signal = newRequest();
     setState({ ...choice, applying: true, problems: [] });
+    const mapping = mappingOf(choice.roles);
     try {
       const parsed = await apiClient.postParse(
-        { text: choice.text, mapping: mappingOf(choice.roles) },
+        { text: choice.text, mapping },
         signal,
       );
       if (signal.aborted) {
@@ -224,10 +247,19 @@ export function useFileUpload(quantity: Quantity) {
         source: { kind: "file", name: choice.name },
         extrapolated: false,
         text: choice.text,
+        mapping,
       });
       setState(
         target === quantity
-          ? { status: "idle", warnings: parsed.warnings.map(issueMessage) }
+          ? {
+              status: "idle",
+              warnings: [
+                ...new Set([
+                  ...choice.fileWarnings,
+                  ...parsed.warnings.map(issueMessage),
+                ]),
+              ],
+            }
           : IDLE,
       );
       endRead();

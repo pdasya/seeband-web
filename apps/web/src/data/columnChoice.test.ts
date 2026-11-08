@@ -5,21 +5,18 @@ import { chosenQuantity, initialRoles, mappingOf } from "@/data/columnChoice";
 
 describe("initialRoles", () => {
   test("two columns take T and the slot's quantity", () => {
-    expect(initialRoles(2, "seebeck", null)).toEqual([
+    expect(initialRoles(2, "seebeck", false)).toEqual([
       "temperature",
       "seebeck",
     ]);
   });
 
-  test("a name of another quantity leaves the second column to the user", () => {
-    expect(initialRoles(2, "seebeck", "resistivity")).toEqual([
-      "temperature",
-      null,
-    ]);
+  test("doubt leaves the second column to the user", () => {
+    expect(initialRoles(2, "seebeck", true)).toEqual(["temperature", null]);
   });
 
   test("more columns leave all but T to the user", () => {
-    expect(initialRoles(4, "hall", null)).toEqual([
+    expect(initialRoles(4, "hall", false)).toEqual([
       "temperature",
       null,
       null,

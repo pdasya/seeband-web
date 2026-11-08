@@ -146,7 +146,13 @@ export const STRINGS = {
     noHeaderQuestion:
       "This file has no column names. Choose what its columns hold.",
     nameSuggests: (title: string) => `Its name suggests ${title}.`,
+    headerMismatchQuestion:
+      "The column names of this file do not match its columns. Choose what its columns hold.",
+    belowZeroForRho:
+      "Some values are below 0, which a resistivity cannot have.",
     chooseColumns: "Choose T and one quantity.",
+    slotBusy: (title: string) =>
+      `The slot of ${title} has a file on its way. Finish there first, or choose another quantity.`,
     goesToSlot: (title: string) => `It goes to the slot of ${title}.`,
     slotTaken: (title: string) =>
       `The slot of ${title} holds a file. Remove it first, or choose another quantity.`,
