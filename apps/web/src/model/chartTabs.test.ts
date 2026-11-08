@@ -494,3 +494,104 @@ describe("the additional graphs", () => {
     expect(empty("spb_s_rho", "carrier_concentration")).toBe("Not in SeeBand");
   });
 });
+
+describe("the points of σ", () => {
+  const derived = {
+    temperature_k: [100, 200],
+    curves: { electrical_conductivity_s_per_m: [1e5, 9e4] },
+    known_issues: [],
+    rmse: {},
+  };
+  const answerAt = (temperatureK: number[]): CalcResponse => ({
+    temperature_k: [100, 200],
+    curves: {},
+    known_issues: [],
+    rmse: {},
+    measured_points: {
+      electrical_conductivity_s_per_m: {
+        temperature_k: temperatureK,
+        values: temperatureK.map(() => 5e4),
+      },
+    },
+  });
+  // The loaded ρ is at 100 K, and its interpolated values at 100 and 120 K.
+  const interpolated = {
+    ...NO_INTERPOLATION,
+    enabled: true,
+    values: {
+      resistivity: {
+        temperature_k: [100, 120],
+        values: [2e-6, 2.1e-6],
+        extrapolated: false,
+        measured_points_in_range: 1,
+        underdetermined: false,
+      },
+    },
+  };
+  const view = (
+    answer: CalcResponse | null,
+    interpolation = NO_INTERPOLATION,
+  ) =>
+    chartTabView(
+      "conductivity",
+      mode("dpb_s_rho"),
+      { data: loaded("resistivity").data, interpolation },
+      answer,
+      derived,
+    );
+
+  test("are the server's 1/ρ of the data, beside the model's line", () => {
+    const shown = view(answerAt([100]));
+    expect(shown.measurements).toEqual({
+      label: "1/ρ of the data",
+      temperatureK: [100],
+      values: [5e4],
+    });
+    expect(shown.curves).toHaveLength(1);
+    expect(shown.note).toMatch(
+      /^Points are 1\/ρ of the ρ data in the fit range/,
+    );
+  });
+
+  test("are named by the data they are at, not by the switch", () => {
+    expect(view(answerAt([100, 120]), interpolated).measurements?.label).toBe(
+      "1/ρ of the interpolated data",
+    );
+    // Points of the measured data while the interpolated ones are on their way.
+    expect(view(answerAt([100, 150]), interpolated).measurements).toBeNull();
+    // And the other way round, after the switch goes off.
+    expect(view(answerAt([100, 120])).measurements).toBeNull();
+  });
+
+  test("with the switch on and no interpolated ρ, the chart is the model alone", () => {
+    const shown = view(answerAt([100]), { ...NO_INTERPOLATION, enabled: true });
+    expect(shown.measurements).toBeNull();
+    expect(shown.note).toMatch(/^The model's σ only/);
+  });
+
+  test("with no answer, the chart is the model alone and says so", () => {
+    const shown = view(null);
+    expect(shown.measurements).toBeNull();
+    expect(shown.note).toMatch(/^The model's σ only/);
+  });
+
+  test("need the measured request only with ρ data in the mode", () => {
+    expect(
+      drawsMeasuredCurves(
+        "conductivity",
+        mode("dpb_s_rho"),
+        loaded("resistivity").data,
+      ),
+    ).toBe(true);
+    expect(drawsMeasuredCurves("conductivity", mode("dpb_s_rho"), {})).toBe(
+      false,
+    );
+    expect(
+      drawsMeasuredCurves(
+        "conductivity",
+        mode("dpb_s"),
+        loaded("resistivity").data,
+      ),
+    ).toBe(false);
+  });
+});

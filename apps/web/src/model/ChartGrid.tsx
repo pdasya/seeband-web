@@ -74,7 +74,9 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
   // Only the measured quantities and the total of S draw the measured curves, so an answer for
   // them does not redraw the others.
   const measuredCurves =
-    isQuantityTab(tab) || tab === "bands" ? measured.result : null;
+    isQuantityTab(tab) || tab === "bands" || tab === "conductivity"
+      ? measured.result
+      : null;
   const diagramResult = tab === "band_diagram" ? diagram.result : null;
   const view = useMemo(
     () =>
@@ -104,8 +106,21 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
   // Only what this chart draws. An RMSE has its own note, and other curves end with their chart.
   const usesMeasured = drawsMeasuredCurves(tab, mode, data);
   const onTab = tab === "band_diagram" ? diagram : derived;
-  const failed = usesMeasured && measured.error !== null ? measured : onTab;
-  const { error } = failed;
+  // Each request the chart draws from says when it fails, so one failure hides no other.
+  const failures = [
+    ...new Set(
+      [...(usesMeasured ? [measured] : []), onTab].flatMap(
+        ({ error, result }) =>
+          error === null
+            ? []
+            : [
+                result === null
+                  ? failureText(error)
+                  : `${failureText(error)} ${text.lastCurveStays}`,
+              ],
+      ),
+    ),
+  ];
   const busy = (usesMeasured && measured.busy) || onTab.busy;
 
   const rmse = isQuantityTab(tab) ? measured.result?.rmse?.[tab] : undefined;
@@ -156,16 +171,12 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
           <span className="font-mono">{metric}</span>
         </div>
       </div>
-      {error !== null && (
-        <Alert variant="destructive">
+      {failures.map((failure) => (
+        <Alert key={failure} variant="destructive">
           <AlertCircleIcon aria-hidden="true" />
-          <AlertDescription>
-            {failed.result === null
-              ? failureText(error)
-              : `${failureText(error)} ${text.lastCurveStays}`}
-          </AlertDescription>
+          <AlertDescription>{failure}</AlertDescription>
         </Alert>
-      )}
+      ))}
       <TransportChart
         empty={view.empty}
         curves={view.curves}

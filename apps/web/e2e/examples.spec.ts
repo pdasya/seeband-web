@@ -37,15 +37,23 @@ for (const example of ["01_Fe2VAl09Si01", "02_SiP", "03_AWI32_SI"]) {
     // The data fold once the fit mode has all it needs, so it needs all three.
     await page.getByRole("radio", { name: "S + ρ + R_H", exact: true }).click();
 
-    for (const suffix of ["see", "rho", "hall"]) {
-      const name = `${example}_${suffix}.txt`;
+    const names = ["see", "rho", "hall"].map(
+      (suffix) => `${example}_${suffix}.txt`,
+    );
+    for (const name of names) {
       // A slot with a file has no input, so the first input left is the next slot.
       await loadExample(page, name);
-      await expect(slots(page).getByText(name)).toBeVisible();
+      // The last fills the mode, and the data may fold before a check could see its name.
+      if (name !== names.at(-1)) {
+        await expect(slots(page).getByText(name)).toBeVisible();
+      }
     }
 
     await expect(page.getByRole("alert")).toHaveCount(0);
     await page.getByRole("button", { name: "Details" }).click();
+    for (const name of names) {
+      await expect(slots(page).getByText(name)).toBeVisible();
+    }
     await expect(
       slots(page).getByText(/\d+ points · .* K · V\/K/),
     ).toBeVisible();

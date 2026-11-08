@@ -170,7 +170,9 @@ function MoreGraph({
   const parameters = useSessionStore((state) => state.parameters);
   const bandGapK = bandGapForTab(tab, mode, parameters);
   const titleId = useId();
-  const total = tab === "bands" ? measured.result : null;
+  // The total of S of the bands, and the points of σ, come with the measured curves.
+  const total =
+    tab === "bands" || tab === "conductivity" ? measured.result : null;
   // Kept between renders, as a new view redraws the chart.
   const view = useMemo(
     () =>
@@ -196,7 +198,9 @@ function MoreGraph({
     ({ id, quantities }) => own.includes(id) || quantities.includes("seebeck"),
   );
   const failed =
-    derived.error ?? (tab === "bands" ? measured.error : null) ?? null;
+    derived.error ??
+    (tab === "bands" || tab === "conductivity" ? measured.error : null) ??
+    null;
   // What it drew, with the API's names: the total of S of the bands comes with the measured curves.
   const answer = drawn ? derived.result : null;
   const totalS = total?.curves.seebeck_v_per_k;
@@ -256,8 +260,8 @@ function MoreGraph({
       <TransportChart
         empty={view.empty}
         curves={view.curves}
-        measurements={null}
-        interpolated={null}
+        measurements={view.measurements}
+        interpolated={view.interpolated}
         referenceLines={view.referenceLines}
         fitRange={null}
         xAxisTitle={chartText.temperatureAxis}

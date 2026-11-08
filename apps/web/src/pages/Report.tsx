@@ -104,7 +104,9 @@ export function useReport({
               interpolation,
               bandGapK: bandGapForTab(tab, mode, parameters),
             },
-            isQuantityTab(tab) || tab === "bands" ? measured.result : null,
+            isQuantityTab(tab) || tab === "bands" || tab === "conductivity"
+              ? measured.result
+              : null,
             kind === null ? null : derived[kind].result,
           );
           const title = chartText.tabs[tab];

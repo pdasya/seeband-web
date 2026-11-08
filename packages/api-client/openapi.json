@@ -5214,6 +5214,13 @@
             },
             "type": "object",
             "title": "Rmse"
+          },
+          "measured_points": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/MeasuredPointsResponse"
+            },
+            "type": "object",
+            "title": "Measured Points"
           }
         },
         "type": "object",
@@ -5224,7 +5231,7 @@
           "rmse"
         ],
         "title": "CalcResponse",
-        "description": "Curves by name, where each name ends in its unit, and null marks a value that is not finite.\n\n`known_issues` names known errors that apply to this result, as in `GET /api/models`. `rmse` is\nempty without measurements.",
+        "description": "Curves by name, where each name ends in its unit, and null marks a value that is not finite.\n\n`known_issues` names known errors that apply to this result, as in `GET /api/models`. `rmse` is\nempty without measurements. `measured_points` holds points made from the measurements sent,\nby name with its unit: `electrical_conductivity_s_per_m` is 1/rho, with null for a rho of 0 or\nbelow. They use no model, so they go with the data the request sent, interpolated or not.",
         "examples": [
           {
             "curves": {
@@ -5244,6 +5251,18 @@
               ]
             },
             "known_issues": [],
+            "measured_points": {
+              "electrical_conductivity_s_per_m": {
+                "temperature_k": [
+                  150.0,
+                  300.0
+                ],
+                "values": [
+                  100000.0,
+                  25000.0
+                ]
+              }
+            },
             "rmse": {
               "seebeck": {
                 "unit": "uV/K",
@@ -6524,6 +6543,38 @@
         ],
         "title": "KnownIssueResponse",
         "description": "A known error of the calculations in this mode. Clients show `message_key` through i18n.\n\nEmpty `scattering` means every type. `curve_kinds` lists the curves it applies to, and empty\nmeans none. Empty `columns` means every curve of those kinds. `condition`, if present, limits it\nto some inputs. `fixed_by` is the issue in this repository that removes it."
+      },
+      "MeasuredPointsResponse": {
+        "properties": {
+          "temperature_k": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Temperature K"
+          },
+          "values": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Values"
+          }
+        },
+        "type": "object",
+        "required": [
+          "temperature_k",
+          "values"
+        ],
+        "title": "MeasuredPointsResponse",
+        "description": "Points made from measurements alone, at their temperatures. Null marks one with no value."
       },
       "MeasurementInput": {
         "properties": {

@@ -230,6 +230,10 @@ export const STRINGS = {
     panelSelect: (index: number) => `Quantity shown in chart ${String(index)}`,
     bandGapMetric: (gap: string) => `E_g = ${gap} K`,
     conductivityDescription: "Chart of σ against temperature",
+    conductivityPoints: "1/ρ of the data",
+    conductivityPointsInterpolated: "1/ρ of the interpolated data",
+    conductivityPointsNote:
+      "Points are 1/ρ of the ρ data in the fit range, which the server calculates. The line is the model's σ.",
     conductivityNote:
       "The model's σ only: measured points would be 1/ρ, which the ρ data give.",
     diagramCurves: {

@@ -99,6 +99,14 @@ export function drawsMeasuredCurves(
   if (tab === "bands") {
     return needsMeasuredCurves(tab, mode);
   }
+  // Its points come with the measured curves, from the ρ data.
+  if (tab === "conductivity") {
+    return (
+      derivedKind(tab, mode) !== null &&
+      data.resistivity !== undefined &&
+      mode?.quantities.includes("resistivity") === true
+    );
+  }
   return (
     isQuantityTab(tab) &&
     data[tab] !== undefined &&
@@ -279,9 +287,11 @@ function chemicalPotentialView(
   };
 }
 
-// σ has no measured points: they would be 1/ρ, which the client does not calculate.
+// σ's points are 1/ρ of the ρ data, which the server calculates with the measured curves.
 function conductivityView(
   mode: FitModeDescription | undefined,
+  state: ViewState,
+  measured: CalcResponse | null,
   derived: CalcResponse | null,
 ): ChartTabView {
   const base = {
@@ -295,13 +305,52 @@ function conductivityView(
       empty: unavailable(mode, "electrical_conductivity"),
     };
   }
+  // The server's 1/ρ of the ρ data the measured request sent. An answer stays while the next is on
+  // its way, so its points are named by the data they are at, and left out if they fit neither.
+  const answer = measured?.measured_points?.[CONDUCTIVITY];
+  const from =
+    answer === undefined ? null : pointsSource(answer.temperature_k, state);
+  const points = from === null ? undefined : answer;
   return {
     ...NO_CHART,
     ...base,
     empty: null,
     curves: curveOf(derived, CONDUCTIVITY, 1, text.model),
-    note: text.conductivityNote,
+    measurements:
+      points === undefined
+        ? null
+        : {
+            label:
+              from === "interpolated"
+                ? text.conductivityPointsInterpolated
+                : text.conductivityPoints,
+            temperatureK: points.temperature_k,
+            values: points.values,
+          },
+    note:
+      points === undefined
+        ? text.conductivityNote
+        : text.conductivityPointsNote,
   };
+}
+
+/** Which ρ the points of σ are at: those in use now, measured or interpolated, or neither. */
+function pointsSource(
+  temperatureK: readonly number[],
+  state: ViewState,
+): "measured" | "interpolated" | null {
+  const within = (grid: readonly number[] | undefined) =>
+    grid !== undefined &&
+    temperatureK.length > 0 &&
+    temperatureK.every((temperature) => grid.includes(temperature));
+  if (state.interpolation.enabled) {
+    return within(state.interpolation.values.resistivity?.temperature_k)
+      ? "interpolated"
+      : null;
+  }
+  return within(state.data.resistivity?.measurement.temperature_k)
+    ? "measured"
+    : null;
 }
 
 /** A curve the derived request gives alone, with what is said about it. */
@@ -467,7 +516,7 @@ export function chartTabView(
     case "band_diagram":
       return bandDiagramView(mode, diagram);
     case "conductivity":
-      return conductivityView(mode, derived);
+      return conductivityView(mode, state, measured, derived);
     case "thermal_conductivity":
       return thermalConductivityView(mode, derived);
     case "carrier_concentration":

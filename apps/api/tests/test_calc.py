@@ -127,6 +127,58 @@ def test_rmse_is_that_of_the_core_on_the_grid_asked_for(client: TestClient) -> N
     }
 
 
+def test_measured_resistivity_gives_conductivity_points(client: TestClient) -> None:
+    response = client.post(
+        "/api/calc",
+        json=_body(
+            measurements={
+                "seebeck": {"temperature_k": [150.0, 300.0], "values": [1.0e-4, 2.0e-4]},
+                "resistivity": {"temperature_k": [150.0, 300.0], "values": [1.0e-5, 4.0e-5]},
+            },
+        ),
+    )
+
+    assert response.status_code == 200
+    points = response.json()["measured_points"]
+    assert list(points) == ["electrical_conductivity_s_per_m"]
+    assert points["electrical_conductivity_s_per_m"]["temperature_k"] == [150.0, 300.0]
+    assert points["electrical_conductivity_s_per_m"]["values"] == pytest.approx([1.0e5, 2.5e4])
+
+
+def test_a_resistivity_below_zero_gives_a_null_point(client: TestClient) -> None:
+    response = client.post(
+        "/api/calc",
+        json=_body(
+            measurements={
+                "resistivity": {"temperature_k": [150.0, 300.0], "values": [-1.0e-5, 4.0e-5]},
+            },
+        ),
+    )
+
+    assert response.status_code == 200
+    values = response.json()["measured_points"]["electrical_conductivity_s_per_m"]["values"]
+    assert values == [None, pytest.approx(2.5e4)]
+
+
+def test_other_kinds_of_curve_give_no_points(client: TestClient) -> None:
+    response = client.post("/api/calc", json=_body(kind="chemical_potential"))
+
+    assert response.status_code == 200
+    assert response.json()["measured_points"] == {}
+
+
+def test_no_resistivity_gives_no_points(client: TestClient) -> None:
+    response = client.post(
+        "/api/calc",
+        json=_body(
+            measurements={"seebeck": {"temperature_k": [150.0], "values": [1.0e-4]}},
+        ),
+    )
+
+    assert response.status_code == 200
+    assert response.json()["measured_points"] == {}
+
+
 def test_rmse_grid_defaults_to_50_points(client: TestClient) -> None:
     measurements = {"seebeck": {"temperature_k": [150.0, 450.0], "values": [1.0e-4, 1.5e-4]}}
     expected = curve_rmse(
