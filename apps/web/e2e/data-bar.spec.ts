@@ -89,10 +89,16 @@ test("Details opens the data with what they hold, and Hide folds them", async ({
   );
   const hide = page.getByRole("button", { name: "Hide" });
   await expect(hide).toHaveAttribute("aria-expanded", "true");
+  await expect(hide).toBeFocused();
 
   await hide.click();
   await expect(heading(page)).toBeHidden();
   await expect(details(page)).toBeVisible();
+  await expect(details(page)).toBeFocused();
+
+  // The keyboard goes the same way.
+  await page.keyboard.press("Enter");
+  await expect(hide).toBeFocused();
 });
 
 test("the data open again once the fit mode needs more", async ({ page }) => {

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { CheckIcon, ChevronDownIcon } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 
 import { modelsQuery } from "@/api/queries";
 import { Button } from "@/components/ui/button";
@@ -40,12 +40,26 @@ export function DataBar() {
     setOpen(!complete);
   }
 
-  const toggle = (
+  // Details and Hide are two buttons, so a press moves focus to the one that takes its place.
+  // A fold the data make by themselves leaves focus where it is.
+  const panelToggle = useRef<HTMLButtonElement>(null);
+  const barToggle = useRef<HTMLButtonElement>(null);
+  const pressed = useRef(false);
+  useEffect(() => {
+    if (pressed.current) {
+      pressed.current = false;
+      (open ? panelToggle : barToggle).current?.focus();
+    }
+  }, [open]);
+
+  const toggle = (ref: RefObject<HTMLButtonElement | null>) => (
     <Button
+      ref={ref}
       variant="secondary"
       size="sm"
       aria-expanded={open}
       onClick={() => {
+        pressed.current = true;
         setOpen(!open);
       }}
     >
@@ -71,7 +85,7 @@ export function DataBar() {
   return (
     <>
       <div hidden={!open}>
-        <DataPanel action={toggle} />
+        <DataPanel action={toggle(panelToggle)} />
       </div>
       {!open && (
         <section
@@ -103,7 +117,7 @@ export function DataBar() {
               );
             })}
           </ul>
-          {toggle}
+          {toggle(barToggle)}
         </section>
       )}
     </>
