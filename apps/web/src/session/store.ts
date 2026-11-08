@@ -61,7 +61,15 @@ export type DataMode = "separate" | "single";
 
 /** What the fit screen's chart shows. */
 export type ChartTab =
-  Quantity | "chemical_potential" | "bands" | "band_diagram";
+  Quantity | "conductivity" | "chemical_potential" | "bands" | "band_diagram";
+
+/** What the four charts show at first: the measured quantities, and the bands. */
+export const INITIAL_CHART_PANELS: readonly ChartTab[] = [
+  "seebeck",
+  "resistivity",
+  "hall",
+  "band_diagram",
+];
 
 /**
  * One table, kept with its text in memory only, as a new mapping sends it again. `table` is the
@@ -195,7 +203,8 @@ export interface SessionState {
   /** The files of the way not in use. */
   otherSource: DataSourceFiles | null;
   interpolation: InterpolationState;
-  chartTab: ChartTab;
+  /** What each of the four charts shows. */
+  chartPanels: readonly ChartTab[];
   guessPending: boolean;
   guess: GuessRecord | null;
   /** Counts resets, so that fields can start again even if the values do not change. */
@@ -207,7 +216,7 @@ export interface SessionState {
   /** What each model had when another was chosen, as the design keeps them apart. */
   savedModelSettings: Record<string, ModelSettings>;
 
-  setChartTab: (tab: ChartTab) => void;
+  setChartPanel: (index: number, tab: ChartTab) => void;
   /** Keeps the current model's settings, and takes up these for the new one. */
   chooseModel: (model: string, settings: ModelSettings) => void;
   setInterpolationEnabled: (enabled: boolean) => void;
@@ -388,7 +397,7 @@ export const createSessionStore = () =>
       singleFile: null,
       otherSource: null,
       interpolation: INITIAL_INTERPOLATION,
-      chartTab: "seebeck",
+      chartPanels: INITIAL_CHART_PANELS,
       guessPending: false,
       guess: null,
       parameterResets: 0,
@@ -440,8 +449,12 @@ export const createSessionStore = () =>
           };
         });
       },
-      setChartTab: (chartTab) => {
-        set({ chartTab });
+      setChartPanel: (index, tab) => {
+        set((state) => ({
+          chartPanels: state.chartPanels.map((old, at) =>
+            at === index ? tab : old,
+          ),
+        }));
       },
       chooseModel: (model, settings) => {
         set((state) => {

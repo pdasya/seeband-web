@@ -1,25 +1,5 @@
 import type { ReactNode } from "react";
 
-/** The design's two columns: they wrap once the side panel and main column no longer fit. */
-export function TwoColumns({
-  side,
-  main,
-}: {
-  side: ReactNode;
-  main: ReactNode;
-}) {
-  return (
-    <div className="flex flex-wrap items-start gap-6">
-      <aside className="flex max-w-full min-w-0 flex-[1_1_300px] flex-col gap-4">
-        {side}
-      </aside>
-      <div className="flex min-w-0 flex-[999_1_560px] flex-col gap-4">
-        {main}
-      </div>
-    </div>
-  );
-}
-
 /** The title of a screen. `status` is the slot for its status badge, and `actions` for buttons. */
 export function PageHeading({
   title,

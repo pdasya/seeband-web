@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { fitBadges } from "./support/fitScreen";
 import { fakeFit } from "./support/fakeFit";
 import { MODELS, serveModels } from "./support/models";
 
@@ -132,6 +133,11 @@ test("the button is beside the title, and the bounds open in a dialog", async ({
   expect(button?.y).toBeLessThanOrEqual(
     (heading?.y ?? 0) + (heading?.height ?? 0),
   );
+  // A gear, which says what it does on hover.
+  const gear = page.getByRole("button", { name: "Edit bounds" });
+  await expect(gear).toHaveText("");
+  await gear.hover();
+  await expect(page.getByRole("tooltip")).toHaveText("Edit bounds");
   expect((button?.y ?? 0) + (button?.height ?? 0)).toBeGreaterThanOrEqual(
     heading?.y ?? Infinity,
   );
@@ -150,7 +156,12 @@ test("the button is beside the title, and the bounds open in a dialog", async ({
 
   await done(page);
   await expect(editor(page)).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Edit bounds" })).toBeFocused();
+  await expect(gear).toBeFocused();
+  // Focus coming back does not name the gear again, and a pointer on it still does.
+  await page.waitForTimeout(300);
+  await expect(page.getByRole("tooltip")).toHaveCount(0);
+  await gear.hover();
+  await expect(page.getByRole("tooltip")).toHaveText("Edit bounds");
 });
 
 test("Escape closes the dialog, and drops what was being typed", async ({
@@ -163,6 +174,9 @@ test("Escape closes the dialog, and drops what was being typed", async ({
   await lower(page, "E_g").press("Escape");
 
   await expect(editor(page)).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Edit bounds" })).toBeFocused();
+  await page.waitForTimeout(300);
+  await expect(page.getByRole("tooltip")).toHaveCount(0);
   await expect(row(page, "E_g")).toContainText("-3000 … 3000");
   await openEditor(page);
   await expect(lower(page, "E_g")).toHaveValue("-3000");
@@ -581,7 +595,7 @@ test("a change of bounds ends the last result, and a fit locks them", async ({
   await setBounds(page, "E_g", "0", "4000");
 
   await expect(row(page, "E_g").getByText("at bound")).toHaveCount(0);
-  await expect(page.getByText("Manual parameters")).toBeVisible();
+  await expect(fitBadges(page)).toHaveCount(0);
 });
 
 test("only editable bounds can be changed", async ({ page }) => {

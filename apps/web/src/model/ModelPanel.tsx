@@ -3,7 +3,7 @@ import { AlertCircleIcon } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 
 import { modelsQuery } from "@/api/queries";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { formatNumber, parseNumber } from "@/lib/numbers";
 import {
@@ -14,6 +14,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   firstModel,
   fitModeOf,
@@ -55,14 +60,17 @@ function positiveOrNull(text: string): number | null {
 
 function Group({
   label,
+  hideLabel = false,
   children,
 }: {
   label: string;
+  /** For a choice that its options explain, such as SPB and DPB. Its control keeps the name. */
+  hideLabel?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-[13px] font-medium">{label}</span>
+      {!hideLabel && <span className="text-[13px] font-medium">{label}</span>}
       {children}
     </div>
   );
@@ -70,17 +78,26 @@ function Group({
 
 function ChoiceGroup({
   label,
+  hideLabel = false,
   value,
   onChange,
   options,
 }: {
   label: string;
+  hideLabel?: boolean;
   value: string | null;
   onChange: (value: string) => void;
-  options: readonly { id: string; label: string; disabled?: boolean }[];
+  options: readonly {
+    id: string;
+    label: string;
+    disabled?: boolean;
+    /** Shown on hover or focus, and read as the option's description. */
+    hint?: string;
+  }[];
 }) {
+  const hintId = useId();
   return (
-    <Group label={label}>
+    <Group label={label} hideLabel={hideLabel}>
       <ToggleGroup
         type="single"
         variant="outline"
@@ -94,17 +111,39 @@ function ChoiceGroup({
           }
         }}
       >
-        {options.map((option) => (
-          <ToggleGroupItem
-            key={option.id}
-            value={option.id}
-            disabled={option.disabled === true}
-            className="flex-1"
-          >
-            {option.label}
-          </ToggleGroupItem>
-        ))}
+        {options.map((option) => {
+          const item = (
+            <ToggleGroupItem
+              key={option.id}
+              value={option.id}
+              disabled={option.disabled === true}
+              aria-describedby={
+                option.hint === undefined ? undefined : `${hintId}-${option.id}`
+              }
+              // A tooltip's trigger sets its own data-state, so being chosen shows from aria-checked.
+              className="flex-auto aria-checked:bg-accent aria-checked:text-accent-foreground"
+            >
+              {option.label}
+            </ToggleGroupItem>
+          );
+          return option.hint === undefined ? (
+            item
+          ) : (
+            <Tooltip key={option.id}>
+              <TooltipTrigger asChild>{item}</TooltipTrigger>
+              <TooltipContent>{option.hint}</TooltipContent>
+            </Tooltip>
+          );
+        })}
       </ToggleGroup>
+      {options.map(
+        (option) =>
+          option.hint !== undefined && (
+            <span key={option.id} id={`${hintId}-${option.id}`} hidden>
+              {option.hint}
+            </span>
+          ),
+      )}
     </Group>
   );
 }
@@ -283,26 +322,6 @@ function FitRangeFields({
   );
 }
 
-function MissingData({ mode }: { mode: FitModeDescription }) {
-  const data = useSessionStore((state) => state.data);
-  const missing = mode.quantities.filter(
-    (quantity) => data[quantity] === undefined,
-  );
-  if (missing.length === 0) {
-    return null;
-  }
-  // A note rather than an alert, as this is the state before any data load.
-  return (
-    <Alert variant="warning" role="note">
-      <AlertCircleIcon aria-hidden="true" />
-      <AlertTitle>
-        {`${text.missingTitle} ${missing.map(quantitySymbol).join(", ")}.`}
-      </AlertTitle>
-      <AlertDescription>{text.missingText}</AlertDescription>
-    </Alert>
-  );
-}
-
 function ModelControls({ models }: { models: readonly ModelDescription[] }) {
   const selection = useSessionStore((state) => state.selection);
   const saved = useSessionStore((state) => state.savedModelSettings);
@@ -322,23 +341,22 @@ function ModelControls({ models }: { models: readonly ModelDescription[] }) {
 
   return (
     <div className="mt-3 flex flex-col gap-4">
-      <div className="flex flex-col gap-1.5">
-        <ChoiceGroup
-          label={text.bands}
-          value={model.id}
-          onChange={(id) => {
-            const next = models.find((candidate) => candidate.id === id);
-            if (next !== undefined) {
-              chooseModel(id, settingsFor(next, saved[id]));
-            }
-          }}
-          options={models.map(({ id }) => ({
-            id,
-            label: id.toUpperCase(),
-          }))}
-        />
-        <span className="text-xs text-muted-foreground">{model.name}</span>
-      </div>
+      <ChoiceGroup
+        label={text.bands}
+        hideLabel
+        value={model.id}
+        onChange={(id) => {
+          const next = models.find((candidate) => candidate.id === id);
+          if (next !== undefined) {
+            chooseModel(id, settingsFor(next, saved[id]));
+          }
+        }}
+        options={models.map(({ id, name }) => ({
+          id,
+          label: id.toUpperCase(),
+          hint: name,
+        }))}
+      />
 
       <div className="flex flex-col gap-1.5">
         <ChoiceGroup
@@ -366,8 +384,6 @@ function ModelControls({ models }: { models: readonly ModelDescription[] }) {
           </span>
         ))}
       </div>
-
-      {mode !== undefined && <MissingData mode={mode} />}
 
       {mode !== undefined && mode.scattering.length > 0 && (
         <Group label={text.scattering}>
@@ -437,7 +453,7 @@ export function ModelPanel() {
   }, [models, selected, setSelection]);
 
   return (
-    <Panel title={text.title} subtitle={text.subtitle}>
+    <Panel title={text.title}>
       {isPending && (
         <p role="status" className="mt-3 mb-0 text-xs text-muted-foreground">
           {text.loading}

@@ -50,8 +50,30 @@ test("starts with the mode's parameters, defaults and ranges", async ({
   await expect(field(page, "B")).toHaveValue("1");
   await expect(slider(page, "E_F")).toHaveAttribute("aria-valuemin", "-3000");
   await expect(slider(page, "E_F")).toHaveAttribute("aria-valuemax", "3000");
-  await expect(page.getByText("Fermi energy at T = 0, in K")).toBeVisible();
+  await expect(field(page, "E_F")).toHaveAccessibleDescription(
+    "Fermi energy at T = 0, in K",
+  );
   await expect(page.getByRole("alert")).toHaveCount(0);
+});
+
+test("a parameter's meaning shows on its (i), not under it", async ({
+  page,
+}) => {
+  await open(page);
+  const about = page.getByRole("button", { name: "About m₂/m₁" });
+  const tip = page.getByRole("tooltip");
+  await expect(tip).toHaveCount(0);
+
+  await about.hover();
+  await expect(tip).toContainText(/^band mass ratio m2\/m1/);
+  await page.getByRole("heading", { name: "Parameters" }).hover();
+  await expect(tip).toHaveCount(0);
+
+  // A keyboard reaches it too.
+  await page.getByRole("button", { name: "About E_g" }).focus();
+  await expect(tip).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(tip).toHaveCount(0);
 });
 
 test("parameters follow the scattering type and fit mode", async ({ page }) => {
@@ -365,4 +387,34 @@ test("leaving a field unchanged keeps a result and the exact value", async ({
 
   await slider(page, "E_g").press("ArrowRight");
   await expect.poll(fitStatus).toBe("idle");
+});
+
+test.describe("on a touch screen", () => {
+  test.use({ hasTouch: true });
+
+  test("a tap on (i) shows the meaning, and a tap beside it hides it", async ({
+    page,
+  }) => {
+    // Safari on iOS does not focus a button that is tapped, so focus cannot open it there.
+    await page.addInitScript(() => {
+      document.addEventListener(
+        "mousedown",
+        (event) => {
+          event.preventDefault();
+        },
+        true,
+      );
+    });
+    await open(page);
+    const tip = page.getByRole("tooltip");
+
+    await page.getByRole("button", { name: "About E_g" }).tap();
+    await expect(
+      page.getByRole("button", { name: "About E_g" }),
+    ).not.toBeFocused();
+    await expect(tip).toContainText("in K");
+
+    await page.getByRole("heading", { name: "Parameters" }).tap();
+    await expect(tip).toHaveCount(0);
+  });
 });

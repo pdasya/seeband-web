@@ -1,5 +1,6 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
 
+import { fitBadges } from "./support/fitScreen";
 import { CALC, NO_GUESS, serveModels } from "./support/models";
 
 interface GuessBody {
@@ -64,7 +65,8 @@ async function load(page: Page) {
       mimeType: "text/plain",
       buffer: Buffer.from("T S\n100 1\n"),
     });
-  await expect(page.getByText(/^3 points/)).toBeVisible();
+  // Folded away once the fit mode has all it needs, so it may not show.
+  await expect(page.getByText(/^3 points/)).toHaveCount(1);
 }
 
 const button = (page: Page) =>
@@ -188,7 +190,7 @@ test("an edit ends the badge, and the values count as manual", async ({
   await page.getByRole("slider", { name: "E_g" }).press("ArrowRight");
 
   await expect(badge(page, "Initial guess")).toHaveCount(0);
-  await expect(page.getByText("Manual parameters")).toBeVisible();
+  await expect(fitBadges(page)).toHaveText("Missing data: ρ");
 });
 
 test("edits after the file are kept, if the answer comes later", async ({
@@ -373,7 +375,7 @@ test("no net keeps the values, and names the real ranges", async ({ page }) => {
   ).toBeVisible();
   await expect(field(page, "E_g")).toHaveValue("1000");
   await expect(badge(page, "Initial guess")).toHaveCount(0);
-  await expect(page.getByText("Manual parameters")).toBeVisible();
+  await expect(fitBadges(page)).toHaveText("Missing data: ρ");
 });
 
 test("a prediction that is not finite keeps the values", async ({ page }) => {

@@ -1,7 +1,12 @@
 // @vitest-environment node
 import { describe, expect, test } from "vitest";
 
-import { fitBadge, fitBlockerText, fitFailureText } from "@/model/fitStatus";
+import {
+  fitBadge,
+  fitBlockerText,
+  fitFailureText,
+  missingDataText,
+} from "@/model/fitStatus";
 import type { FitResult, FitState } from "@/session/store";
 
 const done = (result: Partial<FitResult>): FitState => ({
@@ -23,8 +28,8 @@ const running = (iteration: number | null): FitState => ({
 });
 
 describe("fitBadge", () => {
-  test.each<[FitState, boolean, object]>([
-    [{ status: "idle" }, true, { status: "manual" }],
+  test.each<[FitState, boolean, object | null]>([
+    [{ status: "idle" }, true, null],
     [
       { status: "waiting" },
       true,
@@ -131,6 +136,16 @@ describe("fitBlockerText, for bounds", () => {
   });
 });
 
+describe("missingDataText", () => {
+  test("names what is missing, and nothing for other blockers", () => {
+    expect(
+      missingDataText({ reason: "missing_data", quantities: ["resistivity"] }),
+    ).toBe("Missing data: ρ");
+    expect(missingDataText({ reason: "interpolating" })).toBeNull();
+    expect(missingDataText(null)).toBeNull();
+  });
+});
+
 describe("fitBlockerText", () => {
   test("names the quantities", () => {
     expect(
@@ -138,7 +153,7 @@ describe("fitBlockerText", () => {
         reason: "missing_data",
         quantities: ["seebeck", "resistivity"],
       }),
-    ).toBe("This fit mode needs data for S, ρ.");
+    ).toBe("Missing data: S, ρ");
     expect(
       fitBlockerText({ reason: "no_points_in_range", quantities: ["hall"] }),
     ).toBe("No points in the fit range for R_H.");

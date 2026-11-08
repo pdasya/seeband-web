@@ -58,6 +58,16 @@ export function fitEndNote(
   }
 }
 
+/** An RMSE as the panels show it, with the unit the user reads. */
+export function rmseText(rmse: { value: number | null; unit: string }): string {
+  if (rmse.value === null) {
+    return text.rmseNotFinite;
+  }
+  const units: Record<string, string> = text.rmseUnits;
+  const value = formatNumber(Number(rmse.value.toPrecision(4)));
+  return `${value} ${units[rmse.unit] ?? rmse.unit}`;
+}
+
 export interface ParameterRow {
   name: string;
   symbol: string;

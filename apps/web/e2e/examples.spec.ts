@@ -3,6 +3,8 @@ import { fileURLToPath } from "node:url";
 
 import { expect, test, type Page } from "@playwright/test";
 
+import { chart, show, fitBadges } from "./support/fitScreen";
+
 // Against a real API, as the mock's answers do not depend on the file. See the README.
 test.skip(
   process.env.SEEBAND_API_TARGET === undefined,
@@ -30,6 +32,8 @@ async function loadExample(page: Page, name: string) {
 for (const example of ["01_Fe2VAl09Si01", "02_SiP", "03_AWI32_SI"]) {
   test(`all files of ${example} load`, async ({ page }) => {
     await page.goto("/fit");
+    // The data fold once the fit mode has all it needs, so it needs all three.
+    await page.getByRole("radio", { name: "S + ρ + R_H", exact: true }).click();
 
     for (const suffix of ["see", "rho", "hall"]) {
       const name = `${example}_${suffix}.txt`;
@@ -39,6 +43,7 @@ for (const example of ["01_Fe2VAl09Si01", "02_SiP", "03_AWI32_SI"]) {
     }
 
     await expect(page.getByRole("alert")).toHaveCount(0);
+    await page.getByRole("button", { name: "Details" }).click();
     await expect(
       slots(page).getByText(/\d+ points · .* K · V\/K/),
     ).toBeVisible();
@@ -88,9 +93,7 @@ test("a ρ file in the S slot asks first, and says what its name names", async (
     ),
   ).toBeVisible();
   await expect(page.getByText("Its name suggests Resistivity.")).toBeVisible();
-  await expect(
-    page.getByText("This fit mode needs data for S, ρ."),
-  ).toBeVisible();
+  await expect(fitBadges(page)).toHaveText("Missing data: S, ρ");
 });
 
 test("the real parser refuses a negative resistivity", async ({ page }) => {
@@ -234,23 +237,28 @@ test("a zero in resistivity does not stop the real API from answering", async ({
   await expect(page.getByRole("alert")).toHaveCount(0);
 });
 
-test("the tabs draw real curves through the real API", async ({ page }) => {
+test("the charts draw real curves through the real API", async ({ page }) => {
   await page.goto("/fit");
   await expect(page.getByRole("slider", { name: "E_F" })).toBeVisible();
-  const lines = page.locator(".scatterlayer .trace path.js-line");
+  const lines = chart(page).locator(".scatterlayer .trace path.js-line");
 
-  await page.getByRole("tab", { name: "μ(T)" }).click();
+  await show(page, "Chemical potential μ(T)");
   await expect(lines).toHaveCount(1);
-  await expect(page.getByText("band 2 bottom (E_g)")).toBeVisible();
+  await expect(chart(page).getByText("band 2 bottom (E_g)")).toBeVisible();
 
-  await page.getByRole("tab", { name: "Band contributions" }).click();
+  await show(page, "Band contributions");
   await expect(lines).toHaveCount(3);
 
-  await page.getByRole("radio", { name: "SPB" }).click();
-  await expect(page.getByText("DPB only")).toBeVisible();
-  await page.getByRole("tab", { name: "μ(T)" }).click();
+  await show(page, "Conductivity σ(T)");
   await expect(lines).toHaveCount(1);
-  await expect(page.getByText("band edge")).toBeVisible();
+  await expect(chart(page).locator(".ytitle")).toHaveText("σ, S/m");
+
+  await page.getByRole("radio", { name: "SPB" }).click();
+  await show(page, "Band contributions");
+  await expect(chart(page).getByText("DPB only")).toBeVisible();
+  await show(page, "Chemical potential μ(T)");
+  await expect(lines).toHaveCount(1);
+  await expect(chart(page).getByText("band edge")).toBeVisible();
   await expect(page.getByRole("alert")).toHaveCount(0);
 });
 
@@ -295,11 +303,11 @@ test("the real API draws the sketch of the bands, and it follows the values", as
 }) => {
   await page.goto("/fit");
   await expect(page.getByRole("slider", { name: "E_F" })).toBeVisible();
-  await page.getByRole("tab", { name: "E(k)" }).click();
+  // The last chart shows it from the start.
   await expect(page.getByText(/^Caution: This is a sketch/)).toBeVisible();
   await expect(page.getByRole("alert")).toHaveCount(0);
   await expect(
-    page.locator(".js-plotly-plot .scatterlayer .trace"),
+    chart(page, 4).locator(".js-plotly-plot .scatterlayer .trace"),
   ).toHaveCount(3);
 
   const answered = page.waitForResponse("**/api/band-diagram");
@@ -400,17 +408,21 @@ test.describe("real fits", () => {
   }) => {
     test.setTimeout(60_000);
     await page.goto("/fit?demo=1");
+    // The demo gives the fit mode all it needs, so the data fold once it is in.
+    await page.getByRole("button", { name: "Details" }).click();
     await expect(page.getByText(/^Synthetic data/)).toBeVisible();
     await expect(
       page.locator("[data-file-slot]").getByText("Demo data"),
     ).toHaveCount(3);
     await expect(page.getByText(/^31 points/)).toHaveCount(3);
-    await expect(page.getByText("Measurements (demo)")).toBeVisible();
+    await expect(chart(page).getByText("Measurements (demo)")).toBeVisible();
 
     // Its rows are sent again as text, and the real parser reads them.
     await page.getByRole("switch", { name: /Interpolation/ }).click();
-    await expect(page.getByText("Measurements (demo)")).toBeVisible();
-    await expect(page.getByText("Interpolated", { exact: true })).toBeVisible({
+    await expect(chart(page).getByText("Measurements (demo)")).toBeVisible();
+    await expect(
+      chart(page).getByText("Interpolated", { exact: true }),
+    ).toBeVisible({
       timeout: 15_000,
     });
     await expect(page.getByRole("alert")).toHaveCount(0);
@@ -430,6 +442,8 @@ test.describe("real fits", () => {
   }) => {
     test.setTimeout(60_000);
     await page.goto("/fit?demo=1");
+    // The demo gives the fit mode all it needs, so the data fold once it is in.
+    await page.getByRole("button", { name: "Details" }).click();
     await expect(page.getByText(/^Synthetic data/)).toBeVisible();
     await page.getByRole("radio", { name: "S", exact: true }).click();
     const gap = page.getByRole("textbox", { name: "E_g", exact: true });

@@ -1,5 +1,6 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
 
+import { fitBadges } from "./support/fitScreen";
 import { serveModels } from "./support/models";
 
 async function open(page: Page) {
@@ -48,7 +49,19 @@ test("starts as the design does, with options from the API", async ({
   await expect(page.getByRole("radio", { name: "DPB" })).toBeChecked();
   await expect(page.getByRole("radio", { name: "SPB" })).not.toBeChecked();
   await expect(mode(page, "S + ρ")).toBeChecked();
-  await expect(page.getByText("Double parabolic band")).toBeVisible();
+  await expect(
+    page.getByRole("radio", { name: "DPB" }),
+  ).toHaveAccessibleDescription("Double parabolic band");
+  await expect(page.getByText("Double parabolic band")).toBeHidden();
+  // The chosen one looks chosen.
+  const background = (name: string) =>
+    page
+      .getByRole("radio", { name, exact: true })
+      .evaluate((item) => getComputedStyle(item).backgroundColor);
+  expect(await background("DPB")).not.toBe(await background("SPB"));
+  expect(await background("DPB")).toBe(await background("S + ρ"));
+  await page.getByRole("radio", { name: "SPB" }).hover();
+  await expect(page.getByRole("tooltip")).toHaveText("Single parabolic band");
   await expect(
     page.getByRole("combobox", { name: "Scattering" }),
   ).toContainText("Acoustic phonons (acPh)");
@@ -158,11 +171,13 @@ test("missing data are named for the mode, and go as data load", async ({
     }),
   );
   await open(page);
-  const note = page.getByRole("note");
-  await expect(note).toContainText("Missing data: S, ρ.");
+  // The fit panel names what is missing, and Model no longer repeats it.
+  const note = fitBadges(page);
+  await expect(page.getByRole("note")).toHaveCount(0);
+  await expect(note).toHaveText("Missing data: S, ρ");
 
   await mode(page, "S + ρ + R_H").click();
-  await expect(note).toContainText("Missing data: S, ρ, R_H.");
+  await expect(note).toHaveText("Missing data: S, ρ, R_H");
 
   await page
     .locator('input[type="file"]')
@@ -172,7 +187,7 @@ test("missing data are named for the mode, and go as data load", async ({
       mimeType: "text/plain",
       buffer: Buffer.from("T S\n100 1\n"),
     });
-  await expect(note).toContainText("Missing data: ρ, R_H.");
+  await expect(note).toHaveText("Missing data: ρ, R_H");
 
   await mode(page, "S").click();
   await expect(note).toHaveCount(0);
@@ -438,4 +453,32 @@ test("descriptions that cannot load say so", async ({ page }) => {
 
   await expect(page.getByRole("alert")).toContainText("could not be loaded");
   await expect(page.getByText("SECRET-VALUE")).toHaveCount(0);
+});
+
+test("Parameters and Model stand in a row, of one size", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await open(page);
+  const box = (name: string) =>
+    page
+      .locator("section", { has: page.getByRole("heading", { name }) })
+      .boundingBox();
+  const parameters = await box("Parameters");
+  const model = await box("Model");
+
+  expect(model?.y).toBe(parameters?.y);
+  expect(model?.x).toBeGreaterThan(parameters?.x ?? 0);
+  expect(model?.width).toBeCloseTo(parameters?.width ?? 0, 0);
+  expect(model?.height).toBeCloseTo(parameters?.height ?? 0, 0);
+});
+
+test("the choice of bands has no visible label, and keeps its name", async ({
+  page,
+}) => {
+  await open(page);
+
+  await expect(page.getByText("Number of bands")).toHaveCount(0);
+  await expect(
+    page.getByRole("radiogroup", { name: "Number of bands" }),
+  ).toBeVisible();
+  await expect(page.getByText("Fit mode", { exact: true })).toBeVisible();
 });
