@@ -644,11 +644,16 @@ export const createSessionStore = () =>
       fitRequested: (fitMode) => {
         currentRun += 1;
         currentFitMode = fitMode ?? null;
+        // A guess wrote the values of its own model only, so a fit of another did not start from it.
         set((state) => {
           const guess = currentGuess(state);
           return {
             fit: { status: "waiting" },
-            fitStartNet: guess?.kind === "applied" ? guess.netRange : null,
+            fitStartNet:
+              guess?.kind === "applied" &&
+              state.guess?.model === state.selection.model
+                ? guess.netRange
+                : null,
           };
         });
         return currentRun;
