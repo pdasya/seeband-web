@@ -395,21 +395,45 @@ describe("the additional graphs", () => {
     carrier_concentration: "carrier_concentration_by_band",
   } as const;
   const state = { data: {}, interpolation: NO_INTERPOLATION };
+  // The columns each graph draws, so that a graph with another kind's answer draws nothing.
+  const COLUMNS = {
+    chemical_potential: ["chemical_potential_k"],
+    conductivity: ["electrical_conductivity_s_per_m"],
+    thermal_conductivity: ["thermal_conductivity_w_per_m_k"],
+    bands: [
+      "seebeck_v_per_k",
+      "seebeck_band_1_v_per_k",
+      "seebeck_band_2_v_per_k",
+    ],
+    carrier_concentration: [
+      "carrier_concentration_band_1_per_cm3",
+      "carrier_concentration_band_2_per_cm3",
+    ],
+  };
+  // One answer of a kind holds only its own columns, as the API's does.
+  const answerOf = (columns: readonly string[]): CalcResponse => ({
+    temperature_k: [100],
+    curves: Object.fromEntries(columns.map((column) => [column, [1]])),
+    known_issues: [],
+    rmse: {},
+  });
 
   // Every model, mode and graph: a chart where the API offers the curve, and why not where not.
   for (const fitMode of modes) {
     for (const [tab, kind] of Object.entries(TABS)) {
       test(`${fitMode.id}: ${tab}`, () => {
         const offered = fitMode.curves.find((curve) => curve.kind === kind);
+        const columns = COLUMNS[tab as keyof typeof TABS];
         const view = chartTabView(
           tab as keyof typeof TABS,
           fitMode,
           state,
-          null,
-          null,
+          answerOf(["seebeck_v_per_k"]),
+          answerOf(columns.filter((column) => column !== "seebeck_v_per_k")),
         );
         if (offered?.available === true) {
           expect(view.empty).toBeNull();
+          expect(view.curves.map(({ id }) => id)).toEqual(columns);
         } else {
           expect(view.empty?.title).not.toBe("Not available in this mode");
         }
