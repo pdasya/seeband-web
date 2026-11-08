@@ -32,6 +32,8 @@ async function loadExample(page: Page, name: string) {
 for (const example of ["01_Fe2VAl09Si01", "02_SiP", "03_AWI32_SI"]) {
   test(`all files of ${example} load`, async ({ page }) => {
     await page.goto("/fit");
+    // The data fold once the fit mode has all it needs, so it needs all three.
+    await page.getByRole("radio", { name: "S + ρ + R_H", exact: true }).click();
 
     for (const suffix of ["see", "rho", "hall"]) {
       const name = `${example}_${suffix}.txt`;
@@ -41,7 +43,6 @@ for (const example of ["01_Fe2VAl09Si01", "02_SiP", "03_AWI32_SI"]) {
     }
 
     await expect(page.getByRole("alert")).toHaveCount(0);
-    // The data fold once the fit mode has all it needs.
     await page.getByRole("button", { name: "Details" }).click();
     await expect(
       slots(page).getByText(/\d+ points · .* K · V\/K/),
