@@ -41,6 +41,13 @@ type CurveKind = FitModeDescription["curves"][number]["kind"];
 const DERIVED_KINDS: Partial<Record<ChartTab, CurveKind>> = {
   chemical_potential: "chemical_potential",
   bands: "seebeck_by_band",
+  lorenz_number: "lorenz_number",
+  reduced_fermi_level: "reduced_fermi_level",
+  carrier_concentration: "carrier_concentration_by_band",
+  carrier_mobility: "carrier_mobility",
+  hall_factor: "hall_factor",
+  band_masses: "band_masses",
+  band_structure: "band_structure",
 };
 
 function availabilityOf(mode: FitModeDescription, kind: CurveKind) {
@@ -69,11 +76,10 @@ export function drawsMeasuredCurves(
   if (tab === "bands") {
     return needsMeasuredCurves(tab, mode);
   }
-  return (
-    tab !== "chemical_potential" &&
-    data[tab] !== undefined &&
-    mode?.quantities.includes(tab) === true
-  );
+  if (tab !== "seebeck" && tab !== "resistivity" && tab !== "hall") {
+    return false;
+  }
+  return data[tab] !== undefined && mode?.quantities.includes(tab) === true;
 }
 
 /** E_g for the line on μ, and for that tab only, so that other tabs do not follow its value. */
@@ -119,6 +125,95 @@ export interface ChartTabView {
   description: string;
   /** Says what a chart with points only leaves out. */
   note: string | null;
+  xAxisTitle?: string;
+  xAxisRange?: readonly [number, number];
+}
+
+type TransportTab =
+  | "lorenz_number"
+  | "reduced_fermi_level"
+  | "carrier_concentration"
+  | "carrier_mobility"
+  | "hall_factor"
+  | "band_masses";
+
+const TRANSPORT_COLUMNS: Record<
+  TransportTab,
+  readonly [string, number, string][]
+> = {
+  lorenz_number: [["lorenz_w_ohm_per_k2", 1e8, text.derivedLabels.lorenz]],
+  reduced_fermi_level: [["reduced_fermi_level", 1, text.derivedLabels.eta]],
+  carrier_concentration: [
+    ["carrier_concentration_band_1_per_cm3", 1, text.derivedLabels.density],
+    ["carrier_concentration_band_2_per_cm3", 1, text.derivedLabels.density2],
+  ],
+  carrier_mobility: [
+    ["mobility_m2_per_v_s", 1e4, text.derivedLabels.mobility],
+    ["hall_mobility_m2_per_v_s", 1e4, text.derivedLabels.hallMobility],
+  ],
+  hall_factor: [["hall_factor", 1, text.derivedLabels.hallFactor]],
+  band_masses: [
+    ["band_edge_dos_mass_me", 1, text.derivedLabels.dosMass],
+    ["band_edge_valley_mass_me", 1, text.derivedLabels.valleyMass],
+  ],
+};
+
+function transportView(
+  tab: TransportTab,
+  mode: FitModeDescription | undefined,
+  derived: CalcResponse | null,
+): ChartTabView {
+  return {
+    ...NO_CHART,
+    empty:
+      derivedKind(tab, mode) === null
+        ? unavailable(
+            mode,
+            tab === "carrier_concentration"
+              ? "carrier_concentration_by_band"
+              : tab,
+          )
+        : null,
+    curves: TRANSPORT_COLUMNS[tab].flatMap(([name, factor, label]) =>
+      curveOf(derived, name, factor, label),
+    ),
+    yAxisTitle: text.derivedAxes[tab],
+    description: text.derivedDescriptions[tab],
+  };
+}
+
+function dispersionView(
+  mode: FitModeDescription | undefined,
+  derived: CalcResponse | null,
+): ChartTabView {
+  const wavevector = derived?.curves.wavevector_per_m ?? [];
+  const energy = derived?.curves.band_energy_ev ?? [];
+  const x = wavevector
+    .filter((k): k is number => k !== null)
+    .map((k) => k * 1e-10);
+  return {
+    ...NO_CHART,
+    empty:
+      derivedKind("band_structure", mode) === null
+        ? unavailable(mode, "band_structure")
+        : null,
+    curves:
+      x.length === energy.length && x.length > 0
+        ? [
+            {
+              id: "band_energy_ev",
+              label: text.derivedLabels.dispersion,
+              temperatureK: x,
+              values: energy,
+            },
+          ]
+        : [],
+    yAxisTitle: text.energyAxis,
+    xAxisTitle: text.wavevectorAxis,
+    xAxisRange: [x[0] ?? -1, x[x.length - 1] ?? 1],
+    description: text.dispersionDescription,
+    referenceLines: [{ value: 0, label: text.bandEdge }],
+  };
 }
 
 const NO_CHART = {
@@ -287,6 +382,15 @@ export function chartTabView(
       return chemicalPotentialView(mode, state, derived);
     case "bands":
       return bandsView(mode, measured, derived);
+    case "lorenz_number":
+    case "reduced_fermi_level":
+    case "carrier_concentration":
+    case "carrier_mobility":
+    case "hall_factor":
+    case "band_masses":
+      return transportView(tab, mode, derived);
+    case "band_structure":
+      return dispersionView(mode, derived);
     default:
       return quantityView(tab, mode, state, measured);
   }

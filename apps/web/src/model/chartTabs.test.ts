@@ -60,6 +60,67 @@ const answer = (curves: Record<string, (number | null)[]>): CalcResponse => ({
   rmse: {},
 });
 
+describe("Kane derived charts", () => {
+  test("requests only supported kinds and converts display units", () => {
+    const skb = mode("skb_s_rho_rh");
+    expect(derivedKind("lorenz_number", skb)).toBe("lorenz_number");
+    expect(derivedKind("carrier_concentration", skb)).toBe(
+      "carrier_concentration_by_band",
+    );
+    expect(derivedKind("lorenz_number", mode("spb_s"))).toBeNull();
+    expect(drawsMeasuredCurves("carrier_mobility", skb, {})).toBe(false);
+    const l = chartTabView(
+      "lorenz_number",
+      skb,
+      loaded(),
+      null,
+      answer({ lorenz_w_ohm_per_k2: [2e-8] }),
+    );
+    expect(l.curves[0]?.values).toEqual([2]);
+    const m = chartTabView(
+      "carrier_mobility",
+      skb,
+      loaded(),
+      null,
+      answer({
+        mobility_m2_per_v_s: [0.03],
+        hall_mobility_m2_per_v_s: [0.036],
+      }),
+    );
+    expect(m.curves.map((c) => c.values)).toEqual([[300], [360]]);
+    const n = chartTabView(
+      "carrier_concentration",
+      skb,
+      loaded(),
+      null,
+      answer({ carrier_concentration_band_1_per_cm3: [1e18] }),
+    );
+    expect(n.curves[0]?.values).toEqual([1e18]);
+    expect(bandGapForTab("chemical_potential", skb, {})).toBeUndefined();
+  });
+
+  test("E(k) uses its wavevector, supports both signs and ignores a temperature grid", () => {
+    const view = chartTabView(
+      "band_structure",
+      mode("skb_s_rho_rh"),
+      loaded(),
+      null,
+      {
+        ...answer({
+          wavevector_per_m: [-1e9, 0, 1e9],
+          band_energy_ev: [0.2, 0, 0.2],
+        }),
+        temperature_k: [],
+      },
+    );
+    expect(view.curves[0]?.temperatureK).toEqual([-0.1, 0, 0.1]);
+    expect(view.xAxisRange).toEqual([-0.1, 0.1]);
+    expect(view.xAxisTitle).toBe("k, Å⁻¹");
+    expect(view.yAxisTitle).toContain("eV");
+    expect(view.empty).toBeNull();
+  });
+});
+
 describe("what a tab asks for", () => {
   test("derived kinds only where a mode offers them", () => {
     expect(derivedKind("seebeck", mode("dpb_s_rho"))).toBeNull();

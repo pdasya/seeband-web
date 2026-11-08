@@ -36,6 +36,8 @@ export interface FigureInput {
   fitRange: ChartFitRange | null;
   referenceLines: readonly ReferenceLine[];
   xAxisTitle: string;
+  /** Explicit domain for a non-temperature chart, such as E(k). */
+  xAxisRange?: readonly [number, number] | undefined;
   yAxisTitle: string;
 }
 
@@ -253,7 +255,7 @@ export function buildFigure(
     hovermode: "closest",
     xaxis: {
       title: { text: input.xAxisTitle, font: titleFont },
-      range: [0, maxK],
+      range: input.xAxisRange === undefined ? [0, maxK] : [...input.xAxisRange],
       showgrid: false,
       zeroline: false,
       showline: true,
@@ -262,7 +264,9 @@ export function buildFigure(
       ticklen: 5,
       tickcolor: theme.axis,
       tickfont: tickFont,
-      ...(maxK <= MAX_TICKED_K ? { dtick: AXIS_STEP_K } : {}),
+      ...(input.xAxisRange === undefined && maxK <= MAX_TICKED_K
+        ? { dtick: AXIS_STEP_K }
+        : {}),
     },
     yaxis: {
       // An SI letter such as µ would read as part of the unit in the axis title.

@@ -170,11 +170,13 @@ function DegeneracyField({
 function DegeneracyFields({
   band1,
   band2,
+  hasBand2,
   onBand1Commit,
   onBand2Commit,
 }: {
   band1: number;
   band2: number;
+  hasBand2: boolean;
   onBand1Commit: (value: number) => void;
   onBand2Commit: (value: number) => void;
 }) {
@@ -192,18 +194,20 @@ function DegeneracyFields({
           onInvalidChange={setBand1Invalid}
           onCommit={onBand1Commit}
         />
-        <DegeneracyField
-          label="N₂"
-          value={band2}
-          invalid={band2Invalid}
-          errorId={errorId}
-          onInvalidChange={setBand2Invalid}
-          onCommit={onBand2Commit}
-        />
+        {hasBand2 && (
+          <DegeneracyField
+            label="N₂"
+            value={band2}
+            invalid={band2Invalid}
+            errorId={errorId}
+            onInvalidChange={setBand2Invalid}
+            onCommit={onBand2Commit}
+          />
+        )}
       </div>
       {band1Invalid || band2Invalid ? (
         <span id={errorId} role="alert" className="text-xs text-destructive">
-          {text.degeneracyInvalid}
+          {hasBand2 ? text.degeneracyInvalid : text.singleDegeneracyInvalid}
         </span>
       ) : (
         <span className="text-xs text-muted-foreground">
@@ -397,6 +401,7 @@ function ModelControls({ models }: { models: readonly ModelDescription[] }) {
           key={model.id}
           band1={selection.band1Degeneracy}
           band2={selection.band2Degeneracy}
+          hasBand2={mode.degeneracy.band_2_default != null}
           onBand1Commit={(band1Degeneracy) => {
             setSelection({ band1Degeneracy });
           }}

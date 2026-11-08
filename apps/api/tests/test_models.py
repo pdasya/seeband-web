@@ -43,17 +43,19 @@ def _parameter(mode: dict[str, Any], name: str) -> dict[str, Any]:
     return next(spec for spec in mode["parameters"] if spec["name"] == name)
 
 
-def test_lists_both_models_and_all_modes(response: Any) -> None:
+def test_lists_builtin_models_and_all_modes(response: Any) -> None:
     assert response.status_code == 200
     models = response.json()["models"]
 
     assert [(model["id"], model["name"]) for model in models] == [
         ("spb", "Single parabolic band"),
         ("dpb", "Double parabolic band"),
+        ("skb", "Single Kane band"),
     ]
     assert [[mode["id"] for mode in model["fit_modes"]] for model in models] == [
         ["spb_s", "spb_s_rho", "spb_s_rho_rh"],
         ["dpb_s", "dpb_s_rho", "dpb_s_rho_rh"],
+        ["skb_s_rho_rh"],
     ]
     assert models[0]["default_min_temperature_k"] == 50
     assert models[0]["default_max_temperature_k"] == 800
@@ -204,7 +206,9 @@ def _check_mode(mode: dict[str, Any], fit_mode: FitMode) -> None:
     if fit_mode.degeneracy is None:
         assert "degeneracy" not in mode
     else:
-        assert mode["degeneracy"] == asdict(fit_mode.degeneracy)
+        assert mode["degeneracy"] == {
+            key: value for key, value in asdict(fit_mode.degeneracy).items() if value is not None
+        }
     assert [issue["id"] for issue in mode["known_issues"]] == [i.id for i in fit_mode.known_issues]
     for issue, known in zip(mode["known_issues"], fit_mode.known_issues, strict=True):
         assert issue["severity"] == known.severity

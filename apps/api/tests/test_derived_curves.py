@@ -74,6 +74,39 @@ SCATTERING: dict[str, tuple[str | None, ...]] = {
     "dpb_s_rho_rh": ("acPh", "dis", "acPhDis"),
 }
 
+KANE_ONLY = (
+    "lorenz_number",
+    "reduced_fermi_level",
+    "carrier_mobility",
+    "hall_factor",
+    "band_masses",
+    "band_structure",
+)
+for reasons in REFUSED.values():
+    reasons.update(dict.fromkeys(KANE_ONLY, "not_provided"))
+OFFERED["skb_s_rho_rh"] = {
+    "measured": HALL,
+    "chemical_potential": ["chemical_potential_k"],
+    **SIGMA,
+    "lorenz_number": ["lorenz_w_ohm_per_k2"],
+    "reduced_fermi_level": ["reduced_fermi_level"],
+    "carrier_concentration_by_band": ["carrier_concentration_band_1_per_cm3"],
+    "carrier_mobility": ["mobility_m2_per_v_s", "hall_mobility_m2_per_v_s"],
+    "hall_factor": ["hall_factor"],
+    "band_masses": ["band_edge_dos_mass_me", "band_edge_valley_mass_me"],
+    "band_structure": ["wavevector_per_m", "band_energy_ev"],
+}
+REFUSED["skb_s_rho_rh"] = dict.fromkeys(
+    (
+        "seebeck",
+        "seebeck_by_band",
+        "electrical_conductivity_by_band",
+        "thermal_conductivity",
+    ),
+    "not_provided",
+)
+SCATTERING["skb_s_rho_rh"] = ("acPh",)
+
 
 def _model_id(fit_mode_id: str) -> str:
     return fit_mode_id.split("_")[0]

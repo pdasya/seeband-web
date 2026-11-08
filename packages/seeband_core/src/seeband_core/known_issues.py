@@ -30,6 +30,35 @@ COLLAPSED_M_EFF = 1e-5
 
 KNOWN_ISSUES: tuple[KnownIssue, ...] = (
     KnownIssue(
+        id="skb_assumptions",
+        severity="caution",
+        fixed_by="docs/kane-model.md#assumptions",
+        fit_modes=("skb_s_rho_rh",),
+        curve_kinds=(
+            "measured",
+            "chemical_potential",
+            "electrical_conductivity",
+            "carrier_concentration_by_band",
+            "lorenz_number",
+            "reduced_fermi_level",
+            "carrier_mobility",
+            "hall_factor",
+            "band_masses",
+            "band_structure",
+        ),
+        affects_fit=True,
+        explanation="One isotropic Kane band, acoustic scattering, fixed gap and constant doping.",
+    ),
+    KnownIssue(
+        id="skb_weak_fit",
+        severity="caution",
+        fixed_by="docs/kane-model.md#fitting",
+        fit_modes=("skb_s_rho_rh",),
+        explanation=(
+            "The joint fit Jacobian is poorly conditioned; the data do not identify the parameters."
+        ),
+    ),
+    KnownIssue(
         id="spb_hall_mode_disabled",
         severity="disabled",
         fixed_by="#83",
@@ -173,7 +202,7 @@ KNOWN_ISSUES: tuple[KnownIssue, ...] = (
         id="interpolation_extrapolates",
         severity="unreliable",
         fixed_by="#86",
-        fit_modes=(*_SPB_MODES, *_DPB_MODES),
+        fit_modes=(*_SPB_MODES, *_DPB_MODES, "skb_s_rho_rh"),
         condition="interpolation_extrapolated",
         explanation="Interpolation made up points beyond the data, and they enter the fit",
     ),

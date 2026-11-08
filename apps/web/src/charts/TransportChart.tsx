@@ -33,6 +33,7 @@ export interface TransportChartProps {
   fitRange?: ChartFitRange | null;
   referenceLines?: readonly ReferenceLine[];
   xAxisTitle: string;
+  xAxisRange?: readonly [number, number] | undefined;
   yAxisTitle: string;
   /** What a screen reader says about the chart, as it cannot read the drawing. */
   description: string;
@@ -110,6 +111,7 @@ function Plot({
   fitRange,
   referenceLines,
   xAxisTitle,
+  xAxisRange,
   yAxisTitle,
   description,
   failedText,
@@ -120,6 +122,7 @@ function Plot({
   fitRange: ChartFitRange | null;
   referenceLines: readonly ReferenceLine[];
   xAxisTitle: string;
+  xAxisRange?: readonly [number, number] | undefined;
   yAxisTitle: string;
   description: string;
   failedText: string;
@@ -155,6 +158,7 @@ function Plot({
       fitRange,
       referenceLines,
       xAxisTitle,
+      xAxisRange,
       yAxisTitle,
     }),
     [
@@ -164,6 +168,7 @@ function Plot({
       fitRange,
       referenceLines,
       xAxisTitle,
+      xAxisRange,
       yAxisTitle,
     ],
   );
@@ -224,6 +229,7 @@ export function TransportChart({
   fitRange = null,
   referenceLines = NO_REFERENCE_LINES,
   xAxisTitle,
+  xAxisRange,
   yAxisTitle,
   description,
   toggleMeasurementsLabel,
@@ -266,6 +272,7 @@ export function TransportChart({
         fitRange={fitRange}
         referenceLines={referenceLines}
         xAxisTitle={xAxisTitle}
+        xAxisRange={xAxisRange}
         yAxisTitle={yAxisTitle}
         description={description}
         failedText={failedText}

@@ -486,10 +486,21 @@ def test_every_kind_of_curve_is_offered_or_has_a_reason(name: str) -> None:
     mode = fit_mode_named(name)
 
     reasons = {kind: mode.unavailable_reason(kind) for kind in ALL_CURVE_KINDS}
+    skb_only = {
+        kind: "not_provided"
+        for kind in (
+            "lorenz_number",
+            "reduced_fermi_level",
+            "carrier_mobility",
+            "hall_factor",
+            "band_masses",
+            "band_structure",
+        )
+    }
 
-    assert {kind: reason for kind, reason in reasons.items() if reason} == EXPECTED_UNAVAILABLE[
-        name
-    ]
+    assert {kind: reason for kind, reason in reasons.items() if reason} == (
+        EXPECTED_UNAVAILABLE[name] | skb_only
+    )
     assert set(mode.curve_kinds) == {kind for kind, reason in reasons.items() if reason is None}
 
 

@@ -52,6 +52,7 @@ def fit_modes() -> list[tuple[str, FitMode]]:
     return [
         (description.id, fit_mode)
         for description in registry.descriptions()
+        if description.id in ("spb", "dpb")  # These are desktop port/golden checks.
         for fit_mode in description.fit_modes
     ]
 
@@ -87,8 +88,8 @@ def recorded_measurements(fit_mode: FitMode) -> dict[Quantity, Measurement]:
     return {quantity: all_data[quantity] for quantity in fit_mode.quantities}
 
 
-def test_both_models_are_registered_in_order() -> None:
-    assert [description.id for description in registry.descriptions()] == ["spb", "dpb"]
+def test_builtin_models_are_registered_in_order() -> None:
+    assert [description.id for description in registry.descriptions()] == ["spb", "dpb", "skb"]
 
 
 def test_a_new_process_gets_the_models_from_its_imports(tmp_path: Path) -> None:
@@ -103,7 +104,7 @@ def test_a_new_process_gets_the_models_from_its_imports(tmp_path: Path) -> None:
         text=True,
         check=True,
     )
-    assert result.stdout.strip() == "['spb', 'dpb']"
+    assert result.stdout.strip() == "['spb', 'dpb', 'skb']"
 
 
 def test_every_combination_is_covered() -> None:

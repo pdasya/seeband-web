@@ -1,6 +1,7 @@
 """Build the SPB and DPB descriptions from the table of desktop modes."""
 
 import json
+from dataclasses import replace
 from importlib import resources
 from typing import Any
 
@@ -141,3 +142,57 @@ def load_desktop_descriptions() -> dict[str, ModelDescription]:
         )
         for name, full_name in MODEL_NAMES.items()
     }
+
+
+def load_kane_description() -> ModelDescription:
+    """Reuse SPB parameter meanings/scales; only the nonparabolicity gap is new."""
+    source = load_desktop_descriptions()["spb"]
+    common = {p.name: p for p in source.fit_mode("spb_s_rho").parameters}
+    return replace(
+        source,
+        id="skb",
+        name="Single Kane band",
+        fit_modes=(
+            FitMode(
+                id="skb_s_rho_rh",
+                quantities=FIT_MODE_QUANTITIES["S+rho+R_H"],
+                parameters=(
+                    replace(
+                        common["band_mass"],
+                        role="fitted",
+                        fit_bounds=Bounds(-3, 3),
+                        bounds_editable=True,
+                    ),
+                    common["fermi_energy"],
+                    replace(common["A"], scattering=("acPh",)),
+                    ParameterSpec(
+                        "kane_gap_ev",
+                        "Kane nonparabolicity energy",
+                        "eV",
+                        "fixed",
+                        (),
+                        ValueRange(1, 1000, 1, 20),
+                        0.01,
+                        0.01,
+                        0.01,
+                    ),
+                ),
+                scattering=("acPh",),
+                default_scattering="acPh",
+                degeneracy=Degeneracy(1, None),
+                curve_kinds=(
+                    "measured",
+                    "chemical_potential",
+                    "electrical_conductivity",
+                    "carrier_concentration_by_band",
+                    "lorenz_number",
+                    "reduced_fermi_level",
+                    "carrier_mobility",
+                    "hall_factor",
+                    "band_masses",
+                    "band_structure",
+                ),
+                known_issues=issues_for_mode("skb_s_rho_rh"),
+            ),
+        ),
+    )

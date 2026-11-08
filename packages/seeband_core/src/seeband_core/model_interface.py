@@ -21,6 +21,12 @@ CurveKind = Literal[
     "electrical_conductivity_by_band",
     "thermal_conductivity",
     "carrier_concentration_by_band",
+    "lorenz_number",
+    "reduced_fermi_level",
+    "carrier_mobility",
+    "hall_factor",
+    "band_masses",
+    "band_structure",
 ]
 FitStatus = Literal["converged", "iteration_limit", "stopped", "failed"]
 IssueSeverity = Literal["disabled", "unreliable", "caution"]
@@ -86,7 +92,8 @@ class ParameterSpec:
 @dataclass(frozen=True)
 class Degeneracy:
     band_1_default: float
-    band_2_default: float
+    # A single-band model uses the same degeneracy control, with no second field.
+    band_2_default: float | None
 
 
 @dataclass(frozen=True)

@@ -202,7 +202,7 @@ export interface components {
              * @default measured
              * @enum {string}
              */
-            kind?: "measured" | "seebeck" | "seebeck_by_band" | "chemical_potential" | "electrical_conductivity" | "electrical_conductivity_by_band" | "thermal_conductivity" | "carrier_concentration_by_band";
+            kind?: "measured" | "seebeck" | "seebeck_by_band" | "chemical_potential" | "electrical_conductivity" | "electrical_conductivity_by_band" | "thermal_conductivity" | "carrier_concentration_by_band" | "lorenz_number" | "reduced_fermi_level" | "carrier_mobility" | "hall_factor" | "band_masses" | "band_structure";
             /** Points */
             points?: number | null;
             /**
@@ -309,7 +309,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "measured" | "seebeck" | "seebeck_by_band" | "chemical_potential" | "electrical_conductivity" | "electrical_conductivity_by_band" | "thermal_conductivity" | "carrier_concentration_by_band";
+            kind: "measured" | "seebeck" | "seebeck_by_band" | "chemical_potential" | "electrical_conductivity" | "electrical_conductivity_by_band" | "thermal_conductivity" | "carrier_concentration_by_band" | "lorenz_number" | "reduced_fermi_level" | "carrier_mobility" | "hall_factor" | "band_masses" | "band_structure";
             /** Available */
             available: boolean;
             /** Reason */
@@ -322,7 +322,7 @@ export interface components {
             /** Band 1 Default */
             band_1_default: number;
             /** Band 2 Default */
-            band_2_default: number;
+            band_2_default?: number | null;
         };
         /**
          * DemoNoise
@@ -575,7 +575,7 @@ export interface components {
             max_iterations?: number | null;
             degeneracy?: components["schemas"]["DegeneracyResponse"] | null;
             /** Curve Kinds */
-            curve_kinds: ("measured" | "seebeck" | "seebeck_by_band" | "chemical_potential" | "electrical_conductivity" | "electrical_conductivity_by_band" | "thermal_conductivity" | "carrier_concentration_by_band")[];
+            curve_kinds: ("measured" | "seebeck" | "seebeck_by_band" | "chemical_potential" | "electrical_conductivity" | "electrical_conductivity_by_band" | "thermal_conductivity" | "carrier_concentration_by_band" | "lorenz_number" | "reduced_fermi_level" | "carrier_mobility" | "hall_factor" | "band_masses" | "band_structure")[];
             /** Curves */
             curves: components["schemas"]["CurveAvailabilityResponse"][];
             /** Disabled */
@@ -823,7 +823,7 @@ export interface components {
          *
          *     Empty `scattering` means every type. `curve_kinds` lists the curves it applies to, and empty
          *     means none. Empty `columns` means every curve of those kinds. `condition`, if present, limits it
-         *     to some inputs. `fixed_by` is the issue in this repository that removes it.
+         *     to some inputs. `fixed_by` names an issue or model documentation for assessing the flag.
          */
         KnownIssueResponse: {
             /** Id */
@@ -840,7 +840,7 @@ export interface components {
             /** Scattering */
             scattering: string[];
             /** Curve Kinds */
-            curve_kinds: ("measured" | "seebeck" | "seebeck_by_band" | "chemical_potential" | "electrical_conductivity" | "electrical_conductivity_by_band" | "thermal_conductivity" | "carrier_concentration_by_band")[];
+            curve_kinds: ("measured" | "seebeck" | "seebeck_by_band" | "chemical_potential" | "electrical_conductivity" | "electrical_conductivity_by_band" | "thermal_conductivity" | "carrier_concentration_by_band" | "lorenz_number" | "reduced_fermi_level" | "carrier_mobility" | "hall_factor" | "band_masses" | "band_structure")[];
             /** Columns */
             columns: string[];
             /** Affects Fit */
@@ -1100,7 +1100,7 @@ export interface operations {
                 headers: {
                     /** @example no-cache */
                     "Cache-Control"?: string;
-                    /** @example "0e5a3e6231ad9e8798854c4fb7e813de" */
+                    /** @example "3c4f5017877b7b760185dfe68cd2fd1b" */
                     ETag?: string;
                     [name: string]: unknown;
                 };

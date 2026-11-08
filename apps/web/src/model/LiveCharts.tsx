@@ -12,6 +12,7 @@ import {
   bandGapForTab,
   chartTabView,
   drawsMeasuredCurves,
+  derivedKind,
 } from "@/model/chartTabs";
 import { retriesByItself } from "@/model/latestOnly";
 import { fitModeOf } from "@/model/selection";
@@ -41,6 +42,13 @@ const TABS: readonly ChartTab[] = [
   "hall",
   "chemical_potential",
   "bands",
+  "lorenz_number",
+  "reduced_fermi_level",
+  "carrier_concentration",
+  "carrier_mobility",
+  "hall_factor",
+  "band_masses",
+  "band_structure",
 ];
 
 /** The chart of the open tab, which keeps its last curve while waiting and after an error. */
@@ -97,7 +105,18 @@ export function LiveCharts({ live }: { live: LiveCurves }) {
           aria-label={text.tabsLabel}
           className="h-auto flex-wrap justify-start"
         >
-          {TABS.map((id) => (
+          {TABS.filter(
+            (id) =>
+              [
+                "seebeck",
+                "resistivity",
+                "hall",
+                "chemical_potential",
+                "bands",
+              ].includes(id) ||
+              id === tab ||
+              derivedKind(id, mode) !== null,
+          ).map((id) => (
             <TabsTrigger key={id} value={id} className="flex-none">
               {text.tabs[id]}
             </TabsTrigger>
@@ -126,8 +145,9 @@ export function LiveCharts({ live }: { live: LiveCurves }) {
             measurements={view.measurements}
             interpolated={view.interpolated}
             referenceLines={view.referenceLines}
-            fitRange={fitRange}
-            xAxisTitle={text.temperatureAxis}
+            fitRange={tab === "band_structure" ? null : fitRange}
+            xAxisTitle={view.xAxisTitle ?? text.temperatureAxis}
+            xAxisRange={view.xAxisRange}
             yAxisTitle={view.yAxisTitle}
             description={view.description}
             toggleMeasurementsLabel={text.toggleMeasurements}

@@ -85,7 +85,7 @@ class ParameterResponse(BaseModel):
 
 class DegeneracyResponse(BaseModel):
     band_1_default: float
-    band_2_default: float
+    band_2_default: float | None = None
 
 
 class KnownIssueResponse(BaseModel):
@@ -93,7 +93,7 @@ class KnownIssueResponse(BaseModel):
 
     Empty `scattering` means every type. `curve_kinds` lists the curves it applies to, and empty
     means none. Empty `columns` means every curve of those kinds. `condition`, if present, limits it
-    to some inputs. `fixed_by` is the issue in this repository that removes it.
+    to some inputs. `fixed_by` names an issue or model documentation for assessing the flag.
     """
 
     id: str

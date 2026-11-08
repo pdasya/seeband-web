@@ -1,5 +1,11 @@
 # apps/api
 
+The registry includes `skb` / `skb_s_rho_rh` for the
+[single Kane band model](../../packages/seeband_core/docs/kane-model.md).
+It uses the existing fit worker and curve endpoint. For `kind=band_structure`,
+the curve dictionary contains `wavevector_per_m` and `band_energy_ev`, and
+`temperature_k` is empty. These coordinates are independent of temperature.
+
 A thin FastAPI layer over `seeband_core`. It holds routes, validation and process management, and no formulas.
 
 ## Running

@@ -37,6 +37,12 @@ test("small values on the y axis have no SI letter next to the unit", () => {
   expect(buildFigure(INPUT, THEME).layout.yaxis?.exponentformat).toBe("e");
 });
 
+test("a band diagram preserves its signed k range without temperature ticks", () => {
+  const { layout } = buildFigure({ ...INPUT, xAxisRange: [-0.1, 0.1] }, THEME);
+  expect(layout.xaxis?.range).toEqual([-0.1, 0.1]);
+  expect(layout.xaxis?.dtick).toBeUndefined();
+});
+
 test("uses the decimal comma of the rest of the app", () => {
   expect(buildFigure(INPUT, THEME).layout.separators).toBe(",");
 });

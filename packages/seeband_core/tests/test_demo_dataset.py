@@ -35,6 +35,8 @@ RECOVERY_MARGIN = {
 def combinations() -> list[tuple[str, FitMode, str | None]]:
     found: list[tuple[str, FitMode, str | None]] = []
     for description in registry.descriptions():
+        if description.id not in ("spb", "dpb"):
+            continue  # This fixture has two parabolic bands, not a single Kane band.
         for fit_mode in description.fit_modes:
             options: tuple[str | None, ...] = fit_mode.scattering or (None,)
             found += [(description.id, fit_mode, scattering) for scattering in options]

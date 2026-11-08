@@ -427,6 +427,7 @@ def test_which_models_have_a_guess_is_in_their_descriptions(client: TestClient) 
     assert {model["id"]: model["has_initial_guess"] for model in models} == {
         "spb": False,
         "dpb": True,
+        "skb": False,
     }
 
 

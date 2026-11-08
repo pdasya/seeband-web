@@ -388,6 +388,42 @@
                                   "available": false,
                                   "reason": "not_on_desktop",
                                   "relative": false
+                                },
+                                {
+                                  "kind": "lorenz_number",
+                                  "available": false,
+                                  "reason": "not_provided",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "reduced_fermi_level",
+                                  "available": false,
+                                  "reason": "not_provided",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "carrier_mobility",
+                                  "available": false,
+                                  "reason": "not_provided",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "hall_factor",
+                                  "available": false,
+                                  "reason": "not_provided",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "band_masses",
+                                  "available": false,
+                                  "reason": "not_provided",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "band_structure",
+                                  "available": false,
+                                  "reason": "not_provided",
+                                  "relative": false
                                 }
                               ],
                               "disabled": false,
@@ -657,6 +693,42 @@
                                   "kind": "carrier_concentration_by_band",
                                   "available": false,
                                   "reason": "not_on_desktop",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "lorenz_number",
+                                  "available": false,
+                                  "reason": "not_provided",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "reduced_fermi_level",
+                                  "available": false,
+                                  "reason": "not_provided",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "carrier_mobility",
+                                  "available": false,
+                                  "reason": "not_provided",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "hall_factor",
+                                  "available": false,
+                                  "reason": "not_provided",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "band_masses",
+                                  "available": false,
+                                  "reason": "not_provided",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "band_structure",
+                                  "available": false,
+                                  "reason": "not_provided",
                                   "relative": false
                                 }
                               ],
@@ -950,6 +1022,42 @@
                                   "available": false,
                                   "reason": "not_on_desktop",
                                   "relative": false
+                                },
+                                {
+                                  "kind": "lorenz_number",
+                                  "available": false,
+                                  "reason": "not_provided",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "reduced_fermi_level",
+                                  "available": false,
+                                  "reason": "not_provided",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "carrier_mobility",
+                                  "available": false,
+                                  "reason": "not_provided",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "hall_factor",
+                                  "available": false,
+                                  "reason": "not_provided",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "band_masses",
+                                  "available": false,
+                                  "reason": "not_provided",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "band_structure",
+                                  "available": false,
+                                  "reason": "not_provided",
+                                  "relative": false
                                 }
                               ],
                               "disabled": true,
@@ -1208,6 +1316,42 @@
                                   "kind": "carrier_concentration_by_band",
                                   "available": true,
                                   "relative": true
+                                },
+                                {
+                                  "kind": "lorenz_number",
+                                  "available": false,
+                                  "reason": "not_provided",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "reduced_fermi_level",
+                                  "available": false,
+                                  "reason": "not_provided",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "carrier_mobility",
+                                  "available": false,
+                                  "reason": "not_provided",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "hall_factor",
+                                  "available": false,
+                                  "reason": "not_provided",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "band_masses",
+                                  "available": false,
+                                  "reason": "not_provided",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "band_structure",
+                                  "available": false,
+                                  "reason": "not_provided",
+                                  "relative": false
                                 }
                               ],
                               "disabled": false,
@@ -1665,6 +1809,42 @@
                                   "kind": "carrier_concentration_by_band",
                                   "available": true,
                                   "relative": true
+                                },
+                                {
+                                  "kind": "lorenz_number",
+                                  "available": false,
+                                  "reason": "not_provided",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "reduced_fermi_level",
+                                  "available": false,
+                                  "reason": "not_provided",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "carrier_mobility",
+                                  "available": false,
+                                  "reason": "not_provided",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "hall_factor",
+                                  "available": false,
+                                  "reason": "not_provided",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "band_masses",
+                                  "available": false,
+                                  "reason": "not_provided",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "band_structure",
+                                  "available": false,
+                                  "reason": "not_provided",
+                                  "relative": false
                                 }
                               ],
                               "disabled": false,
@@ -2200,6 +2380,42 @@
                                   "kind": "carrier_concentration_by_band",
                                   "available": true,
                                   "relative": false
+                                },
+                                {
+                                  "kind": "lorenz_number",
+                                  "available": false,
+                                  "reason": "not_provided",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "reduced_fermi_level",
+                                  "available": false,
+                                  "reason": "not_provided",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "carrier_mobility",
+                                  "available": false,
+                                  "reason": "not_provided",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "hall_factor",
+                                  "available": false,
+                                  "reason": "not_provided",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "band_masses",
+                                  "available": false,
+                                  "reason": "not_provided",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "band_structure",
+                                  "available": false,
+                                  "reason": "not_provided",
+                                  "relative": false
                                 }
                               ],
                               "disabled": false,
@@ -2343,6 +2559,302 @@
                               ]
                             }
                           ]
+                        },
+                        {
+                          "id": "skb",
+                          "name": "Single Kane band",
+                          "default_min_temperature_k": 50.0,
+                          "default_max_temperature_k": 800.0,
+                          "default_curve_points": 50,
+                          "has_initial_guess": false,
+                          "fit_modes": [
+                            {
+                              "id": "skb_s_rho_rh",
+                              "quantities": [
+                                "seebeck",
+                                "resistivity",
+                                "hall"
+                              ],
+                              "parameters": [
+                                {
+                                  "name": "band_mass",
+                                  "meaning": "band mass, sign sets the carrier type",
+                                  "unit": "m_e",
+                                  "role": "fitted",
+                                  "scattering": [
+                                    "acPh",
+                                    "dis",
+                                    "acPhDis"
+                                  ],
+                                  "value_range": {
+                                    "minimum": -300.0,
+                                    "maximum": 300.0,
+                                    "step": 1.0,
+                                    "default": -100.0
+                                  },
+                                  "display_range": {
+                                    "minimum": -3.0,
+                                    "maximum": 3.0,
+                                    "step": 0.01,
+                                    "default": -1.0
+                                  },
+                                  "core_range": {
+                                    "minimum": -3.0,
+                                    "maximum": 3.0,
+                                    "step": 0.01,
+                                    "default": -1.0
+                                  },
+                                  "display_scale": 0.01,
+                                  "fit_scale": 0.01,
+                                  "fit_bounds": {
+                                    "lower": -3.0,
+                                    "upper": 3.0
+                                  },
+                                  "bounds_editable": true
+                                },
+                                {
+                                  "name": "fermi_energy",
+                                  "meaning": "Fermi energy at T = 0",
+                                  "unit": "K",
+                                  "role": "fitted",
+                                  "scattering": [
+                                    "acPh",
+                                    "dis",
+                                    "acPhDis"
+                                  ],
+                                  "value_range": {
+                                    "minimum": -3000.0,
+                                    "maximum": 3000.0,
+                                    "step": 1.0,
+                                    "default": -100.0
+                                  },
+                                  "display_range": {
+                                    "minimum": -3000.0,
+                                    "maximum": 3000.0,
+                                    "step": 1.0,
+                                    "default": -100.0
+                                  },
+                                  "core_range": {
+                                    "minimum": -3000.0,
+                                    "maximum": 3000.0,
+                                    "step": 1.0,
+                                    "default": -100.0
+                                  },
+                                  "display_scale": 1.0,
+                                  "fit_scale": 1.0,
+                                  "fit_bounds": {
+                                    "lower": -3000.0,
+                                    "upper": 3000.0
+                                  },
+                                  "bounds_editable": true
+                                },
+                                {
+                                  "name": "A",
+                                  "meaning": "tau_ph,1, acoustic phonon scale of band 1",
+                                  "unit": "unknown",
+                                  "role": "fitted",
+                                  "scattering": [
+                                    "acPh"
+                                  ],
+                                  "value_range": {
+                                    "minimum": 0.0,
+                                    "maximum": 1000000.0,
+                                    "step": 1000.0,
+                                    "default": 40000.0
+                                  },
+                                  "display_range": {
+                                    "minimum": 0.0,
+                                    "maximum": 1000000.0,
+                                    "step": 1000.0,
+                                    "default": 40000.0
+                                  },
+                                  "core_range": {
+                                    "minimum": 0.0,
+                                    "maximum": 1000000.0,
+                                    "step": 1000.0,
+                                    "default": 40000.0
+                                  },
+                                  "display_scale": 1.0,
+                                  "fit_scale": 1.0,
+                                  "fit_bounds": {
+                                    "lower": 1.0,
+                                    "upper": 10000000.0
+                                  },
+                                  "bounds_editable": false
+                                },
+                                {
+                                  "name": "kane_gap_ev",
+                                  "meaning": "Kane nonparabolicity energy",
+                                  "unit": "eV",
+                                  "role": "fixed",
+                                  "scattering": [],
+                                  "value_range": {
+                                    "minimum": 1.0,
+                                    "maximum": 1000.0,
+                                    "step": 1.0,
+                                    "default": 20.0
+                                  },
+                                  "display_range": {
+                                    "minimum": 0.01,
+                                    "maximum": 10.0,
+                                    "step": 0.01,
+                                    "default": 0.2
+                                  },
+                                  "core_range": {
+                                    "minimum": 0.01,
+                                    "maximum": 10.0,
+                                    "step": 0.01,
+                                    "default": 0.2
+                                  },
+                                  "display_scale": 0.01,
+                                  "fit_scale": 0.01,
+                                  "bounds_editable": false
+                                }
+                              ],
+                              "scattering": [
+                                "acPh"
+                              ],
+                              "default_scattering": "acPh",
+                              "iterative": false,
+                              "degeneracy": {
+                                "band_1_default": 1.0
+                              },
+                              "curve_kinds": [
+                                "measured",
+                                "chemical_potential",
+                                "electrical_conductivity",
+                                "carrier_concentration_by_band",
+                                "lorenz_number",
+                                "reduced_fermi_level",
+                                "carrier_mobility",
+                                "hall_factor",
+                                "band_masses",
+                                "band_structure"
+                              ],
+                              "curves": [
+                                {
+                                  "kind": "measured",
+                                  "available": true,
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "seebeck",
+                                  "available": false,
+                                  "reason": "not_provided",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "seebeck_by_band",
+                                  "available": false,
+                                  "reason": "not_provided",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "chemical_potential",
+                                  "available": true,
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "electrical_conductivity",
+                                  "available": true,
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "electrical_conductivity_by_band",
+                                  "available": false,
+                                  "reason": "not_provided",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "thermal_conductivity",
+                                  "available": false,
+                                  "reason": "not_provided",
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "carrier_concentration_by_band",
+                                  "available": true,
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "lorenz_number",
+                                  "available": true,
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "reduced_fermi_level",
+                                  "available": true,
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "carrier_mobility",
+                                  "available": true,
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "hall_factor",
+                                  "available": true,
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "band_masses",
+                                  "available": true,
+                                  "relative": false
+                                },
+                                {
+                                  "kind": "band_structure",
+                                  "available": true,
+                                  "relative": false
+                                }
+                              ],
+                              "disabled": false,
+                              "disabled_by": [],
+                              "known_issues": [
+                                {
+                                  "id": "skb_assumptions",
+                                  "severity": "caution",
+                                  "message_key": "known_issue.skb_assumptions",
+                                  "fixed_by": "docs/kane-model.md#assumptions",
+                                  "scattering": [],
+                                  "curve_kinds": [
+                                    "measured",
+                                    "chemical_potential",
+                                    "electrical_conductivity",
+                                    "carrier_concentration_by_band",
+                                    "lorenz_number",
+                                    "reduced_fermi_level",
+                                    "carrier_mobility",
+                                    "hall_factor",
+                                    "band_masses",
+                                    "band_structure"
+                                  ],
+                                  "columns": [],
+                                  "affects_fit": true
+                                },
+                                {
+                                  "id": "skb_weak_fit",
+                                  "severity": "caution",
+                                  "message_key": "known_issue.skb_weak_fit",
+                                  "fixed_by": "docs/kane-model.md#fitting",
+                                  "scattering": [],
+                                  "curve_kinds": [],
+                                  "columns": [],
+                                  "affects_fit": false
+                                },
+                                {
+                                  "id": "interpolation_extrapolates",
+                                  "severity": "unreliable",
+                                  "message_key": "known_issue.interpolation_extrapolates",
+                                  "fixed_by": "#86",
+                                  "scattering": [],
+                                  "curve_kinds": [],
+                                  "columns": [],
+                                  "affects_fit": false,
+                                  "condition": "interpolation_extrapolated"
+                                }
+                              ]
+                            }
+                          ]
                         }
                       ]
                     }
@@ -2361,7 +2873,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "example": "\"0e5a3e6231ad9e8798854c4fb7e813de\""
+                "example": "\"3c4f5017877b7b760185dfe68cd2fd1b\""
               }
             }
           },
@@ -4525,7 +5037,13 @@
               "electrical_conductivity",
               "electrical_conductivity_by_band",
               "thermal_conductivity",
-              "carrier_concentration_by_band"
+              "carrier_concentration_by_band",
+              "lorenz_number",
+              "reduced_fermi_level",
+              "carrier_mobility",
+              "hall_factor",
+              "band_masses",
+              "band_structure"
             ],
             "title": "Kind",
             "default": "measured"
@@ -4758,7 +5276,13 @@
               "electrical_conductivity",
               "electrical_conductivity_by_band",
               "thermal_conductivity",
-              "carrier_concentration_by_band"
+              "carrier_concentration_by_band",
+              "lorenz_number",
+              "reduced_fermi_level",
+              "carrier_mobility",
+              "hall_factor",
+              "band_masses",
+              "band_structure"
             ],
             "title": "Kind"
           },
@@ -4798,14 +5322,20 @@
             "title": "Band 1 Default"
           },
           "band_2_default": {
-            "type": "number",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Band 2 Default"
           }
         },
         "type": "object",
         "required": [
-          "band_1_default",
-          "band_2_default"
+          "band_1_default"
         ],
         "title": "DegeneracyResponse"
       },
@@ -5350,7 +5880,13 @@
                 "electrical_conductivity",
                 "electrical_conductivity_by_band",
                 "thermal_conductivity",
-                "carrier_concentration_by_band"
+                "carrier_concentration_by_band",
+                "lorenz_number",
+                "reduced_fermi_level",
+                "carrier_mobility",
+                "hall_factor",
+                "band_masses",
+                "band_structure"
               ]
             },
             "type": "array",
@@ -5894,7 +6430,13 @@
                 "electrical_conductivity",
                 "electrical_conductivity_by_band",
                 "thermal_conductivity",
-                "carrier_concentration_by_band"
+                "carrier_concentration_by_band",
+                "lorenz_number",
+                "reduced_fermi_level",
+                "carrier_mobility",
+                "hall_factor",
+                "band_masses",
+                "band_structure"
               ]
             },
             "type": "array",
@@ -5942,7 +6484,7 @@
           "affects_fit"
         ],
         "title": "KnownIssueResponse",
-        "description": "A known error of the calculations in this mode. Clients show `message_key` through i18n.\n\nEmpty `scattering` means every type. `curve_kinds` lists the curves it applies to, and empty\nmeans none. Empty `columns` means every curve of those kinds. `condition`, if present, limits it\nto some inputs. `fixed_by` is the issue in this repository that removes it."
+        "description": "A known error of the calculations in this mode. Clients show `message_key` through i18n.\n\nEmpty `scattering` means every type. `curve_kinds` lists the curves it applies to, and empty\nmeans none. Empty `columns` means every curve of those kinds. `condition`, if present, limits it\nto some inputs. `fixed_by` names an issue or model documentation for assessing the flag."
       },
       "MeasurementInput": {
         "properties": {

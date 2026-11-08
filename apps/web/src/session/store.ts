@@ -57,7 +57,17 @@ export interface FitData {
 export type DataMode = "separate" | "single";
 
 /** What the fit screen's chart shows. */
-export type ChartTab = Quantity | "chemical_potential" | "bands";
+export type ChartTab =
+  | Quantity
+  | "chemical_potential"
+  | "bands"
+  | "lorenz_number"
+  | "reduced_fermi_level"
+  | "carrier_concentration"
+  | "carrier_mobility"
+  | "hall_factor"
+  | "band_masses"
+  | "band_structure";
 
 /**
  * One table, kept with its text in memory only, as a new mapping sends it again. `table` is the

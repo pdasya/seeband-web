@@ -1,4 +1,4 @@
-"""SPB and DPB behind the model interface, with the numbers of the ported calculations.
+"""SPB, DPB and SKB behind the shared model interface.
 
 Everything here is in core units, so nothing here converts a scale. Results keep the order of the
 calculations they come from.
@@ -8,15 +8,16 @@ import logging
 import math
 import traceback
 from collections.abc import Callable, Iterable, Mapping
+from dataclasses import replace
 from numbers import Real
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
-from seeband_core import fit_module
+from seeband_core import fit_module, kane
 from seeband_core.known_issues import active_issue_ids, disabled_issue_ids
-from seeband_core.model_descriptions import load_desktop_descriptions
+from seeband_core.model_descriptions import load_desktop_descriptions, load_kane_description
 from seeband_core.model_interface import (
     Bounds,
     CurveKind,
@@ -58,6 +59,12 @@ _CURVE_NAMES: dict[CurveKind, tuple[str, ...]] = {
         "carrier_concentration_band_1_per_cm3",
         "carrier_concentration_band_2_per_cm3",
     ),
+    "lorenz_number": ("lorenz_w_ohm_per_k2",),
+    "reduced_fermi_level": ("reduced_fermi_level",),
+    "carrier_mobility": ("mobility_m2_per_v_s", "hall_mobility_m2_per_v_s"),
+    "hall_factor": ("hall_factor",),
+    "band_masses": ("band_edge_dos_mass_me", "band_edge_valley_mass_me"),
+    "band_structure": ("wavevector_per_m", "band_energy_ev"),
 }
 
 
@@ -155,7 +162,7 @@ def _log_failure(error: Exception) -> None:
 
 
 class _BandModel:
-    """What SPB and DPB share: checks, bounds and naming of results."""
+    """Shared validation, bounds, curve naming and fit outcomes for band models."""
 
     def __init__(self, description: ModelDescription) -> None:
         self._description = description
@@ -219,7 +226,7 @@ class _BandModel:
             if spec.role != "fitted" or bounds is None:
                 continue
             # A stopped Hall fit never reached its last stage.
-            if spec.name in ("m1", "band_mass") and "hall" not in stages:
+            if spec.name in ("m1", "band_mass") and "hall" not in stages and "joint" not in stages:
                 continue
             value = parameters[spec.name]
             # With N2/N1 other than 1, the loop fits m_eff / N, and its bounds apply to that (D12).
@@ -278,7 +285,8 @@ class _BandModel:
                 known_issues=disabled_issue_ids(fit_mode),
             )
         parameters = dict(request.start) | dict(zip(names, fitted, strict=True))
-        return self._ended_fit(request, fit_mode, progress, parameters, "converged")
+        status: FitStatus = "iteration_limit" if progress.reached_iteration_limit else "converged"
+        return self._ended_fit(request, fit_mode, progress, parameters, status)
 
     def _run_iterative_fit(
         self,
@@ -342,7 +350,7 @@ class _BandModel:
         names = (
             _MEASURED_CURVES[: len(curves)]
             if request.kind == "measured"
-            else _CURVE_NAMES[request.kind]
+            else _CURVE_NAMES[request.kind][: len(curves)]
         )
         ratio = _degeneracy_ratio(request) if fit_mode.degeneracy is not None else 1.0
         return CurveResult(
@@ -558,4 +566,70 @@ class DpbModel(_BandModel):
         ]
         return self._run_iterative_fit(
             request, fit_mode, _CORE.dpb_see_res_hall_fit, arguments, (*names, "m1"), on_iteration
+        )
+
+
+class SkbModel(_BandModel):
+    """A Kane band using the SPB parameter and shared band-model contracts."""
+
+    def __init__(self) -> None:
+        super().__init__(load_kane_description())
+
+    def _stage_errors(
+        self, fit_mode: FitMode, scattering: str | None, ratio: float, progress: Any
+    ) -> dict[str, float]:
+        joint = progress.stage_fits.get("joint")
+        return {} if joint is None else _named_errors(kane.FITTED, _standard_errors(joint[1]))
+
+    def _ended_fit(
+        self,
+        request: FitRequest,
+        fit_mode: FitMode,
+        progress: fit_module.FitProgress,
+        parameters: Mapping[str, float],
+        status: FitStatus,
+    ) -> FitResult:
+        result = super()._ended_fit(request, fit_mode, progress, parameters, status)
+        covariance = progress.stage_fits["joint"][1]
+        if not np.all(np.isfinite(covariance)):
+            result = replace(result, known_issues=(*result.known_issues, "skb_weak_fit"))
+        return result
+
+    def _degeneracy(self, request: CurveRequest | FitRequest) -> float:
+        _degeneracy_ratio(request)
+        if request.band_2_degeneracy != 1:
+            raise ValueError("A single Kane band has no second-band degeneracy")
+        return request.band_1_degeneracy
+
+    def _curve_call(
+        self, request: CurveRequest, fit_mode: FitMode, scattering: str | None
+    ) -> tuple[Callable[..., Any], list[Any]]:
+        columns = _MEASURED_CURVES if request.kind == "measured" else _CURVE_NAMES[request.kind]
+        if request.kind == "carrier_concentration_by_band":
+            columns = columns[:1]
+        return kane.calculate, [request.parameters, self._degeneracy(request), columns]
+
+    def fit(self, request: FitRequest, on_iteration: IterationCallback | None = None) -> FitResult:
+        fit_mode, scattering = self._mode_and_scattering(request.fit_mode, request.scattering)
+        self._check_fit(request, fit_mode)
+        degeneracy = self._degeneracy(request)
+        kane.check_parameters(request.start, degeneracy)
+        data = _measurement_arrays(request.measurements, fit_mode.quantities)
+        kane.check_measurements(data, request.start["band_mass"])
+        bounds = self._limits(request, fit_mode, kane.FITTED)
+        if not np.all(np.isfinite(bounds)):
+            raise ValueError("Fit bounds must be finite")
+        return self._run_fit(
+            request,
+            fit_mode,
+            kane.fit_series,
+            [
+                data,
+                _values(request.start, kane.FITTED),
+                bounds,
+                _value(request.start, "kane_gap_ev"),
+                degeneracy,
+            ],
+            {},
+            kane.FITTED,
         )

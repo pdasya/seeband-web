@@ -96,12 +96,12 @@ def check_scattering(scattering: str | None, fit_mode: FitMode) -> list[ErrorDet
 
 
 def check_degeneracy(band_1: float, band_2: float, fit_mode: FitMode) -> list[ErrorDetail]:
-    if fit_mode.degeneracy is not None:
+    if fit_mode.degeneracy is not None and fit_mode.degeneracy.band_2_default is not None:
         return []
     return [
         invalid("degeneracy_not_in_mode", "This mode has no band degeneracy", [field])
         for field, value in (("band_1_degeneracy", band_1), ("band_2_degeneracy", band_2))
-        if value != 1
+        if value != 1 and (field == "band_2_degeneracy" or fit_mode.degeneracy is None)
     ]
 
 

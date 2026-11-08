@@ -108,13 +108,43 @@ EXPECTED: dict[str, tuple[Any, ...]] = {
     "interpolation_extrapolates": (
         "unreliable",
         "#86",
-        (*SPB, *DPB),
+        (*SPB, *DPB, "skb_s_rho_rh"),
         (),
         (),
         False,
         "interpolation_extrapolated",
     ),
 }
+
+EXPECTED["skb_assumptions"] = (
+    "caution",
+    "docs/kane-model.md#assumptions",
+    ("skb_s_rho_rh",),
+    (),
+    (
+        "measured",
+        "chemical_potential",
+        "electrical_conductivity",
+        "carrier_concentration_by_band",
+        "lorenz_number",
+        "reduced_fermi_level",
+        "carrier_mobility",
+        "hall_factor",
+        "band_masses",
+        "band_structure",
+    ),
+    True,
+    None,
+)
+EXPECTED["skb_weak_fit"] = (
+    "caution",
+    "docs/kane-model.md#fitting",
+    ("skb_s_rho_rh",),
+    (),
+    (),
+    False,
+    None,
+)
 
 
 def fit_mode(fit_mode_id: str) -> FitMode:
@@ -148,7 +178,11 @@ def test_entries_are_as_written_here() -> None:
 
 @pytest.mark.parametrize("issue", KNOWN_ISSUES, ids=lambda issue: issue.id)
 def test_each_entry_is_usable(issue: Any) -> None:
-    assert re.fullmatch(r"#\d+", issue.fixed_by)
+    if not re.fullmatch(r"#\d+", issue.fixed_by):
+        target, anchor = issue.fixed_by.split("#")
+        document = Path(__file__).parents[1] / target
+        assert document.is_file()
+        assert f"## {anchor.capitalize()}" in document.read_text()
     assert issue.explanation
     assert issue.message_key == f"known_issue.{issue.id}"
     for fit_mode_id in issue.fit_modes:
@@ -161,7 +195,7 @@ def test_each_entry_is_usable(issue: Any) -> None:
 def test_the_doc_and_the_list_match_both_ways() -> None:
     rows = {}
     for line in DOC.read_text(encoding="utf-8").splitlines():
-        match = re.match(r"\| `(\w+)`\s*\| (\w+)\s*\|.*\| (#\d+)\s*\|$", line)
+        match = re.match(r"\| `(\w+)`\s*\| (\w+)\s*\|.*\| (\S+)\s*\|$", line)
         if match:
             rows[match.group(1)] = (match.group(2), match.group(3))
     assert rows == {issue.id: (issue.severity, issue.fixed_by) for issue in KNOWN_ISSUES}

@@ -4,6 +4,11 @@ Web version of [SeeBand](https://github.com/xAngelswordx/SeeBand), a desktop app
 
 The project is in progress, and there is no working application yet. See the [Roadmap](https://github.com/pdasya/seeband-web/issues/90) for the plan.
 
+The prototype also includes a [single Kane band model](packages/seeband_core/docs/kane-model.md):
+choose **SKB** to jointly fit S(T), rho(T) and R_H(T), and inspect E(k), chemical
+potential, Lorenz number, mobility and the other derived curves. Its gap, carrier
+type and valley count are user supplied.
+
 ## Architecture
 
 Calculations run only on the server. The React client shows data and results, and FastAPI is a thin layer over the `seeband_core` calculation package. Public pages are static HTML built with Astro. Everything runs in Docker Compose on one VM.

@@ -3,10 +3,11 @@
 Worker processes import this too, so they hold the same models however they were started.
 """
 
-from seeband_core.band_models import DpbModel, SpbModel
+from seeband_core.band_models import DpbModel, SkbModel, SpbModel
 from seeband_core.model_registry import registry
 
 registry.register(SpbModel())
 registry.register(DpbModel())
+registry.register(SkbModel())
 
 __all__ = ["registry"]

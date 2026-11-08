@@ -57,6 +57,8 @@ export function settingsFor(
     band2Degeneracy:
       mode?.degeneracy == null
         ? 1
-        : (wanted?.band2Degeneracy ?? mode.degeneracy.band_2_default),
+        : mode.degeneracy.band_2_default == null
+          ? 1
+          : (wanted?.band2Degeneracy ?? mode.degeneracy.band_2_default),
   };
 }

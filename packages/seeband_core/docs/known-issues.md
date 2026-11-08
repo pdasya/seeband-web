@@ -10,21 +10,23 @@ The first stage ports the desktop exactly, so its errors stay until the Physics 
 
 To remove a flag once its error is fixed, delete its entry and its row here, and its i18n text. Tests that name it then fail, on purpose, and `tests/test_known_issues.py` also checks some of the errors themselves, so that a fix prompts removing the flag.
 
-| Id                           | Severity   | Where                                                                                              | Fixed by |
-| ---------------------------- | ---------- | -------------------------------------------------------------------------------------------------- | -------- |
-| `spb_hall_mode_disabled`     | disabled   | every result of SPB S + ρ + R_H                                                                    | #83      |
-| `spb_hall_uses_fermi_energy` | unreliable | R_H and the fit in SPB S + ρ + R_H                                                                 | #103     |
-| `dpb_hall_prefactor`         | unreliable | R_H, m1, and n from m1 in DPB S + ρ + R_H                                                          | #81      |
-| `acphdis_curve_scale`        | unreliable | σ, κ and S by band with acPhDis, SPB and DPB                                                       | #82      |
-| `acphdis_band_weight`        | unreliable | S with acPhDis in DPB S + ρ and S + ρ + R_H                                                        | #102     |
-| `acphdis_early_stop`         | unreliable | fits with acPhDis in those modes                                                                   | #84      |
-| `dpb_s_degeneracy`           | unreliable | all of DPB S, when N2/N1 is not 1                                                                  | #85      |
-| `dpb_loop_degeneracy`        | caution    | fits in the other DPB modes, when N2/N1 is not 1                                                   | #85      |
-| `negative_m_eff_weight`      | caution    | DPB, when m_eff is below 0. This may be intended, and a physicist decides                          | #104     |
-| `collapsed_m_eff`            | unreliable | DPB, when m_eff is near 0, as on `02_SiP` (D19)                                                    | #107     |
-| `no_chemical_potential`      | unreliable | SPB, when the Fermi energy is outside the band                                                     | #106     |
-| `hall_dis_no_reference`      | caution    | DPB S + ρ + R_H with `dis`. This is a missing reference, not an error: the desktop fails here (D1) | #71      |
-| `interpolation_extrapolates` | unreliable | any result, when `extrapolated` is set on its request                                              | #86      |
+| Id                           | Severity   | Where                                                                                              | Fixed by                       |
+| ---------------------------- | ---------- | -------------------------------------------------------------------------------------------------- | ------------------------------ |
+| `spb_hall_mode_disabled`     | disabled   | every result of SPB S + ρ + R_H                                                                    | #83                            |
+| `spb_hall_uses_fermi_energy` | unreliable | R_H and the fit in SPB S + ρ + R_H                                                                 | #103                           |
+| `dpb_hall_prefactor`         | unreliable | R_H, m1, and n from m1 in DPB S + ρ + R_H                                                          | #81                            |
+| `acphdis_curve_scale`        | unreliable | σ, κ and S by band with acPhDis, SPB and DPB                                                       | #82                            |
+| `acphdis_band_weight`        | unreliable | S with acPhDis in DPB S + ρ and S + ρ + R_H                                                        | #102                           |
+| `acphdis_early_stop`         | unreliable | fits with acPhDis in those modes                                                                   | #84                            |
+| `dpb_s_degeneracy`           | unreliable | all of DPB S, when N2/N1 is not 1                                                                  | #85                            |
+| `dpb_loop_degeneracy`        | caution    | fits in the other DPB modes, when N2/N1 is not 1                                                   | #85                            |
+| `negative_m_eff_weight`      | caution    | DPB, when m_eff is below 0. This may be intended, and a physicist decides                          | #104                           |
+| `collapsed_m_eff`            | unreliable | DPB, when m_eff is near 0, as on `02_SiP` (D19)                                                    | #107                           |
+| `no_chemical_potential`      | unreliable | SPB, when the Fermi energy is outside the band                                                     | #106                           |
+| `hall_dis_no_reference`      | caution    | DPB S + ρ + R_H with `dis`. This is a missing reference, not an error: the desktop fails here (D1) | #71                            |
+| `interpolation_extrapolates` | unreliable | any result, when `extrapolated` is set on its request                                              | #86                            |
+| `skb_assumptions`            | caution    | SKB fit and curves; assess the one-band acoustic-scattering assumptions                            | docs/kane-model.md#assumptions |
+| `skb_weak_fit`               | caution    | SKB joint fit with a poorly conditioned Jacobian                                                   | docs/kane-model.md#fitting     |
 
 The caller sets `extrapolated`, from `InterpolatedData`, since a fit does not know where its data came from.
 

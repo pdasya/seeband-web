@@ -25,6 +25,7 @@ export const STRINGS = {
       band_gap: "E_g",
       fermi_energy: "E_F",
       m1: "m₁",
+      kane_gap_ev: "E_g (Kane)",
     },
     units: {
       m_e: "in mₑ",
@@ -37,10 +38,10 @@ export const STRINGS = {
   },
   model: {
     title: "Model",
-    subtitle: "Parabolic bands and scattering mechanism",
+    subtitle: "Band model and scattering mechanism",
     loading: "Loading the models…",
     loadFailed: "The models could not be loaded. Reload the page to try again.",
-    bands: "Number of bands",
+    bands: "Band model",
     fitMode: "Fit mode",
     scattering: "Scattering",
     scatteringNames: {
@@ -56,6 +57,8 @@ export const STRINGS = {
     degeneracyHint: "Band degeneracies are not fitted.",
     degeneracyInvalid:
       "N₁ and N₂ must be above 0. The last valid value stays in use.",
+    singleDegeneracyInvalid:
+      "N₁ must be above 0. The last valid value stays in use.",
     range: "Fit range, K",
     rangeMin: "Lower bound, K",
     rangeMax: "Upper bound, K",
@@ -177,7 +180,48 @@ export const STRINGS = {
       hall: "R_H(T)",
       chemical_potential: "μ(T)",
       bands: "Band contributions",
+      lorenz_number: "L(T)",
+      reduced_fermi_level: "η(T)",
+      carrier_concentration: "n(T)",
+      carrier_mobility: "Mobility",
+      hall_factor: "Hall factor",
+      band_masses: "Band masses",
+      band_structure: "E(k)",
     },
+    derivedLabels: {
+      lorenz: "Lorenz number",
+      eta: "Reduced Fermi level",
+      density: "Carrier concentration, band 1",
+      density2: "Carrier concentration, band 2",
+      mobility: "Drift mobility",
+      hallMobility: "Hall mobility",
+      hallFactor: "Hall factor",
+      dosMass: "Total DOS mass",
+      valleyMass: "Single-valley mass",
+      dispersion: "Kane band",
+    },
+    derivedAxes: {
+      lorenz_number: "L, 10⁻⁸ W Ω/K²",
+      reduced_fermi_level: "η",
+      carrier_concentration: "n, cm⁻³",
+      carrier_mobility: "Mobility, cm²/(V s)",
+      hall_factor: "A_H",
+      band_masses: "m/mₑ",
+    },
+    derivedDescriptions: {
+      lorenz_number: "Lorenz number against temperature",
+      reduced_fermi_level:
+        "Reduced carrier chemical potential against temperature",
+      carrier_concentration:
+        "Carrier concentrations by band against temperature",
+      carrier_mobility: "Drift and Hall mobilities against temperature",
+      hall_factor: "Hall factor against temperature",
+      band_masses: "Band-edge total DOS mass and single-valley mass",
+    },
+    energyAxis: "E − E_edge, eV",
+    wavevectorAxis: "k, Å⁻¹",
+    dispersionDescription:
+      "Spherical Kane dispersion relative to the carrier band edge",
     axes: {
       seebeck: "S, µV/K",
       resistivity: "ρ, µΩ·m",
@@ -253,7 +297,7 @@ export const STRINGS = {
   fit: {
     pageTitle: "Model fit",
     title: "Transport property fit",
-    subtitle: "Fit S(T), ρ(T) and R_H(T) with a parabolic band model",
+    subtitle: "Fit S(T), ρ(T) and R_H(T) with a band model",
     data: "Data",
     charts: "Charts",
     result: "Result",
@@ -336,6 +380,10 @@ export const STRINGS = {
     },
     knownIssueOther: "A known error applies to this result.",
     knownIssueTexts: {
+      "known_issue.skb_assumptions":
+        "SKB assumes one isotropic band, acoustic phonons and constant carrier density. The gap and valley count are fixed. It does not describe bipolar conduction or carrier freeze-out.",
+      "known_issue.skb_weak_fit":
+        "These data do not determine the SKB parameters reliably. Check the temperature range and independent constraints.",
       "known_issue.spb_hall_mode_disabled":
         "This fit fails on the desktop, and its mass and scales are wrong.",
       "known_issue.spb_hall_uses_fermi_energy":

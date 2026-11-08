@@ -31,6 +31,7 @@ from seeband_core.model_scales import default_start
 MODES = [
     (description.id, fit_mode.id, scattering)
     for description in registry.descriptions()
+    if description.id in ("spb", "dpb")  # The shared fixture is a two-parabolic-band dataset.
     for fit_mode in description.fit_modes
     if not fit_mode.disabled
     for scattering in fit_mode.scattering or (None,)
