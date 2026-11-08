@@ -20,7 +20,18 @@ from seeband_core.known_issues import (
     band_diagram_issue_ids,
     disabled_issue_ids,
 )
-from seeband_core.model_descriptions import load_desktop_descriptions
+from seeband_core.model_descriptions import (
+    DPB_BANDS as _DPB_BANDS,
+)
+from seeband_core.model_descriptions import (
+    DPB_SCATTERING as _DPB_SCATTERING,
+)
+from seeband_core.model_descriptions import (
+    SPB_SCATTERING as _SPB_SCATTERING,
+)
+from seeband_core.model_descriptions import (
+    load_desktop_descriptions,
+)
 from seeband_core.model_interface import (
     BandDiagramRequest,
     BandDiagramResult,
@@ -45,9 +56,6 @@ from seeband_core.model_scales import core_to_display
 # Any, because calls here spread lists of mixed arguments that mypy cannot match to a signature.
 _CORE: Any = fit_module.PB_fit()
 logger = logging.getLogger(__name__)
-_SPB_SCATTERING = ("A", "C", "F")
-_DPB_BANDS = ("m_eff", "band_gap", "fermi_energy")
-_DPB_SCATTERING = ("A", "B", "C", "D", "F", "G")
 _MEASURED_CURVES = ("seebeck_v_per_k", "resistivity_ohm_m", "hall_m3_per_c")
 # A parameter this close to a bound, as a share of the bound, counts as being at it. A share of the
 # range would flag well-fitted values on the ranges here that span many decades.

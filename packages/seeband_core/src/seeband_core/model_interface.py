@@ -125,6 +125,20 @@ class UnavailableCurve:
 
 
 @dataclass(frozen=True)
+class FitStage:
+    """One solver run of a fit: the quantity it fits, and the parameters it finds.
+
+    `repeats` marks a stage of the loop of an iterative mode, which runs once in each iteration.
+    `parameters` names every parameter the stage can find; the scattering decides which of them
+    a fit has.
+    """
+
+    quantity: Quantity
+    parameters: tuple[str, ...]
+    repeats: bool = False
+
+
+@dataclass(frozen=True)
 class FitMode:
     """One way of fitting a model: which data it needs, its parameters, and the curves it offers.
 
@@ -134,6 +148,8 @@ class FitMode:
     `unavailable_curves` says why a kind is missing from `curve_kinds`, and a kind in neither has
     the reason `not_provided`. `relative_curve_kinds` names curves whose size rests on an assumed
     value rather than on data, such as carrier concentrations with no Hall data to set m1.
+
+    `stages` are the solver runs of a fit, in their order, as `fit_module` runs them.
     """
 
     id: str
@@ -149,6 +165,7 @@ class FitMode:
     known_issues: tuple[KnownIssue, ...] = ()
     unavailable_curves: tuple[UnavailableCurve, ...] = ()
     relative_curve_kinds: tuple[CurveKind, ...] = ()
+    stages: tuple[FitStage, ...] = ()
 
     def unavailable_reason(self, kind: CurveKind) -> str | None:
         """Return why this mode does not offer a kind of curve, or None if it does."""

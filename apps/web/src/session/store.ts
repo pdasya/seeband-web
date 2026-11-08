@@ -165,7 +165,7 @@ function filesToKeep({
 }
 
 type GuessWarnings = Schemas["GuessFound"]["warnings"];
-type NetRange = Schemas["NetRange"];
+export type NetRange = Schemas["NetRange"];
 
 /** How the last initial guess ended. Only `applied` changed any value. */
 export type GuessOutcome =
@@ -207,6 +207,8 @@ export interface SessionState {
   chartPanels: readonly ChartTab[];
   guessPending: boolean;
   guess: GuessRecord | null;
+  /** The net whose guess the last fit started from, or null if it started from other values. */
+  fitStartNet: NetRange | null;
   /** Counts resets, so that fields can start again even if the values do not change. */
   parameterResets: number;
   /** Bounds a fit of each mode uses in place of the description's, in core units. */
@@ -400,6 +402,7 @@ export const createSessionStore = () =>
       chartPanels: INITIAL_CHART_PANELS,
       guessPending: false,
       guess: null,
+      fitStartNet: null,
       parameterResets: 0,
       customBounds: {},
       slotsReading: [],
@@ -641,7 +644,18 @@ export const createSessionStore = () =>
       fitRequested: (fitMode) => {
         currentRun += 1;
         currentFitMode = fitMode ?? null;
-        set({ fit: { status: "waiting" } });
+        // A guess wrote the values of its own model only, so a fit of another did not start from it.
+        set((state) => {
+          const guess = currentGuess(state);
+          return {
+            fit: { status: "waiting" },
+            fitStartNet:
+              guess?.kind === "applied" &&
+              state.guess?.model === state.selection.model
+                ? guess.netRange
+                : null,
+          };
+        });
         return currentRun;
       },
       // An event after a stop belongs to a fit that no longer counts.

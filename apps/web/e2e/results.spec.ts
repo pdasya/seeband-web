@@ -54,8 +54,13 @@ async function stub(page: Page) {
 }
 
 /** DPB S + ρ with its data, the design's first state. */
-async function openFit(page: Page) {
+async function openFit(
+  page: Page,
+  // After the stubs, as a later route takes over from them.
+  more: (page: Page) => Promise<unknown> = async () => {},
+) {
   await stub(page);
+  await more(page);
   await page.goto("/fit");
   await expect(page.getByRole("slider", { name: "E_F" })).toBeVisible();
   for (const filled of [0, 1]) {
@@ -260,4 +265,64 @@ test("while the models load or fail, it says that, not that a fit gave nothing",
 
   await expect(page.getByText(/^The models could not be loaded/)).toBeVisible();
   await expect(page.getByText(/gave no values/)).toHaveCount(0);
+});
+
+const logSteps = (page: Page) =>
+  page.getByRole("list", { name: "Fit log" }).getByRole("listitem");
+
+test("the fit log follows the stages of the mode and how the fit ended", async ({
+  page,
+}) => {
+  await openFit(page);
+  await finishWith(page, { iterations: 3 });
+  await toResults(page);
+
+  await expect(logSteps(page)).toHaveText([
+    /^\dStart values\s*The values on the fit screen$/,
+    /^\dFit to S\s*Finds m₂\/m₁, E_g, E_F, in each of 3 iterations$/,
+    /^\dFit to ρ\s*Finds A, B, in each of 3 iterations$/,
+    /^\dConverged\s*The fit met its stop rule, a change of at most 10 %, in iteration 3\.$/,
+  ]);
+});
+
+test("a fit stopped by the user says where", async ({ page }) => {
+  await openFit(page);
+  await page.getByRole("button", { name: "Run fit" }).click();
+  await send(page, { type: "started" });
+  await send(page, {
+    type: "iteration",
+    iteration: 2,
+    parameters: { band_gap: 950 },
+  });
+  await page.getByRole("button", { name: "Stop" }).click();
+  await toResults(page);
+
+  await expect(logSteps(page).last()).toHaveText(
+    /^\dStopped\s*Stopped by the user after iteration 2\.$/,
+  );
+});
+
+test("a start from the neural net says which net", async ({ page }) => {
+  await openFit(page, (opened) =>
+    opened.route("**/api/guess", (route) =>
+      route.fulfill({
+        json: {
+          status: "guess",
+          net_range: { min_temperature_k: 300, max_temperature_k: 800 },
+          prediction: { m_eff: 1.5, band_gap_k: 554, fermi_energy_k: 100 },
+          start_values: { m_eff: 1.5, band_gap: 554, fermi_energy: 100 },
+          warnings: [],
+        },
+      }),
+    ),
+  );
+  await expect(
+    page.locator('[data-slot="badge"]').filter({ hasText: /^Initial guess/ }),
+  ).toBeVisible();
+  await finishWith(page);
+  await toResults(page);
+
+  await expect(logSteps(page).first()).toHaveText(
+    /^\dStart values\s*The neural net's guess, from its net for 300–800 K$/,
+  );
 });

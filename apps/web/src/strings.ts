@@ -491,6 +491,33 @@ export const STRINGS = {
       needs: (symbols: string) => `needs ${symbols}`,
     },
     notes: "Notes",
+    log: {
+      title: "Fit log",
+      subtitle: "The solver runs of this fit, in their order",
+      start: "Start values",
+      fromNet: (minK: string, maxK: string) =>
+        `The neural net's guess, from its net for ${minK}–${maxK} K`,
+      fromValues: "The values on the fit screen",
+      stage: (symbol: string) => `Fit to ${symbol}`,
+      finds: (symbols: string) => `Finds ${symbols}`,
+      findsEach: (symbols: string, iterations: number) =>
+        `Finds ${symbols}, in each of ${String(iterations)} ${iterations === 1 ? "iteration" : "iterations"}`,
+      converged: "Converged",
+      convergedText: "The fit met its stop rule.",
+      convergedBelow: (percent: string, iterations: number | null) =>
+        iterations === null
+          ? `The fit met its stop rule, a change of at most ${percent} %.`
+          : `The fit met its stop rule, a change of at most ${percent} %, in iteration ${String(iterations)}.`,
+      done: "Done",
+      singlePass: "One pass: this fit mode does not iterate.",
+      limit: "Iteration limit",
+      limitText: (limit: number) =>
+        `The fit reached its limit of ${String(limit)} iterations before every parameter settled.`,
+      stopped: "Stopped",
+      stoppedText: "Stopped by the user.",
+      stoppedAt: (iteration: number) =>
+        `Stopped by the user after iteration ${String(iteration)}.`,
+    },
   },
   notFound: {
     pageTitle: "Page not found",

@@ -22,6 +22,8 @@ A fit runs in a separate process, which holds only the models its imports regist
 | `stopped`         | a callback raised `FitStopped`                                                                                                       | the last iteration, with m1 still at its start |
 | `failed`          | the calculation raised. `message` holds fixed text, because solver messages are not written for users                                | the start values                               |
 
+`FitMode.stages` lists the solver runs of a fit in their order: the quantity each fits, the parameters it can find, and `repeats` for a run of the loop of an iterative mode. A client builds its fit log from them, so they must match what `fit` runs. `test_a_fit_runs_the_stages_of_its_description_in_their_order` checks that for SPB and DPB.
+
 An iterative fit calls `on_iteration` once per iteration, with values in the form of a final result, and `FitMode.iterative` tells a client whether to show a counter. A single-pass fit never calls it. Stopping acts between iterations only, and neither the extra Seebeck stage at the limit nor the Hall stage can be stopped, so a worker still needs a way to end the process.
 
 ## Fit quality

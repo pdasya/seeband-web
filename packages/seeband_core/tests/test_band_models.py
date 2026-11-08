@@ -162,6 +162,92 @@ def test_every_working_fit_returns_all_parameters_and_keeps_its_request(
             assert result.parameters[spec.name] == start[spec.name]
 
 
+STAGE_QUANTITIES = {"see": "seebeck", "res": "resistivity", "hall": "hall"}
+
+
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize(("model_id", "fit_mode_id", "scattering"), WORKING_FITS)
+def test_a_fit_runs_the_stages_of_its_description_in_their_order(
+    monkeypatch: pytest.MonkeyPatch, model_id: str, fit_mode_id: str, scattering: str | None
+) -> None:
+    run: list[str] = []
+    real = fit_module._curve_fit
+
+    def recording(progress: Any, stage: str, *args: Any, **kwargs: Any) -> Any:
+        run.append(STAGE_QUANTITIES[stage])
+        return real(progress, stage, *args, **kwargs)
+
+    monkeypatch.setattr(fit_module, "_curve_fit", recording)
+    model = registry.get(model_id)
+    fit_mode = model.describe().fit_mode(fit_mode_id)
+    result = model.fit(
+        FitRequest(
+            fit_mode_id,
+            recorded_measurements(fit_mode),
+            default_start(fit_mode),
+            scattering=scattering,
+        )
+    )
+
+    stages = fit_mode.stages
+    first_runs = list(dict.fromkeys(run))
+    assert first_runs == [stage.quantity for stage in stages]
+    for stage in stages:
+        if stage.repeats:
+            assert run.count(stage.quantity) >= (result.iterations or 1)
+        else:
+            assert run.count(stage.quantity) == 1
+
+
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize(("model_id", "fit_mode_id", "scattering"), WORKING_FITS)
+def test_each_stage_finds_the_parameters_of_its_description(
+    monkeypatch: pytest.MonkeyPatch, model_id: str, fit_mode_id: str, scattering: str | None
+) -> None:
+    results: dict[str, Any] = {}
+    real = fit_module._curve_fit
+
+    def recording(progress: Any, stage: str, *args: Any, **kwargs: Any) -> Any:
+        result = real(progress, stage, *args, **kwargs)
+        results[stage] = result
+        return result
+
+    monkeypatch.setattr(fit_module, "_curve_fit", recording)
+    model = registry.get(model_id)
+    fit_mode = model.describe().fit_mode(fit_mode_id)
+    model.fit(
+        FitRequest(
+            fit_mode_id,
+            recorded_measurements(fit_mode),
+            default_start(fit_mode),
+            scattering=scattering,
+        )
+    )
+    fitted = {spec.name for spec in fit_mode.parameters_for(scattering) if spec.role == "fitted"}
+    quantities = {quantity: stage for stage, quantity in STAGE_QUANTITIES.items()}
+    for stage in fit_mode.stages:
+        values = results[quantities[stage.quantity]][0]
+        # One stage at a time, with errors of 1, through the model's own naming of its runs.
+        one = fit_module.FitProgress(
+            stage_fits={quantities[stage.quantity]: (values, np.eye(len(values)))}
+        )
+        named = model._stage_errors(fit_mode, scattering, 1.0, one)  # type: ignore[attr-defined]
+        assert set(named) == set(stage.parameters) & fitted, (fit_mode_id, scattering, stage)
+
+
+def test_stages_cover_the_quantities_and_find_parameters_of_the_mode() -> None:
+    for description in registry.descriptions():
+        for fit_mode in description.fit_modes:
+            names = {spec.name for spec in fit_mode.parameters}
+            assert tuple(stage.quantity for stage in fit_mode.stages) == fit_mode.quantities
+            for stage in fit_mode.stages:
+                assert set(stage.parameters) <= names, (fit_mode.id, stage)
+                assert not stage.repeats or fit_mode.iterative
+            fitted = {spec.name for spec in fit_mode.parameters if spec.role == "fitted"}
+            found = {name for stage in fit_mode.stages for name in stage.parameters}
+            assert fitted <= found, fit_mode.id
+
+
 @pytest.mark.filterwarnings("ignore")
 def test_inactive_parameters_come_back_unchanged() -> None:
     model = registry.get("dpb")

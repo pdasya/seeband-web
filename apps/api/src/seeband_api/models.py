@@ -121,13 +121,27 @@ class CurveAvailabilityResponse(BaseModel):
     relative: bool
 
 
+class FitStageResponse(BaseModel):
+    """One solver run of a fit: the quantity it fits, and the parameters it finds.
+
+    `repeats` marks a stage of the loop of an iterative mode, which runs once in each iteration.
+    `parameters` names every parameter the stage can find; the scattering decides which of them
+    a fit has.
+    """
+
+    quantity: Quantity
+    parameters: list[str]
+    repeats: bool
+
+
 class FitModeResponse(BaseModel):
     """One way of fitting a model.
 
     A client must not offer a mode with `disabled`. `disabled_by` names the `known_issues` that say
     why. `iterative` tells whether an iteration count means anything. `threshold`, a relative
     change, and `max_iterations` are what an iterative fit uses, and a request cannot change them.
-    `scattering` is empty when a mode has no choice of scattering.
+    `scattering` is empty when a mode has no choice of scattering. `stages` are the solver runs of
+    a fit, in their order.
     """
 
     id: str
@@ -144,6 +158,7 @@ class FitModeResponse(BaseModel):
     disabled: bool
     disabled_by: list[str]
     known_issues: list[KnownIssueResponse]
+    stages: list[FitStageResponse]
 
 
 class ModelResponse(BaseModel):
@@ -238,6 +253,14 @@ def _fit_mode(fit_mode: FitMode) -> FitModeResponse:
         disabled=fit_mode.disabled,
         disabled_by=list(disabled_issue_ids(fit_mode)),
         known_issues=[_known_issue(issue) for issue in fit_mode.known_issues],
+        stages=[
+            FitStageResponse(
+                quantity=stage.quantity,
+                parameters=list(stage.parameters),
+                repeats=stage.repeats,
+            )
+            for stage in fit_mode.stages
+        ],
     )
 
 

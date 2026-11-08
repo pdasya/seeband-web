@@ -703,3 +703,63 @@ describe("session values", () => {
     expect(writes).toEqual([]);
   });
 });
+
+describe("the start of a fit", () => {
+  const APPLIED = {
+    kind: "applied" as const,
+    netRange: { min_temperature_k: 300, max_temperature_k: 800 },
+    warnings: [],
+  };
+  const SETTINGS = {
+    fitMode: null,
+    scattering: null,
+    band1Degeneracy: 1,
+    band2Degeneracy: 1,
+  };
+
+  function guessed() {
+    state().setData("seebeck", DATA);
+    state().chooseModel("dpb", SETTINGS);
+    state().guessApplied(
+      [{ fitMode: "dpb_s", values: { m_eff: 2 } }],
+      APPLIED,
+      "dpb",
+      DATA.measurement,
+    );
+  }
+
+  test("names the net whose guess it starts from", () => {
+    guessed();
+    state().fitRequested("dpb_s");
+    expect(state().fitStartNet).toEqual(APPLIED.netRange);
+  });
+
+  test("an edit after the guess makes the values the user's", () => {
+    guessed();
+    state().setParameter("dpb_s", "m_eff", 3);
+    state().fitRequested("dpb_s");
+    expect(state().fitStartNet).toBeNull();
+  });
+
+  test("a reset makes them the defaults", () => {
+    guessed();
+    state().resetParameters("dpb_s");
+    state().fitRequested("dpb_s");
+    expect(state().fitStartNet).toBeNull();
+  });
+
+  test("a fit of another model did not start from it", () => {
+    guessed();
+    state().chooseModel("spb", SETTINGS);
+    state().fitRequested("spb_s");
+    expect(state().fitStartNet).toBeNull();
+  });
+
+  test("each fit says its own start", () => {
+    guessed();
+    state().fitRequested("dpb_s");
+    state().setParameter("dpb_s", "m_eff", 3);
+    state().fitRequested("dpb_s");
+    expect(state().fitStartNet).toBeNull();
+  });
+});

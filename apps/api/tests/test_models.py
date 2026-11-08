@@ -218,6 +218,14 @@ def _check_mode(mode: dict[str, Any], fit_mode: FitMode) -> None:
         assert issue["affects_fit"] == known.affects_fit
         assert issue.get("condition") == known.condition
     assert [spec["name"] for spec in mode["parameters"]] == [p.name for p in fit_mode.parameters]
+    assert mode["stages"] == [
+        {
+            "quantity": stage.quantity,
+            "parameters": list(stage.parameters),
+            "repeats": stage.repeats,
+        }
+        for stage in fit_mode.stages
+    ]
     for spec, parameter in zip(mode["parameters"], fit_mode.parameters, strict=True):
         assert spec["meaning"] == parameter.meaning
         assert spec["unit"] == parameter.unit
@@ -356,3 +364,18 @@ def _made_up_description() -> ModelDescription:
         default_max_temperature_k=20,
         default_curve_points=5,
     )
+
+
+def test_stages_say_what_each_solver_run_finds(modes: dict[str, dict[str, Any]]) -> None:
+    rh = modes["dpb_s_rho_rh"]["stages"]
+    assert [(stage["quantity"], stage["repeats"]) for stage in rh] == [
+        ("seebeck", True),
+        ("resistivity", True),
+        ("hall", False),
+    ]
+    assert rh[2]["parameters"] == ["m1"]
+    assert modes["spb_s_rho"]["stages"][1] == {
+        "quantity": "resistivity",
+        "parameters": ["A", "C", "F"],
+        "repeats": False,
+    }
