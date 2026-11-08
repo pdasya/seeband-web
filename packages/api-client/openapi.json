@@ -5251,6 +5251,18 @@
               ]
             },
             "known_issues": [],
+            "measured_points": {
+              "electrical_conductivity_s_per_m": {
+                "temperature_k": [
+                  150.0,
+                  300.0
+                ],
+                "values": [
+                  100000.0,
+                  25000.0
+                ]
+              }
+            },
             "rmse": {
               "seebeck": {
                 "unit": "uV/K",

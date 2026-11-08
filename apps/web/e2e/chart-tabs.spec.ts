@@ -820,3 +820,46 @@ test("σ says each failure of the requests it draws from, as one hides no other"
   );
   await expect(alerts.nth(1)).toContainText("The server is not responding.");
 });
+
+test("with σ the only chart of the measured curves, its points still come", async ({
+  page,
+}) => {
+  const bodies = await open(page);
+  await page.unroute("**/api/calc");
+  await page.route("**/api/calc", (route) => {
+    const body = route.request().postDataJSON() as CalcBody;
+    bodies.push(body);
+    const kind = body.kind ?? "measured";
+    return route.fulfill({
+      json: {
+        temperature_k: [100, 300, 500],
+        curves: CURVES[kind],
+        known_issues: [],
+        rmse: {},
+        ...(kind === "measured" && "resistivity" in body.measurements
+          ? {
+              measured_points: {
+                electrical_conductivity_s_per_m: {
+                  temperature_k: [100, 200],
+                  values: [1e5, 5e4],
+                },
+              },
+            }
+          : {}),
+      },
+    });
+  });
+  // No other chart draws a measured curve.
+  await show(page, "Conductivity σ(T)", 1);
+  await show(page, "Chemical potential μ(T)", 2);
+  await show(page, "Chemical potential μ(T)", 3);
+  await load(page, 1);
+
+  await expect(legend(page, "1/ρ of the data")).toBeVisible();
+  expect(
+    bodies.some(
+      ({ kind, measurements }) =>
+        kind === undefined && "resistivity" in measurements,
+    ),
+  ).toBe(true);
+});

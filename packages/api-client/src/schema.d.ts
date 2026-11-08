@@ -344,6 +344,18 @@ export interface components {
          *         ]
          *       },
          *       "known_issues": [],
+         *       "measured_points": {
+         *         "electrical_conductivity_s_per_m": {
+         *           "temperature_k": [
+         *             150,
+         *             300
+         *           ],
+         *           "values": [
+         *             100000,
+         *             25000
+         *           ]
+         *         }
+         *       },
          *       "rmse": {
          *         "seebeck": {
          *           "unit": "uV/K",
