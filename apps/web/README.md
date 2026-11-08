@@ -235,3 +235,16 @@ How these differ from the desktop's files:
 - **Interpolated values and N1, N2 are new,** as is one file for each additional graph, where the desktop has one for each of its windows. CSV and ZIP are new.
 - **The curves have the API's number of points,** not the desktop's 50.
 - **The text data file does not load again,** as the desktop's does not: its columns differ in length and are named for people. Use the ZIP for that.
+
+## Report
+
+"Report (PDF)" on the results page opens the browser's print dialog, from which a user saves a PDF. No server makes it. The report is the results page as printed:
+
+- a header with the date, the versions, and each data file with its points and range;
+- the KPIs and the parameter table;
+- every chart as a picture: the measured quantities of the mode with their fit, then the additional graphs, each with a legend and its note, and a line saying why for a chart the mode does not draw;
+- the notes, with the known issues.
+
+The site's header, the buttons, the fit log and the live charts are left off paper. Live charts do not resize to a page, so `charts/chartImage.ts` draws each as a PNG of a fixed size from the same figure. The button waits until every curve the mode offers is in, so that no chart is left out unseen. Plotly leaves its promise open when a browser cannot make a picture, so after 10 s the report gives up and says so.
+
+Checked by hand, by saving a real fit's report as a PDF from Chrome. The e2e tests check the page as print media shows it, with `window.print` stubbed, not a PDF. Firefox has not been checked yet, for V2.

@@ -26,7 +26,7 @@ export function PageHeading({
         )}
       </div>
       {actions !== undefined && (
-        <div className="flex flex-wrap gap-2">{actions}</div>
+        <div className="flex flex-wrap gap-2 print:hidden">{actions}</div>
       )}
     </div>
   );

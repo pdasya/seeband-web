@@ -777,3 +777,128 @@ test("a fit that ends while the server answers does not change the file's header
   expect(lines).toContain("# A fit is running: no fitted curve yet");
   expect(lines).not.toContain("# Fit converged, 5 iterations");
 });
+
+test("Report (PDF) prints the results with each chart as a picture, and only them", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    (window as Window & { printed?: number }).printed = 0;
+    window.print = () => {
+      const counted = window as Window & { printed?: number };
+      counted.printed = (counted.printed ?? 0) + 1;
+    };
+  });
+  await openFit(page, serveCurves);
+  await finishWith(page);
+  await toResults(page);
+
+  await page.getByRole("button", { name: "Report (PDF)" }).click();
+  await expect
+    .poll(() =>
+      page.evaluate(() => (window as Window & { printed?: number }).printed),
+    )
+    .toBe(1);
+
+  // S and ρ of the mode, then the five additional graphs.
+  // Hidden on screen, so by their text rather than their role.
+  const pictures = page.locator('img[alt^="Chart: "]');
+  await expect(pictures).toHaveCount(7);
+  await expect(pictures.first()).toHaveAttribute(
+    "src",
+    /^data:image\/png;base64,/,
+  );
+  // Real pictures, at twice their printed size.
+  expect(
+    await pictures
+      .first()
+      .evaluate((picture: HTMLImageElement) => [
+        picture.naturalWidth,
+        picture.naturalHeight,
+      ]),
+  ).toEqual([720, 520]);
+  const report = page.locator('section[aria-label="Charts"]');
+  await expect(report).toContainText("Measurements · Model");
+  await expect(report).toContainText(
+    "Total S · band 1 contribution · band 2 contribution",
+  );
+
+  // On screen, the report's parts stay out of the way.
+  await expect(report).toBeHidden();
+  await expect(page.getByText("SeeBand Web report")).toBeHidden();
+
+  await page.emulateMedia({ media: "print" });
+  await expect(report).toBeVisible();
+  await expect(page.getByText("SeeBand Web report")).toBeVisible();
+  await expect(
+    page.getByText(/^S: f0\.txt, 2 points, 100–200 K$/),
+  ).toBeVisible();
+  await expect(page.locator(".sb-header")).toBeHidden();
+  await expect(page.getByRole("button", { name: "Report (PDF)" })).toBeHidden();
+  await expect(page.getByRole("button", { name: "Data to file" })).toBeHidden();
+  await expect(
+    page.getByRole("region", { name: "Additional graphs" }),
+  ).toBeHidden();
+  await expect(
+    page.getByRole("table", { name: "Fit parameters" }),
+  ).toBeVisible();
+  await expect(page.getByRole("list", { name: "Fit log" })).toBeHidden();
+  // A chart's note goes with it.
+  await expect(report).toContainText("uses m₁ = 1");
+
+  // After printing, the pictures go, as they would be of old values by the next print.
+  await page.evaluate(() => window.dispatchEvent(new Event("afterprint")));
+  await expect(pictures).toHaveCount(0);
+});
+
+test("a report names each chart the mode does not draw, and why", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    window.print = () => undefined;
+  });
+  await openFit(page, serveCurves);
+  await page.getByRole("radio", { name: "S", exact: true }).click();
+  await finishWith(page);
+  await toResults(page);
+  await page.getByRole("button", { name: "Report (PDF)" }).click();
+
+  const report = page.locator('section[aria-label="Charts"]');
+  await expect(page.locator('img[alt^="Chart: "]').first()).toBeAttached();
+  await expect(report).toContainText(
+    "Conductivity σ(T): not drawn. Needs ρ(T):",
+  );
+  await expect(report).toContainText(
+    "Thermal conductivity κ_e(T): not drawn. Needs ρ(T):",
+  );
+});
+
+test("a report that cannot be prepared says so, and prints nothing", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    (window as Window & { printed?: number }).printed = 0;
+    window.print = () => {
+      const counted = window as Window & { printed?: number };
+      counted.printed = (counted.printed ?? 0) + 1;
+    };
+    // No picture can be made of a chart.
+    HTMLCanvasElement.prototype.toDataURL = () => {
+      throw new Error("no canvas");
+    };
+  });
+  await openFit(page);
+  await finishWith(page);
+  await toResults(page);
+
+  await page.getByRole("button", { name: "Report (PDF)" }).click();
+
+  // Plotly never answers when a picture fails, so the report gives up after its wait.
+  await expect(
+    page.getByText("The report could not be prepared. Try again."),
+  ).toBeVisible({ timeout: 15_000 });
+  expect(
+    await page.evaluate(
+      () => (window as Window & { printed?: number }).printed,
+    ),
+  ).toBe(0);
+});

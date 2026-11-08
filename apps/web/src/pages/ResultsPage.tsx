@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { DownloadIcon, InfoIcon } from "lucide-react";
+import { DownloadIcon, InfoIcon, PrinterIcon } from "lucide-react";
 import { useId, useMemo, type ReactNode } from "react";
 import { Link } from "react-router";
 
@@ -33,6 +33,7 @@ import {
 import { fitModeOf, type FitModeDescription } from "@/model/selection";
 import { ExportButtons } from "@/model/ExportButtons";
 import { useExport } from "@/model/useExport";
+import { ReportCharts, ReportHeader, useReport } from "@/pages/Report";
 import { useResultCurves, type LiveCalc } from "@/model/useLiveCurves";
 import {
   QUANTITIES,
@@ -51,6 +52,7 @@ const {
   model: modelText,
   chart: chartText,
   export: exportText,
+  report: reportText,
 } = STRINGS;
 
 type ExportGraph = ReturnType<typeof useExport>["graph"];
@@ -306,6 +308,8 @@ export function ResultsPage() {
   const { measured, derived } = useResultCurves(summed);
   const graphsId = useId();
   const exporter = useExport();
+  const report = useReport({ mode, measured, derived });
+  const reportStatusId = useId();
   const badge = fitBadge(fit, mode?.iterative === true);
   const title = <title>{`${text.pageTitle} · ${STRINGS.appName}`}</title>;
 
@@ -393,14 +397,44 @@ export function ResultsPage() {
   return (
     <div className="flex flex-col gap-4">
       {title}
+      <ReportHeader apiVersion={report.apiVersion} />
       <PageHeading
         title={text.title}
         subtitle={subtitle}
         {...(badge === null ? {} : { status: <StatusBadge {...badge} /> })}
-        actions={<ExportButtons exporter={exporter} />}
+        actions={
+          <>
+            <ExportButtons exporter={exporter} />
+            <Button
+              disabled={report.preparing || !report.ready}
+              aria-describedby={reportStatusId}
+              onClick={() => void report.prepare()}
+            >
+              <PrinterIcon aria-hidden="true" />
+              {report.preparing ? reportText.preparing : reportText.button}
+            </Button>
+          </>
+        }
       />
+      {/* Why the button waits, and that it works, said on screen and to a screen reader. */}
+      <p
+        id={reportStatusId}
+        role="status"
+        className="m-0 text-xs text-muted-foreground empty:hidden print:hidden"
+      >
+        {report.preparing
+          ? reportText.preparingStatus
+          : report.ready
+            ? ""
+            : reportText.waiting}
+      </p>
+      {report.failed && (
+        <p role="alert" className="m-0 text-xs text-destructive print:hidden">
+          {reportText.failed}
+        </p>
+      )}
       {exporter.failed && (
-        <p role="alert" className="m-0 text-xs text-destructive">
+        <p role="alert" className="m-0 text-xs text-destructive print:hidden">
           {exportText.failed}
         </p>
       )}
@@ -502,15 +536,18 @@ export function ResultsPage() {
             </div>
           </Panel>
         </div>
-        <div className="min-w-0 flex-[1_1_320px]">
+        {/* The report leaves the log out. */}
+        <div className="min-w-0 flex-[1_1_320px] print:hidden">
           <Panel title={text.log.title} subtitle={text.log.subtitle}>
             <FitLog steps={fitLog(mode, scattering, fit, startNet)} />
           </Panel>
         </div>
       </div>
+      {/* On paper, pictures of fixed size take the place of live charts, which do not resize. */}
+      <ReportCharts charts={report.charts} />
       <section
         aria-labelledby={graphsId}
-        className="rounded-xl border bg-card p-5 shadow-card"
+        className="rounded-xl border bg-card p-5 shadow-card print:hidden"
       >
         <h2
           id={graphsId}

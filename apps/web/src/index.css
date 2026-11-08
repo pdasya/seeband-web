@@ -25,3 +25,43 @@
     outline-offset: 2px;
   }
 }
+
+/* A printed report: the page's content alone, on white, in sections that do not split. */
+@media print {
+  @page {
+    margin: 14mm;
+  }
+
+  .sb-header {
+    display: none;
+  }
+
+  body {
+    background: #ffffff;
+  }
+
+  main {
+    max-width: none;
+    padding: 0;
+  }
+
+  main section,
+  main figure,
+  main table,
+  main dl > div {
+    break-inside: avoid;
+  }
+
+  main h2 {
+    break-after: avoid;
+  }
+
+  /* Longer than a page, so it breaks between its figures, which each stay whole. */
+  main section[data-report-charts] {
+    break-inside: auto;
+  }
+
+  .shadow-card {
+    box-shadow: none;
+  }
+}
