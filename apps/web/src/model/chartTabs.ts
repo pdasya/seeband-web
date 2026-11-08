@@ -476,9 +476,14 @@ export function chartTabView(
       return chemicalPotentialView(mode, state, derived);
     case "bands":
       return bandsView(mode, measured, derived);
-    default:
-      return isQuantityTab(tab)
-        ? quantityView(tab, mode, state, measured)
-        : { ...NO_CHART, yAxisTitle: "", description: "", empty: null };
+    case "seebeck":
+    case "resistivity":
+    case "hall":
+      return quantityView(tab, mode, state, measured);
+    default: {
+      // A new tab must have its case above, which this makes the compiler check.
+      const unknown: never = tab;
+      throw new Error(`No view for the tab ${String(unknown)}`);
+    }
   }
 }
