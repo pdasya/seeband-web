@@ -41,6 +41,8 @@ for (const example of ["01_Fe2VAl09Si01", "02_SiP", "03_AWI32_SI"]) {
     }
 
     await expect(page.getByRole("alert")).toHaveCount(0);
+    // The data fold once the fit mode has all it needs.
+    await page.getByRole("button", { name: "Details" }).click();
     await expect(
       slots(page).getByText(/\d+ points · .* K · V\/K/),
     ).toBeVisible();
@@ -407,17 +409,21 @@ test.describe("real fits", () => {
   }) => {
     test.setTimeout(60_000);
     await page.goto("/fit?demo=1");
+    // The demo gives the fit mode all it needs, so the data fold once it is in.
+    await page.getByRole("button", { name: "Details" }).click();
     await expect(page.getByText(/^Synthetic data/)).toBeVisible();
     await expect(
       page.locator("[data-file-slot]").getByText("Demo data"),
     ).toHaveCount(3);
     await expect(page.getByText(/^31 points/)).toHaveCount(3);
-    await expect(page.getByText("Measurements (demo)")).toBeVisible();
+    await expect(chart(page).getByText("Measurements (demo)")).toBeVisible();
 
     // Its rows are sent again as text, and the real parser reads them.
     await page.getByRole("switch", { name: /Interpolation/ }).click();
-    await expect(page.getByText("Measurements (demo)")).toBeVisible();
-    await expect(page.getByText("Interpolated", { exact: true })).toBeVisible({
+    await expect(chart(page).getByText("Measurements (demo)")).toBeVisible();
+    await expect(
+      chart(page).getByText("Interpolated", { exact: true }),
+    ).toBeVisible({
       timeout: 15_000,
     });
     await expect(page.getByRole("alert")).toHaveCount(0);
@@ -437,6 +443,8 @@ test.describe("real fits", () => {
   }) => {
     test.setTimeout(60_000);
     await page.goto("/fit?demo=1");
+    // The demo gives the fit mode all it needs, so the data fold once it is in.
+    await page.getByRole("button", { name: "Details" }).click();
     await expect(page.getByText(/^Synthetic data/)).toBeVisible();
     await page.getByRole("radio", { name: "S", exact: true }).click();
     const gap = page.getByRole("textbox", { name: "E_g", exact: true });
