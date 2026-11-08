@@ -467,6 +467,8 @@ export const STRINGS = {
     rmse: (symbol: string) => `RMSE ${symbol}`,
     inRange: "in the fit range",
     noRmse: "needs measurements",
+    rmseCalculating: "calculating…",
+    rmseFailed: "could not be calculated",
     iterations: "Iterations",
     parametersTitle: "Fit parameters",
     parametersSubtitle:

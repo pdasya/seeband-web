@@ -174,6 +174,8 @@ export function ResultsPage() {
   const notes = [
     ...new Set(demo.map(noticeText)),
     ...(endNote === null ? [] : [endNote]),
+    // Its known issues come with the curves, so without them some may be missing.
+    ...(measured.error === null ? [] : [fitText.rmseFailed]),
     ...issues.map(
       ({ severity, text: issue }) =>
         `${fitText.issueSeverity[severity]}: ${issue}`,
@@ -204,12 +206,21 @@ export function ResultsPage() {
         )}
         {mode.quantities.map((quantity) => {
           const rmse = measured.result?.rmse?.[quantity];
+          // Missing data, a failed or pending calculation each say so, and none passes for another.
+          const detail =
+            rmse !== undefined
+              ? text.inRange
+              : data[quantity] === undefined
+                ? text.noRmse
+                : measured.error !== null
+                  ? text.rmseFailed
+                  : text.rmseCalculating;
           return (
             <Kpi
               key={quantity}
               label={text.rmse(dataText.quantities[quantity].symbol)}
               value={rmse === undefined ? "—" : rmseText(rmse)}
-              detail={rmse === undefined ? text.noRmse : text.inRange}
+              detail={detail}
             />
           );
         })}

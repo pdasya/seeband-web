@@ -198,3 +198,34 @@ test("demo data say so on the results", async ({ page }) => {
   await expect(page.getByText(/^Demo data · DPB/)).toBeVisible();
   await expect(page.getByText(/^Synthetic data, generated with/)).toBeVisible();
 });
+
+test("an RMSE that is on its way or failed says so, not that data are missing", async ({
+  page,
+}) => {
+  await openFit(page);
+  await finishWith(page);
+  // Every request waits, as the fit screen may still have one on its way.
+  const pending: ((ok: boolean) => void)[] = [];
+  await page.unroute("**/api/calc");
+  await page.route("**/api/calc", async (route) => {
+    const ok = await new Promise<boolean>((resolve) => {
+      pending.push(resolve);
+    });
+    await (ok
+      ? route.fulfill({ json: { ...CALC, rmse: RMSE } })
+      : route.fulfill({ status: 500, json: { code: "internal_error" } }));
+  });
+  await toResults(page);
+
+  await expect(kpi(page, "RMSE S")).toContainText("calculating…");
+  await expect(kpi(page, "RMSE S")).not.toContainText("needs measurements");
+  await expect.poll(() => pending.length).toBeGreaterThan(0);
+  for (const answer of pending) {
+    answer(false);
+  }
+
+  await expect(kpi(page, "RMSE S")).toContainText("could not be calculated");
+  await expect(
+    page.getByText("The RMSE could not be calculated for the current values."),
+  ).toBeVisible();
+});
