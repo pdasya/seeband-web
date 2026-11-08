@@ -64,16 +64,17 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
   const { data: text } = STRINGS;
   const names = text.quantities[quantity];
   const data = useSessionStore((state) => state.data[quantity]);
-  const { state, upload, remove, fail } = useFileUpload(quantity);
+  const { state, upload, confirm, remove, fail } = useFileUpload(quantity);
   const input = useRef<HTMLInputElement>(null);
   const removeButton = useRef<HTMLButtonElement>(null);
+  const confirmButton = useRef<HTMLButtonElement>(null);
   // The element with focus goes away when a slot changes, so it comes back to the slot's control.
   const keepFocus = useRef(false);
 
   useEffect(() => {
     if (keepFocus.current && state.status !== "loading") {
       keepFocus.current = false;
-      (input.current ?? removeButton.current)?.focus();
+      (input.current ?? confirmButton.current ?? removeButton.current)?.focus();
     }
   });
 
@@ -98,6 +99,8 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
   let announcement = "";
   if (state.status === "loading") {
     announcement = `${state.name}: ${text.reading}`;
+  } else if (state.status === "confirm") {
+    announcement = `${state.name}: ${text.noHeaderQuestion(names.title, names.symbol)}`;
   } else if (data !== undefined) {
     announcement = `${names.title}: ${dataName(data)}, ${fileSummary(quantity, data)}`;
   }
@@ -137,6 +140,56 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
           </Button>
         </div>
       </>
+    );
+  }
+
+  if (state.status === "confirm") {
+    const named = state.named === null ? null : text.quantities[state.named];
+    return (
+      <div className="flex flex-col gap-1.5">
+        {status}
+        <div
+          className="flex flex-col gap-2.5 rounded-lg border px-3 py-2.5"
+          data-file-slot={quantity}
+        >
+          <div className="flex items-center gap-3">
+            <Symbol filled={false}>{names.symbol}</Symbol>
+            <div className="min-w-0 flex-auto">
+              <FileName>{state.name}</FileName>
+              <div className="text-xs text-muted-foreground">
+                {fileSummary(quantity, state.entry)}
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={`${text.remove} ${names.symbol}`}
+              onClick={onRemove}
+            >
+              <XIcon aria-hidden="true" />
+            </Button>
+          </div>
+          <p className="m-0 text-xs">
+            {text.noHeaderQuestion(names.title, names.symbol)}
+          </p>
+          {named !== null && (
+            <p className="m-0 text-xs text-muted-foreground">
+              {text.nameSuggests(named.title)}
+            </p>
+          )}
+          <Button
+            ref={confirmButton}
+            size="sm"
+            className="self-start"
+            onClick={() => {
+              keepFocus.current = true;
+              confirm();
+            }}
+          >
+            {text.confirmQuantity(names.symbol)}
+          </Button>
+        </div>
+      </div>
     );
   }
 

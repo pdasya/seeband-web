@@ -17,6 +17,7 @@ interface ModelsForTest {
 }
 
 const PARSED = (quantity: string) => ({
+  headers: ["T", "x"],
   column_count: 2,
   row_count: 2,
   preview: [],

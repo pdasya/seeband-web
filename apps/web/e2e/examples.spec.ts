@@ -18,6 +18,15 @@ const EXAMPLES = fileURLToPath(
   ),
 );
 
+/** Chooses a file for the next empty slot, and confirms its quantity, as the examples have no header. */
+async function loadExample(page: Page, name: string) {
+  await page
+    .locator('input[type="file"]')
+    .first()
+    .setInputFiles(`${EXAMPLES}${name}`);
+  await page.getByRole("button", { name: /^Yes, it holds / }).click();
+}
+
 for (const example of ["01_Fe2VAl09Si01", "02_SiP", "03_AWI32_SI"]) {
   test(`all files of ${example} load`, async ({ page }) => {
     await page.goto("/fit");
@@ -25,10 +34,7 @@ for (const example of ["01_Fe2VAl09Si01", "02_SiP", "03_AWI32_SI"]) {
     for (const suffix of ["see", "rho", "hall"]) {
       const name = `${example}_${suffix}.txt`;
       // A slot with a file has no input, so the first input left is the next slot.
-      await page
-        .locator('input[type="file"]')
-        .first()
-        .setInputFiles(`${EXAMPLES}${name}`);
+      await loadExample(page, name);
       await expect(slots(page).getByText(name)).toBeVisible();
     }
 
@@ -64,6 +70,42 @@ test("a broken file shows a specific error from the real parser", async ({
 
   await expect(page.getByRole("alert")).toContainText("broken.txt");
   await expect(page.getByRole("alert")).toContainText("Line 4");
+});
+
+test("a ρ file in the S slot asks first, and says what its name names", async ({
+  page,
+}) => {
+  await page.goto("/fit");
+  await page
+    .locator('input[type="file"]')
+    .first()
+    .setInputFiles(`${EXAMPLES}03_AWI32_SI_rho.txt`);
+
+  await expect(
+    page.getByText(
+      /^This file has no column names\. Does its second column hold Seebeck/,
+    ),
+  ).toBeVisible();
+  await expect(page.getByText("Its name suggests Resistivity.")).toBeVisible();
+  await expect(
+    page.getByText("This fit mode needs data for S, ρ."),
+  ).toBeVisible();
+});
+
+test("the real parser refuses a negative resistivity", async ({ page }) => {
+  await page.goto("/fit");
+  await page
+    .locator('input[type="file"]')
+    .nth(1)
+    .setInputFiles({
+      name: "rho.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from("T rho\n100 1e-5\n200 -2e-5\n300 3e-5\n"),
+    });
+
+  await expect(page.getByRole("alert")).toContainText(
+    "Line 3: A resistivity below 0",
+  );
 });
 
 test("a single file maps its columns through the real parser", async ({
@@ -109,10 +151,7 @@ test("interpolation of an example through the real API has its flags", async ({
 }) => {
   await page.goto("/fit");
   // Its data run from 25 to 750 K, and the default range ends at 800 K.
-  await page
-    .locator('input[type="file"]')
-    .first()
-    .setInputFiles(`${EXAMPLES}01_Fe2VAl09Si01_see.txt`);
+  await loadExample(page, "01_Fe2VAl09Si01_see.txt");
   await expect(slots(page).getByText(/\d+ points/)).toBeVisible();
 
   await page.getByRole("switch", { name: /Interpolation/ }).click();
@@ -162,10 +201,7 @@ test("an example through the real API draws the curve, with its RMSE", async ({
   page,
 }) => {
   await page.goto("/fit");
-  await page
-    .locator('input[type="file"]')
-    .first()
-    .setInputFiles(`${EXAMPLES}01_Fe2VAl09Si01_see.txt`);
+  await loadExample(page, "01_Fe2VAl09Si01_see.txt");
 
   await expect(page.getByText("RMSE, S")).toBeVisible();
   await expect(page.getByText(/^[\d,]+ µV\/K$/)).toBeVisible();
@@ -226,10 +262,7 @@ for (const [example, mass, gap, fermi] of [
     page,
   }) => {
     await page.goto("/fit");
-    await page
-      .locator('input[type="file"]')
-      .first()
-      .setInputFiles(`${EXAMPLES}${example}_see.txt`);
+    await loadExample(page, `${example}_see.txt`);
     const field = (name: string) =>
       page.getByRole("textbox", { name, exact: true });
 
@@ -248,10 +281,7 @@ test("02_SiP has no net for its span, and keeps the desktop's values", async ({
   page,
 }) => {
   await page.goto("/fit");
-  await page
-    .locator('input[type="file"]')
-    .first()
-    .setInputFiles(`${EXAMPLES}02_SiP_see.txt`);
+  await loadExample(page, "02_SiP_see.txt");
 
   await expect(page.getByText(/No neural net covers/)).toBeVisible();
   await expect(
@@ -292,10 +322,9 @@ test.describe("real fits", () => {
   }) => {
     test.setTimeout(60_000);
     await page.goto("/fit");
-    const files = page.locator('input[type="file"]');
-    await files.first().setInputFiles(`${EXAMPLES}01_Fe2VAl09Si01_see.txt`);
+    await loadExample(page, "01_Fe2VAl09Si01_see.txt");
     await expect(page.getByText(/^\d+ points/)).toBeVisible();
-    await files.first().setInputFiles(`${EXAMPLES}01_Fe2VAl09Si01_rho.txt`);
+    await loadExample(page, "01_Fe2VAl09Si01_rho.txt");
     await expect(page.getByText(/^\d+ points/)).toHaveCount(2);
     const run = page.getByRole("button", { name: "Run fit" });
     const gap = page.getByRole("textbox", { name: "E_g", exact: true });

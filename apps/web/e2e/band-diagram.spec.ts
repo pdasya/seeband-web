@@ -265,6 +265,7 @@ test("a failure of the curves does not show on it", async ({ page }) => {
   await page.route("**/api/parse", (route) =>
     route.fulfill({
       json: {
+        headers: ["T", "x"],
         column_count: 2,
         row_count: 2,
         preview: [],

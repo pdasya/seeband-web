@@ -143,6 +143,10 @@ export const STRINGS = {
         "Synthetic data, generated with the DPB model and added noise. They are not a measurement of any material.",
     },
     oneFile: "Drop one file at a time.",
+    noHeaderQuestion: (title: string, symbol: string) =>
+      `This file has no column names. Does its second column hold ${title} (${symbol})?`,
+    nameSuggests: (title: string) => `Its name suggests ${title}.`,
+    confirmQuantity: (symbol: string) => `Yes, it holds ${symbol}`,
     quantityNotFound: "This file has no column for this quantity.",
     tooManyRows: "This file has more than 2000 rows.",
     rateLimited: "Too many files in a short time. Try again in a minute.",
@@ -174,6 +178,8 @@ export const STRINGS = {
       too_few_rows: "Fewer than 2 rows.",
       missing_temperature: "No column holds the temperature.",
       non_positive_temperature: "A temperature of 0 K or below.",
+      negative_resistivity:
+        "A resistivity below 0, which no measurement gives.",
       repeated_role: "A quantity is assigned twice.",
       preamble_skipped: "A line of text before the header was left out.",
       header_mismatch: "The header has a different number of columns.",

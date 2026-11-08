@@ -899,7 +899,7 @@ export interface components {
              * Code
              * @enum {string}
              */
-            code: "no_data" | "wrong_encoding" | "line_too_long" | "too_many_problems" | "too_few_columns" | "wrong_column_count" | "missing_value" | "not_numeric" | "not_finite" | "decimal_comma" | "too_few_rows" | "missing_temperature" | "non_positive_temperature" | "repeated_role" | "preamble_skipped" | "header_mismatch" | "unit_differs" | "repeated_header" | "columns_need_assigning" | "expected_not_found" | "no_quantity" | "few_rows" | "unsorted_temperature" | "duplicate_temperature";
+            code: "no_data" | "wrong_encoding" | "line_too_long" | "too_many_problems" | "too_few_columns" | "wrong_column_count" | "missing_value" | "not_numeric" | "not_finite" | "decimal_comma" | "too_few_rows" | "missing_temperature" | "non_positive_temperature" | "negative_resistivity" | "repeated_role" | "preamble_skipped" | "header_mismatch" | "unit_differs" | "repeated_header" | "columns_need_assigning" | "expected_not_found" | "no_quantity" | "few_rows" | "unsorted_temperature" | "duplicate_temperature";
             /** Line */
             line?: number | null;
             /** Column */
