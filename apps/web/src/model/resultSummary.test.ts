@@ -115,8 +115,8 @@ describe("parameterRows", () => {
     expect(names).not.toContain("A");
     expect(rows.find(({ name }) => name === "band_gap")).toMatchObject({
       symbol: "E_g",
-      value: "554 K",
-      bounds: "-3000 … 3000",
+      value: "0,05 eV",
+      bounds: "-0,26 … 0,26",
       atBound: false,
     });
   });
@@ -140,10 +140,10 @@ describe("parameterRows", () => {
       { band_gap: { lower: 500, upper: 1500 } },
     );
     expect(rows.find(({ name }) => name === "band_gap")?.bounds).toBe(
-      "500 … 1500",
+      "0,04 … 0,13",
     );
     expect(rows.find(({ name }) => name === "fermi_energy")?.bounds).toBe(
-      "-3000 … 3000",
+      "-0,26 … 0,26",
     );
   });
 

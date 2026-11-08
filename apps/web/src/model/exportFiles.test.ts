@@ -305,10 +305,10 @@ describe("the parameters file", () => {
     const lines = file.split("\n").slice(0, -1);
     expect(lines[0]).toBe("Parameter\tValue\tStatus");
     expect(lines).toContain(
-      "E_g (position of band 2) [K]\t900\tfitted, at bound",
+      "E_g (position of band 2) [eV]\t0.077555999358\tfitted, at bound",
     );
     expect(lines.find((line) => line.startsWith("E_F"))).toMatch(
-      /\t-50\tfitted$/,
+      /\t-0.004308666631\tfitted$/,
     );
     expect(lines.at(-1)).toBe("N1, N2 (band degeneracies)\t1, 2\tfixed");
   });
@@ -322,7 +322,7 @@ describe("the parameters file", () => {
       { status: "idle" },
     ).split("\n");
     expect(lines).toContain(
-      "E_g (position of band 2) [K]\t900\tnot fitted yet",
+      "E_g (position of band 2) [eV]\t0.077555999358\tnot fitted yet",
     );
     expect(lines.some((line) => line.endsWith("\tfitted"))).toBe(false);
   });
@@ -350,9 +350,27 @@ describe("a graph file", () => {
           { name: "chemical_potential_k", values: [-10, 20] },
           { name: "some_new_curve_per_s", values: [1, 2] },
         ],
+        { unit: "K", per_kelvin: 1 },
       ),
     ).toBe(
       "Temperature [K]\tChemical potential [K]\tsome_new_curve_per_s\n100\t-10\t1\n200\t20\t2\n",
+    );
+  });
+
+  test("has an energy in the unit the screen shows, and leaves the rest", () => {
+    expect(
+      graphFile(
+        [],
+        [100, 200, 300],
+        [
+          { name: "chemical_potential_k", values: [-100, null, 2000] },
+          { name: "electrical_conductivity_s_per_m", values: [1, 2, 3] },
+        ],
+        { unit: "eV", per_kelvin: 8.617333262e-5 },
+      ),
+    ).toBe(
+      "Temperature [K]\tChemical potential [eV]\tElectrical conductivity [S/m]\n" +
+        "100\t-0.008617333262\t1\n200\t\t2\n300\t0.17234666524\t3\n",
     );
   });
 });
@@ -414,6 +432,7 @@ describe("the other formats", () => {
       null,
       "parameters",
       [],
+      { unit: "K", per_kelvin: 1 },
       ["seebeck_by_band"],
     );
     expect(entries["metadata.txt"]).toBe(
@@ -436,6 +455,7 @@ describe("the other formats", () => {
           result: curves({ chemical_potential_k: [1, 2] }),
         },
       ],
+      { unit: "eV", per_kelvin: 0.5 },
     );
     expect(Object.keys(entries).sort()).toEqual(
       [
@@ -453,6 +473,9 @@ describe("the other formats", () => {
     );
     expect(entries["curves/fit.txt"]).toBe(
       "# head\nT [K]\tS [V/K]\trho [Ohm*m]\n100\t5\t7\n200\t6\t8\n",
+    );
+    expect(entries["graphs/chemical_potential.txt"]).toContain(
+      "Chemical potential [eV]",
     );
   });
 });
@@ -479,7 +502,7 @@ describe("the parameters as CSV", () => {
       "parameter,symbol,meaning,unit,value,status",
     ]);
     expect(lines).toContain(
-      'band_gap,E_g,position of band 2,K,900,"fitted, at bound"',
+      'band_gap,E_g,position of band 2,eV,0.077555999358,"fitted, at bound"',
     );
     expect(lines.find((line) => line.startsWith("m_eff,"))).toMatch(
       /^m_eff,m₂\/m₁,"band mass ratio m2\/m1, the sign sets the type of band 2",,/,

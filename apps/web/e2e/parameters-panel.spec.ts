@@ -44,14 +44,23 @@ test("starts with the mode's parameters, defaults and ranges", async ({
   await open(page);
 
   await expect(field(page, "m₂/m₁")).toHaveValue("1,01");
-  await expect(field(page, "E_g")).toHaveValue("1000");
-  await expect(field(page, "E_F")).toHaveValue("-100");
+  // Energies show in eV: 1000 K and -100 K, to 0,01 eV.
+  await expect(field(page, "E_g")).toHaveValue("0,09");
+  await expect(field(page, "E_F")).toHaveValue("-0,01");
   await expect(field(page, "A")).toHaveValue("40000");
   await expect(field(page, "B")).toHaveValue("1");
-  await expect(slider(page, "E_F")).toHaveAttribute("aria-valuemin", "-3000");
-  await expect(slider(page, "E_F")).toHaveAttribute("aria-valuemax", "3000");
+  // ±3000 K.
+  await expect(slider(page, "E_F")).toHaveAttribute(
+    "aria-valuemin",
+    "-0.25851999786",
+  );
+  await expect(slider(page, "E_F")).toHaveAttribute(
+    "aria-valuemax",
+    "0.25851999786",
+  );
+  await expect(page.getByText("-0,26", { exact: true }).first()).toBeVisible();
   await expect(field(page, "E_F")).toHaveAccessibleDescription(
-    "Fermi energy at T = 0, in K",
+    "Fermi energy at T = 0, in eV",
   );
   await expect(page.getByRole("alert")).toHaveCount(0);
 });
@@ -127,22 +136,29 @@ test("a typed value counts on leaving the field, and moves the slider", async ({
 }) => {
   await open(page);
 
-  await field(page, "E_g").fill("1234.5");
-  await expect(slider(page, "E_g")).toHaveAttribute("aria-valuenow", "1000");
+  await field(page, "E_g").fill("0.1234");
+  await expect(slider(page, "E_g")).toHaveAttribute(
+    "aria-valuenow",
+    "0.08617333262",
+  );
 
   await field(page, "E_g").blur();
 
-  await expect(slider(page, "E_g")).toHaveAttribute("aria-valuenow", "1234.5");
+  await expect(slider(page, "E_g")).toHaveAttribute("aria-valuenow", "0.1234");
+  expect(await stored(page, "dpb_s_rho")).toEqual({
+    band_gap: 1431.99753622,
+  });
   await moveAway(page);
-  await expect(field(page, "E_g")).toHaveValue("1234,5");
+  await expect(field(page, "E_g")).toHaveValue("0,12");
 });
 
-for (const typed of ["3001", "-3001", "", "abc", "1,2,3"]) {
+// Beyond ±0,26 eV, the range of ±3000 K as it shows.
+for (const typed of ["0,27", "-0,27", "", "abc", "1,2,3"]) {
   test(`"${typed}" is refused, says why, and keeps the last value`, async ({
     page,
   }) => {
     await open(page);
-    await field(page, "E_g").fill("500");
+    await field(page, "E_g").fill("0,05");
     await field(page, "E_g").press("Enter");
 
     await field(page, "E_g").fill(typed);
@@ -150,12 +166,14 @@ for (const typed of ["3001", "-3001", "", "abc", "1,2,3"]) {
 
     await expect(field(page, "E_g")).toHaveAttribute("aria-invalid", "true");
     await expect(page.getByRole("alert")).toContainText(
-      "E_g: enter a number from -3000 to 3000",
+      "E_g: enter a number from -0,26 to 0,26",
     );
-    expect(await stored(page, "dpb_s_rho")).toEqual({ band_gap: 500 });
+    expect(await stored(page, "dpb_s_rho")).toEqual({
+      band_gap: 580.225906087,
+    });
 
     await moveAway(page);
-    await expect(field(page, "E_g")).toHaveValue("500");
+    await expect(field(page, "E_g")).toHaveValue("0,05");
     await expect(page.getByRole("alert")).toHaveCount(0);
   });
 }
@@ -169,7 +187,8 @@ test("moving the slider replaces a refused number", async ({ page }) => {
   await slider(page, "E_g").press("ArrowRight");
 
   await expect(page.getByRole("alert")).toHaveCount(0);
-  await expect(field(page, "E_g")).toHaveValue("1010");
+  // One step of 0,01 eV from 1000 K.
+  await expect(field(page, "E_g")).toHaveValue("0,1");
 });
 
 test("numbers show a decimal comma, and take a comma or a point", async ({
@@ -181,15 +200,15 @@ test("numbers show a decimal comma, and take a comma or a point", async ({
   await expect(page.getByText("0,9", { exact: true })).toBeVisible();
   await expect(page.getByText("1,1", { exact: true })).toBeVisible();
 
-  await field(page, "E_g").fill("12,5");
+  await field(page, "E_g").fill("0,12");
   await field(page, "E_g").blur();
-  await expect(slider(page, "E_g")).toHaveAttribute("aria-valuenow", "12.5");
-  await expect(field(page, "E_g")).toHaveValue("12,5");
+  await expect(slider(page, "E_g")).toHaveAttribute("aria-valuenow", "0.12");
+  await expect(field(page, "E_g")).toHaveValue("0,12");
 
-  await field(page, "E_g").fill("13.5");
+  await field(page, "E_g").fill("0.13");
   await field(page, "E_g").blur();
-  await expect(slider(page, "E_g")).toHaveAttribute("aria-valuenow", "13.5");
-  await expect(field(page, "E_g")).toHaveValue("13,5");
+  await expect(slider(page, "E_g")).toHaveAttribute("aria-valuenow", "0.13");
+  await expect(field(page, "E_g")).toHaveValue("0,13");
 });
 
 test("a message about a number is tied to its field", async ({ page }) => {
@@ -199,7 +218,7 @@ test("a message about a number is tied to its field", async ({ page }) => {
   await field(page, "E_F").blur();
 
   await expect(field(page, "E_F")).toHaveAccessibleDescription(
-    /Fermi energy.*enter a number from -3000 to 3000/,
+    /Fermi energy.*enter a number from -0,26 to 0,26/,
   );
 });
 
@@ -306,20 +325,20 @@ test("where the two scales differ, the session holds core units", async ({
 test("each fit mode keeps its own values and defaults", async ({ page }) => {
   await open(page);
   await choose(page, "SPB");
-  await field(page, "E_F").fill("700");
+  await field(page, "E_F").fill("0,06");
   await field(page, "E_F").blur();
 
   await choose(page, "S + ρ");
-  await expect(field(page, "E_F")).toHaveValue("-100");
+  await expect(field(page, "E_F")).toHaveValue("-0,01");
   await expect(field(page, "m")).toHaveValue("-1");
 
   await choose(page, "S");
-  await expect(field(page, "E_F")).toHaveValue("700");
+  await expect(field(page, "E_F")).toHaveValue("0,06");
 
   await choose(page, "DPB");
-  await expect(field(page, "E_F")).toHaveValue("-100");
+  await expect(field(page, "E_F")).toHaveValue("-0,01");
   await choose(page, "SPB");
-  await expect(field(page, "E_F")).toHaveValue("700");
+  await expect(field(page, "E_F")).toHaveValue("0,06");
 });
 
 test("a refused number does not follow to another fit mode", async ({
@@ -332,7 +351,7 @@ test("a refused number does not follow to another fit mode", async ({
 
   await choose(page, "S");
 
-  await expect(field(page, "E_g")).toHaveValue("1000");
+  await expect(field(page, "E_g")).toHaveValue("0,09");
   await expect(page.getByRole("alert")).toHaveCount(0);
 });
 
@@ -377,7 +396,8 @@ test("leaving a field unchanged keeps a result and the exact value", async ({
   await field(page, "E_g").press("Enter");
   await field(page, "E_g").blur();
   // Typing the number that is shown, written differently, is no change either.
-  await field(page, "E_g").fill("1000,0");
+  // 1000 K shows as 0,09 eV.
+  await field(page, "E_g").fill("0,090");
   await field(page, "E_g").blur();
 
   expect(await fitStatus()).not.toBe("idle");
@@ -412,7 +432,7 @@ test.describe("on a touch screen", () => {
     await expect(
       page.getByRole("button", { name: "About E_g" }),
     ).not.toBeFocused();
-    await expect(tip).toContainText("in K");
+    await expect(tip).toContainText("in eV");
 
     await page.getByRole("heading", { name: "Parameters" }).tap();
     await expect(tip).toHaveCount(0);

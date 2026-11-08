@@ -66,8 +66,10 @@ class ParameterSpec:
     and `fit_scale` to core units. `calc_scale` records what the desktop's slider passes to a curve;
     use it only to reproduce that path, because results of a fit go to curves unchanged.
 
-    `unit` is the unit of the value a user sees. `fit_bounds` is in core units, before any factor
-    or transform inside a fit, and is None for a parameter that a fit does not change.
+    `unit` is the unit of the scaled value. `display_unit` is the one a user sees, with
+    `display_factor` from the one to the other, and `display_step` the step of a control in it: an
+    energy in K is shown in eV. `fit_bounds` is in core units, before any factor or transform inside
+    a fit, and is None for a parameter that a fit does not change.
     """
 
     name: str
@@ -81,6 +83,14 @@ class ParameterSpec:
     calc_scale: float
     fit_bounds: Bounds | None = None
     bounds_editable: bool = False
+    display_unit: str | None = None
+    display_factor: float = 1.0
+    display_step: float | None = None
+
+    @property
+    def shown_unit(self) -> str:
+        """The unit a user sees."""
+        return self.unit if self.display_unit is None else self.display_unit
 
 
 @dataclass(frozen=True)

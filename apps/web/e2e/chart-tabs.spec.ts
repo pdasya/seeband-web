@@ -186,7 +186,7 @@ test("μ needs no data, has band edges, and follows E_g", async ({ page }) => {
   await page.waitForTimeout(400);
   expect(bodies).toHaveLength(1);
   expect(bodies[0]?.measurements).toEqual({});
-  await expect(yTitle(page)).toHaveText("μ, K");
+  await expect(yTitle(page)).toHaveText("μ, eV");
   await expect(lines(page)).toHaveCount(1);
   await expect(page.getByText("band 1 top")).toBeVisible();
   await expect(page.getByText("band 2 bottom (E_g)")).toBeVisible();
@@ -301,7 +301,8 @@ test("other curves are asked for only while their tab is open", async ({
   await page.waitForTimeout(400);
   expect(bodies).toHaveLength(count + 1);
   expect(bodies.at(-1)?.kind).toBeUndefined();
-  expect(bodies.at(-1)?.parameters.band_gap).toBe(1010);
+  // One step of 0,01 eV from 1000 K.
+  expect(bodies.at(-1)?.parameters.band_gap).toBe(1116.04518122);
 });
 
 test("a change on a tab asks for both, and the RMSE stays live", async ({

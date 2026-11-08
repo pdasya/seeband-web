@@ -113,8 +113,8 @@ test("the metrics, and the table with values and bounds, as the design has them"
   await expect(iterations(page)).toContainText("—");
   await expect(iterations(page)).toContainText("limit 1000");
 
-  await expect(row(page, "E_g")).toContainText("1000 K");
-  await expect(row(page, "E_g")).toContainText("-3000 … 3000");
+  await expect(row(page, "E_g")).toContainText("0,09 eV");
+  await expect(row(page, "E_g")).toContainText("-0,26 … 0,26");
   await expect(row(page, "m₂/m₁")).toContainText("1,01");
   await expect(row(page, "m₂/m₁")).toContainText("-3 … 3");
   // Only what this scattering uses.
@@ -160,11 +160,11 @@ test("the table and counter follow a fit", async ({ page }) => {
     parameters: { band_gap: 850.123456 },
   });
   await expect(iterations(page)).toContainText("3");
-  await expect(row(page, "E_g")).toContainText("850,123 K");
+  await expect(row(page, "E_g")).toContainText("0,07 eV");
 
   await send(page, { type: "done", result: RESULT });
   await expect(iterations(page)).toContainText("5");
-  await expect(row(page, "E_g")).toContainText("900 K");
+  await expect(row(page, "E_g")).toContainText("0,08 eV");
   await expect(row(page, "m₂/m₁")).toContainText("0,5");
   await expect(page.getByText(/not a converged result/)).toHaveCount(0);
 });
@@ -274,7 +274,7 @@ test("a fit that fails after iterations does not call its values start values", 
     iteration: 2,
     parameters: { band_gap: 850 },
   });
-  await expect(row(page, "E_g")).toContainText("850 K");
+  await expect(row(page, "E_g")).toContainText("0,07 eV");
 
   await send(page, {
     type: "error",
@@ -282,7 +282,7 @@ test("a fit that fails after iterations does not call its values start values", 
   });
 
   await expect(page.getByRole("alert")).toBeVisible();
-  await expect(row(page, "E_g")).toContainText("850 K");
+  await expect(row(page, "E_g")).toContainText("0,07 eV");
   await expect(
     page.getByText(/they are its start values or those of its last iteration/),
   ).toBeVisible();

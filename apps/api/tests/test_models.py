@@ -379,3 +379,19 @@ def test_stages_say_what_each_solver_run_finds(modes: dict[str, dict[str, Any]])
         "parameters": ["A", "C", "F"],
         "repeats": False,
     }
+
+
+def test_energies_are_shown_in_ev(response: Any, modes: dict[str, dict[str, Any]]) -> None:
+    assert response.json()["energy_display"] == {
+        "unit": "eV",
+        "per_kelvin": pytest.approx(8.617333262e-5),
+    }
+    gap = next(p for p in modes["dpb_s_rho"]["parameters"] if p["name"] == "band_gap")
+    assert (gap["unit"], gap["display_unit"]) == ("K", "eV")
+    assert gap["display_factor"] == pytest.approx(8.617333262e-5)
+    assert gap["display_range"]["step"] == 0.01
+    assert gap["display_range"]["maximum"] == pytest.approx(3000 * 8.617333262e-5)
+    # Its core range, which requests use, stays in K.
+    assert gap["core_range"]["maximum"] == 3000.0
+    ratio = next(p for p in modes["dpb_s_rho"]["parameters"] if p["name"] == "m_eff")
+    assert (ratio["display_unit"], ratio["display_factor"]) == ("dimensionless", 1.0)

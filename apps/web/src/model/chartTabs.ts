@@ -1,4 +1,8 @@
-import type { BandDiagramResponse, CalcResponse } from "@/api/client";
+import type {
+  BandDiagramResponse,
+  CalcResponse,
+  ModelsResponse,
+} from "@/api/client";
 import type {
   ChartCurve,
   ChartMeasurements,
@@ -174,9 +178,23 @@ const NO_CHART = {
   note: null,
 };
 
+/** How energies that come in K are shown, from the model descriptions, such as in eV. */
+export type EnergyDisplay = ModelsResponse["energy_display"];
+
+/** Until the descriptions come, in K as the core has them. No chart has a mode before then. */
+export const ENERGY_IN_K: EnergyDisplay = { unit: "K", per_kelvin: 1 };
+
 type ViewState = Pick<SessionState, "data" | "interpolation"> & {
   bandGapK?: number | undefined;
+  energy: EnergyDisplay;
 };
+
+function energies(
+  values: readonly (number | null)[],
+  energy: EnergyDisplay,
+): (number | null)[] {
+  return scaled(values, energy.per_kelvin);
+}
 
 function curveOf(
   result: CalcResponse | null,
@@ -260,7 +278,7 @@ function chemicalPotentialView(
   derived: CalcResponse | null,
 ): ChartTabView {
   const base = {
-    yAxisTitle: text.axes.chemicalPotential,
+    yAxisTitle: text.axes.chemicalPotential(state.energy.unit),
     description: text.chemicalPotentialDescription,
   };
   if (derivedKind("chemical_potential", mode) === null) {
@@ -276,13 +294,21 @@ function chemicalPotentialView(
     ...NO_CHART,
     ...base,
     empty: null,
-    curves: curveOf(derived, CHEMICAL_POTENTIAL, 1, text.chemicalPotential),
+    curves: curveOf(
+      derived,
+      CHEMICAL_POTENTIAL,
+      state.energy.per_kelvin,
+      text.chemicalPotential,
+    ),
     referenceLines:
       bandGapK === undefined
         ? [{ value: 0, label: text.bandEdge }]
         : [
             { value: 0, label: text.band1Top },
-            { value: bandGapK, label: text.band2Bottom },
+            {
+              value: bandGapK * state.energy.per_kelvin,
+              label: text.band2Bottom,
+            },
           ],
   };
 }
@@ -465,6 +491,7 @@ function bandsView(
 function bandDiagramView(
   mode: FitModeDescription | undefined,
   diagram: BandDiagramResponse | null,
+  energy: EnergyDisplay,
 ): ChartTabView {
   const { fit } = STRINGS;
   const labels: Record<string, string> = text.diagramCurves;
@@ -473,7 +500,7 @@ function bandDiagramView(
   const last = diagram?.wavevector.at(-1);
   return {
     ...NO_CHART,
-    yAxisTitle: text.axes.energy,
+    yAxisTitle: text.axes.energy(energy.unit),
     description: text.diagramDescription,
     empty: null,
     xAxis: {
@@ -485,7 +512,7 @@ function bandDiagramView(
       id: name,
       label: labels[name] ?? name,
       temperatureK: diagram?.wavevector ?? [],
-      values,
+      values: energies(values, energy),
       dashed: name === "fermi_energy_k",
     })),
     note:
@@ -514,7 +541,7 @@ export function chartTabView(
 ): ChartTabView {
   switch (tab) {
     case "band_diagram":
-      return bandDiagramView(mode, diagram);
+      return bandDiagramView(mode, diagram, state.energy);
     case "conductivity":
       return conductivityView(mode, state, measured, derived);
     case "thermal_conductivity":

@@ -5,7 +5,7 @@ import {
   type FitBounds,
   parameterSymbol,
   parameterValues,
-  shortened,
+  shownValue,
   visibleParameters,
 } from "@/model/parameters";
 import type { FitModeDescription, ModelDescription } from "@/model/selection";
@@ -104,22 +104,22 @@ export function parameterRows(
       ? fit.result.at_bounds
       : [];
   return visibleParameters(mode, scattering).map((parameter) => {
-    const { name, role, unit } = parameter;
+    const { name, role, display_unit: unit } = parameter;
     const bounds = custom?.[name] ?? parameter.fit_bounds;
     const value = values[name] ?? parameter.core_range.default;
     const inDisplay = (core: number) => coreToDisplay(parameter, core);
     return {
       name,
       symbol: parameterSymbol(name),
-      value: withUnit(shortened(inDisplay(value)), unit),
+      value: withUnit(shownValue(parameter, inDisplay(value)), unit),
       bounds:
         role === "fixed"
           ? parameterText.fixed
           : bounds === undefined || bounds === null
             ? text.noBounds
             : text.boundsRange(
-                formatNumber(shortened(inDisplay(bounds.lower))),
-                formatNumber(shortened(inDisplay(bounds.upper))),
+                formatNumber(shownValue(parameter, inDisplay(bounds.lower))),
+                formatNumber(shownValue(parameter, inDisplay(bounds.upper))),
               ),
       atBound: atBounds.includes(name),
     };

@@ -18,7 +18,12 @@ import {
 import { noticeText } from "@/data/DemoNotice";
 import { formatNumber } from "@/lib/numbers";
 import { failureText } from "@/model/ChartGrid";
-import { bandGapForTab, chartTabView, derivedKind } from "@/model/chartTabs";
+import {
+  bandGapForTab,
+  chartTabView,
+  derivedKind,
+  ENERGY_IN_K,
+} from "@/model/chartTabs";
 import { fitLog, type LogStep } from "@/model/fitLog";
 import { fitBadge } from "@/model/fitStatus";
 import {
@@ -169,6 +174,8 @@ function MoreGraph({
   const interpolation = useSessionStore((state) => state.interpolation);
   const parameters = useSessionStore((state) => state.parameters);
   const bandGapK = bandGapForTab(tab, mode, parameters);
+  const { data: models } = useQuery(modelsQuery);
+  const energy = models?.energy_display ?? ENERGY_IN_K;
   const titleId = useId();
   // The total of S of the bands, and the points of σ, come with the measured curves.
   const total =
@@ -179,11 +186,11 @@ function MoreGraph({
       chartTabView(
         tab,
         mode,
-        { data, interpolation, bandGapK },
+        { data, interpolation, bandGapK, energy },
         total,
         derived.result,
       ),
-    [tab, mode, data, interpolation, bandGapK, total, derived.result],
+    [tab, mode, data, interpolation, bandGapK, energy, total, derived.result],
   );
   // Each flag of the curves it draws: its own kind, and for S by band also the total of S, which
   // comes with the measured curves and their flags of other quantities.

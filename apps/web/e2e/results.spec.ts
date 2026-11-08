@@ -157,7 +157,7 @@ test("a fit sums up: status, KPIs and each parameter with its status", async ({
   await expect(row(page, "m₂/m₁")).toContainText("band mass ratio");
   await expect(row(page, "m₂/m₁")).toContainText("0,5");
   await expect(row(page, "m₂/m₁")).toContainText("fitted");
-  await expect(row(page, "E_g")).toContainText("900 K");
+  await expect(row(page, "E_g")).toContainText("0,08 eV");
   await expect(row(page, "N₁, N₂")).toContainText("1, 1");
   await expect(row(page, "N₁, N₂")).toContainText("fixed");
   await expect(row(page, "m₁")).toContainText("absolute mass");
@@ -562,7 +562,7 @@ test("Parameters to file has each value, its unit and how it was found", async (
   const lines = file.split("\n");
   expect(lines).toContain("Parameter\tValue\tStatus");
   expect(lines).toContain(
-    "E_g (position of band 2) [K]\t900\tfitted, at bound",
+    "E_g (position of band 2) [eV]\t0.077555999358\tfitted, at bound",
   );
   expect(lines).toContain("N1, N2 (band degeneracies)\t1, 1\tfixed");
 
@@ -570,7 +570,7 @@ test("Parameters to file has each value, its unit and how it was found", async (
     await inFormat(page, "CSV, one table", "Parameters to file")
   ).toString("utf8");
   expect(csv.split("\n")).toContain(
-    'band_gap,E_g,position of band 2,K,900,"fitted, at bound"',
+    'band_gap,E_g,position of band 2,eV,0.077555999358,"fitted, at bound"',
   );
 });
 
@@ -603,6 +603,32 @@ test("each additional graph downloads its own curves and flags", async ({
     "Total Seebeck coefficient [V/K]",
     "Seebeck coefficient of band 1 [V/K]",
     "Seebeck coefficient of band 2 [V/K]",
+  ]);
+});
+
+test("μ downloads in eV, as the screen shows it", async ({ page }) => {
+  await openFit(page, serveCurves);
+  await finishWith(page);
+  await toResults(page);
+  await expect(
+    graph(page, "Chemical potential μ(T)")
+      .locator(".scatterlayer .trace path.js-line")
+      .first(),
+  ).toBeVisible();
+
+  const file = await downloaded(
+    page,
+    "Download the data of Chemical potential μ(T)",
+  );
+  const rows = file
+    .split("\n")
+    .filter((line) => line !== "" && !line.startsWith("#"));
+  // From -100, 0 and 100 K.
+  expect(rows[0]).toBe("Temperature [K]\tChemical potential [eV]");
+  expect(rows.slice(1).map((row) => row.split("\t")[1])).toEqual([
+    "-0.008617333262",
+    "0",
+    "0.008617333262",
   ]);
 });
 
@@ -728,7 +754,7 @@ test("during a fit, the curve before it still comes from its start, and the file
   });
   await expect(
     page.getByRole("textbox", { name: "E_g", exact: true }),
-  ).toHaveValue("950");
+  ).toHaveValue("0,08");
 
   const lines = (await inFormat(page, "Text")).toString("utf8").split("\n");
   expect(lines).toContain(

@@ -17,6 +17,11 @@ from seeband_core.model_interface import (
     UnavailableCurve,
     ValueRange,
 )
+from seeband_core.model_scales import (
+    BOLTZMANN_EV_PER_K,
+    ENERGY_DISPLAY_STEP_EV,
+    ENERGY_DISPLAY_UNIT,
+)
 
 MODEL_NAMES = {"SPB": "Single parabolic band", "DPB": "Double parabolic band"}
 MODELS_WITH_INITIAL_GUESS = ("SPB", "DPB")
@@ -109,6 +114,14 @@ RELATIVE_CURVE_KINDS: dict[str, tuple[CurveKind, ...]] = {
 }
 
 
+# Every parameter in K is an energy, which a user reads in eV. Temperatures are no parameters.
+_ENERGY_DISPLAY: dict[str, Any] = {
+    "display_unit": ENERGY_DISPLAY_UNIT,
+    "display_factor": BOLTZMANN_EV_PER_K,
+    "display_step": ENERGY_DISPLAY_STEP_EV,
+}
+
+
 def _parameter(entry: dict[str, Any]) -> ParameterSpec:
     slider = entry["slider"]
     # The web bounds replace the desktop's where the table records a deviation, such as D1.
@@ -125,6 +138,7 @@ def _parameter(entry: dict[str, Any]) -> ParameterSpec:
         calc_scale=entry["calc_scale"],
         fit_bounds=Bounds(bounds["lower"], bounds["upper"]) if bounds else None,
         bounds_editable=entry.get("editable", False),
+        **(_ENERGY_DISPLAY if entry["unit"] == "K" else {}),
     )
 
 

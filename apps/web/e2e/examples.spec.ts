@@ -204,7 +204,7 @@ test("the real descriptions fill the parameters", async ({ page }) => {
 
   await expect(
     page.getByRole("textbox", { name: "E_F", exact: true }),
-  ).toHaveValue("-100");
+  ).toHaveValue("-0,01");
   await page.getByRole("radio", { name: "SPB" }).click();
   await expect(
     page.getByRole("slider", { name: "m", exact: true }),
@@ -272,10 +272,11 @@ test("the charts draw real curves through the real API", async ({ page }) => {
   await expect(page.getByRole("alert")).toHaveCount(0);
 });
 
-// From `packages/seeband_core/tests/fixtures/neural_net_references.json`, recorded on the desktop.
+// From `packages/seeband_core/tests/fixtures/neural_net_references.json`, recorded on the desktop:
+// E_g 554 K and 1947 K, E_F 1170 K and -350 K, as eV shows them.
 for (const [example, mass, gap, fermi] of [
-  ["01_Fe2VAl09Si01", "1,57", "554", "1170"],
-  ["03_AWI32_SI", "1,22", "1947", "-350"],
+  ["01_Fe2VAl09Si01", "1,57", "0,05", "0,1"],
+  ["03_AWI32_SI", "1,22", "0,17", "-0,03"],
 ] as const) {
   test(`the net's start values for ${example} match the desktop`, async ({
     page,
@@ -305,7 +306,7 @@ test("02_SiP has no net for its span, and keeps the desktop's values", async ({
   await expect(page.getByText(/No neural net covers/)).toBeVisible();
   await expect(
     page.getByRole("textbox", { name: "E_g", exact: true }),
-  ).toHaveValue("1000");
+  ).toHaveValue("0,09");
 });
 
 test("the real API draws the sketch of the bands, and it follows the values", async ({
@@ -322,14 +323,15 @@ test("the real API draws the sketch of the bands, and it follows the values", as
 
   const answered = page.waitForResponse("**/api/band-diagram");
   const field = page.getByRole("textbox", { name: "E_g", exact: true });
-  await field.fill("500");
+  // 0.04 eV, about 464 K.
+  await field.fill("0,04");
   await field.blur();
   const response = await answered;
   const body = (await response.json()) as {
     curves: Record<string, number[]>;
   };
   expect(response.status()).toBe(200);
-  expect(Math.min(...(body.curves.band_2_energy_k ?? []))).toBeGreaterThan(500);
+  expect(Math.min(...(body.curves.band_2_energy_k ?? []))).toBeGreaterThan(464);
 });
 
 // One after another, as the API limits the fits of a client, and all tests here are one client.
@@ -352,20 +354,20 @@ test.describe("real fits", () => {
       page.locator('[data-slot="badge"]').filter({ hasText: text });
 
     // The net has set its start values from S, as on the desktop.
-    await expect(gap).toHaveValue("554");
+    await expect(gap).toHaveValue("0,05");
 
     // A real fit takes about a second here, so a Stop can only come right at its start.
     await run.click();
     await page.getByRole("button", { name: "Stop" }).click();
     await expect(badge(/^Stopped/)).toBeVisible();
-    await expect(gap).toHaveValue("554");
+    await expect(gap).toHaveValue("0,05");
 
     // S + ρ is iterative, so its result counts them.
     await run.click();
     await expect(badge(/^Converged in \d+ iter\.$/)).toBeVisible({
       timeout: 30_000,
     });
-    await expect(gap).not.toHaveValue("1000");
+    await expect(gap).not.toHaveValue("0,09");
     await expect(page.getByRole("alert")).toHaveCount(0);
     // The result panel counts them, and shows the values the fit reached.
     const iterations = page
@@ -375,19 +377,19 @@ test.describe("real fits", () => {
     await expect(iterations).toContainText(/^Iterations\d+limit 1000$/);
     await expect(
       parameters.getByRole("row").filter({ hasText: /^E_g/ }),
-    ).toContainText("-3000 … 3000");
+    ).toContainText("-0,26 … 0,26");
 
     await page.getByRole("button", { name: "Reset" }).click();
-    await expect(gap).toHaveValue("1000");
+    await expect(gap).toHaveValue("0,09");
 
     // S is single-pass, so it ends with no counter, on values other than its start.
     await page.getByRole("radio", { name: "S", exact: true }).click();
-    await expect(gap).toHaveValue("554");
+    await expect(gap).toHaveValue("0,05");
     await run.click();
     await expect(badge(/^Converged$/)).toBeVisible({
       timeout: 30_000,
     });
-    await expect(gap).not.toHaveValue("554");
+    await expect(gap).not.toHaveValue("0,05");
     await expect(page.getByRole("alert")).toHaveCount(0);
     await expect(iterations).toHaveCount(0);
 
@@ -511,25 +513,25 @@ test.describe("real fits", () => {
     await expect(page.getByText(/^Synthetic data/)).toBeVisible();
     await page.getByRole("radio", { name: "S", exact: true }).click();
     const gap = page.getByRole("textbox", { name: "E_g", exact: true });
-    await gap.fill("1000");
+    await gap.fill("0,09");
     await gap.blur();
     await page.getByRole("button", { name: "Edit bounds" }).click();
 
-    // The data were made with a gap of 800 K, so a fit is held off from there.
-    await page.getByRole("textbox", { name: "E_g, lower bound" }).fill("900");
-    await page.getByRole("textbox", { name: "E_g, upper bound" }).fill("1100");
+    // The data were made with a gap of 800 K, so a fit is held off from there: 0.08 eV is about 928 K.
+    await page.getByRole("textbox", { name: "E_g, lower bound" }).fill("0,08");
+    await page.getByRole("textbox", { name: "E_g, upper bound" }).fill("0,1");
     await page.getByRole("button", { name: "Done" }).click();
     await page.getByRole("button", { name: "Run fit" }).click();
     await expect(
       page.locator('[data-slot="badge"]').filter({ hasText: /^Converged/ }),
     ).toBeVisible({ timeout: 30_000 });
 
-    await expect(gap).toHaveValue("900");
+    await expect(gap).toHaveValue("0,08");
     const row = page
       .getByRole("table", { name: "Parameters in use" })
       .getByRole("row")
       .filter({ hasText: /^E_g/ });
-    await expect(row).toContainText("900 … 1100");
+    await expect(row).toContainText("0,08 … 0,1");
     await expect(row.getByText("at bound")).toBeVisible();
   });
 });

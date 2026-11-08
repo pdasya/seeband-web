@@ -3,6 +3,11 @@ import { expect, test, type Page, type Route } from "@playwright/test";
 import { chart, show } from "./support/fitScreen";
 import { serveModels } from "./support/models";
 
+// Energies come in K and show in eV.
+const EV_PER_K = 8.617333262e-5;
+const inEv = (values: (number | null)[]) =>
+  values.map((value) => (value === null ? null : value * EV_PER_K));
+
 const answerFor = (curves: Record<string, (number | null)[]>) => ({
   wavevector: [-40, 0, 40],
   curves,
@@ -78,6 +83,20 @@ test("the last chart shows it from the start, with no data, in one request", asy
   expect(bodies[0]?.parameters.band_gap).toBe(1000);
 });
 
+test("E_g over the chart shows in eV, as its field does, and follows it", async ({
+  page,
+}) => {
+  await open(page);
+
+  // 1000 K by default.
+  await expect(diagram(page).getByText("E_g = 0,09 eV")).toBeVisible();
+  await expect(field(page, "E_g")).toHaveValue("0,09");
+  await field(page, "E_g").fill("0,123");
+  await field(page, "E_g").blur();
+  await expect(diagram(page).getByText("E_g = 0,12 eV")).toBeVisible();
+  await expect(field(page, "E_g")).toHaveValue("0,12");
+});
+
 test("it draws each band and E_F, with a k axis with no ticks or range shading", async ({
   page,
 }) => {
@@ -86,7 +105,7 @@ test("it draws each band and E_F, with a k axis with no ticks or range shading",
   await expect(traces(page)).toHaveCount(3);
   await expect(legend(page)).toHaveText(["Band 1", "Band 2", "E_F"]);
   await expect(diagram(page).locator(".xtitle")).toHaveText("k");
-  await expect(diagram(page).locator(".ytitle")).toHaveText("E, K");
+  await expect(diagram(page).locator(".ytitle")).toHaveText("E, eV");
   await expect(diagram(page).locator(".xtick text")).toHaveCount(0);
   await expect(diagram(page).locator(".shapelayer path")).toHaveCount(0);
 });
@@ -117,9 +136,11 @@ test("it follows the parameters and the degeneracies", async ({ page }) => {
   const bodies = await open(page);
   await expect(traces(page)).toHaveCount(3);
 
-  await field(page, "E_g").fill("500");
+  await field(page, "E_g").fill("0,05");
   await field(page, "E_g").blur();
-  await expect.poll(() => bodies.at(-1)?.parameters.band_gap).toBe(500);
+  await expect
+    .poll(() => bodies.at(-1)?.parameters.band_gap)
+    .toBe(580.225906087);
 
   await page.getByLabel("N₂").fill("2");
   await page.getByLabel("N₂").blur();
@@ -156,7 +177,7 @@ test("it stops asking when no chart shows it, and asks again when one does", asy
   await show(page, "Seebeck S(T)", 4);
   const asked = bodies.length;
 
-  await field(page, "E_g").fill("500");
+  await field(page, "E_g").fill("0,05");
   await field(page, "E_g").blur();
   await page.waitForTimeout(500);
 
@@ -168,7 +189,7 @@ test("it stops asking when no chart shows it, and asks again when one does", asy
   await expect(traces(page)).toHaveCount(3);
   await page.waitForTimeout(400);
   expect(bodies).toHaveLength(asked + 1);
-  expect(bodies.at(-1)?.parameters.band_gap).toBe(500);
+  expect(bodies.at(-1)?.parameters.band_gap).toBe(580.225906087);
 });
 
 test("it says what is known to be wrong with it", async ({ page }) => {
@@ -204,9 +225,9 @@ test("a band with no finite values leaves a gap, and the rest stay", async ({
       return plot.data.map(({ y }) => y);
     });
   expect(ys).toEqual([
-    [-1954, 0, -1954],
+    inEv([-1954, 0, -1954]),
     [null, null, null],
-    [-100, -100, -100],
+    inEv([-100, -100, -100]),
   ]);
 });
 
@@ -239,7 +260,7 @@ test("a failure says so, and the last sketch stays", async ({ page }) => {
   await expect(traces(page)).toHaveCount(3);
 
   failing = true;
-  await field(page, "E_g").fill("500");
+  await field(page, "E_g").fill("0,05");
   await field(page, "E_g").blur();
 
   await expect(diagram(page).getByRole("alert")).toContainText(
@@ -316,7 +337,7 @@ test("a disabled mode asks for nothing", async ({ page }) => {
     state.setSelection({ model: "spb", fitMode: "spb_s_rho_rh" });
   });
   const asked = bodies.length;
-  await field(page, "E_F").fill("500");
+  await field(page, "E_F").fill("0,05");
   await field(page, "E_F").blur();
   await page.waitForTimeout(400);
 
