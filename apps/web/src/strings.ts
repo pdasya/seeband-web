@@ -613,6 +613,28 @@ export const STRINGS = {
         `Not in this ZIP: ${file}, as its curve could not be asked for`,
     },
   },
+  report: {
+    button: "Report (PDF)",
+    preparing: "Preparing…",
+    failed: "The report could not be prepared. Try again.",
+    title: "SeeBand Web report",
+    made: (date: string, app: string, api: string | null) =>
+      api === null
+        ? `Made ${date} with SeeBand Web ${app}`
+        : `Made ${date} with SeeBand Web ${app}, API ${api}`,
+    data: "Data",
+    file: (
+      symbol: string,
+      name: string,
+      points: number,
+      minK: number,
+      maxK: number,
+    ) =>
+      `${symbol}: ${name}, ${String(points)} points, ${String(minK)}–${String(maxK)} K`,
+    charts: "Charts",
+    chartAlt: (title: string) => `Chart: ${title}`,
+    legend: (labels: readonly string[]) => labels.join(" · "),
+  },
   results: {
     pageTitle: "Results",
     title: "Results",
