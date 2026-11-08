@@ -4,6 +4,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 
 import numpy as np
+from seeband_core.initial_guess import single_band_guess
 from seeband_core.model_catalog import registry
 from seeband_core.neural_nets import (
     NeuralNetGuess,
@@ -42,5 +43,15 @@ def guess(model_id: str, temperature_k: np.ndarray, seebeck_v_per_k: np.ndarray)
             unsorted_temperature,
             seebeck_fit_is_underdetermined(temperature_k, seebeck_v_per_k),
         )
+    except (ArithmeticError, ValueError) as error:
+        raise CalculationFailed(type(error).__name__) from error
+
+
+def numerical_guess(
+    model_id: str, temperature_k: np.ndarray, seebeck_v_per_k: np.ndarray
+) -> dict[str, float]:
+    """Keep numerical failures within the public calculation-error contract."""
+    try:
+        return single_band_guess(model_id, temperature_k, seebeck_v_per_k)
     except (ArithmeticError, ValueError) as error:
         raise CalculationFailed(type(error).__name__) from error

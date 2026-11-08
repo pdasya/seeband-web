@@ -17,10 +17,12 @@ export function guessBadge(
   return outcome?.kind === "applied" && fit.status === "idle"
     ? {
         status: "suggested",
-        detail: text.guessNet(
-          formatNumber(outcome.netRange.min_temperature_k),
-          formatNumber(outcome.netRange.max_temperature_k),
-        ),
+        detail: outcome.netRange
+          ? text.guessNet(
+              formatNumber(outcome.netRange.min_temperature_k),
+              formatNumber(outcome.netRange.max_temperature_k),
+            )
+          : text.guessNumericalBadge,
       }
     : null;
 }
@@ -36,7 +38,7 @@ export function guessMessages(outcome: GuessOutcome | null): string[] {
   });
   switch (outcome.kind) {
     case "applied":
-      return warnings;
+      return outcome.netRange ? warnings : [text.guessNumerical, ...warnings];
     case "no_net":
       return [
         text.guessNoNet(

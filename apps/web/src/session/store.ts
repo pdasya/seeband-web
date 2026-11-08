@@ -175,7 +175,7 @@ export type NetRange = Schemas["NetRange"];
 
 /** How the last initial guess ended. Only `applied` changed any value. */
 export type GuessOutcome =
-  | { kind: "applied"; netRange: NetRange; warnings: GuessWarnings }
+  | { kind: "applied"; netRange?: NetRange; warnings: GuessWarnings }
   | {
       kind: "no_net";
       firstK: number;
@@ -662,7 +662,7 @@ export const createSessionStore = () =>
             fitStartNet:
               guess?.kind === "applied" &&
               state.guess?.model === state.selection.model
-                ? guess.netRange
+                ? (guess.netRange ?? null)
                 : null,
           };
         });

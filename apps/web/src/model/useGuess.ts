@@ -11,14 +11,16 @@ const { fit: text } = STRINGS;
 /** The Initial guess button, and the guess that each new file of S starts, as on the desktop. */
 export function useGuess() {
   const { data: models } = useQuery(modelsQuery);
-  const model = guessModel(models?.models);
   const measurement = useSessionStore(
     (state) => state.data.seebeck?.measurement,
   );
   const selected = useSessionStore((state) => state.selection.model);
+  const model = guessModel(models?.models, selected ?? "");
   const active = useSessionStore((state) => isFitActive(state.fit));
   const pending = useSessionStore((state) => state.guessPending);
-  const guess = useSessionStore(currentGuess);
+  const guess = useSessionStore((state) =>
+    state.guess?.model === selected ? currentGuess(state) : null,
+  );
 
   useEffect(() => {
     // Without the descriptions it cannot run yet, so this load still counts when they come.

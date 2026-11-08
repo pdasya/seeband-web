@@ -42,7 +42,19 @@ const GUESS = {
 async function open(
   page: Page,
   answer: (route: Route, index: number) => Promise<void> = (route) =>
-    route.fulfill({ json: GUESS }),
+    route.fulfill({
+      json:
+        route.request().postDataJSON().model === "dpb"
+          ? GUESS
+          : {
+              status: "numerical_guess",
+              start_values: {
+                band_mass: -1,
+                fermi_energy: -700,
+              },
+              warnings: [],
+            },
+    }),
 ) {
   await serveModels(page);
   const bodies: GuessBody[] = [];
@@ -135,18 +147,20 @@ test("the other parameters keep their values", async ({ page }) => {
   await expect(field(page, "A")).toHaveValue("50000");
 });
 
-test("loading while SPB is open still sets the DPB values", async ({
+test("loading while SPB is open estimates SPB and preserves DPB values", async ({
   page,
 }) => {
-  await open(page);
+  const bodies = await open(page);
   await choose(page, "SPB");
-
   await load(page);
-  await expect(button(page)).toBeDisabled();
-  await expect(field(page, "E_F")).toHaveValue("100");
-
+  await expect(button(page)).toBeEnabled();
+  await expect(field(page, "E_F")).toHaveValue("-700");
+  expect(bodies[0]?.model).toBe("spb");
+  await expect(
+    badge(page, "Initial guess · numerical S(T) estimate"),
+  ).toBeVisible();
   await choose(page, "DPB");
-  await expect(field(page, "E_g")).toHaveValue("554");
+  await expect(field(page, "E_g")).not.toHaveValue("554");
 });
 
 test("the button is for a model with nets and S data, and says so", async ({
@@ -158,12 +172,15 @@ test("the button is for a model with nets and S data, and says so", async ({
   await expect(button(page)).toHaveAttribute("title", /Load S data/);
 
   await choose(page, "SPB");
-  await expect(button(page)).toHaveAttribute("title", /DPB only/);
+  await expect(button(page)).toHaveAttribute("title", /Load S data/);
   await choose(page, "DPB");
 
   await load(page);
   await expect(button(page)).toBeEnabled();
-  await expect(button(page)).toHaveAttribute("title", /proposes/);
+  await expect(button(page)).toHaveAttribute(
+    "title",
+    /Estimate band parameters/,
+  );
 });
 
 test("the button applies the net again after edits", async ({ page }) => {
@@ -333,7 +350,10 @@ test("an answer that comes while another model is open waits for it", async ({
   const answered = page.waitForResponse("**/api/guess");
   gate.release();
   await answered;
-  await expect(button(page)).toHaveAttribute("title", /DPB only/);
+  await expect(button(page)).toHaveAttribute(
+    "title",
+    /Estimate band parameters/,
+  );
   await expect(field(page, "E_F")).toHaveValue("100");
   await expect(badge(page, "Initial guess")).toHaveCount(0);
 

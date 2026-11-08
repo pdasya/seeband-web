@@ -10,7 +10,6 @@ import pytest
 from fastapi.testclient import TestClient
 from seeband_api import guess_worker
 from seeband_api.calc_worker import CalculationFailed
-from seeband_api.errors import ERROR_EXAMPLES
 from seeband_api.guess import REQUEST_EXAMPLE, RESPONSE_EXAMPLES
 from seeband_api.main import create_app
 from seeband_api.settings import Settings
@@ -400,32 +399,11 @@ def test_start_values_go_straight_into_a_calculation(client: TestClient, fit_mod
     assert response.status_code == 200
 
 
-def test_spb_is_refused_with_a_clear_error(client: TestClient) -> None:
-    response = client.post(
-        "/api/guess",
-        json={"model": "spb", "temperature_k": SPANNING_30_ROWS, "seebeck_v_per_k": [1e-4] * 30},
-    )
-
-    assert response.status_code == 422
-    assert response.json() == {
-        "code": "guess_unavailable",
-        "message": "This model has no neural net guess",
-        "details": [
-            {
-                "location": ["body", "model"],
-                "code": "no_neural_net",
-                "message": "See has_initial_guess in GET /api/models",
-            }
-        ],
-    }
-    assert response.json() == ERROR_EXAMPLES["guess_unavailable"]
-
-
 def test_which_models_have_a_guess_is_in_their_descriptions(client: TestClient) -> None:
     models = client.get("/api/models").json()["models"]
 
     assert {model["id"]: model["has_initial_guess"] for model in models} == {
-        "spb": False,
+        "spb": True,
         "dpb": True,
     }
 
@@ -611,7 +589,7 @@ def test_not_finite_example_has_the_shape_of_a_real_result(client: TestClient) -
     assert body == RESPONSE_EXAMPLES["not_finite"]
 
 
-def test_contract_lists_the_route_with_its_three_answers() -> None:
+def test_contract_lists_neural_and_numerical_answers() -> None:
     contract = Path(__file__).parents[3] / "packages" / "api-client" / "openapi.json"
 
     operation = json.loads(contract.read_text(encoding="utf-8"))["paths"]["/api/guess"]["post"]
@@ -619,8 +597,41 @@ def test_contract_lists_the_route_with_its_three_answers() -> None:
     assert operation["operationId"] == "post_guess"
     media = operation["responses"]["200"]["content"]["application/json"]
     assert set(media["examples"]) == {"guess", "no_net", "not_finite"}
-    assert set(media["schema"]["discriminator"]["mapping"]) == {"guess", "no_net", "not_finite"}
+    assert set(media["schema"]["discriminator"]["mapping"]) == {
+        "guess",
+        "numerical_guess",
+        "no_net",
+        "not_finite",
+    }
     assert (
         "guess_unavailable"
         in (operation["responses"]["default"]["content"]["application/json"]["examples"])
     )
+
+
+def test_spb_numerical_guess_is_available_without_a_network_range(client):
+    from seeband_core import math_module
+
+    t = np.linspace(310.0, 450.0, 12)
+    s = math_module.spb_see_vs_temp(t, -700.0, -1.0)
+    response = client.post(
+        "/api/guess",
+        json={"model": "spb", "temperature_k": t.tolist(), "seebeck_v_per_k": s.tolist()},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "numerical_guess"
+    assert body["start_values"]["fermi_energy"] == pytest.approx(-700.0, abs=1)
+
+
+def test_invalid_spb_signal_is_a_controlled_error(client):
+    response = client.post(
+        "/api/guess",
+        json={
+            "model": "spb",
+            "temperature_k": [100.0, 200.0, 300.0],
+            "seebeck_v_per_k": [-1e-4, 0.0, 1e-4],
+        },
+    )
+    assert response.status_code == 422
+    assert response.json()["code"] == "calculation_failed"

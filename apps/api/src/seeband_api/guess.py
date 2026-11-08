@@ -1,4 +1,4 @@
-"""`POST /api/guess`: start values from the neural net for measured Seebeck data.
+"""`POST /api/guess`: DPB neural or SPB numerical Seebeck start values.
 
 No net that fits the data is a normal answer, not an error, so that a client can say why and keep
 its current values. It keeps no state, and the examples are hand-rounded so that the contract does
@@ -16,7 +16,7 @@ from seeband_core.neural_nets import NET_RANGES_K, NoNeuralNet
 from seeband_api.calc_pool import CalcPoolDep
 from seeband_api.calc_worker import CalculationFailed
 from seeband_api.errors import ApiError, ErrorDetail
-from seeband_api.guess_worker import GuessOutcome, guess
+from seeband_api.guess_worker import GuessOutcome, guess, numerical_guess
 from seeband_api.request_checks import (
     FiniteFloat,
     MaxPointsDep,
@@ -128,6 +128,14 @@ class GuessFound(BaseModel):
     warnings: list[GuessWarning]
 
 
+class NumericalGuessFound(BaseModel):
+    """Seebeck-only estimate; mass magnitude remains a reference value."""
+
+    status: Literal["numerical_guess"]
+    start_values: dict[str, float]
+    warnings: list[GuessWarning]
+
+
 class GuessNoNet(BaseModel):
     """No net fits: the first and last rows do not span any of `available_ranges`.
 
@@ -153,7 +161,9 @@ class GuessNotFinite(BaseModel):
     warnings: list[GuessWarning]
 
 
-GuessResponse = Annotated[GuessFound | GuessNoNet | GuessNotFinite, Field(discriminator="status")]
+GuessResponse = Annotated[
+    GuessFound | NumericalGuessFound | GuessNoNet | GuessNotFinite, Field(discriminator="status")
+]
 
 
 def _check_model(model_id: str) -> None:
@@ -249,7 +259,7 @@ def _to_response(outcome: GuessOutcome) -> GuessFound | GuessNoNet | GuessNotFin
 )
 async def post_guess(
     body: GuessRequest, pool: CalcPoolDep, max_points: MaxPointsDep
-) -> GuessFound | GuessNoNet | GuessNotFinite:
+) -> GuessFound | NumericalGuessFound | GuessNoNet | GuessNotFinite:
     _check_model(body.model)
     if len(body.temperature_k) > max_points:
         raise ApiError(
@@ -259,6 +269,14 @@ async def post_guess(
             [too_many_points(max_points, ["temperature_k"])],
         )
     try:
+        if body.model == "spb":
+            values = await pool.run(
+                numerical_guess,
+                body.model,
+                np.array(body.temperature_k),
+                np.array(body.seebeck_v_per_k),
+            )
+            return NumericalGuessFound(status="numerical_guess", start_values=values, warnings=[])
         outcome = await pool.run(
             guess, body.model, np.array(body.temperature_k), np.array(body.seebeck_v_per_k)
         )

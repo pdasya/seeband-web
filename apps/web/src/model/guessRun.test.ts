@@ -168,3 +168,37 @@ describe("runGuess", () => {
     expect(state().guess).toBe(guess);
   });
 });
+
+describe("single-band initial estimates", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  test("selects the requested supported model", () => {
+    const supported = models.map((model) => ({
+      ...model,
+      has_initial_guess: ["spb", "dpb"].includes(model.id),
+    }));
+    expect(guessModel(supported, "spb")?.id).toBe("spb");
+  });
+
+  test("preserves mass magnitude in each mode while applying the carrier sign", async () => {
+    useSessionStore.setState(useSessionStore.getInitialState(), true);
+    const spb = models.find(({ id }) => id === "spb");
+    if (!spb) throw new Error("Missing SPB model fixture");
+    const measurement = rows(1e-4, 2e-4, 3e-4);
+    useSessionStore.setState({
+      data: { seebeck: { measurement } } as never,
+      parameters: { spb_s: { band_mass: 1.7 } },
+    });
+    vi.spyOn(apiClient, "postGuess").mockResolvedValue({
+      status: "numerical_guess",
+      start_values: { band_mass: -1, fermi_energy: -700 },
+      warnings: [],
+    });
+    await runGuess(spb, measurement);
+    expect(useSessionStore.getState().parameters.spb_s?.band_mass).toBe(-1.7);
+    expect(useSessionStore.getState().parameters.spb_s?.fermi_energy).toBe(
+      -700,
+    );
+    expect(currentGuess(useSessionStore.getState())?.kind).toBe("applied");
+  });
+});

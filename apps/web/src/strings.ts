@@ -344,8 +344,12 @@ export const STRINGS = {
     result: "Result",
     panelTitle: "Fit",
     guess: "Initial guess",
-    guessHint: "The neural net proposes m₂/m₁, E_g and E_F from S(T)",
-    guessOnlyWithNets: "The neural net is used for DPB only",
+    guessHint:
+      "Estimate band parameters from S(T); SPB mass magnitude is preserved",
+    guessNumerical:
+      "Estimated from S(T); mass magnitude is preserved. Check the calculated curve before fitting.",
+    guessNumericalBadge: "· numerical S(T) estimate",
+    guessOnlyWithNets: "Initial guess is available for SPB and DPB",
     guessNeedsData: "Load S data to use the neural net",
     guessNet: (minK: string, maxK: string) => `· net ${minK}–${maxK} K`,
     guessNoNet: (firstK: string, lastK: string, available: string) =>

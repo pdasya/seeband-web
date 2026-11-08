@@ -259,7 +259,7 @@
                           "default_min_temperature_k": 50.0,
                           "default_max_temperature_k": 800.0,
                           "default_curve_points": 50,
-                          "has_initial_guess": false,
+                          "has_initial_guess": true,
                           "fit_modes": [
                             {
                               "id": "spb_s",
@@ -2537,7 +2537,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "example": "\"d32918b8210076f5d9c01f575c7b7905\""
+                "example": "\"15255c5ea631eab1d366be31ee47912d\""
               }
             }
           },
@@ -3689,6 +3689,9 @@
                       "$ref": "#/components/schemas/GuessFound"
                     },
                     {
+                      "$ref": "#/components/schemas/NumericalGuessFound"
+                    },
+                    {
                       "$ref": "#/components/schemas/GuessNoNet"
                     },
                     {
@@ -3700,6 +3703,7 @@
                     "propertyName": "status",
                     "mapping": {
                       "guess": "#/components/schemas/GuessFound",
+                      "numerical_guess": "#/components/schemas/NumericalGuessFound",
                       "no_net": "#/components/schemas/GuessNoNet",
                       "not_finite": "#/components/schemas/GuessNotFinite"
                     }
@@ -6725,6 +6729,42 @@
         ],
         "title": "NetRange",
         "description": "The temperature span a net needs, and the range of its input."
+      },
+      "NumericalGuessFound": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "numerical_guess",
+            "title": "Status"
+          },
+          "start_values": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Start Values"
+          },
+          "warnings": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "unsorted_temperature",
+                "underdetermined_fit",
+                "m_eff_rounds_to_zero"
+              ]
+            },
+            "type": "array",
+            "title": "Warnings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "start_values",
+          "warnings"
+        ],
+        "title": "NumericalGuessFound",
+        "description": "Seebeck-only estimate; mass magnitude remains a reference value."
       },
       "ParameterResponse": {
         "properties": {

@@ -13,11 +13,14 @@ function store() {
   return useSessionStore.getState();
 }
 
-/** The model whose nets guess its start values. The API says which has them. */
+/** Return the selected model when the API offers initial estimates for it. */
 export function guessModel(
   models: readonly ModelDescription[] | undefined,
+  selected = "dpb",
 ): ModelDescription | undefined {
-  return models?.find(({ has_initial_guess }) => has_initial_guess);
+  return models?.find(
+    ({ id, has_initial_guess }) => id === selected && has_initial_guess,
+  );
 }
 
 function failure(error: unknown): GuessOutcome {
@@ -75,7 +78,10 @@ export async function runGuess(
     const now = current();
     if (now === null) {
       store().guessDropped();
-    } else if (answer.status === "guess") {
+    } else if (
+      answer.status === "guess" ||
+      answer.status === "numerical_guess"
+    ) {
       if (answer.warnings.includes("m_eff_rounds_to_zero")) {
         store().guessFinished(
           { kind: "needs_mass", warnings: answer.warnings },
@@ -87,15 +93,22 @@ export async function runGuess(
           model.fit_modes.map(({ id, parameters: specs }) => ({
             fitMode: id,
             values: Object.fromEntries(
-              specs.flatMap(({ name }) => {
-                const value = answer.start_values[name];
+              specs.flatMap(({ name, core_range }) => {
+                let value = answer.start_values[name];
+                if (name === "band_mass" && value !== undefined) {
+                  const previous =
+                    parameters[id]?.band_mass ?? core_range.default;
+                  value = Math.sign(value) * (Math.abs(previous) || 1);
+                }
                 return value === undefined ? [] : [[name, value]];
               }),
             ),
           })),
           {
             kind: "applied",
-            netRange: answer.net_range,
+            ...(answer.status === "guess"
+              ? { netRange: answer.net_range }
+              : {}),
             warnings: answer.warnings,
           },
           model.id,

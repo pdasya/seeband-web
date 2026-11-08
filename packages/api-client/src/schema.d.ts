@@ -1050,6 +1050,23 @@ export interface components {
             max_temperature_k: number;
         };
         /**
+         * NumericalGuessFound
+         * @description Seebeck-only estimate; mass magnitude remains a reference value.
+         */
+        NumericalGuessFound: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            status: "numerical_guess";
+            /** Start Values */
+            start_values: {
+                [key: string]: number;
+            };
+            /** Warnings */
+            warnings: ("unsorted_temperature" | "underdetermined_fit" | "m_eff_rounds_to_zero")[];
+        };
+        /**
          * ParameterResponse
          * @description One parameter of a fit mode.
          *
@@ -1238,7 +1255,7 @@ export interface operations {
                 headers: {
                     /** @example no-cache */
                     "Cache-Control"?: string;
-                    /** @example "d32918b8210076f5d9c01f575c7b7905" */
+                    /** @example "15255c5ea631eab1d366be31ee47912d" */
                     ETag?: string;
                     [name: string]: unknown;
                 };
@@ -1415,7 +1432,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["GuessFound"] | components["schemas"]["GuessNoNet"] | components["schemas"]["GuessNotFinite"];
+                    "application/json": components["schemas"]["GuessFound"] | components["schemas"]["NumericalGuessFound"] | components["schemas"]["GuessNoNet"] | components["schemas"]["GuessNotFinite"];
                 };
             };
             /** @description Too many requests from this client, or for the server */

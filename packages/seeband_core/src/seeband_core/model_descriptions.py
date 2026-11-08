@@ -19,7 +19,7 @@ from seeband_core.model_interface import (
 )
 
 MODEL_NAMES = {"SPB": "Single parabolic band", "DPB": "Double parabolic band"}
-MODELS_WITH_INITIAL_GUESS = ("DPB",)
+MODELS_WITH_INITIAL_GUESS = ("SPB", "DPB")
 FIT_MODE_QUANTITIES: dict[str, tuple[Quantity, ...]] = {
     "S": ("seebeck",),
     "S+rho": ("seebeck", "resistivity"),

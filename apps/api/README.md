@@ -28,18 +28,18 @@ uv run python -m seeband_api
 | `SEEBAND_API_FIT_PER_MINUTE`          | `30`            | `POST /api/fit` for one client                                   |
 | `SEEBAND_API_TRUSTED_PROXIES`         | `127.0.0.1,::1` | whose `X-Forwarded-For` to believe. `python -m seeband_api` only |
 
-| Route                    | Purpose                  |
-| ------------------------ | ------------------------ |
-| `GET /api/health`        | status and version       |
-| `GET /api/models`        | model descriptions       |
-| `POST /api/calc`         | curves and RMSE          |
-| `POST /api/band-diagram` | the sketch of E(k)       |
-| `POST /api/parse`        | reading measured data    |
-| `POST /api/guess`        | neural net start values  |
-| `POST /api/fit`          | fitting, as event stream |
-| `GET /api/demo`          | synthetic dataset        |
-| `GET /api/openapi.json`  | the contract             |
-| `GET /api/docs`          | Swagger UI over the same |
+| Route                    | Purpose                     |
+| ------------------------ | --------------------------- |
+| `GET /api/health`        | status and version          |
+| `GET /api/models`        | model descriptions          |
+| `POST /api/calc`         | curves and RMSE             |
+| `POST /api/band-diagram` | the sketch of E(k)          |
+| `POST /api/parse`        | reading measured data       |
+| `POST /api/guess`        | initial parameter estimates |
+| `POST /api/fit`          | fitting, as event stream    |
+| `GET /api/demo`          | synthetic dataset           |
+| `GET /api/openapi.json`  | the contract                |
+| `GET /api/docs`          | Swagger UI over the same    |
 
 ## Limits
 
@@ -67,7 +67,7 @@ These are fixed by the contract instead of a setting: 2000000 characters of `tex
 
 `GET /api/models` returns what a client builds its forms from: models, fit modes, parameters, scales, bounds and known issues. It comes from the model registry in `seeband_core`, so a new model needs no change here. Clients revalidate it: it sends `Cache-Control: no-cache` and an `ETag`, and answers 304 if nothing changed, because a client holding old descriptions could offer a mode that is now disabled.
 
-`has_initial_guess` says that a model has the neural net of `POST /api/guess`, which is DPB only.
+`has_initial_guess` says that `POST /api/guess` provides estimates: numerical search for SPB and a neural network for DPB.
 
 A mode with `disabled: true` must not be offered, and `disabled_by` names the `known_issues` entries that say why. Show their `message_key` through i18n. `meaning` and `name` are English, for a client with no translation. Fields that do not apply are left out, rather than `null`.
 
@@ -193,7 +193,7 @@ Median response time for a 50-point curve, through the app in one process with a
 
 ## Initial guess
 
-`POST /api/guess` takes `model`, `temperature_k` and `seebeck_v_per_k`, and answers with DPB start values from the neural net. For DPB data that fit the contract, it answers 200, apart from the errors listed below, and `status` says which of three answers it is:
+`POST /api/guess` takes `model`, `temperature_k` and `seebeck_v_per_k`, and answers with SPB numerical estimates or DPB start values from the neural net. SPB returns `status: numerical_guess`, `start_values`, and `warnings`; no network range or network prediction applies. For DPB data that fit the contract, it answers 200, apart from the errors listed below, and `status` says which of three answers it is:
 
 | `status`     | Meaning                                                                                                | Holds                                                                       |
 | ------------ | ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
@@ -205,8 +205,10 @@ Median response time for a 50-point curve, through the app in one process with a
 - **`prediction` is the net's own result**, before rounding and limits, in `m_eff`, `band_gap_k` and `fermi_energy_k`. It equals the core's exactly.
 - **`net_range` is the real range of the net that was used.** Show it, rather than a fixed text.
 - **Send every row of the Seebeck data, in V/K.** The desktop reads the whole file, not the fit range, unlike `POST /api/calc`.
-- **SPB gets a 422 `guess_unavailable`**, as only DPB has nets. A client should read `has_initial_guess` in `GET /api/models`, rather than name DPB. An unknown model gets a 422 `invalid_guess`.
+- **Read `has_initial_guess` in `GET /api/models`.** An unknown model gets a 422 `invalid_guess`. SPB needs at least three distinct positive temperatures, a nonzero S signal and no sign reversal; unsupported signals return 422 `calculation_failed`.
 - **`calculation_failed`** is a 422 for a fit that fails. It did not happen in 20000 random requests with extreme finite values, run through the core on one Mac, so it should be rare. `calculation_unavailable` and `calculation_timeout` are as in `POST /api/calc`.
+
+For SPB, `start_values.band_mass` is a signed unit reference, not a measured mass. Clients preserve the existing nonzero mass magnitude in each mode and apply the returned sign (zero is replaced by unit mass). `fermi_energy` is in K. The bounded search uses up to 24 measured points and does not require a network temperature interval.
 
 `warnings` holds codes for a client to show through i18n, as `guess_warning.<code>`. The answer still follows the data:
 
