@@ -76,7 +76,7 @@ export function DataBar() {
       {!open && (
         <section
           aria-label={text.title}
-          className="flex flex-wrap items-center gap-x-3.5 gap-y-2 rounded-xl border bg-card px-3 py-2.5 shadow-card"
+          className="flex flex-wrap items-center gap-x-3.5 gap-y-2 min-h-[58px] rounded-xl border bg-card px-3 py-2.5 shadow-card"
         >
           <span className="flex size-8 flex-none items-center justify-center rounded-md bg-muted">
             <CheckIcon className="size-4" aria-hidden="true" />

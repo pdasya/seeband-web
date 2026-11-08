@@ -1,9 +1,11 @@
+import { ActivityIcon } from "lucide-react";
+
 import { FitActions, FitMessages, FitStatusBadge } from "@/model/FitControls";
 import type { useFitControl } from "@/model/useFitControl";
 import type { useGuess } from "@/model/useGuess";
 import { STRINGS } from "@/strings";
 
-/** The head of the right column: the fit's state, its buttons, and what they say. */
+/** The head of the right column, in one line as the folded data are: the fit's state and its buttons. */
 export function FitPanel({
   control,
   guess,
@@ -12,17 +14,23 @@ export function FitPanel({
   guess: ReturnType<typeof useGuess>;
 }) {
   return (
-    <section className="flex flex-col gap-3 rounded-xl border bg-card p-4 shadow-card">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="m-0 text-base font-semibold tracking-[-0.01em]">
+    <section className="flex flex-wrap items-center gap-x-3.5 gap-y-2 min-h-[58px] rounded-xl border bg-card px-3 py-2.5 shadow-card">
+      <span className="flex size-8 flex-none items-center justify-center rounded-md bg-muted">
+        <ActivityIcon className="size-4" aria-hidden="true" />
+      </span>
+      <div className="flex min-w-0 flex-[0_1_auto] flex-wrap items-center gap-x-2.5 gap-y-1">
+        <h1 className="m-0 text-[13px] font-semibold">
           {STRINGS.fit.panelTitle}
         </h1>
         <FitStatusBadge control={control} guess={guess} />
       </div>
-      <div className="flex flex-wrap gap-2">
+      <div className="ml-auto flex flex-wrap gap-2">
         <FitActions control={control} guess={guess} />
       </div>
-      <FitMessages control={control} guess={guess} />
+      {/* What the buttons say, under them; nothing at all while they say nothing. */}
+      <div className="flex basis-full flex-col gap-2 empty:hidden">
+        <FitMessages control={control} guess={guess} />
+      </div>
     </section>
   );
 }
