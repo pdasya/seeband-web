@@ -32,8 +32,15 @@ export function FitPage() {
           className="flex max-w-full min-w-0 flex-[1_1_420px] flex-col gap-3"
         >
           <FitPanel control={control} guess={guess} />
-          <ParametersPanel />
-          <ModelPanel />
+          {/* Side by side where both fit, one under the other where they do not. */}
+          <div className="flex flex-wrap items-start gap-3">
+            <div className="max-w-full min-w-[320px] flex-[1_1_320px]">
+              <ParametersPanel />
+            </div>
+            <div className="max-w-full min-w-[360px] flex-[1_1_360px]">
+              <ModelPanel />
+            </div>
+          </div>
         </aside>
       </div>
     </>
