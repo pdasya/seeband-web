@@ -6233,6 +6233,7 @@
               "too_few_rows",
               "missing_temperature",
               "non_positive_temperature",
+              "negative_resistivity",
               "repeated_role",
               "preamble_skipped",
               "header_mismatch",

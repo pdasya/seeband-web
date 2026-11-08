@@ -5,6 +5,7 @@ import { DEMO, MODELS, serveModels } from "./support/models";
 const POINTS = String(DEMO.measurements.seebeck?.points);
 
 const PARSED = {
+  headers: ["T", "x"],
   column_count: 2,
   row_count: 2,
   preview: [],

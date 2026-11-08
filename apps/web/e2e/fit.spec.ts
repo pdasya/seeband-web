@@ -4,6 +4,7 @@ import { fakeFit } from "./support/fakeFit";
 import { CALC, serveModels } from "./support/models";
 
 const PARSED = (quantity: string) => ({
+  headers: ["T", "x"],
   column_count: 2,
   row_count: 2,
   preview: [],

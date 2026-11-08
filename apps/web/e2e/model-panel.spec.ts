@@ -13,6 +13,7 @@ async function serveParse(page: Page, bodies: object[]) {
     bodies.push(route.request().postDataJSON() as object);
     return route.fulfill({
       json: {
+        headers: ["T", "x"],
         column_count: 2,
         row_count: 3,
         preview: [],
@@ -134,6 +135,7 @@ test("missing data are named for the mode, and go as data load", async ({
   await page.route("**/api/parse", (route: Route) =>
     route.fulfill({
       json: {
+        headers: ["T", "x"],
         column_count: 2,
         row_count: 3,
         preview: [],
@@ -273,6 +275,7 @@ test("the data panel shows numbers with a comma too", async ({ page }) => {
   await page.route("**/api/parse", (route: Route) =>
     route.fulfill({
       json: {
+        headers: ["T", "x"],
         column_count: 2,
         row_count: 2,
         preview: [],

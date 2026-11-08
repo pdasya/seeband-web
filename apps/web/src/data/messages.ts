@@ -33,6 +33,26 @@ const ABOUT_THE_MAPPING: ReadonlySet<Issue["code"]> = new Set([
   "repeated_role",
 ]);
 
+// A choice can mend these: a negative ρ may be S with its sign, which is common.
+const MENDED_BY_A_CHOICE: ReadonlySet<Issue["code"]> = new Set([
+  ...ABOUT_THE_MAPPING,
+  "negative_resistivity",
+]);
+
+// These describe the file, whatever its columns hold, so they stay after a choice.
+const ABOUT_THE_FILE: ReadonlySet<Issue["code"]> = new Set([
+  "header_mismatch",
+  "preamble_skipped",
+]);
+
+export function errorsAChoiceCanMend(errors: readonly Issue[]): boolean {
+  return errors.every(({ code }) => MENDED_BY_A_CHOICE.has(code));
+}
+
+export function fileWarnings(warnings: readonly Issue[]): Issue[] {
+  return warnings.filter(({ code }) => ABOUT_THE_FILE.has(code));
+}
+
 export function errorsAreAboutTheMapping(errors: readonly Issue[]): boolean {
   return errors.every(({ code }) => ABOUT_THE_MAPPING.has(code));
 }
