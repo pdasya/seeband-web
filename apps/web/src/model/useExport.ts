@@ -28,6 +28,9 @@ import { STRINGS } from "@/strings";
 
 const { export: text } = STRINGS;
 
+// Long enough for a browser to take the file before its address is freed.
+const RELEASE_AFTER_MS = 60_000;
+
 /** Hands the user a file, as a download. */
 export function download(
   name: string,
@@ -38,8 +41,14 @@ export function download(
   const link = document.createElement("a");
   link.href = url;
   link.download = name;
+  link.hidden = true;
+  // In the page, and freed later, as Firefox and Safari can drop a download otherwise.
+  document.body.append(link);
   link.click();
-  URL.revokeObjectURL(url);
+  link.remove();
+  setTimeout(() => {
+    URL.revokeObjectURL(url);
+  }, RELEASE_AFTER_MS);
 }
 
 async function apiVersion(): Promise<string | null> {
