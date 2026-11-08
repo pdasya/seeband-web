@@ -339,7 +339,6 @@ function MissingData({ mode }: { mode: FitModeDescription }) {
       <AlertTitle>
         {`${text.missingTitle} ${missing.map(quantitySymbol).join(", ")}.`}
       </AlertTitle>
-      <AlertDescription>{text.missingText}</AlertDescription>
     </Alert>
   );
 }

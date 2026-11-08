@@ -74,7 +74,6 @@ export const STRINGS = {
     rangeInvalid:
       "The lower bound must be below the upper, and both above 0 K. The last valid range stays in use.",
     missingTitle: "Missing data:",
-    missingText: "Load a file or assign a column to run this fit mode.",
   },
   data: {
     title: "Data",
