@@ -100,7 +100,7 @@ function ParameterControl({
   };
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-1">
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
           <label htmlFor={id} className="text-[13px] font-medium">
@@ -131,7 +131,7 @@ function ParameterControl({
           inputMode={minimum < 0 ? "text" : "decimal"}
           autoComplete="off"
           aria-describedby={invalid ? `${hintId} ${errorId}` : hintId}
-          className="h-8 w-28 flex-none text-right font-mono text-[13px]"
+          className="h-7 w-28 flex-none text-right font-mono text-[13px]"
           aria-invalid={invalid}
           title={formatNumber(displayed)}
           value={draft ?? formatNumber(shortened(displayed))}
@@ -217,7 +217,7 @@ export function ParametersPanel() {
       }
     >
       {mode !== undefined && (
-        <div className="mt-3 flex flex-col gap-[18px]">
+        <div className="mt-2 flex flex-col gap-3">
           {visibleParameters(mode, selection.scattering).map((parameter) => (
             <ParameterControl
               // A new mode or a reset starts its fields again.
