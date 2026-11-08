@@ -763,3 +763,10 @@ describe("the start of a fit", () => {
     expect(state().fitStartNet).toBeNull();
   });
 });
+
+test("a fit keeps the values it started from", () => {
+  state().fitRequested("dpb_s", { m_eff: 1.5, band_gap: 900 });
+  expect(state().fitStartValues).toEqual({ m_eff: 1.5, band_gap: 900 });
+  state().fitRequested("dpb_s");
+  expect(state().fitStartValues).toBeNull();
+});

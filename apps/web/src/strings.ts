@@ -477,6 +477,74 @@ export const STRINGS = {
     moreGraphs: "More graphs",
     openResults: "Open results",
   },
+  export: {
+    data: "Data to file",
+    parameters: "Parameters to file",
+    graph: (graph: string) => `Download the data of ${graph}`,
+    failed:
+      "The file could not be made, as the server did not answer. Try again.",
+    dataFile: "seeband-data.txt",
+    parametersFile: "seeband-parameters.txt",
+    graphFile: (graph: string) => `seeband-${graph}.txt`,
+    header: {
+      app: (app: string, api: string | null) =>
+        api === null ? `SeeBand Web ${app}` : `SeeBand Web ${app}, API ${api}`,
+      date: (date: string) => `Exported ${date}`,
+      demo: "Demo data: synthetic, made with the DPB model and noise. Not a measurement.",
+      model: (model: string, mode: string) =>
+        `Model ${model}, fit mode ${mode}`,
+      scattering: (scattering: string) => `Scattering ${scattering}`,
+      range: (minK: string, maxK: string) => `Fit range ${minK}-${maxK} K`,
+      degeneracies: (n1: string, n2: string) =>
+        `Band degeneracies N1 = ${n1}, N2 = ${n2}`,
+      fit: (status: string, iterations: number | null) =>
+        iterations === null
+          ? `Fit ${status}`
+          : `Fit ${status}, ${String(iterations)} iterations`,
+      noFit: "No fit: the values are those on the screen",
+      issue: (severity: string, issue: string, id: string) =>
+        `${severity}: ${issue} (${id})`,
+    },
+    columns: {
+      temperature: "Temperature [K]",
+      experimental: (quantity: string) => `Experimental ${quantity}`,
+      interpolated: (quantity: string) => `Interpolated ${quantity}`,
+      preFit: (quantity: string) => `Pre-fit ${quantity}`,
+      fit: (quantity: string) => `Fit ${quantity}`,
+    },
+    // As the desktop names them, in SI units.
+    quantities: {
+      seebeck: "Seebeck coefficient [V/K]",
+      resistivity: "electrical resistivity [Ohm*m]",
+      hall: "Hall coefficient [m^3/C]",
+    },
+    // Each column of an additional graph. Any other keeps the API's name, which states its unit.
+    curves: {
+      chemical_potential_k: "Chemical potential [K]",
+      electrical_conductivity_s_per_m: "Electrical conductivity [S/m]",
+      thermal_conductivity_w_per_m_k:
+        "Electronic thermal conductivity [W/(m*K)]",
+      seebeck_v_per_k: "Total Seebeck coefficient [V/K]",
+      seebeck_band_1_v_per_k: "Seebeck coefficient of band 1 [V/K]",
+      seebeck_band_2_v_per_k: "Seebeck coefficient of band 2 [V/K]",
+      carrier_concentration_band_1_per_cm3:
+        "Carrier concentration of band 1 [1/cm^3]",
+      carrier_concentration_band_2_per_cm3:
+        "Carrier concentration of band 2 [1/cm^3]",
+    },
+    parameterColumns: "Parameter\tValue\tStatus",
+    parameter: (symbol: string, meaning: string, unit: string) =>
+      unit === ""
+        ? `${symbol} (${meaning})`
+        : `${symbol} (${meaning}) [${unit}]`,
+    status: {
+      fitted: "fitted",
+      fixed: "fixed",
+      atBound: "fitted, at bound",
+    },
+    // A unit as a file writes it, plain text.
+    units: { m_e: "m_e", K: "K", dimensionless: "", unknown: "unit not known" },
+  },
   results: {
     pageTitle: "Results",
     title: "Results",

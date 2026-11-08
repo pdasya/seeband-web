@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { InfoIcon } from "lucide-react";
+import { DownloadIcon, InfoIcon } from "lucide-react";
 import { useId, useMemo, type ReactNode } from "react";
 import { Link } from "react-router";
 
@@ -31,6 +31,7 @@ import {
   type ParameterStatus,
 } from "@/model/resultSummary";
 import { fitModeOf, type FitModeDescription } from "@/model/selection";
+import { useExport } from "@/model/useExport";
 import { useResultCurves, type LiveCalc } from "@/model/useLiveCurves";
 import {
   QUANTITIES,
@@ -48,7 +49,10 @@ const {
   data: dataText,
   model: modelText,
   chart: chartText,
+  export: exportText,
 } = STRINGS;
+
+type ExportGraph = ReturnType<typeof useExport>["graph"];
 
 function symbols(quantities: readonly Quantity[]): string {
   return quantities
@@ -150,11 +154,13 @@ function MoreGraph({
   mode,
   measured,
   derived,
+  onExport,
 }: {
   tab: ChartTab;
   mode: FitModeDescription;
   measured: LiveCalc;
   derived: LiveCalc;
+  onExport: ExportGraph;
 }) {
   const data = useSessionStore((state) => state.data);
   const interpolation = useSessionStore((state) => state.interpolation);
@@ -174,7 +180,6 @@ function MoreGraph({
       ),
     [tab, mode, data, interpolation, bandGapK, total, derived.result],
   );
-  // Each flag of its own curve, by the severity the mode gives it.
   // Each flag of the curves it draws: its own kind, and for S by band also the total of S, which
   // comes with the measured curves and their flags of other quantities.
   const drawn = view.empty === null;
@@ -189,22 +194,57 @@ function MoreGraph({
   );
   const failed =
     derived.error ?? (tab === "bands" ? measured.error : null) ?? null;
+  // What it drew, with the API's names: the total of S of the bands comes with the measured curves.
+  const answer = drawn ? derived.result : null;
+  const totalS = total?.curves.seebeck_v_per_k;
+  const exported =
+    answer === null
+      ? null
+      : [
+          ...(tab === "bands" && totalS !== undefined
+            ? [{ name: "seebeck_v_per_k", values: totalS }]
+            : []),
+          ...Object.entries(answer.curves).map(([name, values]) => ({
+            name,
+            values,
+          })),
+        ];
   return (
     <section
       aria-labelledby={titleId}
       className="flex min-w-0 flex-col gap-2 rounded-lg border p-3"
     >
-      <h3
-        id={titleId}
-        className="m-0 flex flex-wrap items-center gap-1.5 text-sm font-medium"
-      >
-        {chartText.tabs[tab]}
-        {issues.map(({ id, severity }) => (
-          <Badge key={id} variant="outline">
-            {fitText.issueMark[severity]}
-          </Badge>
-        ))}
-      </h3>
+      <div className="flex items-start justify-between gap-2">
+        <h3
+          id={titleId}
+          className="m-0 flex flex-wrap items-center gap-1.5 text-sm font-medium"
+        >
+          {chartText.tabs[tab]}
+          {issues.map(({ id, severity }) => (
+            <Badge key={id} variant="outline">
+              {fitText.issueMark[severity]}
+            </Badge>
+          ))}
+        </h3>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label={exportText.graph(chartText.tabs[tab])}
+          disabled={answer === null || exported === null}
+          onClick={() => {
+            if (answer !== null && exported !== null) {
+              void onExport(
+                tab,
+                answer.temperature_k,
+                exported,
+                issues.map(({ id }) => id),
+              );
+            }
+          }}
+        >
+          <DownloadIcon aria-hidden="true" />
+        </Button>
+      </div>
       {failed !== null && (
         <p role="alert" className="m-0 text-xs text-destructive">
           {failureText(failed)}
@@ -264,6 +304,7 @@ export function ResultsPage() {
     model !== undefined && mode !== undefined && hasFittedValues(fit);
   const { measured, derived } = useResultCurves(summed);
   const graphsId = useId();
+  const exporter = useExport();
   const badge = fitBadge(fit, mode?.iterative === true);
   const title = <title>{`${text.pageTitle} · ${STRINGS.appName}`}</title>;
 
@@ -355,7 +396,32 @@ export function ResultsPage() {
         title={text.title}
         subtitle={subtitle}
         {...(badge === null ? {} : { status: <StatusBadge {...badge} /> })}
+        actions={
+          <>
+            <Button
+              variant="outline"
+              disabled={exporter.busy}
+              onClick={() => void exporter.data()}
+            >
+              <DownloadIcon aria-hidden="true" />
+              {exportText.data}
+            </Button>
+            <Button
+              variant="outline"
+              disabled={exporter.busy}
+              onClick={() => void exporter.parameters()}
+            >
+              <DownloadIcon aria-hidden="true" />
+              {exportText.parameters}
+            </Button>
+          </>
+        }
       />
+      {exporter.failed && (
+        <p role="alert" className="m-0 text-xs text-destructive">
+          {exportText.failed}
+        </p>
+      )}
       <dl className="m-0 flex flex-wrap gap-3">
         <Kpi
           label={text.model}
@@ -481,6 +547,7 @@ export function ResultsPage() {
                 key={tab}
                 tab={tab}
                 mode={mode}
+                onExport={exporter.graph}
                 measured={measured}
                 derived={kind === null ? NOTHING : derived[kind]}
               />

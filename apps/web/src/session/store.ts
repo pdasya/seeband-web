@@ -215,6 +215,8 @@ export interface SessionState {
   guess: GuessRecord | null;
   /** The net whose guess the last fit started from, or null if it started from other values. */
   fitStartNet: NetRange | null;
+  /** The values the last fit started from, in core units, for its curve before the fit. */
+  fitStartValues: Record<string, number> | null;
   /** Counts resets, so that fields can start again even if the values do not change. */
   parameterResets: number;
   /** Bounds a fit of each mode uses in place of the description's, in core units. */
@@ -275,7 +277,7 @@ export interface SessionState {
     measurement: Measurement,
   ) => void;
   /** Starts a new run, which replaces any other, and returns its id for the calls below. */
-  fitRequested: (fitMode?: string) => number;
+  fitRequested: (fitMode?: string, start?: Record<string, number>) => number;
   fitEvent: (run: number, event: FitEvent) => void;
   fitStopped: (run: number) => void;
   fitFailed: (run: number, failure: FitFailure) => void;
@@ -409,6 +411,7 @@ export const createSessionStore = () =>
       guessPending: false,
       guess: null,
       fitStartNet: null,
+      fitStartValues: null,
       parameterResets: 0,
       customBounds: {},
       slotsReading: [],
@@ -647,7 +650,7 @@ export const createSessionStore = () =>
           fit: withoutOldResult(state.fit),
         }));
       },
-      fitRequested: (fitMode) => {
+      fitRequested: (fitMode, start) => {
         currentRun += 1;
         currentFitMode = fitMode ?? null;
         // A guess wrote the values of its own model only, so a fit of another did not start from it.
@@ -655,6 +658,7 @@ export const createSessionStore = () =>
           const guess = currentGuess(state);
           return {
             fit: { status: "waiting" },
+            fitStartValues: start ?? null,
             fitStartNet:
               guess?.kind === "applied" &&
               state.guess?.model === state.selection.model

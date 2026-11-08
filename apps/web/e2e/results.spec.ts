@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { expect, test, type Page } from "@playwright/test";
 
 import { fakeFit } from "./support/fakeFit";
@@ -462,6 +464,12 @@ test("in S mode, the graphs that need ρ say so, and nothing is asked for them",
   for (const name of ["Conductivity σ(T)", "Thermal conductivity"]) {
     await expect(graph(page, name)).toContainText("Needs ρ(T)");
   }
+  // A graph the mode does not offer has nothing to download.
+  await expect(
+    page.getByRole("button", {
+      name: "Download the data of Conductivity σ(T)",
+    }),
+  ).toBeDisabled();
   // Once the others are drawn, their requests are all out.
   await expect(
     graph(page, "Chemical potential")
@@ -471,4 +479,140 @@ test("in S mode, the graphs that need ρ say so, and nothing is asked for them",
   await page.waitForTimeout(400);
   expect(kinds).not.toContain("electrical_conductivity");
   expect(kinds).not.toContain("thermal_conductivity");
+});
+
+async function downloaded(page: Page, button: string): Promise<string> {
+  const [file] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: button }).click(),
+  ]);
+  const path = await file.path();
+  return readFileSync(path, "utf8");
+}
+
+test("Data to file has the data, and the curves before and after the fit", async ({
+  page,
+}) => {
+  const bodies: { parameters: Record<string, number> }[] = [];
+  await openFit(page, (opened) =>
+    opened.route("**/api/calc", (route) => {
+      const body = route.request().postDataJSON() as {
+        kind?: string;
+        parameters: Record<string, number>;
+      };
+      if (body.kind === undefined) {
+        bodies.push(body);
+      }
+      return route.fulfill({
+        json: {
+          ...CALC,
+          curves: {
+            seebeck_v_per_k: [1e-4, 2e-4, 3e-4],
+            resistivity_ohm_m: [1e-5, 2e-5, 3e-5],
+          },
+          rmse: RMSE,
+        },
+      });
+    }),
+  );
+  await finishWith(page);
+  await toResults(page);
+
+  bodies.length = 0;
+  const file = await downloaded(page, "Data to file");
+  const lines = file.split("\n");
+  expect(lines[0]).toMatch(/^# SeeBand Web /);
+  expect(lines).toContain("# Model DPB, fit mode S + ρ");
+  expect(lines).toContain("# Fit converged, 5 iterations");
+  const legends = lines.find((line) => line.startsWith("Temperature"));
+  expect(legends?.split("\t")).toEqual([
+    "Temperature [K]",
+    "Experimental Seebeck coefficient [V/K]",
+    "Temperature [K]",
+    "Pre-fit Seebeck coefficient [V/K]",
+    "Temperature [K]",
+    "Fit Seebeck coefficient [V/K]",
+    "Temperature [K]",
+    "Experimental electrical resistivity [Ohm*m]",
+    "Temperature [K]",
+    "Pre-fit electrical resistivity [Ohm*m]",
+    "Temperature [K]",
+    "Fit electrical resistivity [Ohm*m]",
+  ]);
+  // The curve before the fit is of the values it started from, E_g = 1000 K by default, and the
+  // other of the fitted ones.
+  expect(bodies.map(({ parameters }) => parameters.band_gap).sort()).toEqual([
+    1000, 900,
+  ]);
+});
+
+test("Parameters to file has each value, its unit and how it was found", async ({
+  page,
+}) => {
+  await openFit(page);
+  await finishWith(page, { at_bounds: ["band_gap"] });
+
+  // From the fit screen, as from the results.
+  const file = await downloaded(page, "Parameters to file");
+  const lines = file.split("\n");
+  expect(lines).toContain("Parameter\tValue\tStatus");
+  expect(lines).toContain(
+    "E_g (position of band 2) [K]\t900\tfitted, at bound",
+  );
+  expect(lines).toContain("N1, N2 (band degeneracies)\t1, 1\tfixed");
+});
+
+test("each additional graph downloads its own curves and flags", async ({
+  page,
+}) => {
+  await openFit(page, serveCurves);
+  await page.getByRole("combobox", { name: "Scattering" }).click();
+  await page.getByRole("option", { name: /acPhDis/ }).click();
+  await finishWith(page);
+  await toResults(page);
+  await expect(
+    graph(page, "Band contributions")
+      .locator(".scatterlayer .trace path.js-line")
+      .first(),
+  ).toBeVisible();
+
+  const file = await downloaded(
+    page,
+    "Download the data of Band contributions",
+  );
+  const lines = file.split("\n");
+  expect(lines).toContain(
+    "# Unreliable: With acPhDis, the band weight of the last temperature applies to all of S. (acphdis_band_weight)",
+  );
+  expect(
+    lines.find((line) => line.startsWith("Temperature"))?.split("\t"),
+  ).toEqual([
+    "Temperature [K]",
+    "Total Seebeck coefficient [V/K]",
+    "Seebeck coefficient of band 1 [V/K]",
+    "Seebeck coefficient of band 2 [V/K]",
+  ]);
+});
+
+test("a failed export says so, and downloads nothing", async ({ page }) => {
+  await openFit(page);
+  await finishWith(page);
+  await toResults(page);
+  await page.unroute("**/api/calc");
+  await page.route("**/api/calc", (route) =>
+    route.fulfill({ status: 500, json: { code: "internal_error" } }),
+  );
+  let downloads = 0;
+  page.on("download", () => {
+    downloads += 1;
+  });
+
+  await page.getByRole("button", { name: "Data to file" }).click();
+
+  await expect(
+    page.getByText(
+      "The file could not be made, as the server did not answer. Try again.",
+    ),
+  ).toBeVisible();
+  expect(downloads).toBe(0);
 });

@@ -17,15 +17,15 @@ pnpm --filter @seeband/web preview  # the production build
 | `/`           | the public site. With no site, as in development, `/fit` |
 | anything else | a not-found view, where the server sends it to the app   |
 
-`src/routes.tsx` holds the routes, and `src/shell` what screens share: the header, the two columns that wrap, the page heading with its slot for a status badge, and panels. The fit and results screens are frames for now.
+`src/routes.tsx` holds the routes, and `src/shell` what screens share: the header, the page heading with its slots for a status badge and actions, and panels.
 
 - **Overview and Conventions** are plain links to the public site, which does not exist before S1, so they lead nowhere in development.
 - **The app has no path prefix, so a server must list its paths.** [I1](https://github.com/pdasya/seeband-web/issues/53) must answer `/fit` and `/results` with `index.html`, as a reload there otherwise gets a 404, and serve `/assets/` and `/licenses/` from this build. `vite preview` answers any path with `index.html`. A new screen needs a line there, and in `robots.txt` ([S6](https://github.com/pdasya/seeband-web/issues/68)), and the site must not use these paths.
 - **The error views show no details,** as an error's message could quote a user's data. An error in a page appears inside the shell, and one in the shell appears without it.
-- **A move inside the app takes focus to `main`,** so that a screen reader follows it. Scroll position is not handled, as the pages are short so far.
-- **Headings on the fit screen come in the design's order:** Data and Model come before the `h1`, as the side panel does. V2 should check this with a screen reader.
+- **A move inside the app takes focus to `main`,** so that a screen reader follows it, without scrolling. A move by link starts the new screen at its top, and back and forward keep the scroll the browser gives them.
+- **Headings on the fit screen follow its layout:** the data and charts on the left come before the `h1` of the fit panel on the right. V2 should check this with a screen reader.
 - **All text is in `src/strings.ts`** until [U3](https://github.com/pdasya/seeband-web/issues/36) brings i18n. Add new text there.
-- **The header comes from `packages/ui`,** shared with the site. `shell/AppHeader.tsx` only gives it the app's links. The language switch stays hidden until [U3](https://github.com/pdasya/seeband-web/issues/36), and the design's Export button comes with R4.
+- **The header comes from `packages/ui`,** shared with the site. `shell/AppHeader.tsx` only gives it the app's links. The language switch stays hidden until [U3](https://github.com/pdasya/seeband-web/issues/36). The four-chart design of the fit screen has no Export button in the header, so exports are on the Result panel and the results page instead.
 
 ## Talking to the API
 
@@ -202,3 +202,31 @@ pnpm dlx shadcn@4.23.0 add <name> --dry-run
 ```
 
 With version 4.23.0, the registry's components import `cn` from the npm package `cn`, which shadcn publishes as a replacement for `clsx` and `tailwind-merge`, and the CLI installs it. This project keeps those two in `src/lib/utils.ts`, as `cn` is at 0.5 and its last release was days old when this was written. So after adding, change the import to `@/lib/utils`, and run `pnpm --filter @seeband/web remove cn`. To move to `cn` later, change that import in `src/components/ui`, and remove `src/lib/utils.ts`.
+
+## Exports
+
+The Result panel of the fit screen and the results page export what the desktop's buttons do, as text files a spreadsheet or plotting program reads. Each starts with `#` lines that say what it is of:
+
+- the app's version and the API's;
+- the date;
+- whether the data are a demo;
+- the model, fit mode, scattering, fit range and band degeneracies;
+- how the fit ended;
+- each known issue that applies, with its severity and id.
+
+| File                     | Holds                                                                                                                                                                      |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `seeband-data.txt`       | For each quantity of the mode, pairs of columns: temperature and value, for the measured data, the interpolated values in use, the curve before the fit and the fitted one |
+| `seeband-parameters.txt` | Each parameter as the screen shows it, with its meaning, unit and status (`fitted`, `fixed` or `fitted, at bound`), and N1, N2                                             |
+| `seeband-<graph>.txt`    | One additional graph of the results page, its curves on one temperature grid, with the flags of those curves                                                               |
+
+The server calculates the curves before and after the fit when a file is made. The curve before the fit uses the values the fit started from, which the session keeps, as the fit replaces those on screen.
+
+How these differ from the desktop's files:
+
+- **Values are in SI and use a decimal point**, as the desktop's do, though the screen shows a decimal comma. The headings name the unit of each column.
+- **The `#` lines are new.** The desktop's files have none, so it shows nothing of the fit or of known issues.
+- **The parameters file has a line of headings and a status column,** and gives values as the screen shows them, such as A in its control's scale. The desktop writes only `name\tvalue`, in the fit's scale.
+- **Interpolated values and N1, N2 are new,** as is one file for each additional graph, where the desktop has one for each of its windows.
+- **The curves have the API's number of points,** not the desktop's 50.
+- **The app's parser does not read a data file back.** Its columns differ in length and are named for people, as the desktop's are. Load the measured data from their own files.
