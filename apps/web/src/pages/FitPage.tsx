@@ -26,7 +26,6 @@ export function FitPage() {
         <div className="flex min-w-0 flex-col gap-3">
           <DataBar />
           <ChartGrid live={live} />
-          <ResultPanel live={live} />
         </div>
         <aside
           aria-label={fit.panelTitle}
@@ -38,6 +37,7 @@ export function FitPage() {
             <ParametersPanel />
             <ModelPanel />
           </div>
+          <ResultPanel live={live} />
         </aside>
       </div>
     </>
