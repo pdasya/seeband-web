@@ -233,7 +233,7 @@ export const STRINGS = {
     conductivityPoints: "1/ρ of the data",
     conductivityPointsInterpolated: "1/ρ of the interpolated data",
     conductivityPointsNote:
-      "Points are 1/ρ of the ρ data, which the server calculates. The line is the model's σ.",
+      "Points are 1/ρ of the ρ data in the fit range, which the server calculates. The line is the model's σ.",
     conductivityNote:
       "The model's σ only: measured points would be 1/ρ, which the ρ data give.",
     diagramCurves: {
