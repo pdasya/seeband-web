@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   Tooltip,
@@ -216,7 +217,7 @@ function DegeneracyFields({
   const [band1Invalid, setBand1Invalid] = useState(false);
   const [band2Invalid, setBand2Invalid] = useState(false);
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex min-w-0 flex-1 flex-col gap-1.5">
       <div className="grid grid-cols-2 gap-3">
         <DegeneracyField
           label="N₁"
@@ -277,43 +278,45 @@ function FitRangeFields({
     }
   };
   return (
-    <Group label={text.range}>
-      <div className="grid grid-cols-2 gap-3">
-        <Input
-          inputMode="decimal"
-          autoComplete="off"
-          aria-describedby={invalid ? errorId : undefined}
-          aria-label={text.rangeMin}
-          aria-invalid={invalid}
-          value={minDraft}
-          onChange={(event) => {
-            setMinDraft(event.target.value);
-            setInvalid(false);
-          }}
-          onBlur={commit}
-          onKeyDown={commitOnEnter}
-        />
-        <Input
-          inputMode="decimal"
-          autoComplete="off"
-          aria-describedby={invalid ? errorId : undefined}
-          aria-label={text.rangeMax}
-          aria-invalid={invalid}
-          value={maxDraft}
-          onChange={(event) => {
-            setMaxDraft(event.target.value);
-            setInvalid(false);
-          }}
-          onBlur={commit}
-          onKeyDown={commitOnEnter}
-        />
-      </div>
-      {invalid && (
-        <span id={errorId} role="alert" className="text-xs text-destructive">
-          {text.rangeInvalid}
-        </span>
-      )}
-    </Group>
+    <div className="min-w-0 flex-1">
+      <Group label={text.range}>
+        <div className="grid grid-cols-2 gap-3">
+          <Input
+            inputMode="decimal"
+            autoComplete="off"
+            aria-describedby={invalid ? errorId : undefined}
+            aria-label={text.rangeMin}
+            aria-invalid={invalid}
+            value={minDraft}
+            onChange={(event) => {
+              setMinDraft(event.target.value);
+              setInvalid(false);
+            }}
+            onBlur={commit}
+            onKeyDown={commitOnEnter}
+          />
+          <Input
+            inputMode="decimal"
+            autoComplete="off"
+            aria-describedby={invalid ? errorId : undefined}
+            aria-label={text.rangeMax}
+            aria-invalid={invalid}
+            value={maxDraft}
+            onChange={(event) => {
+              setMaxDraft(event.target.value);
+              setInvalid(false);
+            }}
+            onBlur={commit}
+            onKeyDown={commitOnEnter}
+          />
+        </div>
+        {invalid && (
+          <span id={errorId} role="alert" className="text-xs text-destructive">
+            {text.rangeInvalid}
+          </span>
+        )}
+      </Group>
+    </div>
   );
 }
 
@@ -423,28 +426,36 @@ function ModelControls({ models }: { models: readonly ModelDescription[] }) {
         </Group>
       )}
 
-      {mode?.degeneracy != null && (
-        // A new model starts its fields from its own values.
-        <DegeneracyFields
-          key={model.id}
-          band1={selection.band1Degeneracy}
-          band2={selection.band2Degeneracy}
-          onBand1Commit={(band1Degeneracy) => {
-            setSelection({ band1Degeneracy });
-          }}
-          onBand2Commit={(band2Degeneracy) => {
-            setSelection({ band2Degeneracy });
+      <div className="flex items-stretch gap-3">
+        {mode?.degeneracy != null && (
+          <>
+            {/* A new model starts its fields from its own values. */}
+            <DegeneracyFields
+              key={model.id}
+              band1={selection.band1Degeneracy}
+              band2={selection.band2Degeneracy}
+              onBand1Commit={(band1Degeneracy) => {
+                setSelection({ band1Degeneracy });
+              }}
+              onBand2Commit={(band2Degeneracy) => {
+                setSelection({ band2Degeneracy });
+              }}
+            />
+            <Separator
+              orientation="vertical"
+              className="data-[orientation=vertical]:h-auto"
+            />
+          </>
+        )}
+
+        <FitRangeFields
+          minK={selection.minTemperatureK}
+          maxK={selection.maxTemperatureK}
+          onCommit={(minTemperatureK, maxTemperatureK) => {
+            setSelection({ minTemperatureK, maxTemperatureK });
           }}
         />
-      )}
-
-      <FitRangeFields
-        minK={selection.minTemperatureK}
-        maxK={selection.maxTemperatureK}
-        onCommit={(minTemperatureK, maxTemperatureK) => {
-          setSelection({ minTemperatureK, maxTemperatureK });
-        }}
-      />
+      </div>
     </div>
   );
 }
