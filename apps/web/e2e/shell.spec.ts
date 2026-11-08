@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { serveModels } from "./support/models";
+
 test("the shared header has its styles, in the design's sizes", async ({
   page,
 }) => {
@@ -77,4 +79,27 @@ test("there is no language switch while the app has one language", async ({
   await page.goto("/fit");
 
   await expect(page.locator(".sb-header__languages")).toHaveCount(0);
+});
+
+test("a move to another screen starts at its top, with the header in view", async ({
+  page,
+}) => {
+  await serveModels(page);
+  const link = (name: string) => page.getByRole("link", { name, exact: true });
+  await page.goto("/results");
+
+  await link("Model fit").click();
+  await expect(page.getByRole("slider", { name: "E_F" })).toBeVisible();
+  // Focus goes to the screen, for a screen reader, without scrolling the header away.
+  await expect(page.locator("main")).toBeFocused();
+  expect(await page.evaluate(() => scrollY)).toBe(0);
+  await expect(page.getByRole("banner")).toBeInViewport();
+
+  // Nor does a new screen start where the last one was scrolled to.
+  await page.evaluate(() => {
+    scrollTo(0, 400);
+  });
+  await link("Results").click();
+  await expect(page.getByRole("heading", { name: "Results" })).toBeVisible();
+  expect(await page.evaluate(() => scrollY)).toBe(0);
 });

@@ -17,10 +17,12 @@ export function AppShell() {
   const shownPath = useRef(pathname);
 
   // After a move inside the app, focus would stay on a link, and a screen reader would say nothing.
+  // A new screen starts at its top, with the header in view: focus alone would scroll it away.
   useEffect(() => {
     if (shownPath.current !== pathname) {
       shownPath.current = pathname;
-      main.current?.focus();
+      main.current?.focus({ preventScroll: true });
+      window.scrollTo(0, 0);
     }
   }, [pathname]);
 
