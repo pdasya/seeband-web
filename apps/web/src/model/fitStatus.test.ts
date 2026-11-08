@@ -28,8 +28,8 @@ const running = (iteration: number | null): FitState => ({
 });
 
 describe("fitBadge", () => {
-  test.each<[FitState, boolean, object]>([
-    [{ status: "idle" }, true, { status: "manual" }],
+  test.each<[FitState, boolean, object | null]>([
+    [{ status: "idle" }, true, null],
     [
       { status: "waiting" },
       true,

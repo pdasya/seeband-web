@@ -15,11 +15,11 @@ function atIteration(iterative: boolean, iteration: number | null) {
   return iterative && iteration !== null ? iteration : null;
 }
 
-/** A single-pass mode has no iterations, so it never shows a counter. */
-export function fitBadge(fit: FitState, iterative: boolean): FitBadge {
+/** A single-pass mode has no iterations, so it never shows a counter. Before a fit there is no status. */
+export function fitBadge(fit: FitState, iterative: boolean): FitBadge | null {
   switch (fit.status) {
     case "idle":
-      return { status: "manual" };
+      return null;
     case "waiting":
       return { status: "running", detail: text.queued };
     case "running": {
@@ -53,7 +53,7 @@ export function fitBadge(fit: FitState, iterative: boolean): FitBadge {
         : { status: "converged", detail: text.convergedIn(count) };
     }
     default:
-      return { status: "manual" };
+      return null;
   }
 }
 

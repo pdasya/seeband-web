@@ -38,14 +38,13 @@ export function FitStatusBadge({
     guessBadge(guess.outcome, control.fit) ??
     fitBadge(control.fit, control.iterative);
   // Before any fit there is no status to show, only what keeps one from running.
-  const missing =
-    badge.status === "manual" ? missingDataText(control.blocker) : null;
+  const missing = badge === null ? missingDataText(control.blocker) : null;
   return (
     <>
-      {badge.status !== "manual" && <StatusBadge {...badge} />}
+      {badge !== null && <StatusBadge {...badge} />}
       {missing !== null && <Badge variant="warning">{missing}</Badge>}
       <span role="status" className="sr-only">
-        {badge.status === "manual" ? "" : STRINGS.status[badge.status]}
+        {badge === null ? "" : STRINGS.status[badge.status]}
       </span>
     </>
   );

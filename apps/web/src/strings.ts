@@ -215,7 +215,6 @@ export const STRINGS = {
   chart: {
     temperatureAxis: "T, K",
     failed: "The chart could not be shown. Try reloading the page.",
-    tabsLabel: "Charts",
     tabs: {
       seebeck: "Seebeck S(T)",
       conductivity: "Conductivity σ(T)",
@@ -305,7 +304,6 @@ export const STRINGS = {
     calcFailed: "The curve could not be calculated.",
   },
   status: {
-    manual: "Manual parameters",
     running: "Fitting…",
     converged: "Converged",
     iterationLimit: "Iteration limit reached",

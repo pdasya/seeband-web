@@ -4,7 +4,6 @@ import { STRINGS } from "@/strings";
 export type FitStatus = keyof typeof STRINGS.status;
 
 const VARIANTS = {
-  manual: "neutral",
   running: "info",
   converged: "success",
   iterationLimit: "warning",
