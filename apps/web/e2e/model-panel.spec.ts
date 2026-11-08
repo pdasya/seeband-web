@@ -1,5 +1,6 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
 
+import { fitBadges } from "./support/fitScreen";
 import { serveModels } from "./support/models";
 
 async function open(page: Page) {
@@ -170,11 +171,13 @@ test("missing data are named for the mode, and go as data load", async ({
     }),
   );
   await open(page);
-  const note = page.getByRole("note");
-  await expect(note).toContainText("Missing data: S, ρ.");
+  // The fit panel names what is missing, and Model no longer repeats it.
+  const note = fitBadges(page);
+  await expect(page.getByRole("note")).toHaveCount(0);
+  await expect(note).toHaveText("Missing data: S, ρ");
 
   await mode(page, "S + ρ + R_H").click();
-  await expect(note).toContainText("Missing data: S, ρ, R_H.");
+  await expect(note).toHaveText("Missing data: S, ρ, R_H");
 
   await page
     .locator('input[type="file"]')
@@ -184,7 +187,7 @@ test("missing data are named for the mode, and go as data load", async ({
       mimeType: "text/plain",
       buffer: Buffer.from("T S\n100 1\n"),
     });
-  await expect(note).toContainText("Missing data: ρ, R_H.");
+  await expect(note).toHaveText("Missing data: ρ, R_H");
 
   await mode(page, "S").click();
   await expect(note).toHaveCount(0);

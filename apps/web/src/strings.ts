@@ -73,7 +73,6 @@ export const STRINGS = {
     rangeMax: "Upper bound, K",
     rangeInvalid:
       "The lower bound must be below the upper, and both above 0 K. The last valid range stays in use.",
-    missingTitle: "Missing data:",
   },
   data: {
     title: "Data",

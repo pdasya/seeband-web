@@ -3,7 +3,7 @@ import { AlertCircleIcon } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 
 import { modelsQuery } from "@/api/queries";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { formatNumber, parseNumber } from "@/lib/numbers";
 import {
@@ -324,25 +324,6 @@ function FitRangeFields({
   );
 }
 
-function MissingData({ mode }: { mode: FitModeDescription }) {
-  const data = useSessionStore((state) => state.data);
-  const missing = mode.quantities.filter(
-    (quantity) => data[quantity] === undefined,
-  );
-  if (missing.length === 0) {
-    return null;
-  }
-  // A note rather than an alert, as this is the state before any data load.
-  return (
-    <Alert variant="warning" role="note">
-      <AlertCircleIcon aria-hidden="true" />
-      <AlertTitle>
-        {`${text.missingTitle} ${missing.map(quantitySymbol).join(", ")}.`}
-      </AlertTitle>
-    </Alert>
-  );
-}
-
 function ModelControls({ models }: { models: readonly ModelDescription[] }) {
   const selection = useSessionStore((state) => state.selection);
   const saved = useSessionStore((state) => state.savedModelSettings);
@@ -405,8 +386,6 @@ function ModelControls({ models }: { models: readonly ModelDescription[] }) {
           </span>
         ))}
       </div>
-
-      {mode !== undefined && <MissingData mode={mode} />}
 
       {mode !== undefined && mode.scattering.length > 0 && (
         <Group label={text.scattering}>
