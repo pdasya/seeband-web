@@ -365,9 +365,14 @@ async function serveCurves(page: Page) {
             : DERIVED[kind],
         rmse: kind === "measured" ? RMSE : {},
         known_issues:
-          body.scattering === "acPhDis" && SCALED.includes(kind)
-            ? ["acphdis_curve_scale"]
-            : [],
+          body.scattering !== "acPhDis"
+            ? []
+            : SCALED.includes(kind)
+              ? ["acphdis_curve_scale"]
+              : // On the total of S, and on R_H, which no additional graph draws.
+                kind === "measured"
+                ? ["acphdis_band_weight", "dpb_hall_prefactor"]
+                : [],
       },
     });
   });
@@ -422,7 +427,7 @@ test("with acPhDis, σ, κ_e and S by band are flagged as unreliable", async ({
     "Band contributions",
   ]) {
     await expect(
-      graph(page, name).getByRole("heading").getByText("unreliable"),
+      graph(page, name).getByRole("heading").getByText("unreliable").first(),
     ).toBeVisible();
     await expect(graph(page, name)).toContainText(
       /Unreliable: With acPhDis, σ, κ and S by band use another scale/,
@@ -431,6 +436,16 @@ test("with acPhDis, σ, κ_e and S by band are flagged as unreliable", async ({
   await expect(
     graph(page, "Chemical potential").getByText("unreliable"),
   ).toHaveCount(0);
+  // The total of S drawn with the bands has its own flag, and σ, which does not draw it, has not.
+  await expect(graph(page, "Band contributions")).toContainText(
+    "Unreliable: With acPhDis, the band weight of the last temperature applies to all of S.",
+  );
+  await expect(graph(page, "Conductivity σ(T)")).not.toContainText(
+    "band weight of the last temperature",
+  );
+  await expect(graph(page, "Band contributions")).not.toContainText(
+    "DPB R_H is half",
+  );
 });
 
 test("in S mode, the graphs that need ρ say so, and nothing is asked for them", async ({

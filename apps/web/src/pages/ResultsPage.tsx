@@ -175,11 +175,18 @@ function MoreGraph({
     [tab, mode, data, interpolation, bandGapK, total, derived.result],
   );
   // Each flag of its own curve, by the severity the mode gives it.
+  // Each flag of the curves it draws: its own kind, and for S by band also the total of S, which
+  // comes with the measured curves and their flags of other quantities.
+  const drawn = view.empty === null;
+  const own = drawn ? (derived.result?.known_issues ?? []) : [];
   const issues = resultIssues(mode, {
     fit: [],
-    measured: [],
-    derived: view.empty === null ? (derived.result?.known_issues ?? []) : [],
-  });
+    measured:
+      drawn && tab === "bands" ? (measured.result?.known_issues ?? []) : [],
+    derived: own,
+  }).filter(
+    ({ id, quantities }) => own.includes(id) || quantities.includes("seebeck"),
+  );
   const failed =
     derived.error ?? (tab === "bands" ? measured.error : null) ?? null;
   return (
