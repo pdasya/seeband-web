@@ -282,45 +282,43 @@ function FitRangeFields({
     }
   };
   return (
-    <div>
-      <Group label={text.range}>
-        <div className="grid grid-cols-2 gap-3">
-          <Input
-            inputMode="decimal"
-            autoComplete="off"
-            aria-describedby={invalid ? errorId : undefined}
-            aria-label={text.rangeMin}
-            aria-invalid={invalid}
-            value={minDraft}
-            onChange={(event) => {
-              setMinDraft(event.target.value);
-              setInvalid(false);
-            }}
-            onBlur={commit}
-            onKeyDown={commitOnEnter}
-          />
-          <Input
-            inputMode="decimal"
-            autoComplete="off"
-            aria-describedby={invalid ? errorId : undefined}
-            aria-label={text.rangeMax}
-            aria-invalid={invalid}
-            value={maxDraft}
-            onChange={(event) => {
-              setMaxDraft(event.target.value);
-              setInvalid(false);
-            }}
-            onBlur={commit}
-            onKeyDown={commitOnEnter}
-          />
-        </div>
-        {invalid && (
-          <span id={errorId} role="alert" className="text-xs text-destructive">
-            {text.rangeInvalid}
-          </span>
-        )}
-      </Group>
-    </div>
+    <Group label={text.range}>
+      <div className="grid grid-cols-2 gap-3">
+        <Input
+          inputMode="decimal"
+          autoComplete="off"
+          aria-describedby={invalid ? errorId : undefined}
+          aria-label={text.rangeMin}
+          aria-invalid={invalid}
+          value={minDraft}
+          onChange={(event) => {
+            setMinDraft(event.target.value);
+            setInvalid(false);
+          }}
+          onBlur={commit}
+          onKeyDown={commitOnEnter}
+        />
+        <Input
+          inputMode="decimal"
+          autoComplete="off"
+          aria-describedby={invalid ? errorId : undefined}
+          aria-label={text.rangeMax}
+          aria-invalid={invalid}
+          value={maxDraft}
+          onChange={(event) => {
+            setMaxDraft(event.target.value);
+            setInvalid(false);
+          }}
+          onBlur={commit}
+          onKeyDown={commitOnEnter}
+        />
+      </div>
+      {invalid && (
+        <span id={errorId} role="alert" className="text-xs text-destructive">
+          {text.rangeInvalid}
+        </span>
+      )}
+    </Group>
   );
 }
 
@@ -409,32 +407,28 @@ function ModelControls({ models }: { models: readonly ModelDescription[] }) {
         </Group>
       )}
 
-      <div className="flex flex-col gap-4">
-        {mode?.degeneracy != null && (
-          <>
-            {/* A new model starts its fields from its own values. */}
-            <DegeneracyFields
-              key={model.id}
-              band1={selection.band1Degeneracy}
-              band2={selection.band2Degeneracy}
-              onBand1Commit={(band1Degeneracy) => {
-                setSelection({ band1Degeneracy });
-              }}
-              onBand2Commit={(band2Degeneracy) => {
-                setSelection({ band2Degeneracy });
-              }}
-            />
-          </>
-        )}
-
-        <FitRangeFields
-          minK={selection.minTemperatureK}
-          maxK={selection.maxTemperatureK}
-          onCommit={(minTemperatureK, maxTemperatureK) => {
-            setSelection({ minTemperatureK, maxTemperatureK });
+      {mode?.degeneracy != null && (
+        // A new model starts its fields from its own values.
+        <DegeneracyFields
+          key={model.id}
+          band1={selection.band1Degeneracy}
+          band2={selection.band2Degeneracy}
+          onBand1Commit={(band1Degeneracy) => {
+            setSelection({ band1Degeneracy });
+          }}
+          onBand2Commit={(band2Degeneracy) => {
+            setSelection({ band2Degeneracy });
           }}
         />
-      </div>
+      )}
+
+      <FitRangeFields
+        minK={selection.minTemperatureK}
+        maxK={selection.maxTemperatureK}
+        onCommit={(minTemperatureK, maxTemperatureK) => {
+          setSelection({ minTemperatureK, maxTemperatureK });
+        }}
+      />
     </div>
   );
 }
