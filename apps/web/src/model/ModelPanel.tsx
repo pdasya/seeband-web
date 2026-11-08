@@ -15,6 +15,11 @@ import {
 } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   firstModel,
   fitModeOf,
   settingsFor,
@@ -77,8 +82,15 @@ function ChoiceGroup({
   label: string;
   value: string | null;
   onChange: (value: string) => void;
-  options: readonly { id: string; label: string; disabled?: boolean }[];
+  options: readonly {
+    id: string;
+    label: string;
+    disabled?: boolean;
+    /** Shown on hover or focus, and read as the option's description. */
+    hint?: string;
+  }[];
 }) {
+  const hintId = useId();
   return (
     <Group label={label}>
       <ToggleGroup
@@ -94,17 +106,39 @@ function ChoiceGroup({
           }
         }}
       >
-        {options.map((option) => (
-          <ToggleGroupItem
-            key={option.id}
-            value={option.id}
-            disabled={option.disabled === true}
-            className="flex-1"
-          >
-            {option.label}
-          </ToggleGroupItem>
-        ))}
+        {options.map((option) => {
+          const item = (
+            <ToggleGroupItem
+              key={option.id}
+              value={option.id}
+              disabled={option.disabled === true}
+              aria-describedby={
+                option.hint === undefined ? undefined : `${hintId}-${option.id}`
+              }
+              // A tooltip's trigger sets its own data-state, so being chosen shows from aria-checked.
+              className="flex-1 aria-checked:bg-accent aria-checked:text-accent-foreground"
+            >
+              {option.label}
+            </ToggleGroupItem>
+          );
+          return option.hint === undefined ? (
+            item
+          ) : (
+            <Tooltip key={option.id}>
+              <TooltipTrigger asChild>{item}</TooltipTrigger>
+              <TooltipContent>{option.hint}</TooltipContent>
+            </Tooltip>
+          );
+        })}
       </ToggleGroup>
+      {options.map(
+        (option) =>
+          option.hint !== undefined && (
+            <span key={option.id} id={`${hintId}-${option.id}`} hidden>
+              {option.hint}
+            </span>
+          ),
+      )}
     </Group>
   );
 }
@@ -322,23 +356,21 @@ function ModelControls({ models }: { models: readonly ModelDescription[] }) {
 
   return (
     <div className="mt-3 flex flex-col gap-4">
-      <div className="flex flex-col gap-1.5">
-        <ChoiceGroup
-          label={text.bands}
-          value={model.id}
-          onChange={(id) => {
-            const next = models.find((candidate) => candidate.id === id);
-            if (next !== undefined) {
-              chooseModel(id, settingsFor(next, saved[id]));
-            }
-          }}
-          options={models.map(({ id }) => ({
-            id,
-            label: id.toUpperCase(),
-          }))}
-        />
-        <span className="text-xs text-muted-foreground">{model.name}</span>
-      </div>
+      <ChoiceGroup
+        label={text.bands}
+        value={model.id}
+        onChange={(id) => {
+          const next = models.find((candidate) => candidate.id === id);
+          if (next !== undefined) {
+            chooseModel(id, settingsFor(next, saved[id]));
+          }
+        }}
+        options={models.map(({ id, name }) => ({
+          id,
+          label: id.toUpperCase(),
+          hint: name,
+        }))}
+      />
 
       <div className="flex flex-col gap-1.5">
         <ChoiceGroup

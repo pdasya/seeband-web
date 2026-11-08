@@ -48,7 +48,19 @@ test("starts as the design does, with options from the API", async ({
   await expect(page.getByRole("radio", { name: "DPB" })).toBeChecked();
   await expect(page.getByRole("radio", { name: "SPB" })).not.toBeChecked();
   await expect(mode(page, "S + ρ")).toBeChecked();
-  await expect(page.getByText("Double parabolic band")).toBeVisible();
+  await expect(
+    page.getByRole("radio", { name: "DPB" }),
+  ).toHaveAccessibleDescription("Double parabolic band");
+  await expect(page.getByText("Double parabolic band")).toBeHidden();
+  // The chosen one looks chosen.
+  const background = (name: string) =>
+    page
+      .getByRole("radio", { name, exact: true })
+      .evaluate((item) => getComputedStyle(item).backgroundColor);
+  expect(await background("DPB")).not.toBe(await background("SPB"));
+  expect(await background("DPB")).toBe(await background("S + ρ"));
+  await page.getByRole("radio", { name: "SPB" }).hover();
+  await expect(page.getByRole("tooltip")).toHaveText("Single parabolic band");
   await expect(
     page.getByRole("combobox", { name: "Scattering" }),
   ).toContainText("Acoustic phonons (acPh)");
