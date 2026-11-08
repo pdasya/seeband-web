@@ -42,7 +42,7 @@ describe("fitLog", () => {
       { title: "Fit to R_H", text: "Finds m₁" },
       {
         title: "Converged",
-        text: "Every parameter changed by less than 10 % in iteration 3.",
+        text: "The fit met its stop rule, a change of at most 10 %, in iteration 3.",
       },
     ]);
   });
@@ -121,5 +121,12 @@ describe("fitLog", () => {
       fitLog(modeOf("dpb_s_rho"), "acPh", done({ iterations: 1 }), null)[1]
         ?.text,
     ).toBe("Finds m₂/m₁, E_g, E_F, in each of 1 iteration");
+  });
+
+  test("a threshold is a percent with no rounding error", () => {
+    const mode = { ...modeOf("dpb_s_rho"), threshold: 0.07 };
+    expect(fitLog(mode, "acPh", done(), null).at(-1)?.text).toBe(
+      "The fit met its stop rule, a change of at most 7 %, in iteration 3.",
+    );
   });
 });

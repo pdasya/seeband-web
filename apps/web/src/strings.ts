@@ -503,11 +503,11 @@ export const STRINGS = {
       findsEach: (symbols: string, iterations: number) =>
         `Finds ${symbols}, in each of ${String(iterations)} ${iterations === 1 ? "iteration" : "iterations"}`,
       converged: "Converged",
-      convergedText: "Every parameter settled.",
+      convergedText: "The fit met its stop rule.",
       convergedBelow: (percent: string, iterations: number | null) =>
         iterations === null
-          ? `Every parameter changed by less than ${percent} %.`
-          : `Every parameter changed by less than ${percent} % in iteration ${String(iterations)}.`,
+          ? `The fit met its stop rule, a change of at most ${percent} %.`
+          : `The fit met its stop rule, a change of at most ${percent} %, in iteration ${String(iterations)}.`,
       done: "Done",
       singlePass: "One pass: this fit mode does not iterate.",
       limit: "Iteration limit",

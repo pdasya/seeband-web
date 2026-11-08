@@ -52,12 +52,17 @@ function endOf(
     text:
       mode.threshold === null || mode.threshold === undefined
         ? log.convergedText
-        : log.convergedBelow(formatNumber(mode.threshold * 100), iterations),
+        : log.convergedBelow(
+            // As a percent, without the rounding error of the product.
+            formatNumber(Number((mode.threshold * 100).toPrecision(12))),
+            iterations,
+          ),
   };
 }
 
 /**
- * What a fit did, from its start values to why it ended. The steps are the solver runs of the
+ * What a fit did, from its start values to why it ended. The end names the stop rule, not what it
+ * proves: with acPhDis it checks C and D alone, which a known issue on the result says. The steps are the solver runs of the
  * mode's description, so a new mode needs no change here. A stopped fit ran only its loop.
  */
 export function fitLog(
