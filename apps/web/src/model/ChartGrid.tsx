@@ -155,16 +155,12 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
             ))}
           </SelectContent>
         </Select>
-        <span className="font-mono text-xs whitespace-nowrap text-muted-foreground">
-          {metric}
-        </span>
+        <div className="flex items-center gap-2 text-xs whitespace-nowrap text-muted-foreground">
+          {/* In the head, so a chart keeps its height while it waits. */}
+          <span role="status">{busy ? text.updating : ""}</span>
+          <span className="font-mono">{metric}</span>
+        </div>
       </div>
-      <p
-        role="status"
-        className="m-0 min-h-[18px] text-xs text-muted-foreground"
-      >
-        {busy ? text.updating : ""}
-      </p>
       {error !== null && (
         <Alert variant="destructive">
           <AlertCircleIcon aria-hidden="true" />
