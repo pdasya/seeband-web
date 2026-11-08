@@ -22,22 +22,22 @@ export function FitPage() {
     <>
       <title>{`${fit.pageTitle} · ${STRINGS.appName}`}</title>
       <div className="flex flex-wrap items-start gap-4">
-        <div className="flex min-w-0 flex-[2_1_560px] flex-col gap-3">
+        <div className="flex min-w-0 flex-[1_1_560px] flex-col gap-3">
           <DataBar />
           <ChartGrid live={live} />
           <ResultPanel live={live} />
         </div>
         <aside
           aria-label={fit.panelTitle}
-          className="flex max-w-full min-w-0 flex-[1_1_420px] flex-col gap-3"
+          className="flex max-w-full min-w-0 flex-[1_1_652px] flex-col gap-3"
         >
           <FitPanel control={control} guess={guess} />
           {/* Side by side where both fit, one under the other where they do not. */}
           <div className="flex flex-wrap items-start gap-3">
-            <div className="max-w-full min-w-[320px] flex-[1_1_320px]">
+            <div className="max-w-full min-w-[290px] flex-[1_1_290px]">
               <ParametersPanel />
             </div>
-            <div className="max-w-full min-w-[360px] flex-[1_1_360px]">
+            <div className="max-w-full min-w-[350px] flex-[1_1_350px]">
               <ModelPanel />
             </div>
           </div>
