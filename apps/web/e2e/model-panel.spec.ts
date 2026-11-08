@@ -467,3 +467,15 @@ test("Parameters and Model stand in a row, of one size", async ({ page }) => {
   expect(model?.width).toBeCloseTo(parameters?.width ?? 0, 0);
   expect(model?.height).toBeCloseTo(parameters?.height ?? 0, 0);
 });
+
+test("the choice of bands has no visible label, and keeps its name", async ({
+  page,
+}) => {
+  await open(page);
+
+  await expect(page.getByText("Number of bands")).toHaveCount(0);
+  await expect(
+    page.getByRole("radiogroup", { name: "Number of bands" }),
+  ).toBeVisible();
+  await expect(page.getByText("Fit mode", { exact: true })).toBeVisible();
+});

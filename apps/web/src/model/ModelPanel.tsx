@@ -60,14 +60,17 @@ function positiveOrNull(text: string): number | null {
 
 function Group({
   label,
+  hideLabel = false,
   children,
 }: {
   label: string;
+  /** For a choice that its options explain, such as SPB and DPB. Its control keeps the name. */
+  hideLabel?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-[13px] font-medium">{label}</span>
+      {!hideLabel && <span className="text-[13px] font-medium">{label}</span>}
       {children}
     </div>
   );
@@ -75,11 +78,13 @@ function Group({
 
 function ChoiceGroup({
   label,
+  hideLabel = false,
   value,
   onChange,
   options,
 }: {
   label: string;
+  hideLabel?: boolean;
   value: string | null;
   onChange: (value: string) => void;
   options: readonly {
@@ -92,7 +97,7 @@ function ChoiceGroup({
 }) {
   const hintId = useId();
   return (
-    <Group label={label}>
+    <Group label={label} hideLabel={hideLabel}>
       <ToggleGroup
         type="single"
         variant="outline"
@@ -360,6 +365,7 @@ function ModelControls({ models }: { models: readonly ModelDescription[] }) {
     <div className="mt-3 flex flex-col gap-4">
       <ChoiceGroup
         label={text.bands}
+        hideLabel
         value={model.id}
         onChange={(id) => {
           const next = models.find((candidate) => candidate.id === id);
