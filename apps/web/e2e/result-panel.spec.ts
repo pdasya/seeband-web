@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { show } from "./support/fitScreen";
 import { fakeFit } from "./support/fakeFit";
 import { CALC, serveModels } from "./support/models";
 
@@ -442,4 +443,36 @@ test("More graphs shows μ on the last chart, in view, and Results is a link", a
 
   await page.getByRole("link", { name: "Open results" }).click();
   await expect(page).toHaveURL(/\/results$/);
+});
+
+test("More graphs leaves the charts as they are when one shows μ", async ({
+  page,
+}) => {
+  await open(page);
+  await show(page, "Chemical potential μ(T)", 2);
+
+  await page.getByRole("button", { name: "More graphs" }).click();
+
+  await expect(
+    page.getByRole("combobox", { name: "Quantity shown in chart 2" }),
+  ).toHaveText("Chemical potential μ(T)");
+  await expect(
+    page.getByRole("combobox", { name: "Quantity shown in chart 4" }),
+  ).toHaveText("Band diagram E(k)");
+});
+
+test("More graphs puts μ on the first chart with no measured quantity", async ({
+  page,
+}) => {
+  await open(page);
+  await show(page, "Band contributions", 1);
+
+  await page.getByRole("button", { name: "More graphs" }).click();
+
+  await expect(
+    page.getByRole("combobox", { name: "Quantity shown in chart 1" }),
+  ).toHaveText("Chemical potential μ(T)");
+  await expect(
+    page.getByRole("combobox", { name: "Quantity shown in chart 4" }),
+  ).toHaveText("Band diagram E(k)");
 });

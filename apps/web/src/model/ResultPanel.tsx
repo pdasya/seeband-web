@@ -129,8 +129,17 @@ export function ResultPanel({ live }: { live: LiveCurves }) {
     .filter((part) => part !== null && part !== undefined)
     .join(" · ");
 
+  // μ goes on the first chart without a measured quantity, and a chart that shows it already stays.
   const openMoreGraphs = () => {
-    setChartPanel(panels.length - 1, "chemical_potential");
+    if (!panels.includes("chemical_potential")) {
+      const free = panels.findIndex(
+        (tab) => !(QUANTITIES as readonly string[]).includes(tab),
+      );
+      setChartPanel(
+        free === -1 ? panels.length - 1 : free,
+        "chemical_potential",
+      );
+    }
     document.getElementById("charts")?.scrollIntoView({ block: "nearest" });
   };
 
