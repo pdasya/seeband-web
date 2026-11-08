@@ -451,3 +451,19 @@ test("descriptions that cannot load say so", async ({ page }) => {
   await expect(page.getByRole("alert")).toContainText("could not be loaded");
   await expect(page.getByText("SECRET-VALUE")).toHaveCount(0);
 });
+
+test("Parameters and Model stand in a row, of one size", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await open(page);
+  const box = (name: string) =>
+    page
+      .locator("section", { has: page.getByRole("heading", { name }) })
+      .boundingBox();
+  const parameters = await box("Parameters");
+  const model = await box("Model");
+
+  expect(model?.y).toBe(parameters?.y);
+  expect(model?.x).toBeGreaterThan(parameters?.x ?? 0);
+  expect(model?.width).toBeCloseTo(parameters?.width ?? 0, 0);
+  expect(model?.height).toBeCloseTo(parameters?.height ?? 0, 0);
+});

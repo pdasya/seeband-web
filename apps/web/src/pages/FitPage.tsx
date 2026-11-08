@@ -29,17 +29,13 @@ export function FitPage() {
         </div>
         <aside
           aria-label={fit.panelTitle}
-          className="flex max-w-full min-w-0 flex-[1_1_652px] flex-col gap-3"
+          className="flex max-w-full min-w-0 flex-[1_1_592px] flex-col gap-3"
         >
           <FitPanel control={control} guess={guess} />
-          {/* Side by side where both fit, one under the other where they do not. */}
-          <div className="flex flex-wrap items-start gap-3">
-            <div className="max-w-full min-w-[290px] flex-[1_1_290px]">
-              <ParametersPanel />
-            </div>
-            <div className="max-w-full min-w-[350px] flex-[1_1_350px]">
-              <ModelPanel />
-            </div>
+          {/* Side by side and of one size where both fit, one under the other where they do not. */}
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(290px,1fr))] gap-3">
+            <ParametersPanel />
+            <ModelPanel />
           </div>
         </aside>
       </div>
