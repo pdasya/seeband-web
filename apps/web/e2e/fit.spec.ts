@@ -127,7 +127,7 @@ test("a fit sends its start values and data, and no bounds", async ({
   page,
 }) => {
   await openWithData(page);
-  await field(page, "E_g").fill("500");
+  await field(page, "E_g").fill("0,05");
   await field(page, "E_g").blur();
 
   await run(page).click();
@@ -135,7 +135,8 @@ test("a fit sends its start values and data, and no bounds", async ({
   const bodies = await fitBodies(page);
   expect(bodies).toHaveLength(1);
   expect(bodies[0]?.fit_mode).toBe("dpb_s_rho");
-  expect(bodies[0]?.start.band_gap).toBe(500);
+  // 0,05 eV, in K.
+  expect(bodies[0]?.start.band_gap).toBe(580.225906087);
   expect(Object.keys(bodies[0]?.measurements ?? {}).sort()).toEqual([
     "resistivity",
     "seebeck",
@@ -164,7 +165,7 @@ test("an iterative fit: status, counter, moving values and Stop", async ({
   });
   await expect(page.getByText("Fitting… iteration 1")).toBeVisible();
   await expect(field(page, "m₂/m₁")).toHaveValue("1,5");
-  await expect(field(page, "E_g")).toHaveValue("850");
+  await expect(field(page, "E_g")).toHaveValue("0,07");
   await expect(field(page, "m₂/m₁")).toBeDisabled();
   await expect(slider(page, "E_g")).toHaveAttribute("data-disabled");
 
@@ -181,7 +182,7 @@ test("an iterative fit: status, counter, moving values and Stop", async ({
   expect(await aborted(page)).toBe(1);
   // Stop keeps the last parameters, and the controls are back.
   await expect(field(page, "m₂/m₁")).toHaveValue("1,25");
-  await expect(field(page, "E_g")).toHaveValue("800");
+  await expect(field(page, "E_g")).toHaveValue("0,07");
   await expect(field(page, "E_g")).toBeEnabled();
   await expect(run(page)).toBeEnabled();
   await expect(page.getByRole("alert")).toHaveCount(0);
@@ -236,7 +237,7 @@ test("Stop before any iteration keeps the start values", async ({ page }) => {
   await stop(page).click();
 
   await expect(badge(page, "Stopped")).toBeVisible();
-  await expect(field(page, "E_g")).toHaveValue("1000");
+  await expect(field(page, "E_g")).toHaveValue("0,09");
 });
 
 test("the curves follow the fit, and end on its values", async ({ page }) => {
@@ -263,7 +264,7 @@ test("the curves follow the fit, and end on its values", async ({ page }) => {
 
   await expect(page.getByText("Converged in 5 iter.")).toBeVisible();
   await expect.poll(() => bodies.at(-1)?.parameters.m_eff).toBe(0.5);
-  await expect(field(page, "E_F")).toHaveValue("-50");
+  await expect(field(page, "E_F")).toHaveValue("0");
   await expect(run(page)).toBeEnabled();
 });
 
@@ -292,7 +293,7 @@ test("reaching the limit says so, and keeps the values", async ({ page }) => {
   });
 
   await expect(badge(page, "Iteration limit reached")).toBeVisible();
-  await expect(field(page, "E_g")).toHaveValue("900");
+  await expect(field(page, "E_g")).toHaveValue("0,08");
   await expect(page.getByRole("alert")).toHaveCount(0);
 });
 
@@ -309,7 +310,7 @@ test("a value that is not finite leaves the last one", async ({ page }) => {
     parameters: { m_eff: null, band_gap: 850 },
   });
 
-  await expect(field(page, "E_g")).toHaveValue("850");
+  await expect(field(page, "E_g")).toHaveValue("0,07");
   await expect(field(page, "m₂/m₁")).toHaveValue("2");
 });
 
@@ -327,8 +328,8 @@ test("a long value shows short, and stays exact", async ({ page }) => {
     type: "done",
     result: { ...RESULT, parameters: { band_gap: 651.553903512 } },
   });
-  await expect(field(page, "E_g")).toHaveValue("651,554");
-  await expect(field(page, "E_g")).toHaveAttribute("title", "651,553903512");
+  await expect(field(page, "E_g")).toHaveValue("0,06");
+  await expect(field(page, "E_g")).toHaveAttribute("title", "0,0561465712472");
   await expect
     .poll(() => bodies.at(-1)?.parameters.band_gap)
     .toBe(651.553903512);
@@ -336,7 +337,7 @@ test("a long value shows short, and stays exact", async ({ page }) => {
 
   // Typing what is shown is no change, so the exact value and the result stay. It is written
   // differently, as filling in the same text sends no input event.
-  await field(page, "E_g").fill("651,5540");
+  await field(page, "E_g").fill("0,060");
   await field(page, "E_g").blur();
 
   // Well past the debounce of up to 300 ms.
@@ -358,7 +359,7 @@ test("a value that a fit moves ends a refused number", async ({ page }) => {
     parameters: { band_gap: 850 },
   });
 
-  await expect(field(page, "E_g")).toHaveValue("850");
+  await expect(field(page, "E_g")).toHaveValue("0,07");
   await expect(page.getByRole("alert")).toHaveCount(0);
 });
 
@@ -373,8 +374,12 @@ test("a value beyond the control's range shows, with the slider at its end", asy
     result: { ...RESULT, parameters: { band_gap: 9000 } },
   });
 
-  await expect(field(page, "E_g")).toHaveValue("9000");
-  await expect(slider(page, "E_g")).toHaveAttribute("aria-valuenow", "3000");
+  // 9000 K, beyond the slider's 3000 K.
+  await expect(field(page, "E_g")).toHaveValue("0,78");
+  await expect(slider(page, "E_g")).toHaveAttribute(
+    "aria-valuenow",
+    "0.25851999786",
+  );
 });
 
 test("a fit that ends with no result says why", async ({ page }) => {
@@ -473,7 +478,7 @@ test("the limit of fits for one client says so", async ({ page }) => {
 
 test("Reset goes back to the defaults, and to manual", async ({ page }) => {
   await openWithData(page);
-  await field(page, "E_g").fill("500");
+  await field(page, "E_g").fill("0,05");
   await field(page, "E_g").blur();
   await field(page, "E_F").fill("9999");
   await field(page, "E_F").blur();
@@ -481,25 +486,25 @@ test("Reset goes back to the defaults, and to manual", async ({ page }) => {
 
   await reset(page).click();
 
-  await expect(field(page, "E_g")).toHaveValue("1000");
-  await expect(field(page, "E_F")).toHaveValue("-100");
+  await expect(field(page, "E_g")).toHaveValue("0,09");
+  await expect(field(page, "E_F")).toHaveValue("-0,01");
   await expect(page.getByRole("alert")).toHaveCount(0);
   await expect(fitBadges(page)).toHaveCount(0);
 });
 
 test("Reset touches only this fit mode", async ({ page }) => {
   await openWithData(page);
-  await field(page, "E_g").fill("500");
+  await field(page, "E_g").fill("0,05");
   await field(page, "E_g").blur();
   await page.getByRole("radio", { name: "S", exact: true }).click();
-  await field(page, "E_g").fill("600");
+  await field(page, "E_g").fill("0,06");
   await field(page, "E_g").blur();
 
   await reset(page).click();
-  await expect(field(page, "E_g")).toHaveValue("1000");
+  await expect(field(page, "E_g")).toHaveValue("0,09");
 
   await page.getByRole("radio", { name: "S + ρ", exact: true }).click();
-  await expect(field(page, "E_g")).toHaveValue("500");
+  await expect(field(page, "E_g")).toHaveValue("0,05");
 });
 
 test("Reset during a fit stops it", async ({ page }) => {
@@ -510,12 +515,12 @@ test("Reset during a fit stops it", async ({ page }) => {
     iteration: 1,
     parameters: { band_gap: 850 },
   });
-  await expect(field(page, "E_g")).toHaveValue("850");
+  await expect(field(page, "E_g")).toHaveValue("0,07");
 
   await reset(page).click();
 
   expect(await aborted(page)).toBe(1);
-  await expect(field(page, "E_g")).toHaveValue("1000");
+  await expect(field(page, "E_g")).toHaveValue("0,09");
   await expect(run(page)).toBeEnabled();
 });
 
@@ -555,7 +560,7 @@ test("its own values moving do not stop a fit", async ({ page }) => {
     parameters: { band_gap: 850 },
   });
 
-  await expect(field(page, "E_g")).toHaveValue("850");
+  await expect(field(page, "E_g")).toHaveValue("0,07");
   // Well past what a change of inputs would take to stop it.
   await page.waitForTimeout(800);
   expect(await aborted(page)).toBe(0);
@@ -576,7 +581,7 @@ test("a fit goes on while another screen is open", async ({ page }) => {
 
   expect(await aborted(page)).toBe(0);
   await expect(page.getByText("Fitting… iteration 1")).toBeVisible();
-  await expect(field(page, "E_g")).toHaveValue("850");
+  await expect(field(page, "E_g")).toHaveValue("0,07");
 
   await send(page, { type: "done", result: RESULT });
   await expect(page.getByText("Converged in 5 iter.")).toBeVisible();

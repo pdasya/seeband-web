@@ -232,7 +232,7 @@ function parameterRecords(
       name: parameter.name,
       symbol: parameterSymbol(parameter.name),
       meaning: parameter.meaning,
-      unit: units[parameter.unit] ?? parameter.unit,
+      unit: units[parameter.display_unit] ?? parameter.display_unit,
       value: coreToDisplay(parameter, value),
       // With no fit, a value the mode fits is the user's, so a file read alone does not mislead.
       status:

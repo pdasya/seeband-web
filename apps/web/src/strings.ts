@@ -29,6 +29,7 @@ export const STRINGS = {
     units: {
       m_e: "in mₑ",
       K: "in K",
+      eV: "in eV",
       dimensionless: "",
       unknown: "unit not known",
     },
@@ -472,7 +473,7 @@ export const STRINGS = {
     },
     parameterTable: "Parameters in use",
     columns: { parameter: "Parameter", value: "Value", bounds: "Bounds" },
-    valueUnits: { K: "K", m_e: "mₑ" },
+    valueUnits: { K: "K", eV: "eV", m_e: "mₑ" },
     boundsRange: (lower: string, upper: string) => `${lower} … ${upper}`,
     noBounds: "—",
     atBound: "at bound",
@@ -568,6 +569,7 @@ export const STRINGS = {
     units: {
       m_e: "m_e",
       K: "K",
+      eV: "eV",
       dimensionless: "",
       unknown: "unit not known",
     },

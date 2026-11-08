@@ -305,10 +305,10 @@ describe("the parameters file", () => {
     const lines = file.split("\n").slice(0, -1);
     expect(lines[0]).toBe("Parameter\tValue\tStatus");
     expect(lines).toContain(
-      "E_g (position of band 2) [K]\t900\tfitted, at bound",
+      "E_g (position of band 2) [eV]\t0.077555999358\tfitted, at bound",
     );
     expect(lines.find((line) => line.startsWith("E_F"))).toMatch(
-      /\t-50\tfitted$/,
+      /\t-0.004308666631\tfitted$/,
     );
     expect(lines.at(-1)).toBe("N1, N2 (band degeneracies)\t1, 2\tfixed");
   });
@@ -322,7 +322,7 @@ describe("the parameters file", () => {
       { status: "idle" },
     ).split("\n");
     expect(lines).toContain(
-      "E_g (position of band 2) [K]\t900\tnot fitted yet",
+      "E_g (position of band 2) [eV]\t0.077555999358\tnot fitted yet",
     );
     expect(lines.some((line) => line.endsWith("\tfitted"))).toBe(false);
   });
@@ -479,7 +479,7 @@ describe("the parameters as CSV", () => {
       "parameter,symbol,meaning,unit,value,status",
     ]);
     expect(lines).toContain(
-      'band_gap,E_g,position of band 2,K,900,"fitted, at bound"',
+      'band_gap,E_g,position of band 2,eV,0.077555999358,"fitted, at bound"',
     );
     expect(lines.find((line) => line.startsWith("m_eff,"))).toMatch(
       /^m_eff,m₂\/m₁,"band mass ratio m2\/m1, the sign sets the type of band 2",,/,

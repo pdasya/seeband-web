@@ -17,7 +17,7 @@ import {
   displayToCore,
   parameterSymbol,
   parameterValues,
-  shortened,
+  shownValue,
   steppedDisplayValue,
   tidy,
   typedDisplayValue,
@@ -33,7 +33,7 @@ import { STRINGS } from "@/strings";
 
 const { parameters: text } = STRINGS;
 
-function hint({ meaning, unit }: ParameterDescription): string {
+function hint({ meaning, display_unit: unit }: ParameterDescription): string {
   const known: Record<string, string> = text.units;
   const shown = known[unit] ?? unit;
   return shown === "" ? meaning : `${meaning}, ${shown}`;
@@ -89,7 +89,7 @@ function ParameterControl({
     if (typed !== null) {
       setDraft(null);
       // An unchanged number keeps the value as it is, to the last bit, and any result.
-      if (typed !== displayed && typed !== shortened(displayed)) {
+      if (typed !== displayed && typed !== shownValue(parameter, displayed)) {
         onChange(displayToCore(parameter, typed));
       }
     }
@@ -141,7 +141,7 @@ function ParameterControl({
           className="h-7 w-28 flex-none text-right font-mono text-[13px]"
           aria-invalid={invalid}
           title={formatNumber(displayed)}
-          value={draft ?? formatNumber(shortened(displayed))}
+          value={draft ?? formatNumber(shownValue(parameter, displayed))}
           onChange={(event) => {
             setDraft(event.target.value);
             setInvalid(false);
@@ -164,7 +164,12 @@ function ParameterControl({
         min={minimum}
         max={maximum}
         // By whole control units, as on the desktop. The description's step is for the keyboard.
-        step={parameter.display_scale}
+        // A value shown in another unit, as an energy in eV, moves by the step of that unit.
+        step={
+          parameter.display_factor === 1
+            ? parameter.display_scale
+            : parameter.display_range.step
+        }
         // A fit can end outside the control's range, and the number shows where.
         value={[Math.min(maximum, Math.max(minimum, displayed))]}
         onValueChange={([next]) => {
@@ -189,12 +194,15 @@ function ParameterControl({
         }}
       />
       <div className="flex justify-between font-mono text-[11px] text-muted-foreground">
-        <span>{formatNumber(minimum)}</span>
-        <span>{formatNumber(maximum)}</span>
+        <span>{formatNumber(shownValue(parameter, minimum))}</span>
+        <span>{formatNumber(shownValue(parameter, maximum))}</span>
       </div>
       {invalid && (
         <span id={errorId} role="alert" className="text-xs text-destructive">
-          {`${label}: ${text.outOfRange(formatNumber(minimum), formatNumber(maximum))}`}
+          {`${label}: ${text.outOfRange(
+            formatNumber(shownValue(parameter, minimum)),
+            formatNumber(shownValue(parameter, maximum)),
+          )}`}
         </span>
       )}
     </div>

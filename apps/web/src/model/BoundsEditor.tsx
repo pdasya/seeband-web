@@ -23,7 +23,7 @@ import {
   displayToCore,
   editableParameters,
   parameterSymbol,
-  shortened,
+  shownValue,
   type FitBounds,
   type ParameterDescription,
 } from "@/model/parameters";
@@ -53,7 +53,7 @@ function BoundsRow({
   const [invalid, setInvalid] = useState(false);
   const symbol = parameterSymbol(parameter.name);
   const shown = (core: number) =>
-    formatNumber(shortened(coreToDisplay(parameter, core)));
+    formatNumber(shownValue(parameter, coreToDisplay(parameter, core)));
 
   const markInvalid = (next: boolean) => {
     setInvalid(next);

@@ -78,9 +78,14 @@ export function coreToDisplay(
   parameter: ParameterDescription,
   value: number,
 ): number {
-  return parameter.display_scale === parameter.fit_scale
-    ? value
-    : scaled(value, parameter.display_scale / parameter.fit_scale);
+  const inControl =
+    parameter.display_scale === parameter.fit_scale
+      ? value
+      : scaled(value, parameter.display_scale / parameter.fit_scale);
+  // To the unit a user sees, such as eV for an energy in K.
+  return parameter.display_factor === 1
+    ? inControl
+    : inControl * parameter.display_factor;
 }
 
 /**
@@ -91,14 +96,38 @@ export function displayToCore(
   parameter: ParameterDescription,
   value: number,
 ): number {
+  // Tidied as below, so that an energy shown in eV comes back to the same whole kelvin.
+  const inControl =
+    parameter.display_factor === 1
+      ? value
+      : tidy(value / parameter.display_factor);
   return parameter.display_scale === parameter.fit_scale
-    ? value
-    : tidy(scaled(value, parameter.fit_scale / parameter.display_scale));
+    ? inControl
+    : tidy(scaled(inControl, parameter.fit_scale / parameter.display_scale));
 }
 
 /** A displayed number, without the noise of binary fractions such as 1.1500000000000001. */
 export function tidy(value: number): number {
   return Number(value.toPrecision(12));
+}
+
+/**
+ * A displayed value as the screen shows it: an energy in eV to its step, 0.01 eV, as more digits
+ * say nothing a user can set, and any other value shortened. The session keeps every digit.
+ */
+export function shownValue(
+  parameter: ParameterDescription,
+  value: number,
+): number {
+  if (parameter.display_factor === 1) {
+    return shortened(value);
+  }
+  const decimals = Math.max(
+    0,
+    -Math.floor(Math.log10(parameter.display_range.step)),
+  );
+  // Adding 0 turns -0 into 0, so that no "-0" shows.
+  return Number(value.toFixed(decimals)) + 0;
 }
 
 /** What a field shows, as a fit's value has more digits than fit. The session keeps them all. */
@@ -113,7 +142,12 @@ export function typedDisplayValue(
 ): number | null {
   const value = parseNumber(text);
   const { minimum, maximum } = parameter.display_range;
-  return value !== null && value >= minimum && value <= maximum ? value : null;
+  // Bounds as the screen shows them, so that a bound typed as shown counts, as that bound.
+  return value !== null &&
+    value >= shownValue(parameter, minimum) &&
+    value <= shownValue(parameter, maximum)
+    ? Math.min(maximum, Math.max(minimum, value))
+    : null;
 }
 
 /** One keyboard step from a displayed value. A step is an increment, not a grid. */
