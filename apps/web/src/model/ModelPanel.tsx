@@ -13,7 +13,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   Tooltip,
@@ -217,7 +216,7 @@ function DegeneracyFields({
   const [band1Invalid, setBand1Invalid] = useState(false);
   const [band2Invalid, setBand2Invalid] = useState(false);
   return (
-    <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+    <div className="flex flex-col gap-1.5">
       <div className="grid grid-cols-2 gap-3">
         <DegeneracyField
           label="N₁"
@@ -278,7 +277,7 @@ function FitRangeFields({
     }
   };
   return (
-    <div className="min-w-0 flex-1">
+    <div>
       <Group label={text.range}>
         <div className="grid grid-cols-2 gap-3">
           <Input
@@ -426,7 +425,7 @@ function ModelControls({ models }: { models: readonly ModelDescription[] }) {
         </Group>
       )}
 
-      <div className="flex items-stretch gap-3">
+      <div className="flex flex-col gap-4">
         {mode?.degeneracy != null && (
           <>
             {/* A new model starts its fields from its own values. */}
@@ -440,10 +439,6 @@ function ModelControls({ models }: { models: readonly ModelDescription[] }) {
               onBand2Commit={(band2Degeneracy) => {
                 setSelection({ band2Degeneracy });
               }}
-            />
-            <Separator
-              orientation="vertical"
-              className="data-[orientation=vertical]:h-auto"
             />
           </>
         )}
