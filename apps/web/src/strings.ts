@@ -345,9 +345,20 @@ export const STRINGS = {
     result: "Result",
     panelTitle: "Fit",
     guess: "Initial guess",
-    guessHint: "The neural net proposes m₂/m₁, E_g and E_F from S(T)",
-    guessOnlyWithNets: "The neural net is used for DPB only",
-    guessNeedsData: "Load S data to use the neural net",
+    guessHint:
+      "Estimate band parameters from S(T); SPB mass magnitude is preserved",
+    guessUnsupported: {
+      sign_change:
+        "S(T) changes sign; a single-band estimate is unavailable. Try DPB.",
+      too_few_temperatures:
+        "At least three distinct usable temperatures are needed.",
+      zero_seebeck: "Zero Seebeck does not determine a finite Fermi energy.",
+    },
+    guessNumerical:
+      "Estimated from S(T); mass magnitude is preserved. Check the calculated curve before fitting.",
+    guessNumericalBadge: "· numerical S(T) estimate",
+    guessUnavailable: "Initial guess is available for SPB and DPB",
+    guessNeedsData: "Load S data to estimate start values",
     guessNet: (minK: string, maxK: string) => `· net ${minK}–${maxK} K`,
     guessNoNet: (firstK: string, lastK: string, available: string) =>
       `No neural net covers ${firstK}–${lastK} K, so the values stay as they are. The nets cover ${available}.`,
@@ -360,6 +371,12 @@ export const STRINGS = {
     guessLimited:
       "Too many initial guesses in a short time, so the values stay as they are. Try again in a moment.",
     guessWarnings: {
+      estimate_at_bound:
+        "The estimate reached a search bound; inspect the curve before fitting.",
+      large_estimate_residual:
+        "The estimated curve has an RMS residual above 20% of the measured RMS signal. This is a quality heuristic, not a band-count diagnosis.",
+      low_temperature_omitted:
+        "Very low-temperature rows were omitted to avoid overflow in the existing SPB formula.",
       unsorted_temperature:
         "The temperatures in these data do not rise, so the net may not suit them.",
       underdetermined_fit:
@@ -694,6 +711,7 @@ export const STRINGS = {
       start: "Start values",
       fromNet: (minK: string, maxK: string) =>
         `The neural net's guess, from its net for ${minK}–${maxK} K`,
+      fromNumerical: "Numerical estimate from S(T)",
       fromValues: "The values on the fit screen",
       stage: (symbol: string) => `Fit to ${symbol}`,
       finds: (symbols: string) => `Finds ${symbols}`,

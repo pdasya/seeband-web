@@ -734,6 +734,19 @@ describe("the start of a fit", () => {
     expect(state().fitStartNet).toEqual(APPLIED.netRange);
   });
 
+  test("a numerical SPB start has no neural network range", () => {
+    state().setData("seebeck", DATA);
+    state().chooseModel("spb", SETTINGS);
+    state().guessApplied(
+      [{ fitMode: "spb_s", values: { band_mass: -1.7, fermi_energy: -700 } }],
+      { kind: "applied", warnings: [] },
+      "spb",
+      DATA.measurement,
+    );
+    state().fitRequested("spb_s");
+    expect(state().fitStartNet).toBeNull();
+  });
+
   test("an edit after the guess makes the values the user's", () => {
     guessed();
     state().setParameter("dpb_s", "m_eff", 3);

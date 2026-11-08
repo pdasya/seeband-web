@@ -13,11 +13,14 @@ function store() {
   return useSessionStore.getState();
 }
 
-/** The model whose nets guess its start values. The API says which has them. */
+/** Return the selected model when the API offers initial estimates for it. */
 export function guessModel(
   models: readonly ModelDescription[] | undefined,
+  selected = "dpb",
 ): ModelDescription | undefined {
-  return models?.find(({ has_initial_guess }) => has_initial_guess);
+  return models?.find(
+    ({ id, has_initial_guess }) => id === selected && has_initial_guess,
+  );
 }
 
 function failure(error: unknown): GuessOutcome {
@@ -75,7 +78,10 @@ export async function runGuess(
     const now = current();
     if (now === null) {
       store().guessDropped();
-    } else if (answer.status === "guess") {
+    } else if (
+      answer.status === "guess" ||
+      answer.status === "numerical_guess"
+    ) {
       if (answer.warnings.includes("m_eff_rounds_to_zero")) {
         store().guessFinished(
           { kind: "needs_mass", warnings: answer.warnings },
@@ -87,21 +93,43 @@ export async function runGuess(
           model.fit_modes.map(({ id, parameters: specs }) => ({
             fitMode: id,
             values: Object.fromEntries(
-              specs.flatMap(({ name }) => {
-                const value = answer.start_values[name];
+              specs.flatMap(({ name, core_range }) => {
+                let value = answer.start_values[name];
+                if (
+                  answer.status === "numerical_guess" &&
+                  answer.sign_only_parameters?.includes(name) &&
+                  value !== undefined
+                ) {
+                  const previous = parameters[id]?.[name] ?? core_range.default;
+                  value =
+                    Math.sign(value) *
+                    (Math.abs(previous) || Math.abs(core_range.default));
+                }
                 return value === undefined ? [] : [[name, value]];
               }),
             ),
           })),
           {
             kind: "applied",
-            netRange: answer.net_range,
+            ...(answer.status === "guess"
+              ? { netRange: answer.net_range }
+              : {}),
             warnings: answer.warnings,
           },
           model.id,
           now,
         );
       }
+    } else if (answer.status === "unsupported") {
+      store().guessFinished(
+        {
+          kind: "unsupported",
+          reason: answer.reason,
+          warnings: answer.warnings,
+        },
+        model.id,
+        now,
+      );
     } else if (answer.status === "no_net") {
       store().guessFinished(
         {
@@ -131,6 +159,11 @@ export async function runGuess(
       }
     }
   } finally {
+    if (own.signal.aborted) {
+      seenByModel.get(model.id)?.delete(measurement);
+      if (lastByModel.get(model.id) === measurement)
+        lastByModel.delete(model.id);
+    }
     if (controller === own) {
       controller = null;
     }
@@ -149,20 +182,26 @@ export function dropGuess(): void {
   }
 }
 
-const seen = new WeakSet<Measurement>();
-let last: Measurement | null = null;
+const seenByModel = new Map<string, WeakSet<Measurement>>();
+const lastByModel = new Map<string, Measurement>();
 
 /**
  * Whether S just came from a new load, as the desktop guesses on each. Coming back to a tab brings
  * back the same data, and a new mapping of a table can read the same S, which are no such thing.
  */
-export function isNewLoad(measurement: Measurement | undefined): boolean {
+export function isNewLoad(
+  measurement: Measurement | undefined,
+  model = "dpb",
+): boolean {
+  const seen = seenByModel.get(model) ?? new WeakSet<Measurement>();
+  seenByModel.set(model, seen);
+  const last = lastByModel.get(model);
   if (measurement === undefined) {
-    last = null;
+    lastByModel.delete(model);
     return false;
   }
   const known = seen.has(measurement) || (last && sameRows(last, measurement));
   seen.add(measurement);
-  last = measurement;
+  lastByModel.set(model, measurement);
   return known !== true;
 }

@@ -24,7 +24,7 @@ from seeband_core.model_scales import (
 )
 
 MODEL_NAMES = {"SPB": "Single parabolic band", "DPB": "Double parabolic band"}
-MODELS_WITH_INITIAL_GUESS = ("DPB",)
+MODELS_WITH_INITIAL_GUESS = ("SPB", "DPB")
 FIT_MODE_QUANTITIES: dict[str, tuple[Quantity, ...]] = {
     "S": ("seebeck",),
     "S+rho": ("seebeck", "resistivity"),
@@ -182,6 +182,7 @@ def load_desktop_descriptions() -> dict[str, ModelDescription]:
             default_max_temperature_k=table["fit_range"]["default_max_k"],
             default_curve_points=table["curve_points"]["count"],
             has_initial_guess=name in MODELS_WITH_INITIAL_GUESS,
+            initial_guess_method="numerical" if name == "SPB" else "neural",
         )
         for name, full_name in MODEL_NAMES.items()
     }

@@ -325,7 +325,10 @@ def test_calculation_through_real_workers_logs_no_values(tmp_path: Path) -> None
         no_net = guess | {"temperature_k": [333.4445, 334.4445]}
         response = client.post("/api/guess", json=no_net, timeout=30)
         assert response.json()["status"] == "no_net"
-        assert client.post("/api/guess", json=guess | {"model": "spb"}).status_code == 422
+        response = client.post("/api/guess", json=guess | {"model": "spb"})
+        assert response.status_code == 200
+        assert response.json()["status"] == "unsupported"
+        assert response.json()["reason"] == "too_few_temperatures"
 
     log = log_path.read_text(encoding="utf-8")
     for value in (

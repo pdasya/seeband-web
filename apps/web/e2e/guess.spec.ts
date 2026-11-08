@@ -42,7 +42,21 @@ const GUESS = {
 async function open(
   page: Page,
   answer: (route: Route, index: number) => Promise<void> = (route) =>
-    route.fulfill({ json: GUESS }),
+    route.fulfill({
+      json:
+        route.request().postDataJSON().model === "dpb"
+          ? GUESS
+          : {
+              status: "numerical_guess",
+              sign_only_parameters: ["band_mass"],
+              rmse_v_per_k: 0,
+              start_values: {
+                band_mass: -1,
+                fermi_energy: -700,
+              },
+              warnings: [],
+            },
+    }),
 ) {
   await serveModels(page);
   const bodies: GuessBody[] = [];
@@ -121,8 +135,8 @@ test("the values go to every mode of the model, and stay out of others", async (
   await expect(field(page, "E_g")).toHaveValue("0,05");
 
   await choose(page, "SPB");
-  await expect(field(page, "E_F")).toHaveValue("0,01");
-  await expect(badge(page, "Initial guess")).toHaveCount(0);
+  await expect(field(page, "E_F")).toHaveValue("-0,06");
+  await expect(badge(page, "Initial guess")).toBeVisible();
 });
 
 test("the other parameters keep their values", async ({ page }) => {
@@ -136,18 +150,21 @@ test("the other parameters keep their values", async ({ page }) => {
   await expect(field(page, "A")).toHaveValue("50000");
 });
 
-test("loading while SPB is open still sets the DPB values", async ({
+test("loading while SPB is open estimates SPB and preserves DPB values", async ({
   page,
 }) => {
-  await open(page);
+  const bodies = await open(page);
   await choose(page, "SPB");
-
   await load(page);
-  await expect(button(page)).toBeDisabled();
-  await expect(field(page, "E_F")).toHaveValue("0,01");
-
+  await expect(button(page)).toBeEnabled();
+  await expect(field(page, "E_F")).toHaveValue("-0,06");
+  expect(bodies[0]?.model).toBe("spb");
+  await expect(
+    badge(page, "Initial guess · numerical S(T) estimate"),
+  ).toBeVisible();
   await choose(page, "DPB");
   await expect(field(page, "E_g")).toHaveValue("0,05");
+  expect(bodies.map(({ model }) => model)).toEqual(["spb", "dpb"]);
 });
 
 test("the button is for a model with nets and S data, and says so", async ({
@@ -159,12 +176,15 @@ test("the button is for a model with nets and S data, and says so", async ({
   await expect(button(page)).toHaveAttribute("title", /Load S data/);
 
   await choose(page, "SPB");
-  await expect(button(page)).toHaveAttribute("title", /DPB only/);
+  await expect(button(page)).toHaveAttribute("title", /Load S data/);
   await choose(page, "DPB");
 
   await load(page);
   await expect(button(page)).toBeEnabled();
-  await expect(button(page)).toHaveAttribute("title", /proposes/);
+  await expect(button(page)).toHaveAttribute(
+    "title",
+    /Estimate band parameters/,
+  );
 });
 
 test("the button applies the net again after edits", async ({ page }) => {
@@ -320,24 +340,30 @@ test("a late answer about a removed file changes nothing", async ({ page }) => {
   expect(bodies).toHaveLength(2);
 });
 
-test("an answer that comes while another model is open waits for it", async ({
+test("switching models guesses each and retries a cancelled request", async ({
   page,
 }) => {
   const gate = hold();
   await open(page, async (route) => {
-    await gate.held;
-    await route.fulfill({ json: GUESS });
+    if (route.request().postDataJSON().model === "dpb") {
+      await gate.held;
+      await route.fulfill({ json: GUESS });
+    } else {
+      await route.fulfill({
+        json: {
+          status: "numerical_guess",
+          start_values: { band_mass: -1, fermi_energy: -700 },
+          sign_only_parameters: ["band_mass"],
+          rmse_v_per_k: 0,
+          warnings: [],
+        },
+      });
+    }
   });
   await load(page);
   await choose(page, "SPB");
-
-  const answered = page.waitForResponse("**/api/guess");
+  await expect(field(page, "E_F")).toHaveValue("-0,06");
   gate.release();
-  await answered;
-  await expect(button(page)).toHaveAttribute("title", /DPB only/);
-  await expect(field(page, "E_F")).toHaveValue("0,01");
-  await expect(badge(page, "Initial guess")).toHaveCount(0);
-
   await choose(page, "DPB");
   await expect(field(page, "E_g")).toHaveValue("0,05");
   await expect(badge(page, "Initial guess · net 25–750 K")).toBeVisible();

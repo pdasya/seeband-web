@@ -1,4 +1,4 @@
-"""`POST /api/guess`: start values from the neural net for measured Seebeck data.
+"""`POST /api/guess`: DPB neural or SPB numerical Seebeck start values.
 
 No net that fits the data is a normal answer, not an error, so that a client can say why and keep
 its current values. It keeps no state, and the examples are hand-rounded so that the contract does
@@ -16,7 +16,7 @@ from seeband_core.neural_nets import NET_RANGES_K, NoNeuralNet
 from seeband_api.calc_pool import CalcPoolDep
 from seeband_api.calc_worker import CalculationFailed
 from seeband_api.errors import ApiError, ErrorDetail
-from seeband_api.guess_worker import GuessOutcome, guess
+from seeband_api.guess_worker import GuessOutcome, guess, numerical_guess
 from seeband_api.request_checks import (
     FiniteFloat,
     MaxPointsDep,
@@ -28,7 +28,14 @@ from seeband_api.routing import api_router, too_many_requests
 
 router = api_router("guess")
 
-GuessWarning = Literal["unsorted_temperature", "underdetermined_fit", "m_eff_rounds_to_zero"]
+GuessWarning = Literal[
+    "unsorted_temperature",
+    "underdetermined_fit",
+    "m_eff_rounds_to_zero",
+    "estimate_at_bound",
+    "large_estimate_residual",
+    "low_temperature_omitted",
+]
 
 _NET_RANGE_EXAMPLE = {"min_temperature_k": 400.0, "max_temperature_k": 700.0}
 # Every third row of the example set 01_Fe2VAl09Si01, rounded to 4 digits.
@@ -71,6 +78,13 @@ RESPONSE_EXAMPLES: dict[str, dict[str, Any]] = {
     "not_finite": {
         "status": "not_finite",
         "net_range": _NET_RANGE_EXAMPLE,
+        "warnings": [],
+    },
+    "numerical_guess": {
+        "status": "numerical_guess",
+        "start_values": {"band_mass": -1.0, "fermi_energy": -700.0},
+        "sign_only_parameters": ["band_mass"],
+        "rmse_v_per_k": 0.0,
         "warnings": [],
     },
 }
@@ -128,6 +142,22 @@ class GuessFound(BaseModel):
     warnings: list[GuessWarning]
 
 
+class NumericalGuessFound(BaseModel):
+    """Seebeck-only estimate; mass magnitude remains a reference value."""
+
+    sign_only_parameters: list[str] = ["band_mass"]
+    rmse_v_per_k: float
+    status: Literal["numerical_guess"]
+    start_values: dict[str, float]
+    warnings: list[GuessWarning]
+
+
+class GuessUnsupported(BaseModel):
+    status: Literal["unsupported"]
+    reason: Literal["sign_change", "too_few_temperatures", "zero_seebeck"]
+    warnings: list[GuessWarning]
+
+
 class GuessNoNet(BaseModel):
     """No net fits: the first and last rows do not span any of `available_ranges`.
 
@@ -153,7 +183,10 @@ class GuessNotFinite(BaseModel):
     warnings: list[GuessWarning]
 
 
-GuessResponse = Annotated[GuessFound | GuessNoNet | GuessNotFinite, Field(discriminator="status")]
+GuessResponse = Annotated[
+    GuessFound | NumericalGuessFound | GuessUnsupported | GuessNoNet | GuessNotFinite,
+    Field(discriminator="status"),
+]
 
 
 def _check_model(model_id: str) -> None:
@@ -249,7 +282,7 @@ def _to_response(outcome: GuessOutcome) -> GuessFound | GuessNoNet | GuessNotFin
 )
 async def post_guess(
     body: GuessRequest, pool: CalcPoolDep, max_points: MaxPointsDep
-) -> GuessFound | GuessNoNet | GuessNotFinite:
+) -> GuessFound | NumericalGuessFound | GuessUnsupported | GuessNoNet | GuessNotFinite:
     _check_model(body.model)
     if len(body.temperature_k) > max_points:
         raise ApiError(
@@ -259,6 +292,23 @@ async def post_guess(
             [too_many_points(max_points, ["temperature_k"])],
         )
     try:
+        if registry.get(body.model).describe().initial_guess_method == "numerical":
+            values = await pool.run(
+                numerical_guess,
+                body.model,
+                np.array(body.temperature_k),
+                np.array(body.seebeck_v_per_k),
+            )
+            if values.reason is not None:
+                return GuessUnsupported(
+                    status="unsupported", reason=values.reason, warnings=[*values.warnings]
+                )
+            return NumericalGuessFound(
+                status="numerical_guess",
+                start_values=values.start_values,
+                warnings=[*values.warnings],
+                rmse_v_per_k=values.rmse_v_per_k or 0.0,
+            )
         outcome = await pool.run(
             guess, body.model, np.array(body.temperature_k), np.array(body.seebeck_v_per_k)
         )

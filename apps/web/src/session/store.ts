@@ -175,7 +175,12 @@ export type NetRange = Schemas["NetRange"];
 
 /** How the last initial guess ended. Only `applied` changed any value. */
 export type GuessOutcome =
-  | { kind: "applied"; netRange: NetRange; warnings: GuessWarnings }
+  | {
+      kind: "unsupported";
+      reason: "sign_change" | "too_few_temperatures" | "zero_seebeck";
+      warnings: GuessWarnings;
+    }
+  | { kind: "applied"; netRange?: NetRange; warnings: GuessWarnings }
   | {
       kind: "no_net";
       firstK: number;
@@ -215,6 +220,7 @@ export interface SessionState {
   guess: GuessRecord | null;
   /** The net whose guess the last fit started from, or null if it started from other values. */
   fitStartNet: NetRange | null;
+  fitStartNumerical: boolean;
   /** The values the last fit started from, in core units, for its curve before the fit. */
   fitStartValues: Record<string, number> | null;
   /** Counts resets, so that fields can start again even if the values do not change. */
@@ -411,6 +417,7 @@ export const createSessionStore = () =>
       guessPending: false,
       guess: null,
       fitStartNet: null,
+      fitStartNumerical: false,
       fitStartValues: null,
       parameterResets: 0,
       customBounds: {},
@@ -659,10 +666,14 @@ export const createSessionStore = () =>
           return {
             fit: { status: "waiting" },
             fitStartValues: start ?? null,
+            fitStartNumerical:
+              guess?.kind === "applied" &&
+              !guess.netRange &&
+              state.guess?.model === state.selection.model,
             fitStartNet:
               guess?.kind === "applied" &&
               state.guess?.model === state.selection.model
-                ? guess.netRange
+                ? (guess.netRange ?? null)
                 : null,
           };
         });

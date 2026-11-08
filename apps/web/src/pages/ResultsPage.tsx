@@ -310,6 +310,7 @@ export function ResultsPage() {
   const data = useSessionStore((state) => state.data);
   const fit = useSessionStore((state) => state.fit);
   const customBounds = useSessionStore((state) => state.customBounds);
+  const numericalStart = useSessionStore((state) => state.fitStartNumerical);
   const startNet = useSessionStore((state) => state.fitStartNet);
 
   const model = models?.models.find(({ id }) => id === selection.model);
@@ -550,7 +551,9 @@ export function ResultsPage() {
         {/* The report leaves the log out. */}
         <div className="min-w-0 flex-[1_1_320px] print:hidden">
           <Panel title={text.log.title} subtitle={text.log.subtitle}>
-            <FitLog steps={fitLog(mode, scattering, fit, startNet)} />
+            <FitLog
+              steps={fitLog(mode, scattering, fit, startNet, numericalStart)}
+            />
           </Panel>
         </div>
       </div>

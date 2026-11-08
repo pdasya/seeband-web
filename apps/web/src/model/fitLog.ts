@@ -70,6 +70,7 @@ export function fitLog(
   scattering: string | null,
   fit: FitState,
   startNet: NetRange | null,
+  numerical = false,
 ): LogStep[] {
   const iterations = iterationsOf(fit);
   const fitted = new Set(
@@ -85,7 +86,9 @@ export function fitLog(
     title: log.start,
     text:
       startNet === null
-        ? log.fromValues
+        ? numerical
+          ? log.fromNumerical
+          : log.fromValues
         : log.fromNet(
             formatNumber(startNet.min_temperature_k),
             formatNumber(startNet.max_temperature_k),

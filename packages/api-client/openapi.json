@@ -259,7 +259,7 @@
                           "default_min_temperature_k": 50.0,
                           "default_max_temperature_k": 800.0,
                           "default_curve_points": 50,
-                          "has_initial_guess": false,
+                          "has_initial_guess": true,
                           "fit_modes": [
                             {
                               "id": "spb_s",
@@ -2609,7 +2609,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "example": "\"c38f3175cdbaf11f1e62cbf8bcb3712c\""
+                "example": "\"162c95e9f5b92b6fc6587b2058c9072e\""
               }
             }
           },
@@ -3761,6 +3761,12 @@
                       "$ref": "#/components/schemas/GuessFound"
                     },
                     {
+                      "$ref": "#/components/schemas/NumericalGuessFound"
+                    },
+                    {
+                      "$ref": "#/components/schemas/GuessUnsupported"
+                    },
+                    {
                       "$ref": "#/components/schemas/GuessNoNet"
                     },
                     {
@@ -3772,6 +3778,8 @@
                     "propertyName": "status",
                     "mapping": {
                       "guess": "#/components/schemas/GuessFound",
+                      "numerical_guess": "#/components/schemas/NumericalGuessFound",
+                      "unsupported": "#/components/schemas/GuessUnsupported",
                       "no_net": "#/components/schemas/GuessNoNet",
                       "not_finite": "#/components/schemas/GuessNotFinite"
                     }
@@ -3836,6 +3844,20 @@
                         "min_temperature_k": 400.0,
                         "max_temperature_k": 700.0
                       },
+                      "warnings": []
+                    }
+                  },
+                  "numerical_guess": {
+                    "value": {
+                      "status": "numerical_guess",
+                      "start_values": {
+                        "band_mass": -1.0,
+                        "fermi_energy": -700.0
+                      },
+                      "sign_only_parameters": [
+                        "band_mass"
+                      ],
+                      "rmse_v_per_k": 0.0,
                       "warnings": []
                     }
                   }
@@ -6225,7 +6247,10 @@
               "enum": [
                 "unsorted_temperature",
                 "underdetermined_fit",
-                "m_eff_rounds_to_zero"
+                "m_eff_rounds_to_zero",
+                "estimate_at_bound",
+                "large_estimate_residual",
+                "low_temperature_omitted"
               ]
             },
             "type": "array",
@@ -6276,7 +6301,10 @@
               "enum": [
                 "unsorted_temperature",
                 "underdetermined_fit",
-                "m_eff_rounds_to_zero"
+                "m_eff_rounds_to_zero",
+                "estimate_at_bound",
+                "large_estimate_residual",
+                "low_temperature_omitted"
               ]
             },
             "type": "array",
@@ -6311,7 +6339,10 @@
               "enum": [
                 "unsorted_temperature",
                 "underdetermined_fit",
-                "m_eff_rounds_to_zero"
+                "m_eff_rounds_to_zero",
+                "estimate_at_bound",
+                "large_estimate_residual",
+                "low_temperature_omitted"
               ]
             },
             "type": "array",
@@ -6388,6 +6419,46 @@
             ]
           }
         ]
+      },
+      "GuessUnsupported": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "unsupported",
+            "title": "Status"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "sign_change",
+              "too_few_temperatures",
+              "zero_seebeck"
+            ],
+            "title": "Reason"
+          },
+          "warnings": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "unsorted_temperature",
+                "underdetermined_fit",
+                "m_eff_rounds_to_zero",
+                "estimate_at_bound",
+                "large_estimate_residual",
+                "low_temperature_omitted"
+              ]
+            },
+            "type": "array",
+            "title": "Warnings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "reason",
+          "warnings"
+        ],
+        "title": "GuessUnsupported"
       },
       "HealthResponse": {
         "properties": {
@@ -6820,6 +6891,60 @@
         ],
         "title": "NetRange",
         "description": "The temperature span a net needs, and the range of its input."
+      },
+      "NumericalGuessFound": {
+        "properties": {
+          "sign_only_parameters": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sign Only Parameters",
+            "default": [
+              "band_mass"
+            ]
+          },
+          "rmse_v_per_k": {
+            "type": "number",
+            "title": "Rmse V Per K"
+          },
+          "status": {
+            "type": "string",
+            "const": "numerical_guess",
+            "title": "Status"
+          },
+          "start_values": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Start Values"
+          },
+          "warnings": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "unsorted_temperature",
+                "underdetermined_fit",
+                "m_eff_rounds_to_zero",
+                "estimate_at_bound",
+                "large_estimate_residual",
+                "low_temperature_omitted"
+              ]
+            },
+            "type": "array",
+            "title": "Warnings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rmse_v_per_k",
+          "status",
+          "start_values",
+          "warnings"
+        ],
+        "title": "NumericalGuessFound",
+        "description": "Seebeck-only estimate; mass magnitude remains a reference value."
       },
       "ParameterResponse": {
         "properties": {
