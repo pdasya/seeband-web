@@ -642,7 +642,8 @@ export interface components {
          *     A client must not offer a mode with `disabled`. `disabled_by` names the `known_issues` that say
          *     why. `iterative` tells whether an iteration count means anything. `threshold`, a relative
          *     change, and `max_iterations` are what an iterative fit uses, and a request cannot change them.
-         *     `scattering` is empty when a mode has no choice of scattering.
+         *     `scattering` is empty when a mode has no choice of scattering. `stages` are the solver runs of
+         *     a fit, in their order.
          */
         FitModeResponse: {
             /** Id */
@@ -672,6 +673,8 @@ export interface components {
             disabled_by: string[];
             /** Known Issues */
             known_issues: components["schemas"]["KnownIssueResponse"][];
+            /** Stages */
+            stages: components["schemas"]["FitStageResponse"][];
         };
         /**
          * FitResponse
@@ -723,6 +726,25 @@ export interface components {
             at_bounds: string[];
             /** Known Issues */
             known_issues: string[];
+        };
+        /**
+         * FitStageResponse
+         * @description One solver run of a fit: the quantity it fits, and the parameters it finds.
+         *
+         *     `repeats` marks a stage of the loop of an iterative mode, which runs once in each iteration.
+         *     `parameters` names every parameter the stage can find; the scattering decides which of them
+         *     a fit has.
+         */
+        FitStageResponse: {
+            /**
+             * Quantity
+             * @enum {string}
+             */
+            quantity: "seebeck" | "resistivity" | "hall";
+            /** Parameters */
+            parameters: string[];
+            /** Repeats */
+            repeats: boolean;
         };
         /**
          * FitStarted
@@ -1188,7 +1210,7 @@ export interface operations {
                 headers: {
                     /** @example no-cache */
                     "Cache-Control"?: string;
-                    /** @example "56d6ad84f42829f7630cfbfd23b53a2e" */
+                    /** @example "d32918b8210076f5d9c01f575c7b7905" */
                     ETag?: string;
                     [name: string]: unknown;
                 };

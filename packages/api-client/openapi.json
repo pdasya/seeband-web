@@ -430,6 +430,15 @@
                                   "affects_fit": false,
                                   "condition": "interpolation_extrapolated"
                                 }
+                              ],
+                              "stages": [
+                                {
+                                  "quantity": "seebeck",
+                                  "parameters": [
+                                    "fermi_energy"
+                                  ],
+                                  "repeats": false
+                                }
                               ]
                             },
                             {
@@ -726,6 +735,24 @@
                                   "columns": [],
                                   "affects_fit": false,
                                   "condition": "interpolation_extrapolated"
+                                }
+                              ],
+                              "stages": [
+                                {
+                                  "quantity": "seebeck",
+                                  "parameters": [
+                                    "fermi_energy"
+                                  ],
+                                  "repeats": false
+                                },
+                                {
+                                  "quantity": "resistivity",
+                                  "parameters": [
+                                    "A",
+                                    "C",
+                                    "F"
+                                  ],
+                                  "repeats": false
                                 }
                               ]
                             },
@@ -1055,6 +1082,31 @@
                                   "affects_fit": false,
                                   "condition": "interpolation_extrapolated"
                                 }
+                              ],
+                              "stages": [
+                                {
+                                  "quantity": "seebeck",
+                                  "parameters": [
+                                    "fermi_energy"
+                                  ],
+                                  "repeats": false
+                                },
+                                {
+                                  "quantity": "resistivity",
+                                  "parameters": [
+                                    "A",
+                                    "C",
+                                    "F"
+                                  ],
+                                  "repeats": false
+                                },
+                                {
+                                  "quantity": "hall",
+                                  "parameters": [
+                                    "band_mass"
+                                  ],
+                                  "repeats": false
+                                }
                               ]
                             }
                           ]
@@ -1317,6 +1369,17 @@
                                   "columns": [],
                                   "affects_fit": false,
                                   "condition": "interpolation_extrapolated"
+                                }
+                              ],
+                              "stages": [
+                                {
+                                  "quantity": "seebeck",
+                                  "parameters": [
+                                    "m_eff",
+                                    "band_gap",
+                                    "fermi_energy"
+                                  ],
+                                  "repeats": false
                                 }
                               ]
                             },
@@ -1825,6 +1888,29 @@
                                   "columns": [],
                                   "affects_fit": false,
                                   "condition": "interpolation_extrapolated"
+                                }
+                              ],
+                              "stages": [
+                                {
+                                  "quantity": "seebeck",
+                                  "parameters": [
+                                    "m_eff",
+                                    "band_gap",
+                                    "fermi_energy"
+                                  ],
+                                  "repeats": true
+                                },
+                                {
+                                  "quantity": "resistivity",
+                                  "parameters": [
+                                    "A",
+                                    "B",
+                                    "C",
+                                    "D",
+                                    "F",
+                                    "G"
+                                  ],
+                                  "repeats": true
                                 }
                               ]
                             },
@@ -2400,6 +2486,36 @@
                                   "affects_fit": false,
                                   "condition": "interpolation_extrapolated"
                                 }
+                              ],
+                              "stages": [
+                                {
+                                  "quantity": "seebeck",
+                                  "parameters": [
+                                    "m_eff",
+                                    "band_gap",
+                                    "fermi_energy"
+                                  ],
+                                  "repeats": true
+                                },
+                                {
+                                  "quantity": "resistivity",
+                                  "parameters": [
+                                    "A",
+                                    "B",
+                                    "C",
+                                    "D",
+                                    "F",
+                                    "G"
+                                  ],
+                                  "repeats": true
+                                },
+                                {
+                                  "quantity": "hall",
+                                  "parameters": [
+                                    "m1"
+                                  ],
+                                  "repeats": false
+                                }
                               ]
                             }
                           ]
@@ -2421,7 +2537,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "example": "\"56d6ad84f42829f7630cfbfd23b53a2e\""
+                "example": "\"d32918b8210076f5d9c01f575c7b7905\""
               }
             }
           },
@@ -5804,6 +5920,13 @@
             },
             "type": "array",
             "title": "Known Issues"
+          },
+          "stages": {
+            "items": {
+              "$ref": "#/components/schemas/FitStageResponse"
+            },
+            "type": "array",
+            "title": "Stages"
           }
         },
         "type": "object",
@@ -5817,10 +5940,11 @@
           "curves",
           "disabled",
           "disabled_by",
-          "known_issues"
+          "known_issues",
+          "stages"
         ],
         "title": "FitModeResponse",
-        "description": "One way of fitting a model.\n\nA client must not offer a mode with `disabled`. `disabled_by` names the `known_issues` that say\nwhy. `iterative` tells whether an iteration count means anything. `threshold`, a relative\nchange, and `max_iterations` are what an iterative fit uses, and a request cannot change them.\n`scattering` is empty when a mode has no choice of scattering."
+        "description": "One way of fitting a model.\n\nA client must not offer a mode with `disabled`. `disabled_by` names the `known_issues` that say\nwhy. `iterative` tells whether an iteration count means anything. `threshold`, a relative\nchange, and `max_iterations` are what an iterative fit uses, and a request cannot change them.\n`scattering` is empty when a mode has no choice of scattering. `stages` are the solver runs of\na fit, in their order."
       },
       "FitResponse": {
         "properties": {
@@ -5919,6 +6043,38 @@
             "status": "converged"
           }
         ]
+      },
+      "FitStageResponse": {
+        "properties": {
+          "quantity": {
+            "type": "string",
+            "enum": [
+              "seebeck",
+              "resistivity",
+              "hall"
+            ],
+            "title": "Quantity"
+          },
+          "parameters": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Parameters"
+          },
+          "repeats": {
+            "type": "boolean",
+            "title": "Repeats"
+          }
+        },
+        "type": "object",
+        "required": [
+          "quantity",
+          "parameters",
+          "repeats"
+        ],
+        "title": "FitStageResponse",
+        "description": "One solver run of a fit: the quantity it fits, and the parameters it finds.\n\n`repeats` marks a stage of the loop of an iterative mode, which runs once in each iteration.\n`parameters` names every parameter the stage can find; the scattering decides which of them\na fit has."
       },
       "FitStarted": {
         "properties": {

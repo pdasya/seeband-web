@@ -10,6 +10,7 @@ from seeband_core.model_interface import (
     CurveKind,
     Degeneracy,
     FitMode,
+    FitStage,
     ModelDescription,
     ParameterSpec,
     Quantity,
@@ -73,6 +74,34 @@ UNAVAILABLE_CURVES: dict[str, _Unavailable] = {
     "dpb_s_rho": (),
     "dpb_s_rho_rh": (),
 }
+# The parameters of the solver runs, which `band_models` passes in this order.
+SPB_SCATTERING = ("A", "C", "F")
+DPB_BANDS = ("m_eff", "band_gap", "fermi_energy")
+DPB_SCATTERING = ("A", "B", "C", "D", "F", "G")
+# The solver runs of each mode, in the order of `fit_module`: an SPB fit runs each once, and a DPB
+# fit with ρ repeats its S and ρ runs until they settle, and fits m1 to R_H after them.
+STAGES: dict[str, tuple[FitStage, ...]] = {
+    "spb_s": (FitStage("seebeck", ("fermi_energy",)),),
+    "spb_s_rho": (
+        FitStage("seebeck", ("fermi_energy",)),
+        FitStage("resistivity", SPB_SCATTERING),
+    ),
+    "spb_s_rho_rh": (
+        FitStage("seebeck", ("fermi_energy",)),
+        FitStage("resistivity", SPB_SCATTERING),
+        FitStage("hall", ("band_mass",)),
+    ),
+    "dpb_s": (FitStage("seebeck", DPB_BANDS),),
+    "dpb_s_rho": (
+        FitStage("seebeck", DPB_BANDS, repeats=True),
+        FitStage("resistivity", DPB_SCATTERING, repeats=True),
+    ),
+    "dpb_s_rho_rh": (
+        FitStage("seebeck", DPB_BANDS, repeats=True),
+        FitStage("resistivity", DPB_SCATTERING, repeats=True),
+        FitStage("hall", ("m1",)),
+    ),
+}
 # With no Hall data, these use m1 = 1, so the size of n is not measured.
 RELATIVE_CURVE_KINDS: dict[str, tuple[CurveKind, ...]] = {
     "dpb_s": ("carrier_concentration_by_band",),
@@ -121,6 +150,7 @@ def _fit_mode(entry: dict[str, Any]) -> FitMode:
             UnavailableCurve(kind, reason) for kind, reason in UNAVAILABLE_CURVES[entry["id"]]
         ),
         relative_curve_kinds=RELATIVE_CURVE_KINDS.get(entry["id"], ()),
+        stages=STAGES[entry["id"]],
     )
 
 
