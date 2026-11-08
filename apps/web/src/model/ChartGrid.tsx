@@ -26,7 +26,7 @@ import {
   isQuantityTab,
 } from "@/model/chartTabs";
 import { retriesByItself } from "@/model/latestOnly";
-import { parameterValues } from "@/model/parameters";
+import { coreToDisplay, parameterValues, shownValue } from "@/model/parameters";
 import { rmseText } from "@/model/resultSummary";
 import { fitModeOf } from "@/model/selection";
 import type { LiveCalc, LiveCurves } from "@/model/useLiveCurves";
@@ -131,12 +131,16 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
     tab === "band_diagram" && mode !== undefined
       ? parameterValues(mode, parameters[mode.id]).band_gap
       : undefined;
+  // Shown as its field shows it, to the same step.
+  const gapParameter = mode?.parameters.find(({ name }) => name === "band_gap");
   const metric =
     rmse !== undefined
       ? `${STRINGS.fit.rmse} ${rmseText(rmse)}`
-      : gap !== undefined
+      : gap !== undefined && gapParameter !== undefined
         ? text.bandGapMetric(
-            formatNumber(Number((gap * energy.per_kelvin).toFixed(2)) + 0),
+            formatNumber(
+              shownValue(gapParameter, coreToDisplay(gapParameter, gap)),
+            ),
             energy.unit,
           )
         : "";

@@ -83,6 +83,20 @@ test("the last chart shows it from the start, with no data, in one request", asy
   expect(bodies[0]?.parameters.band_gap).toBe(1000);
 });
 
+test("E_g over the chart shows in eV, as its field does, and follows it", async ({
+  page,
+}) => {
+  await open(page);
+
+  // 1000 K by default.
+  await expect(diagram(page).getByText("E_g = 0,09 eV")).toBeVisible();
+  await expect(field(page, "E_g")).toHaveValue("0,09");
+  await field(page, "E_g").fill("0,123");
+  await field(page, "E_g").blur();
+  await expect(diagram(page).getByText("E_g = 0,12 eV")).toBeVisible();
+  await expect(field(page, "E_g")).toHaveValue("0,12");
+});
+
 test("it draws each band and E_F, with a k axis with no ticks or range shading", async ({
   page,
 }) => {
