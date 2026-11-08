@@ -28,10 +28,21 @@ const ADDITIONAL: readonly ChartTab[] = [
 export interface ReportChart {
   tab: ChartTab;
   title: string;
-  src: string;
+  /** A picture, or null for a chart the mode does not draw. */
+  src: string | null;
   /** What each line and set of points is, as a picture has no legend of its own. */
   legend: string;
   note: string | null;
+  /** Why the chart is not drawn, as the screen says it, so that paper shows it was not left out. */
+  missing: string | null;
+}
+
+/** A picture ready to paint, so that print does not take the page before it is. */
+async function decoded(src: string): Promise<string> {
+  const picture = new Image();
+  picture.src = src;
+  await picture.decode();
+  return src;
 }
 
 /**
@@ -60,6 +71,17 @@ export function useReport({
     }
   }, [printing]);
 
+  // After printing, the pictures go: they would be of old values by the next print, and are large.
+  useEffect(() => {
+    const done = () => {
+      setCharts(null);
+    };
+    window.addEventListener("afterprint", done);
+    return () => {
+      window.removeEventListener("afterprint", done);
+    };
+  }, []);
+
   const prepare = async () => {
     if (mode === undefined) {
       return;
@@ -72,7 +94,7 @@ export function useReport({
       const { minTemperatureK: minK, maxTemperatureK: maxK } = selection;
       const tabs = [...(mode.quantities as readonly ChartTab[]), ...ADDITIONAL];
       const made = await Promise.all(
-        tabs.map(async (tab): Promise<ReportChart | null> => {
+        tabs.map(async (tab): Promise<ReportChart> => {
           const kind = derivedKind(tab, mode);
           const view = chartTabView(
             tab,
@@ -85,21 +107,31 @@ export function useReport({
             isQuantityTab(tab) || tab === "bands" ? measured.result : null,
             kind === null ? null : derived[kind].result,
           );
-          if (view.empty !== null || view.curves.length === 0) {
-            return null;
+          const title = chartText.tabs[tab];
+          if (view.empty !== null) {
+            return {
+              tab,
+              title,
+              src: null,
+              legend: "",
+              note: null,
+              missing: text.notDrawn(view.empty.title, view.empty.text),
+            };
           }
-          const src = await chartImage({
-            curves: view.curves,
-            measurements: view.measurements,
-            interpolated: view.interpolated,
-            fitRange:
-              isQuantityTab(tab) && minK !== null && maxK !== null
-                ? { minK, maxK }
-                : null,
-            referenceLines: view.referenceLines,
-            xAxisTitle: chartText.temperatureAxis,
-            yAxisTitle: view.yAxisTitle,
-          });
+          const src = await decoded(
+            await chartImage({
+              curves: view.curves,
+              measurements: view.measurements,
+              interpolated: view.interpolated,
+              fitRange:
+                isQuantityTab(tab) && minK !== null && maxK !== null
+                  ? { minK, maxK }
+                  : null,
+              referenceLines: view.referenceLines,
+              xAxisTitle: chartText.temperatureAxis,
+              yAxisTitle: view.yAxisTitle,
+            }),
+          );
           const legend = text.legend([
             ...(view.measurements === null ? [] : [view.measurements.label]),
             ...(view.interpolated === null || view.interpolated === undefined
@@ -107,16 +139,10 @@ export function useReport({
               : [view.interpolated.label]),
             ...view.curves.map(({ label }) => label),
           ]);
-          return {
-            tab,
-            title: chartText.tabs[tab],
-            src,
-            legend,
-            note: view.note,
-          };
+          return { tab, title, src, legend, note: view.note, missing: null };
         }),
       );
-      setCharts(made.filter((chart) => chart !== null));
+      setCharts(made);
       setApiVersion(
         await apiClient.getHealth().then(
           ({ version }) => version,
@@ -149,7 +175,8 @@ export function ReportHeader({ apiVersion }: { apiVersion: string | null }) {
   const data = useSessionStore((state) => state.data);
   return (
     <div className="hidden print:block">
-      <h1 className="m-0 text-xl font-semibold">{text.title}</h1>
+      {/* Not a heading, as the page's own h1 follows. */}
+      <p className="m-0 text-xl font-semibold">{text.title}</p>
       <p className="m-0 mt-1 text-xs text-muted-foreground">
         {text.made(
           new Date().toLocaleString("en-GB"),
@@ -192,29 +219,41 @@ export function ReportCharts({
     return null;
   }
   return (
-    <section aria-label={text.charts} className="hidden print:block">
+    <section
+      aria-label={text.charts}
+      data-report-charts=""
+      className="hidden print:block"
+    >
       <h2 className="m-0 text-base font-semibold">{text.charts}</h2>
       <div className="mt-2 grid grid-cols-2 gap-3">
-        {charts.map((chart) => (
-          <figure key={chart.tab} className="m-0 break-inside-avoid">
-            <figcaption className="text-xs">
+        {charts.map((chart) =>
+          chart.src === null ? (
+            <p key={chart.tab} className="m-0 text-xs">
               <span className="font-medium">{chart.title}</span>
-              <span className="block text-[10px] text-muted-foreground">
-                {chart.legend}
-              </span>
-            </figcaption>
-            <img
-              src={chart.src}
-              alt={text.chartAlt(chart.title)}
-              className="w-full"
-            />
-            {chart.note !== null && (
-              <p className="m-0 text-[10px] text-muted-foreground">
-                {chart.note}
-              </p>
-            )}
-          </figure>
-        ))}
+              {": "}
+              <span className="text-muted-foreground">{chart.missing}</span>
+            </p>
+          ) : (
+            <figure key={chart.tab} className="m-0 break-inside-avoid">
+              <figcaption className="text-xs">
+                <span className="font-medium">{chart.title}</span>
+                <span className="block text-[10px] text-muted-foreground">
+                  {chart.legend}
+                </span>
+              </figcaption>
+              <img
+                src={chart.src}
+                alt={text.chartAlt(chart.title)}
+                className="w-full"
+              />
+              {chart.note !== null && (
+                <p className="m-0 text-[10px] text-muted-foreground">
+                  {chart.note}
+                </p>
+              )}
+            </figure>
+          ),
+        )}
       </div>
     </section>
   );

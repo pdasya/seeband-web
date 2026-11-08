@@ -242,9 +242,9 @@ How these differ from the desktop's files:
 
 - a header with the date, the versions, and each data file with its points and range;
 - the KPIs and the parameter table;
-- every chart as a picture: the measured quantities of the mode with their fit, then the additional graphs, each with a legend and its note;
+- every chart as a picture: the measured quantities of the mode with their fit, then the additional graphs, each with a legend and its note, and a line saying why for a chart the mode does not draw;
 - the notes, with the known issues.
 
 The site's header, the buttons, the fit log and the live charts are left off paper. Live charts do not resize to a page, so `charts/chartImage.ts` draws each as a PNG of a fixed size from the same figure. The button waits until every curve the mode offers is in, so that no chart is left out unseen. Plotly leaves its promise open when a browser cannot make a picture, so after 10 s the report gives up and says so.
 
-Checked by saving the page as a PDF from Chrome. Firefox has not been checked yet, for V2.
+Checked by hand, by saving a real fit's report as a PDF from Chrome. The e2e tests check the page as print media shows it, with `window.print` stubbed, not a PDF. Firefox has not been checked yet, for V2.

@@ -633,6 +633,10 @@ export const STRINGS = {
       `${symbol}: ${name}, ${String(points)} points, ${String(minK)}–${String(maxK)} K`,
     charts: "Charts",
     chartAlt: (title: string) => `Chart: ${title}`,
+    notDrawn: (reason: string, detail: string) =>
+      `not drawn. ${reason}: ${detail}`,
+    waiting: "The report waits for the curves.",
+    preparingStatus: "Preparing the report's charts…",
     legend: (labels: readonly string[]) => labels.join(" · "),
   },
   results: {

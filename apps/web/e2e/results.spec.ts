@@ -807,6 +807,15 @@ test("Report (PDF) prints the results with each chart as a picture, and only the
     "src",
     /^data:image\/png;base64,/,
   );
+  // Real pictures, at twice their printed size.
+  expect(
+    await pictures
+      .first()
+      .evaluate((picture: HTMLImageElement) => [
+        picture.naturalWidth,
+        picture.naturalHeight,
+      ]),
+  ).toEqual([720, 520]);
   const report = page.locator('section[aria-label="Charts"]');
   await expect(report).toContainText("Measurements · Model");
   await expect(report).toContainText(
@@ -833,6 +842,34 @@ test("Report (PDF) prints the results with each chart as a picture, and only the
     page.getByRole("table", { name: "Fit parameters" }),
   ).toBeVisible();
   await expect(page.getByRole("list", { name: "Fit log" })).toBeHidden();
+  // A chart's note goes with it.
+  await expect(report).toContainText("uses m₁ = 1");
+
+  // After printing, the pictures go, as they would be of old values by the next print.
+  await page.evaluate(() => window.dispatchEvent(new Event("afterprint")));
+  await expect(pictures).toHaveCount(0);
+});
+
+test("a report names each chart the mode does not draw, and why", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    window.print = () => undefined;
+  });
+  await openFit(page, serveCurves);
+  await page.getByRole("radio", { name: "S", exact: true }).click();
+  await finishWith(page);
+  await toResults(page);
+  await page.getByRole("button", { name: "Report (PDF)" }).click();
+
+  const report = page.locator('section[aria-label="Charts"]');
+  await expect(page.locator('img[alt^="Chart: "]').first()).toBeAttached();
+  await expect(report).toContainText(
+    "Conductivity σ(T): not drawn. Needs ρ(T):",
+  );
+  await expect(report).toContainText(
+    "Thermal conductivity κ_e(T): not drawn. Needs ρ(T):",
+  );
 });
 
 test("a report that cannot be prepared says so, and prints nothing", async ({

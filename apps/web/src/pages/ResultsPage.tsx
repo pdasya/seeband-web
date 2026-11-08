@@ -309,6 +309,7 @@ export function ResultsPage() {
   const graphsId = useId();
   const exporter = useExport();
   const report = useReport({ mode, measured, derived });
+  const reportStatusId = useId();
   const badge = fitBadge(fit, mode?.iterative === true);
   const title = <title>{`${text.pageTitle} · ${STRINGS.appName}`}</title>;
 
@@ -406,6 +407,7 @@ export function ResultsPage() {
             <ExportButtons exporter={exporter} />
             <Button
               disabled={report.preparing || !report.ready}
+              aria-describedby={reportStatusId}
               onClick={() => void report.prepare()}
             >
               <PrinterIcon aria-hidden="true" />
@@ -414,13 +416,25 @@ export function ResultsPage() {
           </>
         }
       />
+      {/* Why the button waits, and that it works, said on screen and to a screen reader. */}
+      <p
+        id={reportStatusId}
+        role="status"
+        className="m-0 text-xs text-muted-foreground empty:hidden print:hidden"
+      >
+        {report.preparing
+          ? reportText.preparingStatus
+          : report.ready
+            ? ""
+            : reportText.waiting}
+      </p>
       {report.failed && (
-        <p role="alert" className="m-0 text-xs text-destructive">
+        <p role="alert" className="m-0 text-xs text-destructive print:hidden">
           {reportText.failed}
         </p>
       )}
       {exporter.failed && (
-        <p role="alert" className="m-0 text-xs text-destructive">
+        <p role="alert" className="m-0 text-xs text-destructive print:hidden">
           {exportText.failed}
         </p>
       )}
