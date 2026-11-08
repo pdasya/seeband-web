@@ -73,9 +73,24 @@ function BoundsRow({
     // An unchanged text keeps the exact value, which it shows shortened.
     const lowerSame = lowerText === shown(bounds.lower);
     const upperSame = upperText === shown(bounds.upper);
+    // A default bound typed as it shows is that bound, as an energy in eV shows rounded.
+    const typedBound = (
+      text: string,
+      typed: number,
+      end: "lower" | "upper",
+    ) => {
+      const fallback = parameter.fit_bounds?.[end];
+      return fallback !== undefined && text === shown(fallback)
+        ? fallback
+        : displayToCore(parameter, typed);
+    };
     const next = {
-      lower: lowerSame ? bounds.lower : displayToCore(parameter, lowerTyped),
-      upper: upperSame ? bounds.upper : displayToCore(parameter, upperTyped),
+      lower: lowerSame
+        ? bounds.lower
+        : typedBound(lowerText, lowerTyped, "lower"),
+      upper: upperSame
+        ? bounds.upper
+        : typedBound(upperText, upperTyped, "upper"),
     };
     if (next.lower >= next.upper) {
       markInvalid(true);

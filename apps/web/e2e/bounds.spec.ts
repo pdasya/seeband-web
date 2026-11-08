@@ -560,8 +560,9 @@ test("Default bounds ends a change and what was being typed, and keeps the value
 
 test("typing the default bounds back sends nothing", async ({ page }) => {
   await open(page);
-  await setBounds(page, "E_g", "500", "1500");
-  await setBounds(page, "E_g", "-3000", "3000");
+  await setBounds(page, "E_g", "0,04", "0,13");
+  // The default bounds, ±3000 K, as they show.
+  await setBounds(page, "E_g", "-0,26", "0,26");
 
   await openEditor(page);
   await expect(defaults(page)).toHaveCount(0);
