@@ -502,6 +502,17 @@ export interface components {
             noise: components["schemas"]["DemoNoise"];
         };
         /**
+         * EnergyDisplayResponse
+         * @description How a client shows an energy that comes in K, such as a curve of μ or E(k): in `unit`, at
+         *     `per_kelvin` of it for each kelvin. Temperatures stay in K.
+         */
+        EnergyDisplayResponse: {
+            /** Unit */
+            unit: string;
+            /** Per Kelvin */
+            per_kelvin: number;
+        };
+        /**
          * ErrorDetail
          * @description One problem in a request. `location` is the path to it, such as `["body", "points", 3]`.
          */
@@ -1038,6 +1049,7 @@ export interface components {
         ModelsResponse: {
             /** Models */
             models: components["schemas"]["ModelResponse"][];
+            energy_display: components["schemas"]["EnergyDisplayResponse"];
         };
         /**
          * NetRange
@@ -1066,9 +1078,11 @@ export interface components {
          *     by the user, and a fit does not change it. Requests hold every parameter of a mode, including
          *     those of other scattering types.
          *
-         *     `unit` is the unit of the displayed value, and can be `dimensionless` or `unknown`. `fit_bounds`
-         *     is in core units, and is left out for a parameter that a fit does not change. `meaning` is
-         *     English text, for a client with no translation.
+         *     `unit` is the unit of the scaled value, and can be `dimensionless` or `unknown`. `display_unit`
+         *     is the one a user sees, and `display_factor` goes from the one to the other: an energy in K is
+         *     shown in eV. `display_range` is already in `display_unit`. `fit_bounds` is in core units, and is
+         *     left out for a parameter that a fit does not change. `meaning` is English text, for a client
+         *     with no translation.
          */
         ParameterResponse: {
             /** Name */
@@ -1091,6 +1105,10 @@ export interface components {
             display_scale: number;
             /** Fit Scale */
             fit_scale: number;
+            /** Display Unit */
+            display_unit: string;
+            /** Display Factor */
+            display_factor: number;
             fit_bounds?: components["schemas"]["BoundsResponse"] | null;
             /** Bounds Editable */
             bounds_editable: boolean;
@@ -1238,7 +1256,7 @@ export interface operations {
                 headers: {
                     /** @example no-cache */
                     "Cache-Control"?: string;
-                    /** @example "d32918b8210076f5d9c01f575c7b7905" */
+                    /** @example "c38f3175cdbaf11f1e62cbf8bcb3712c" */
                     ETag?: string;
                     [name: string]: unknown;
                 };

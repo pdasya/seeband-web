@@ -26,7 +26,12 @@ from seeband_core.model_interface import (
     Quantity,
     ValueRange,
 )
-from seeband_core.model_scales import core_range, display_range
+from seeband_core.model_scales import (
+    BOLTZMANN_EV_PER_K,
+    ENERGY_DISPLAY_UNIT,
+    core_range,
+    display_range,
+)
 
 from seeband_api.routing import api_router
 
@@ -64,9 +69,11 @@ class ParameterResponse(BaseModel):
     by the user, and a fit does not change it. Requests hold every parameter of a mode, including
     those of other scattering types.
 
-    `unit` is the unit of the displayed value, and can be `dimensionless` or `unknown`. `fit_bounds`
-    is in core units, and is left out for a parameter that a fit does not change. `meaning` is
-    English text, for a client with no translation.
+    `unit` is the unit of the scaled value, and can be `dimensionless` or `unknown`. `display_unit`
+    is the one a user sees, and `display_factor` goes from the one to the other: an energy in K is
+    shown in eV. `display_range` is already in `display_unit`. `fit_bounds` is in core units, and is
+    left out for a parameter that a fit does not change. `meaning` is English text, for a client
+    with no translation.
     """
 
     name: str
@@ -79,6 +86,8 @@ class ParameterResponse(BaseModel):
     core_range: ValueRangeResponse
     display_scale: float
     fit_scale: float
+    display_unit: str
+    display_factor: float
     fit_bounds: BoundsResponse | None = None
     bounds_editable: bool
 
@@ -176,8 +185,17 @@ class ModelResponse(BaseModel):
     fit_modes: list[FitModeResponse]
 
 
+class EnergyDisplayResponse(BaseModel):
+    """How a client shows an energy that comes in K, such as a curve of μ or E(k): in `unit`, at
+    `per_kelvin` of it for each kelvin. Temperatures stay in K."""
+
+    unit: str
+    per_kelvin: float
+
+
 class ModelsResponse(BaseModel):
     models: list[ModelResponse]
+    energy_display: EnergyDisplayResponse
 
 
 def _value_range(limits: ValueRange) -> ValueRangeResponse:
@@ -200,6 +218,8 @@ def _parameter(spec: ParameterSpec) -> ParameterResponse:
         core_range=_value_range(core_range(spec)),
         display_scale=spec.display_scale,
         fit_scale=spec.fit_scale,
+        display_unit=spec.shown_unit,
+        display_factor=spec.display_factor,
         fit_bounds=BoundsResponse(lower=bounds.lower, upper=bounds.upper) if bounds else None,
         bounds_editable=spec.bounds_editable,
     )
@@ -277,7 +297,10 @@ def build_models_response(descriptions: Iterable[ModelDescription]) -> ModelsRes
                 fit_modes=[_fit_mode(fit_mode) for fit_mode in description.fit_modes],
             )
             for description in descriptions
-        ]
+        ],
+        energy_display=EnergyDisplayResponse(
+            unit=ENERGY_DISPLAY_UNIT, per_kelvin=BOLTZMANN_EV_PER_K
+        ),
     )
 
 
