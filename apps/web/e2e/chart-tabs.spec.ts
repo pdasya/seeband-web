@@ -746,3 +746,48 @@ test("each chart keeps its choice when moving to another screen and back", async
     page.getByRole("combobox", { name: "Quantity shown in chart 1" }),
   ).toHaveText("Chemical potential μ(T)");
 });
+
+test("σ draws 1/ρ of the data as points, from the server, beside the model", async ({
+  page,
+}) => {
+  const bodies = await open(page);
+  await page.unroute("**/api/calc");
+  await page.route("**/api/calc", (route) => {
+    const body = route.request().postDataJSON() as CalcBody;
+    bodies.push(body);
+    const kind = body.kind ?? "measured";
+    return route.fulfill({
+      json: {
+        temperature_k: [100, 300, 500],
+        curves: CURVES[kind],
+        known_issues: [],
+        rmse: {},
+        ...(kind === "measured" && "resistivity" in body.measurements
+          ? {
+              measured_points: {
+                electrical_conductivity_s_per_m: {
+                  temperature_k: [100, 200],
+                  values: [1e5, 5e4],
+                },
+              },
+            }
+          : {}),
+      },
+    });
+  });
+  await load(page, 1);
+  await show(page, "Conductivity σ(T)");
+
+  await expect(legend(page, "1/ρ of the data")).toBeVisible();
+  await expect(legend(page, "Model")).toBeVisible();
+  await expect(
+    chart(page).getByText(/^Points are 1\/ρ of the ρ data/),
+  ).toBeVisible();
+  // The points come with the measured request, which sends the ρ data once.
+  expect(
+    bodies.some(
+      ({ kind, measurements }) =>
+        kind === undefined && "resistivity" in measurements,
+    ),
+  ).toBe(true);
+});

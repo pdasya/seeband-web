@@ -74,7 +74,9 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
   // Only the measured quantities and the total of S draw the measured curves, so an answer for
   // them does not redraw the others.
   const measuredCurves =
-    isQuantityTab(tab) || tab === "bands" ? measured.result : null;
+    isQuantityTab(tab) || tab === "bands" || tab === "conductivity"
+      ? measured.result
+      : null;
   const diagramResult = tab === "band_diagram" ? diagram.result : null;
   const view = useMemo(
     () =>

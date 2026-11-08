@@ -494,3 +494,78 @@ describe("the additional graphs", () => {
     expect(empty("spb_s_rho", "carrier_concentration")).toBe("Not in SeeBand");
   });
 });
+
+describe("the points of σ", () => {
+  const derived = {
+    temperature_k: [100, 200],
+    curves: { electrical_conductivity_s_per_m: [1e5, 9e4] },
+    known_issues: [],
+    rmse: {},
+  };
+  const measured = {
+    temperature_k: [100, 200],
+    curves: {},
+    known_issues: [],
+    rmse: {},
+    measured_points: {
+      electrical_conductivity_s_per_m: {
+        temperature_k: [150],
+        values: [5e4],
+      },
+    },
+  };
+  const view = (enabled: boolean, answer: CalcResponse | null) =>
+    chartTabView(
+      "conductivity",
+      mode("dpb_s_rho"),
+      {
+        data: loaded("resistivity").data,
+        interpolation: { ...NO_INTERPOLATION, enabled },
+      },
+      answer,
+      derived,
+    );
+
+  test("are the server's 1/ρ of the data, beside the model's line", () => {
+    const shown = view(false, measured);
+    expect(shown.measurements).toEqual({
+      label: "1/ρ of the data",
+      temperatureK: [150],
+      values: [5e4],
+    });
+    expect(shown.curves).toHaveLength(1);
+    expect(shown.note).toMatch(/^Points are 1\/ρ of the ρ data/);
+  });
+
+  test("say when they come from interpolated data", () => {
+    expect(view(true, measured).measurements?.label).toBe(
+      "1/ρ of the interpolated data",
+    );
+  });
+
+  test("with no answer, the chart is the model alone and says so", () => {
+    const shown = view(false, null);
+    expect(shown.measurements).toBeNull();
+    expect(shown.note).toMatch(/^The model's σ only/);
+  });
+
+  test("need the measured request only with ρ data in the mode", () => {
+    expect(
+      drawsMeasuredCurves(
+        "conductivity",
+        mode("dpb_s_rho"),
+        loaded("resistivity").data,
+      ),
+    ).toBe(true);
+    expect(drawsMeasuredCurves("conductivity", mode("dpb_s_rho"), {})).toBe(
+      false,
+    );
+    expect(
+      drawsMeasuredCurves(
+        "conductivity",
+        mode("dpb_s"),
+        loaded("resistivity").data,
+      ),
+    ).toBe(false);
+  });
+});

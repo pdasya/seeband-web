@@ -99,6 +99,14 @@ export function drawsMeasuredCurves(
   if (tab === "bands") {
     return needsMeasuredCurves(tab, mode);
   }
+  // Its points come with the measured curves, from the ρ data.
+  if (tab === "conductivity") {
+    return (
+      derivedKind(tab, mode) !== null &&
+      data.resistivity !== undefined &&
+      mode?.quantities.includes("resistivity") === true
+    );
+  }
   return (
     isQuantityTab(tab) &&
     data[tab] !== undefined &&
@@ -282,6 +290,8 @@ function chemicalPotentialView(
 // σ has no measured points: they would be 1/ρ, which the client does not calculate.
 function conductivityView(
   mode: FitModeDescription | undefined,
+  state: ViewState,
+  measured: CalcResponse | null,
   derived: CalcResponse | null,
 ): ChartTabView {
   const base = {
@@ -295,12 +305,29 @@ function conductivityView(
       empty: unavailable(mode, "electrical_conductivity"),
     };
   }
+  // The server's 1/ρ of the ρ data the measured request sent, interpolated when the switch is on.
+  const points = measured?.measured_points?.[CONDUCTIVITY];
+  const interpolated =
+    state.interpolation.enabled && state.data.resistivity !== undefined;
   return {
     ...NO_CHART,
     ...base,
     empty: null,
     curves: curveOf(derived, CONDUCTIVITY, 1, text.model),
-    note: text.conductivityNote,
+    measurements:
+      points === undefined
+        ? null
+        : {
+            label: interpolated
+              ? text.conductivityPointsInterpolated
+              : text.conductivityPoints,
+            temperatureK: points.temperature_k,
+            values: points.values,
+          },
+    note:
+      points === undefined
+        ? text.conductivityNote
+        : text.conductivityPointsNote,
   };
 }
 
@@ -467,7 +494,7 @@ export function chartTabView(
     case "band_diagram":
       return bandDiagramView(mode, diagram);
     case "conductivity":
-      return conductivityView(mode, derived);
+      return conductivityView(mode, state, measured, derived);
     case "thermal_conductivity":
       return thermalConductivityView(mode, derived);
     case "carrier_concentration":
