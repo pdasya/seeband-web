@@ -224,3 +224,24 @@ export function useLiveCurves(): LiveCurves {
     diagram: useLatest(BAND_DIAGRAM, diagram.body, diagram.scope, false),
   };
 }
+
+/** The measured curves alone, for their RMSE, whatever the charts show. */
+export function useMeasuredCurves(): LiveCalc {
+  const { data: models } = useQuery(modelsQuery);
+  const selection = useSessionStore((state) => state.selection);
+  const parameters = useSessionStore((state) => state.parameters);
+  const data = useSessionStore((state) => state.data);
+  const interpolation = useSessionStore((state) => state.interpolation);
+  const { body, scope } = useMemo(() => {
+    const request = calcRequest(
+      { selection, parameters, data, interpolation },
+      models?.models,
+    );
+    return {
+      body: request && JSON.stringify(request),
+      scope: request && requestScope(request),
+    };
+  }, [selection, parameters, data, interpolation, models]);
+  const waiting = interpolation.enabled && interpolation.loading;
+  return useLatest(CALC, body, scope, waiting);
+}

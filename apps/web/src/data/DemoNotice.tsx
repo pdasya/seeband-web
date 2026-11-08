@@ -13,7 +13,8 @@ import { STRINGS } from "@/strings";
 
 const { data: text } = STRINGS;
 
-function noticeText(messageKey: string): string {
+/** What a demo says about itself, by the key the API gives. */
+export function noticeText(messageKey: string): string {
   const known: Record<string, string> = text.demoNotices;
   return known[messageKey] ?? text.demoNoticeOther;
 }
