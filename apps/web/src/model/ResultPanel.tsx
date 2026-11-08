@@ -21,6 +21,7 @@ import {
   parameterRows,
   quantityMark,
   resultIssues,
+  rmseText,
   type ResultIssue,
 } from "@/model/resultSummary";
 import { fitModeOf } from "@/model/selection";
@@ -30,15 +31,6 @@ import { Panel } from "@/shell/layout";
 import { STRINGS } from "@/strings";
 
 const { fit, data: dataText } = STRINGS;
-
-function rmseText(rmse: { value: number | null; unit: string }): string {
-  if (rmse.value === null) {
-    return fit.rmseNotFinite;
-  }
-  const units: Record<string, string> = fit.rmseUnits;
-  const value = formatNumber(Number(rmse.value.toPrecision(4)));
-  return `${value} ${units[rmse.unit] ?? rmse.unit}`;
-}
 
 function symbols(quantities: readonly Quantity[]): string {
   return quantities
@@ -90,7 +82,9 @@ export function ResultPanel({ live }: { live: LiveCurves }) {
   const data = useSessionStore((state) => state.data);
   const interpolation = useSessionStore((state) => state.interpolation);
   const fitState = useSessionStore((state) => state.fit);
-  const setChartTab = useSessionStore((state) => state.setChartTab);
+  const customBounds = useSessionStore((state) => state.customBounds);
+  const setChartPanel = useSessionStore((state) => state.setChartPanel);
+  const panels = useSessionStore((state) => state.chartPanels);
   const gaps = rmseGaps(
     { selection, parameters, data, interpolation },
     models?.models,
@@ -105,7 +99,9 @@ export function ResultPanel({ live }: { live: LiveCurves }) {
   const issues = resultIssues(mode, {
     fit: fitState.status === "done" ? fitState.result.known_issues : [],
     measured: result?.known_issues ?? [],
-    derived: live.derived.result?.known_issues ?? [],
+    derived: Object.values(live.derived).flatMap(
+      ({ result: curves }) => curves?.known_issues ?? [],
+    ),
   });
   const explained =
     gaps.noPointsInRange.length > 0 || gaps.notInterpolated.length > 0;
@@ -120,6 +116,7 @@ export function ResultPanel({ live }: { live: LiveCurves }) {
           selection.scattering,
           parameters[mode.id],
           fitState,
+          customBounds[mode.id],
         );
   const { minTemperatureK: minK, maxTemperatureK: maxK } = selection;
   const subtitle = [
@@ -132,8 +129,17 @@ export function ResultPanel({ live }: { live: LiveCurves }) {
     .filter((part) => part !== null && part !== undefined)
     .join(" · ");
 
+  // μ goes on the first chart without a measured quantity, and a chart that shows it already stays.
   const openMoreGraphs = () => {
-    setChartTab("chemical_potential");
+    if (!panels.includes("chemical_potential")) {
+      const free = panels.findIndex(
+        (tab) => !(QUANTITIES as readonly string[]).includes(tab),
+      );
+      setChartPanel(
+        free === -1 ? panels.length - 1 : free,
+        "chemical_potential",
+      );
+    }
     document.getElementById("charts")?.scrollIntoView({ block: "nearest" });
   };
 

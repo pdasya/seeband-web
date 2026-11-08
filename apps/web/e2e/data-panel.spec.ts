@@ -56,6 +56,7 @@ async function reloadAsAUserWould(page: Page) {
 }
 
 const PARSED_FOR_RELOAD = {
+  headers: ["T", "x"],
   column_count: 2,
   row_count: 1,
   preview: [],
@@ -88,7 +89,7 @@ test("shows three slots, as the design does", async ({ page }) => {
     "Resistivity",
     "Hall coefficient",
   ]) {
-    await expect(page.getByText(title)).toBeVisible();
+    await expect(page.getByText(title, { exact: true })).toBeVisible();
   }
 });
 

@@ -19,7 +19,6 @@ const PROPS: TransportChartProps = {
   xAxisTitle: "T, K",
   yAxisTitle: "S",
   description: "Chart of S against temperature",
-  toggleMeasurementsLabel: "Show measurements",
   failedText: "The chart could not load",
 };
 
@@ -88,7 +87,7 @@ test("the same props draw nothing again", async () => {
   expect(react).toHaveBeenCalledTimes(1);
 });
 
-test("the toggle shows only with measurements, and a failed load says so", async () => {
+test("there is no toggle of measurements, and a failed load says so", async () => {
   load.mockRejectedValue(new Error("offline"));
 
   render(<TransportChart {...PROPS} measurements={null} />);

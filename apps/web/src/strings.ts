@@ -16,8 +16,8 @@ export const STRINGS = {
   },
   parameters: {
     title: "Parameters",
-    subtitle: "The curve follows the values",
     fixed: "not fitted",
+    about: (symbol: string) => `About ${symbol}`,
     // How a parameter is written. Any other shows its name, so a new one needs no change here.
     symbols: {
       band_mass: "m",
@@ -33,12 +33,24 @@ export const STRINGS = {
       dimensionless: "",
       unknown: "unit not known",
     },
+    editBounds: "Edit bounds",
+    boundsTitle: "Bounds of the fit",
+    boundsDone: "Done",
+    closeBounds: "Close",
+    defaultBounds: "Default bounds",
+    boundsHint:
+      "What a fit of this mode may reach. Values do not move with them, and each slider follows.",
+    boundLowerTitle: "Lower",
+    boundUpperTitle: "Upper",
+    boundLower: (symbol: string) => `${symbol}, lower bound`,
+    boundUpper: (symbol: string) => `${symbol}, upper bound`,
+    boundsInvalid:
+      "The lower bound must be below the upper. The last valid bounds stay in use.",
     outOfRange: (minimum: string, maximum: string) =>
       `enter a number from ${minimum} to ${maximum}. The last valid value stays in use.`,
   },
   model: {
     title: "Model",
-    subtitle: "Band model and scattering mechanism",
     loading: "Loading the models…",
     loadFailed: "The models could not be loaded. Reload the page to try again.",
     bands: "Band model",
@@ -64,8 +76,6 @@ export const STRINGS = {
     rangeMax: "Upper bound, K",
     rangeInvalid:
       "The lower bound must be below the upper, and both above 0 K. The last valid range stays in use.",
-    missingTitle: "Missing data:",
-    missingText: "Load a file or assign a column to run this fit mode.",
   },
   data: {
     title: "Data",
@@ -122,7 +132,41 @@ export const STRINGS = {
     column: "Column",
     andMore: "More problems:",
     demoSource: "Demo data",
+    bar: {
+      loaded: "Data loaded",
+      details: "Details",
+      hide: "Hide",
+      points: (symbol: string, points: number) =>
+        `${symbol} · ${String(points)} pts`,
+      notLoaded: (symbol: string) => `${symbol} · not loaded`,
+    },
+    demoLoading: "Loading the demo data…",
+    demoFailed:
+      "The demo data could not be loaded. Reload to try again, or load your own data.",
+    demoClear: "Clear demo data",
+    demoTry: "Try demo data",
+    demoNoticeOther: "These are demo data, not a measurement.",
+    demoNotices: {
+      "demo_dataset.synthetic":
+        "Synthetic data, generated with the DPB model and added noise. They are not a measurement of any material.",
+    },
     oneFile: "Drop one file at a time.",
+    noHeaderQuestion:
+      "This file has no column names. Choose what its columns hold.",
+    nameSuggests: (title: string) => `Its name suggests ${title}.`,
+    headerMismatchQuestion:
+      "The column names of this file do not match its columns. Choose what its columns hold.",
+    belowZeroForRho:
+      "Some values are below 0, which a resistivity cannot have.",
+    chooseColumns: "Choose T and one quantity.",
+    slotBusy: (title: string) =>
+      `The slot of ${title} has a file on its way. Finish there first, or choose another quantity.`,
+    goesToSlot: (title: string) => `It goes to the slot of ${title}.`,
+    slotTaken: (title: string) =>
+      `The slot of ${title} holds a file. Remove it first, or choose another quantity.`,
+    loadAs: (symbol: string) => `Load as ${symbol}`,
+    tableSize: (rows: number, columns: number) =>
+      `${String(rows)} rows · ${String(columns)} columns`,
     quantityNotFound: "This file has no column for this quantity.",
     tooManyRows: "This file has more than 2000 rows.",
     rateLimited: "Too many files in a short time. Try again in a minute.",
@@ -154,6 +198,8 @@ export const STRINGS = {
       too_few_rows: "Fewer than 2 rows.",
       missing_temperature: "No column holds the temperature.",
       non_positive_temperature: "A temperature of 0 K or below.",
+      negative_resistivity:
+        "A resistivity below 0, which no measurement gives.",
       repeated_role: "A quantity is assigned twice.",
       preamble_skipped: "A line of text before the header was left out.",
       header_mismatch: "The header has a different number of columns.",
@@ -171,14 +217,13 @@ export const STRINGS = {
   },
   chart: {
     temperatureAxis: "T, K",
-    toggleMeasurements: "Show measurements",
     failed: "The chart could not be shown. Try reloading the page.",
-    tabsLabel: "Charts",
     tabs: {
-      seebeck: "S(T)",
-      resistivity: "ρ(T)",
-      hall: "R_H(T)",
-      chemical_potential: "μ(T)",
+      seebeck: "Seebeck S(T)",
+      conductivity: "Conductivity σ(T)",
+      resistivity: "Resistivity ρ(T)",
+      hall: "Hall coefficient R_H(T)",
+      chemical_potential: "Chemical potential μ(T)",
       bands: "Band contributions",
       lorenz_number: "L(T)",
       reduced_fermi_level: "η(T)",
@@ -187,6 +232,7 @@ export const STRINGS = {
       hall_factor: "Hall factor",
       band_masses: "Band masses",
       band_structure: "E(k)",
+      band_diagram: "Band diagram E(k)",
     },
     derivedLabels: {
       lorenz: "Lorenz number",
@@ -219,14 +265,29 @@ export const STRINGS = {
       band_masses: "Band-edge total DOS mass and single-valley mass",
     },
     energyAxis: "E − E_edge, eV",
-    wavevectorAxis: "k, Å⁻¹",
+    kaneWavevectorAxis: "k, Å⁻¹",
     dispersionDescription:
       "Spherical Kane dispersion relative to the carrier band edge",
+    panelLabel: (index: number) => `Chart ${String(index)}`,
+    panelSelect: (index: number) => `Quantity shown in chart ${String(index)}`,
+    bandGapMetric: (gap: string) => `E_g = ${gap} K`,
+    conductivityDescription: "Chart of σ against temperature",
+    conductivityNote:
+      "The model's σ only. Measured points would be 1/ρ, which the ρ chart shows.",
+    diagramCurves: {
+      band_1_energy_k: "Band 1",
+      band_2_energy_k: "Band 2",
+      fermi_energy_k: "E_F",
+    },
+    diagramDescription: "Sketch of the band energies against wavevector",
+    wavevectorAxis: "k",
     axes: {
       seebeck: "S, µV/K",
       resistivity: "ρ, µΩ·m",
       hall: "R_H, m³/C",
       chemicalPotential: "μ, K",
+      energy: "E, K",
+      conductivity: "σ, S/m",
     },
     quantityTabs: {
       seebeck: {
@@ -274,6 +335,7 @@ export const STRINGS = {
     },
     model: "Model",
     measurements: "Measurements",
+    measurementsDemo: "Measurements (demo)",
     interpolated: "Interpolated",
     updating: "Updating…",
     lastCurveStays: "The last curve stays on the chart.",
@@ -286,7 +348,6 @@ export const STRINGS = {
     calcFailed: "The curve could not be calculated.",
   },
   status: {
-    manual: "Manual parameters",
     running: "Fitting…",
     converged: "Converged",
     iterationLimit: "Iteration limit reached",
@@ -296,11 +357,10 @@ export const STRINGS = {
   },
   fit: {
     pageTitle: "Model fit",
-    title: "Transport property fit",
-    subtitle: "Fit S(T), ρ(T) and R_H(T) with a band model",
     data: "Data",
     charts: "Charts",
     result: "Result",
+    panelTitle: "Fit",
     guess: "Initial guess",
     guessHint: "The neural net proposes m₂/m₁, E_g and E_F from S(T)",
     guessOnlyWithNets: "The neural net is used for DPB only",
@@ -351,14 +411,17 @@ export const STRINGS = {
       stream_ended: "The connection was lost during the fit. Try again.",
     },
     failureOther: "The fit failed on the server. Try again.",
+    missingData: (symbols: string) => `Missing data: ${symbols}`,
     blockers: {
       noMode: "Choose a fit mode to run a fit.",
       interpolating: "Waiting for interpolated values.",
-      missingData: "This fit mode needs data for",
       notInterpolated: "No usable interpolated values for",
       noPointsInRange: "No points in the fit range for",
+      startOutsideBounds: "A fit cannot start outside its bounds:",
     },
     rmse: "RMSE",
+    degeneracySymbol: "N₁, N₂",
+    degeneracyMeaning: "band degeneracies",
     noRmse: "The RMSE appears here once measurements are loaded.",
     rmseNotFinite: "not finite",
     rmseFailed: "The RMSE could not be calculated for the current values.",
@@ -408,6 +471,8 @@ export const STRINGS = {
         "With the Fermi energy outside the band, there are no carriers, so the chemical potential and the curves from it mean nothing.",
       "known_issue.hall_dis_no_reference":
         "This fit fails on the desktop, and runs here with other bounds of G, so there is no desktop result to compare with.",
+      "known_issue.band_diagram_formula":
+        "This is a sketch, as on the desktop. Its curves do not follow E = ħ²k²/(2m) in any stated units, and in DPB band 1 has a mass of −1 whatever the values. Only E_F and where each band starts are exact.",
       "known_issue.interpolation_extrapolates":
         "Interpolation made up points beyond the data, and they count in the RMSE and in a fit.",
     },
@@ -441,7 +506,39 @@ export const STRINGS = {
   results: {
     pageTitle: "Results",
     title: "Results",
-    subtitle: "No fit yet. Run one on the model fit page.",
+    noFit: "No fit for the current values. Run one on the model fit page.",
+    noValue: "—",
+    summary: (parts: readonly string[]) => parts.join(" · "),
+    modeLabel: (symbols: readonly string[]) => symbols.join(" + "),
+    issue: (severity: string, issue: string) => `${severity}: ${issue}`,
+    running: "A fit is running. Its results appear here once it ends.",
+    noValues: "The last fit gave no values. The model fit page says why.",
+    toFit: "Run a fit",
+    model: "Model",
+    scattering: "Scattering",
+    rmse: (symbol: string) => `RMSE ${symbol}`,
+    inRange: "in the fit range",
+    noRmse: "needs measurements",
+    rmseCalculating: "calculating…",
+    rmseFailed: "could not be calculated",
+    iterations: "Iterations",
+    parametersTitle: "Fit parameters",
+    parametersSubtitle:
+      "The values in use, with what they mean and how they were found",
+    parameterTable: "Fit parameters",
+    columns: {
+      parameter: "Parameter",
+      meaning: "Meaning",
+      value: "Value",
+      bounds: "Bounds",
+      status: "Status",
+    },
+    status: {
+      fitted: "fitted",
+      fixed: "fixed",
+      needs: (symbols: string) => `needs ${symbols}`,
+    },
+    notes: "Notes",
   },
   notFound: {
     pageTitle: "Page not found",

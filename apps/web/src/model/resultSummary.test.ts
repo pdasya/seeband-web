@@ -6,9 +6,11 @@ import { MODELS } from "../../e2e/support/models";
 import {
   fitEndNote,
   fitIterations,
+  hasFittedValues,
   parameterRows,
   quantityMark,
   resultIssues,
+  resultRows,
 } from "@/model/resultSummary";
 import type { FitModeDescription, ModelDescription } from "@/model/selection";
 import type { FitResult } from "@/session/store";
@@ -16,6 +18,8 @@ import { STRINGS } from "@/strings";
 
 const models = MODELS.models as ModelDescription[];
 const allModes = models.flatMap(({ fit_modes: modes }) => modes);
+const modelOf = (id: string) =>
+  models.find((model) => model.id === id) as ModelDescription;
 const modeOf = (id: string) =>
   allModes.find((mode) => mode.id === id) as FitModeDescription;
 
@@ -125,6 +129,22 @@ describe("parameterRows", () => {
       { status: "idle" },
     ).find(({ name }) => name === "C");
     expect(row).toMatchObject({ value: "1,5", bounds: "0,00001 … 10" });
+  });
+
+  test("shows bounds of the user's in place of the description's", () => {
+    const rows = parameterRows(
+      modeOf("dpb_s_rho"),
+      "acPh",
+      undefined,
+      { status: "idle" },
+      { band_gap: { lower: 500, upper: 1500 } },
+    );
+    expect(rows.find(({ name }) => name === "band_gap")?.bounds).toBe(
+      "500 … 1500",
+    );
+    expect(rows.find(({ name }) => name === "fermi_energy")?.bounds).toBe(
+      "-3000 … 3000",
+    );
   });
 
   test("a value with no fit bounds says it is not fitted", () => {
@@ -256,5 +276,151 @@ describe("quantityMark", () => {
     expect(
       quantityMark([issue("caution"), issue("unreliable")], "seebeck"),
     ).toBe("unreliable");
+  });
+});
+
+describe("hasFittedValues", () => {
+  test("only a fit that gave values", () => {
+    expect(hasFittedValues(done({}))).toBe(true);
+    expect(hasFittedValues(done({ status: "iteration_limit" }))).toBe(true);
+    expect(hasFittedValues(done({ status: "failed" }))).toBe(false);
+    expect(
+      hasFittedValues({
+        status: "stopped",
+        iteration: 2,
+        lastParameters: { band_gap: 900 },
+      }),
+    ).toBe(true);
+    expect(
+      hasFittedValues({
+        status: "stopped",
+        iteration: null,
+        lastParameters: null,
+      }),
+    ).toBe(false);
+    expect(hasFittedValues({ status: "idle" })).toBe(false);
+    expect(
+      hasFittedValues({
+        status: "running",
+        iteration: 1,
+        lastParameters: null,
+      }),
+    ).toBe(false);
+  });
+});
+
+describe("resultRows", () => {
+  const selection = (scattering: string | null) => ({
+    scattering,
+    band1Degeneracy: 2,
+    band2Degeneracy: 1,
+  });
+  const rowsOf = (model: string, mode: string, scattering: string | null) =>
+    resultRows(
+      modelOf(model),
+      modeOf(mode),
+      selection(scattering),
+      undefined,
+      done({}),
+    );
+  const statuses = (rows: ReturnType<typeof rowsOf>) =>
+    Object.fromEntries(
+      rows.map(({ name, status }) => [
+        name,
+        status.kind === "needs"
+          ? `needs ${status.quantities.join(",")}`
+          : status.kind,
+      ]),
+    );
+
+  test("DPB S + ρ: fitted values, fixed degeneracies, and m₁ needs R_H", () => {
+    const rows = rowsOf("dpb", "dpb_s_rho", "acPh");
+    expect(statuses(rows)).toEqual({
+      m_eff: "fitted",
+      band_gap: "fitted",
+      fermi_energy: "fitted",
+      A: "fitted",
+      B: "fitted",
+      degeneracy: "fixed",
+      m1: "needs hall",
+    });
+    expect(rows.find(({ name }) => name === "degeneracy")).toMatchObject({
+      symbol: "N₁, N₂",
+      value: "2, 1",
+      bounds: "",
+    });
+    expect(rows.find(({ name }) => name === "m1")).toMatchObject({
+      symbol: "m₁",
+      value: "",
+      bounds: "",
+    });
+    expect(rows.find(({ name }) => name === "band_gap")?.meaning).not.toBe("");
+  });
+
+  test("DPB S: what needs ρ or R_H, and nothing that depends on a scattering", () => {
+    expect(statuses(rowsOf("dpb", "dpb_s", null))).toEqual({
+      m_eff: "fitted",
+      band_gap: "fitted",
+      fermi_energy: "fitted",
+      degeneracy: "fixed",
+      m1: "needs resistivity,hall",
+    });
+  });
+
+  test("the scattering in use decides what another mode would add", () => {
+    expect(statuses(rowsOf("dpb", "dpb_s_rho", "dis")).m1).toBe("needs hall");
+    expect(statuses(rowsOf("dpb", "dpb_s_rho", "dis")).F).toBe("fitted");
+  });
+
+  test("names the fewest data that find a parameter, in any order of modes", () => {
+    const dpb = modelOf("dpb");
+    // Backwards, so that the mode with R_H comes first, and with a scattering, so that A counts.
+    const reversed = { ...dpb, fit_modes: [...dpb.fit_modes].reverse() };
+    const rows = resultRows(
+      reversed,
+      modeOf("dpb_s"),
+      selection("acPh"),
+      undefined,
+      done({}),
+    );
+    expect(statuses(rows)).toMatchObject({
+      A: "needs resistivity",
+      B: "needs resistivity",
+      m1: "needs resistivity,hall",
+    });
+    expect(statuses(rows)).not.toHaveProperty("C");
+  });
+
+  test("a mode that cannot run makes nothing needed", () => {
+    const dpb = modelOf("dpb");
+    const withoutHall = {
+      ...dpb,
+      fit_modes: dpb.fit_modes.map((mode) =>
+        mode.id === "dpb_s_rho_rh" ? { ...mode, disabled: true } : mode,
+      ),
+    };
+    const rows = resultRows(
+      withoutHall,
+      modeOf("dpb_s_rho"),
+      selection("acPh"),
+      undefined,
+      done({}),
+    );
+    expect(statuses(rows)).not.toHaveProperty("m1");
+  });
+
+  test("with all data, nothing is needed", () => {
+    const rows = rowsOf("dpb", "dpb_s_rho_rh", "acPh");
+    expect(rows.filter(({ status }) => status.kind === "needs")).toEqual([]);
+  });
+
+  test("SPB: a mass the mode does not fit is fixed, with no bounds", () => {
+    const rows = rowsOf("spb", "spb_s_rho", "acPh");
+    expect(rows.find(({ name }) => name === "band_mass")).toMatchObject({
+      status: { kind: "fixed" },
+      bounds: "",
+    });
+    expect(rows.some(({ name }) => name === "degeneracy")).toBe(false);
+    expect(rows.filter(({ status }) => status.kind === "needs")).toEqual([]);
   });
 });

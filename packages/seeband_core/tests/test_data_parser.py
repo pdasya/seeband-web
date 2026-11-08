@@ -252,6 +252,33 @@ def test_a_mapping_can_come_with_the_text() -> None:
     assert table.measurements["seebeck"].values.tolist() == [1.0, 2.0]
 
 
+def test_a_negative_resistivity_is_an_error_on_its_lines() -> None:
+    table = parse_table("T rho\n100 1e-5\n200 -2e-5\n300 -1e-5\n", expected="resistivity")
+
+    assert table.errors == (
+        ParseIssue("negative_resistivity", 3, 1),
+        ParseIssue("negative_resistivity", 4, 1),
+    )
+    assert table.measurements == {}
+
+
+def test_negative_values_of_other_quantities_and_zero_resistivity_are_fine() -> None:
+    table = parse_table("T S rho RH\n100 -1e-5 0 -1e-8\n200 -2e-5 1e-5 -2e-8\n")
+
+    assert table.errors == ()
+    assert set(table.measurements) == {"seebeck", "resistivity", "hall"}
+
+
+def test_a_mapping_away_from_the_negative_column_clears_the_error() -> None:
+    table = parse_table("T a b\n100 -1 1\n200 -2 2\n", mapping={0: "temperature", 1: "resistivity"})
+    assert codes(table.errors) == ["negative_resistivity", "negative_resistivity"]
+
+    repaired = with_mapping(table, {0: "temperature", 1: "seebeck", 2: "resistivity"})
+
+    assert repaired.errors == ()
+    assert set(repaired.measurements) == {"seebeck", "resistivity"}
+
+
 def test_a_user_mapping_can_repair_a_non_positive_temperature() -> None:
     table = parse_table("T x\n0 300\n1 400\n")
     assert codes(table.errors) == ["non_positive_temperature"]

@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
 
+from seeband_api.band_diagram import router as band_diagram_router
 from seeband_api.calc import router as calc_router
 from seeband_api.calc_pool import CalcPool
 from seeband_api.demo import router as demo_router
@@ -62,6 +63,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     add_error_handlers(app)
     per_minute = {
         "/api/calc": settings.calc_per_minute,
+        "/api/band-diagram": settings.band_diagram_per_minute,
         "/api/parse": settings.parse_per_minute,
         "/api/guess": settings.guess_per_minute,
         "/api/fit": settings.fit_per_minute,
@@ -79,6 +81,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(health_router)
     app.include_router(models_router)
     app.include_router(calc_router)
+    app.include_router(band_diagram_router)
     app.include_router(parse_router)
     app.include_router(guess_router)
     app.include_router(fit_router)

@@ -1,9 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
+import { openData, fitBadges } from "./support/fitScreen";
 
 import { fakeFit } from "./support/fakeFit";
 import { CALC, serveModels } from "./support/models";
 
 const PARSED = (quantity: string) => ({
+  headers: ["T", "x"],
   column_count: 2,
   row_count: 2,
   preview: [],
@@ -103,12 +105,10 @@ test("Run says what it needs, and is enabled once it has that", async ({
   await open(page);
 
   await expect(run(page)).toBeDisabled();
-  await expect(
-    page.getByText("This fit mode needs data for S, ρ."),
-  ).toBeVisible();
+  await expect(fitBadges(page)).toHaveText("Missing data: S, ρ");
 
   await load(page, 0);
-  await expect(page.getByText("This fit mode needs data for ρ.")).toBeVisible();
+  await expect(fitBadges(page)).toHaveText("Missing data: ρ");
   await expect(run(page)).toBeDisabled();
 
   await load(page, 1);
@@ -147,7 +147,7 @@ test("an iterative fit: status, counter, moving values and Stop", async ({
   page,
 }) => {
   await openWithData(page);
-  await expect(page.getByText("Manual parameters")).toBeVisible();
+  await expect(fitBadges(page)).toHaveCount(0);
 
   await run(page).click();
   await expect(page.getByText("Fitting… waiting in the queue")).toBeVisible();
@@ -484,7 +484,7 @@ test("Reset goes back to the defaults, and to manual", async ({ page }) => {
   await expect(field(page, "E_g")).toHaveValue("1000");
   await expect(field(page, "E_F")).toHaveValue("-100");
   await expect(page.getByRole("alert")).toHaveCount(0);
-  await expect(page.getByText("Manual parameters")).toBeVisible();
+  await expect(fitBadges(page)).toHaveCount(0);
 });
 
 test("Reset touches only this fit mode", async ({ page }) => {
@@ -536,6 +536,7 @@ test("a change of what the fit is of stops it", async ({ page }) => {
   expect(await aborted(page)).toBe(2);
 
   await startFit(page);
+  await openData(page);
   await page
     .getByRole("button", { name: /Remove/ })
     .first()
@@ -591,7 +592,7 @@ test("a move of a slider after a result goes back to manual", async ({
 
   await slider(page, "E_g").press("ArrowRight");
 
-  await expect(page.getByText("Manual parameters")).toBeVisible();
+  await expect(fitBadges(page)).toHaveCount(0);
 });
 
 test("a screen reader hears the status, and not each iteration", async ({

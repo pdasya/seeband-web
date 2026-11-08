@@ -59,12 +59,15 @@ test("fits synthetic SKB series through the real API and draws L(T), mu(T), mobi
 }) => {
   test.setTimeout(60000);
   let fitResponseText = "";
-  await page.route(/\/api\/(?:models|parse|fit|calc|guess)$/, async (route) => {
-    const path = new URL(route.request().url()).pathname;
-    const response = await route.fetch({ url: `${ORIGIN}${path}` });
-    if (path === "/api/fit") fitResponseText = await response.text();
-    await route.fulfill({ response });
-  });
+  await page.route(
+    /\/api\/(?:models|parse|fit|calc|guess|band-diagram)$/,
+    async (route) => {
+      const path = new URL(route.request().url()).pathname;
+      const response = await route.fetch({ url: `${ORIGIN}${path}` });
+      if (path === "/api/fit") fitResponseText = await response.text();
+      await route.fulfill({ response });
+    },
+  );
   await page.goto("/fit");
   await page.getByRole("radio", { name: "SKB", exact: true }).click();
   await expect(
@@ -108,29 +111,30 @@ test("fits synthetic SKB series through the real API and draws L(T), mu(T), mobi
     .toBeCloseTo(0.16, 4);
   expect(fitResponseText).toContain('"converged"');
 
-  await page.getByRole("tab", { name: "L(T)", exact: true }).click();
-  await expect(page.locator(".ytitle")).toHaveText("L, 10⁻⁸ W Ω/K²");
+  const panel = page.getByRole("region", { name: "Chart 1", exact: true });
+  const choose = async (name: string) => {
+    await page
+      .getByRole("combobox", { name: "Quantity shown in chart 1", exact: true })
+      .click();
+    await page.getByRole("option", { name, exact: true }).click();
+  };
+  await choose("L(T)");
+  await expect(panel.locator(".ytitle")).toHaveText("L, 10⁻⁸ W Ω/K²");
   await expect(
-    page.locator(".scatterlayer path.js-line").first(),
+    panel.locator(".scatterlayer path.js-line").first(),
   ).toBeVisible();
-  await page
-    .getByRole("tabpanel", { name: "L(T)", exact: true })
-    .screenshot({ path: "/private/tmp/seeband-kane-lorenz.png" });
-  await page.getByRole("tab", { name: "μ(T)", exact: true }).click();
-  await expect(page.locator(".ytitle")).toHaveText("μ, K");
-  await page.getByRole("tab", { name: "Mobility", exact: true }).click();
-  await expect(page.locator(".scatterlayer .trace")).toHaveCount(2);
-  await page.getByRole("tab", { name: "E(k)", exact: true }).click();
-  await expect(page.locator(".xtitle")).toHaveText("k, Å⁻¹");
-  await expect(page.locator(".ytitle")).toHaveText("E − E_edge, eV");
-  await expect(page.locator(".scatterlayer .trace path.js-line")).toHaveCount(
+  await choose("Chemical potential μ(T)");
+  await expect(panel.locator(".ytitle")).toHaveText("μ, K");
+  await choose("Mobility");
+  await expect(panel.locator(".scatterlayer .trace")).toHaveCount(2);
+  await choose("E(k)");
+  await expect(panel.locator(".xtitle")).toHaveText("k, Å⁻¹");
+  await expect(panel.locator(".ytitle")).toHaveText("E − E_edge, eV");
+  await expect(panel.locator(".scatterlayer .trace path.js-line")).toHaveCount(
     1,
   );
   await expect(
-    page.locator(".scatterlayer path.js-line").first(),
+    panel.locator(".scatterlayer path.js-line").first(),
   ).toBeVisible();
-  await expect(page.locator(".xtick text").first()).toHaveText(/[−-]/);
-  await page
-    .getByRole("tabpanel", { name: "E(k)", exact: true })
-    .screenshot({ path: "/private/tmp/seeband-kane-band.png" });
+  await expect(panel.locator(".xtick text").first()).toHaveText(/[−-]/);
 });

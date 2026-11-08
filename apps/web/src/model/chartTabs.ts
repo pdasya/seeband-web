@@ -1,4 +1,4 @@
-import type { CalcResponse } from "@/api/client";
+import type { BandDiagramResponse, CalcResponse } from "@/api/client";
 import type {
   ChartCurve,
   ChartMeasurements,
@@ -10,6 +10,24 @@ import type { ChartTab, Quantity, SessionState } from "@/session/store";
 import { STRINGS } from "@/strings";
 
 const { chart: text } = STRINGS;
+
+/** Every choice of a chart, in the order of its select. */
+export const CHART_TABS: readonly ChartTab[] = [
+  "seebeck",
+  "conductivity",
+  "resistivity",
+  "hall",
+  "chemical_potential",
+  "bands",
+  "band_diagram",
+  "lorenz_number",
+  "reduced_fermi_level",
+  "carrier_concentration",
+  "carrier_mobility",
+  "hall_factor",
+  "band_masses",
+  "band_structure",
+];
 
 /** What each tab with measurements draws, from the core's units to those of its axis. */
 const QUANTITY_TABS: Record<
@@ -34,11 +52,27 @@ const SEEBECK_TOTAL = QUANTITY_TABS.seebeck.curve;
 const SEEBECK_BAND_1 = "seebeck_band_1_v_per_k";
 const SEEBECK_BAND_2 = "seebeck_band_2_v_per_k";
 const CHEMICAL_POTENTIAL = "chemical_potential_k";
+const CONDUCTIVITY = "electrical_conductivity_s_per_m";
 
 type CurveKind = FitModeDescription["curves"][number]["kind"];
 
+/** The kinds of curve that charts ask for on top of the measured ones. */
+export const DERIVED_KINDS_ASKED = [
+  "chemical_potential",
+  "seebeck_by_band",
+  "electrical_conductivity",
+  "lorenz_number",
+  "reduced_fermi_level",
+  "carrier_concentration_by_band",
+  "carrier_mobility",
+  "hall_factor",
+  "band_masses",
+  "band_structure",
+] as const;
+export type DerivedKind = (typeof DERIVED_KINDS_ASKED)[number];
+
 /** The kind of curve a tab asks for on top of the measured ones, as measurements need those. */
-const DERIVED_KINDS: Partial<Record<ChartTab, CurveKind>> = {
+const DERIVED_KINDS: Partial<Record<ChartTab, DerivedKind>> = {
   chemical_potential: "chemical_potential",
   bands: "seebeck_by_band",
   lorenz_number: "lorenz_number",
@@ -48,6 +82,7 @@ const DERIVED_KINDS: Partial<Record<ChartTab, CurveKind>> = {
   hall_factor: "hall_factor",
   band_masses: "band_masses",
   band_structure: "band_structure",
+  conductivity: "electrical_conductivity",
 };
 
 function availabilityOf(mode: FitModeDescription, kind: CurveKind) {
@@ -58,7 +93,7 @@ function availabilityOf(mode: FitModeDescription, kind: CurveKind) {
 export function derivedKind(
   tab: ChartTab,
   mode: FitModeDescription | undefined,
-): CurveKind | null {
+): DerivedKind | null {
   const kind = DERIVED_KINDS[tab];
   return kind !== undefined &&
     mode !== undefined &&
@@ -123,10 +158,14 @@ export interface ChartTabView {
   referenceLines: ReferenceLine[];
   yAxisTitle: string;
   description: string;
-  /** Says what a chart with points only leaves out. */
+  /** Says what a chart with points only leaves out, or what is known to be wrong with it. */
   note: string | null;
-  xAxisTitle?: string;
-  xAxisRange?: readonly [number, number];
+  /** For a chart that is not against temperature. */
+  xAxis?: {
+    title: string;
+    span: readonly [number, number] | null;
+    unitless?: boolean;
+  };
 }
 
 type TransportTab =
@@ -209,8 +248,10 @@ function dispersionView(
           ]
         : [],
     yAxisTitle: text.energyAxis,
-    xAxisTitle: text.wavevectorAxis,
-    xAxisRange: [x[0] ?? -1, x[x.length - 1] ?? 1],
+    xAxis: {
+      title: text.kaneWavevectorAxis,
+      span: [x[0] ?? -1, x[x.length - 1] ?? 1],
+    },
     description: text.dispersionDescription,
     referenceLines: [{ value: 0, label: text.bandEdge }],
   };
@@ -258,7 +299,8 @@ function quantityView(
   const { curve, factor, axis } = QUANTITY_TABS[quantity];
   const words = text.quantityTabs[quantity];
   const base = { yAxisTitle: axis, description: words.description };
-  const entry = state.data[quantity]?.measurement;
+  const data = state.data[quantity];
+  const entry = data?.measurement;
   if (entry === undefined) {
     return {
       ...NO_CHART,
@@ -274,7 +316,11 @@ function quantityView(
     empty: null,
     curves: inMode ? curveOf(measured, curve, factor, text.model) : [],
     measurements: {
-      label: text.measurements,
+      // Demo data say what they are wherever they appear.
+      label:
+        data?.source.kind === "demo"
+          ? text.measurementsDemo
+          : text.measurements,
       temperatureK: entry.temperature_k,
       values: scaled(entry.values, factor),
     },
@@ -332,6 +378,31 @@ function chemicalPotentialView(
   };
 }
 
+// σ has no measured points: they would be 1/ρ, which the client does not calculate.
+function conductivityView(
+  mode: FitModeDescription | undefined,
+  derived: CalcResponse | null,
+): ChartTabView {
+  const base = {
+    yAxisTitle: text.axes.conductivity,
+    description: text.conductivityDescription,
+  };
+  if (derivedKind("conductivity", mode) === null) {
+    return {
+      ...NO_CHART,
+      ...base,
+      empty: unavailable(mode, "electrical_conductivity"),
+    };
+  }
+  return {
+    ...NO_CHART,
+    ...base,
+    empty: null,
+    curves: curveOf(derived, CONDUCTIVITY, 1, text.model),
+    note: text.conductivityNote,
+  };
+}
+
 function bandsView(
   mode: FitModeDescription | undefined,
   measured: CalcResponse | null,
@@ -370,14 +441,62 @@ function bandsView(
 }
 
 /** What a tab shows, from the answers and session. It calculates nothing but units. */
+function bandDiagramView(
+  mode: FitModeDescription | undefined,
+  diagram: BandDiagramResponse | null,
+): ChartTabView {
+  const { fit } = STRINGS;
+  const labels: Record<string, string> = text.diagramCurves;
+  const issueTexts: Record<string, string> = fit.knownIssueTexts;
+  const first = diagram?.wavevector[0];
+  const last = diagram?.wavevector.at(-1);
+  return {
+    ...NO_CHART,
+    yAxisTitle: text.axes.energy,
+    description: text.diagramDescription,
+    empty: null,
+    xAxis: {
+      title: text.wavevectorAxis,
+      unitless: true,
+      span: first === undefined || last === undefined ? null : [first, last],
+    },
+    // Each name comes from the server, so a model with other bands needs no change here.
+    curves: Object.entries(diagram?.curves ?? {}).map(([name, values]) => ({
+      id: name,
+      label: labels[name] ?? name,
+      temperatureK: diagram?.wavevector ?? [],
+      values,
+      dashed: name === "fermi_energy_k",
+    })),
+    note:
+      diagram === null || diagram.known_issues.length === 0
+        ? null
+        : diagram.known_issues
+            .map((id) => {
+              const issue = mode?.known_issues.find((item) => item.id === id);
+              const severity =
+                fit.issueSeverity[issue?.severity ?? "unreliable"];
+              const said =
+                issueTexts[`known_issue.${id}`] ?? fit.knownIssueOther;
+              return `${severity}: ${said}`;
+            })
+            .join(" "),
+  };
+}
+
 export function chartTabView(
   tab: ChartTab,
   mode: FitModeDescription | undefined,
   state: ViewState,
   measured: CalcResponse | null,
   derived: CalcResponse | null,
+  diagram: BandDiagramResponse | null = null,
 ): ChartTabView {
   switch (tab) {
+    case "band_diagram":
+      return bandDiagramView(mode, diagram);
+    case "conductivity":
+      return conductivityView(mode, derived);
     case "chemical_potential":
       return chemicalPotentialView(mode, state, derived);
     case "bands":

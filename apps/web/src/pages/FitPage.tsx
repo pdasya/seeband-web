@@ -1,16 +1,18 @@
-import { DataPanel } from "@/data/DataPanel";
-import { FitActions, FitMessages, FitStatusBadge } from "@/model/FitControls";
-import { LiveCharts } from "@/model/LiveCharts";
+import { DataBar } from "@/data/DataBar";
+import { ChartGrid } from "@/model/ChartGrid";
+import { FitPanel } from "@/model/FitPanel";
 import { ModelPanel } from "@/model/ModelPanel";
 import { ParametersPanel } from "@/model/ParametersPanel";
 import { ResultPanel } from "@/model/ResultPanel";
 import { useFitControl } from "@/model/useFitControl";
 import { useGuess } from "@/model/useGuess";
 import { useLiveCurves } from "@/model/useLiveCurves";
-import { PageHeading, TwoColumns } from "@/shell/layout";
 import { STRINGS } from "@/strings";
 
-/** The frame of the fit screen. The panels fill up from FS1 onwards. */
+/**
+ * The fit screen, as the design's four-chart layout: the data and the charts, then the result,
+ * beside the fit, the model and the parameters. The two wrap into one column on a narrow screen.
+ */
 export function FitPage() {
   const { fit } = STRINGS;
   const live = useLiveCurves();
@@ -19,36 +21,25 @@ export function FitPage() {
   return (
     <>
       <title>{`${fit.pageTitle} · ${STRINGS.appName}`}</title>
-      <TwoColumns
-        side={
-          <>
-            <DataPanel />
+      {/* The charts take what the right column leaves, and above 1200 px it stands beside them. */}
+      <div className="grid grid-cols-1 items-start gap-4 min-[1200px]:grid-cols-[minmax(0,1fr)_600px]">
+        <div className="flex min-w-0 flex-col gap-3">
+          <DataBar />
+          <ChartGrid live={live} />
+        </div>
+        <aside
+          aria-label={fit.panelTitle}
+          className="flex min-w-0 flex-col gap-3"
+        >
+          <FitPanel control={control} guess={guess} />
+          {/* Side by side and of one size where both fit, one under the other where they do not. */}
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(294px,1fr))] gap-3">
+            <ParametersPanel />
             <ModelPanel />
-          </>
-        }
-        main={
-          <>
-            <PageHeading
-              title={fit.title}
-              subtitle={fit.subtitle}
-              status={<FitStatusBadge control={control} guess={guess} />}
-              actions={<FitActions control={control} guess={guess} />}
-            />
-            <FitMessages control={control} guess={guess} />
-            <div id="charts">
-              <LiveCharts live={live} />
-            </div>
-            <div className="flex flex-wrap items-stretch gap-4">
-              <div className="min-w-0 flex-[1_1_320px]">
-                <ParametersPanel />
-              </div>
-              <div className="min-w-0 flex-[1_1_320px]">
-                <ResultPanel live={live} />
-              </div>
-            </div>
-          </>
-        }
-      />
+          </div>
+          <ResultPanel live={live} />
+        </aside>
+      </div>
     </>
   );
 }

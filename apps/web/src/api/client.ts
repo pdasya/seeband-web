@@ -14,6 +14,8 @@ export type ModelsResponse =
   operations["get_models"]["responses"][200]["content"]["application/json"];
 export type CalcRequest = Schemas["CalcRequest"];
 export type CalcResponse = Schemas["CalcResponse"];
+export type BandDiagramRequest = Schemas["BandDiagramRequest"];
+export type BandDiagramResponse = Schemas["BandDiagramResponse"];
 export type ParseRequest = Schemas["ParseRequest"];
 export type ParseResponse = Schemas["ParseResponse"];
 export type GuessRequest = Schemas["GuessRequest"];
@@ -64,6 +66,15 @@ export class ApiClient {
 
   postCalc(body: CalcRequest, signal?: AbortSignal) {
     return this.request<CalcResponse>("POST", "/api/calc", body, signal);
+  }
+
+  postBandDiagram(body: BandDiagramRequest, signal?: AbortSignal) {
+    return this.request<BandDiagramResponse>(
+      "POST",
+      "/api/band-diagram",
+      body,
+      signal,
+    );
   }
 
   postParse(body: ParseRequest, signal?: AbortSignal) {

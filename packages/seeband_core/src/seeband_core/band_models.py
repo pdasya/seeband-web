@@ -16,9 +16,15 @@ from typing import Any
 import numpy as np
 
 from seeband_core import fit_module, kane
-from seeband_core.known_issues import active_issue_ids, disabled_issue_ids
+from seeband_core.known_issues import (
+    active_issue_ids,
+    band_diagram_issue_ids,
+    disabled_issue_ids,
+)
 from seeband_core.model_descriptions import load_desktop_descriptions, load_kane_description
 from seeband_core.model_interface import (
+    BandDiagramRequest,
+    BandDiagramResult,
     Bounds,
     CurveKind,
     CurveRequest,
@@ -32,8 +38,10 @@ from seeband_core.model_interface import (
     IterationUpdate,
     Measurement,
     ModelDescription,
+    ParameterSpec,
     Quantity,
 )
+from seeband_core.model_scales import core_to_display
 
 # Any, because calls here spread lists of mixed arguments that mypy cannot match to a signature.
 _CORE: Any = fit_module.PB_fit()
@@ -76,6 +84,13 @@ def parabolic_band(
         min_wavevector, max_wavevector, points, mass, energy
     )
     return wavevector, band_energy
+
+
+# As the desktop redraws its sketch: this range of k, this many points, and for E_F a band so heavy
+# that it lies flat.
+_DIAGRAM_K_RANGE = (-40, 40)
+_DIAGRAM_POINTS = 100
+_FLAT_MASS = 100000000
 
 
 def _values(parameters: Mapping[str, float], names: Iterable[str]) -> list[float]:
@@ -361,6 +376,31 @@ class _BandModel:
             ),
         )
 
+    def band_diagram(self, request: BandDiagramRequest) -> BandDiagramResult:
+        """Return the desktop's sketch of the bands. It enters no fit or curve."""
+        fit_mode = self.describe().fit_mode(request.fit_mode)
+        specs = {spec.name: spec for spec in fit_mode.parameters}
+        bands = [
+            *self._diagram_bands(request, specs),
+            ("fermi_energy_k", _FLAT_MASS, _value(request.parameters, "fermi_energy")),
+        ]
+        wavevector: np.ndarray | None = None
+        curves: dict[str, np.ndarray] = {}
+        # A mass of 0, which the controls allow, has no finite band, and a tiny one overflows.
+        with np.errstate(all="ignore"):
+            for name, mass, energy in bands:
+                wavevector, curves[name] = parabolic_band(
+                    *_DIAGRAM_K_RANGE, _DIAGRAM_POINTS, mass, energy
+                )
+        assert wavevector is not None
+        return BandDiagramResult(wavevector, curves, band_diagram_issue_ids(fit_mode))
+
+    def _diagram_bands(
+        self, request: BandDiagramRequest, specs: Mapping[str, ParameterSpec]
+    ) -> list[tuple[str, float, float]]:
+        """Each band as its curve's name, its mass as a user sees it, and its energy."""
+        raise NotImplementedError
+
     def _curve_call(
         self, request: CurveRequest, fit_mode: FitMode, scattering: str | None
     ) -> tuple[Callable[..., Any], list[Any]]:
@@ -370,6 +410,12 @@ class _BandModel:
 class SpbModel(_BandModel):
     def __init__(self) -> None:
         super().__init__(load_desktop_descriptions()["spb"])
+
+    def _diagram_bands(
+        self, request: BandDiagramRequest, specs: Mapping[str, ParameterSpec]
+    ) -> list[tuple[str, float, float]]:
+        mass = core_to_display(specs["band_mass"], _value(request.parameters, "band_mass"))
+        return [("band_1_energy_k", mass, 0)]
 
     def _stage_errors(
         self, fit_mode: FitMode, scattering: str | None, ratio: float, progress: Any
@@ -463,6 +509,17 @@ class SpbModel(_BandModel):
 class DpbModel(_BandModel):
     def __init__(self) -> None:
         super().__init__(load_desktop_descriptions()["dpb"])
+
+    def _diagram_bands(
+        self, request: BandDiagramRequest, specs: Mapping[str, ParameterSpec]
+    ) -> list[tuple[str, float, float]]:
+        m_eff = core_to_display(specs["m_eff"], _value(request.parameters, "m_eff"))
+        ratio = request.band_1_degeneracy / request.band_2_degeneracy
+        return [
+            # The desktop draws band 1 with this mass, whatever the parameters are.
+            ("band_1_energy_k", -1, 0),
+            ("band_2_energy_k", m_eff / ratio, _value(request.parameters, "band_gap")),
+        ]
 
     def _stage_errors(
         self, fit_mode: FitMode, scattering: str | None, ratio: float, progress: Any
@@ -574,6 +631,25 @@ class SkbModel(_BandModel):
 
     def __init__(self) -> None:
         super().__init__(load_kane_description())
+
+    def band_diagram(self, request: BandDiagramRequest) -> BandDiagramResult:
+        """Use the same Kane dispersion as the derived E(k) curve, in kelvin."""
+        self.describe().fit_mode(request.fit_mode)
+        if request.band_2_degeneracy != 1:
+            raise ValueError("A single Kane band has no second-band degeneracy")
+        _, wavevector, energy_ev = kane.calculate(
+            100,
+            300,
+            _DIAGRAM_POINTS,
+            request.parameters,
+            request.band_1_degeneracy,
+            _CURVE_NAMES["band_structure"],
+        )
+        curves = {
+            "band_1_energy_k": energy_ev / kane.Q,
+            "fermi_energy_k": np.full_like(wavevector, request.parameters["fermi_energy"]),
+        }
+        return BandDiagramResult(wavevector, curves, ("skb_assumptions",))
 
     def _stage_errors(
         self, fit_mode: FitMode, scattering: str | None, ratio: float, progress: Any

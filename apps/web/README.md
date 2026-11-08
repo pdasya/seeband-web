@@ -63,6 +63,7 @@ The app always calls `/api` on its own origin, so there is no base URL to set, a
 - **A new file replaces the old one,** and stops a read under way. If it fails, the old data go too, as a fit from them would look like a fit from the new file.
 - **A file over 8 MB or 2000000 characters is refused before sending,** as a 413 for a large body can arrive as a network error.
 - **Text in UTF-16 with a byte order mark is decoded here.** Anything else is read as UTF-8, and the server reports what that spoils.
+- **A file with no column names waits for the user** to choose what its columns hold, as for a single file, as values alone cannot tell ρ from S. With two columns and a name that names no other quantity, T and the slot's quantity are chosen already, so one click loads it. A name such as `_rho` in the S slot is shown, and leaves the choice to the user. Values below 0 in the ρ slot, as S has in an n-type sample, also leave the choice to the user. A choice of another quantity puts the file in that quantity's slot, if it is empty and has no file of its own on the way. The data keep the chosen columns, which interpolating sends again with the text. A header that does not fit the columns counts as none, and the question says so. A file whose header fits needs no choice, as the parser checks its names (D28).
 - **Only the slot's quantity is taken** from a file in a slot.
 - **One file can hold them all,** under Single file. The server suggests the columns, and a change sends the text again, as the API keeps nothing, so the text stays in memory until the file goes. The server also says if a mapping will not do: `missing_temperature` and `repeated_role`. A repeated temperature is only a warning, as a real example file measures 100 K twice.
 - **Interpolation has one switch,** for all the data. Values come from `POST /api/parse`, and sit beside the measured data, so that turning it off restores those exactly. Each change of the data or fit range asks again, after 300 ms, so the text of each file stays in memory. Use `fitData` for what a fit reads: with the switch on and no usable values, it gives null rather than quietly falling back to measured data. Its flags say when values are made up. It uses the fit range of the selection, or the default of `GET /api/models` until FS4 sets one. It runs in the shell, so moving between screens sends nothing again. If one file's request fails, the others stay, and the flags name it. With only one bound selected, the other is the default, so FS4 must set both together.
@@ -119,6 +120,28 @@ SEEBAND_API_TARGET=http://127.0.0.1:8000 pnpm --filter @seeband/web exec playwri
 - **It writes to every mode of the model,** as the desktop does to all its DPB windows, so also from another model's screen. Only the parameters a mode has, and the rest keep their values.
 - **An edit or a fit while it waits wins,** as the user has moved on, and so does S going away, as the values would describe nothing on screen. Edits before a new file are overwritten, as on the desktop. Coming back to a tab or reading the same S under a new mapping is no new load, and keeps what was edited.
 - **The badge shows the net's real range,** from the API, while its values stand. With no net, a prediction that is not finite, or `m_eff` of about 0, the values stay, and a line says why.
+
+## Demo data
+
+`/fit?demo=1` loads `GET /api/demo` into the slots of S, ρ and R_H, and opens the fit the data were made for, as the link from Overview will (S2). The address then drops that, so that coming back cannot replace what the user did since. After a failure it stays, so a reload tries again.
+
+- **The panel has a link to them,** Try demo data, while no file is loaded, so that they can be reached with no Overview.
+- **They say what they are wherever they appear:** "Demo data" on each card, "Measurements (demo)" in the chart legend, and a notice for as long as any are in use. Results and exports must keep this (R1, R4).
+- **They take the path of a file.** S starts the initial guess. Interpolating sends their rows as text, because the API has no text of them, and a reload warns as it does for a file.
+- **Files of the user's are never replaced, or mixed with the demo.** With one loaded or still being read when the demo arrives, the demo does not load, and the link is not offered. Clear demo data removes only the demo.
+
+## Band diagram
+
+The E(k) tab draws `POST /api/band-diagram` for the current values, with one request at a time like the curves, and only while it is open. It is the desktop's sketch, with no ticks on k and the same formula, grid and bands, which a test checks against the desktop's recorded calls. It differs where the desktop rounds values to its sliders, also after Adjust to fit, draws 200 points before the first change, and takes N₁ and N₂ as whole numbers (D24). Its formula is a known error (`band_diagram_formula`, #108), so a note under it says so. It needs no data.
+
+## Bounds
+
+`model/BoundsEditor.tsx`, a dialog opened beside the title of the parameters, sets the bounds of a fit for each mode, where the description has `bounds_editable`. They go in `bounds` on `POST /api/fit` in core units, only those that differ from the description, and only for the scattering in use. The result table shows them, and the parameter's slider and field take them as their range, as on the desktop.
+
+- **Values do not move with them,** unlike on the desktop (D27). A start outside its bounds stops Run, and says which, but does not stop a fit that runs, whose own values can read past them when N₂/N₁ is not 1 (D12). Only bounds the user set are checked here: a start outside the description's own is for the API to report.
+- **The lower bound must be below the upper.** Both ends count together, and are checked as focus leaves the row, so a range can move past its old end. Otherwise the last valid bounds stay, and Done does not close the dialog on them. Escape and the corner button do, and a click beside it does not.
+- **Reset restores them,** with the values. Default bounds restores only them.
+- **The fit range** is in the model panel, shared by all modes, as on the desktop.
 
 ## Result
 

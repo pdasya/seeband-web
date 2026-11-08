@@ -41,12 +41,12 @@ test("the root leads to the fit page", () => {
 
   expect(router.state.location.pathname).toBe("/fit");
   expect(
-    screen.getByRole("heading", { level: 1, name: STRINGS.fit.title }),
+    screen.getByRole("heading", { level: 1, name: STRINGS.fit.panelTitle }),
   ).toBeTruthy();
 });
 
 test.each([
-  ["/fit", STRINGS.navigation.fit, STRINGS.fit.title],
+  ["/fit", STRINGS.navigation.fit, STRINGS.fit.panelTitle],
   ["/results", STRINGS.navigation.results, STRINGS.results.title],
 ])("%s has its heading and marks its link", (path, link, heading) => {
   renderAt(path);

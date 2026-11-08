@@ -5,6 +5,7 @@ import type { FitModeDescription } from "@/model/selection";
 import { STRINGS } from "@/strings";
 
 export type ParameterDescription = components["schemas"]["ParameterResponse"];
+export type FitBounds = components["schemas"]["BoundsInput"];
 
 /** How a parameter is written. Any other shows its name, so a new one needs no change. */
 export function parameterSymbol(name: string): string {
@@ -23,6 +24,36 @@ export function visibleParameters(
       parameter.scattering.length === 0 ||
       (scattering !== null && parameter.scattering.includes(scattering)),
   );
+}
+
+/** What a fit of this mode lets the user bound, with the bounds of its description. */
+export function editableParameters(
+  mode: FitModeDescription,
+  scattering: string | null,
+): { parameter: ParameterDescription; bounds: FitBounds }[] {
+  return visibleParameters(mode, scattering).flatMap((parameter) => {
+    const { fit_bounds: bounds, role, bounds_editable: editable } = parameter;
+    return role === "fitted" && editable && bounds != null
+      ? [{ parameter, bounds }]
+      : [];
+  });
+}
+
+/** The control of a parameter with bounds of the user's, as on the desktop they set its range. */
+export function withCustomRange(
+  parameter: ParameterDescription,
+  bounds: FitBounds | undefined,
+): ParameterDescription {
+  return bounds === undefined
+    ? parameter
+    : {
+        ...parameter,
+        display_range: {
+          ...parameter.display_range,
+          minimum: coreToDisplay(parameter, bounds.lower),
+          maximum: coreToDisplay(parameter, bounds.upper),
+        },
+      };
 }
 
 /** Every parameter of a mode in core units, as requests need them: those set, then the defaults. */

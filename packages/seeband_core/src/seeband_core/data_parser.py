@@ -31,6 +31,7 @@ IssueCode = Literal[
     "too_few_rows",
     "missing_temperature",
     "non_positive_temperature",
+    "negative_resistivity",
     "repeated_role",
     # Warnings
     "preamble_skipped",
@@ -200,6 +201,16 @@ def _measure(
         warnings.append(
             ParseIssue("duplicate_temperature", lines[order[position + 1]], temperature_column)
         )
+    # A measured resistivity cannot be below 0, and a sign from another convention would fit
+    # wrongly without a word.
+    negative = [
+        ParseIssue("negative_resistivity", lines[row], index)
+        for index, role in mapping.items()
+        if role == "resistivity"
+        for row in np.flatnonzero(columns[index] < 0)[:MAX_ERRORS]
+    ]
+    if negative:
+        return {}, negative, warnings
     measurements: dict[Quantity, Measurement] = {}
     for index, role in mapping.items():
         if role != "temperature":
@@ -213,6 +224,7 @@ _FROM_MAPPING: frozenset[str] = frozenset(
     {
         "missing_temperature",
         "non_positive_temperature",
+        "negative_resistivity",
         "repeated_role",
         "few_rows",
         "unsorted_temperature",

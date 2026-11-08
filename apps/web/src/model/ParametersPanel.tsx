@@ -1,10 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
+import { InfoIcon } from "lucide-react";
 import { useId, useState } from "react";
 
 import { modelsQuery } from "@/api/queries";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { formatNumber } from "@/lib/numbers";
 import {
   coreToDisplay,
@@ -16,8 +22,10 @@ import {
   tidy,
   typedDisplayValue,
   visibleParameters,
+  withCustomRange,
   type ParameterDescription,
 } from "@/model/parameters";
+import { BoundsEditor } from "@/model/BoundsEditor";
 import { fitModeOf } from "@/model/selection";
 import { isFitActive, useSessionStore } from "@/session/store";
 import { Panel } from "@/shell/layout";
@@ -60,6 +68,7 @@ function ParameterControl({
   // Text only while it is being typed, or while it cannot be used.
   const [draft, setDraft] = useState<string | null>(null);
   const [invalid, setInvalid] = useState(false);
+  const [hintOpen, setHintOpen] = useState(false);
   const { minimum, maximum } = parameter.display_range;
   const label = parameterSymbol(parameter.name);
   const displayed = tidy(coreToDisplay(parameter, value));
@@ -92,12 +101,32 @@ function ParameterControl({
   };
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-1">
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
           <label htmlFor={id} className="text-[13px] font-medium">
             {label}
           </label>
+          {/* Hover and focus open it, and so does a tap, as a touch screen has no hover. */}
+          <Tooltip open={hintOpen} onOpenChange={setHintOpen}>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                aria-label={text.about(label)}
+                onClick={(event) => {
+                  // The trigger would close it on a click.
+                  event.preventDefault();
+                  setHintOpen(true);
+                }}
+                className="-m-1 inline-flex size-6 items-center justify-center rounded-full text-muted-foreground outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              >
+                <InfoIcon className="size-3.5" aria-hidden="true" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-64">
+              {hint(parameter)}
+            </TooltipContent>
+          </Tooltip>
           {parameter.role === "fixed" && (
             <Badge variant="secondary">{text.fixed}</Badge>
           )}
@@ -109,7 +138,7 @@ function ParameterControl({
           inputMode={minimum < 0 ? "text" : "decimal"}
           autoComplete="off"
           aria-describedby={invalid ? `${hintId} ${errorId}` : hintId}
-          className="h-8 w-28 flex-none text-right font-mono text-[13px]"
+          className="h-7 w-28 flex-none text-right font-mono text-[13px]"
           aria-invalid={invalid}
           title={formatNumber(displayed)}
           value={draft ?? formatNumber(shortened(displayed))}
@@ -125,7 +154,8 @@ function ParameterControl({
           }}
         />
       </div>
-      <span id={hintId} className="text-xs text-muted-foreground">
+      {/* The tooltip shows it on demand, and the field keeps it as its description. */}
+      <span id={hintId} className="sr-only">
         {hint(parameter)}
       </span>
       <Slider
@@ -178,21 +208,32 @@ export function ParametersPanel() {
   const saved = useSessionStore((state) => state.parameters);
   const setParameter = useSessionStore((state) => state.setParameter);
   const resets = useSessionStore((state) => state.parameterResets);
+  const customBounds = useSessionStore((state) => state.customBounds);
   const active = useSessionStore((state) => isFitActive(state.fit));
 
   const model = data?.models.find(({ id }) => id === selection.model);
   const mode = fitModeOf(model, selection.fitMode);
 
   return (
-    <Panel title={text.title} subtitle={text.subtitle}>
+    <Panel
+      title={text.title}
+      action={
+        mode !== undefined && (
+          <BoundsEditor mode={mode} scattering={selection.scattering} />
+        )
+      }
+    >
       {mode !== undefined && (
-        <div className="mt-3 flex flex-col gap-[18px]">
+        <div className="mt-2 flex flex-col gap-3">
           {visibleParameters(mode, selection.scattering).map((parameter) => (
             <ParameterControl
               // A new mode or a reset starts its fields again.
               key={`${mode.id}:${parameter.name}:${String(resets)}`}
               disabled={active}
-              parameter={parameter}
+              parameter={withCustomRange(
+                parameter,
+                customBounds[mode.id]?.[parameter.name],
+              )}
               value={
                 parameterValues(mode, saved[mode.id])[parameter.name] ??
                 parameter.core_range.default

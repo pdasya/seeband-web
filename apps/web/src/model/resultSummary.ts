@@ -2,13 +2,19 @@ import { formatNumber } from "@/lib/numbers";
 import { quantityCurve } from "@/model/chartTabs";
 import {
   coreToDisplay,
+  type FitBounds,
   parameterSymbol,
   parameterValues,
   shortened,
   visibleParameters,
 } from "@/model/parameters";
-import type { FitModeDescription } from "@/model/selection";
-import { QUANTITIES, type FitState, type Quantity } from "@/session/store";
+import type { FitModeDescription, ModelDescription } from "@/model/selection";
+import {
+  QUANTITIES,
+  type FitState,
+  type Quantity,
+  type Selection,
+} from "@/session/store";
 import { STRINGS } from "@/strings";
 
 const { fit: text, parameters: parameterText } = STRINGS;
@@ -57,6 +63,16 @@ export function fitEndNote(
   }
 }
 
+/** An RMSE as the panels show it, with the unit the user reads. */
+export function rmseText(rmse: { value: number | null; unit: string }): string {
+  if (rmse.value === null) {
+    return text.rmseNotFinite;
+  }
+  const units: Record<string, string> = text.rmseUnits;
+  const value = formatNumber(Number(rmse.value.toPrecision(4)));
+  return `${value} ${units[rmse.unit] ?? rmse.unit}`;
+}
+
 export interface ParameterRow {
   name: string;
   symbol: string;
@@ -79,6 +95,7 @@ export function parameterRows(
   scattering: string | null,
   saved: Readonly<Record<string, number>> | undefined,
   fit: FitState,
+  custom?: Readonly<Record<string, FitBounds>>,
 ): ParameterRow[] {
   const values = parameterValues(mode, saved);
   // A failed fit has fitted nothing, so it has reached no bound.
@@ -87,7 +104,8 @@ export function parameterRows(
       ? fit.result.at_bounds
       : [];
   return visibleParameters(mode, scattering).map((parameter) => {
-    const { name, fit_bounds: bounds, role, unit } = parameter;
+    const { name, role, unit } = parameter;
+    const bounds = custom?.[name] ?? parameter.fit_bounds;
     const value = values[name] ?? parameter.core_range.default;
     const inDisplay = (core: number) => coreToDisplay(parameter, core);
     return {
@@ -106,6 +124,131 @@ export function parameterRows(
       atBound: atBounds.includes(name),
     };
   });
+}
+
+/** Whether the values on screen came from a fit, so that a summary of it can be shown. */
+export function hasFittedValues(fit: FitState): boolean {
+  switch (fit.status) {
+    case "done":
+      return fit.result.status !== "failed";
+    case "stopped":
+      return fit.lastParameters !== null;
+    default:
+      return false;
+  }
+}
+
+/** Fitted, held at its value, or known only with data that this fit mode does not use. */
+export type ParameterStatus =
+  | { kind: "fitted" }
+  | { kind: "fixed" }
+  | { kind: "needs"; quantities: Quantity[] };
+
+export interface ResultRow {
+  name: string;
+  symbol: string;
+  meaning: string;
+  /** Empty while the parameter needs other data. */
+  value: string;
+  /** Empty when nothing bounds it: it is not fitted, or needs other data. */
+  bounds: string;
+  atBound: boolean;
+  status: ParameterStatus;
+}
+
+/**
+ * The parameters of a summary. On top of those in use, the band degeneracies, and each parameter
+ * that another fit mode of the model finds with more data, as one that needs those data.
+ */
+export function resultRows(
+  model: ModelDescription,
+  mode: FitModeDescription,
+  selection: Pick<
+    Selection,
+    "scattering" | "band1Degeneracy" | "band2Degeneracy"
+  >,
+  saved: Readonly<Record<string, number>> | undefined,
+  fit: FitState,
+  custom?: Readonly<Record<string, FitBounds>>,
+): ResultRow[] {
+  const { scattering } = selection;
+  const inUse = visibleParameters(mode, scattering);
+  const rows: ResultRow[] = parameterRows(
+    mode,
+    scattering,
+    saved,
+    fit,
+    custom,
+  ).map((row, at) => {
+    const parameter = inUse[at];
+    const fixed = parameter?.role === "fixed";
+    return {
+      ...row,
+      meaning: parameter?.meaning ?? "",
+      // The status says it is not fitted, so its bounds are left empty.
+      bounds: fixed ? "" : row.bounds,
+      status: { kind: fixed ? "fixed" : "fitted" },
+    };
+  });
+  if (mode.degeneracy !== null && mode.degeneracy !== undefined) {
+    rows.push({
+      name: "degeneracy",
+      symbol: text.degeneracySymbol,
+      meaning: text.degeneracyMeaning,
+      value: `${formatNumber(selection.band1Degeneracy)}, ${formatNumber(selection.band2Degeneracy)}`,
+      bounds: "",
+      atBound: false,
+      status: { kind: "fixed" },
+    });
+  }
+  // From the mode that needs the fewest data on top of these.
+  const needed = new Map<string, { meaning: string; quantities: Quantity[] }>();
+  for (const other of model.fit_modes) {
+    // A mode that cannot run finds nothing, so it is no reason to load more data.
+    if (
+      other.disabled ||
+      !mode.quantities.every((quantity) => other.quantities.includes(quantity))
+    ) {
+      continue;
+    }
+    const more = other.quantities.filter(
+      (quantity) => !mode.quantities.includes(quantity),
+    );
+    // With no scattering here, only what the other mode has whatever its scattering.
+    const found =
+      scattering === null
+        ? other.parameters.filter(
+            (parameter) =>
+              parameter.scattering.length === 0 ||
+              other.scattering.every((id) => parameter.scattering.includes(id)),
+          )
+        : visibleParameters(other, scattering);
+    for (const parameter of found) {
+      const known = needed.get(parameter.name);
+      if (
+        more.length > 0 &&
+        !inUse.some(({ name }) => name === parameter.name) &&
+        (known === undefined || more.length < known.quantities.length)
+      ) {
+        needed.set(parameter.name, {
+          meaning: parameter.meaning,
+          quantities: more,
+        });
+      }
+    }
+  }
+  for (const [name, { meaning, quantities }] of needed) {
+    rows.push({
+      name,
+      symbol: parameterSymbol(name),
+      meaning,
+      value: "",
+      bounds: "",
+      atBound: false,
+      status: { kind: "needs", quantities },
+    });
+  }
+  return rows;
 }
 
 export interface ResultIssue {

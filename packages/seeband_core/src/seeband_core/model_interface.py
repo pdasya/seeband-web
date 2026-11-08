@@ -102,7 +102,8 @@ class KnownIssue:
 
     `scattering` is empty for every type. `condition` limits it to some inputs. `columns` names the
     curves of a kind that it changes, and is empty for all of them. `fixed_by` is the issue that
-    removes it. `explanation` is for developers, and a user sees `message_key` through i18n.
+    removes it. `affects_band_diagram` puts it on the sketch of E(k), and on nothing else.
+    `explanation` is for developers, and a user sees `message_key` through i18n.
     """
 
     id: str
@@ -114,6 +115,7 @@ class KnownIssue:
     curve_kinds: tuple[CurveKind, ...] = ()
     columns: tuple[str, ...] = ()
     affects_fit: bool = False
+    affects_band_diagram: bool = False
     condition: IssueCondition | None = None
     message_key: str = field(init=False)
 
@@ -238,6 +240,29 @@ class CurveRequest:
     extrapolated: bool = False
 
 
+@dataclass(frozen=True)
+class BandDiagramRequest:
+    """Ask for the sketch of E(k). `parameters` holds every parameter of the mode, in core units."""
+
+    fit_mode: str
+    parameters: Mapping[str, float]
+    band_1_degeneracy: float = 1.0
+    band_2_degeneracy: float = 1.0
+
+
+@dataclass(frozen=True, eq=False)
+class BandDiagramResult:
+    """Curves over `wavevector`, by name, where each name ends in its unit.
+
+    SPB/DPB `wavevector` has no unit, as the desktop formula states none
+    (`band_diagram_formula`). SKB uses inverse metres from its Kane dispersion.
+    """
+
+    wavevector: np.ndarray
+    curves: Mapping[str, np.ndarray]
+    known_issues: tuple[str, ...] = ()
+
+
 @dataclass(frozen=True, eq=False)
 class CurveResult:
     """Curves by name, where each name ends in its unit, such as `seebeck_v_per_k`."""
@@ -324,6 +349,8 @@ class Model(Protocol):
     def describe(self) -> ModelDescription: ...
 
     def calculate(self, request: CurveRequest) -> CurveResult: ...
+
+    def band_diagram(self, request: BandDiagramRequest) -> BandDiagramResult: ...
 
     def fit(self, request: FitRequest, on_iteration: IterationCallback | None = None) -> FitResult:
         """Run a fit. The callback is apart from the request, which stays picklable for a worker.

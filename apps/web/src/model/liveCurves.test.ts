@@ -4,7 +4,13 @@ import { describe, expect, test } from "vitest";
 import { MODELS } from "../../e2e/support/models";
 
 import type { CalcRequest } from "@/api/client";
-import { calcRequest, requestScope, rmseGaps } from "@/model/liveCurves";
+import {
+  bandDiagramRequest,
+  bandDiagramScope,
+  calcRequest,
+  requestScope,
+  rmseGaps,
+} from "@/model/liveCurves";
 import type { ModelDescription } from "@/model/selection";
 import type { SessionData } from "@/session/store";
 
@@ -103,5 +109,71 @@ describe("calcRequest", () => {
   test("asks with no data only when told to", () => {
     expect(calcRequest(STATE, models)).toBeNull();
     expect(calcRequest(STATE, models, true)?.fit_mode).toBe("dpb_s_rho");
+  });
+});
+
+describe("bandDiagramRequest", () => {
+  test("holds the mode's values and degeneracies, and needs no data", () => {
+    const request = bandDiagramRequest(
+      {
+        ...STATE,
+        data: {},
+        parameters: { dpb_s_rho: { band_gap: 500 } },
+        selection: {
+          ...STATE.selection,
+          band1Degeneracy: 2,
+          band2Degeneracy: 3,
+        },
+      },
+      models,
+    );
+
+    expect(request).toMatchObject({
+      model: "dpb",
+      fit_mode: "dpb_s_rho",
+      band_1_degeneracy: 2,
+      band_2_degeneracy: 3,
+    });
+    expect(request?.parameters.band_gap).toBe(500);
+    expect(request?.parameters.m_eff).toBe(1.01);
+  });
+
+  test("is null with no mode, or a disabled one", () => {
+    expect(bandDiagramRequest(STATE, undefined)).toBeNull();
+    expect(
+      bandDiagramRequest(
+        {
+          ...STATE,
+          selection: {
+            ...STATE.selection,
+            model: "spb",
+            fitMode: "spb_s_rho_rh",
+          },
+        },
+        models,
+      ),
+    ).toBeNull();
+  });
+});
+
+describe("bandDiagramScope", () => {
+  test("follows the model and mode, not the values", () => {
+    const base = {
+      model: "dpb",
+      fit_mode: "dpb_s",
+      parameters: { m_eff: 1 },
+    };
+    expect(bandDiagramScope({ ...base, parameters: { m_eff: 2 } })).toBe(
+      bandDiagramScope(base),
+    );
+    expect(bandDiagramScope({ ...base, band_2_degeneracy: 2 })).toBe(
+      bandDiagramScope(base),
+    );
+    expect(bandDiagramScope({ ...base, fit_mode: "dpb_s_rho" })).not.toBe(
+      bandDiagramScope(base),
+    );
+    expect(bandDiagramScope({ ...base, model: "spb" })).not.toBe(
+      bandDiagramScope(base),
+    );
   });
 });

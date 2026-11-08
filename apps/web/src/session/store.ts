@@ -18,6 +18,7 @@ export type ModelSettings = Pick<
   "fitMode" | "scattering" | "band1Degeneracy" | "band2Degeneracy"
 >;
 export type Measurement = Schemas["MeasurementResponse"];
+export type FitBounds = Schemas["BoundsInput"];
 export type FitResult = Schemas["FitResponse"];
 export type FitFailure = Schemas["ErrorResponse"];
 
@@ -31,6 +32,8 @@ export interface SessionData {
   extrapolated: boolean;
   /** The file's text, in memory only, as interpolating sends it again. */
   text: string;
+  /** The columns a user chose for a file with no header, sent again with the text. */
+  mapping?: readonly ColumnRole[] | undefined;
 }
 
 export type InterpolatedQuantities = Partial<
@@ -67,7 +70,16 @@ export type ChartTab =
   | "carrier_mobility"
   | "hall_factor"
   | "band_masses"
-  | "band_structure";
+  | "band_structure"
+  | "conductivity"
+  | "band_diagram";
+/** What the four charts show at first: the measured quantities, and the bands. */
+export const INITIAL_CHART_PANELS: readonly ChartTab[] = [
+  "seebeck",
+  "resistivity",
+  "hall",
+  "band_diagram",
+];
 
 /**
  * One table, kept with its text in memory only, as a new mapping sends it again. `table` is the
@@ -201,15 +213,20 @@ export interface SessionState {
   /** The files of the way not in use. */
   otherSource: DataSourceFiles | null;
   interpolation: InterpolationState;
-  chartTab: ChartTab;
+  /** What each of the four charts shows. */
+  chartPanels: readonly ChartTab[];
   guessPending: boolean;
   guess: GuessRecord | null;
   /** Counts resets, so that fields can start again even if the values do not change. */
   parameterResets: number;
+  /** Bounds a fit of each mode uses in place of the description's, in core units. */
+  customBounds: Record<string, Record<string, FitBounds>>;
+  /** Slots with a file on its way or waiting for a choice, which is the user's though not in `data`. */
+  slotsReading: readonly Quantity[];
   /** What each model had when another was chosen, as the design keeps them apart. */
   savedModelSettings: Record<string, ModelSettings>;
 
-  setChartTab: (tab: ChartTab) => void;
+  setChartPanel: (index: number, tab: ChartTab) => void;
   /** Keeps the current model's settings, and takes up these for the new one. */
   chooseModel: (model: string, settings: ModelSettings) => void;
   setInterpolationEnabled: (enabled: boolean) => void;
@@ -236,6 +253,15 @@ export interface SessionState {
   setParameter: (fitMode: string, name: string, value: number) => void;
   /** Back to the defaults of a fit mode, also for a number being typed. */
   resetParameters: (fitMode: string) => void;
+  /** With null, the parameter goes back to the bounds of its description. */
+  setCustomBounds: (
+    fitMode: string,
+    parameter: string,
+    bounds: FitBounds | null,
+  ) => void;
+  clearCustomBounds: (fitMode: string) => void;
+  fileReadStarted: (quantity: Quantity) => void;
+  fileReadEnded: (quantity: Quantity) => void;
   guessStarted: () => void;
   guessFinished: (
     outcome: GuessOutcome,
@@ -255,6 +281,15 @@ export interface SessionState {
   fitEvent: (run: number, event: FitEvent) => void;
   fitStopped: (run: number) => void;
   fitFailed: (run: number, failure: FitFailure) => void;
+}
+
+function withoutMode(
+  customBounds: SessionState["customBounds"],
+  fitMode: string,
+): SessionState["customBounds"] {
+  return Object.fromEntries(
+    Object.entries(customBounds).filter(([name]) => name !== fitMode),
+  );
 }
 
 function withoutValues(interpolation: InterpolationState): InterpolationState {
@@ -326,6 +361,13 @@ export function currentGuess(
     : guess.outcome;
 }
 
+/** Whether a file of the user's is on its way, in either way of loading. */
+export function readsFiles(
+  state: Pick<SessionState, "slotsReading" | "singleFile">,
+): boolean {
+  return state.slotsReading.length > 0 || state.singleFile?.loading === true;
+}
+
 /** Whether a reload would lose any file, in the way in use or the other. */
 export function holdsFiles(
   state: Pick<SessionState, "data" | "singleFile" | "otherSource">,
@@ -365,12 +407,27 @@ export const createSessionStore = () =>
       singleFile: null,
       otherSource: null,
       interpolation: INITIAL_INTERPOLATION,
-      chartTab: "seebeck",
+      chartPanels: INITIAL_CHART_PANELS,
       guessPending: false,
       guess: null,
       parameterResets: 0,
+      customBounds: {},
+      slotsReading: [],
       savedModelSettings: {},
 
+      fileReadStarted: (quantity) => {
+        set((state) => ({
+          slotsReading: [
+            ...state.slotsReading.filter((slot) => slot !== quantity),
+            quantity,
+          ],
+        }));
+      },
+      fileReadEnded: (quantity) => {
+        set((state) => ({
+          slotsReading: state.slotsReading.filter((slot) => slot !== quantity),
+        }));
+      },
       guessStarted: () => {
         set({ guessPending: true, guess: null });
       },
@@ -402,8 +459,12 @@ export const createSessionStore = () =>
           };
         });
       },
-      setChartTab: (chartTab) => {
-        set({ chartTab });
+      setChartPanel: (index, tab) => {
+        set((state) => ({
+          chartPanels: state.chartPanels.map((old, at) =>
+            at === index ? tab : old,
+          ),
+        }));
       },
       chooseModel: (model, settings) => {
         set((state) => {
@@ -553,8 +614,31 @@ export const createSessionStore = () =>
           fit: withoutOldResult(state.fit),
         }));
       },
+      setCustomBounds: (fitMode, parameter, bounds) => {
+        set((state) => {
+          const kept = Object.entries(state.customBounds[fitMode] ?? {}).filter(
+            ([name]) => name !== parameter,
+          );
+          return {
+            customBounds: {
+              ...state.customBounds,
+              [fitMode]: Object.fromEntries(
+                bounds === null ? kept : [...kept, [parameter, bounds]],
+              ),
+            },
+            fit: withoutOldResult(state.fit),
+          };
+        });
+      },
+      clearCustomBounds: (fitMode) => {
+        set((state) => ({
+          customBounds: withoutMode(state.customBounds, fitMode),
+          fit: withoutOldResult(state.fit),
+        }));
+      },
       resetParameters: (fitMode) => {
         set((state) => ({
+          customBounds: withoutMode(state.customBounds, fitMode),
           parameters: Object.fromEntries(
             Object.entries(state.parameters).filter(
               ([name]) => name !== fitMode,

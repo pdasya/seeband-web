@@ -1,25 +1,5 @@
 import type { ReactNode } from "react";
 
-/** The design's two columns: they wrap once the side panel and main column no longer fit. */
-export function TwoColumns({
-  side,
-  main,
-}: {
-  side: ReactNode;
-  main: ReactNode;
-}) {
-  return (
-    <div className="flex flex-wrap items-start gap-6">
-      <aside className="flex max-w-full min-w-0 flex-[1_1_300px] flex-col gap-4">
-        {side}
-      </aside>
-      <div className="flex min-w-0 flex-[999_1_560px] flex-col gap-4">
-        {main}
-      </div>
-    </div>
-  );
-}
-
 /** The title of a screen. `status` is the slot for its status badge, and `actions` for buttons. */
 export function PageHeading({
   title,
@@ -28,7 +8,7 @@ export function PageHeading({
   actions,
 }: {
   title: string;
-  subtitle: string;
+  subtitle?: string;
   status?: ReactNode;
   actions?: ReactNode;
 }) {
@@ -41,7 +21,9 @@ export function PageHeading({
           </h1>
           {status}
         </div>
-        <p className="mt-1 mb-0 text-muted-foreground">{subtitle}</p>
+        {subtitle !== undefined && (
+          <p className="mt-1 mb-0 text-muted-foreground">{subtitle}</p>
+        )}
       </div>
       {actions !== undefined && (
         <div className="flex flex-wrap gap-2">{actions}</div>
@@ -54,18 +36,24 @@ export function PageHeading({
 export function Panel({
   title,
   subtitle,
+  action,
   children,
 }: {
   title: string;
   subtitle?: string;
+  /** Beside the title, for what acts on the whole section. */
+  action?: ReactNode;
   children?: ReactNode;
 }) {
   return (
     <section className="rounded-xl border bg-card shadow-card">
       <div className="p-5">
-        <h2 className="m-0 text-base font-semibold tracking-[-0.01em]">
-          {title}
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="m-0 text-base font-semibold tracking-[-0.01em]">
+            {title}
+          </h2>
+          {action}
+        </div>
         {subtitle !== undefined && (
           <p className="mt-1 mb-0 text-[13px] text-muted-foreground">
             {subtitle}

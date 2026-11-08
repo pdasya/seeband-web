@@ -1,4 +1,5 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
+import { chart } from "./support/fitScreen";
 
 import { CALC, serveModels } from "./support/models";
 
@@ -14,6 +15,7 @@ interface CalcBody {
 }
 
 const PARSED = {
+  headers: ["T", "x"],
   column_count: 2,
   row_count: 3,
   preview: [],
@@ -86,7 +88,9 @@ test("nothing is asked without data, and the empty state stays", async ({
   await page.waitForTimeout(500);
 
   expect(bodies).toHaveLength(0);
-  await expect(page.getByText("No data for this quantity")).toBeVisible();
+  await expect(
+    chart(page).getByText("No data for this quantity"),
+  ).toBeVisible();
   await expect(
     page.getByText("The RMSE appears here once measurements are loaded."),
   ).toBeVisible();
@@ -127,7 +131,7 @@ test("loaded data ask for a whole request, and draw the curve", async ({
   ).toBeVisible();
   await expect(modelLine(page)).toBeVisible();
   await expect(page.getByText("RMSE, S")).toBeVisible();
-  await expect(page.getByText("108,4 µV/K")).toBeVisible();
+  await expect(page.getByText("108,4 µV/K", { exact: true })).toBeVisible();
   await expect(page.getByRole("alert")).toHaveCount(0);
 });
 
@@ -225,9 +229,9 @@ test("answers come in order, and a change aborts nothing", async ({ page }) => {
 
   releaseFirst();
 
-  await expect(page.getByText("222 µV/K")).toBeVisible();
+  await expect(page.getByText("222 µV/K", { exact: true })).toBeVisible();
   await page.waitForTimeout(200);
-  await expect(page.getByText("222 µV/K")).toBeVisible();
+  await expect(page.getByText("222 µV/K", { exact: true })).toBeVisible();
   expect(bodies).toHaveLength(2);
   expect(aborted).toEqual([]);
 });
@@ -247,7 +251,7 @@ test("the last curve stays while waiting, with an indicator only after a delay",
     await route.fulfill({ json: withRmse(index === 0 ? 111 : 222) });
   });
   await load(page);
-  await expect(page.getByText("111 µV/K")).toBeVisible();
+  await expect(page.getByText("111 µV/K", { exact: true })).toBeVisible();
   await expect(page.getByText("Updating…")).toHaveCount(0);
 
   await eg(page).press("ArrowRight");
@@ -255,10 +259,10 @@ test("the last curve stays while waiting, with an indicator only after a delay",
 
   await expect(page.getByText("Updating…")).toBeVisible();
   await expect(modelLine(page)).toBeVisible();
-  await expect(page.getByText("111 µV/K")).toBeVisible();
+  await expect(page.getByText("111 µV/K", { exact: true })).toBeVisible();
 
   release();
-  await expect(page.getByText("222 µV/K")).toBeVisible();
+  await expect(page.getByText("222 µV/K", { exact: true })).toBeVisible();
   await expect(page.getByText("Updating…")).toHaveCount(0);
 });
 
@@ -269,7 +273,7 @@ test("a quick answer shows no indicator at all", async ({ page }) => {
     await route.fulfill({ json: withRmse(111 + index) });
   });
   await load(page);
-  await expect(page.getByText("111 µV/K")).toBeVisible();
+  await expect(page.getByText("111 µV/K", { exact: true })).toBeVisible();
   await page.evaluate(() => {
     const seen: string[] = [];
     Object.assign(window, { seenStatuses: seen });
@@ -284,7 +288,7 @@ test("a quick answer shows no indicator at all", async ({ page }) => {
 
   await eg(page).press("ArrowRight");
 
-  await expect(page.getByText("112 µV/K")).toBeVisible();
+  await expect(page.getByText("112 µV/K", { exact: true })).toBeVisible();
   expect(bodies).toHaveLength(2);
   const seen = await page.evaluate(
     () => (window as unknown as { seenStatuses: string[] }).seenStatuses,
@@ -309,7 +313,7 @@ test("an error keeps the chart, says so without the server's text, and passes", 
       : route.fulfill({ json: withRmse(111 + index) }),
   );
   await load(page);
-  await expect(page.getByText("111 µV/K")).toBeVisible();
+  await expect(page.getByText("111 µV/K", { exact: true })).toBeVisible();
 
   await eg(page).press("ArrowRight");
 
@@ -319,11 +323,11 @@ test("an error keeps the chart, says so without the server's text, and passes", 
   await expect(page.getByRole("alert")).toContainText("last curve stays");
   await expect(page.getByText("SECRET-VALUE")).toHaveCount(0);
   await expect(modelLine(page)).toBeVisible();
-  await expect(page.getByText("111 µV/K")).toBeVisible();
+  await expect(page.getByText("111 µV/K", { exact: true })).toBeVisible();
 
   await eg(page).press("ArrowRight");
 
-  await expect(page.getByText("113 µV/K")).toBeVisible();
+  await expect(page.getByText("113 µV/K", { exact: true })).toBeVisible();
   await expect(page.getByRole("alert")).toHaveCount(0);
 });
 
@@ -362,7 +366,9 @@ test("a limit with Retry-After tries again by itself", async ({ page }) => {
   await load(page);
 
   await expect(page.getByRole("alert")).toContainText("Trying again shortly");
-  await expect(page.getByText("111 µV/K")).toBeVisible({ timeout: 3000 });
+  await expect(page.getByText("111 µV/K", { exact: true })).toBeVisible({
+    timeout: 3000,
+  });
   await expect(page.getByRole("alert")).toHaveCount(0);
   expect(bodies).toHaveLength(2);
 });
@@ -393,11 +399,13 @@ test("a limit in a newer change's wait sends only the newer values", async ({
   await eg(page).press("ArrowRight");
   release();
 
-  await expect(page.getByText("222 µV/K")).toBeVisible({ timeout: 4000 });
+  await expect(page.getByText("222 µV/K", { exact: true })).toBeVisible({
+    timeout: 4000,
+  });
   await page.waitForTimeout(1200);
   expect(bodies).toHaveLength(2);
   expect(bodies[1]?.parameters.band_gap).toBe(1010);
-  await expect(page.getByText("222 µV/K")).toBeVisible();
+  await expect(page.getByText("222 µV/K", { exact: true })).toBeVisible();
 });
 
 test("a limit with no time says to change a value, and does not repeat", async ({
@@ -430,7 +438,7 @@ test("after an error, the RMSE says that it is not current", async ({
         }),
   );
   await load(page);
-  await expect(page.getByText("111 µV/K")).toBeVisible();
+  await expect(page.getByText("111 µV/K", { exact: true })).toBeVisible();
   await expect(page.getByText("not from the current values")).toHaveCount(0);
 
   await eg(page).press("ArrowRight");
@@ -574,7 +582,7 @@ test("removing the data clears the curve and the RMSE, and ends what runs", asyn
     }
   });
   await load(page);
-  await expect(page.getByText("111 µV/K")).toBeVisible();
+  await expect(page.getByText("111 µV/K", { exact: true })).toBeVisible();
   await eg(page).press("ArrowRight");
   await expect.poll(() => bodies.length).toBe(2);
 
@@ -583,11 +591,13 @@ test("removing the data clears the curve and the RMSE, and ends what runs", asyn
     .first()
     .click();
 
-  await expect(page.getByText("No data for this quantity")).toBeVisible();
-  await expect(page.getByText("111 µV/K")).toHaveCount(0);
+  await expect(
+    chart(page).getByText("No data for this quantity"),
+  ).toBeVisible();
+  await expect(page.getByText("111 µV/K", { exact: true })).toHaveCount(0);
   release();
   await page.waitForTimeout(200);
-  await expect(page.getByText("222 µV/K")).toHaveCount(0);
+  await expect(page.getByText("222 µV/K", { exact: true })).toHaveCount(0);
 });
 
 test("leaving the page ends a request, and coming back asks again", async ({
@@ -695,11 +705,6 @@ test("with interpolation, measured and interpolated points are apart", async ({
   await expect(legend("Measurements")).toBeVisible();
   await expect(points).toHaveCount(7);
 
-  await page.getByRole("switch", { name: "Show measurements" }).click();
-  await expect(legend("Interpolated")).toHaveCount(0);
-  await expect(points).toHaveCount(0);
-  await page.getByRole("switch", { name: "Show measurements" }).click();
-
   await page.getByRole("switch", { name: /Interpolation/ }).click();
   await expect(legend("Interpolated")).toHaveCount(0);
   await expect(points).toHaveCount(3);
@@ -748,5 +753,5 @@ test("an RMSE that is not finite says so", async ({ page }) => {
 
   await load(page);
 
-  await expect(page.getByText("not finite")).toBeVisible();
+  await expect(page.getByText("not finite", { exact: true })).toBeVisible();
 });

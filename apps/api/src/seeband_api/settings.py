@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     max_points: int = Field(default=2000, ge=1)
     # Per client. A slider sends many cheap curves, and a fit can take a minute.
     calc_per_minute: int = Field(default=600, ge=1)
+    band_diagram_per_minute: int = Field(default=600, ge=1)
     parse_per_minute: int = Field(default=60, ge=1)
     guess_per_minute: int = Field(default=60, ge=1)
     fit_per_minute: int = Field(default=30, ge=1)

@@ -1,4 +1,5 @@
 import type { FitBlocker } from "@/model/fitRequest";
+import { parameterSymbol } from "@/model/parameters";
 import type { FitState, Quantity } from "@/session/store";
 import type { FitStatus } from "@/shell/StatusBadge";
 import { STRINGS } from "@/strings";
@@ -14,11 +15,11 @@ function atIteration(iterative: boolean, iteration: number | null) {
   return iterative && iteration !== null ? iteration : null;
 }
 
-/** A single-pass mode has no iterations, so it never shows a counter. */
-export function fitBadge(fit: FitState, iterative: boolean): FitBadge {
+/** A single-pass mode has no iterations, so it never shows a counter. Before a fit there is no status. */
+export function fitBadge(fit: FitState, iterative: boolean): FitBadge | null {
   switch (fit.status) {
     case "idle":
-      return { status: "manual" };
+      return null;
     case "waiting":
       return { status: "running", detail: text.queued };
     case "running": {
@@ -52,7 +53,7 @@ export function fitBadge(fit: FitState, iterative: boolean): FitBadge {
         : { status: "converged", detail: text.convergedIn(count) };
     }
     default:
-      return { status: "manual" };
+      return null;
   }
 }
 
@@ -78,7 +79,14 @@ function symbols(quantities: readonly Quantity[]): string {
     .join(", ");
 }
 
-/** Why Run fit cannot be pressed. */
+/** The data that a fit mode still lacks, in place of a status while nothing has been fitted. */
+export function missingDataText(blocker: FitBlocker | null): string | null {
+  return blocker?.reason === "missing_data"
+    ? text.missingData(symbols(blocker.quantities))
+    : null;
+}
+
+/** Why Run fit cannot be pressed. The panel shows missing data as a badge instead. */
 export function fitBlockerText(blocker: FitBlocker): string {
   switch (blocker.reason) {
     case "no_mode":
@@ -86,11 +94,13 @@ export function fitBlockerText(blocker: FitBlocker): string {
     case "interpolating":
       return text.blockers.interpolating;
     case "missing_data":
-      return `${text.blockers.missingData} ${symbols(blocker.quantities)}.`;
+      return text.missingData(symbols(blocker.quantities));
     case "not_interpolated":
       return `${text.blockers.notInterpolated} ${symbols(blocker.quantities)}.`;
     case "no_points_in_range":
       return `${text.blockers.noPointsInRange} ${symbols(blocker.quantities)}.`;
+    case "start_outside_bounds":
+      return `${text.blockers.startOutsideBounds} ${blocker.parameters.map(parameterSymbol).join(", ")}.`;
     default:
       return text.blockers.noMode;
   }

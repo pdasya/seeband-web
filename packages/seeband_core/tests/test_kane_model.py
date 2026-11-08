@@ -12,7 +12,13 @@ from scipy.integrate import quad
 from scipy.special import expit
 from seeband_core.band_models import SkbModel, SpbModel, _BandModel
 from seeband_core.kane import kane_dispersion, transport_integrals, zero_temperature_density
-from seeband_core.model_interface import Bounds, CurveRequest, FitRequest, Measurement
+from seeband_core.model_interface import (
+    BandDiagramRequest,
+    Bounds,
+    CurveRequest,
+    FitRequest,
+    Measurement,
+)
 from seeband_core.model_scales import default_start
 
 MODEL = SkbModel()
@@ -255,3 +261,14 @@ def test_table_1_mass_at_350_k_as_forward_model() -> None:
     n = 3.646e24 * f.hall_factor
     mass = hbar**2 / (2 * Boltzmann * 350) * (3 * math.pi**2 * n / math.exp(f.log_g)) ** (2 / 3)
     assert mass / electron_mass == pytest.approx(0.9523, abs=5e-5)
+
+
+@pytest.mark.parametrize("sign", [-1, 1])
+def test_new_band_diagram_contract_uses_the_kane_dispersion(sign: int) -> None:
+    p = parameters() | {"band_mass": sign * 0.2, "fermi_energy": sign * 300.0}
+    diagram = MODEL.band_diagram(BandDiagramRequest(MODE, p, band_1_degeneracy=2))
+    energy_ev = diagram.curves["band_1_energy_k"] * Boltzmann / elementary_charge
+    expected = sign * kane_dispersion(diagram.wavevector, 0.2 / 2 ** (2 / 3), p["kane_gap_ev"])
+    np.testing.assert_allclose(energy_ev, expected, rtol=1e-13)
+    np.testing.assert_array_equal(diagram.curves["fermi_energy_k"], sign * 300.0)
+    assert diagram.known_issues == ("skb_assumptions",)

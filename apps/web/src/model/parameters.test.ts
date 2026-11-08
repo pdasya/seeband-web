@@ -4,6 +4,8 @@ import { describe, expect, test } from "vitest";
 import { MODELS } from "../../e2e/support/models";
 
 import {
+  editableParameters,
+  withCustomRange,
   coreToDisplay,
   displayToCore,
   parameterValues,
@@ -219,5 +221,55 @@ describe("steppedDisplayValue", () => {
 
     expect(steppedDisplayValue(g, 1, 1)).toBe(2);
     expect(steppedDisplayValue(g, 1, -1)).toBe(0.5);
+  });
+});
+
+describe("editableParameters", () => {
+  const modeOf = (id: string) =>
+    models
+      .flatMap(({ fit_modes: modes }) => modes)
+      .find((mode) => mode.id === id) as FitModeDescription;
+  const names = (id: string, scattering: string | null) =>
+    editableParameters(modeOf(id), scattering).map(
+      ({ parameter }) => parameter.name,
+    );
+
+  test("holds what is fitted, with editable bounds, in this scattering", () => {
+    expect(names("dpb_s_rho", "dis")).toEqual([
+      "m_eff",
+      "band_gap",
+      "fermi_energy",
+      "F",
+      "G",
+    ]);
+  });
+
+  test("leaves out fixed bounds, and what a fit does not change", () => {
+    expect(names("spb_s_rho", "acPh")).toEqual(["fermi_energy"]);
+    expect(names("spb_s", null)).toEqual(["fermi_energy"]);
+  });
+
+  test("gives the bounds of the description", () => {
+    const [first] = editableParameters(modeOf("spb_s"), null);
+    expect(first?.bounds).toEqual({ lower: -3000, upper: 3000 });
+  });
+});
+
+describe("withCustomRange", () => {
+  const parameter = models
+    .flatMap(({ fit_modes: modes }) => modes)
+    .flatMap(({ parameters }) => parameters)
+    .find(({ name }) => name === "band_gap") as ParameterDescription;
+
+  test("leaves a parameter with no bounds of the user's as it is", () => {
+    expect(withCustomRange(parameter, undefined)).toBe(parameter);
+  });
+
+  test("sets the range the control uses, and only that", () => {
+    const next = withCustomRange(parameter, { lower: 500, upper: 4000 });
+    expect(next.display_range).toMatchObject({ minimum: 500, maximum: 4000 });
+    expect(next.display_range.step).toBe(parameter.display_range.step);
+    expect(next.core_range).toEqual(parameter.core_range);
+    expect(parameter.display_range.maximum).toBe(3000);
   });
 });

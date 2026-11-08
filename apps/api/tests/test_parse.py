@@ -111,6 +111,7 @@ ERROR_CASES: list[tuple[str, dict[str, Any], str]] = [
     ("too_few_rows", {}, "100 1\n"),
     ("missing_temperature", {"mapping": [{"column": 1, "role": "seebeck"}]}, SIX_ROWS),
     ("non_positive_temperature", {}, "T S\n0 1\n100 2\n"),
+    ("negative_resistivity", {"expected": "resistivity"}, "T rho\n100 -1e-5\n200 1e-5\n"),
     (
         "repeated_role",
         {

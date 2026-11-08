@@ -446,6 +446,16 @@
                                   "condition": "fermi_energy_outside_band"
                                 },
                                 {
+                                  "id": "band_diagram_formula",
+                                  "severity": "caution",
+                                  "message_key": "known_issue.band_diagram_formula",
+                                  "fixed_by": "#108",
+                                  "scattering": [],
+                                  "curve_kinds": [],
+                                  "columns": [],
+                                  "affects_fit": false
+                                },
+                                {
                                   "id": "interpolation_extrapolates",
                                   "severity": "unreliable",
                                   "message_key": "known_issue.interpolation_extrapolates",
@@ -767,6 +777,16 @@
                                   "columns": [],
                                   "affects_fit": true,
                                   "condition": "fermi_energy_outside_band"
+                                },
+                                {
+                                  "id": "band_diagram_formula",
+                                  "severity": "caution",
+                                  "message_key": "known_issue.band_diagram_formula",
+                                  "fixed_by": "#108",
+                                  "scattering": [],
+                                  "curve_kinds": [],
+                                  "columns": [],
+                                  "affects_fit": false
                                 },
                                 {
                                   "id": "interpolation_extrapolates",
@@ -1123,6 +1143,16 @@
                                   "condition": "fermi_energy_outside_band"
                                 },
                                 {
+                                  "id": "band_diagram_formula",
+                                  "severity": "caution",
+                                  "message_key": "known_issue.band_diagram_formula",
+                                  "fixed_by": "#108",
+                                  "scattering": [],
+                                  "curve_kinds": [],
+                                  "columns": [],
+                                  "affects_fit": false
+                                },
+                                {
                                   "id": "interpolation_extrapolates",
                                   "severity": "unreliable",
                                   "message_key": "known_issue.interpolation_extrapolates",
@@ -1410,6 +1440,16 @@
                                   "columns": [],
                                   "affects_fit": true,
                                   "condition": "collapsed_m_eff"
+                                },
+                                {
+                                  "id": "band_diagram_formula",
+                                  "severity": "caution",
+                                  "message_key": "known_issue.band_diagram_formula",
+                                  "fixed_by": "#108",
+                                  "scattering": [],
+                                  "curve_kinds": [],
+                                  "columns": [],
+                                  "affects_fit": false
                                 },
                                 {
                                   "id": "interpolation_extrapolates",
@@ -1944,6 +1984,16 @@
                                   "columns": [],
                                   "affects_fit": true,
                                   "condition": "collapsed_m_eff"
+                                },
+                                {
+                                  "id": "band_diagram_formula",
+                                  "severity": "caution",
+                                  "message_key": "known_issue.band_diagram_formula",
+                                  "fixed_by": "#108",
+                                  "scattering": [],
+                                  "curve_kinds": [],
+                                  "columns": [],
+                                  "affects_fit": false
                                 },
                                 {
                                   "id": "interpolation_extrapolates",
@@ -2546,6 +2596,16 @@
                                   "affects_fit": true
                                 },
                                 {
+                                  "id": "band_diagram_formula",
+                                  "severity": "caution",
+                                  "message_key": "known_issue.band_diagram_formula",
+                                  "fixed_by": "#108",
+                                  "scattering": [],
+                                  "curve_kinds": [],
+                                  "columns": [],
+                                  "affects_fit": false
+                                },
+                                {
                                   "id": "interpolation_extrapolates",
                                   "severity": "unreliable",
                                   "message_key": "known_issue.interpolation_extrapolates",
@@ -2873,7 +2933,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "example": "\"3c4f5017877b7b760185dfe68cd2fd1b\""
+                "example": "\"83a6de68fea6081d3c9125373252c130\""
               }
             }
           },
@@ -3097,6 +3157,254 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CalcResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "internal_error": {
+                    "value": {
+                      "code": "internal_error",
+                      "message": "Internal server error",
+                      "details": []
+                    }
+                  },
+                  "not_found": {
+                    "value": {
+                      "code": "not_found",
+                      "message": "Not Found",
+                      "details": []
+                    }
+                  },
+                  "calculation_failed": {
+                    "value": {
+                      "code": "calculation_failed",
+                      "message": "The calculation has no result for these parameters and temperatures",
+                      "details": []
+                    }
+                  },
+                  "calculation_timeout": {
+                    "value": {
+                      "code": "calculation_timeout",
+                      "message": "The calculation took too long",
+                      "details": []
+                    }
+                  },
+                  "calculation_unavailable": {
+                    "value": {
+                      "code": "calculation_unavailable",
+                      "message": "The calculation stopped unexpectedly. Try again.",
+                      "details": []
+                    }
+                  },
+                  "fit_mode_disabled": {
+                    "value": {
+                      "code": "fit_mode_disabled",
+                      "message": "This fit mode is disabled until its known issue is fixed",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "fit_mode"
+                          ],
+                          "code": "spb_hall_mode_disabled",
+                          "message": "A known issue disables this mode"
+                        }
+                      ]
+                    }
+                  },
+                  "invalid_fit": {
+                    "value": {
+                      "code": "invalid_fit",
+                      "message": "Invalid fit",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "bounds",
+                            "m_eff"
+                          ],
+                          "code": "parameter_not_fitted",
+                          "message": "This fit does not fit it"
+                        }
+                      ]
+                    }
+                  },
+                  "fit_queue_full": {
+                    "value": {
+                      "code": "fit_queue_full",
+                      "message": "Too many fits are running. Try again shortly.",
+                      "details": []
+                    }
+                  },
+                  "rate_limited": {
+                    "value": {
+                      "code": "rate_limited",
+                      "message": "Too many requests",
+                      "details": []
+                    }
+                  },
+                  "request_too_large": {
+                    "value": {
+                      "code": "request_too_large",
+                      "message": "A request can hold at most 10000000 bytes",
+                      "details": []
+                    }
+                  },
+                  "client_fit_limit": {
+                    "value": {
+                      "code": "client_fit_limit",
+                      "message": "This client has too many fits running or waiting",
+                      "details": []
+                    }
+                  },
+                  "invalid_parse_request": {
+                    "value": {
+                      "code": "invalid_parse_request",
+                      "message": "Invalid request",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "mapping"
+                          ],
+                          "code": "unknown_column",
+                          "message": "The text has no such column"
+                        }
+                      ]
+                    }
+                  },
+                  "invalid_guess": {
+                    "value": {
+                      "code": "invalid_guess",
+                      "message": "Invalid request",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "model"
+                          ],
+                          "code": "unknown_model",
+                          "message": "This model does not exist"
+                        }
+                      ]
+                    }
+                  },
+                  "guess_unavailable": {
+                    "value": {
+                      "code": "guess_unavailable",
+                      "message": "This model has no neural net guess",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "model"
+                          ],
+                          "code": "no_neural_net",
+                          "message": "See has_initial_guess in GET /api/models"
+                        }
+                      ]
+                    }
+                  },
+                  "invalid_calculation": {
+                    "value": {
+                      "code": "invalid_calculation",
+                      "message": "Invalid calculation",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "parameters",
+                            "m_eff"
+                          ],
+                          "code": "missing_parameter",
+                          "message": "This mode needs it"
+                        }
+                      ]
+                    }
+                  },
+                  "validation_error": {
+                    "value": {
+                      "code": "validation_error",
+                      "message": "Invalid request",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "seebeck_v_per_k",
+                            3
+                          ],
+                          "code": "float_parsing",
+                          "message": "Input should be a valid number, unable to parse string as a number"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this client, or for the server",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer"
+                },
+                "example": 5
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "rate_limited": {
+                    "value": {
+                      "code": "rate_limited",
+                      "message": "Too many requests",
+                      "details": []
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/band-diagram": {
+      "post": {
+        "tags": [
+          "band-diagram"
+        ],
+        "summary": "Post Band Diagram",
+        "operationId": "post_band_diagram",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BandDiagramRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BandDiagramResponse"
                 }
               }
             }
@@ -4953,6 +5261,122 @@
   },
   "components": {
     "schemas": {
+      "BandDiagramRequest": {
+        "properties": {
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "fit_mode": {
+            "type": "string",
+            "title": "Fit Mode"
+          },
+          "parameters": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Parameters"
+          },
+          "band_1_degeneracy": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Band 1 Degeneracy",
+            "default": 1.0
+          },
+          "band_2_degeneracy": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Band 2 Degeneracy",
+            "default": 1.0
+          }
+        },
+        "type": "object",
+        "required": [
+          "model",
+          "fit_mode",
+          "parameters"
+        ],
+        "title": "BandDiagramRequest",
+        "description": "What to draw. `parameters` holds every parameter of the mode in core units, as in a curve.",
+        "examples": [
+          {
+            "fit_mode": "spb_s",
+            "model": "spb",
+            "parameters": {
+              "band_mass": 1.01,
+              "fermi_energy": 100.0
+            }
+          }
+        ]
+      },
+      "BandDiagramResponse": {
+        "properties": {
+          "wavevector": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Wavevector"
+          },
+          "curves": {
+            "additionalProperties": {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "Curves"
+          },
+          "known_issues": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Known Issues"
+          }
+        },
+        "type": "object",
+        "required": [
+          "wavevector",
+          "curves",
+          "known_issues"
+        ],
+        "title": "BandDiagramResponse",
+        "description": "Curves over `wavevector`, by name, where null marks a value that is not finite.\n\nEach name ends in its unit. `wavevector` has none, as the formula states none, and the desktop\ndraws this axis with no ticks. `known_issues` names known errors, as in `GET /api/models`.",
+        "examples": [
+          {
+            "curves": {
+              "band_1_energy_k": [
+                1954.5,
+                0.0,
+                1954.5
+              ],
+              "fermi_energy_k": [
+                100.0,
+                100.0,
+                100.0
+              ]
+            },
+            "known_issues": [
+              "band_diagram_formula"
+            ],
+            "wavevector": [
+              -40.0,
+              0.0,
+              40.0
+            ]
+          }
+        ]
+      },
       "BoundsInput": {
         "properties": {
           "lower": {
@@ -6345,6 +6769,7 @@
               "too_few_rows",
               "missing_temperature",
               "non_positive_temperature",
+              "negative_resistivity",
               "repeated_role",
               "preamble_skipped",
               "header_mismatch",

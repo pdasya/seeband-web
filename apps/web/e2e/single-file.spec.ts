@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { fitBadges } from "./support/fitScreen";
 import { serveModels } from "./support/models";
 
 const TABLE =
@@ -578,7 +579,7 @@ test("removing the file clears everything, and changing source keeps it", async 
   await page.getByRole("tab", { name: "Separate files" }).click();
 
   await expect(page.locator('input[type="file"]')).toHaveCount(3);
-  await expect(page.getByRole("note")).toContainText("Missing data: S, ρ.");
+  await expect(fitBadges(page)).toHaveText("Missing data: S, ρ");
   await page.getByRole("tab", { name: "Single file" }).click();
   await expect(page.getByText("S · 3 points")).toBeVisible();
   await expect(slot(page).getByText("all.csv")).toBeVisible();

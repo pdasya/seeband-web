@@ -25,7 +25,7 @@ Names are matched without regard to case, except `T` and `S`: lower-case `t` and
 Where it is not clear what a column holds, the parser leaves it unassigned, because a wrong guess gives numbers that look fine. A user assigns it with `with_mapping`, or by passing `mapping` to `parse_table`.
 
 - A column with another unit in brackets, such as `S (uV/K)`, is not assigned, because its values would be wrong by a factor. Assigning it by hand reads it as V/K.
-- A file with no header takes its first column as T. With two columns, the second is the quantity passed as `expected`. With more, the rest are not assigned.
+- A file with no header takes its first column as T. With two columns, the second is the quantity passed as `expected`. With more, the rest are not assigned. `headers` is then left out, and the web app asks the user what the columns hold before using it (D28).
 - A header with a different number of columns from the data gives no assignments.
 
 ## Problems
@@ -46,6 +46,7 @@ Problems are codes, with a line and column where they apply, and no text or meas
 | `too_few_rows`              | error   | fewer than 2 rows                                                                                   |
 | `missing_temperature`       | error   | no column is T. A user can still assign one                                                         |
 | `non_positive_temperature`  | error   | T of 0 K or below                                                                                   |
+| `negative_resistivity`      | error   | a resistivity below 0, which no measurement gives (D28)                                             |
 | `repeated_role`             | error   | a mapping that uses a quantity twice                                                                |
 | `preamble_skipped`          | warning | a line of text before the header, which is left out                                                 |
 | `header_mismatch`           | warning | a header with a different number of columns from the data                                           |

@@ -129,3 +129,8 @@ mass, synthetic global fits for both carrier types, exact conversion from the
 initial density/mobility SKB prototype, and the SPB parabolic limit with the
 same A and signed Fermi-energy conventions. API/browser tests cover real workers,
 common fields and temperature/dispersion charts.
+
+The four chart panels offer all SKB derived quantities independently. The shared
+`band-diagram` endpoint uses the same Kane dispersion for SKB, with energy in kelvin
+and wavevector in inverse metres; the band diagram displays a schematic axis without
+ticks. The separate E(k) choice shows the physical axes in Å⁻¹ and eV.

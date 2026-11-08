@@ -27,6 +27,9 @@ To remove a flag once its error is fixed, delete its entry and its row here, and
 | `interpolation_extrapolates` | unreliable | any result, when `extrapolated` is set on its request                                              | #86                            |
 | `skb_assumptions`            | caution    | SKB fit and curves; assess the one-band acoustic-scattering assumptions                            | docs/kane-model.md#assumptions |
 | `skb_weak_fit`               | caution    | SKB joint fit with a poorly conditioned Jacobian                                                   | docs/kane-model.md#fitting     |
+| `band_diagram_formula`       | caution    | the sketch of E(k), in `band_diagram` alone, and in no fit or curve                                | #108                           |
+
+`affects_band_diagram` puts an entry on the sketch of E(k) alone, through `band_diagram_issue_ids`.
 
 The caller sets `extrapolated`, from `InterpolatedData`, since a fit does not know where its data came from.
 
@@ -38,6 +41,5 @@ The caller sets `extrapolated`, from `InterpolatedData`, since a fit does not kn
 - **E_F inside the gap (#107)** cannot be told from a good fit by its inputs alone, and `at_bounds` and `parameter_errors` report part of it.
 - **`underdetermined` interpolation** has no issue that fixes it, because it describes the data. `InterpolatedData` reports it.
 - **Choosing a net by the first and last rows (P9)** does not reach this path, because the parser sorts (D22). A client can send `POST /api/guess` unsorted rows, and its answer then carries the warning `unsorted_temperature`. It belongs to no mode, so it is not an entry here.
-- **The band diagram (#108)** belongs to no mode, so a client must treat it with care until then.
 - **D4 asks to flag acPhDis results.** In core units, S and ρ of SPB use one scale, so only `acphdis_curve_scale` applies.
 - **The Conventions page** does not exist yet, so S3 takes its note on known issues from this list.

@@ -50,6 +50,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/band-diagram": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Band Diagram */
+        post: operations["post_band_diagram"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/parse": {
         parameters: {
             query?: never;
@@ -122,6 +139,77 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * BandDiagramRequest
+         * @description What to draw. `parameters` holds every parameter of the mode in core units, as in a curve.
+         * @example {
+         *       "fit_mode": "spb_s",
+         *       "model": "spb",
+         *       "parameters": {
+         *         "band_mass": 1.01,
+         *         "fermi_energy": 100
+         *       }
+         *     }
+         */
+        BandDiagramRequest: {
+            /** Model */
+            model: string;
+            /** Fit Mode */
+            fit_mode: string;
+            /** Parameters */
+            parameters: {
+                [key: string]: number;
+            };
+            /**
+             * Band 1 Degeneracy
+             * @default 1
+             */
+            band_1_degeneracy?: number;
+            /**
+             * Band 2 Degeneracy
+             * @default 1
+             */
+            band_2_degeneracy?: number;
+        };
+        /**
+         * BandDiagramResponse
+         * @description Curves over `wavevector`, by name, where null marks a value that is not finite.
+         *
+         *     Each name ends in its unit. `wavevector` has none, as the formula states none, and the desktop
+         *     draws this axis with no ticks. `known_issues` names known errors, as in `GET /api/models`.
+         * @example {
+         *       "curves": {
+         *         "band_1_energy_k": [
+         *           1954.5,
+         *           0,
+         *           1954.5
+         *         ],
+         *         "fermi_energy_k": [
+         *           100,
+         *           100,
+         *           100
+         *         ]
+         *       },
+         *       "known_issues": [
+         *         "band_diagram_formula"
+         *       ],
+         *       "wavevector": [
+         *         -40,
+         *         0,
+         *         40
+         *       ]
+         *     }
+         */
+        BandDiagramResponse: {
+            /** Wavevector */
+            wavevector: number[];
+            /** Curves */
+            curves: {
+                [key: string]: (number | null)[];
+            };
+            /** Known Issues */
+            known_issues: string[];
+        };
         /** BoundsInput */
         BoundsInput: {
             /** Lower */
@@ -811,7 +899,7 @@ export interface components {
              * Code
              * @enum {string}
              */
-            code: "no_data" | "wrong_encoding" | "line_too_long" | "too_many_problems" | "too_few_columns" | "wrong_column_count" | "missing_value" | "not_numeric" | "not_finite" | "decimal_comma" | "too_few_rows" | "missing_temperature" | "non_positive_temperature" | "repeated_role" | "preamble_skipped" | "header_mismatch" | "unit_differs" | "repeated_header" | "columns_need_assigning" | "expected_not_found" | "no_quantity" | "few_rows" | "unsorted_temperature" | "duplicate_temperature";
+            code: "no_data" | "wrong_encoding" | "line_too_long" | "too_many_problems" | "too_few_columns" | "wrong_column_count" | "missing_value" | "not_numeric" | "not_finite" | "decimal_comma" | "too_few_rows" | "missing_temperature" | "non_positive_temperature" | "negative_resistivity" | "repeated_role" | "preamble_skipped" | "header_mismatch" | "unit_differs" | "repeated_header" | "columns_need_assigning" | "expected_not_found" | "no_quantity" | "few_rows" | "unsorted_temperature" | "duplicate_temperature";
             /** Line */
             line?: number | null;
             /** Column */
@@ -1100,7 +1188,7 @@ export interface operations {
                 headers: {
                     /** @example no-cache */
                     "Cache-Control"?: string;
-                    /** @example "3c4f5017877b7b760185dfe68cd2fd1b" */
+                    /** @example "83a6de68fea6081d3c9125373252c130" */
                     ETag?: string;
                     [name: string]: unknown;
                 };
@@ -1146,6 +1234,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CalcResponse"];
+                };
+            };
+            /** @description Too many requests from this client, or for the server */
+            429: {
+                headers: {
+                    /** @example 5 */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    post_band_diagram: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BandDiagramRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BandDiagramResponse"];
                 };
             };
             /** @description Too many requests from this client, or for the server */

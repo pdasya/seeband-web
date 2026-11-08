@@ -8,8 +8,14 @@ import {
 } from "lucide-react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { fitBadge, fitBlockerText, fitFailureText } from "@/model/fitStatus";
+import {
+  fitBadge,
+  fitBlockerText,
+  fitFailureText,
+  missingDataText,
+} from "@/model/fitStatus";
 import { guessBadge, guessMessages } from "@/model/guessStatus";
 import type { useFitControl } from "@/model/useFitControl";
 import type { useGuess } from "@/model/useGuess";
@@ -31,11 +37,14 @@ export function FitStatusBadge({
   const badge =
     guessBadge(guess.outcome, control.fit) ??
     fitBadge(control.fit, control.iterative);
+  // Before any fit there is no status to show, only what keeps one from running.
+  const missing = badge === null ? missingDataText(control.blocker) : null;
   return (
     <>
-      <StatusBadge {...badge} />
+      {badge !== null && <StatusBadge {...badge} />}
+      {missing !== null && <Badge variant="warning">{missing}</Badge>}
       <span role="status" className="sr-only">
-        {badge.status === "manual" ? "" : STRINGS.status[badge.status]}
+        {badge === null ? "" : STRINGS.status[badge.status]}
       </span>
     </>
   );
@@ -56,12 +65,13 @@ export function FitActions({
 }) {
   return (
     <>
-      <Button variant="ghost" onClick={control.reset}>
+      <Button variant="ghost" size="sm" onClick={control.reset}>
         <RotateCcwIcon aria-hidden="true" />
         {text.reset}
       </Button>
       <Button
         variant="outline"
+        size="sm"
         disabled={guess.disabled}
         title={guess.title}
         onClick={guess.run}
@@ -71,6 +81,7 @@ export function FitActions({
       </Button>
       {control.active ? (
         <Button
+          size="sm"
           onClick={(event) => {
             // Run turns into this in place, so the rest of a double click must not stop the fit.
             if (event.detail <= 1) {
@@ -84,6 +95,7 @@ export function FitActions({
         </Button>
       ) : (
         <Button
+          size="sm"
           disabled={control.blocker !== null}
           onClick={control.run}
           onKeyDown={ignoreHeldKey}
@@ -111,16 +123,18 @@ export function FitMessages({
         <p
           key={message}
           aria-live="polite"
-          className="m-0 text-right text-xs text-muted-foreground"
+          className="m-0 text-xs text-muted-foreground"
         >
           {message}
         </p>
       ))}
-      {control.blocker !== null && !control.active && (
-        <p className="m-0 text-right text-xs text-muted-foreground">
-          {fitBlockerText(control.blocker)}
-        </p>
-      )}
+      {control.blocker !== null &&
+        control.blocker.reason !== "missing_data" &&
+        !control.active && (
+          <p className="m-0 text-xs text-muted-foreground">
+            {fitBlockerText(control.blocker)}
+          </p>
+        )}
       {failure !== null && (
         <Alert variant="destructive">
           <AlertCircleIcon aria-hidden="true" />
