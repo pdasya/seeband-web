@@ -437,7 +437,7 @@ export function ModelPanel() {
   }, [models, selected, setSelection]);
 
   return (
-    <Panel title={text.title} subtitle={text.subtitle}>
+    <Panel title={text.title}>
       {isPending && (
         <p role="status" className="mt-3 mb-0 text-xs text-muted-foreground">
           {text.loading}

@@ -16,7 +16,6 @@ export const STRINGS = {
   },
   parameters: {
     title: "Parameters",
-    subtitle: "The curve follows the values",
     fixed: "not fitted",
     about: (symbol: string) => `About ${symbol}`,
     // How a parameter is written. Any other shows its name, so a new one needs no change here.
@@ -51,7 +50,6 @@ export const STRINGS = {
   },
   model: {
     title: "Model",
-    subtitle: "Parabolic bands and scattering mechanism",
     loading: "Loading the models…",
     loadFailed: "The models could not be loaded. Reload the page to try again.",
     bands: "Number of bands",

@@ -210,7 +210,6 @@ export function ParametersPanel() {
   return (
     <Panel
       title={text.title}
-      subtitle={text.subtitle}
       action={
         mode !== undefined && (
           <BoundsEditor mode={mode} scattering={selection.scattering} />
