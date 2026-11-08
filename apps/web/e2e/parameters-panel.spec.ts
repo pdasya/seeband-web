@@ -50,8 +50,30 @@ test("starts with the mode's parameters, defaults and ranges", async ({
   await expect(field(page, "B")).toHaveValue("1");
   await expect(slider(page, "E_F")).toHaveAttribute("aria-valuemin", "-3000");
   await expect(slider(page, "E_F")).toHaveAttribute("aria-valuemax", "3000");
-  await expect(page.getByText("Fermi energy at T = 0, in K")).toBeVisible();
+  await expect(field(page, "E_F")).toHaveAccessibleDescription(
+    "Fermi energy at T = 0, in K",
+  );
   await expect(page.getByRole("alert")).toHaveCount(0);
+});
+
+test("a parameter's meaning shows on its (i), not under it", async ({
+  page,
+}) => {
+  await open(page);
+  const about = page.getByRole("button", { name: "About m₂/m₁" });
+  const tip = page.getByRole("tooltip");
+  await expect(tip).toHaveCount(0);
+
+  await about.hover();
+  await expect(tip).toContainText(/^band mass ratio m2\/m1/);
+  await page.getByRole("heading", { name: "Parameters" }).hover();
+  await expect(tip).toHaveCount(0);
+
+  // A keyboard reaches it too.
+  await page.getByRole("button", { name: "About E_g" }).focus();
+  await expect(tip).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(tip).toHaveCount(0);
 });
 
 test("parameters follow the scattering type and fit mode", async ({ page }) => {

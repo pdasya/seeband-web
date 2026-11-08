@@ -1,10 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
+import { InfoIcon } from "lucide-react";
 import { useId, useState } from "react";
 
 import { modelsQuery } from "@/api/queries";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { formatNumber } from "@/lib/numbers";
 import {
   coreToDisplay,
@@ -100,6 +106,20 @@ function ParameterControl({
           <label htmlFor={id} className="text-[13px] font-medium">
             {label}
           </label>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                aria-label={text.about(label)}
+                className="inline-flex size-4 items-center justify-center rounded-full text-muted-foreground outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              >
+                <InfoIcon className="size-3.5" aria-hidden="true" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-64">
+              {hint(parameter)}
+            </TooltipContent>
+          </Tooltip>
           {parameter.role === "fixed" && (
             <Badge variant="secondary">{text.fixed}</Badge>
           )}
@@ -127,7 +147,8 @@ function ParameterControl({
           }}
         />
       </div>
-      <span id={hintId} className="text-xs text-muted-foreground">
+      {/* The tooltip shows it on demand, and the field keeps it as its description. */}
+      <span id={hintId} className="sr-only">
         {hint(parameter)}
       </span>
       <Slider

@@ -18,6 +18,7 @@ export const STRINGS = {
     title: "Parameters",
     subtitle: "The curve follows the values",
     fixed: "not fitted",
+    about: (symbol: string) => `About ${symbol}`,
     // How a parameter is written. Any other shows its name, so a new one needs no change here.
     symbols: {
       band_mass: "m",
