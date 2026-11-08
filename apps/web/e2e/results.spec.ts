@@ -1,5 +1,7 @@
 import { readFileSync } from "node:fs";
 
+import { strFromU8, unzipSync } from "fflate";
+
 import { expect, test, type Page } from "@playwright/test";
 
 import { fakeFit } from "./support/fakeFit";
@@ -519,7 +521,7 @@ test("Data to file has the data, and the curves before and after the fit", async
   await toResults(page);
 
   bodies.length = 0;
-  const file = await downloaded(page, "Data to file");
+  const file = (await inFormat(page, "Text")).toString("utf8");
   const lines = file.split("\n");
   expect(lines[0]).toMatch(/^# SeeBand Web /);
   expect(lines).toContain("# Model DPB, fit mode S + ρ");
@@ -541,9 +543,10 @@ test("Data to file has the data, and the curves before and after the fit", async
   ]);
   // The curve before the fit is of the values it started from, E_g = 1000 K by default, and the
   // other of the fitted ones.
-  expect(bodies.map(({ parameters }) => parameters.band_gap).sort()).toEqual([
-    1000, 900,
-  ]);
+  // The page's own live curve may ask once more for the fitted values.
+  expect(new Set(bodies.map(({ parameters }) => parameters.band_gap))).toEqual(
+    new Set([1000, 900]),
+  );
 });
 
 test("Parameters to file has each value, its unit and how it was found", async ({
@@ -553,13 +556,22 @@ test("Parameters to file has each value, its unit and how it was found", async (
   await finishWith(page, { at_bounds: ["band_gap"] });
 
   // From the fit screen, as from the results.
-  const file = await downloaded(page, "Parameters to file");
+  const file = (await inFormat(page, "Text", "Parameters to file")).toString(
+    "utf8",
+  );
   const lines = file.split("\n");
   expect(lines).toContain("Parameter\tValue\tStatus");
   expect(lines).toContain(
     "E_g (position of band 2) [K]\t900\tfitted, at bound",
   );
   expect(lines).toContain("N1, N2 (band degeneracies)\t1, 1\tfixed");
+
+  const csv = (
+    await inFormat(page, "CSV, one table", "Parameters to file")
+  ).toString("utf8");
+  expect(csv.split("\n")).toContain(
+    'band_gap,E_g,position of band 2,K,900,"fitted, at bound"',
+  );
 });
 
 test("each additional graph downloads its own curves and flags", async ({
@@ -608,6 +620,7 @@ test("a failed export says so, and downloads nothing", async ({ page }) => {
   });
 
   await page.getByRole("button", { name: "Data to file" }).click();
+  await page.getByRole("button", { name: "Download" }).click();
 
   await expect(
     page.getByText(
@@ -615,4 +628,71 @@ test("a failed export says so, and downloads nothing", async ({ page }) => {
     ),
   ).toBeVisible();
   expect(downloads).toBe(0);
+});
+
+/** An export, in a format chosen in its dialog. */
+async function inFormat(
+  page: Page,
+  format: string,
+  button = "Data to file",
+): Promise<Buffer> {
+  await page.getByRole("button", { name: button }).click();
+  await page.getByRole("radio", { name: new RegExp(`^${format}`) }).click();
+  const [file] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Download" }).click(),
+  ]);
+  return readFileSync(await file.path());
+}
+
+test("Data to file also gives a CSV, and a ZIP of plain tables", async ({
+  page,
+}) => {
+  await openFit(page, serveCurves);
+  await finishWith(page);
+  await toResults(page);
+
+  const csv = (await inFormat(page, "CSV, one table")).toString("utf8");
+  expect(csv).toContain("\nquantity,curve,temperature_k,value,unit\n");
+  expect(csv).toMatch(/\nseebeck,fit,100,0\.0001,V\/K\n/);
+
+  const zip = unzipSync(
+    new Uint8Array(await inFormat(page, "ZIP, a file each")),
+  );
+  expect(Object.keys(zip)).toEqual(
+    expect.arrayContaining([
+      "metadata.txt",
+      "parameters.txt",
+      "data/seebeck.txt",
+      "data/resistivity.txt",
+      "curves/pre-fit.txt",
+      "curves/fit.txt",
+      "graphs/chemical_potential.txt",
+      "graphs/carrier_concentration_by_band.txt",
+    ]),
+  );
+  expect(strFromU8(zip["data/seebeck.txt"] ?? new Uint8Array())).toMatch(
+    /\nT \[K\]\tS \[V\/K\]\n/,
+  );
+});
+
+test("the dialog of Data to file starts on text, says what each format is, and closes", async ({
+  page,
+}) => {
+  await openFit(page);
+  await page.getByRole("button", { name: "Data to file" }).click();
+
+  const dialog = page.getByRole("dialog", { name: "Data to file" });
+  await expect(dialog.getByRole("radio")).toHaveCount(3);
+  await expect(dialog.getByRole("radio", { name: /^Text/ })).toBeChecked();
+  await expect(
+    dialog.getByRole("radio", { name: /^CSV, one table/ }),
+  ).toHaveAccessibleDescription(/for pandas or R/);
+  await expect(dialog.getByText(/JSON/)).toHaveCount(0);
+
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Data to file" }),
+  ).toBeFocused();
 });

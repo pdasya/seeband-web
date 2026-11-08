@@ -26,6 +26,7 @@ import {
 } from "@/model/resultSummary";
 import { fitModeOf } from "@/model/selection";
 import { useExport } from "@/model/useExport";
+import { ExportButtons } from "@/model/ExportButtons";
 import type { LiveCurves } from "@/model/useLiveCurves";
 import { QUANTITIES, useSessionStore, type Quantity } from "@/session/store";
 import { Panel } from "@/shell/layout";
@@ -240,20 +241,7 @@ export function ResultPanel({ live }: { live: LiveCurves }) {
         <Button variant="outline" asChild>
           <Link to="/results">{fit.openResults}</Link>
         </Button>
-        <Button
-          variant="outline"
-          disabled={exporter.busy}
-          onClick={() => void exporter.data()}
-        >
-          {STRINGS.export.data}
-        </Button>
-        <Button
-          variant="outline"
-          disabled={exporter.busy}
-          onClick={() => void exporter.parameters()}
-        >
-          {STRINGS.export.parameters}
-        </Button>
+        <ExportButtons exporter={exporter} />
       </div>
       {exporter.failed && (
         <p role="alert" className="mt-2 mb-0 text-xs text-destructive">

@@ -533,6 +533,18 @@ export const STRINGS = {
         "Carrier concentration of band 2 [1/cm^3]",
     },
     parameterColumns: "Parameter\tValue\tStatus",
+    parameterCsvColumns: "parameter,symbol,meaning,unit,value,status",
+    parametersCsvFile: "seeband-parameters.csv",
+    parameterFormats: {
+      data: {
+        label: "Text",
+        text: "A line for each parameter, with its unit and status, as the desktop's file has them.",
+      },
+      csv: {
+        label: "CSV, one table",
+        text: "A row for each parameter, N1 and N2 included, for pandas or R.",
+      },
+    },
     parameter: (symbol: string, meaning: string, unit: string) =>
       unit === ""
         ? `${symbol} (${meaning})`
@@ -543,7 +555,55 @@ export const STRINGS = {
       atBound: "fitted, at bound",
     },
     // A unit as a file writes it, plain text.
-    units: { m_e: "m_e", K: "K", dimensionless: "", unknown: "unit not known" },
+    units: {
+      m_e: "m_e",
+      K: "K",
+      dimensionless: "",
+      unknown: "unit not known",
+    },
+    quantityUnits: { seebeck: "V/K", resistivity: "Ohm*m", hall: "m^3/C" },
+    dialogText:
+      "Every file starts with lines on the fit and its known issues. Values are in SI, with a decimal point.",
+    parametersDialogText:
+      "Every file starts with lines on the fit and its known issues. Values are as the screen shows them, with a decimal point.",
+    format: "Format",
+    download: "Download",
+    close: "Close",
+    formats: {
+      data: {
+        label: "Text",
+        text: "Pairs of temperature and value columns for each quantity, for a spreadsheet or Origin.",
+      },
+      csv: {
+        label: "CSV, one table",
+        text: "A row for each point, with its quantity, curve and unit, for pandas or R.",
+      },
+      zip: {
+        label: "ZIP, a file each",
+        text: "Plain tables of the data, curves, parameters and additional graphs. The app loads the data and curves again.",
+      },
+    },
+    csvFile: "seeband-data.csv",
+    zipFile: "seeband-export.zip",
+    csvColumns: "quantity,curve,temperature_k,value,unit",
+    // Names the app's parser reads, so that a file of them loads again.
+    readable: {
+      temperature: "T [K]",
+      seebeck: "S [V/K]",
+      resistivity: "rho [Ohm*m]",
+      hall: "R_H [m^3/C]",
+    },
+    zip: {
+      metadata: "metadata.txt",
+      parameters: "parameters.txt",
+      data: (quantity: string, interpolated: boolean) =>
+        interpolated
+          ? `data/${quantity}-interpolated.txt`
+          : `data/${quantity}.txt`,
+      preFit: "curves/pre-fit.txt",
+      fit: "curves/fit.txt",
+      graph: (kind: string) => `graphs/${kind}.txt`,
+    },
   },
   results: {
     pageTitle: "Results",

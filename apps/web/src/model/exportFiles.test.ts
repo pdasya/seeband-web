@@ -6,12 +6,16 @@ import { MODELS } from "../../e2e/support/models";
 import type { CalcResponse } from "@/api/client";
 import {
   commented,
+  csvField,
+  csvFile,
   dataFile,
   exportHeader,
   graphFile,
   numberText,
+  parametersCsv,
   parametersFile,
   table,
+  zipEntries,
   type ExportContext,
 } from "@/model/exportFiles";
 import type { FitModeDescription, ModelDescription } from "@/model/selection";
@@ -288,5 +292,122 @@ describe("a graph file", () => {
     ).toBe(
       "Temperature [K]\tChemical potential [K]\tsome_new_curve_per_s\n100\t-10\t1\n200\t20\t2\n",
     );
+  });
+});
+
+describe("the other formats", () => {
+  const session: Pick<SessionState, "data" | "interpolation"> = {
+    data: {
+      seebeck: {
+        measurement: {
+          temperature_k: [100, 150],
+          values: [1e-4, 1.5e-4],
+          points: 2,
+          min_temperature_k: 100,
+          max_temperature_k: 150,
+        },
+        source: { kind: "file", name: "s.txt" },
+        extrapolated: false,
+        text: "",
+      },
+    },
+    interpolation: {
+      enabled: false,
+      loading: false,
+      values: {},
+      failed: [],
+      failure: null,
+    },
+  };
+  const preFit = curves({ seebeck_v_per_k: [1, 2], resistivity_ohm_m: [3, 4] });
+  const fitted = curves({ seebeck_v_per_k: [5, 6], resistivity_ohm_m: [7, 8] });
+
+  test("CSV has a row for each point, with its quantity, curve and unit", () => {
+    const lines = csvFile(
+      ["head"],
+      modeOf("dpb_s_rho"),
+      session,
+      preFit,
+      fitted,
+    )
+      .split("\n")
+      .slice(0, -1);
+    expect(lines.slice(0, 4)).toEqual([
+      "# head",
+      "quantity,curve,temperature_k,value,unit",
+      "seebeck,experimental,100,0.0001,V/K",
+      "seebeck,experimental,150,0.00015,V/K",
+    ]);
+    expect(lines).toContain("seebeck,pre_fit,200,2,V/K");
+    expect(lines).toContain("resistivity,fit,100,7,Ohm*m");
+    expect(lines).toHaveLength(2 + 2 + 2 * 4);
+  });
+
+  test("ZIP has a plain table for each part, with names the parser reads", () => {
+    const entries = zipEntries(
+      ["head"],
+      modeOf("dpb_s_rho"),
+      session,
+      preFit,
+      fitted,
+      "parameters",
+      [
+        {
+          kind: "chemical_potential",
+          result: curves({ chemical_potential_k: [1, 2] }),
+        },
+      ],
+    );
+    expect(Object.keys(entries).sort()).toEqual(
+      [
+        "metadata.txt",
+        "parameters.txt",
+        "data/seebeck.txt",
+        "curves/pre-fit.txt",
+        "curves/fit.txt",
+        "graphs/chemical_potential.txt",
+      ].sort(),
+    );
+    expect(entries["metadata.txt"]).toBe("head\n");
+    expect(entries["data/seebeck.txt"]).toBe(
+      "# head\nT [K]\tS [V/K]\n100\t0.0001\n150\t0.00015\n",
+    );
+    expect(entries["curves/fit.txt"]).toBe(
+      "# head\nT [K]\tS [V/K]\trho [Ohm*m]\n100\t5\t7\n200\t6\t8\n",
+    );
+  });
+});
+
+describe("the parameters as CSV", () => {
+  test("a field with a comma or quote is quoted", () => {
+    expect(csvField("plain")).toBe("plain");
+    expect(csvField("a, b")).toBe('"a, b"');
+    expect(csvField('say "x"')).toBe('"say ""x"""');
+  });
+
+  test("has a row for each parameter, and N1 and N2 apart", () => {
+    const lines = parametersCsv(
+      ["head"],
+      modeOf("dpb_s_rho"),
+      SELECTION,
+      { band_gap: 900 },
+      { status: "done", result: { ...RESULT, at_bounds: ["band_gap"] } },
+    )
+      .split("\n")
+      .slice(0, -1);
+    expect(lines.slice(0, 2)).toEqual([
+      "# head",
+      "parameter,symbol,meaning,unit,value,status",
+    ]);
+    expect(lines).toContain(
+      'band_gap,E_g,position of band 2,K,900,"fitted, at bound"',
+    );
+    expect(lines.find((line) => line.startsWith("m_eff,"))).toMatch(
+      /^m_eff,m₂\/m₁,"band mass ratio m2\/m1, the sign sets the type of band 2",,/,
+    );
+    expect(lines.slice(-2)).toEqual([
+      "band_1_degeneracy,N1,band degeneracies,,1,fixed",
+      "band_2_degeneracy,N2,band degeneracies,,2,fixed",
+    ]);
   });
 });

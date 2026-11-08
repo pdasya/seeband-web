@@ -188,57 +188,136 @@ export function dataFile(
   return commented(header) + table(columns);
 }
 
+interface ParameterRecord {
+  name: string;
+  symbol: string;
+  meaning: string;
+  unit: string;
+  /** As the screen shows it, in the unit of its control. */
+  value: number;
+  status: string;
+}
+
 /** The values in use, as the user sees them, with how each was found. */
-export function parametersFile(
-  header: readonly string[],
+function parameterRecords(
   mode: FitModeDescription,
-  selection: Pick<
-    Selection,
-    "scattering" | "band1Degeneracy" | "band2Degeneracy"
-  >,
+  scattering: string | null,
   saved: Readonly<Record<string, number>> | undefined,
   fit: FitState,
-): string {
+): ParameterRecord[] {
   const values = parameterValues(mode, saved);
   const atBounds =
     fit.status === "done" && fit.result.status !== "failed"
       ? fit.result.at_bounds
       : [];
   const units: Record<string, string | undefined> = text.units;
-  const lines = visibleParameters(mode, selection.scattering).map(
-    (parameter) => {
-      const value = values[parameter.name] ?? parameter.core_range.default;
-      const status =
+  return visibleParameters(mode, scattering).map((parameter) => {
+    const value = values[parameter.name] ?? parameter.core_range.default;
+    return {
+      name: parameter.name,
+      symbol: parameterSymbol(parameter.name),
+      meaning: parameter.meaning,
+      unit: units[parameter.unit] ?? parameter.unit,
+      value: coreToDisplay(parameter, value),
+      status:
         parameter.role === "fixed"
           ? text.status.fixed
           : atBounds.includes(parameter.name)
             ? text.status.atBound
-            : text.status.fitted;
-      return [
-        text.parameter(
-          parameterSymbol(parameter.name),
-          parameter.meaning,
-          units[parameter.unit] ?? parameter.unit,
-        ),
-        numberText(coreToDisplay(parameter, value)),
-        status,
-      ].join("\t");
-    },
+            : text.status.fitted,
+    };
+  });
+}
+
+type DegeneracySelection = Pick<
+  Selection,
+  "scattering" | "band1Degeneracy" | "band2Degeneracy"
+>;
+
+function hasDegeneracy(mode: FitModeDescription): boolean {
+  return mode.degeneracy !== null && mode.degeneracy !== undefined;
+}
+
+/** The values in use as text, a line each, as the desktop's parameter file has them. */
+export function parametersFile(
+  header: readonly string[],
+  mode: FitModeDescription,
+  selection: DegeneracySelection,
+  saved: Readonly<Record<string, number>> | undefined,
+  fit: FitState,
+): string {
+  const lines = parameterRecords(mode, selection.scattering, saved, fit).map(
+    ({ symbol, meaning, unit, value, status }) =>
+      [text.parameter(symbol, meaning, unit), numberText(value), status].join(
+        "\t",
+      ),
   );
-  const degeneracy =
-    mode.degeneracy === null || mode.degeneracy === undefined
-      ? []
-      : [
-          [
-            text.parameter("N1, N2", fitText.degeneracyMeaning, ""),
-            `${numberText(selection.band1Degeneracy)}, ${numberText(selection.band2Degeneracy)}`,
-            text.status.fixed,
-          ].join("\t"),
-        ];
+  const degeneracy = hasDegeneracy(mode)
+    ? [
+        [
+          text.parameter("N1, N2", fitText.degeneracyMeaning, ""),
+          `${numberText(selection.band1Degeneracy)}, ${numberText(selection.band2Degeneracy)}`,
+          text.status.fixed,
+        ].join("\t"),
+      ]
+    : [];
   return (
     commented(header) +
     [text.parameterColumns, ...lines, ...degeneracy].join("\n") +
     "\n"
+  );
+}
+
+/** A field of a CSV, quoted when it holds a comma, a quote or a line break, as RFC 4180 asks. */
+export function csvField(value: string): string {
+  return /[",\n\r]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value;
+}
+
+/** The values in use as a CSV, a row each, with N1 and N2 as rows of their own. */
+export function parametersCsv(
+  header: readonly string[],
+  mode: FitModeDescription,
+  selection: DegeneracySelection,
+  saved: Readonly<Record<string, number>> | undefined,
+  fit: FitState,
+): string {
+  const records = [
+    ...parameterRecords(mode, selection.scattering, saved, fit),
+    ...(hasDegeneracy(mode)
+      ? [
+          {
+            name: "band_1_degeneracy",
+            symbol: "N1",
+            meaning: fitText.degeneracyMeaning,
+            unit: "",
+            value: selection.band1Degeneracy,
+            status: text.status.fixed,
+          },
+          {
+            name: "band_2_degeneracy",
+            symbol: "N2",
+            meaning: fitText.degeneracyMeaning,
+            unit: "",
+            value: selection.band2Degeneracy,
+            status: text.status.fixed,
+          },
+        ]
+      : []),
+  ];
+  const rows = records.map((record) =>
+    [
+      record.name,
+      record.symbol,
+      record.meaning,
+      record.unit,
+      numberText(record.value),
+      record.status,
+    ]
+      .map(csvField)
+      .join(","),
+  );
+  return (
+    commented(header) + [text.parameterCsvColumns, ...rows].join("\n") + "\n"
   );
 }
 
@@ -259,4 +338,138 @@ export function graphFile(
       })),
     ])
   );
+}
+
+type CurveKindOfFile = "experimental" | "interpolated" | "pre_fit" | "fit";
+
+/** Every series of the mode's quantities, as one list, for the files that are not side by side. */
+function series(
+  mode: FitModeDescription,
+  session: Pick<SessionState, "data" | "interpolation">,
+  preFit: CalcResponse | null,
+  fitted: CalcResponse | null,
+): {
+  quantity: Quantity;
+  curve: CurveKindOfFile;
+  temperatureK: readonly number[];
+  values: readonly (number | null)[];
+}[] {
+  return mode.quantities.flatMap((quantity) => {
+    const column = quantityCurve(quantity);
+    const measured = session.data[quantity]?.measurement;
+    const interpolated = session.interpolation.enabled
+      ? session.interpolation.values[quantity]
+      : undefined;
+    const of = (
+      curve: CurveKindOfFile,
+      temperatureK: readonly number[] | undefined,
+      values: readonly (number | null)[] | undefined,
+    ) =>
+      temperatureK === undefined || values === undefined
+        ? []
+        : [{ quantity, curve, temperatureK, values }];
+    return [
+      ...of("experimental", measured?.temperature_k, measured?.values),
+      ...of("interpolated", interpolated?.temperature_k, interpolated?.values),
+      ...of("pre_fit", preFit?.temperature_k, preFit?.curves[column]),
+      ...of("fit", fitted?.temperature_k, fitted?.curves[column]),
+    ];
+  });
+}
+
+/** One table of every point, a row each, for a program such as pandas or R. */
+export function csvFile(
+  header: readonly string[],
+  mode: FitModeDescription,
+  session: Pick<SessionState, "data" | "interpolation">,
+  preFit: CalcResponse | null,
+  fitted: CalcResponse | null,
+): string {
+  const units: Record<Quantity, string> = text.quantityUnits;
+  const rows = series(mode, session, preFit, fitted).flatMap(
+    ({ quantity, curve, temperatureK, values }) =>
+      temperatureK.map((temperature, at) =>
+        [
+          quantity,
+          curve,
+          numberText(temperature),
+          numberText(values[at] ?? null),
+          units[quantity],
+        ].join(","),
+      ),
+  );
+  return commented(header) + [text.csvColumns, ...rows].join("\n") + "\n";
+}
+
+/** A temperature column and others on its grid, with names the app's parser reads back. */
+function readableTable(
+  temperatureK: readonly number[],
+  columns: readonly {
+    quantity: Quantity;
+    values: readonly (number | null)[];
+  }[],
+): string {
+  return table([
+    { legend: text.readable.temperature, values: temperatureK },
+    ...columns.map(({ quantity, values }) => ({
+      legend: text.readable[quantity],
+      values,
+    })),
+  ]);
+}
+
+/**
+ * The files of a ZIP: each a plain table. The measured data and the curves have the app's own
+ * column names, so a file of them loads again.
+ */
+export function zipEntries(
+  header: readonly string[],
+  mode: FitModeDescription,
+  session: Pick<SessionState, "data" | "interpolation">,
+  preFit: CalcResponse | null,
+  fitted: CalcResponse | null,
+  parameters: string,
+  graphs: readonly { kind: string; result: CalcResponse }[],
+): Record<string, string> {
+  const head = commented(header);
+  const entries: Record<string, string> = {
+    [text.zip.metadata]: header.map((line) => `${line}\n`).join(""),
+    [text.zip.parameters]: parameters,
+  };
+  for (const { quantity, curve, temperatureK, values } of series(
+    mode,
+    session,
+    null,
+    null,
+  )) {
+    entries[text.zip.data(quantity, curve === "interpolated")] =
+      head + readableTable(temperatureK, [{ quantity, values }]);
+  }
+  for (const [name, result] of [
+    [text.zip.preFit, preFit],
+    [text.zip.fit, fitted],
+  ] as const) {
+    if (result !== null) {
+      entries[name] =
+        head +
+        readableTable(
+          result.temperature_k,
+          mode.quantities.flatMap((quantity) => {
+            const values = result.curves[quantityCurve(quantity)];
+            return values === undefined ? [] : [{ quantity, values }];
+          }),
+        );
+    }
+  }
+  for (const { kind, result } of graphs) {
+    entries[text.zip.graph(kind)] = graphFile(
+      header,
+      result.temperature_k,
+      Object.entries(result.curves).map(([name, values]) => ({
+        name,
+        values,
+      })),
+    );
+  }
+  return entries;
 }

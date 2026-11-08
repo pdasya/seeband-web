@@ -3,14 +3,20 @@ import { useState } from "react";
 
 import { apiClient, type CalcResponse } from "@/api/client";
 import { modelsQuery } from "@/api/queries";
+import { strToU8, zipSync } from "fflate";
+
+import { DERIVED_KINDS_ASKED } from "@/model/chartTabs";
 import {
+  csvFile,
   dataFile,
   exportHeader,
   graphFile,
   modeLabel,
+  parametersCsv,
   parametersFile,
+  zipEntries,
 } from "@/model/exportFiles";
-import { calcRequest } from "@/model/liveCurves";
+import { calcRequest, derivedRequest } from "@/model/liveCurves";
 import { hasFittedValues, resultIssues } from "@/model/resultSummary";
 import { fitModeOf } from "@/model/selection";
 import {
@@ -22,11 +28,13 @@ import { STRINGS } from "@/strings";
 
 const { export: text } = STRINGS;
 
-/** Hands the user a text file, as a download. */
-export function download(name: string, contents: string): void {
-  const url = URL.createObjectURL(
-    new Blob([contents], { type: "text/plain;charset=utf-8" }),
-  );
+/** Hands the user a file, as a download. */
+export function download(
+  name: string,
+  contents: string | Uint8Array<ArrayBuffer>,
+  type = "text/plain;charset=utf-8",
+): void {
+  const url = URL.createObjectURL(new Blob([contents], { type }));
   const link = document.createElement("a");
   link.href = url;
   link.download = name;
@@ -76,7 +84,7 @@ export function useExport() {
       measured: extraIssues.measured ?? [],
       derived: extraIssues.derived ?? [],
     });
-    const header = exportHeader({
+    const info = {
       appVersion: __APP_VERSION__,
       apiVersion: await apiVersion(),
       date: new Date().toISOString(),
@@ -89,8 +97,8 @@ export function useExport() {
         (quantity) => state.data[quantity]?.source.kind === "demo",
       ),
       issues,
-    });
-    return { state, mode, header };
+    };
+    return { state, mode, header: exportHeader(info) };
   };
 
   const run = async (work: () => Promise<void>) => {
@@ -110,46 +118,101 @@ export function useExport() {
     return request === null ? null : apiClient.postCalc(request);
   };
 
+  /**
+   * The curves before and after the fit, and with `withGraphs` each additional kind the mode
+   * offers, with the header that names their flags.
+   */
+  const everything = async (withGraphs: boolean) => {
+    const state = useSessionStore.getState();
+    const model = models?.models.find(({ id }) => id === state.selection.model);
+    const mode = fitModeOf(model, state.selection.fitMode);
+    if (mode === undefined) {
+      return null;
+    }
+    const kinds = withGraphs
+      ? DERIVED_KINDS_ASKED.filter((kind) =>
+          mode.curves.some((curve) => curve.kind === kind && curve.available),
+        )
+      : [];
+    const [preFit, fit, ...answers] = await Promise.all([
+      calc(preFitState(state, mode.id)),
+      hasFittedValues(state.fit) ? calc(state) : Promise.resolve(null),
+      ...kinds.map((kind) => {
+        const request = derivedRequest(state, models?.models, kind);
+        return request === null ? null : apiClient.postCalc(request);
+      }),
+    ]);
+    const graphs = kinds.flatMap((kind, at) => {
+      const result = answers[at];
+      return result === null || result === undefined ? [] : [{ kind, result }];
+    });
+    const made = await context({
+      measured: [...(preFit?.known_issues ?? []), ...(fit?.known_issues ?? [])],
+      derived: graphs.flatMap(({ result }) => result.known_issues),
+    });
+    return made === null ? null : { ...made, preFit, fit, graphs };
+  };
+
+  const parametersAs = (
+    build: typeof parametersFile,
+    name: string,
+    type?: string,
+  ) =>
+    run(async () => {
+      const made = await context();
+      if (made !== null) {
+        const { state, mode, header } = made;
+        download(
+          name,
+          build(
+            header,
+            mode,
+            state.selection,
+            state.parameters[mode.id],
+            state.fit,
+          ),
+          type,
+        );
+      }
+    });
+
   return {
     busy,
     failed,
     /** Measured data, interpolated values, and the curves before and after the fit. */
     data: () =>
       run(async () => {
-        const state = useSessionStore.getState();
-        const model = models?.models.find(
-          ({ id }) => id === state.selection.model,
-        );
-        const mode = fitModeOf(model, state.selection.fitMode);
-        if (mode === undefined) {
-          return;
-        }
-        const fitted = hasFittedValues(state.fit);
-        const [preFit, fit] = await Promise.all([
-          calc(preFitState(state, mode.id)),
-          fitted ? calc(state) : Promise.resolve(null),
-        ]);
-        const made = await context({
-          measured: [
-            ...(preFit?.known_issues ?? []),
-            ...(fit?.known_issues ?? []),
-          ],
-        });
+        const made = await everything(false);
         if (made !== null) {
+          const { header, mode, state, preFit, fit } = made;
+          download(text.dataFile, dataFile(header, mode, state, preFit, fit));
+        }
+      }),
+    /** The same points, as one table with a row each. */
+    csv: () =>
+      run(async () => {
+        const made = await everything(false);
+        if (made !== null) {
+          const { header, mode, state, preFit, fit } = made;
           download(
-            text.dataFile,
-            dataFile(made.header, made.mode, made.state, preFit, fit),
+            text.csvFile,
+            csvFile(header, mode, state, preFit, fit),
+            "text/csv;charset=utf-8",
           );
         }
       }),
-    /** The values in use, with how each was found. */
-    parameters: () =>
+    /** A file for each part, in one ZIP, with the additional graphs. */
+    zip: () =>
       run(async () => {
-        const made = await context();
+        const made = await everything(true);
         if (made !== null) {
-          const { state, mode, header } = made;
-          download(
-            text.parametersFile,
+          const { header, mode, state, preFit, fit, graphs } = made;
+          const entries = zipEntries(
+            header,
+            mode,
+            state,
+            preFit,
+            fit,
             parametersFile(
               header,
               mode,
@@ -157,9 +220,31 @@ export function useExport() {
               state.parameters[mode.id],
               state.fit,
             ),
+            graphs,
+          );
+          download(
+            text.zipFile,
+            zipSync(
+              Object.fromEntries(
+                Object.entries(entries).map(([name, contents]) => [
+                  name,
+                  strToU8(contents),
+                ]),
+              ),
+            ) as Uint8Array<ArrayBuffer>,
+            "application/zip",
           );
         }
       }),
+    /** The values in use, with how each was found, as text. */
+    parameters: () => parametersAs(parametersFile, text.parametersFile),
+    /** The same, as a CSV. */
+    parametersCsv: () =>
+      parametersAs(
+        parametersCsv,
+        text.parametersCsvFile,
+        "text/csv;charset=utf-8",
+      ),
     /** One additional graph, from the answers it already drew. */
     graph: (
       name: string,

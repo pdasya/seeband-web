@@ -31,6 +31,7 @@ import {
   type ParameterStatus,
 } from "@/model/resultSummary";
 import { fitModeOf, type FitModeDescription } from "@/model/selection";
+import { ExportButtons } from "@/model/ExportButtons";
 import { useExport } from "@/model/useExport";
 import { useResultCurves, type LiveCalc } from "@/model/useLiveCurves";
 import {
@@ -396,26 +397,7 @@ export function ResultsPage() {
         title={text.title}
         subtitle={subtitle}
         {...(badge === null ? {} : { status: <StatusBadge {...badge} /> })}
-        actions={
-          <>
-            <Button
-              variant="outline"
-              disabled={exporter.busy}
-              onClick={() => void exporter.data()}
-            >
-              <DownloadIcon aria-hidden="true" />
-              {exportText.data}
-            </Button>
-            <Button
-              variant="outline"
-              disabled={exporter.busy}
-              onClick={() => void exporter.parameters()}
-            >
-              <DownloadIcon aria-hidden="true" />
-              {exportText.parameters}
-            </Button>
-          </>
-        }
+        actions={<ExportButtons exporter={exporter} />}
       />
       {exporter.failed && (
         <p role="alert" className="m-0 text-xs text-destructive">

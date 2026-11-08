@@ -205,7 +205,7 @@ With version 4.23.0, the registry's components import `cn` from the npm package 
 
 ## Exports
 
-The Result panel of the fit screen and the results page export what the desktop's buttons do, as text files a spreadsheet or plotting program reads. Each starts with `#` lines that say what it is of:
+"Data to file" and "Parameters to file", on the Result panel of the fit screen and on the results page, open a dialog with a choice of format. Each additional graph of the results page has a download of its own. Every file starts with `#` lines that say what it is of:
 
 - the app's version and the API's;
 - the date;
@@ -214,19 +214,24 @@ The Result panel of the fit screen and the results page export what the desktop'
 - how the fit ended;
 - each known issue that applies, with its severity and id.
 
-| File                     | Holds                                                                                                                                                                      |
-| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `seeband-data.txt`       | For each quantity of the mode, pairs of columns: temperature and value, for the measured data, the interpolated values in use, the curve before the fit and the fitted one |
-| `seeband-parameters.txt` | Each parameter as the screen shows it, with its meaning, unit and status (`fitted`, `fixed` or `fitted, at bound`), and N1, N2                                             |
-| `seeband-<graph>.txt`    | One additional graph of the results page, its curves on one temperature grid, with the flags of those curves                                                               |
+| Export             | Format           | Holds                                                                                                                                                                                               |
+| ------------------ | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Data to file       | Text             | `seeband-data.txt`, as the desktop's: for each quantity, pairs of temperature and value columns, for the measured data, the interpolated values in use, the curve before the fit and the fitted one |
+|                    | CSV, one table   | `seeband-data.csv`: the same points, a row each, as `quantity,curve,temperature_k,value,unit`                                                                                                       |
+|                    | ZIP, a file each | `seeband-export.zip`: `metadata.txt`, `parameters.txt`, `data/<quantity>.txt`, `curves/pre-fit.txt`, `curves/fit.txt` and `graphs/<kind>.txt`, each a plain table                                   |
+| Parameters to file | Text             | `seeband-parameters.txt`: each parameter as the screen shows it, with its meaning, unit and status (`fitted`, `fixed` or `fitted, at bound`), and N1, N2                                            |
+|                    | CSV, one table   | `seeband-parameters.csv`: the same, a row each, with N1 and N2 as rows of their own                                                                                                                 |
+| Each graph         | Text             | `seeband-<graph>.txt`: its curves on one temperature grid, with the flags of those curves                                                                                                           |
 
 The server calculates the curves before and after the fit when a file is made. The curve before the fit uses the values the fit started from, which the session keeps, as the fit replaces those on screen.
 
+**The ZIP's data and curves load again.** Their columns have the names the parser reads (`T [K]`, `S [V/K]`, `rho [Ohm*m]`, `R_H [m^3/C]`), and the `#` lines are comments to it. A test in `e2e/examples.spec.ts` parses them through the real API.
+
 How these differ from the desktop's files:
 
-- **Values are in SI and use a decimal point**, as the desktop's do, though the screen shows a decimal comma. The headings name the unit of each column.
+- **Values are in SI and use a decimal point**, as the desktop's do, though the screen shows a decimal comma. The headings name the unit of each column. Parameters are as the screen shows them, such as A in its control's scale; the desktop writes them in the fit's scale.
 - **The `#` lines are new.** The desktop's files have none, so it shows nothing of the fit or of known issues.
-- **The parameters file has a line of headings and a status column,** and gives values as the screen shows them, such as A in its control's scale. The desktop writes only `name\tvalue`, in the fit's scale.
-- **Interpolated values and N1, N2 are new,** as is one file for each additional graph, where the desktop has one for each of its windows.
+- **The parameters file has a line of headings and a status column,** where the desktop writes only `name\tvalue`.
+- **Interpolated values and N1, N2 are new,** as is one file for each additional graph, where the desktop has one for each of its windows. CSV and ZIP are new.
 - **The curves have the API's number of points,** not the desktop's 50.
-- **The app's parser does not read a data file back.** Its columns differ in length and are named for people, as the desktop's are. Load the measured data from their own files.
+- **The text data file does not load again,** as the desktop's does not: its columns differ in length and are named for people. Use the ZIP for that.
