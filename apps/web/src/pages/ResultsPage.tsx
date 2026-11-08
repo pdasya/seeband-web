@@ -146,19 +146,19 @@ export function ResultsPage() {
     maxTemperatureK: maxK,
     scattering,
   } = selection;
-  const subtitle = [
-    demo.length > 0 ? dataText.demoSource : null,
-    model.id.toUpperCase(),
-    scattering,
-    mode.quantities
-      .map((quantity) => dataText.quantities[quantity].symbol)
-      .join(" + "),
-    minK === null || maxK === null
-      ? null
-      : fitText.rangeSummary(formatNumber(minK), formatNumber(maxK)),
-  ]
-    .filter((part) => part !== null)
-    .join(" · ");
+  const subtitle = text.summary(
+    [
+      demo.length > 0 ? dataText.demoSource : null,
+      model.id.toUpperCase(),
+      scattering,
+      text.modeLabel(
+        mode.quantities.map((quantity) => dataText.quantities[quantity].symbol),
+      ),
+      minK === null || maxK === null
+        ? null
+        : fitText.rangeSummary(formatNumber(minK), formatNumber(maxK)),
+    ].filter((part) => part !== null),
+  );
 
   const rows = resultRows(
     model,
@@ -175,16 +175,24 @@ export function ResultsPage() {
   });
   const iterations = fitIterations(fit);
   const endNote = fitEndNote(fit, mode.max_iterations ?? null);
+  // Keyed by where each comes from, as two unknown issues can read the same.
   const notes = [
-    ...new Set(demo.map(noticeText)),
-    ...(endNote === null ? [] : [endNote]),
+    ...[...new Set(demo)].map((key) => ({
+      key: `demo:${key}`,
+      text: noticeText(key),
+    })),
+    ...(endNote === null ? [] : [{ key: "end", text: endNote }]),
     // Its known issues come with the curves, so without them some may be missing.
-    ...(measured.error === null ? [] : [fitText.rmseFailed]),
-    ...issues.map(
-      ({ severity, text: issue }) =>
-        `${fitText.issueSeverity[severity]}: ${issue}`,
-    ),
-    ...(rows.some(({ atBound }) => atBound) ? [fitText.atBoundNote] : []),
+    ...(measured.error === null
+      ? []
+      : [{ key: "rmse", text: fitText.rmseFailed }]),
+    ...issues.map(({ id, severity, text: issue }) => ({
+      key: `issue:${id}`,
+      text: text.issue(fitText.issueSeverity[severity], issue),
+    })),
+    ...(rows.some(({ atBound }) => atBound)
+      ? [{ key: "bound", text: fitText.atBoundNote }]
+      : []),
   ];
 
   return (
@@ -223,7 +231,7 @@ export function ResultsPage() {
             <Kpi
               key={quantity}
               label={text.rmse(dataText.quantities[quantity].symbol)}
-              value={rmse === undefined ? "—" : rmseText(rmse)}
+              value={rmse === undefined ? text.noValue : rmseText(rmse)}
               detail={detail}
             />
           );
@@ -273,10 +281,10 @@ export function ResultsPage() {
                     {row.meaning}
                   </TableCell>
                   <TableCell className="text-right font-mono">
-                    {row.value === "" ? "—" : row.value}
+                    {row.value === "" ? text.noValue : row.value}
                   </TableCell>
                   <TableCell className="text-right font-mono text-muted-foreground">
-                    {row.bounds === "" ? "—" : row.bounds}
+                    {row.bounds === "" ? text.noValue : row.bounds}
                   </TableCell>
                   <TableCell className="text-right">
                     <StatusCell status={row.status} />
@@ -295,8 +303,8 @@ export function ResultsPage() {
           <InfoIcon className="mt-0.5 size-4 flex-none" aria-hidden="true" />
           <div className="flex flex-col gap-1">
             {notes.map((note) => (
-              <p key={note} className="m-0">
-                {note}
+              <p key={note.key} className="m-0">
+                {note.text}
               </p>
             ))}
           </div>
