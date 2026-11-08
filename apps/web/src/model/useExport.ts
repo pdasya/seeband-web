@@ -71,18 +71,25 @@ export function useExport() {
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(false);
 
+  /** The session and its mode as they are now, read once for all of a file. */
+  const snapshot = () => {
+    const state = useSessionStore.getState();
+    const model = models?.models.find(({ id }) => id === state.selection.model);
+    const mode = fitModeOf(model, state.selection.fitMode);
+    return model === undefined || mode === undefined
+      ? null
+      : { state, model, mode };
+  };
+
+  // From the snapshot the curves were asked for, so that a fit ending or a value changing while
+  // the server answers cannot make the header describe another state than the curves.
   const context = async (
+    { state, model, mode }: NonNullable<ReturnType<typeof snapshot>>,
     extraIssues: {
       measured?: readonly string[];
       derived?: readonly string[];
     } = {},
   ) => {
-    const state = useSessionStore.getState();
-    const model = models?.models.find(({ id }) => id === state.selection.model);
-    const mode = fitModeOf(model, state.selection.fitMode);
-    if (model === undefined || mode === undefined) {
-      return null;
-    }
     const issues = resultIssues(mode, {
       fit: state.fit.status === "done" ? state.fit.result.known_issues : [],
       measured: extraIssues.measured ?? [],
@@ -127,12 +134,11 @@ export function useExport() {
    * offers, with the header that names their flags.
    */
   const everything = async (withGraphs: boolean) => {
-    const state = useSessionStore.getState();
-    const model = models?.models.find(({ id }) => id === state.selection.model);
-    const mode = fitModeOf(model, state.selection.fitMode);
-    if (mode === undefined) {
+    const now = snapshot();
+    if (now === null) {
       return null;
     }
+    const { state, mode } = now;
     const kinds = withGraphs
       ? DERIVED_KINDS_ASKED.filter((kind) =>
           mode.curves.some((curve) => curve.kind === kind && curve.available),
@@ -150,11 +156,11 @@ export function useExport() {
       const result = answers[at];
       return result === null || result === undefined ? [] : [{ kind, result }];
     });
-    const made = await context({
+    const made = await context(now, {
       measured: [...(preFit?.known_issues ?? []), ...(fit?.known_issues ?? [])],
       derived: graphs.flatMap(({ result }) => result.known_issues),
     });
-    return made === null ? null : { ...made, preFit, fit, graphs };
+    return { ...made, preFit, fit, graphs };
   };
 
   const parametersAs = (
@@ -163,9 +169,9 @@ export function useExport() {
     type?: string,
   ) =>
     run(async () => {
-      const made = await context();
-      if (made !== null) {
-        const { state, mode, header } = made;
+      const now = snapshot();
+      if (now !== null) {
+        const { state, mode, header } = await context(now);
         download(
           name,
           build(
@@ -257,11 +263,12 @@ export function useExport() {
       issues: readonly string[],
     ) =>
       run(async () => {
-        const made = await context({ derived: issues });
-        if (made !== null) {
+        const now = snapshot();
+        if (now !== null) {
+          const { header } = await context(now, { derived: issues });
           download(
             text.graphFile(name),
-            graphFile(made.header, temperatureK, curves),
+            graphFile(header, temperatureK, curves),
           );
         }
       }),

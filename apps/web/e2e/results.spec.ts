@@ -741,3 +741,39 @@ test("during a fit, the curve before it still comes from its start, and the file
   const first = lines[lines.indexOf(legends.join("\t")) + 1]?.split("\t") ?? [];
   expect(first[preFit]).toBe("1000");
 });
+
+test("a fit that ends while the server answers does not change the file's header", async ({
+  page,
+}) => {
+  await openFit(page);
+  await page.getByRole("button", { name: "Run fit" }).click();
+  await send(page, { type: "started" });
+  // The export's curves wait until the fit has ended.
+  const held: (() => void)[] = [];
+  await page.unroute("**/api/calc");
+  await page.route("**/api/calc", async (route) => {
+    await new Promise<void>((resolve) => {
+      held.push(resolve);
+    });
+    await route.fulfill({ json: { ...CALC, rmse: RMSE } });
+  });
+
+  await page.getByRole("button", { name: "Data to file" }).click();
+  await page.getByRole("radio", { name: /^Text/ }).click();
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download" }).click();
+  await expect.poll(() => held.length).toBeGreaterThan(0);
+  await send(page, { type: "done", result: RESULT });
+  await expect(page.getByRole("button", { name: "Run fit" })).toBeVisible();
+  for (const release of held.splice(0)) {
+    release();
+  }
+  await page.unroute("**/api/calc");
+  await page.route("**/api/calc", (route) =>
+    route.fulfill({ json: { ...CALC, rmse: RMSE } }),
+  );
+
+  const lines = readFileSync(await (await download).path(), "utf8").split("\n");
+  expect(lines).toContain("# A fit is running: no fitted curve yet");
+  expect(lines).not.toContain("# Fit converged, 5 iterations");
+});
