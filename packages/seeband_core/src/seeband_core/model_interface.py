@@ -95,7 +95,8 @@ class KnownIssue:
 
     `scattering` is empty for every type. `condition` limits it to some inputs. `columns` names the
     curves of a kind that it changes, and is empty for all of them. `fixed_by` is the issue that
-    removes it. `explanation` is for developers, and a user sees `message_key` through i18n.
+    removes it. `affects_band_diagram` puts it on the sketch of E(k), and on nothing else.
+    `explanation` is for developers, and a user sees `message_key` through i18n.
     """
 
     id: str
@@ -107,6 +108,7 @@ class KnownIssue:
     curve_kinds: tuple[CurveKind, ...] = ()
     columns: tuple[str, ...] = ()
     affects_fit: bool = False
+    affects_band_diagram: bool = False
     condition: IssueCondition | None = None
     message_key: str = field(init=False)
 
