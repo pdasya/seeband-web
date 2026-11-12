@@ -22,6 +22,7 @@ import inspect
 import json
 import math
 from collections.abc import Iterator
+from functools import cache
 from pathlib import Path
 from typing import Any
 
@@ -98,6 +99,11 @@ CALL_IDS = [
     f"{example}-{mode}-{scattering}-{source}-{call['function']}"
     for example, mode, scattering, source, call in CALLS
 ]
+
+
+@cache
+def p2_results() -> dict[str, Any]:
+    return json.loads((GOLDEN.parent / "physics" / "p2.json").read_text())
 
 
 def core_arguments(
@@ -308,6 +314,11 @@ def test_replay_matches_the_desktop(
         assert ERROR_FRAGMENTS.get(kind, message) in failed.message
         return
 
+    identifier = f"{example}-{mode}-{scattering}-{source}-{call['function']}"
+    expected_p2 = p2_results()
+    if identifier in expected_p2:
+        # P2 changes only the last field: Hall on curves, m1 on fits.
+        call = dict(call, result=[*call["result"][:-1], expected_p2[identifier][-1]])
     result = replay(mode, scattering, call)
     if not call["function"].endswith("_fit"):
         assert_close(result, call["result"], CURVE_TOLERANCE)

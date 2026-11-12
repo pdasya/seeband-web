@@ -740,14 +740,16 @@ test("known errors of a result are described", async ({ page }) => {
   await open(page);
   await collect(page, (route) =>
     route.fulfill({
-      json: { ...withRmse(111), known_issues: ["dpb_hall_prefactor"] },
+      json: { ...withRmse(111), known_issues: ["acphdis_band_weight"] },
     }),
   );
 
   await load(page);
 
   await expect(
-    page.getByText("Unreliable: DPB R_H is half of what it should be"),
+    page.getByText(
+      "Unreliable: With acPhDis, the band weight of the last temperature applies to all of S.",
+    ),
   ).toBeVisible();
 });
 

@@ -447,8 +447,6 @@ export const STRINGS = {
         "This fit fails on the desktop, and its mass and scales are wrong.",
       "known_issue.spb_hall_uses_fermi_energy":
         "SPB R_H uses the Fermi energy at 0 K instead of the chemical potential, which also affects this fit.",
-      "known_issue.dpb_hall_prefactor":
-        "DPB R_H is half of what it should be, so m₁ and n from it are too low.",
       "known_issue.acphdis_curve_scale":
         "With acPhDis, σ, κ and S by band use another scale of C and D than ρ and S, so σ·ρ is not 1, and band contributions do not sum to S.",
       "known_issue.acphdis_band_weight":

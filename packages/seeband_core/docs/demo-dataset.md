@@ -13,7 +13,7 @@
 
 S peaks at about 207 µV/K near 175 K. From there to 300 K it falls mostly because band 2 gains conductivity, from 1.9% to 20.5% of the total. B = 1 keeps a DPB S fit the same model as the rest, because that fit has no B.
 
-**R_H carries a known error.** It comes from the current model, with the DPB prefactor error, `dpb_hall_prefactor` (#81), which `known_issues` lists. From 1/(e R_H) at 50 K, n comes out 1.88 times the model's density. The stored data stay as they are until that is fixed. Then regenerate them, and say that results changed.
+R_H uses the corrected DPB Hall prefactor from P2 (#81). The demo was regenerated with the same seed and relative noise: R_H doubles at fixed parameters, while S and ρ are unchanged. Its `known_issues` list is empty.
 
 ## What a fit gets from it
 

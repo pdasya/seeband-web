@@ -1252,12 +1252,7 @@ def dpb_hall_vs_temp_acPh(
     """
 
     factor = (
-        3
-        * hbar**3
-        * np.pi**2
-        / (2 * e * (2 * kB * me) ** (3 / 2))
-        * (0.5 + 2 * lamb)
-        / (1 + lamb) ** 2
+        3 * hbar**3 * np.pi**2 / (e * (2 * kB * me) ** (3 / 2)) * (0.5 + 2 * lamb) / (1 + lamb) ** 2
     )
     result: np.ndarray = (
         factor
@@ -1326,12 +1321,7 @@ def dpb_hall_vs_temp_dis(
     """
 
     factor = (
-        3
-        * hbar**3
-        * np.pi**2
-        / (2 * e * (2 * kB * me) ** (3 / 2))
-        * (0.5 + 2 * lamb)
-        / (1 + lamb) ** 2
+        3 * hbar**3 * np.pi**2 / (e * (2 * kB * me) ** (3 / 2)) * (0.5 + 2 * lamb) / (1 + lamb) ** 2
     )
     result: np.ndarray = (
         factor
@@ -1408,12 +1398,7 @@ def dpb_hall_vs_temp_acPh_dis(
     """
 
     factor = (
-        3
-        * hbar**3
-        * np.pi**2
-        / (2 * e * (2 * kB * me) ** (3 / 2))
-        * (0.5 + 2 * lamb)
-        / (1 + lamb) ** 2
+        3 * hbar**3 * np.pi**2 / (e * (2 * kB * me) ** (3 / 2)) * (0.5 + 2 * lamb) / (1 + lamb) ** 2
     )
     result: np.ndarray = (
         factor

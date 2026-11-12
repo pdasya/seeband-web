@@ -48,20 +48,6 @@ KNOWN_ISSUES: tuple[KnownIssue, ...] = (
         explanation="SPB R_H uses the Fermi energy at 0 K instead of the chemical potential",
     ),
     KnownIssue(
-        id="dpb_hall_prefactor",
-        severity="unreliable",
-        fixed_by="#81",
-        fit_modes=("dpb_s_rho_rh",),
-        curve_kinds=("measured", "carrier_concentration_by_band"),
-        columns=(
-            "hall_m3_per_c",
-            "carrier_concentration_band_1_per_cm3",
-            "carrier_concentration_band_2_per_cm3",
-        ),
-        affects_fit=True,
-        explanation="DPB R_H is half of what it should be, so m1 and n from it are too low",
-    ),
-    KnownIssue(
         id="acphdis_curve_scale",
         severity="unreliable",
         fixed_by="#82",
