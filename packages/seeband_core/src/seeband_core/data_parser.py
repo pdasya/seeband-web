@@ -12,6 +12,7 @@ import dataclasses
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass, replace
+from decimal import Decimal
 from typing import Literal, get_args
 
 import numpy as np
@@ -72,12 +73,14 @@ _NAMES: Mapping[str, Role] = {
     "r_h": "hall",
     "hall": "hall",
 }
-# The units a column can be read in, with the factor to SI. The first of each is SI and the default.
-UNITS: Mapping[Role, Mapping[Unit, float]] = {
-    "temperature": {"K": 1.0},
-    "seebeck": {"V/K": 1.0, "uV/K": 1e-6},
-    "resistivity": {"Ohm*m": 1.0, "mOhm*cm": 1e-5, "uOhm*m": 1e-6},
-    "hall": {"m^3/C": 1.0, "cm^3/C": 1e-6},
+# The units a column can be read in, as the power of ten that takes each to SI: µV/K is 1e-6 V/K.
+# The first of each is SI and the default. Powers of ten let a value be converted in decimal, from
+# its text, so that 50.1 µV/K gives the very float that 5.01e-5 V/K does, to the last bit.
+UNITS: Mapping[Role, Mapping[Unit, int]] = {
+    "temperature": {"K": 0},
+    "seebeck": {"V/K": 0, "uV/K": -6},
+    "resistivity": {"Ohm*m": 0, "mOhm*cm": -5, "uOhm*m": -6},
+    "hall": {"m^3/C": 0, "cm^3/C": -6},
 }
 # How a header writes each unit, after `_unit_key`.
 _HEADER_UNITS: Mapping[Role, Mapping[str, Unit]] = {
@@ -121,11 +124,12 @@ class ParsedTable:
     """The columns of a text, and what they seem to hold.
 
     `columns` holds every row that could be read, for a preview, in the order of the text and in its
-    units, with `lines` giving each row's line. `column_count` is that of the first row of numbers,
-    and 0 if no row set one. `mapping` goes from column to role, as a suggestion or as a user
-    chose it, and `units` gives the unit each mapped column is read in. `measurements` is in SI,
-    sorted by temperature, and is empty with any `errors`. `header_units` holds the unit text of
-    each header that has one, so that a column assigned by hand is read in it.
+    units, with `lines` giving each row's line, and `texts` the same values as written.
+    `column_count` is that of the first row of numbers, and 0 if no row set one. `mapping` goes
+    from column to role, as a suggestion or as a user chose it, and `units` gives the unit each
+    mapped column is read in. `measurements` is in SI, sorted by temperature, and is empty with any
+    `errors`. `header_units` holds the unit text of each header that has one, so that a column
+    assigned by hand is read in it.
     """
 
     headers: tuple[str, ...] | None
@@ -138,6 +142,7 @@ class ParsedTable:
     column_count: int = 0
     units: Mapping[int, Unit] = dataclasses.field(default_factory=dict)
     header_units: Mapping[int, str] = dataclasses.field(default_factory=dict)
+    texts: tuple[tuple[str, ...], ...] = ()
 
 
 def _content_lines(text: str) -> list[tuple[int, str]]:
@@ -216,11 +221,28 @@ def _mapping_from_headers(
     return mapping, units, warnings
 
 
-def to_si(role: Role, unit: Unit, values: np.ndarray) -> np.ndarray:
-    """Values read in a unit, in SI. A unit that is not one of the role's raises."""
+def to_si(role: Role, unit: Unit, texts: tuple[str, ...], values: np.ndarray) -> np.ndarray:
+    """A column in SI, from its values as written. A unit that is not one of the role's raises.
+
+    SI comes back as read. Another unit is shifted in decimal and rounded once, as a float product
+    such as 50 * 1e-6 = 4.9999999999999996e-05 would differ from the SI value in its last bit, and a
+    fit can make that 1e-8 apart.
+    """
     if unit not in UNITS[role]:
         raise ValueError(f"{unit} is not a unit of {role}")
-    return values * UNITS[role][unit]
+    exponent = UNITS[role][unit]
+    if exponent == 0:
+        return values.copy()
+    return np.array([float(Decimal(text).scaleb(exponent)) for text in texts], dtype=np.float64)
+
+
+def si_column(table: ParsedTable, index: int) -> np.ndarray | None:
+    """A mapped column in SI, in the order of the text, or None for a column with no role."""
+    role = table.mapping.get(index)
+    unit = table.units.get(index)
+    if role is None or unit is None:
+        return None
+    return to_si(role, unit, table.texts[index], table.columns[index])
 
 
 def _units_for(
@@ -246,6 +268,7 @@ def _units_for(
 
 def _measure(
     columns: tuple[np.ndarray, ...],
+    texts: tuple[tuple[str, ...], ...],
     lines: tuple[int, ...],
     mapping: Mapping[int, Role],
     units: Mapping[int, Unit],
@@ -290,7 +313,7 @@ def _measure(
     measurements: dict[Quantity, Measurement] = {}
     for index, role in mapping.items():
         if role != "temperature":
-            values = to_si(role, units[index], columns[index][order])
+            values = to_si(role, units[index], texts[index], columns[index])[order]
             measurements[role] = Measurement(sorted_k.copy(), values)
             low, high = PLAUSIBLE_MAGNITUDE[role]
             if not low <= float(np.max(np.abs(values))) <= high:
@@ -353,7 +376,9 @@ def with_mapping(
             warnings=kept_warnings,
         )
     column_units, unit_warnings = _units_for(mapping, chosen, table.header_units)
-    measurements, errors, warnings = _measure(table.columns, table.lines, mapping, column_units)
+    measurements, errors, warnings = _measure(
+        table.columns, table.texts, table.lines, mapping, column_units
+    )
     return replace(
         table,
         mapping=dict(mapping),
@@ -366,9 +391,10 @@ def with_mapping(
 
 def _read_rows(
     lines: list[tuple[int, str]],
-) -> tuple[list[list[float]], list[int], int | None, list[ParseIssue]]:
+) -> tuple[list[list[float]], list[list[str]], list[int], int | None, list[ParseIssue]]:
     errors: list[ParseIssue] = []
     rows: list[list[float]] = []
+    texts: list[list[str]] = []
     row_lines: list[int] = []
     column_count: int | None = None
     for number, line in lines:
@@ -402,8 +428,9 @@ def _read_rows(
                 row.append(float(field))
         if len(row) == len(fields):
             rows.append(row)
+            texts.append(fields)
             row_lines.append(number)
-    return rows, row_lines, column_count, errors
+    return rows, texts, row_lines, column_count, errors
 
 
 def parse_table(
@@ -441,11 +468,13 @@ def parse_table(
         code: IssueCode = "wrong_encoding" if "\x00" in text or "\ufffd" in text else "no_data"
         return replace(empty, errors=(ParseIssue(code),))
 
-    rows, row_lines, column_count, errors = _read_rows(data_lines)
+    rows, row_texts, row_lines, column_count, errors = _read_rows(data_lines)
     columns: tuple[np.ndarray, ...] = ()
+    texts: tuple[tuple[str, ...], ...] = ()
     if rows:
         table = np.array(rows, dtype=np.float64)
         columns = tuple(table[:, index] for index in range(table.shape[1]))
+        texts = tuple(zip(*row_texts, strict=True))
     if not errors and len(rows) < MIN_ROWS:
         errors.append(ParseIssue("too_few_rows"))
 
@@ -478,6 +507,7 @@ def parse_table(
         tuple(warnings),
         column_count or 0,
         header_units=header_units,
+        texts=texts,
     )
     if errors:
         return parsed

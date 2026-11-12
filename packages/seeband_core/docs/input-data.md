@@ -18,7 +18,7 @@
 | ρ        | `Ohm*m`, `mOhm*cm`, `uOhm*m` | 1, 1e-5, 1e-6 |
 | R_H      | `m^3/C`, `cm^3/C`            | 1, 1e-6       |
 
-`UNITS` holds this table and `to_si` applies it. `ParsedTable.units` gives the unit each mapped column was read in, and `columns` keeps the values as written, for a preview.
+`UNITS` holds this table as powers of ten, and `to_si` applies it in decimal, to the value as written, with one rounding. So `50.1` in µV/K gives the very float that `5.01e-5` in V/K does. A float product would not: `50 * 1e-6` is `4.9999999999999996e-05`, and a fit turns that last bit into differences of about 1e-8 in its parameters. A fit from the same data in µV/K and mΩ·cm equals the fit from SI exactly. `ParsedTable.units` gives the unit each mapped column was read in, and `columns` keeps the values as written, for a preview.
 
 A header's unit is read in any usual spelling: spaces, `*`, `·` and `^` do not matter, `µ`, `μ` and `u` are the same, `Ω` is `Ohm`, and `³` is `3`. So `S (µV/K)`, `rho (mΩ·cm)` and `RH (cm³/C)` read in those units. Case does matter for a leading `M`, as mega is not milli: `MOhm cm` is not read as `mOhm cm`.
 

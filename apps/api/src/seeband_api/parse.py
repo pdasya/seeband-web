@@ -8,7 +8,7 @@ from http import HTTPStatus
 from typing import Annotated, Any, Self
 
 from pydantic import BaseModel, Field, model_validator
-from seeband_core.data_parser import IssueCode, ParsedTable, ParseIssue, Role, Unit, to_si
+from seeband_core.data_parser import IssueCode, ParsedTable, ParseIssue, Role, Unit, si_column
 from seeband_core.interpolation import InterpolatedData, interpolation_grid_k
 from seeband_core.model_interface import Measurement, Quantity
 
@@ -173,14 +173,11 @@ def _interpolated(data: InterpolatedData) -> InterpolatedResponse:
 
 
 def _preview_si(table: ParsedTable, rows: int) -> list[list[float | None]]:
-    """The first rows in SI, through the core, as only it holds the factors."""
+    """The first rows in SI, through the core, as only it holds the units."""
     converted: list[list[float] | None] = []
-    for index, column in enumerate(table.columns):
-        role = table.mapping.get(index)
-        unit = table.units.get(index)
-        converted.append(
-            None if role is None or unit is None else to_si(role, unit, column[:rows]).tolist()
-        )
+    for index in range(len(table.columns)):
+        column = si_column(table, index)
+        converted.append(None if column is None else column[:rows].tolist())
     return [
         [None if values is None else values[row] for values in converted] for row in range(rows)
     ]

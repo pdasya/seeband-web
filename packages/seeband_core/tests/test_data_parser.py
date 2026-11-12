@@ -2,6 +2,7 @@ import hashlib
 import json
 import random
 import time
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -15,9 +16,13 @@ from seeband_core.data_parser import (
     ParseIssue,
     header_unit,
     parse_table,
+    si_column,
     to_si,
     with_mapping,
 )
+from seeband_core.model_catalog import registry
+from seeband_core.model_interface import FitRequest
+from seeband_core.model_scales import default_start
 
 FIXTURES = Path(__file__).parent / "fixtures"
 EXAMPLES = sorted((FIXTURES / "examples").glob("*.txt"))
@@ -246,16 +251,34 @@ def test_a_unit_this_cannot_read_is_not_guessed(role: Any, written: str) -> None
     assert header_unit(role, written) is None
 
 
-def test_every_unit_converts_by_its_factor_and_si_by_one() -> None:
-    values = np.array([1.0, -2.5])
+def test_every_unit_converts_by_its_power_of_ten_and_si_not_at_all() -> None:
+    texts = ("1", "-2.5", "123.456", "7.25e3")
+    values = np.array([float(text) for text in texts])
     for role, units in UNITS.items():
         si, *others = units
-        assert units[si] == 1.0
-        assert to_si(role, si, values).tolist() == values.tolist()
+        assert units[si] == 0
+        assert to_si(role, si, texts, values).tolist() == values.tolist()
         for unit in others:
-            np.testing.assert_allclose(to_si(role, unit, values), values * units[unit], rtol=0)
+            exponent = units[unit]
+            expected = [
+                float(f"{text}e{exponent}") if "e" not in text else 7.25e3 * 10.0**exponent
+                for text in texts
+            ]
+            np.testing.assert_allclose(to_si(role, unit, texts, values), expected, rtol=1e-15)
     with pytest.raises(ValueError, match="not a unit of seebeck"):
-        to_si("seebeck", "m^3/C", values)
+        to_si("seebeck", "m^3/C", texts, values)
+
+
+def test_a_converted_value_is_the_float_of_the_same_digits_in_si_to_the_last_bit() -> None:
+    # A float product gives 4.9999999999999996e-05 for 50 µV/K, which a fit turns into 1e-8.
+    rng = np.random.default_rng(20261112)
+    texts = tuple(f"{value:.4f}" for value in rng.uniform(1, 999, 5000))
+    values = np.array([float(text) for text in texts])
+    micro = to_si("seebeck", "uV/K", texts, values)
+    in_si = [float(f"{text}e-6") for text in texts]
+    assert micro.tolist() == in_si
+    milli_cm = to_si("resistivity", "mOhm*cm", texts, values)
+    assert milli_cm.tolist() == [float(f"{text}e-5") for text in texts]
 
 
 def test_lab_units_named_in_the_header_read_the_same_as_si() -> None:
@@ -265,8 +288,8 @@ def test_lab_units_named_in_the_header_read_the_same_as_si() -> None:
     assert si.units == {0: "K", 1: "V/K", 2: "Ohm*m", 3: "m^3/C"}
     assert codes(lab.warnings) == codes(si.warnings) == []
     for quantity in ("seebeck", "resistivity", "hall"):
-        np.testing.assert_allclose(
-            lab.measurements[quantity].values, si.measurements[quantity].values, rtol=1e-12
+        assert (
+            lab.measurements[quantity].values.tolist() == si.measurements[quantity].values.tolist()
         )
 
 
@@ -277,9 +300,61 @@ def test_lab_units_chosen_by_a_user_read_the_same_as_si() -> None:
     si = parse_table(si_text())
     assert lab.units == {0: "K", **chosen}
     for quantity in ("seebeck", "resistivity", "hall"):
-        np.testing.assert_allclose(
-            lab.measurements[quantity].values, si.measurements[quantity].values, rtol=1e-12
+        assert (
+            lab.measurements[quantity].values.tolist() == si.measurements[quantity].values.tolist()
         )
+
+
+def _in_lab_units(path: Path, exponent: int) -> str:
+    """An example file with its values shifted in decimal, as a lab would write them."""
+    rows = [line.split() for line in path.read_text().strip().splitlines()]
+    return "\n".join(f"{t} {Decimal(v).scaleb(exponent)}" for t, v in rows) + "\n"
+
+
+def test_a_fit_from_lab_units_equals_the_fit_from_si() -> None:
+    """FS20: SI data and the same data in µV/K and mΩ·cm give the same parameters."""
+    example = FIXTURES / "examples" / "01_Fe2VAl09Si01"
+    si = {
+        "seebeck": parse_table(Path(f"{example}_see.txt").read_text(), "seebeck"),
+        "resistivity": parse_table(Path(f"{example}_rho.txt").read_text(), "resistivity"),
+    }
+    lab = {
+        "seebeck": parse_table(
+            _in_lab_units(Path(f"{example}_see.txt"), 6),
+            mapping={0: "temperature", 1: "seebeck"},
+            units={1: "uV/K"},
+        ),
+        "resistivity": parse_table(
+            _in_lab_units(Path(f"{example}_rho.txt"), 5),
+            mapping={0: "temperature", 1: "resistivity"},
+            units={1: "mOhm*cm"},
+        ),
+    }
+    model = registry.get("dpb")
+    mode = next(m for m in model.describe().fit_modes if m.id == "dpb_s_rho")
+    results = [
+        model.fit(
+            FitRequest(
+                "dpb_s_rho",
+                {quantity: table.measurements[quantity] for quantity, table in tables.items()},  # type: ignore[index]
+                default_start(mode),
+                scattering="acPh",
+            ),
+            lambda *_: None,
+        )
+        for tables in (si, lab)
+    ]
+    assert results[0].status == results[1].status == "converged"
+    for name, value in results[0].parameters.items():
+        assert results[1].parameters[name] == pytest.approx(value, rel=1e-12, abs=0), name
+
+
+def test_si_column_is_in_the_order_of_the_text_and_none_without_a_role() -> None:
+    table = parse_table("T S (uV/K) x\n300 3 9\n100 1 9\n")
+    column = si_column(table, 1)
+    assert column is not None
+    assert column.tolist() == [3e-6, 1e-6]
+    assert si_column(table, 2) is None
 
 
 def test_lab_units_read_as_si_are_called_implausible() -> None:
