@@ -79,9 +79,9 @@ export const STRINGS = {
     title: "Data",
     subtitle: {
       separate:
-        "Each file: T and the value, in the units its header names or the ones you choose. K and SI by default.",
+        "Each file: T and the value, in the units its header names or the ones you choose. With neither: T in K, S in V/K, ρ in Ω·m, R_H in m³/C.",
       single:
-        "One table: a column for T, and for each quantity, in the units its header names or the ones you choose. K and SI by default.",
+        "One table: a column for T, and for each quantity, in the units its header names or the ones you choose. With neither: T in K, S in V/K, ρ in Ω·m, R_H in m³/C.",
     },
     dropHint: "Drop a file or browse",
     source: {
