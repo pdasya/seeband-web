@@ -58,6 +58,10 @@ from seeband_api.routing import api_router, too_many_requests
 router = api_router("fit")
 
 
+# More names than any mode has parameters.
+MAX_HELD = 20
+
+
 class BoundsInput(BaseModel):
     lower: FiniteFloat
     upper: FiniteFloat
@@ -77,6 +81,9 @@ class FitApiRequest(BaseModel):
     `measurements` holds each quantity of the mode, and only points from `min_temperature_k` to
     `max_temperature_k`, inclusive, enter the fit. `extrapolated` says that interpolation made up
     some of these points, so that the result says so too.
+
+    `held` names fitted parameters to keep at their start values: the fit finds only the others.
+    A name the mode does not fit, for the scattering type, or every fitted parameter, is refused.
     """
 
     model_config = ConfigDict(
@@ -110,6 +117,7 @@ class FitApiRequest(BaseModel):
     band_1_degeneracy: PositiveFloat = 1.0
     band_2_degeneracy: PositiveFloat = 1.0
     extrapolated: Annotated[bool, Field(strict=True)] = False
+    held: list[str] = Field(default_factory=list, max_length=MAX_HELD)
     measurements: dict[Quantity, MeasurementInput]
 
     @model_validator(mode="after")
@@ -129,7 +137,8 @@ class FitResponse(BaseModel):
     `parameter_errors` holds standard errors from the last solver run of each stage, holding other
     stages fixed, so in a staged fit they can be far too small, and are not plain uncertainties.
     `at_bounds` names fitted parameters that ended at a bound, which may be what set them.
-    `known_issues` names known errors that apply, as in `GET /api/models`.
+    `known_issues` names known errors that apply, as in `GET /api/models`. `held` names the
+    parameters the request held, which come back as sent, with no error and no at-bound mark.
     """
 
     model_config = ConfigDict(
@@ -141,6 +150,7 @@ class FitResponse(BaseModel):
                     "parameter_errors": {"m_eff": 0.02, "band_gap": 12.0, "fermi_energy": 4.0},
                     "at_bounds": [],
                     "known_issues": [],
+                    "held": [],
                 }
             ]
         }
@@ -153,6 +163,7 @@ class FitResponse(BaseModel):
     parameter_errors: dict[str, float]
     at_bounds: list[str]
     known_issues: list[str]
+    held: list[str]
 
 
 class FitStarted(BaseModel):
@@ -205,6 +216,7 @@ _EXAMPLE_RESULT = FitResponse(
     parameter_errors={"m_eff": 0.02, "band_gap": 12.0, "fermi_energy": 4.0},
     at_bounds=[],
     known_issues=[],
+    held=[],
 )
 # The mock serves these as they stand, all at once.
 _STREAM_EXAMPLES: dict[str, dict[str, Any]] = {
@@ -255,6 +267,22 @@ def _check_bounds(body: FitApiRequest, fit_mode: FitMode) -> list[ErrorDetail]:
     return details
 
 
+def _check_held(body: FitApiRequest, fit_mode: FitMode) -> list[ErrorDetail]:
+    fitted = {
+        spec.name
+        for spec in fit_mode.parameters_for(body.scattering if fit_mode.scattering else None)
+        if spec.role == "fitted"
+    }
+    details = [
+        invalid("parameter_not_fitted", "This fit does not fit it", ["held", name])
+        for name in body.held
+        if name not in fitted
+    ]
+    if not details and fitted and fitted <= set(body.held):
+        details.append(invalid("nothing_to_fit", "A fit needs a parameter not held", ["held"]))
+    return details
+
+
 def _check_measurements(body: FitApiRequest, fit_mode: FitMode) -> list[ErrorDetail]:
     details = [
         invalid("missing_measurement", "This mode needs it", ["measurements", quantity])
@@ -284,6 +312,7 @@ def _to_response(result: FitResult) -> FitResponse:
         parameter_errors=dict(result.parameter_errors),
         at_bounds=list(result.at_bounds),
         known_issues=list(result.known_issues),
+        held=list(result.held),
     )
 
 
@@ -300,6 +329,7 @@ def _to_core_request(body: FitApiRequest, max_points: int) -> tuple[str, FitRequ
     # The bounds depend on the scattering type, so this needs a valid one.
     if not scattering_details:
         details += _check_bounds(body, fit_mode)
+        details += _check_held(body, fit_mode)
     if details:
         raise _refuse(details)
 
@@ -327,6 +357,7 @@ def _to_core_request(body: FitApiRequest, max_points: int) -> tuple[str, FitRequ
         band_1_degeneracy=body.band_1_degeneracy,
         band_2_degeneracy=body.band_2_degeneracy,
         extrapolated=body.extrapolated,
+        held=frozenset(body.held),
     )
 
 
