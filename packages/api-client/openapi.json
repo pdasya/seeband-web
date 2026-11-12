@@ -5500,6 +5500,7 @@
                 "type": "string",
                 "enum": [
                   "K",
+                  "C",
                   "V/K",
                   "uV/K",
                   "Ohm*m",

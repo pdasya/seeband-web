@@ -406,7 +406,7 @@ export interface components {
              */
             role: "temperature" | "seebeck" | "resistivity" | "hall";
             /** Unit */
-            unit?: ("K" | "V/K" | "uV/K" | "Ohm*m" | "mOhm*cm" | "uOhm*m" | "m^3/C" | "cm^3/C") | null;
+            unit?: ("K" | "C" | "V/K" | "uV/K" | "Ohm*m" | "mOhm*cm" | "uOhm*m" | "m^3/C" | "cm^3/C") | null;
         };
         /**
          * CurveAvailabilityResponse

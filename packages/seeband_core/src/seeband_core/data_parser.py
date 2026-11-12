@@ -52,7 +52,7 @@ IssueCode = Literal[
     "unit_assumed",
     "implausible_magnitude",
 ]
-Unit = Literal["K", "V/K", "uV/K", "Ohm*m", "mOhm*cm", "uOhm*m", "m^3/C", "cm^3/C"]
+Unit = Literal["K", "C", "V/K", "uV/K", "Ohm*m", "mOhm*cm", "uOhm*m", "m^3/C", "cm^3/C"]
 
 MIN_ROWS = 2
 # Below this, the degree 5 fit that chooses DPB start values is not determined.
@@ -73,18 +73,34 @@ _NAMES: Mapping[str, Role] = {
     "r_h": "hall",
     "hall": "hall",
 }
-# The units a column can be read in, as the power of ten that takes each to SI: µV/K is 1e-6 V/K.
-# The first of each is SI and the default. Powers of ten let a value be converted in decimal, from
-# its text, so that 50.1 µV/K gives the very float that 5.01e-5 V/K does, to the last bit.
-UNITS: Mapping[Role, Mapping[Unit, int]] = {
-    "temperature": {"K": 0},
-    "seebeck": {"V/K": 0, "uV/K": -6},
-    "resistivity": {"Ohm*m": 0, "mOhm*cm": -5, "uOhm*m": -6},
-    "hall": {"m^3/C": 0, "cm^3/C": -6},
+
+
+@dataclass(frozen=True)
+class Conversion:
+    """How a unit goes to SI: shift the decimal point by `exponent`, then add `offset`.
+
+    Both are exact in decimal, so a value converted from its text is the float its SI text would
+    give: 50.1 µV/K is the float of 5.01e-5 V/K, and 26.85 °C that of 300 K, to the last bit.
+    """
+
+    exponent: int = 0
+    offset: Decimal = Decimal(0)
+
+    @property
+    def is_si(self) -> bool:
+        return self.exponent == 0 and self.offset == 0
+
+
+# The units a column can be read in. The first of each is SI and the default.
+UNITS: Mapping[Role, Mapping[Unit, Conversion]] = {
+    "temperature": {"K": Conversion(), "C": Conversion(offset=Decimal("273.15"))},
+    "seebeck": {"V/K": Conversion(), "uV/K": Conversion(-6)},
+    "resistivity": {"Ohm*m": Conversion(), "mOhm*cm": Conversion(-5), "uOhm*m": Conversion(-6)},
+    "hall": {"m^3/C": Conversion(), "cm^3/C": Conversion(-6)},
 }
 # How a header writes each unit, after `_unit_key`.
 _HEADER_UNITS: Mapping[Role, Mapping[str, Unit]] = {
-    "temperature": {"k": "K"},
+    "temperature": {"k": "K", "kelvin": "K", "c": "C", "°c": "C", "degc": "C", "celsius": "C"},
     "seebeck": {"v/k": "V/K", "uv/k": "uV/K"},
     "resistivity": {"ohmm": "Ohm*m", "mohmcm": "mOhm*cm", "uohmm": "uOhm*m"},
     "hall": {"m3/c": "m^3/C", "cm3/c": "cm^3/C"},
@@ -188,7 +204,15 @@ def _unit_key(unit: str) -> str | None:
     # Lower case would read mega as milli, wrong by 1e9.
     if key.startswith("M"):
         return None
-    for written, spelling in (("µ", "u"), ("μ", "u"), ("Ω", "ohm"), ("ω", "ohm"), ("³", "3")):
+    for written, spelling in (
+        ("µ", "u"),
+        ("μ", "u"),
+        ("Ω", "ohm"),
+        ("ω", "ohm"),
+        ("³", "3"),
+        ("℃", "°C"),
+        ("º", "°"),
+    ):
         key = key.replace(written, spelling)
     return re.sub(r"[*·^]", "", key).lower()
 
@@ -224,16 +248,19 @@ def _mapping_from_headers(
 def to_si(role: Role, unit: Unit, texts: tuple[str, ...], values: np.ndarray) -> np.ndarray:
     """A column in SI, from its values as written. A unit that is not one of the role's raises.
 
-    SI comes back as read. Another unit is shifted in decimal and rounded once, as a float product
-    such as 50 * 1e-6 = 4.9999999999999996e-05 would differ from the SI value in its last bit, and a
-    fit can make that 1e-8 apart.
+    SI comes back as read. Another unit is converted in decimal and rounded once, as float
+    arithmetic such as 50 * 1e-6 = 4.9999999999999996e-05 would differ from the SI value in its
+    last bit, and a fit can make that 1e-8 apart.
     """
     if unit not in UNITS[role]:
         raise ValueError(f"{unit} is not a unit of {role}")
-    exponent = UNITS[role][unit]
-    if exponent == 0:
+    conversion = UNITS[role][unit]
+    if conversion.is_si:
         return values.copy()
-    return np.array([float(Decimal(text).scaleb(exponent)) for text in texts], dtype=np.float64)
+    return np.array(
+        [float(Decimal(text).scaleb(conversion.exponent) + conversion.offset) for text in texts],
+        dtype=np.float64,
+    )
 
 
 def si_column(table: ParsedTable, index: int) -> np.ndarray | None:
@@ -282,7 +309,13 @@ def _measure(
     if repeated:
         return {}, [ParseIssue("repeated_role", column=index) for index in repeated], []
     temperature_column = temperature_columns[0]
-    temperature_k = columns[temperature_column]
+    # In K, so that 0 °C is not below zero and rows sort the same in any unit.
+    temperature_k = to_si(
+        "temperature",
+        units[temperature_column],
+        texts[temperature_column],
+        columns[temperature_column],
+    )
     errors = [
         ParseIssue("non_positive_temperature", lines[row], temperature_column)
         for row in np.flatnonzero(temperature_k <= 0)[:MAX_ERRORS]

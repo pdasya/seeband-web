@@ -11,14 +11,14 @@
 
 ## Units
 
-| Quantity | Units (`Unit`)               | Factor to SI  |
-| -------- | ---------------------------- | ------------- |
-| T        | `K`                          | 1             |
-| S        | `V/K`, `uV/K`                | 1, 1e-6       |
-| ρ        | `Ohm*m`, `mOhm*cm`, `uOhm*m` | 1, 1e-5, 1e-6 |
-| R_H      | `m^3/C`, `cm^3/C`            | 1, 1e-6       |
+| Quantity | Units (`Unit`)               | Factor to SI      |
+| -------- | ---------------------------- | ----------------- |
+| T        | `K`, `C` (°C)                | 1; °C adds 273.15 |
+| S        | `V/K`, `uV/K`                | 1, 1e-6           |
+| ρ        | `Ohm*m`, `mOhm*cm`, `uOhm*m` | 1, 1e-5, 1e-6     |
+| R_H      | `m^3/C`, `cm^3/C`            | 1, 1e-6           |
 
-`UNITS` holds this table as powers of ten, and `to_si` applies it in decimal, to the value as written, with one rounding. So `50.1` in µV/K gives the very float that `5.01e-5` in V/K does. A float product would not: `50 * 1e-6` is `4.9999999999999996e-05`, and a fit turns that last bit into differences of about 1e-8 in its parameters. A fit from the same data in µV/K and mΩ·cm equals the fit from SI exactly. `ParsedTable.units` gives the unit each mapped column was read in, and `columns` keeps the values as written, for a preview.
+`UNITS` holds this table as a power of ten and an offset for each unit, and `to_si` applies it in decimal, to the value as written, with one rounding. So `50.1` in µV/K gives the very float that `5.01e-5` in V/K does, and `26.85` °C that of `300` K. A float product would not: `50 * 1e-6` is `4.9999999999999996e-05`, and a fit turns that last bit into differences of about 1e-8 in its parameters. A fit from the same data in µV/K and mΩ·cm equals the fit from SI exactly. `ParsedTable.units` gives the unit each mapped column was read in, and `columns` keeps the values as written, for a preview.
 
 A header's unit is read in any usual spelling: spaces, `*`, `·` and `^` do not matter, `µ`, `μ` and `u` are the same, `Ω` is `Ohm`, and `³` is `3`. So `S (µV/K)`, `rho (mΩ·cm)` and `RH (cm³/C)` read in those units. Case does matter for a leading `M`, as mega is not milli: `MOhm cm` is not read as `mOhm cm`.
 
@@ -42,7 +42,7 @@ Any lines before the first row of numbers are text, and the last of them is the 
 
 | Quantity | Recognised headers  | Unit in brackets, if given |
 | -------- | ------------------- | -------------------------- |
-| T        | T, T_K, temp        | K                          |
+| T        | T, T_K, temp        | K, °C (also C, degC, ℃)    |
 | S        | S, seebeck          | V/K                        |
 | ρ        | rho, ρ, resistivity | Ohm m, Ω·m                 |
 | R_H      | RH, R_H, hall       | m^3/C, m³/C                |
@@ -73,7 +73,7 @@ Problems are codes, with a line and column where they apply, and no text or meas
 | `decimal_comma`             | error   | a line that looks like it uses decimal commas                                                       |
 | `too_few_rows`              | error   | fewer than 2 rows                                                                                   |
 | `missing_temperature`       | error   | no column is T. A user can still assign one                                                         |
-| `non_positive_temperature`  | error   | T of 0 K or below                                                                                   |
+| `non_positive_temperature`  | error   | T of 0 K or below, after conversion, so -50 °C is fine and -300 °C is not                           |
 | `negative_resistivity`      | error   | a resistivity below 0, which no measurement gives (D28)                                             |
 | `repeated_role`             | error   | a mapping that uses a quantity twice                                                                |
 | `unit_not_allowed`          | error   | a unit chosen for a column that its quantity cannot have                                            |

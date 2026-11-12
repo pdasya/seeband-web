@@ -180,8 +180,8 @@ def test_lower_case_t_and_s_are_not_taken_for_temperature_or_seebeck(text: str) 
     [
         ("T,S (mV/K)", 1),
         ("T,S (err)", 1),
-        ("T (C),S", 0),
-        ("T (°C),S", 0),
+        ("T (F),S", 0),
+        ("T (°F),S", 0),
         ("T,rho (uOhm cm)", 1),
     ],
 )
@@ -229,6 +229,12 @@ def si_text() -> str:
         ("hall", "cm³/C", "cm^3/C"),
         ("hall", "cm3/C", "cm^3/C"),
         ("temperature", "K", "K"),
+        ("temperature", "°C", "C"),
+        ("temperature", "C", "C"),
+        ("temperature", "degC", "C"),
+        ("temperature", "℃", "C"),
+        ("temperature", "ºC", "C"),
+        ("temperature", "Celsius", "C"),
     ],
 )
 def test_a_header_names_its_unit_in_any_usual_spelling(role: Any, written: str, unit: str) -> None:
@@ -244,7 +250,7 @@ def test_a_header_names_its_unit_in_any_usual_spelling(role: Any, written: str, 
         ("seebeck", "mV/K"),
         ("seebeck", "V/s"),
         ("hall", "cm^3/A"),
-        ("temperature", "°C"),
+        ("temperature", "°F"),
     ],
 )
 def test_a_unit_this_cannot_read_is_not_guessed(role: Any, written: str) -> None:
@@ -256,10 +262,11 @@ def test_every_unit_converts_by_its_power_of_ten_and_si_not_at_all() -> None:
     values = np.array([float(text) for text in texts])
     for role, units in UNITS.items():
         si, *others = units
-        assert units[si] == 0
+        assert units[si].is_si
+        others = [unit for unit in others if units[unit].offset == 0]
         assert to_si(role, si, texts, values).tolist() == values.tolist()
         for unit in others:
-            exponent = units[unit]
+            exponent = units[unit].exponent
             expected = [
                 float(f"{text}e{exponent}") if "e" not in text else 7.25e3 * 10.0**exponent
                 for text in texts
@@ -347,6 +354,39 @@ def test_a_fit_from_lab_units_equals_the_fit_from_si() -> None:
     assert results[0].status == results[1].status == "converged"
     for name, value in results[0].parameters.items():
         assert results[1].parameters[name] == pytest.approx(value, rel=1e-12, abs=0), name
+
+
+def test_celsius_is_kelvin_less_273_15_to_the_last_bit() -> None:
+    rng = np.random.default_rng(1112)
+    texts = tuple(f"{value:.3f}" for value in rng.uniform(-200, 700, 5000))
+    values = np.array([float(text) for text in texts])
+    kelvin = to_si("temperature", "C", texts, values)
+    assert kelvin.tolist() == [float(Decimal(text) + Decimal("273.15")) for text in texts]
+    assert to_si("temperature", "C", ("26.85", "-273.15"), np.zeros(2)).tolist() == [300.0, 0.0]
+
+
+def test_a_table_in_celsius_reads_as_the_same_table_in_kelvin() -> None:
+    celsius = parse_table("T (°C) S\n-173.15 1e-6\n26.85 3e-6\n126.85 4e-6\n")
+    kelvin = parse_table("T (K) S\n100 1e-6\n300 3e-6\n400 4e-6\n")
+    assert celsius.units[0] == "C"
+    assert (
+        celsius.measurements["seebeck"].temperature_k.tolist()
+        == kelvin.measurements["seebeck"].temperature_k.tolist()
+        == [100.0, 300.0, 400.0]
+    )
+
+
+def test_celsius_below_zero_is_not_below_zero_kelvin() -> None:
+    table = parse_table(
+        "T S\n-50 1e-6\n20 2e-6\n", mapping={0: "temperature", 1: "seebeck"}, units={0: "C"}
+    )
+    assert table.errors == ()
+    assert table.measurements["seebeck"].temperature_k.tolist() == [223.15, 293.15]
+
+
+def test_celsius_below_absolute_zero_is_an_error_on_its_line() -> None:
+    table = parse_table("T (°C) S\n-300 1e-6\n20 2e-6\n")
+    assert table.errors == (ParseIssue("non_positive_temperature", 2, 0),)
 
 
 def test_si_column_is_in_the_order_of_the_text_and_none_without_a_role() -> None:
