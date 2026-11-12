@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { flushSync } from "react-dom";
 import { Link } from "react-router";
 
 import { Button } from "@/components/ui/button";
@@ -30,19 +30,6 @@ export function DemoNotice() {
   const hasFiles = useSessionStore(holdsFiles);
   const reading = useSessionStore(readsFiles);
   const removeData = useSessionStore((state) => state.removeData);
-  // The button goes away with the demo, so focus moves on to the first slot's control.
-  const moveFocus = useRef(false);
-
-  useEffect(() => {
-    if (moveFocus.current) {
-      moveFocus.current = false;
-      document
-        .querySelector<HTMLElement>(
-          "[data-file-slot] input, [data-file-slot] button",
-        )
-        ?.focus();
-    }
-  });
 
   const demo = QUANTITIES.filter(
     (quantity) => data[quantity]?.source.kind === "demo",
@@ -72,10 +59,19 @@ export function DemoNotice() {
             variant="outline"
             size="sm"
             onClick={() => {
-              moveFocus.current = true;
-              for (const quantity of demo) {
-                removeData(quantity);
-              }
+              // The slots must show their empty state before focus moves, or it lands on a demo
+              // card that is about to go, and falls to the page.
+              flushSync(() => {
+                for (const quantity of demo) {
+                  removeData(quantity);
+                }
+              });
+              // The button goes away with the demo, so focus moves on to the first slot's control.
+              document
+                .querySelector<HTMLElement>(
+                  "[data-file-slot] input, [data-file-slot] button",
+                )
+                ?.focus();
             }}
           >
             {text.demoClear}
