@@ -22,19 +22,33 @@ const EXAMPLES = fileURLToPath(
   ),
 );
 
-/** Chooses a file for the next empty slot, and loads it as chosen already, as the examples have no header. */
+const SYMBOL_OF_SUFFIX = { see: "S", rho: "ρ", hall: "R_H" } as const;
+
+/**
+ * Chooses a file for the next empty slot, then names the quantity of its second column, which
+ * loads it, as the examples have no header.
+ */
 async function loadExample(page: Page, name: string) {
+  const suffix = /_(see|rho|hall)\.txt$/.exec(name)?.[1] as
+    keyof typeof SYMBOL_OF_SUFFIX | undefined;
+  if (suffix === undefined) {
+    throw new Error(`No quantity in the name ${name}`);
+  }
   await page
     .locator('input[type="file"]')
     .first()
     .setInputFiles(`${EXAMPLES}${name}`);
-  await page.getByRole("button", { name: /^Load as / }).click();
+  await page
+    .getByRole("combobox", { name: "Quantity for column Column 2" })
+    .click();
+  await page
+    .getByRole("option", { name: SYMBOL_OF_SUFFIX[suffix], exact: true })
+    .click();
 }
 
 for (const example of ["01_Fe2VAl09Si01", "02_SiP", "03_AWI32_SI"]) {
   test(`all files of ${example} load`, async ({ page }) => {
     await page.goto("/fit");
-    // The data fold once the fit mode has all it needs, so it needs all three.
     await page.getByRole("radio", { name: "S + ρ + R_H", exact: true }).click();
 
     const names = ["see", "rho", "hall"].map(
@@ -43,14 +57,10 @@ for (const example of ["01_Fe2VAl09Si01", "02_SiP", "03_AWI32_SI"]) {
     for (const name of names) {
       // A slot with a file has no input, so the first input left is the next slot.
       await loadExample(page, name);
-      // The last fills the mode, and the data may fold before a check could see its name.
-      if (name !== names.at(-1)) {
-        await expect(slots(page).getByText(name)).toBeVisible();
-      }
+      await expect(slots(page).getByText(name)).toBeVisible();
     }
 
     await expect(page.getByRole("alert")).toHaveCount(0);
-    await page.getByRole("button", { name: "Details" }).click();
     for (const name of names) {
       await expect(slots(page).getByText(name)).toBeVisible();
     }
@@ -420,8 +430,6 @@ test.describe("real fits", () => {
   }) => {
     test.setTimeout(60_000);
     await page.goto("/fit?demo=1");
-    // The demo gives the fit mode all it needs, so the data fold once it is in.
-    await page.getByRole("button", { name: "Details" }).click();
     await expect(page.getByText(/^Synthetic data/)).toBeVisible();
     await expect(
       page.locator("[data-file-slot]").getByText("Demo data"),
@@ -454,7 +462,7 @@ test.describe("real fits", () => {
   }) => {
     test.setTimeout(60_000);
     await page.goto("/fit?demo=1");
-    await page.getByRole("button", { name: "Details" }).click();
+    await expect(page.getByText(/^Synthetic data/)).toBeVisible();
     await page.getByRole("radio", { name: "S + ρ", exact: true }).click();
     await page.getByRole("button", { name: "Run fit" }).click();
     await expect(
@@ -508,8 +516,6 @@ test.describe("real fits", () => {
   }) => {
     test.setTimeout(60_000);
     await page.goto("/fit?demo=1");
-    // The demo gives the fit mode all it needs, so the data fold once it is in.
-    await page.getByRole("button", { name: "Details" }).click();
     await expect(page.getByText(/^Synthetic data/)).toBeVisible();
     await page.getByRole("radio", { name: "S", exact: true }).click();
     const gap = page.getByRole("textbox", { name: "E_g", exact: true });

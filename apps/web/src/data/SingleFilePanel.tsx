@@ -2,6 +2,7 @@ import {
   AlertCircleIcon,
   LoaderCircleIcon,
   Table2Icon,
+  TriangleAlertIcon,
   XIcon,
 } from "lucide-react";
 
@@ -33,10 +34,13 @@ import {
 } from "@/data/messages";
 import {
   assignColumn,
+  chooseUnit,
   failSingleFile,
   loadSingleFile,
   removeSingleFile,
 } from "@/data/singleFile";
+import { UnitSelect } from "@/data/UnitSelect";
+import { UNITS_OF, isUnitDoubt } from "@/data/units";
 import { formatNumber, withDecimalComma } from "@/lib/numbers";
 import { cn } from "@/lib/utils";
 import {
@@ -80,6 +84,32 @@ function columnName(table: ParsedTable, column: number): string {
   );
 }
 
+/**
+ * The first value of a column as written, and in SI when its unit is another, from the server's
+ * conversion.
+ */
+function firstValue(
+  table: ParsedTable,
+  item: ColumnRole | undefined,
+  column: number,
+): string {
+  const isTemperature = item?.role === "temperature";
+  const written = formatValue(table.preview[0]?.[column], isTemperature);
+  if (item === undefined || written === "") {
+    return written;
+  }
+  const si = UNITS_OF[item.role][0];
+  const unit = item.unit ?? si;
+  const inUnit = `${written} ${text.units[unit]}`;
+  const converted = table.preview_si[0]?.[column];
+  return unit === si || converted === null || converted === undefined
+    ? inUnit
+    : text.inSi(
+        inUnit,
+        `${formatValue(converted, isTemperature)} ${text.units[si]}`,
+      );
+}
+
 function ColumnMapping({
   table,
   mapping,
@@ -87,8 +117,8 @@ function ColumnMapping({
   table: ParsedTable;
   mapping: readonly ColumnRole[];
 }) {
-  const roleOf = (column: number) =>
-    mapping.find((item) => item.column === column)?.role;
+  const itemOf = (column: number) =>
+    mapping.find((item) => item.column === column);
   return (
     <>
       <div className="flex flex-col gap-0.5 pt-1">
@@ -99,21 +129,20 @@ function ColumnMapping({
       </div>
       {Array.from({ length: table.column_count }, (_, column) => {
         const name = columnName(table, column);
-        const role = roleOf(column);
+        const item = itemOf(column);
+        const role = item?.role;
         return (
           <div
             key={column}
-            className="grid grid-cols-[minmax(0,1fr)_128px] items-center gap-2"
+            className="grid grid-cols-2 items-center gap-2 sm:grid-cols-[minmax(0,1fr)_96px_96px]"
           >
-            <div className="min-w-0">
+            {/* On a narrow screen the name takes a line, and the two choices the next. */}
+            <div className="col-span-2 min-w-0 sm:col-span-1">
               <div className="truncate font-mono text-[13px] font-medium">
                 {name}
               </div>
               <div className="truncate font-mono text-xs text-muted-foreground">
-                {formatValue(
-                  table.preview[0]?.[column],
-                  role === "temperature",
-                )}
+                {firstValue(table, item, column)}
               </div>
             </div>
             <Select
@@ -141,6 +170,18 @@ function ColumnMapping({
                 <SelectItem value={IGNORE}>{text.single.ignore}</SelectItem>
               </SelectContent>
             </Select>
+            {role === undefined ? (
+              <span />
+            ) : (
+              <UnitSelect
+                role={role}
+                value={item?.unit ?? UNITS_OF[role][0]}
+                label={name}
+                onChange={(unit) => {
+                  void chooseUnit(column, unit);
+                }}
+              />
+            )}
           </div>
         );
       })}
@@ -352,6 +393,9 @@ export function SingleFilePanel() {
   );
   // A failed read says so itself, and the last answer no longer applies.
   const settled = !file.loading && file.failure === null;
+  // Doubts about a unit show as an alert, as a fit from such values is wrong by a factor.
+  const unitWarnings = table.warnings.filter(({ code }) => isUnitDoubt(code));
+  const otherWarnings = table.warnings.filter(({ code }) => !isUnitDoubt(code));
   return (
     <div className="flex flex-col gap-2.5">
       {status}
@@ -393,9 +437,22 @@ export function SingleFilePanel() {
       {table.preview.length > 0 && (
         <Preview table={table} mapping={file.mapping} />
       )}
-      {settled && usable && table.warnings.length > 0 && (
+      {settled && usable && unitWarnings.length > 0 && (
+        <Alert>
+          <TriangleAlertIcon aria-hidden="true" />
+          <AlertTitle>{text.checkUnitTitle}</AlertTitle>
+          <AlertDescription>
+            <ul className="m-0 list-none p-0">
+              {unitWarnings.map((warning, index) => (
+                <li key={index}>{issueMessage(warning)}</li>
+              ))}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      )}
+      {settled && usable && otherWarnings.length > 0 && (
         <ul className="m-0 list-none p-0 text-xs text-muted-foreground">
-          {table.warnings.map((warning, index) => (
+          {otherWarnings.map((warning, index) => (
             <li key={index}>{issueMessage(warning)}</li>
           ))}
         </ul>

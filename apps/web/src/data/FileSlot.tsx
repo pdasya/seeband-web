@@ -1,10 +1,18 @@
-import { AlertCircleIcon, LoaderCircleIcon, XIcon } from "lucide-react";
-import { useEffect, useRef } from "react";
+import {
+  AlertCircleIcon,
+  LoaderCircleIcon,
+  TriangleAlertIcon,
+  XIcon,
+} from "lucide-react";
+import { Fragment, useEffect, useRef } from "react";
 
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import type { Role } from "@/data/columnChoice";
 import { DropArea, useFileDrop } from "@/data/DropArea";
 import { SlotColumns } from "@/data/SlotColumns";
+import { UnitSelect } from "@/data/UnitSelect";
+import { unitOf } from "@/data/units";
 import { useFileUpload } from "@/data/useFileUpload";
 import { cn } from "@/lib/utils";
 import {
@@ -65,13 +73,27 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
   const { data: text } = STRINGS;
   const names = text.quantities[quantity];
   const data = useSessionStore((state) => state.data[quantity]);
-  const { state, upload, chooseRole, applyChoice, remove, fail } =
-    useFileUpload(quantity);
+  const {
+    state,
+    upload,
+    chooseRole,
+    chooseColumnUnit,
+    retryChoice,
+    changeUnit,
+    remove,
+    fail,
+  } = useFileUpload(quantity);
   const input = useRef<HTMLInputElement>(null);
   const removeButton = useRef<HTMLButtonElement>(null);
   const firstSelect = useRef<HTMLButtonElement>(null);
   // The element with focus goes away when a slot changes, so it comes back to the slot's control.
   const keepFocus = useRef(false);
+  // A unit select waits while the file is read again, which takes focus from it, so it comes back.
+  const unitSelects = useRef<Partial<Record<Role, HTMLButtonElement | null>>>(
+    {},
+  );
+  const unitFocus = useRef<Role | null>(null);
+  const rereading = state.status === "idle" && state.rereading === true;
 
   useEffect(() => {
     // A file on its way, or a choice the server is reading, has not settled yet.
@@ -81,6 +103,10 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
     if (keepFocus.current && !settling) {
       keepFocus.current = false;
       (input.current ?? firstSelect.current ?? removeButton.current)?.focus();
+    }
+    if (unitFocus.current !== null && !rereading) {
+      unitSelects.current[unitFocus.current]?.focus();
+      unitFocus.current = null;
     }
   });
 
@@ -107,6 +133,8 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
     announcement = `${state.name}: ${text.reading}`;
   } else if (state.status === "choose") {
     announcement = `${state.name}: ${text.noHeaderQuestion}`;
+  } else if (state.status === "idle" && state.rereading === true) {
+    announcement = `${names.title}: ${text.reading}`;
   } else if (data !== undefined) {
     announcement = `${names.title}: ${dataName(data)}, ${fileSummary(quantity, data)}`;
   }
@@ -178,10 +206,15 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
             quantity={quantity}
             choice={state}
             firstSelect={firstSelect}
-            onRole={chooseRole}
-            onApply={() => {
-              keepFocus.current = true;
-              void applyChoice();
+            // A choice that reads the file may take this card away, so focus comes back.
+            onRole={(column, role) => {
+              keepFocus.current = chooseRole(column, role);
+            }}
+            onUnit={(column, unit) => {
+              keepFocus.current = chooseColumnUnit(column, unit);
+            }}
+            onRetry={() => {
+              keepFocus.current = retryChoice();
             }}
           />
         </div>
@@ -217,6 +250,63 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
             <XIcon aria-hidden="true" />
           </Button>
         </div>
+        {/* Demo data come in SI, and have no file to read again. */}
+        {data.readAs !== undefined && (
+          // T and the quantity in one row, each symbol before its unit.
+          <div className="grid grid-cols-[auto_minmax(0,112px)_auto_minmax(0,112px)] items-center justify-start gap-x-2 text-xs text-muted-foreground">
+            {(["temperature", quantity] as const).map((role) => (
+              <Fragment key={role}>
+                <span className="font-mono">
+                  {role === "temperature" ? "T" : names.symbol}
+                </span>
+                <UnitSelect
+                  ref={(select) => {
+                    unitSelects.current[role] = select;
+                  }}
+                  role={role}
+                  value={unitOf(data.readAs, role)}
+                  disabled={rereading}
+                  label={
+                    role === "temperature"
+                      ? `${text.temperature}, ${names.title}`
+                      : names.title
+                  }
+                  onChange={(unit) => {
+                    unitFocus.current = role;
+                    void changeUnit(role, unit);
+                  }}
+                />
+              </Fragment>
+            ))}
+          </div>
+        )}
+        {data.unitDoubts !== undefined && data.unitDoubts.length > 0 && (
+          <Alert>
+            <TriangleAlertIcon aria-hidden="true" />
+            <AlertTitle>{text.checkUnitTitle}</AlertTitle>
+            <AlertDescription>
+              <ul className="m-0 list-none p-0">
+                {data.unitDoubts.map((doubt) => (
+                  <li key={doubt}>{text.issues[doubt]}</li>
+                ))}
+              </ul>
+            </AlertDescription>
+          </Alert>
+        )}
+        {state.status === "idle" &&
+          state.failures !== undefined &&
+          state.failures.length > 0 && (
+            <Alert variant="destructive">
+              <AlertCircleIcon aria-hidden="true" />
+              <AlertDescription>
+                <ul className="m-0 list-none p-0">
+                  {state.failures.map((failure, index) => (
+                    <li key={index}>{failure}</li>
+                  ))}
+                </ul>
+              </AlertDescription>
+            </Alert>
+          )}
         {state.status === "idle" && state.warnings.length > 0 && (
           <ul className="m-0 list-none p-0 text-xs text-muted-foreground">
             {state.warnings.map((warning, index) => (

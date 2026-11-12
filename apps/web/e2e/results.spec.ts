@@ -12,6 +12,7 @@ const PARSED = (quantity: string) => ({
   column_count: 2,
   row_count: 2,
   preview: [],
+  preview_si: [],
   mapping: [],
   measurements: {
     [quantity]: {
@@ -204,7 +205,7 @@ test("demo data say so on the results", async ({ page }) => {
   await stub(page);
   await page.route("**/api/demo", (route) => route.fulfill({ json: DEMO }));
   await page.goto("/fit?demo=1");
-  await expect(page.getByRole("button", { name: "Details" })).toBeVisible();
+  await expect(page.getByText(/^Synthetic data/)).toBeVisible();
   await finishWith(page);
   await toResults(page);
 
@@ -217,13 +218,17 @@ test("an RMSE that is on its way or failed says so, not that data are missing", 
 }) => {
   await openFit(page);
   await finishWith(page);
-  // Every request waits, as the fit screen may still have one on its way.
+  // Every request waits until the answer is set, as the fit screen may still have one on its way,
+  // and any later one gets the same answer.
   const pending: ((ok: boolean) => void)[] = [];
+  const set: { ok?: boolean } = {};
   await page.unroute("**/api/calc");
   await page.route("**/api/calc", async (route) => {
-    const ok = await new Promise<boolean>((resolve) => {
-      pending.push(resolve);
-    });
+    const ok =
+      set.ok ??
+      (await new Promise<boolean>((resolve) => {
+        pending.push(resolve);
+      }));
     await (ok
       ? route.fulfill({ json: { ...CALC, rmse: RMSE } })
       : route.fulfill({ status: 500, json: { code: "internal_error" } }));
@@ -233,6 +238,7 @@ test("an RMSE that is on its way or failed says so, not that data are missing", 
   await expect(kpi(page, "RMSE S")).toContainText("calculating…");
   await expect(kpi(page, "RMSE S")).not.toContainText("needs measurements");
   await expect.poll(() => pending.length).toBeGreaterThan(0);
+  set.ok = false;
   for (const answer of pending) {
     answer(false);
   }

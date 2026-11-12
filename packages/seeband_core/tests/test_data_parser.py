@@ -2,6 +2,7 @@ import hashlib
 import json
 import random
 import time
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -11,10 +12,17 @@ from seeband_core.data_parser import (
     MAX_ERRORS,
     MAX_LINE_LENGTH,
     MIN_ROWS,
+    UNITS,
     ParseIssue,
+    header_unit,
     parse_table,
+    si_column,
+    to_si,
     with_mapping,
 )
+from seeband_core.model_catalog import registry
+from seeband_core.model_interface import FitRequest
+from seeband_core.model_scales import default_start
 
 FIXTURES = Path(__file__).parent / "fixtures"
 EXAMPLES = sorted((FIXTURES / "examples").glob("*.txt"))
@@ -170,10 +178,10 @@ def test_lower_case_t_and_s_are_not_taken_for_temperature_or_seebeck(text: str) 
 @pytest.mark.parametrize(
     ("header", "column"),
     [
-        ("T,S (uV/K)", 1),
+        ("T,S (mV/K)", 1),
         ("T,S (err)", 1),
-        ("T (C),S", 0),
-        ("T (°C),S", 0),
+        ("T (F),S", 0),
+        ("T (°F),S", 0),
         ("T,rho (uOhm cm)", 1),
     ],
 )
@@ -181,6 +189,286 @@ def test_a_column_in_another_unit_is_not_read_as_if_in_ours(header: str, column:
     table = parse_table(f"{header}\n300,1\n400,2\n")
     assert ParseIssue("unit_differs", column=column) in table.warnings
     assert column not in table.mapping
+
+
+# Rows of a Fe2VAl-like sample: T in K, S in V/K, ρ in Ω·m, R_H in m³/C.
+SI_ROWS = [
+    (100.0, 5.0e-5, 4.0e-6, 2.0e-9),
+    (200.0, 8.0e-5, 5.0e-6, 1.5e-9),
+    (300.0, 1.0e-4, 6.0e-6, 1.2e-9),
+    (400.0, 1.1e-4, 7.0e-6, 1.0e-9),
+    (500.0, 1.15e-4, 8.0e-6, 0.9e-9),
+    (600.0, 1.18e-4, 9.0e-6, 0.8e-9),
+]
+
+
+def lab_units_text(header: str) -> str:
+    """The same rows in µV/K, mΩ·cm and cm³/C, written exactly in decimal."""
+    rows = [f"{t:g} {s * 1e6:.6g} {rho * 1e5:.6g} {rh * 1e6:.6g}" for t, s, rho, rh in SI_ROWS]
+    return header + "\n" + "\n".join(rows) + "\n"
+
+
+def si_text() -> str:
+    rows = [f"{t:g} {s:.6g} {rho:.6g} {rh:.6g}" for t, s, rho, rh in SI_ROWS]
+    return "T S rho RH\n" + "\n".join(rows) + "\n"
+
+
+@pytest.mark.parametrize(
+    ("role", "written", "unit"),
+    [
+        ("seebeck", "V/K", "V/K"),
+        ("seebeck", "uV/K", "uV/K"),
+        ("seebeck", "µV/K", "uV/K"),
+        ("seebeck", "μV / K", "uV/K"),
+        ("resistivity", "Ohm m", "Ohm*m"),
+        ("resistivity", "Ω·m", "Ohm*m"),
+        ("resistivity", "mOhm cm", "mOhm*cm"),
+        ("resistivity", "mΩ·cm", "mOhm*cm"),
+        ("resistivity", "µΩ·m", "uOhm*m"),
+        # OHM SIGN, as Excel and Windows write it, and the dot operator.
+        ("resistivity", "\u2126·m", "Ohm*m"),
+        ("resistivity", "m\u2126\u22c5cm", "mOhm*cm"),
+        ("hall", "m^3/C", "m^3/C"),
+        ("hall", "cm³/C", "cm^3/C"),
+        ("hall", "cm3/C", "cm^3/C"),
+        ("temperature", "K", "K"),
+        ("temperature", "°C", "C"),
+        ("temperature", "C", "C"),
+        ("temperature", "degC", "C"),
+        ("temperature", "℃", "C"),
+        ("temperature", "ºC", "C"),
+        ("temperature", "Celsius", "C"),
+    ],
+)
+def test_a_header_names_its_unit_in_any_usual_spelling(role: Any, written: str, unit: str) -> None:
+    assert header_unit(role, written) == unit
+
+
+@pytest.mark.parametrize(
+    ("role", "written"),
+    [
+        # Mega is not milli: lower case alone would read it 1e9 off.
+        ("resistivity", "MOhm cm"),
+        ("resistivity", "MΩ·cm"),
+        ("seebeck", "mV/K"),
+        ("seebeck", "V/s"),
+        ("hall", "cm^3/A"),
+        ("temperature", "°F"),
+    ],
+)
+def test_a_unit_this_cannot_read_is_not_guessed(role: Any, written: str) -> None:
+    assert header_unit(role, written) is None
+
+
+def test_every_unit_converts_by_its_power_of_ten_and_si_not_at_all() -> None:
+    texts = ("1", "-2.5", "123.456", "7.25e3")
+    values = np.array([float(text) for text in texts])
+    for role, units in UNITS.items():
+        si, *others = units
+        assert units[si].is_si
+        others = [unit for unit in others if units[unit].offset == 0]
+        assert to_si(role, si, texts, values).tolist() == values.tolist()
+        for unit in others:
+            exponent = units[unit].exponent
+            expected = [
+                float(f"{text}e{exponent}") if "e" not in text else 7.25e3 * 10.0**exponent
+                for text in texts
+            ]
+            np.testing.assert_allclose(to_si(role, unit, texts, values), expected, rtol=1e-15)
+    with pytest.raises(ValueError, match="not a unit of seebeck"):
+        to_si("seebeck", "m^3/C", texts, values)
+
+
+def test_a_converted_value_is_the_float_of_the_same_digits_in_si_to_the_last_bit() -> None:
+    # A float product gives 4.9999999999999996e-05 for 50 µV/K, which a fit turns into 1e-8.
+    rng = np.random.default_rng(20261112)
+    texts = tuple(f"{value:.4f}" for value in rng.uniform(1, 999, 5000))
+    values = np.array([float(text) for text in texts])
+    micro = to_si("seebeck", "uV/K", texts, values)
+    in_si = [float(f"{text}e-6") for text in texts]
+    assert micro.tolist() == in_si
+    milli_cm = to_si("resistivity", "mOhm*cm", texts, values)
+    assert milli_cm.tolist() == [float(f"{text}e-5") for text in texts]
+
+
+def test_lab_units_named_in_the_header_read_the_same_as_si() -> None:
+    lab = parse_table(lab_units_text("T(K) S(uV/K) rho(mOhm cm) RH(cm^3/C)"))
+    si = parse_table(si_text())
+    assert lab.units == {0: "K", 1: "uV/K", 2: "mOhm*cm", 3: "cm^3/C"}
+    assert si.units == {0: "K", 1: "V/K", 2: "Ohm*m", 3: "m^3/C"}
+    assert codes(lab.warnings) == codes(si.warnings) == []
+    for quantity in ("seebeck", "resistivity", "hall"):
+        assert (
+            lab.measurements[quantity].values.tolist() == si.measurements[quantity].values.tolist()
+        )
+
+
+def test_lab_units_chosen_by_a_user_read_the_same_as_si() -> None:
+    mapping: Any = {0: "temperature", 1: "seebeck", 2: "resistivity", 3: "hall"}
+    chosen: Any = {1: "uV/K", 2: "mOhm*cm", 3: "cm^3/C"}
+    lab = parse_table(lab_units_text("T S rho RH"), mapping=mapping, units=chosen)
+    si = parse_table(si_text())
+    assert lab.units == {0: "K", **chosen}
+    for quantity in ("seebeck", "resistivity", "hall"):
+        assert (
+            lab.measurements[quantity].values.tolist() == si.measurements[quantity].values.tolist()
+        )
+
+
+def _in_lab_units(path: Path, exponent: int) -> str:
+    """An example file with its values shifted in decimal, as a lab would write them."""
+    rows = [line.split() for line in path.read_text().strip().splitlines()]
+    return "\n".join(f"{t} {Decimal(v).scaleb(exponent)}" for t, v in rows) + "\n"
+
+
+def test_a_fit_from_lab_units_equals_the_fit_from_si() -> None:
+    """FS20: SI data and the same data in µV/K and mΩ·cm give the same parameters."""
+    example = FIXTURES / "examples" / "01_Fe2VAl09Si01"
+    si = {
+        "seebeck": parse_table(Path(f"{example}_see.txt").read_text(), "seebeck"),
+        "resistivity": parse_table(Path(f"{example}_rho.txt").read_text(), "resistivity"),
+    }
+    lab = {
+        "seebeck": parse_table(
+            _in_lab_units(Path(f"{example}_see.txt"), 6),
+            mapping={0: "temperature", 1: "seebeck"},
+            units={1: "uV/K"},
+        ),
+        "resistivity": parse_table(
+            _in_lab_units(Path(f"{example}_rho.txt"), 5),
+            mapping={0: "temperature", 1: "resistivity"},
+            units={1: "mOhm*cm"},
+        ),
+    }
+    model = registry.get("dpb")
+    mode = next(m for m in model.describe().fit_modes if m.id == "dpb_s_rho")
+    results = [
+        model.fit(
+            FitRequest(
+                "dpb_s_rho",
+                {quantity: table.measurements[quantity] for quantity, table in tables.items()},  # type: ignore[index]
+                default_start(mode),
+                scattering="acPh",
+            ),
+            lambda *_: None,
+        )
+        for tables in (si, lab)
+    ]
+    assert results[0].status == results[1].status == "converged"
+    for name, value in results[0].parameters.items():
+        assert results[1].parameters[name] == pytest.approx(value, rel=1e-12, abs=0), name
+
+
+def test_celsius_is_kelvin_less_273_15_to_the_last_bit() -> None:
+    rng = np.random.default_rng(1112)
+    texts = tuple(f"{value:.3f}" for value in rng.uniform(-200, 700, 5000))
+    values = np.array([float(text) for text in texts])
+    kelvin = to_si("temperature", "C", texts, values)
+    assert kelvin.tolist() == [float(Decimal(text) + Decimal("273.15")) for text in texts]
+    assert to_si("temperature", "C", ("26.85", "-273.15"), np.zeros(2)).tolist() == [300.0, 0.0]
+
+
+def test_a_table_in_celsius_reads_as_the_same_table_in_kelvin() -> None:
+    celsius = parse_table("T (°C) S\n-173.15 1e-6\n26.85 3e-6\n126.85 4e-6\n")
+    kelvin = parse_table("T (K) S\n100 1e-6\n300 3e-6\n400 4e-6\n")
+    assert celsius.units[0] == "C"
+    assert (
+        celsius.measurements["seebeck"].temperature_k.tolist()
+        == kelvin.measurements["seebeck"].temperature_k.tolist()
+        == [100.0, 300.0, 400.0]
+    )
+
+
+def test_celsius_below_zero_is_not_below_zero_kelvin() -> None:
+    table = parse_table(
+        "T S\n-50 1e-6\n20 2e-6\n", mapping={0: "temperature", 1: "seebeck"}, units={0: "C"}
+    )
+    assert table.errors == ()
+    assert table.measurements["seebeck"].temperature_k.tolist() == [223.15, 293.15]
+
+
+def test_celsius_below_absolute_zero_is_an_error_on_its_line() -> None:
+    table = parse_table("T (°C) S\n-300 1e-6\n20 2e-6\n")
+    assert table.errors == (ParseIssue("non_positive_temperature", 2, 0),)
+
+
+def test_si_column_is_in_the_order_of_the_text_and_none_without_a_role() -> None:
+    table = parse_table("T S (uV/K) x\n300 3 9\n100 1 9\n")
+    column = si_column(table, 1)
+    assert column is not None
+    assert column.tolist() == [3e-6, 1e-6]
+    assert si_column(table, 2) is None
+    first = si_column(table, 1, rows=1)
+    assert first is not None
+    assert first.tolist() == [3e-6]
+
+
+@pytest.mark.parametrize(
+    ("text", "quantity", "expected"),
+    [
+        # Float reads these as 0, and Decimal cannot hold the exponent.
+        ("T (K)\tS (uV/K)\n100\t1e-99999999999999999999\n200\t50\n", "seebeck", [0.0, 5e-5]),
+        ("T (C)\tS (V/K)\n1e-99999999999999999999\t1e-4\n200\t2e-4\n", "seebeck", [1e-4, 2e-4]),
+        ("T (K)\tS (uV/K)\n100\t1e-500\n200\t50\n", "seebeck", [0.0, 5e-5]),
+    ],
+)
+def test_a_value_at_an_exponent_no_measurement_has_converts_as_read(
+    text: str, quantity: Any, expected: list[float]
+) -> None:
+    table = parse_table(text)
+    assert table.errors == ()
+    assert table.measurements[quantity].values.tolist() == expected
+
+
+def test_lab_units_read_as_si_are_called_implausible() -> None:
+    table = parse_table(lab_units_text("T S rho RH"))
+    # ρ of 0.9 mΩ·cm read as Ω·m, and R_H of 2e-3 cm³/C read as m³/C, are still possible values,
+    # as the SiP example shows, so only the unit chosen catches them.
+    assert [(issue.code, issue.column) for issue in table.warnings] == [
+        ("implausible_magnitude", 1),
+    ]
+    # The values are read as written, as the warning only says they look wrong.
+    assert table.measurements["seebeck"].values[0] == 50.0
+
+
+def test_large_hall_values_read_as_si_are_called_implausible() -> None:
+    table = parse_table("T RH\n100 0.5\n200 0.3\n")
+    assert ParseIssue("implausible_magnitude", column=1) in table.warnings
+
+
+def test_si_values_far_too_small_are_called_implausible() -> None:
+    table = parse_table("T S\n100 1e-12\n200 2e-12\n")
+    assert ParseIssue("implausible_magnitude", column=1) in table.warnings
+
+
+def test_a_unit_from_another_quantity_is_refused_and_reads_nothing() -> None:
+    table = parse_table(si_text(), mapping={0: "temperature", 1: "seebeck"}, units={1: "cm^3/C"})
+    assert table.errors == (ParseIssue("unit_not_allowed", column=1),)
+    assert table.measurements == {}
+
+
+def test_a_unit_for_a_column_outside_the_mapping_is_ignored() -> None:
+    table = parse_table(si_text(), mapping={0: "temperature", 1: "seebeck"}, units={2: "uV/K"})
+    assert table.errors == ()
+    assert table.units == {0: "K", 1: "V/K"}
+
+
+def test_a_column_with_an_unreadable_unit_assigned_by_hand_is_read_in_si_and_says_so() -> None:
+    table = parse_table("T S (mV/s)\n300 1e-4\n400 2e-4\n")
+    assert ParseIssue("unit_differs", column=1) in table.warnings
+    assigned = with_mapping(table, {0: "temperature", 1: "seebeck"})
+    # No longer "not used", which would be false.
+    assert ParseIssue("unit_differs", column=1) not in assigned.warnings
+    assert ParseIssue("unit_assumed", column=1) in assigned.warnings
+    assert assigned.units[1] == "V/K"
+    assert assigned.measurements["seebeck"].values.tolist() == [1e-4, 2e-4]
+
+
+def test_a_known_header_unit_carries_over_to_a_hand_assignment() -> None:
+    table = parse_table("T Svalues (uV/K)\n300 100\n400 200\n")
+    assigned = with_mapping(table, {0: "temperature", 1: "seebeck"})
+    assert assigned.units[1] == "uV/K"
+    np.testing.assert_allclose(assigned.measurements["seebeck"].values, [1e-4, 2e-4], rtol=1e-15)
 
 
 def test_a_column_with_an_error_does_not_replace_the_real_one() -> None:

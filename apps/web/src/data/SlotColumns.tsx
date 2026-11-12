@@ -11,6 +11,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { chosenQuantity, type Role } from "@/data/columnChoice";
+import { UnitSelect } from "@/data/UnitSelect";
+import { UNITS_OF, type Unit } from "@/data/units";
 import type { ColumnChoice } from "@/data/useFileUpload";
 import { formatNumber, withDecimalComma } from "@/lib/numbers";
 import { QUANTITIES, type Quantity } from "@/session/store";
@@ -39,14 +41,17 @@ export function SlotColumns({
   choice,
   firstSelect,
   onRole,
-  onApply,
+  onUnit,
+  onRetry,
 }: {
   quantity: Quantity;
   choice: ColumnChoice;
   /** Where focus goes once the choice shows. */
   firstSelect: Ref<HTMLButtonElement>;
   onRole: (column: number, role: Role | null) => void;
-  onApply: () => void;
+  onUnit: (column: number, unit: Unit) => void;
+  /** Reads the same choice again, once what was wrong with it is mended. */
+  onRetry: () => void;
 }) {
   const target = chosenQuantity(choice.roles);
   const named = choice.named === null ? null : text.quantities[choice.named];
@@ -73,42 +78,57 @@ export function SlotColumns({
         const role = choice.roles[column] ?? null;
         const name = `${text.single.column} ${String(column + 1)}`;
         return (
-          <div
-            key={column}
-            className="grid grid-cols-[minmax(0,1fr)_96px] items-center gap-2"
-          >
-            <div className="min-w-0">
-              <div className="truncate font-mono text-[13px] font-medium">
+          // The card is narrow, so the column's name and value take a line of their own, and the
+          // choices of quantity and unit the next.
+          <div key={column} className="flex flex-col gap-1">
+            <div className="flex min-w-0 items-baseline gap-2">
+              <span className="flex-none font-mono text-[13px] font-medium">
                 {name}
-              </div>
-              <div className="truncate font-mono text-xs text-muted-foreground">
+              </span>
+              <span className="truncate font-mono text-xs text-muted-foreground">
                 {firstValue(choice.firstRow[column], role)}
-              </div>
+              </span>
             </div>
-            <Select
-              disabled={choice.applying}
-              value={role ?? IGNORE}
-              onValueChange={(value) => {
-                onRole(column, value === IGNORE ? null : (value as Role));
-              }}
-            >
-              <SelectTrigger
-                ref={column === focusColumn ? firstSelect : undefined}
-                size="sm"
-                className="w-full"
-                aria-label={`${text.single.columnRole} ${name}`}
+            <div className="grid grid-cols-2 gap-2">
+              <Select
+                disabled={choice.applying}
+                value={role ?? IGNORE}
+                onValueChange={(value) => {
+                  onRole(column, value === IGNORE ? null : (value as Role));
+                }}
               >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {ROLES.map((option) => (
-                  <SelectItem key={option} value={option}>
-                    {roleSymbol(option)}
-                  </SelectItem>
-                ))}
-                <SelectItem value={IGNORE}>{text.single.ignore}</SelectItem>
-              </SelectContent>
-            </Select>
+                <SelectTrigger
+                  ref={column === focusColumn ? firstSelect : undefined}
+                  size="sm"
+                  className="w-full"
+                  aria-label={`${text.single.columnRole} ${name}`}
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ROLES.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {roleSymbol(option)}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value={IGNORE}>{text.single.ignore}</SelectItem>
+                </SelectContent>
+              </Select>
+              {/* A quantity's unit is chosen on the loaded file, as choosing it loads the file. */}
+              {role !== "temperature" ? (
+                <span />
+              ) : (
+                <UnitSelect
+                  role={role}
+                  value={choice.units[column] ?? UNITS_OF[role][0]}
+                  label={name}
+                  disabled={choice.applying}
+                  onChange={(unit) => {
+                    onUnit(column, unit);
+                  }}
+                />
+              )}
+            </div>
           </div>
         );
       })}
@@ -121,30 +141,26 @@ export function SlotColumns({
                 <li key={index}>{problem}</li>
               ))}
             </ul>
+            {/* A full slot emptied, or a lost connection back, leaves nothing to choose anew. */}
+            {target !== null && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-2"
+                disabled={choice.applying}
+                onClick={onRetry}
+              >
+                {text.tryAgain}
+              </Button>
+            )}
           </AlertDescription>
         </Alert>
       )}
-      {target === null ? (
+      {target === null && (
         <p className="m-0 text-xs text-muted-foreground">
-          {text.chooseColumns}
+          {text.chooseColumns(text.quantities[quantity].symbol)}
         </p>
-      ) : (
-        target !== quantity && (
-          <p className="m-0 text-xs text-muted-foreground">
-            {text.goesToSlot(text.quantities[target].title)}
-          </p>
-        )
       )}
-      <Button
-        size="sm"
-        className="self-start"
-        disabled={target === null || choice.applying}
-        onClick={onApply}
-      >
-        {target === null
-          ? text.loadAs("…")
-          : text.loadAs(text.quantities[target].symbol)}
-      </Button>
     </div>
   );
 }

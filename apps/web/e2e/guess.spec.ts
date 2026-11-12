@@ -14,6 +14,7 @@ const PARSED = {
   column_count: 2,
   row_count: 2,
   preview: [],
+  preview_si: [],
   mapping: [],
   measurements: {
     seebeck: {
@@ -79,7 +80,6 @@ async function load(page: Page) {
       mimeType: "text/plain",
       buffer: Buffer.from("T S\n100 1\n"),
     });
-  // Folded away once the fit mode has all it needs, so it may not show.
   await expect(page.getByText(/^3 points/)).toHaveCount(1);
 }
 

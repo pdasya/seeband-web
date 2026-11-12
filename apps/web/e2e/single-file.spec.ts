@@ -29,6 +29,11 @@ function parsed(overrides: object = {}) {
       [200, 2e-4, 2e-5, 2e-7],
       [300, 3e-4, 3e-5, 3e-7],
     ],
+    preview_si: [
+      [100, 1e-4, 1e-5, 1e-7],
+      [200, 2e-4, 2e-5, 2e-7],
+      [300, 3e-4, 3e-5, 3e-7],
+    ],
     mapping: ALL_MAPPING,
     measurements: {
       seebeck: measurement,
@@ -99,16 +104,20 @@ test("the panel says what each source expects, with its units", async ({
 }) => {
   await page.goto("/fit");
   await expect(
-    page.getByText("Each file: T in K and the value."),
+    page.getByText("Each file: T and the value, in the units its header names"),
   ).toBeVisible();
 
   await page.getByRole("tab", { name: "Single file" }).click();
 
-  await expect(page.getByText("One table: a column for T in K")).toBeVisible();
   await expect(
-    page.getByText("S in V/K, ρ in Ω·m, R_H in m³/C."),
+    page.getByText("One table: a column for T, and for each quantity"),
   ).toBeVisible();
-  await expect(page.getByText("Each file: T in K")).toHaveCount(0);
+  await expect(
+    page.getByText(
+      /or the ones you choose\. With neither: T in K, S in V\/K, ρ in Ω·m, R_H in m³\/C\./,
+    ),
+  ).toBeVisible();
+  await expect(page.getByText("Each file: T and the value")).toHaveCount(0);
 });
 
 test("the first read sends no mapping, so that the server suggests one", async ({
@@ -275,6 +284,7 @@ test("a broken file shows its error, with no columns to map", async ({
         column_count: 0,
         row_count: 0,
         preview: [],
+        preview_si: [],
         mapping: [],
         measurements: {},
         errors: [{ code: "no_data" }],

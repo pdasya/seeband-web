@@ -4,24 +4,9 @@ import { describe, expect, test } from "vitest";
 import { chosenQuantity, initialRoles, mappingOf } from "@/data/columnChoice";
 
 describe("initialRoles", () => {
-  test("two columns take T and the slot's quantity", () => {
-    expect(initialRoles(2, "seebeck", false)).toEqual([
-      "temperature",
-      "seebeck",
-    ]);
-  });
-
-  test("doubt leaves the second column to the user", () => {
-    expect(initialRoles(2, "seebeck", true)).toEqual(["temperature", null]);
-  });
-
-  test("more columns leave all but T to the user", () => {
-    expect(initialRoles(4, "hall", false)).toEqual([
-      "temperature",
-      null,
-      null,
-      null,
-    ]);
+  test("takes the first column as T and leaves the quantity to the user", () => {
+    expect(initialRoles(2)).toEqual(["temperature", null]);
+    expect(initialRoles(4)).toEqual(["temperature", null, null, null]);
   });
 });
 

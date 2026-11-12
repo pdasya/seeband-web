@@ -1,6 +1,7 @@
 import { apiClient, type ParseRequest } from "@/api/client";
 import { failureMessage } from "@/data/messages";
 import { readFileText } from "@/data/readFile";
+import { columnOf, unitDoubts, type Unit } from "@/data/units";
 import {
   QUANTITIES,
   useSessionStore,
@@ -38,6 +39,11 @@ function applyTable(name: string, text: string, table: ParsedTable) {
         source: { kind: "file", name },
         extrapolated: false,
         text,
+        readAs: table.mapping,
+        unitDoubts: unitDoubts(
+          table.warnings,
+          columnOf(table.mapping, quantity),
+        ),
       });
     }
   }
@@ -107,7 +113,10 @@ export function failSingleFile(message: string) {
   store().failSingleFile(message);
 }
 
-/** Gives a column a role, or none. The server says if the result will not do. */
+/**
+ * Gives a column a role, or none. The server says if the result will not do. A new role starts in
+ * the unit of the column's header, or SI, as a unit belongs to the quantity it was chosen for.
+ */
 export async function assignColumn(
   column: number,
   role: ColumnRole["role"] | null,
@@ -118,6 +127,18 @@ export async function assignColumn(
   }
   const others = current.mapping.filter((item) => item.column !== column);
   const mapping = role === null ? others : [...others, { column, role }];
+  await read(current.name, current.text, mapping, current.table);
+}
+
+/** Reads a column in another unit. */
+export async function chooseUnit(column: number, unit: Unit) {
+  const current = store().singleFile;
+  if (current === null) {
+    return;
+  }
+  const mapping = current.mapping.map((item) =>
+    item.column === column ? { ...item, unit } : item,
+  );
   await read(current.name, current.text, mapping, current.table);
 }
 
