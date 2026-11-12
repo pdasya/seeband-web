@@ -1,11 +1,14 @@
 """Read measured data from text, as the Conventions page describes.
 
-Columns are separated by spaces, tabs or commas, and values are in the units of `QUANTITY_UNITS`.
+Columns are separated by spaces, tabs or commas. Each column is read in a unit of `UNITS`, from its
+header or a user's choice, and measurements are converted to SI here, so nothing after this reads a
+unit.
 Where it is not clear what a column holds, it stays unassigned for a user to assign, because a wrong
 guess gives numbers that look fine. Problems come back as codes with no text and no measured values,
 so that a client can translate them and a log can hold them.
 """
 
+import dataclasses
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass, replace
@@ -33,6 +36,7 @@ IssueCode = Literal[
     "non_positive_temperature",
     "negative_resistivity",
     "repeated_role",
+    "unit_not_allowed",
     # Warnings
     "preamble_skipped",
     "header_mismatch",
@@ -44,7 +48,10 @@ IssueCode = Literal[
     "few_rows",
     "unsorted_temperature",
     "duplicate_temperature",
+    "unit_assumed",
+    "implausible_magnitude",
 ]
+Unit = Literal["K", "V/K", "uV/K", "Ohm*m", "mOhm*cm", "uOhm*m", "m^3/C", "cm^3/C"]
 
 MIN_ROWS = 2
 # Below this, the degree 5 fit that chooses DPB start values is not determined.
@@ -65,12 +72,28 @@ _NAMES: Mapping[str, Role] = {
     "r_h": "hall",
     "hall": "hall",
 }
-# The units values are read in, without spaces and in lower case.
-_UNITS: Mapping[Role, frozenset[str]] = {
-    "temperature": frozenset({"k"}),
-    "seebeck": frozenset({"v/k"}),
-    "resistivity": frozenset({"ohmm", "ohm*m", "ohm·m", "ωm", "ω*m", "ω·m"}),
-    "hall": frozenset({"m3/c", "m^3/c", "m³/c"}),
+# The units a column can be read in, with the factor to SI. The first of each is SI and the default.
+UNITS: Mapping[Role, Mapping[Unit, float]] = {
+    "temperature": {"K": 1.0},
+    "seebeck": {"V/K": 1.0, "uV/K": 1e-6},
+    "resistivity": {"Ohm*m": 1.0, "mOhm*cm": 1e-5, "uOhm*m": 1e-6},
+    "hall": {"m^3/C": 1.0, "cm^3/C": 1e-6},
+}
+# How a header writes each unit, after `_unit_key`.
+_HEADER_UNITS: Mapping[Role, Mapping[str, Unit]] = {
+    "temperature": {"k": "K"},
+    "seebeck": {"v/k": "V/K", "uv/k": "uV/K"},
+    "resistivity": {"ohmm": "Ohm*m", "mohmcm": "mOhm*cm", "uohmm": "uOhm*m"},
+    "hall": {"m3/c": "m^3/C", "cm3/c": "cm^3/C"},
+}
+# A largest |value| in SI outside these is more likely a wrong unit than a measurement, as for µV/K
+# read as V/K, 1e6 too large. Only a warning, and only for gross errors: the SiP example reaches
+# ρ = 0.16 Ω·m and |R_H| = 0.013 m³/C, so mΩ·cm or cm³/C read as SI often look possible, and
+# only the unit chosen for a column protects them.
+PLAUSIBLE_MAGNITUDE: Mapping[Quantity, tuple[float, float]] = {
+    "seebeck": (1e-7, 1e-2),
+    "resistivity": (1e-10, 1.0),
+    "hall": (1e-13, 1e-1),
 }
 _MEASURING_ROLES: tuple[Role, ...] = get_args(Role)
 _NUMBER = re.compile(r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?")
@@ -97,10 +120,12 @@ class ParseIssue:
 class ParsedTable:
     """The columns of a text, and what they seem to hold.
 
-    `columns` holds every row that could be read, for a preview, in the order of the text, with
-    `lines` giving each row's line. `column_count` is that of the first row of numbers, and 0 if no
-    row set one. `mapping` goes from column to role, as a suggestion or as a user
-    chose it. `measurements` is sorted by temperature, and is empty with any `errors`.
+    `columns` holds every row that could be read, for a preview, in the order of the text and in its
+    units, with `lines` giving each row's line. `column_count` is that of the first row of numbers,
+    and 0 if no row set one. `mapping` goes from column to role, as a suggestion or as a user
+    chose it, and `units` gives the unit each mapped column is read in. `measurements` is in SI,
+    sorted by temperature, and is empty with any `errors`. `header_units` holds the unit text of
+    each header that has one, so that a column assigned by hand is read in it.
     """
 
     headers: tuple[str, ...] | None
@@ -111,6 +136,8 @@ class ParsedTable:
     errors: tuple[ParseIssue, ...]
     warnings: tuple[ParseIssue, ...]
     column_count: int = 0
+    units: Mapping[int, Unit] = dataclasses.field(default_factory=dict)
+    header_units: Mapping[int, str] = dataclasses.field(default_factory=dict)
 
 
 def _content_lines(text: str) -> list[tuple[int, str]]:
@@ -150,31 +177,80 @@ def _role_and_unit(header: str) -> tuple[Role | None, str | None]:
     return role, unit
 
 
-def _unit_is_right(role: Role, unit: str) -> bool:
-    return re.sub(r"\s+", "", unit).lower() in _UNITS[role]
+def _unit_key(unit: str) -> str | None:
+    """A unit as written, in one spelling: `mΩ·cm`, `mOhm cm` and `mohm*cm` give `mohmcm`."""
+    key = re.sub(r"\s+", "", unit)
+    # Lower case would read mega as milli, wrong by 1e9.
+    if key.startswith("M"):
+        return None
+    for written, spelling in (("µ", "u"), ("μ", "u"), ("Ω", "ohm"), ("ω", "ohm"), ("³", "3")):
+        key = key.replace(written, spelling)
+    return re.sub(r"[*·^]", "", key).lower()
 
 
-def _mapping_from_headers(headers: list[str]) -> tuple[dict[int, Role], list[ParseIssue]]:
+def header_unit(role: Role, unit: str) -> Unit | None:
+    """The unit a header's text names for a role, or None for one this cannot read."""
+    key = _unit_key(unit)
+    return None if key is None else _HEADER_UNITS[role].get(key)
+
+
+def _mapping_from_headers(
+    headers: list[str],
+) -> tuple[dict[int, Role], dict[int, str], list[ParseIssue]]:
     mapping: dict[int, Role] = {}
+    units: dict[int, str] = {}
     warnings: list[ParseIssue] = []
     for index, header in enumerate(headers):
         role, unit = _role_and_unit(header)
+        if unit is not None and unit.strip():
+            units[index] = unit.strip()
         if role is None:
             continue
-        if unit is not None and not _unit_is_right(role, unit):
-            # A value in another unit would be read wrongly, by a factor such as 1e6.
+        if unit is not None and header_unit(role, unit) is None:
+            # A value in a unit this cannot read would be wrong by a factor such as 1e6.
             warnings.append(ParseIssue("unit_differs", column=index))
         elif role in mapping.values():
             warnings.append(ParseIssue("repeated_header", column=index))
         else:
             mapping[index] = role
-    return mapping, warnings
+    return mapping, units, warnings
+
+
+def to_si(role: Role, unit: Unit, values: np.ndarray) -> np.ndarray:
+    """Values read in a unit, in SI. A unit that is not one of the role's raises."""
+    if unit not in UNITS[role]:
+        raise ValueError(f"{unit} is not a unit of {role}")
+    return values * UNITS[role][unit]
+
+
+def _units_for(
+    mapping: Mapping[int, Role], chosen: Mapping[int, Unit], header_units: Mapping[int, str]
+) -> tuple[dict[int, Unit], list[ParseIssue]]:
+    """The unit of each mapped column: the user's, then its header's, then SI.
+
+    A header unit that cannot be read leaves SI, with a warning that says so.
+    """
+    units: dict[int, Unit] = {}
+    warnings: list[ParseIssue] = []
+    for index, role in mapping.items():
+        if index in chosen:
+            units[index] = chosen[index]
+            continue
+        written = header_units.get(index)
+        read = None if written is None else header_unit(role, written)
+        if written is not None and read is None:
+            warnings.append(ParseIssue("unit_assumed", column=index))
+        units[index] = next(iter(UNITS[role])) if read is None else read
+    return units, warnings
 
 
 def _measure(
-    columns: tuple[np.ndarray, ...], lines: tuple[int, ...], mapping: Mapping[int, Role]
+    columns: tuple[np.ndarray, ...],
+    lines: tuple[int, ...],
+    mapping: Mapping[int, Role],
+    units: Mapping[int, Unit],
 ) -> tuple[dict[Quantity, Measurement], list[ParseIssue], list[ParseIssue]]:
-    """Return sorted measurements for a mapping, with errors and warnings."""
+    """Return sorted measurements in SI for a mapping, with errors and warnings."""
     temperature_columns = [index for index, role in mapping.items() if role == "temperature"]
     if not temperature_columns:
         return {}, [ParseIssue("missing_temperature")], []
@@ -214,7 +290,11 @@ def _measure(
     measurements: dict[Quantity, Measurement] = {}
     for index, role in mapping.items():
         if role != "temperature":
-            measurements[role] = Measurement(sorted_k.copy(), columns[index][order])
+            values = to_si(role, units[index], columns[index][order])
+            measurements[role] = Measurement(sorted_k.copy(), values)
+            low, high = PLAUSIBLE_MAGNITUDE[role]
+            if not low <= float(np.max(np.abs(values))) <= high:
+                warnings.append(ParseIssue("implausible_magnitude", column=index))
     if not measurements:
         warnings.append(ParseIssue("no_quantity"))
     return measurements, [], warnings
@@ -231,34 +311,56 @@ _FROM_MAPPING: frozenset[str] = frozenset(
         "duplicate_temperature",
         "no_quantity",
         "expected_not_found",
+        "unit_not_allowed",
+        "unit_assumed",
+        "implausible_magnitude",
     }
 )
 
 
-def with_mapping(table: ParsedTable, mapping: Mapping[int, Role]) -> ParsedTable:
-    """Return the table with a mapping a user chose. A column or role that does not exist raises."""
+def with_mapping(
+    table: ParsedTable, mapping: Mapping[int, Role], units: Mapping[int, Unit] | None = None
+) -> ParsedTable:
+    """Return the table with a mapping a user chose, and the units of any columns they chose.
+
+    A column or role that does not exist raises. A unit for a column outside the mapping is
+    ignored, and one its role cannot have is an error, as the values would be wrong by a factor.
+    """
     for index, role in mapping.items():
         if not 0 <= index < len(table.columns):
             raise ValueError(f"The table has no column {index}")
         if role not in _MEASURING_ROLES:
             raise ValueError(f"Unknown role: {role}")
+    chosen = {index: unit for index, unit in (units or {}).items() if index in mapping}
+    wrong = [index for index, unit in chosen.items() if unit not in UNITS[mapping[index]]]
+    # A column with an unreadable unit stops being "not used" once a user assigns it.
+    kept_warnings = tuple(
+        issue
+        for issue in table.warnings
+        if issue.code not in _FROM_MAPPING
+        and not (issue.code == "unit_differs" and issue.column in mapping)
+    )
     kept_errors = tuple(issue for issue in table.errors if issue.code not in _FROM_MAPPING)
-    kept_warnings = tuple(issue for issue in table.warnings if issue.code not in _FROM_MAPPING)
+    if wrong:
+        kept_errors += tuple(ParseIssue("unit_not_allowed", column=index) for index in wrong)
     if kept_errors:
         return replace(
             table,
             mapping=dict(mapping),
+            units={index: unit for index, unit in chosen.items() if index not in wrong},
             measurements={},
             errors=kept_errors,
             warnings=kept_warnings,
         )
-    measurements, errors, warnings = _measure(table.columns, table.lines, mapping)
+    column_units, unit_warnings = _units_for(mapping, chosen, table.header_units)
+    measurements, errors, warnings = _measure(table.columns, table.lines, mapping, column_units)
     return replace(
         table,
         mapping=dict(mapping),
+        units=column_units,
         measurements=measurements,
         errors=tuple(errors),
-        warnings=kept_warnings + tuple(warnings),
+        warnings=kept_warnings + tuple(unit_warnings) + tuple(warnings),
     )
 
 
@@ -308,11 +410,13 @@ def parse_table(
     text: str,
     expected: Quantity | None = None,
     mapping: Mapping[int, Role] | None = None,
+    units: Mapping[int, Unit] | None = None,
 ) -> ParsedTable:
     """Read a text of measured data.
 
     `expected` names the quantity of a file meant to hold one. It gives the second column of a file
-    with two columns and no header. `mapping` replaces the suggested mapping with a user's choice.
+    with two columns and no header. `mapping` replaces the suggested mapping with a user's choice,
+    and `units` the unit of a column, which is otherwise its header's, or SI.
     Text before a table is skipped with a warning, its last line is the header, and `#` starts a
     comment.
     """
@@ -346,10 +450,11 @@ def parse_table(
         errors.append(ParseIssue("too_few_rows"))
 
     suggestion: dict[int, Role] = {}
+    header_units: dict[int, str] = {}
     headers = header_fields
     if header_fields is not None and column_count is not None:
         if len(header_fields) == column_count:
-            suggestion, header_warnings = _mapping_from_headers(header_fields)
+            suggestion, header_units, header_warnings = _mapping_from_headers(header_fields)
             warnings += header_warnings
         else:
             warnings.append(ParseIssue("header_mismatch"))
@@ -372,11 +477,12 @@ def parse_table(
         tuple(errors),
         tuple(warnings),
         column_count or 0,
+        header_units=header_units,
     )
     if errors:
         return parsed
     expected_warning = tuple(i for i in parsed.warnings if i.code == "expected_not_found")
-    chosen = with_mapping(parsed, suggestion if mapping is None else mapping)
+    chosen = with_mapping(parsed, suggestion if mapping is None else mapping, units)
     if mapping is None:
         return replace(chosen, warnings=chosen.warnings + expected_warning)
     return chosen
