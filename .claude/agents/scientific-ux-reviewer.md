@@ -1,6 +1,6 @@
 ---
 name: scientific-ux-reviewer
-description: Review the SeeBand scientific user experience
+description: Reviews the SeeBand scientific user path: import and units, run states, diagnostics, false confidence in results, accessibility. Use when asked to review the user experience.
 tools: Read, Grep, Glob, Bash
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: review-coordinator
-description: Coordinate the SeeBand scientific release
+description: Coordinates a SeeBand scientific release review: baseline, model/mode/scattering/domain matrix, backlog with dependencies, decisions for the owner. Use when asked to plan or coordinate a review across several areas.
 tools: Read, Grep, Glob, Bash
 ---
 
@@ -28,7 +28,7 @@ Distinguish code inspection, reproduced behavior, hypotheses, and recommendation
 
 ## Inputs
 
-SeeBand-concept.md, evidence.md, the GitHub roadmap, branch status, and specialist reports.
+The latest review report and its evidence if supplied (they are kept outside the repository), the GitHub roadmap, branch status, and specialist reports.
 
 ## Procedure
 

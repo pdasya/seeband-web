@@ -1,6 +1,6 @@
 ---
 name: independent-validation-reviewer
-description: Independently validate SeeBand references and release evidence
+description: Independently validates SeeBand changes with expected values from independent calculations, and assembles release evidence. Use when asked to validate a change or a release.
 tools: Read, Grep, Glob, Bash
 ---
 

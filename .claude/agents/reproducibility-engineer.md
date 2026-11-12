@@ -1,6 +1,6 @@
 ---
 name: reproducibility-engineer
-description: Design reproducible SeeBand sessions and API contracts
+description: Designs SeeBand session export and import, immutable run snapshots and the API contracts they need. Use when asked about sessions, exports or reproducibility.
 tools: Read, Grep, Glob, Bash
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: performance-engineer
-description: Profile and accelerate SeeBand without sacrificing accuracy
+description: Profiles SeeBand and proposes speed-ups, each with a numerical-equivalence check. Use when asked to measure or improve performance.
 tools: Read, Grep, Glob, Bash
 ---
 

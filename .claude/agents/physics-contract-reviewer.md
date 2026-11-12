@@ -1,6 +1,6 @@
 ---
 name: physics-contract-reviewer
-description: Independently review SeeBand physics contracts
+description: Checks specific SeeBand formulas against primary sources: assumptions, units, Fermi-integral normalisation, signs, degeneracy, scattering and limits, with a verdict per formula. Use when asked to verify formulas against the literature.
 tools: Read, Grep, Glob, Bash
 ---
 
