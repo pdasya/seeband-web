@@ -1,6 +1,6 @@
 # Golden results
 
-[`tests/fixtures/golden/`](../tests/fixtures/golden) records what the SeeBand desktop application computes for the 3 examples, in all 14 combinations of model, fit mode and scattering. Regression tests in the port compare against these files, with the intentional [P2 Hall correction](dpb-hall-prefactor.md) recorded in a separate set of web expectations.
+[`tests/fixtures/golden/`](../tests/fixtures/golden) records what the SeeBand desktop application computes for the 3 examples, in all 14 combinations of model, fit mode and scattering. Regression tests in the port compare against these files, with the intentional [P2 Hall correction](dpb-hall-prefactor.md) recorded in a separate set of web expectations. P3 similarly records corrected acPhDis derived curves in `tests/fixtures/physics/p3.json`; historical desktop captures remain unchanged.
 
 **They record the desktop's behaviour, not correct physics.** Known errors are included on purpose, and many fits are doubtful. The physics fixes change these results later, with a physicist's confirmation. [The summary](golden-results-summary.md), generated from the files, lists every run.
 
@@ -100,3 +100,18 @@ Fit tolerance is wide enough that a small change can pass in a fit, but the curv
 - Other data, other fit ranges and interpolation.
 
 A test fails if this list of uncovered methods changes. The replay names recorded arguments through the signatures of the core, so a refactor that renames a function or drops an argument updates the test helpers, not the pinned fixtures. The test of `spb_see_res_hall_fit` has no recorded call and names its arguments itself.
+
+## P3 derived-curve correction
+
+`tests/fixtures/physics/p3.json` records corrected acPhDis conductivity, thermal
+conductivity and band contributions using the historical desktop inputs. Only
+those six changed calculation entry points use the new expectations; fits and
+measured curves keep their existing expectations. Two non-finite thermal values
+from the inherited extreme-parameter numerical limitation (#105) remain present.
+P3 corrects the scattering scale, not that separate numerical limitation.
+
+Regenerate from the repository root:
+
+```sh
+PYTHONPATH=packages/seeband_core/src uv run python packages/seeband_core/scripts/capture_p3_results.py
+```

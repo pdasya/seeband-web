@@ -48,21 +48,6 @@ KNOWN_ISSUES: tuple[KnownIssue, ...] = (
         explanation="SPB R_H uses the Fermi energy at 0 K instead of the chemical potential",
     ),
     KnownIssue(
-        id="acphdis_curve_scale",
-        severity="unreliable",
-        fixed_by="#82",
-        fit_modes=("spb_s_rho", "spb_s_rho_rh", "dpb_s_rho", "dpb_s_rho_rh"),
-        scattering=("acPhDis",),
-        curve_kinds=(
-            "seebeck_by_band",
-            "electrical_conductivity",
-            "electrical_conductivity_by_band",
-            "thermal_conductivity",
-        ),
-        explanation="With acPhDis, these curves use another scale of C and D from rho and S, so "
-        "sigma * rho != 1 and band contributions do not sum to S",
-    ),
-    KnownIssue(
         id="acphdis_band_weight",
         severity="unreliable",
         fixed_by="#102",

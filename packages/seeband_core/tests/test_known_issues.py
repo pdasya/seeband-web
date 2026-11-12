@@ -43,20 +43,6 @@ EXPECTED: dict[str, tuple[Any, ...]] = {
         True,
         None,
     ),
-    "acphdis_curve_scale": (
-        "unreliable",
-        "#82",
-        ("spb_s_rho", "spb_s_rho_rh", "dpb_s_rho", "dpb_s_rho_rh"),
-        ("acPhDis",),
-        (
-            "seebeck_by_band",
-            "electrical_conductivity",
-            "electrical_conductivity_by_band",
-            "thermal_conductivity",
-        ),
-        False,
-        None,
-    ),
     "acphdis_band_weight": (
         "unreliable",
         "#102",
@@ -203,7 +189,7 @@ def test_a_flag_for_one_scattering_type_stays_there() -> None:
     assert "hall_dis_no_reference" in ids("dpb_s_rho_rh", "dis")
     assert "hall_dis_no_reference" not in ids("dpb_s_rho_rh", "acPh")
     assert "acphdis_curve_scale" not in ids("dpb_s_rho", "acPh", "thermal_conductivity")
-    assert "acphdis_curve_scale" in ids("dpb_s_rho", "acPhDis", "seebeck_by_band")
+    assert "acphdis_curve_scale" not in ids("dpb_s_rho", "acPhDis", "seebeck_by_band")
 
 
 @pytest.mark.parametrize(
@@ -321,7 +307,7 @@ def test_curves_carry_their_issues_through_the_model() -> None:
     assert curve_ids("dpb_s", values={"m_eff": -1.0, "band_gap": -200.0}) == {
         "negative_m_eff_weight"
     }
-    assert curve_ids("dpb_s_rho", "acPhDis", kind="thermal_conductivity") == {"acphdis_curve_scale"}
+    assert curve_ids("dpb_s_rho", "acPhDis", kind="thermal_conductivity") == set()
     assert curve_ids("dpb_s_rho", "acPh", kind="thermal_conductivity") == set()
     assert curve_ids("dpb_s_rho_rh", "acPh") == set()
     assert curve_ids("spb_s", extrapolated=True) == {"interpolation_extrapolates"}
@@ -416,14 +402,14 @@ def curves(mode: str, scattering: str, kind: CurveKind, values: dict[str, float]
 class TestTheErrorsAreStillThere:
     """Each of these fails once its error is fixed, and that is the prompt to remove its flag."""
 
-    def test_acphdis_conductivity_is_not_the_inverse_of_resistivity(self) -> None:
+    def test_acphdis_conductivity_is_the_inverse_of_resistivity(self) -> None:
         for mode in ("spb_s_rho", "dpb_s_rho"):
             values = default_start(fit_mode(mode))
             rho = curves(mode, "acPhDis", "measured", values)["resistivity_ohm_m"]
             sigma = curves(mode, "acPhDis", "electrical_conductivity", values)[
                 "electrical_conductivity_s_per_m"
             ]
-            assert not np.allclose(sigma * rho, 1.0)
+            assert np.allclose(sigma * rho, 1.0)
             rho = curves(mode, "acPh", "measured", values)["resistivity_ohm_m"]
             sigma = curves(mode, "acPh", "electrical_conductivity", values)[
                 "electrical_conductivity_s_per_m"

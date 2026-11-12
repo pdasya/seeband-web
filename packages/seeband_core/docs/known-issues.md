@@ -14,7 +14,6 @@ To remove a flag once its error is fixed, delete its entry and its row here, and
 | ---------------------------- | ---------- | -------------------------------------------------------------------------------------------------- | -------- |
 | `spb_hall_mode_disabled`     | disabled   | every result of SPB S + ρ + R_H                                                                    | #83      |
 | `spb_hall_uses_fermi_energy` | unreliable | R_H and the fit in SPB S + ρ + R_H                                                                 | #103     |
-| `acphdis_curve_scale`        | unreliable | σ, κ and S by band with acPhDis, SPB and DPB                                                       | #82      |
 | `acphdis_band_weight`        | unreliable | S with acPhDis in DPB S + ρ and S + ρ + R_H                                                        | #102     |
 | `acphdis_early_stop`         | unreliable | fits with acPhDis in those modes                                                                   | #84      |
 | `dpb_s_degeneracy`           | unreliable | all of DPB S, when N2/N1 is not 1                                                                  | #85      |
@@ -32,6 +31,8 @@ The caller sets `extrapolated`, from `InterpolatedData`, since a fit does not kn
 
 The DPB Hall-prefactor flag was removed by [P2](dpb-hall-prefactor.md), which corrects the coefficient in all three scattering modes.
 
+P3 (#82) removes the acPhDis curve-scale flag: derived curves now convert the dimensionless 300 K ratios C and D to temperature scales consistently with resistivity. The independent grid-dependent total-Seebeck error (#102) remains flagged.
+
 ## What is not here
 
 - **Disabled is a flag.** The model still runs `spb_s_rho_rh`, because tests and V1 need it. The API refuses it with a 409, and does not offer it.
@@ -40,5 +41,4 @@ The DPB Hall-prefactor flag was removed by [P2](dpb-hall-prefactor.md), which co
 - **E_F inside the gap (#107)** cannot be told from a good fit by its inputs alone, and `at_bounds` and `parameter_errors` report part of it.
 - **`underdetermined` interpolation** has no issue that fixes it, because it describes the data. `InterpolatedData` reports it.
 - **Choosing a net by the first and last rows (P9)** does not reach this path, because the parser sorts (D22). A client can send `POST /api/guess` unsorted rows, and its answer then carries the warning `unsorted_temperature`. It belongs to no mode, so it is not an entry here.
-- **D4 asks to flag acPhDis results.** In core units, S and ρ of SPB use one scale, so only `acphdis_curve_scale` applies.
 - **The Conventions page** does not exist yet, so S3 takes its note on known issues from this list.

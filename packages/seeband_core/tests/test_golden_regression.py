@@ -106,6 +106,11 @@ def p2_results() -> dict[str, Any]:
     return json.loads((GOLDEN.parent / "physics" / "p2.json").read_text())
 
 
+@cache
+def p3_results() -> dict[str, Any]:
+    return json.loads((GOLDEN.parent / "physics" / "p3.json").read_text())
+
+
 def core_arguments(
     function: str, args: list[Any], kwargs: dict[str, Any]
 ) -> tuple[list[Any], dict[str, Any]]:
@@ -319,6 +324,9 @@ def test_replay_matches_the_desktop(
     if identifier in expected_p2:
         # P2 changes only the last field: Hall on curves, m1 on fits.
         call = dict(call, result=[*call["result"][:-1], expected_p2[identifier][-1]])
+    expected_p3 = p3_results()
+    if identifier in expected_p3:
+        call = dict(call, result=[call["result"][0], *expected_p3[identifier][1:]])
     result = replay(mode, scattering, call)
     if not call["function"].endswith("_fit"):
         assert_close(result, call["result"], CURVE_TOLERANCE)

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- P3 (#82): convert acPhDis C and D from dimensionless ratios at 300 K
+  to temperature scales in SPB/DPB conductivity, thermal conductivity and
+  per-band curves, consistently with resistivity. Corrected σρ equals 1.
+  Remove the obsolete scale warning and add corrected golden expectations.
+  The separate grid-dependent total-Seebeck error (#102) remains flagged.
+
 - P2 (#81): correct the DPB Hall prefactor for acPh, dis and acPhDis.
   R_H doubles at fixed parameters. At fixed measured R_H, unconstrained m₁
   increases by 2^(2/3) and inferred carrier density doubles. Regenerate the
