@@ -23,7 +23,7 @@ Carrier concentration scales with m1^1.5, where m1 is the mass of band 1, and on
 
 In DPB S + ρ + R_H, n uses the m1 it is given, and the mode reports it as **absolute**. That describes the mode, not the value: at the default m1 = 1, before a fit, n equals the relative one.
 
-**This n from a fit is too low, by about 2 in the single-band limit,** as R_H is wrong by that factor. `dpb_hall_prefactor` flags it until #81.
+P2 (#81) corrects the DPB Hall prefactor. At fixed R_H and unchanged band/scattering parameters, the inferred m₁ increases by 2^(2/3) and its carrier density doubles, unless bounds limit the fit.
 
 ## The sign of n
 

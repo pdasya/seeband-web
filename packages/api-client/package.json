@@ -12,7 +12,7 @@
   "scripts": {
     "generate": "node scripts/generate.mjs",
     "mock": "node scripts/mock.mjs",
-    "test": "node scripts/generate.mjs --check && node --test --test-timeout=30000 tests/",
+    "test": "node scripts/generate.mjs --check && node --test --test-timeout=30000 tests/*.test.mjs",
     "typecheck": "tsc --project tsconfig.json"
   },
   "devDependencies": {

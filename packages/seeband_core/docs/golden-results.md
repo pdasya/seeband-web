@@ -1,6 +1,6 @@
 # Golden results
 
-[`tests/fixtures/golden/`](../tests/fixtures/golden) records what the SeeBand desktop application computes for the 3 examples, in all 14 combinations of model, fit mode and scattering. Regression tests in the port compare against these files.
+[`tests/fixtures/golden/`](../tests/fixtures/golden) records what the SeeBand desktop application computes for the 3 examples, in all 14 combinations of model, fit mode and scattering. Regression tests in the port compare against these files, with the intentional [P2 Hall correction](dpb-hall-prefactor.md) recorded in a separate set of web expectations.
 
 **They record the desktop's behaviour, not correct physics.** Known errors are included on purpose, and many fits are doubtful. The physics fixes change these results later, with a physicist's confirmation. [The summary](golden-results-summary.md), generated from the files, lists every run.
 

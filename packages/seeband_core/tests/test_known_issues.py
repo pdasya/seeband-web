@@ -43,15 +43,6 @@ EXPECTED: dict[str, tuple[Any, ...]] = {
         True,
         None,
     ),
-    "dpb_hall_prefactor": (
-        "unreliable",
-        "#81",
-        ("dpb_s_rho_rh",),
-        (),
-        ("measured", "carrier_concentration_by_band"),
-        True,
-        None,
-    ),
     "acphdis_curve_scale": (
         "unreliable",
         "#82",
@@ -172,7 +163,7 @@ def test_the_doc_and_the_list_match_both_ways() -> None:
 def test_a_description_serialises_with_its_keys() -> None:
     description = registry.get("dpb").describe()
     text = json.dumps(dataclasses.asdict(description), allow_nan=False)
-    assert "known_issue.dpb_hall_prefactor" in text
+    assert "known_issue.dpb_hall_prefactor" not in text
 
 
 @pytest.mark.parametrize("name", [*SPB, *DPB])
@@ -332,7 +323,7 @@ def test_curves_carry_their_issues_through_the_model() -> None:
     }
     assert curve_ids("dpb_s_rho", "acPhDis", kind="thermal_conductivity") == {"acphdis_curve_scale"}
     assert curve_ids("dpb_s_rho", "acPh", kind="thermal_conductivity") == set()
-    assert curve_ids("dpb_s_rho_rh", "acPh") == {"dpb_hall_prefactor"}
+    assert curve_ids("dpb_s_rho_rh", "acPh") == set()
     assert curve_ids("spb_s", extrapolated=True) == {"interpolation_extrapolates"}
     # A degeneracy means nothing in SPB, so it is neither read nor checked.
     assert curve_ids("spb_s", band_2_degeneracy=0.0) == set()

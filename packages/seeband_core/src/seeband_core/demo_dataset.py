@@ -36,8 +36,7 @@ SEED = 2026
 SEEBECK_NOISE_V_PER_K = 1e-6
 RELATIVE_NOISE = 0.005
 MESSAGE_KEY = "demo_dataset.synthetic"
-# Its R_H comes from the current model, which holds this error.
-KNOWN_ISSUES = ("dpb_hall_prefactor",)
+KNOWN_ISSUES: tuple[str, ...] = ()
 _COLUMNS: Mapping[Quantity, str] = {
     "seebeck": "seebeck_v_per_k",
     "resistivity": "resistivity_ohm_m",

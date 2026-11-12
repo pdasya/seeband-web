@@ -19,7 +19,7 @@ from seeband_core.model_catalog import registry
 from seeband_core.model_interface import FitMode, FitRequest
 from seeband_core.model_scales import default_start
 
-STORED_SHA256 = "7bc20ce8cdcc6bcbed8eb3c58a243ea022fbb57a02c4b87901ea0a839452030d"
+STORED_SHA256 = "d79e602fb241711e1398668fb84f65ca64c9c7145b01b42d4cbe8f761eac61a3"
 # These hold for the stored data, with this noise. Another seed can miss them: see
 # docs/demo-dataset.md.
 RECOVERY_MARGIN = {
@@ -124,7 +124,7 @@ def test_it_is_what_it_says_it_is() -> None:
 
 def test_it_lists_the_known_errors_of_its_data() -> None:
     dataset = load_demo_dataset()
-    assert dataset.known_issues == ("dpb_hall_prefactor",)
+    assert dataset.known_issues == ()
     assert set(dataset.known_issues) <= {issue.id for issue in KNOWN_ISSUES}
 
 

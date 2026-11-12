@@ -171,11 +171,9 @@ def test_known_issue_conditions_and_scope_reach_the_client(
 ) -> None:
     issues = {issue["id"]: issue for issue in modes["dpb_s_rho_rh"]["known_issues"]}
 
-    assert issues["dpb_hall_prefactor"]["columns"][0] == "hall_m3_per_c"
-    assert issues["dpb_hall_prefactor"]["severity"] == "unreliable"
+    assert "dpb_hall_prefactor" not in issues
     assert issues["acphdis_early_stop"]["scattering"] == ["acPhDis"]
     assert issues["collapsed_m_eff"]["condition"] == "collapsed_m_eff"
-    assert "condition" not in issues["dpb_hall_prefactor"]
 
 
 def test_every_field_matches_the_registry(response: Any) -> None:

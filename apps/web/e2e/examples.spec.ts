@@ -445,7 +445,7 @@ test.describe("real fits", () => {
       page.locator('[data-slot="badge"]').filter({ hasText: /^Converged/ }),
     ).toBeVisible({ timeout: 30_000 });
     await expect(page.getByRole("alert")).toHaveCount(0);
-    await expect(page.getByText(/^Unreliable: DPB R_H is half/)).toBeVisible();
+    await expect(page.getByText(/^Unreliable:/)).toHaveCount(0);
     await expect(page.getByText(/^Synthetic data/)).toBeVisible();
   });
 

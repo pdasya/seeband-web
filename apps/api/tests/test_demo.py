@@ -42,7 +42,7 @@ def test_it_has_the_shape_and_values_of_a_parsed_file(
 def test_it_is_labelled_synthetic(demo: dict[str, Any]) -> None:
     assert demo["synthetic"] is True
     assert demo["message_key"] == "demo_dataset.synthetic"
-    assert demo["known_issues"] == ["dpb_hall_prefactor"]
+    assert demo["known_issues"] == []
 
 
 def test_it_says_what_generated_it(demo: dict[str, Any]) -> None:

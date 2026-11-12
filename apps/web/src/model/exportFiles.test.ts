@@ -105,8 +105,8 @@ describe("the header", () => {
       fit: { status: "idle" },
       issues: [
         {
-          id: "dpb_hall_prefactor",
-          text: "DPB R_H is half of what it should be.",
+          id: "spb_hall_uses_fermi_energy",
+          text: "SPB R_H uses the Fermi energy at 0 K.",
           severity: "unreliable",
           quantities: ["hall"],
           place: "curves",
@@ -123,7 +123,7 @@ describe("the header", () => {
     );
     expect(lines).toContain("No fit: the values are those on the screen");
     expect(lines.at(-1)).toBe(
-      "Unreliable: DPB R_H is half of what it should be. (dpb_hall_prefactor)",
+      "Unreliable: SPB R_H uses the Fermi energy at 0 K. (spb_hall_uses_fermi_energy)",
     );
   });
 
