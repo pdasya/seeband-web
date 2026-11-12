@@ -2,6 +2,7 @@ import { AlertCircleIcon } from "lucide-react";
 import type { Ref } from "react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -41,6 +42,7 @@ export function SlotColumns({
   firstSelect,
   onRole,
   onUnit,
+  onRetry,
 }: {
   quantity: Quantity;
   choice: ColumnChoice;
@@ -48,6 +50,8 @@ export function SlotColumns({
   firstSelect: Ref<HTMLButtonElement>;
   onRole: (column: number, role: Role | null) => void;
   onUnit: (column: number, unit: Unit) => void;
+  /** Reads the same choice again, once what was wrong with it is mended. */
+  onRetry: () => void;
 }) {
   const target = chosenQuantity(choice.roles);
   const named = choice.named === null ? null : text.quantities[choice.named];
@@ -137,6 +141,18 @@ export function SlotColumns({
                 <li key={index}>{problem}</li>
               ))}
             </ul>
+            {/* A full slot emptied, or a lost connection back, leaves nothing to choose anew. */}
+            {target !== null && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-2"
+                disabled={choice.applying}
+                onClick={onRetry}
+              >
+                {text.tryAgain}
+              </Button>
+            )}
           </AlertDescription>
         </Alert>
       )}

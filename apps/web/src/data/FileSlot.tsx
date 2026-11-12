@@ -9,7 +9,6 @@ import { Fragment, useEffect, useRef } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { DropArea, useFileDrop } from "@/data/DropArea";
-import { chosenQuantity } from "@/data/columnChoice";
 import { SlotColumns } from "@/data/SlotColumns";
 import { UnitSelect } from "@/data/UnitSelect";
 import { unitOf } from "@/data/units";
@@ -78,6 +77,7 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
     upload,
     chooseRole,
     chooseColumnUnit,
+    retryChoice,
     changeUnit,
     remove,
     fail,
@@ -193,17 +193,16 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
             quantity={quantity}
             choice={state}
             firstSelect={firstSelect}
+            // A choice that reads the file may take this card away, so focus comes back.
             onRole={(column, role) => {
-              // A complete choice reads the file, and this card goes, so focus comes back.
-              const roles = state.roles.map((old, index) =>
-                index === column ? role : old,
-              );
-              if (chosenQuantity(roles) !== null) {
-                keepFocus.current = true;
-              }
-              chooseRole(column, role);
+              keepFocus.current = chooseRole(column, role);
             }}
-            onUnit={chooseColumnUnit}
+            onUnit={(column, unit) => {
+              keepFocus.current = chooseColumnUnit(column, unit);
+            }}
+            onRetry={() => {
+              keepFocus.current = retryChoice();
+            }}
           />
         </div>
       </div>

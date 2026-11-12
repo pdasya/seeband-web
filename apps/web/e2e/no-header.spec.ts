@@ -258,6 +258,57 @@ test("a slot that holds a file is not taken, and says so", async ({ page }) => {
   await expect(slot(page, "seebeck").getByText("x_rho.txt")).toBeVisible();
 });
 
+test("Try again reads the choice once the full slot is emptied", async ({
+  page,
+}) => {
+  const { bodies } = await open(page);
+  await choose(page, "theirs.txt", 1, true);
+  await expect(slot(page, "resistivity").getByText("theirs.txt")).toBeVisible();
+  await choose(page, "x_rho.txt");
+  await pick(page, 2, "ρ");
+  await expect(page.getByText(/^The slot of Resistivity holds/)).toBeVisible();
+  const reads = bodies.length;
+
+  await page.getByRole("button", { name: "Remove file ρ" }).click();
+  await page.getByRole("button", { name: "Try again" }).click();
+
+  await expect(slot(page, "resistivity").getByText("x_rho.txt")).toBeVisible();
+  await expect(question(page)).toHaveCount(0);
+  expect(bodies).toHaveLength(reads + 1);
+});
+
+test("a unit chosen after a problem reads the choice again", async ({
+  page,
+}) => {
+  let reads = 0;
+  const { bodies } = await open(page, {
+    apply: async (route) => {
+      reads += 1;
+      if (reads > 1) {
+        return true;
+      }
+      await route.fulfill({
+        json: answer({
+          errors: [{ code: "non_positive_temperature", line: 1, column: 0 }],
+        }),
+      });
+      return false;
+    },
+  });
+  await choose(page, "mine.txt");
+  await pick(page, 2, "S");
+  await expect(page.getByRole("alert")).toContainText("Line 1:");
+
+  await page.getByRole("combobox", { name: "Unit of Column 1" }).click();
+  await page.getByRole("option", { name: "°C", exact: true }).click();
+
+  await expect(slot(page, "seebeck").getByText("mine.txt")).toBeVisible();
+  expect(bodies.at(-1)?.mapping).toEqual([
+    { column: 0, role: "temperature", unit: "C" },
+    { column: 1, role: "seebeck" },
+  ]);
+});
+
 test("with more columns, only T comes chosen, and the rest is up to the user", async ({
   page,
 }) => {
@@ -545,6 +596,7 @@ test("a lost connection while the choice is read says so, and the file waits", a
   await expect(page.getByRole("alert")).toBeVisible();
   await expect(question(page)).toBeVisible();
   await expect(role(page, 2)).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
   expect(await fileReads(page)).toBe(1);
 });
 

@@ -201,21 +201,6 @@ export function useFileUpload(quantity: Quantity) {
     [endRead, quantity, removeData, setData, startRead],
   );
 
-  /** The unit one column of a file with no header is written in. */
-  const chooseColumnUnit = useCallback((column: number, unit: Unit) => {
-    setState((previous) =>
-      previous.status === "choose"
-        ? {
-            ...previous,
-            units: previous.units.map((old, index) =>
-              index === column ? unit : old,
-            ),
-            problems: [],
-          }
-        : previous,
-    );
-  }, []);
-
   /** Reads the file again with the user's choice, into the slot of the quantity chosen. */
   const applyChoice = useCallback(
     async (choice: ChoiceState) => {
@@ -298,29 +283,60 @@ export function useFileUpload(quantity: Quantity) {
     [endRead, quantity, setData],
   );
 
-  /**
-   * What one column holds, or nothing. A choice of T and one quantity reads the file at once, as
-   * for a single table: choosing is the user's confirmation, so nothing is chosen for them.
-   */
-  const chooseRole = useCallback(
-    (column: number, role: Role | null) => {
+  /** Sets a new choice, and reads the file at once if it has T and one quantity. */
+  const choose = useCallback(
+    (change: (choice: ChoiceState) => ChoiceState): boolean => {
       if (state.status !== "choose" || state.applying) {
-        return;
+        return false;
       }
-      const next: ChoiceState = {
-        ...state,
-        roles: state.roles.map((old, index) => (index === column ? role : old)),
-        // A unit belongs to the role it was chosen for.
-        units: state.units.map((old, index) => (index === column ? null : old)),
-        problems: [],
-      };
+      const next = { ...change(state), problems: [] };
       setState(next);
-      if (chosenQuantity(next.roles) !== null) {
-        void applyChoice(next);
+      if (chosenQuantity(next.roles) === null) {
+        return false;
       }
+      void applyChoice(next);
+      return true;
     },
     [applyChoice, state],
   );
+
+  /**
+   * What one column holds, or nothing. A choice of T and one quantity reads the file at once, as
+   * for a single table: choosing is the user's confirmation, so nothing is chosen for them.
+   * Returns whether the file is read.
+   */
+  const chooseRole = useCallback(
+    (column: number, role: Role | null) =>
+      choose((choice) => ({
+        ...choice,
+        roles: choice.roles.map((old, index) =>
+          index === column ? role : old,
+        ),
+        // A unit belongs to the role it was chosen for.
+        units: choice.units.map((old, index) =>
+          index === column ? null : old,
+        ),
+      })),
+    [choose],
+  );
+
+  /**
+   * The unit one column of a file with no header is written in. With T and one quantity chosen, it
+   * reads the file again, as after a problem the unit may be what mends it.
+   */
+  const chooseColumnUnit = useCallback(
+    (column: number, unit: Unit) =>
+      choose((choice) => ({
+        ...choice,
+        units: choice.units.map((old, index) =>
+          index === column ? unit : old,
+        ),
+      })),
+    [choose],
+  );
+
+  /** Reads the same choice again, once what was wrong with it, such as a full slot, is mended. */
+  const retryChoice = useCallback(() => choose((choice) => choice), [choose]);
 
   /**
    * Reads the loaded file again with its values in another unit. A failure keeps the data as they
@@ -393,6 +409,7 @@ export function useFileUpload(quantity: Quantity) {
     upload,
     chooseRole,
     chooseColumnUnit,
+    retryChoice,
     changeUnit,
     remove,
     fail,

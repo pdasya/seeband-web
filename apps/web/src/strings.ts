@@ -162,6 +162,7 @@ export const STRINGS = {
       `The slot of ${title} has a file on its way. Finish there first, or choose another quantity.`,
     slotTaken: (title: string) =>
       `The slot of ${title} holds a file. Remove it first, or choose another quantity.`,
+    tryAgain: "Try again",
     tableSize: (rows: number, columns: number) =>
       `${String(rows)} rows · ${String(columns)} columns`,
     quantityNotFound: "This file has no column for this quantity.",
