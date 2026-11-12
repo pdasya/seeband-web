@@ -52,6 +52,7 @@ async function load(page: Page, quantity: string, name: string) {
 const heading = (page: Page) => page.getByRole("heading", { name: "Data" });
 const summary = (page: Page) => page.getByRole("region", { name: "Data" });
 const details = (page: Page) => page.getByRole("button", { name: "Details" });
+const hide = (page: Page) => page.getByRole("button", { name: "Hide" });
 
 async function loadSAndRho(page: Page) {
   await page.getByRole("radio", { name: "S + ρ", exact: true }).click();
@@ -60,11 +61,17 @@ async function loadSAndRho(page: Page) {
   await load(page, "resistivity", "rho.txt");
 }
 
-test("the data fold into one line once the fit mode has all it needs", async ({
+test("the data stay open once the fit mode has all it needs, and Hide folds them into one line", async ({
   page,
 }) => {
   await open(page);
   await loadSAndRho(page);
+  await expect(page.getByText(/^12 points/)).toBeVisible();
+  await page.waitForTimeout(300);
+  await expect(heading(page)).toBeVisible();
+  await expect(hide(page)).toHaveAttribute("aria-expanded", "true");
+
+  await hide(page).click();
 
   await expect(heading(page)).toBeHidden();
   await expect(summary(page)).toContainText("Data loaded");
@@ -82,29 +89,30 @@ test("Details opens the data with what they hold, and Hide folds them", async ({
 }) => {
   await open(page);
   await loadSAndRho(page);
+  await hide(page).click();
 
   await details(page).click();
   await expect(heading(page)).toBeVisible();
   await expect(page.locator("[data-file-slot]").nth(0)).toContainText(
     "seebeck.txt",
   );
-  const hide = page.getByRole("button", { name: "Hide" });
-  await expect(hide).toHaveAttribute("aria-expanded", "true");
-  await expect(hide).toBeFocused();
+  await expect(hide(page)).toHaveAttribute("aria-expanded", "true");
+  await expect(hide(page)).toBeFocused();
 
-  await hide.click();
+  await hide(page).click();
   await expect(heading(page)).toBeHidden();
   await expect(details(page)).toBeVisible();
   await expect(details(page)).toBeFocused();
 
   // The keyboard goes the same way.
   await page.keyboard.press("Enter");
-  await expect(hide).toBeFocused();
+  await expect(hide(page)).toBeFocused();
 });
 
 test("the data open again once the fit mode needs more", async ({ page }) => {
   await open(page);
   await loadSAndRho(page);
+  await hide(page).click();
   await expect(heading(page)).toBeHidden();
 
   await page.getByRole("radio", { name: "S + ρ + R_H", exact: true }).click();

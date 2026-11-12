@@ -12,8 +12,8 @@ import { STRINGS } from "@/strings";
 const { data: text } = STRINGS;
 
 /**
- * The data, which fold into one line once separate files give the fit mode all it needs, as the
- * design has them, and open again when it lacks some.
+ * The data, which fold into one line on Hide once separate files give the fit mode all it needs,
+ * and open again when it lacks some. A page opened with complete data starts folded.
  */
 export function DataBar() {
   const { data: models } = useQuery(modelsQuery);
@@ -35,15 +35,17 @@ export function DataBar() {
     !QUANTITIES.some((quantity) => data[quantity]?.implausible === true);
 
   const [open, setOpen] = useState(!complete);
-  // Folds as the data become complete, and opens as they stop being so, as a user then needs them.
+  // Data a user has just entered stay in view, so the panel folds only on Hide. It opens again as
+  // the data stop being complete, as a user then needs them.
   const [wasComplete, setWasComplete] = useState(complete);
   if (wasComplete !== complete) {
     setWasComplete(complete);
-    setOpen(!complete);
+    if (!complete) {
+      setOpen(true);
+    }
   }
 
   // Details and Hide are two buttons, so a press moves focus to the one that takes its place.
-  // A fold the data make by themselves leaves focus where it is.
   const panelToggle = useRef<HTMLButtonElement>(null);
   const barToggle = useRef<HTMLButtonElement>(null);
   const pressed = useRef(false);

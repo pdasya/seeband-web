@@ -14,7 +14,7 @@ export async function show(page: Page, label: string, index = 1) {
   await page.getByRole("option", { name: label, exact: true }).click();
 }
 
-/** Opens the data, which fold once the fit mode has all it needs. */
+/** Opens the data, which a user may have folded with Hide. */
 export async function openData(page: Page) {
   const details = page.getByRole("button", { name: "Details" });
   if (await details.isVisible()) {

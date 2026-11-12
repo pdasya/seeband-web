@@ -1,5 +1,5 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
-import { chart, openData } from "./support/fitScreen";
+import { chart } from "./support/fitScreen";
 
 import { DEMO, MODELS, serveModels } from "./support/models";
 
@@ -63,14 +63,8 @@ async function upload(page: Page) {
     });
 }
 
-/** The notice, in the data, which fold as the demo gives the fit mode all it needs. */
+/** The notice, in the data, which stay open as the demo comes in. */
 async function seeNotice(page: Page) {
-  await expect(
-    notice(page)
-      .or(page.getByRole("button", { name: "Details" }))
-      .filter({ visible: true }),
-  ).toBeVisible();
-  await openData(page);
   await expect(notice(page)).toBeVisible();
 }
 
@@ -183,8 +177,6 @@ test("the link from the Single file tab goes to the slots, where interpolating w
 
   await page.getByRole("link", { name: "Try demo data" }).click();
 
-  // The demo gives the fit mode all it needs, so the data fold once it is in.
-  await page.getByRole("button", { name: "Details" }).click();
   await expect(
     page.getByRole("tab", { name: "Separate files" }),
   ).toHaveAttribute("aria-selected", "true");
