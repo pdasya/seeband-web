@@ -255,7 +255,6 @@ def test_bad_parameters_are_reported_before_an_unavailable_curve(client: TestCli
 @pytest.mark.parametrize(
     ("fit_mode_id", "scattering", "kind", "issue"),
     [
-        ("dpb_s_rho_rh", "acPh", "carrier_concentration_by_band", "dpb_hall_prefactor"),
         ("spb_s_rho", "acPhDis", "electrical_conductivity", "acphdis_curve_scale"),
         ("spb_s_rho", "acPhDis", "thermal_conductivity", "acphdis_curve_scale"),
         ("dpb_s_rho", "acPhDis", "seebeck_by_band", "acphdis_curve_scale"),

@@ -14,7 +14,6 @@ To remove a flag once its error is fixed, delete its entry and its row here, and
 | ---------------------------- | ---------- | -------------------------------------------------------------------------------------------------- | -------- |
 | `spb_hall_mode_disabled`     | disabled   | every result of SPB S + ρ + R_H                                                                    | #83      |
 | `spb_hall_uses_fermi_energy` | unreliable | R_H and the fit in SPB S + ρ + R_H                                                                 | #103     |
-| `dpb_hall_prefactor`         | unreliable | R_H, m1, and n from m1 in DPB S + ρ + R_H                                                          | #81      |
 | `acphdis_curve_scale`        | unreliable | σ, κ and S by band with acPhDis, SPB and DPB                                                       | #82      |
 | `acphdis_band_weight`        | unreliable | S with acPhDis in DPB S + ρ and S + ρ + R_H                                                        | #102     |
 | `acphdis_early_stop`         | unreliable | fits with acPhDis in those modes                                                                   | #84      |
@@ -30,6 +29,8 @@ To remove a flag once its error is fixed, delete its entry and its row here, and
 `affects_band_diagram` puts an entry on the sketch of E(k) alone, through `band_diagram_issue_ids`.
 
 The caller sets `extrapolated`, from `InterpolatedData`, since a fit does not know where its data came from.
+
+The DPB Hall-prefactor flag was removed by [P2](dpb-hall-prefactor.md), which corrects the coefficient in all three scattering modes.
 
 ## What is not here
 

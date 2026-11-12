@@ -191,9 +191,9 @@ describe("resultIssues", () => {
     expect(resultIssues(mode, NO_FLAGS)).toEqual([]);
     expect(
       resultIssues(mode, {
-        fit: ["dpb_hall_prefactor"],
-        measured: ["dpb_hall_prefactor"],
-        derived: ["dpb_hall_prefactor"],
+        fit: ["acphdis_band_weight"],
+        measured: ["acphdis_band_weight"],
+        derived: ["acphdis_band_weight"],
       }),
     ).toHaveLength(1);
   });
@@ -201,10 +201,10 @@ describe("resultIssues", () => {
   test("goes to the quantity its column names", () => {
     const [issue] = resultIssues(mode, {
       ...NO_FLAGS,
-      measured: ["dpb_hall_prefactor"],
+      measured: ["acphdis_band_weight"],
     });
     expect(issue).toMatchObject({
-      quantities: ["hall"],
+      quantities: ["seebeck"],
       place: "curves",
       severity: "unreliable",
     });
@@ -222,9 +222,9 @@ describe("resultIssues", () => {
   test("a fit's flag marks the curves drawn from its values too", () => {
     const [issue] = resultIssues(mode, {
       ...NO_FLAGS,
-      fit: ["dpb_hall_prefactor"],
+      fit: ["acphdis_band_weight"],
     });
-    expect(issue?.quantities).toEqual(["hall"]);
+    expect(issue?.quantities).toEqual(["seebeck"]);
     expect(issue?.place).toBe("curves");
   });
 
@@ -240,7 +240,7 @@ describe("resultIssues", () => {
   test("the curves of the open tab mark no RMSE", () => {
     const [issue] = resultIssues(mode, {
       ...NO_FLAGS,
-      derived: ["dpb_hall_prefactor"],
+      derived: ["acphdis_band_weight"],
     });
     expect(issue?.quantities).toEqual([]);
     expect(issue?.place).toBe("curves");

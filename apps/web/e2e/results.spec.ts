@@ -381,7 +381,7 @@ async function serveCurves(page: Page) {
               ? ["acphdis_curve_scale"]
               : // On the total of S, and on R_H, which no additional graph draws.
                 kind === "measured"
-                ? ["acphdis_band_weight", "dpb_hall_prefactor"]
+                ? ["acphdis_band_weight"]
                 : [],
       },
     });
