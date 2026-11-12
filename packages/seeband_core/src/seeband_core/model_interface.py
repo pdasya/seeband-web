@@ -300,6 +300,10 @@ class FitRequest:
     the bounds of the description for the fitted parameters it names, and naming any other is an
     error. `extrapolated` says that interpolation made up some of the data, so that the result says
     so too.
+
+    `held` names fitted parameters that keep their start values: each solver run fits only the
+    others, and a run with none left is skipped. Naming a parameter the mode does not fit, or every
+    one it fits, is an error. With none held, a fit is the desktop's (D30).
     """
 
     fit_mode: str
@@ -310,6 +314,7 @@ class FitRequest:
     band_1_degeneracy: float = 1.0
     band_2_degeneracy: float = 1.0
     extrapolated: bool = False
+    held: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True)
@@ -334,6 +339,9 @@ class FitResult:
 
     `at_bounds` names fitted parameters that ended at a bound, so the bound may be what set them. A
     parameter a fit never reached, such as m1 in a stopped fit, is not named.
+
+    `held` names the parameters the request held at their start values, which are in `parameters`
+    exactly as sent, and in neither `parameter_errors` nor `at_bounds`.
     """
 
     parameters: Mapping[str, float]
@@ -343,6 +351,7 @@ class FitResult:
     parameter_errors: Mapping[str, float] = field(default_factory=dict)
     at_bounds: tuple[str, ...] = ()
     known_issues: tuple[str, ...] = ()
+    held: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

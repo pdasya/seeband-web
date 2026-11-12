@@ -1,6 +1,7 @@
 import copy
 import dataclasses
 import json
+import math
 import subprocess
 import sys
 import warnings
@@ -11,7 +12,9 @@ from unittest.mock import ANY
 
 import numpy as np
 import pytest
+from scipy import optimize as opt
 from seeband_core import band_models, fit_module
+from seeband_core import math_module as te
 from seeband_core.band_models import parabolic_band
 from seeband_core.model_catalog import registry
 from seeband_core.model_interface import (
@@ -1306,3 +1309,179 @@ def test_single_pass_fits_have_no_iterations(
     assert result.status == "converged"
     assert result.iterations is None
     assert updates == []
+
+
+# Fits that hold chosen parameters at their start values (D30).
+
+
+def fitted_names(model_id: str, fit_mode_id: str, scattering: str | None) -> list[str]:
+    fit_mode = registry.get(model_id).describe().fit_mode(fit_mode_id)
+    return [spec.name for spec in fit_mode.parameters_for(scattering) if spec.role == "fitted"]
+
+
+def one_held_cases() -> list[tuple[str, str, str | None, str]]:
+    """Each fitted parameter held alone, in modes that fit another, as holding all is an error."""
+    cases = []
+    for model_id, fit_mode_id, scattering in WORKING_FITS:
+        names = fitted_names(model_id, fit_mode_id, scattering)
+        if len(names) > 1:
+            cases += [(model_id, fit_mode_id, scattering, name) for name in names]
+    return cases
+
+
+def fit(
+    model_id: str, fit_mode_id: str, scattering: str | None, held: set[str], **extra: Any
+) -> tuple[dict[str, float], Any]:
+    model = registry.get(model_id)
+    fit_mode = model.describe().fit_mode(fit_mode_id)
+    start = default_start(fit_mode)
+    request = FitRequest(
+        fit_mode_id,
+        recorded_measurements(fit_mode),
+        start,
+        scattering=scattering,
+        held=frozenset(held),
+        **extra,
+    )
+    return start, model.fit(request)
+
+
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize(("model_id", "fit_mode_id", "scattering", "name"), one_held_cases())
+def test_a_held_parameter_keeps_its_start_through_every_stage(
+    model_id: str, fit_mode_id: str, scattering: str | None, name: str
+) -> None:
+    start, result = fit(model_id, fit_mode_id, scattering, {name})
+
+    assert result.status in ("converged", "iteration_limit"), result.message
+    assert result.parameters[name] == start[name]
+    assert result.held == (name,)
+    assert name not in result.parameter_errors
+    assert name not in result.at_bounds
+    others = set(fitted_names(model_id, fit_mode_id, scattering)) - {name}
+    # The others are still fitted: at least one moves from its start.
+    assert any(result.parameters[other] != start[other] for other in others)
+
+
+@pytest.mark.filterwarnings("ignore")
+def test_with_only_the_fermi_energy_free_nothing_else_changes() -> None:
+    names = fitted_names("dpb", "dpb_s_rho", "acPh")
+    held = set(names) - {"fermi_energy"}
+
+    start, result = fit("dpb", "dpb_s_rho", "acPh", held)
+
+    assert result.status in ("converged", "iteration_limit"), result.message
+    for name in held:
+        assert result.parameters[name] == start[name]
+    assert result.parameters["fermi_energy"] != start["fermi_energy"]
+    assert set(result.parameter_errors) <= {"fermi_energy"}
+
+
+@pytest.mark.filterwarnings("ignore")
+def test_a_held_parameter_fits_as_a_fit_with_it_fixed_by_hand() -> None:
+    fit_mode = registry.get("dpb").describe().fit_mode("dpb_s")
+    data = recorded_measurements(fit_mode)["seebeck"]
+    start, result = fit("dpb", "dpb_s", None, {"band_gap"})
+    gap = start["band_gap"]
+    bounds = {spec.name: spec.fit_bounds for spec in fit_mode.parameters}
+    mass_bounds, fermi_bounds = bounds["m_eff"], bounds["fermi_energy"]
+    assert mass_bounds is not None
+    assert fermi_bounds is not None
+
+    by_hand, _ = opt.curve_fit(
+        lambda T, meff, fermi_energy: te.dpb_see_vs_temp(
+            data.temperature_k, meff, gap, fermi_energy, 1.0, scal_fac=1e6
+        ),
+        data.temperature_k,
+        data.values * 1e6,
+        p0=[start["m_eff"], start["fermi_energy"]],
+        bounds=(
+            [mass_bounds.lower, fermi_bounds.lower],
+            [mass_bounds.upper, fermi_bounds.upper],
+        ),
+        maxfev=1000,
+    )
+
+    assert result.parameters["m_eff"] == by_hand[0]
+    assert result.parameters["fermi_energy"] == by_hand[1]
+
+
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize("scattering", ["acPh", "dis", "acPhDis"])
+def test_a_held_m_eff_in_a_loop_with_n2_over_n1_not_1_comes_back_as_sent(
+    scattering: str,
+) -> None:
+    # The loop fits m_eff / N and reports it times N (D12), so a held m_eff goes in divided.
+    start, result = fit(
+        "dpb", "dpb_s_rho", scattering, {"m_eff"}, band_1_degeneracy=1.0, band_2_degeneracy=2.0
+    )
+
+    assert result.status in ("converged", "iteration_limit"), result.message
+    assert result.parameters["m_eff"] == start["m_eff"]
+
+
+@pytest.mark.filterwarnings("ignore")
+def test_holding_m1_skips_the_hall_stage() -> None:
+    start, result = fit("dpb", "dpb_s_rho_rh", "acPh", {"m1"})
+
+    assert result.parameters["m1"] == start["m1"]
+    assert "m1" not in result.parameter_errors
+
+
+def test_a_stage_with_every_value_held_returns_its_start_unfitted() -> None:
+    progress = fit_module.FitProgress(held={"see": frozenset({0, 1})})
+
+    values, covariance = fit_module._curve_fit(
+        progress,
+        "see",
+        lambda x, a, b: a * x + b,
+        np.array([1.0, 2.0, 3.0]),
+        np.array([2.0, 4.0, 6.0]),
+        p0=[5.0, 7.0],
+        bounds=([0.0, 0.0], [10.0, 10.0]),
+    )
+
+    assert values.tolist() == [5.0, 7.0]
+    assert np.isnan(covariance).all()
+    assert progress.stage_fits["see"][0].tolist() == [5.0, 7.0]
+
+
+def test_a_held_value_has_no_covariance_and_the_others_are_fitted() -> None:
+    x = np.linspace(0.0, 1.0, 20)
+    progress = fit_module.FitProgress(held={"res": frozenset({1})})
+
+    values, covariance = fit_module._curve_fit(
+        progress,
+        "res",
+        lambda x, a, b, c: a * x**2 + b * x + c,
+        x,
+        3.0 * x**2 + 2.0 * x + 1.0,
+        p0=[1.0, 2.0, 0.0],
+        bounds=([-10.0, -10.0, -10.0], [10.0, 10.0, 10.0]),
+    )
+
+    assert values[1] == 2.0
+    assert values[0] == pytest.approx(3.0)
+    assert values[2] == pytest.approx(1.0)
+    assert np.isnan(covariance[1]).all()
+    assert np.isnan(covariance[:, 1]).all()
+    assert math.isfinite(covariance[0, 0])
+
+
+@pytest.mark.parametrize(
+    ("fit_mode_id", "scattering", "held", "message"),
+    [
+        # A mass the SPB S fit does not find.
+        ("spb_s", None, {"band_mass"}, "does not fit parameters"),
+        # F belongs to dis, not acPh.
+        ("dpb_s_rho", "acPh", {"F"}, "does not fit parameters"),
+        ("dpb_s_rho", "acPh", {"nothing"}, "has no parameters|does not fit parameters"),
+        ("spb_s", None, {"fermi_energy"}, "at least one parameter that is not held"),
+    ],
+)
+def test_holding_what_the_fit_does_not_find_or_everything_is_an_error(
+    fit_mode_id: str, scattering: str | None, held: set[str], message: str
+) -> None:
+    model_id = fit_mode_id.split("_")[0]
+    with pytest.raises(ValueError, match=message):
+        fit(model_id, fit_mode_id, scattering, held)

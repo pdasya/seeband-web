@@ -60,6 +60,8 @@ _MEASURED_CURVES = ("seebeck_v_per_k", "resistivity_ohm_m", "hall_m3_per_c")
 # A parameter this close to a bound, as a share of the bound, counts as being at it. A share of the
 # range would flag well-fitted values on the ranges here that span many decades.
 AT_BOUND_TOLERANCE = 1e-6
+# The key of each stage in `fit_module.FitProgress`.
+_STAGE_KEYS: dict[Quantity, str] = {"seebeck": "see", "resistivity": "res", "hall": "hall"}
 _CURVE_NAMES: dict[CurveKind, tuple[str, ...]] = {
     "seebeck": ("seebeck_v_per_k",),
     "seebeck_by_band": ("seebeck_band_1_v_per_k", "seebeck_band_2_v_per_k"),
@@ -177,6 +179,13 @@ def _log_failure(error: Exception) -> None:
     logger.warning("A fit failed with %s at %s", type(error).__name__, place)
 
 
+def _fitted_names(fit_mode: FitMode, scattering: str | None) -> frozenset[str]:
+    """The parameters a fit finds, for its scattering type."""
+    return frozenset(
+        spec.name for spec in fit_mode.parameters_for(scattering) if spec.role == "fitted"
+    )
+
+
 class _BandModel:
     """What SPB and DPB share: checks, bounds and naming of results."""
 
@@ -208,6 +217,12 @@ class _BandModel:
                 raise ValueError(f"Fit mode {fit_mode.id} does not fit a parameter {name}")
             if not bounds.lower < bounds.upper:
                 raise ValueError(f"The lower bound of {name} must be below its upper bound")
+        fitted = _fitted_names(fit_mode, request.scattering)
+        not_fitted = sorted(name for name in request.held if name not in fitted)
+        if not_fitted:
+            raise ValueError(f"Fit mode {fit_mode.id} does not fit parameters {not_fitted}")
+        if fitted and fitted <= request.held:
+            raise ValueError("A fit needs at least one parameter that is not held")
         for quantity in fit_mode.quantities:
             if quantity in request.measurements:
                 request.measurements[quantity].check(quantity)
@@ -266,16 +281,39 @@ class _BandModel:
         status: FitStatus,
     ) -> FitResult:
         ratio = _degeneracy_ratio(request) if fit_mode.degeneracy is not None else 1.0
+        # A held value comes back as sent, not through a solver's units, such as m1 from E^(2/3).
+        parameters = dict(parameters) | {name: request.start[name] for name in request.held}
+        errors = self._stage_errors(fit_mode, request.scattering, ratio, progress)
+        at_bounds = self._at_bounds(request, fit_mode, parameters, ratio, progress.stage_fits)
         return FitResult(
             parameters,
             status,
             progress.iterations if fit_mode.iterative else None,
-            parameter_errors=self._stage_errors(fit_mode, request.scattering, ratio, progress),
-            at_bounds=self._at_bounds(request, fit_mode, parameters, ratio, progress.stage_fits),
+            parameter_errors={
+                name: error for name, error in errors.items() if name not in request.held
+            },
+            at_bounds=tuple(name for name in at_bounds if name not in request.held),
             known_issues=active_issue_ids(
                 fit_mode, request.scattering, parameters, ratio, extrapolated=request.extrapolated
             ),
+            held=tuple(sorted(request.held)),
         )
+
+    def _progress(self, request: FitRequest, fit_mode: FitMode) -> fit_module.FitProgress:
+        """A progress that holds, in each stage, the positions of the parameters held."""
+        progress = fit_module.FitProgress()
+        if not request.held:
+            return progress
+        fitted = _fitted_names(fit_mode, request.scattering)
+        for stage in fit_mode.stages:
+            # A stage's vector holds the parameters of the scattering type, in the stage's order.
+            vector = [name for name in stage.parameters if name in fitted]
+            positions = frozenset(
+                index for index, name in enumerate(vector) if name in request.held
+            )
+            if positions:
+                progress.held[_STAGE_KEYS[stage.quantity]] = positions
+        return progress
 
     def _run_fit(
         self,
@@ -287,7 +325,7 @@ class _BandModel:
         names: tuple[str, ...],
     ) -> FitResult:
         """Run a single-pass fit, and turn its errors into a status."""
-        progress = fit_module.FitProgress()
+        progress = self._progress(request, fit_mode)
         try:
             fitted = function(*arguments, progress=progress, **keywords)
         except MemoryError:
@@ -299,6 +337,7 @@ class _BandModel:
                 "failed",
                 message=_failure_message(error),
                 known_issues=disabled_issue_ids(fit_mode),
+                held=tuple(sorted(request.held)),
             )
         parameters = dict(request.start) | dict(zip(names, fitted, strict=True))
         return self._ended_fit(request, fit_mode, progress, parameters, "converged")
@@ -315,7 +354,7 @@ class _BandModel:
         """Run a fit with a loop, and turn how it ended into a status."""
         latest = dict(request.start)
         callback_error: Exception | None = None
-        progress = fit_module.FitProgress()
+        progress = self._progress(request, fit_mode)
         if on_iteration is not None:
             callback = on_iteration
 
@@ -346,6 +385,7 @@ class _BandModel:
                 progress.iterations,
                 _failure_message(error),
                 known_issues=disabled_issue_ids(fit_mode),
+                held=tuple(sorted(request.held)),
             )
         if callback_error is not None:
             raise callback_error
@@ -598,6 +638,10 @@ class DpbModel(_BandModel):
         if fit_mode.id == "dpb_s":
             arguments = [*data, *bands, degeneracy]
             return self._run_fit(request, fit_mode, _CORE.dpb_see_fit, arguments, {}, _DPB_BANDS)
+        if "m_eff" in request.held:
+            # The loop fits m_eff / N and returns it times N (D12), so a held m_eff goes in divided,
+            # and the bands keep the mass sent.
+            bands[0][0] = bands[0][0] / degeneracy
         scattering_start: list[Any] = [
             _values(start, _DPB_SCATTERING),
             self._limits(request, fit_mode, _DPB_SCATTERING),
