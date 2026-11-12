@@ -395,6 +395,26 @@ def test_si_column_is_in_the_order_of_the_text_and_none_without_a_role() -> None
     assert column is not None
     assert column.tolist() == [3e-6, 1e-6]
     assert si_column(table, 2) is None
+    first = si_column(table, 1, rows=1)
+    assert first is not None
+    assert first.tolist() == [3e-6]
+
+
+@pytest.mark.parametrize(
+    ("text", "quantity", "expected"),
+    [
+        # Float reads these as 0, and Decimal cannot hold the exponent.
+        ("T (K)\tS (uV/K)\n100\t1e-99999999999999999999\n200\t50\n", "seebeck", [0.0, 5e-5]),
+        ("T (C)\tS (V/K)\n1e-99999999999999999999\t1e-4\n200\t2e-4\n", "seebeck", [1e-4, 2e-4]),
+        ("T (K)\tS (uV/K)\n100\t1e-500\n200\t50\n", "seebeck", [0.0, 5e-5]),
+    ],
+)
+def test_a_value_at_an_exponent_no_measurement_has_converts_as_read(
+    text: str, quantity: Any, expected: list[float]
+) -> None:
+    table = parse_table(text)
+    assert table.errors == ()
+    assert table.measurements[quantity].values.tolist() == expected
 
 
 def test_lab_units_read_as_si_are_called_implausible() -> None:

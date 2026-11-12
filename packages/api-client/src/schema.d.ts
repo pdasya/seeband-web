@@ -1186,7 +1186,8 @@ export interface components {
          *     `measurements` is empty with any `errors`. `headers` is left out when no header matches the
          *     columns. `column_count` is 0 when neither a row nor a header sets it. `preview` holds the first
          *     rows that could be read, in the order of the text and as written, and `row_count` all of them.
-         *     `preview_si` holds the same rows in SI, with `null` for a column with no role. `mapping` is the
+         *     `preview_si` holds the same rows in SI, with `null` for a column with no role or no unit:
+         *     with `errors`, only a unit the request chose is kept. `mapping` is the
          *     suggestion or the user's choice, and with no readable rows, always the suggestion. `warnings`
          *     holds every kind, with at most 100 `preamble_skipped`, and `warnings_omitted` counts the rest.
          *     `interpolation_failed` names quantities that could not be interpolated.

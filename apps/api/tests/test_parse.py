@@ -89,6 +89,14 @@ def test_preview_keeps_the_order_of_the_text_and_is_short(client: TestClient) ->
     assert body["measurements"]["seebeck"]["temperature_k"][0] == 471.0
 
 
+def test_a_value_decimal_cannot_hold_in_a_lab_unit_is_read_not_a_500(client: TestClient) -> None:
+    body = _parse(client, "T (K)\tS (uV/K)\n100\t1e-99999999999999999999\n200\t50\n")
+
+    assert body["errors"] == []
+    assert body["measurements"]["seebeck"]["values"] == [0.0, 5e-5]
+    assert body["preview_si"] == [[100.0, 0.0], [200.0, 5e-5]]
+
+
 def test_file_with_errors_keeps_its_preview_and_has_no_measurements(client: TestClient) -> None:
     body = _parse(client, "T S\n100 1e-6\n200 x\n300 3e-6\n")
 

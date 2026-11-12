@@ -7368,7 +7368,7 @@
           "interpolation_failed"
         ],
         "title": "ParseResponse",
-        "description": "What the text holds. A file with problems is still a 200, with a preview and its `errors`.\n\n`measurements` is empty with any `errors`. `headers` is left out when no header matches the\ncolumns. `column_count` is 0 when neither a row nor a header sets it. `preview` holds the first\nrows that could be read, in the order of the text and as written, and `row_count` all of them.\n`preview_si` holds the same rows in SI, with `null` for a column with no role. `mapping` is the\nsuggestion or the user's choice, and with no readable rows, always the suggestion. `warnings`\nholds every kind, with at most 100 `preamble_skipped`, and `warnings_omitted` counts the rest.\n`interpolation_failed` names quantities that could not be interpolated."
+        "description": "What the text holds. A file with problems is still a 200, with a preview and its `errors`.\n\n`measurements` is empty with any `errors`. `headers` is left out when no header matches the\ncolumns. `column_count` is 0 when neither a row nor a header sets it. `preview` holds the first\nrows that could be read, in the order of the text and as written, and `row_count` all of them.\n`preview_si` holds the same rows in SI, with `null` for a column with no role or no unit:\nwith `errors`, only a unit the request chose is kept. `mapping` is the\nsuggestion or the user's choice, and with no readable rows, always the suggestion. `warnings`\nholds every kind, with at most 100 `preamble_skipped`, and `warnings_omitted` counts the rest.\n`interpolation_failed` names quantities that could not be interpolated."
       },
       "Prediction": {
         "properties": {

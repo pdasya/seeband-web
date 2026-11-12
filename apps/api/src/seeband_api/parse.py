@@ -120,7 +120,8 @@ class ParseResponse(BaseModel):
     `measurements` is empty with any `errors`. `headers` is left out when no header matches the
     columns. `column_count` is 0 when neither a row nor a header sets it. `preview` holds the first
     rows that could be read, in the order of the text and as written, and `row_count` all of them.
-    `preview_si` holds the same rows in SI, with `null` for a column with no role. `mapping` is the
+    `preview_si` holds the same rows in SI, with `null` for a column with no role or no unit:
+    with `errors`, only a unit the request chose is kept. `mapping` is the
     suggestion or the user's choice, and with no readable rows, always the suggestion. `warnings`
     holds every kind, with at most 100 `preamble_skipped`, and `warnings_omitted` counts the rest.
     `interpolation_failed` names quantities that could not be interpolated.
@@ -176,8 +177,8 @@ def _preview_si(table: ParsedTable, rows: int) -> list[list[float | None]]:
     """The first rows in SI, through the core, as only it holds the units."""
     converted: list[list[float] | None] = []
     for index in range(len(table.columns)):
-        column = si_column(table, index)
-        converted.append(None if column is None else column[:rows].tolist())
+        column = si_column(table, index, rows)
+        converted.append(None if column is None else column.tolist())
     return [
         [None if values is None else values[row] for values in converted] for row in range(rows)
     ]

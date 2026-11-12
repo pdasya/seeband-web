@@ -12,7 +12,7 @@ import dataclasses
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass, replace
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Literal, get_args
 
 import numpy as np
@@ -258,18 +258,39 @@ def to_si(role: Role, unit: Unit, texts: tuple[str, ...], values: np.ndarray) ->
     if conversion.is_si:
         return values.copy()
     return np.array(
-        [float(Decimal(text).scaleb(conversion.exponent) + conversion.offset) for text in texts],
+        [
+            _convert(text, float(value), conversion)
+            for text, value in zip(texts, values, strict=True)
+        ],
         dtype=np.float64,
     )
 
 
-def si_column(table: ParsedTable, index: int) -> np.ndarray | None:
-    """A mapped column in SI, in the order of the text, or None for a column with no role."""
+# Beyond this decimal exponent a finite value as read is 0 or below 1e-308. Decimal cannot hold an
+# exponent such as that of `1e-99999999999999999999`, which float reads as 0.
+_DECIMAL_EXPONENT_LIMIT = 400
+
+
+def _convert(text: str, value: float, conversion: Conversion) -> float:
+    """One value as written, in SI. Decimal from its text, or from the value read at an exponent
+    no measurement has."""
+    try:
+        written = Decimal(text)
+    except InvalidOperation:
+        written = Decimal(value)
+    if abs(written.adjusted()) > _DECIMAL_EXPONENT_LIMIT:
+        written = Decimal(value)
+    return float(written.scaleb(conversion.exponent) + conversion.offset)
+
+
+def si_column(table: ParsedTable, index: int, rows: int | None = None) -> np.ndarray | None:
+    """A mapped column in SI, in the order of the text, or None for a column with no role or no
+    unit, as with errors. With `rows`, only the first rows, so a preview converts no more."""
     role = table.mapping.get(index)
     unit = table.units.get(index)
     if role is None or unit is None:
         return None
-    return to_si(role, unit, table.texts[index], table.columns[index])
+    return to_si(role, unit, table.texts[index][:rows], table.columns[index][:rows])
 
 
 def _units_for(

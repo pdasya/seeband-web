@@ -60,35 +60,35 @@ Where it is not clear what a column holds, the parser leaves it unassigned, beca
 
 Problems are codes, with a line and column where they apply, and no text or measured values. A client translates them. Any error leaves `measurements` empty, and `columns` keeps the rows that could be read, for a preview.
 
-| Code                        | Kind    | Meaning                                                                                             |
-| --------------------------- | ------- | --------------------------------------------------------------------------------------------------- |
-| `no_data`                   | error   | no row of numbers                                                                                   |
-| `wrong_encoding`            | error   | no row of numbers, in a text with NUL or replacement characters, such as UTF-16 read as UTF-8       |
-| `line_too_long`             | error   | a line over 2000 characters                                                                         |
-| `too_many_problems`         | error   | the list stopped at the line that reached 50 errors                                                 |
-| `too_few_columns`           | error   | a line with one number                                                                              |
-| `wrong_column_count`        | error   | a line with a different number of columns from the first row                                        |
-| `missing_value`             | error   | an empty field, as in `400,,2`                                                                      |
-| `not_numeric`, `not_finite` | error   | a value that is not a finite number. `nan` and `inf` are not numeric, and `1e999` is not finite     |
-| `decimal_comma`             | error   | a line that looks like it uses decimal commas                                                       |
-| `too_few_rows`              | error   | fewer than 2 rows                                                                                   |
-| `missing_temperature`       | error   | no column is T. A user can still assign one                                                         |
-| `non_positive_temperature`  | error   | T of 0 K or below, after conversion, so -50 °C is fine and -300 °C is not                           |
-| `negative_resistivity`      | error   | a resistivity below 0, which no measurement gives (D28)                                             |
-| `repeated_role`             | error   | a mapping that uses a quantity twice                                                                |
-| `unit_not_allowed`          | error   | a unit chosen for a column that its quantity cannot have                                            |
-| `preamble_skipped`          | warning | a line of text before the header, which is left out                                                 |
-| `header_mismatch`           | warning | a header with a different number of columns from the data                                           |
-| `unit_differs`              | warning | a column with a unit the parser cannot read, which is not assigned                                  |
-| `unit_assumed`              | warning | a column with such a unit that a user assigned, read in SI or the unit chosen for it                |
-| `implausible_magnitude`     | warning | the largest value of a quantity is outside the limits above, which suggests a wrong unit            |
-| `repeated_header`           | warning | a second column for one quantity, which is not assigned                                             |
-| `columns_need_assigning`    | warning | more than two columns with no header                                                                |
-| `expected_not_found`        | warning | the `expected` quantity is not among the assigned columns                                           |
-| `no_quantity`               | warning | no column holds a quantity, so there are no measurements                                            |
-| `few_rows`                  | warning | fewer than 6 distinct temperatures, which leaves the degree 5 fit for DPB start values undetermined |
-| `unsorted_temperature`      | warning | rows were not in order of T, so `measurements` is sorted. `columns` keeps the order of the text     |
-| `duplicate_temperature`     | warning | a repeated T, which stays in place                                                                  |
+| Code                        | Kind    | Meaning                                                                                                                                                                               |
+| --------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `no_data`                   | error   | no row of numbers                                                                                                                                                                     |
+| `wrong_encoding`            | error   | no row of numbers, in a text with NUL or replacement characters, such as UTF-16 read as UTF-8                                                                                         |
+| `line_too_long`             | error   | a line over 2000 characters                                                                                                                                                           |
+| `too_many_problems`         | error   | the list stopped at the line that reached 50 errors                                                                                                                                   |
+| `too_few_columns`           | error   | a line with one number                                                                                                                                                                |
+| `wrong_column_count`        | error   | a line with a different number of columns from the first row                                                                                                                          |
+| `missing_value`             | error   | an empty field, as in `400,,2`                                                                                                                                                        |
+| `not_numeric`, `not_finite` | error   | a value that is not a finite number. `nan` and `inf` are not numeric, and `1e999` is not finite. A value such as `1e-99999999999999999999` reads as 0, as float reads it, in any unit |
+| `decimal_comma`             | error   | a line that looks like it uses decimal commas                                                                                                                                         |
+| `too_few_rows`              | error   | fewer than 2 rows                                                                                                                                                                     |
+| `missing_temperature`       | error   | no column is T. A user can still assign one                                                                                                                                           |
+| `non_positive_temperature`  | error   | T of 0 K or below, after conversion, so -50 °C is fine and -300 °C is not                                                                                                             |
+| `negative_resistivity`      | error   | a resistivity below 0, which no measurement gives (D28)                                                                                                                               |
+| `repeated_role`             | error   | a mapping that uses a quantity twice                                                                                                                                                  |
+| `unit_not_allowed`          | error   | a unit chosen for a column that its quantity cannot have                                                                                                                              |
+| `preamble_skipped`          | warning | a line of text before the header, which is left out                                                                                                                                   |
+| `header_mismatch`           | warning | a header with a different number of columns from the data                                                                                                                             |
+| `unit_differs`              | warning | a column with a unit the parser cannot read, which is not assigned                                                                                                                    |
+| `unit_assumed`              | warning | a column with such a unit that a user assigned with no unit chosen, read in SI                                                                                                        |
+| `implausible_magnitude`     | warning | the largest value of a quantity is outside the limits above, which suggests a wrong unit                                                                                              |
+| `repeated_header`           | warning | a second column for one quantity, which is not assigned                                                                                                                               |
+| `columns_need_assigning`    | warning | more than two columns with no header                                                                                                                                                  |
+| `expected_not_found`        | warning | the `expected` quantity is not among the assigned columns                                                                                                                             |
+| `no_quantity`               | warning | no column holds a quantity, so there are no measurements                                                                                                                              |
+| `few_rows`                  | warning | fewer than 6 distinct temperatures, which leaves the degree 5 fit for DPB start values undetermined                                                                                   |
+| `unsorted_temperature`      | warning | rows were not in order of T, so `measurements` is sorted. `columns` keeps the order of the text                                                                                       |
+| `duplicate_temperature`     | warning | a repeated T, which stays in place                                                                                                                                                    |
 
 `01_Fe2VAl09Si01_hall.txt` from the desktop examples measures 100 K twice, so this warning appears on real data.
 
