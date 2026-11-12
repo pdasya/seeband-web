@@ -8,7 +8,7 @@ from http import HTTPStatus
 from typing import Annotated, Any, Self
 
 from pydantic import BaseModel, Field, model_validator
-from seeband_core.data_parser import IssueCode, ParseIssue, Role
+from seeband_core.data_parser import IssueCode, ParsedTable, ParseIssue, Role, Unit, to_si
 from seeband_core.interpolation import InterpolatedData, interpolation_grid_k
 from seeband_core.model_interface import Measurement, Quantity
 
@@ -33,10 +33,16 @@ PositiveFloat = Annotated[float, Field(gt=0, allow_inf_nan=False, strict=True)]
 
 
 class ColumnRole(BaseModel):
-    """What a column holds. Columns count from 0."""
+    """What a column holds, and the unit its values are written in. Columns count from 0.
+
+    In a request, `unit` is a user's choice, and without it the column's header unit, or SI,
+    applies. In an answer it is the unit the column was read in. `input-data.md` of the core lists
+    the units of each quantity.
+    """
 
     column: Annotated[int, Field(ge=0, strict=True)]
     role: Role
+    unit: Unit | None = None
 
 
 class InterpolationRange(BaseModel):
@@ -113,7 +119,8 @@ class ParseResponse(BaseModel):
 
     `measurements` is empty with any `errors`. `headers` is left out when no header matches the
     columns. `column_count` is 0 when neither a row nor a header sets it. `preview` holds the first
-    rows that could be read, in the order of the text, and `row_count` all of them. `mapping` is the
+    rows that could be read, in the order of the text and as written, and `row_count` all of them.
+    `preview_si` holds the same rows in SI, with `null` for a column with no role. `mapping` is the
     suggestion or the user's choice, and with no readable rows, always the suggestion. `warnings`
     holds every kind, with at most 100 `preamble_skipped`, and `warnings_omitted` counts the rest.
     `interpolation_failed` names quantities that could not be interpolated.
@@ -123,6 +130,7 @@ class ParseResponse(BaseModel):
     column_count: int
     row_count: int
     preview: list[list[float]]
+    preview_si: list[list[float | None]]
     mapping: list[ColumnRole]
     measurements: dict[Quantity, MeasurementResponse]
     errors: list[IssueResponse]
@@ -164,21 +172,37 @@ def _interpolated(data: InterpolatedData) -> InterpolatedResponse:
     )
 
 
+def _preview_si(table: ParsedTable, rows: int) -> list[list[float | None]]:
+    """The first rows in SI, through the core, as only it holds the factors."""
+    converted: list[list[float] | None] = []
+    for index, column in enumerate(table.columns):
+        role = table.mapping.get(index)
+        unit = table.units.get(index)
+        converted.append(
+            None if role is None or unit is None else to_si(role, unit, column[:rows]).tolist()
+        )
+    return [
+        [None if values is None else values[row] for values in converted] for row in range(rows)
+    ]
+
+
 def to_parse_response(outcome: ParseOutcome) -> ParseResponse:
     table = outcome.table
     columns = table.columns
     row_count = len(table.lines)
+    preview_rows = min(row_count, PREVIEW_ROWS)
     preamble = [issue for issue in table.warnings if issue.code == "preamble_skipped"]
     others = [issue for issue in table.warnings if issue.code != "preamble_skipped"]
     return ParseResponse(
         headers=list(table.headers) if table.headers is not None else None,
         column_count=table.column_count or len(table.headers or ()),
         row_count=row_count,
-        preview=[
-            [float(column[row]) for column in columns]
-            for row in range(min(row_count, PREVIEW_ROWS))
+        preview=[[float(column[row]) for column in columns] for row in range(preview_rows)],
+        preview_si=_preview_si(table, preview_rows),
+        mapping=[
+            ColumnRole(column=column, role=role, unit=table.units.get(column))
+            for column, role in table.mapping.items()
         ],
-        mapping=[ColumnRole(column=column, role=role) for column, role in table.mapping.items()],
         measurements={
             quantity: _measurement(measurement)
             for quantity, measurement in table.measurements.items()
@@ -211,13 +235,17 @@ PARSE_EXAMPLE_REQUESTS: dict[str, dict[str, Any]] = {
     },
 }
 _NO_INTERPOLATION: dict[str, Any] = {"interpolated": {}, "interpolation_failed": []}
-_T_S_MAPPING = [{"column": 0, "role": "temperature"}, {"column": 1, "role": "seebeck"}]
+_T_S_MAPPING = [
+    {"column": 0, "role": "temperature", "unit": "K"},
+    {"column": 1, "role": "seebeck", "unit": "V/K"},
+]
 PARSE_EXAMPLE_RESPONSES: dict[str, dict[str, Any]] = {
     "clean": {
         "headers": ["T (K)", "S (V/K)"],
         "column_count": 2,
         "row_count": 3,
         "preview": [[300.0, 1.0e-4], [100.0, 2.0e-5], [200.0, 6.0e-5]],
+        "preview_si": [[300.0, 1.0e-4], [100.0, 2.0e-5], [200.0, 6.0e-5]],
         "mapping": _T_S_MAPPING,
         "measurements": {
             "seebeck": {
@@ -238,7 +266,8 @@ PARSE_EXAMPLE_RESPONSES: dict[str, dict[str, Any]] = {
         "column_count": 2,
         "row_count": 1,
         "preview": [[100.0, 1.0e-6]],
-        "mapping": _T_S_MAPPING,
+        "preview_si": [[None, None]],
+        "mapping": [{"column": 0, "role": "temperature"}, {"column": 1, "role": "seebeck"}],
         "measurements": {},
         "errors": [{"code": "not_numeric", "line": 3, "column": 1}],
         "warnings": [],
@@ -250,6 +279,7 @@ PARSE_EXAMPLE_RESPONSES: dict[str, dict[str, Any]] = {
         "column_count": 2,
         "row_count": 3,
         "preview": [[100.0, 1.0e-6], [130.0, 2.0e-6], [160.0, 3.0e-6]],
+        "preview_si": [[100.0, 1.0e-6], [130.0, 2.0e-6], [160.0, 3.0e-6]],
         "mapping": _T_S_MAPPING,
         "measurements": {
             "seebeck": {
@@ -305,10 +335,12 @@ async def post_parse(
             # The core's text here is fixed, and quotes no values.
             raise _refuse("invalid_interpolation_range", str(error), ["interpolate"]) from None
     mapping = None
+    units = None
     if body.mapping is not None:
         mapping = {item.column: item.role for item in body.mapping}
+        units = {item.column: item.unit for item in body.mapping if item.unit is not None}
     try:
-        outcome = await pool.run(parse, body.text, body.expected, mapping, fit_range)
+        outcome = await pool.run(parse, body.text, body.expected, mapping, fit_range, units)
     except UnknownColumn:
         raise _refuse("unknown_column", "The text has no such column", ["mapping"]) from None
     # Only reading the text can say how many rows it holds, and its size limits that work.

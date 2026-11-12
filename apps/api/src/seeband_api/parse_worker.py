@@ -3,7 +3,7 @@
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-from seeband_core.data_parser import ParsedTable, Role, parse_table, with_mapping
+from seeband_core.data_parser import ParsedTable, Role, Unit, parse_table, with_mapping
 from seeband_core.interpolation import InterpolatedData, interpolate
 from seeband_core.model_interface import Quantity
 
@@ -28,8 +28,13 @@ class ParseOutcome:
     failure_types: tuple[str, ...] = ()
 
 
-def _read(text: str, expected: Quantity | None, mapping: Mapping[int, Role] | None) -> ParsedTable:
-    """Reads the text, and applies a user's mapping even if some rows have errors.
+def _read(
+    text: str,
+    expected: Quantity | None,
+    mapping: Mapping[int, Role] | None,
+    units: Mapping[int, Unit] | None,
+) -> ParsedTable:
+    """Reads the text, and applies a user's mapping and units even if some rows have errors.
 
     `parse_table` keeps its suggestion when there are errors, and a user fixing columns needs their
     choice kept. With no readable rows, there are no columns to check it against, so it is ignored.
@@ -38,7 +43,7 @@ def _read(text: str, expected: Quantity | None, mapping: Mapping[int, Role] | No
     if mapping is None or not table.columns:
         return table
     try:
-        return with_mapping(table, mapping)
+        return with_mapping(table, mapping, units)
     except ValueError as error:
         raise UnknownColumn from error
 
@@ -48,12 +53,13 @@ def parse(
     expected: Quantity | None,
     mapping: Mapping[int, Role] | None,
     fit_range: FitRange | None,
+    units: Mapping[int, Unit] | None = None,
 ) -> ParseOutcome:
     """Reads the text, and interpolates each quantity over a fit range, if one is given.
 
     One quantity failing leaves the others, as a fit may not use it.
     """
-    table = _read(text, expected, mapping)
+    table = _read(text, expected, mapping, units)
     interpolated: dict[Quantity, InterpolatedData] = {}
     failed: list[Quantity] = []
     failure_types: list[str] = []

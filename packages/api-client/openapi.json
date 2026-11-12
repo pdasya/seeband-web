@@ -3353,14 +3353,30 @@
                           6e-05
                         ]
                       ],
+                      "preview_si": [
+                        [
+                          300.0,
+                          0.0001
+                        ],
+                        [
+                          100.0,
+                          2e-05
+                        ],
+                        [
+                          200.0,
+                          6e-05
+                        ]
+                      ],
                       "mapping": [
                         {
                           "column": 0,
-                          "role": "temperature"
+                          "role": "temperature",
+                          "unit": "K"
                         },
                         {
                           "column": 1,
-                          "role": "seebeck"
+                          "role": "seebeck",
+                          "unit": "V/K"
                         }
                       ],
                       "measurements": {
@@ -3409,6 +3425,12 @@
                           1e-06
                         ]
                       ],
+                      "preview_si": [
+                        [
+                          null,
+                          null
+                        ]
+                      ],
                       "mapping": [
                         {
                           "column": 0,
@@ -3455,14 +3477,30 @@
                           3e-06
                         ]
                       ],
+                      "preview_si": [
+                        [
+                          100.0,
+                          1e-06
+                        ],
+                        [
+                          130.0,
+                          2e-06
+                        ],
+                        [
+                          160.0,
+                          3e-06
+                        ]
+                      ],
                       "mapping": [
                         {
                           "column": 0,
-                          "role": "temperature"
+                          "role": "temperature",
+                          "unit": "K"
                         },
                         {
                           "column": 1,
-                          "role": "seebeck"
+                          "role": "seebeck",
+                          "unit": "V/K"
                         }
                       ],
                       "measurements": {
@@ -4497,22 +4535,88 @@
                           1.3300592053120916e-07
                         ]
                       ],
+                      "preview_si": [
+                        [
+                          50.0,
+                          9.268892694384608e-05,
+                          6.114959298287624e-06,
+                          2.979912550720506e-07
+                        ],
+                        [
+                          75.0,
+                          0.00013063742872412742,
+                          9.902036137652306e-06,
+                          3.057366999989455e-07
+                        ],
+                        [
+                          100.0,
+                          0.00015817298717411932,
+                          1.4283697194756858e-05,
+                          3.121617285990612e-07
+                        ],
+                        [
+                          125.0,
+                          0.00018508771206913953,
+                          1.8939864426941722e-05,
+                          3.182497937740966e-07
+                        ],
+                        [
+                          150.0,
+                          0.0002008961323606316,
+                          2.4172951253570913e-05,
+                          3.1174828780547804e-07
+                        ],
+                        [
+                          175.0,
+                          0.0002065060336835406,
+                          2.876149230362729e-05,
+                          2.9714640995730386e-07
+                        ],
+                        [
+                          200.0,
+                          0.00020076334664054232,
+                          3.233885960184509e-05,
+                          2.6247847654432056e-07
+                        ],
+                        [
+                          225.0,
+                          0.00018535678356561513,
+                          3.4310336596647014e-05,
+                          2.1931654660904387e-07
+                        ],
+                        [
+                          250.0,
+                          0.00016400387682983324,
+                          3.454218618855157e-05,
+                          1.7136697584462932e-07
+                        ],
+                        [
+                          275.0,
+                          0.00014354013305271633,
+                          3.3544002341563496e-05,
+                          1.3300592053120916e-07
+                        ]
+                      ],
                       "mapping": [
                         {
                           "column": 0,
-                          "role": "temperature"
+                          "role": "temperature",
+                          "unit": "K"
                         },
                         {
                           "column": 1,
-                          "role": "seebeck"
+                          "role": "seebeck",
+                          "unit": "V/K"
                         },
                         {
                           "column": 2,
-                          "role": "resistivity"
+                          "role": "resistivity",
+                          "unit": "Ohm*m"
                         },
                         {
                           "column": 3,
-                          "role": "hall"
+                          "role": "hall",
+                          "unit": "m^3/C"
                         }
                       ],
                       "measurements": {
@@ -5389,6 +5493,27 @@
               "hall"
             ],
             "title": "Role"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "K",
+                  "V/K",
+                  "uV/K",
+                  "Ohm*m",
+                  "mOhm*cm",
+                  "uOhm*m",
+                  "m^3/C",
+                  "cm^3/C"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
           }
         },
         "type": "object",
@@ -5397,7 +5522,7 @@
           "role"
         ],
         "title": "ColumnRole",
-        "description": "What a column holds. Columns count from 0."
+        "description": "What a column holds, and the unit its values are written in. Columns count from 0.\n\nIn a request, `unit` is a user's choice, and without it the column's header unit, or SI,\napplies. In an answer it is the unit the column was read in. `input-data.md` of the core lists\nthe units of each quantity."
       },
       "CurveAvailabilityResponse": {
         "properties": {
@@ -5525,6 +5650,23 @@
             "type": "array",
             "title": "Preview"
           },
+          "preview_si": {
+            "items": {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Preview Si"
+          },
           "mapping": {
             "items": {
               "$ref": "#/components/schemas/ColumnRole"
@@ -5634,6 +5776,7 @@
           "column_count",
           "row_count",
           "preview",
+          "preview_si",
           "mapping",
           "measurements",
           "errors",
@@ -6572,6 +6715,7 @@
               "non_positive_temperature",
               "negative_resistivity",
               "repeated_role",
+              "unit_not_allowed",
               "preamble_skipped",
               "header_mismatch",
               "unit_differs",
@@ -6581,7 +6725,9 @@
               "no_quantity",
               "few_rows",
               "unsorted_temperature",
-              "duplicate_temperature"
+              "duplicate_temperature",
+              "unit_assumed",
+              "implausible_magnitude"
             ],
             "title": "Code"
           },
@@ -7123,6 +7269,23 @@
             "type": "array",
             "title": "Preview"
           },
+          "preview_si": {
+            "items": {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Preview Si"
+          },
           "mapping": {
             "items": {
               "$ref": "#/components/schemas/ColumnRole"
@@ -7194,6 +7357,7 @@
           "column_count",
           "row_count",
           "preview",
+          "preview_si",
           "mapping",
           "measurements",
           "errors",
@@ -7203,7 +7367,7 @@
           "interpolation_failed"
         ],
         "title": "ParseResponse",
-        "description": "What the text holds. A file with problems is still a 200, with a preview and its `errors`.\n\n`measurements` is empty with any `errors`. `headers` is left out when no header matches the\ncolumns. `column_count` is 0 when neither a row nor a header sets it. `preview` holds the first\nrows that could be read, in the order of the text, and `row_count` all of them. `mapping` is the\nsuggestion or the user's choice, and with no readable rows, always the suggestion. `warnings`\nholds every kind, with at most 100 `preamble_skipped`, and `warnings_omitted` counts the rest.\n`interpolation_failed` names quantities that could not be interpolated."
+        "description": "What the text holds. A file with problems is still a 200, with a preview and its `errors`.\n\n`measurements` is empty with any `errors`. `headers` is left out when no header matches the\ncolumns. `column_count` is 0 when neither a row nor a header sets it. `preview` holds the first\nrows that could be read, in the order of the text and as written, and `row_count` all of them.\n`preview_si` holds the same rows in SI, with `null` for a column with no role. `mapping` is the\nsuggestion or the user's choice, and with no readable rows, always the suggestion. `warnings`\nholds every kind, with at most 100 `preamble_skipped`, and `warnings_omitted` counts the rest.\n`interpolation_failed` names quantities that could not be interpolated."
       },
       "Prediction": {
         "properties": {

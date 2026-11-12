@@ -391,7 +391,11 @@ export interface components {
         };
         /**
          * ColumnRole
-         * @description What a column holds. Columns count from 0.
+         * @description What a column holds, and the unit its values are written in. Columns count from 0.
+         *
+         *     In a request, `unit` is a user's choice, and without it the column's header unit, or SI,
+         *     applies. In an answer it is the unit the column was read in. `input-data.md` of the core lists
+         *     the units of each quantity.
          */
         ColumnRole: {
             /** Column */
@@ -401,6 +405,8 @@ export interface components {
              * @enum {string}
              */
             role: "temperature" | "seebeck" | "resistivity" | "hall";
+            /** Unit */
+            unit?: ("K" | "V/K" | "uV/K" | "Ohm*m" | "mOhm*cm" | "uOhm*m" | "m^3/C" | "cm^3/C") | null;
         };
         /**
          * CurveAvailabilityResponse
@@ -462,6 +468,8 @@ export interface components {
             row_count: number;
             /** Preview */
             preview: number[][];
+            /** Preview Si */
+            preview_si: (number | null)[][];
             /** Mapping */
             mapping: components["schemas"]["ColumnRole"][];
             /** Measurements */
@@ -965,7 +973,7 @@ export interface components {
              * Code
              * @enum {string}
              */
-            code: "no_data" | "wrong_encoding" | "line_too_long" | "too_many_problems" | "too_few_columns" | "wrong_column_count" | "missing_value" | "not_numeric" | "not_finite" | "decimal_comma" | "too_few_rows" | "missing_temperature" | "non_positive_temperature" | "negative_resistivity" | "repeated_role" | "preamble_skipped" | "header_mismatch" | "unit_differs" | "repeated_header" | "columns_need_assigning" | "expected_not_found" | "no_quantity" | "few_rows" | "unsorted_temperature" | "duplicate_temperature";
+            code: "no_data" | "wrong_encoding" | "line_too_long" | "too_many_problems" | "too_few_columns" | "wrong_column_count" | "missing_value" | "not_numeric" | "not_finite" | "decimal_comma" | "too_few_rows" | "missing_temperature" | "non_positive_temperature" | "negative_resistivity" | "repeated_role" | "unit_not_allowed" | "preamble_skipped" | "header_mismatch" | "unit_differs" | "repeated_header" | "columns_need_assigning" | "expected_not_found" | "no_quantity" | "few_rows" | "unsorted_temperature" | "duplicate_temperature" | "unit_assumed" | "implausible_magnitude";
             /** Line */
             line?: number | null;
             /** Column */
@@ -1177,7 +1185,8 @@ export interface components {
          *
          *     `measurements` is empty with any `errors`. `headers` is left out when no header matches the
          *     columns. `column_count` is 0 when neither a row nor a header sets it. `preview` holds the first
-         *     rows that could be read, in the order of the text, and `row_count` all of them. `mapping` is the
+         *     rows that could be read, in the order of the text and as written, and `row_count` all of them.
+         *     `preview_si` holds the same rows in SI, with `null` for a column with no role. `mapping` is the
          *     suggestion or the user's choice, and with no readable rows, always the suggestion. `warnings`
          *     holds every kind, with at most 100 `preamble_skipped`, and `warnings_omitted` counts the rest.
          *     `interpolation_failed` names quantities that could not be interpolated.
@@ -1191,6 +1200,8 @@ export interface components {
             row_count: number;
             /** Preview */
             preview: number[][];
+            /** Preview Si */
+            preview_si: (number | null)[][];
             /** Mapping */
             mapping: components["schemas"]["ColumnRole"][];
             /** Measurements */

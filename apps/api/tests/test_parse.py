@@ -44,8 +44,8 @@ def test_returns_points_range_and_mapping(client: TestClient) -> None:
     assert body["column_count"] == 2
     assert body["row_count"] == 6
     assert body["mapping"] == [
-        {"column": 0, "role": "temperature"},
-        {"column": 1, "role": "seebeck"},
+        {"column": 0, "role": "temperature", "unit": "K"},
+        {"column": 1, "role": "seebeck", "unit": "V/K"},
     ]
     assert body["measurements"] == {
         "seebeck": {
@@ -122,6 +122,16 @@ ERROR_CASES: list[tuple[str, dict[str, Any], str]] = [
         },
         SIX_ROWS,
     ),
+    (
+        "unit_not_allowed",
+        {
+            "mapping": [
+                {"column": 0, "role": "temperature"},
+                {"column": 1, "role": "seebeck", "unit": "cm^3/C"},
+            ]
+        },
+        SIX_ROWS,
+    ),
 ]
 WARNING_CASES: list[tuple[str, dict[str, Any], str]] = [
     ("preamble_skipped", {}, "A title\nT S\n100 1\n200 2\n"),
@@ -130,7 +140,13 @@ WARNING_CASES: list[tuple[str, dict[str, Any], str]] = [
         {"mapping": [{"column": 0, "role": "temperature"}, {"column": 1, "role": "seebeck"}]},
         "T S rho\n100 1\n200 2\n",
     ),
-    ("unit_differs", {}, "T (K)\tS (uV/K)\n100\t1\n200\t2\n"),
+    ("unit_differs", {}, "T (K)\tS (mV/K)\n100\t1\n200\t2\n"),
+    (
+        "unit_assumed",
+        {"mapping": [{"column": 0, "role": "temperature"}, {"column": 1, "role": "seebeck"}]},
+        "T (K)\tS (mV/K)\n100\t1e-6\n200\t2e-6\n",
+    ),
+    ("implausible_magnitude", {}, "T S\n100 50\n200 60\n"),
     ("repeated_header", {}, "T S S\n100 1 2\n200 2 3\n"),
     ("columns_need_assigning", {}, "100 1 2\n200 2 3\n"),
     ("expected_not_found", {"expected": "hall"}, SIX_ROWS),
@@ -172,7 +188,7 @@ def test_each_warning_code_reaches_the_client(
 def test_a_user_can_assign_columns(client: TestClient) -> None:
     text = "100 1 7\n200 2 8\n"
     first = _parse(client, text)
-    assert first["mapping"] == [{"column": 0, "role": "temperature"}]
+    assert first["mapping"] == [{"column": 0, "role": "temperature", "unit": "K"}]
     assert first["measurements"] == {}
 
     second = _parse(
@@ -188,12 +204,58 @@ def test_a_user_can_assign_columns(client: TestClient) -> None:
     assert "seebeck" not in second["measurements"]
 
 
+def test_a_unit_named_in_the_header_is_read_and_returned(client: TestClient) -> None:
+    body = _parse(client, "T (K)\tS (uV/K)\n100\t50\n200\t80\n")
+
+    assert body["mapping"][1] == {"column": 1, "role": "seebeck", "unit": "uV/K"}
+    assert body["measurements"]["seebeck"]["values"] == pytest.approx([5e-5, 8e-5], rel=1e-15)
+    assert body["preview"] == [[100.0, 50.0], [200.0, 80.0]]
+    assert [row[0] for row in body["preview_si"]] == [100.0, 200.0]
+    assert [row[1] for row in body["preview_si"]] == pytest.approx([5e-5, 8e-5], rel=1e-15)
+
+
+def test_a_unit_a_user_chooses_converts_the_values(client: TestClient) -> None:
+    mapping = [
+        {"column": 0, "role": "temperature"},
+        {"column": 1, "role": "resistivity", "unit": "mOhm*cm"},
+    ]
+    body = _parse(client, "100 0.4\n200 0.5\n", mapping=mapping)
+
+    assert body["mapping"][1]["unit"] == "mOhm*cm"
+    assert body["measurements"]["resistivity"]["values"] == pytest.approx([4e-6, 5e-6], rel=1e-15)
+    assert body["warnings"] == [{"code": "few_rows"}]
+
+
+def test_a_column_with_no_role_has_no_si_preview(client: TestClient) -> None:
+    body = _parse(client, "100 1 7\n200 2 8\n")
+
+    assert body["preview_si"] == [[100.0, None, None], [200.0, None, None]]
+
+
+def test_microvolts_read_as_volts_are_called_implausible(client: TestClient) -> None:
+    body = _parse(client, "T S\n100 50\n200 80\n")
+
+    assert {"code": "implausible_magnitude", "column": 1} in body["warnings"]
+    # Read as written: the warning only says that it looks wrong.
+    assert body["measurements"]["seebeck"]["values"] == [50.0, 80.0]
+
+
+def test_an_unknown_unit_is_refused_by_the_contract(client: TestClient) -> None:
+    mapping = [
+        {"column": 0, "role": "temperature"},
+        {"column": 1, "role": "seebeck", "unit": "mV/K"},
+    ]
+    response = client.post("/api/parse", json={"text": SIX_ROWS, "mapping": mapping})
+
+    assert response.status_code == 422
+
+
 def test_expected_names_the_second_column(client: TestClient) -> None:
     assert list(_parse(client, "100 1\n200 2\n", expected="hall")["measurements"]) == ["hall"]
 
 
 def test_many_preamble_warnings_are_cut_and_hide_nothing_else(client: TestClient) -> None:
-    text = "x y\n" * 150 + "T (K)\tS (uV/K)\n300\t1\n100\t2\n100\t3\n"
+    text = "x y\n" * 150 + "T (K)\tS (mV/K)\n300\t1\n100\t2\n100\t3\n"
 
     body = _parse(client, text, expected="seebeck")
 
