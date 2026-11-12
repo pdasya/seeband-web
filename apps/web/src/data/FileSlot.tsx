@@ -263,12 +263,16 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
             ))}
           </div>
         )}
-        {data.implausible === true && (
+        {data.unitDoubts !== undefined && data.unitDoubts.length > 0 && (
           <Alert>
             <TriangleAlertIcon aria-hidden="true" />
             <AlertTitle>{text.checkUnitTitle}</AlertTitle>
             <AlertDescription>
-              {text.issues.implausible_magnitude}
+              <ul className="m-0 list-none p-0">
+                {data.unitDoubts.map((doubt) => (
+                  <li key={doubt}>{text.issues[doubt]}</li>
+                ))}
+              </ul>
             </AlertDescription>
           </Alert>
         )}

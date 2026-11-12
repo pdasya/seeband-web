@@ -7,7 +7,8 @@ import { describe, expect, test } from "vitest";
 import { mappingOf } from "@/data/columnChoice";
 import {
   UNITS_OF,
-  looksLikeAnotherUnit,
+  columnOf,
+  unitDoubts,
   unitOf,
   withUnit,
   type Unit,
@@ -98,17 +99,34 @@ describe("withUnit", () => {
   });
 });
 
-describe("looksLikeAnotherUnit", () => {
+describe("unitDoubts", () => {
   const warnings = [
     { code: "few_rows" as const },
     { code: "implausible_magnitude" as const, column: 2 },
+    { code: "unit_assumed" as const, column: 1 },
+    { code: "unit_differs" as const, column: 1 },
   ];
 
-  test("finds the warning for a column, or for any", () => {
-    expect(looksLikeAnotherUnit(warnings, 2)).toBe(true);
-    expect(looksLikeAnotherUnit(warnings, 1)).toBe(false);
-    expect(looksLikeAnotherUnit(warnings, undefined)).toBe(true);
-    expect(looksLikeAnotherUnit([{ code: "few_rows" }], undefined)).toBe(false);
+  test("finds the doubts about one column only", () => {
+    expect(unitDoubts(warnings, 2)).toEqual(["implausible_magnitude"]);
+    expect(unitDoubts(warnings, 1)).toEqual(["unit_assumed"]);
+    expect(unitDoubts(warnings, 0)).toEqual([]);
+  });
+
+  test("finds none for a column not read, as another column holds them", () => {
+    expect(unitDoubts(warnings, undefined)).toEqual([]);
+  });
+});
+
+describe("columnOf", () => {
+  test("gives the column of a role, or nothing", () => {
+    const mapping = [
+      { column: 0, role: "temperature" as const },
+      { column: 2, role: "seebeck" as const },
+    ];
+    expect(columnOf(mapping, "seebeck")).toBe(2);
+    expect(columnOf(mapping, "hall")).toBeUndefined();
+    expect(columnOf(undefined, "seebeck")).toBeUndefined();
   });
 });
 

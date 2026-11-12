@@ -218,7 +218,7 @@ export const STRINGS = {
       header_mismatch: "The header has a different number of columns.",
       unit_differs: "A column in a unit SeeBand cannot read was not used.",
       unit_assumed:
-        "Its header names a unit SeeBand cannot read, so it is read in the unit chosen here.",
+        "Its header names a unit SeeBand cannot read, so the values are read in SI. Choose the unit they are in, or convert the column to one listed here.",
       unit_not_allowed: "This unit does not fit the quantity of this column.",
       implausible_magnitude:
         "These values are far from any usual size in SI, as when µV/K is read as V/K. Check the unit of this column.",

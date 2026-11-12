@@ -10,7 +10,13 @@ import {
 } from "@/data/messages";
 import { quantityFromName } from "@/data/quantityFromName";
 import { readFileText } from "@/data/readFile";
-import { looksLikeAnotherUnit, withUnit, type Unit } from "@/data/units";
+import {
+  columnOf,
+  isUnitDoubt,
+  unitDoubts,
+  withUnit,
+  type Unit,
+} from "@/data/units";
 import {
   chosenQuantity,
   initialRoles,
@@ -55,11 +61,9 @@ type ChoiceState = Extract<UploadState, { status: "choose" }>;
 
 type Issue = Parameters<typeof issueMessage>[0];
 
-/** Warnings shown under a file. One about its unit shows on its own, as an alert. */
+/** Warnings shown under a file. A doubt about its unit shows on its own, as an alert. */
 function listedWarnings(warnings: readonly Issue[]): string[] {
-  return warnings
-    .filter(({ code }) => code !== "implausible_magnitude")
-    .map(issueMessage);
+  return warnings.filter(({ code }) => !isUnitDoubt(code)).map(issueMessage);
 }
 
 /**
@@ -170,7 +174,10 @@ export function useFileUpload(quantity: Quantity) {
           extrapolated: false,
           text,
           readAs: parsed.mapping,
-          implausible: looksLikeAnotherUnit(parsed.warnings, undefined),
+          unitDoubts: unitDoubts(
+            parsed.warnings,
+            columnOf(parsed.mapping, quantity),
+          ),
         });
         setState({
           status: "idle",
@@ -259,7 +266,10 @@ export function useFileUpload(quantity: Quantity) {
           text: choice.text,
           mapping,
           readAs: parsed.mapping,
-          implausible: looksLikeAnotherUnit(parsed.warnings, undefined),
+          unitDoubts: unitDoubts(
+            parsed.warnings,
+            columnOf(parsed.mapping, target),
+          ),
         });
         setState(
           target === quantity
@@ -345,7 +355,10 @@ export function useFileUpload(quantity: Quantity) {
           measurement,
           mapping,
           readAs: parsed.mapping,
-          implausible: looksLikeAnotherUnit(parsed.warnings, undefined),
+          unitDoubts: unitDoubts(
+            parsed.warnings,
+            columnOf(parsed.mapping, quantity),
+          ),
         });
         setState({ status: "idle", warnings: listedWarnings(parsed.warnings) });
       } catch (error) {

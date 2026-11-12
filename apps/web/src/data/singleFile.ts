@@ -1,7 +1,7 @@
 import { apiClient, type ParseRequest } from "@/api/client";
 import { failureMessage } from "@/data/messages";
 import { readFileText } from "@/data/readFile";
-import { looksLikeAnotherUnit, type Unit } from "@/data/units";
+import { columnOf, unitDoubts, type Unit } from "@/data/units";
 import {
   QUANTITIES,
   useSessionStore,
@@ -34,17 +34,16 @@ function applyTable(name: string, text: string, table: ParsedTable) {
     if (measurement === undefined) {
       store().removeData(quantity);
     } else {
-      const column = table.mapping.find(
-        ({ role }) => role === quantity,
-      )?.column;
       store().setData(quantity, {
         measurement,
         source: { kind: "file", name },
         extrapolated: false,
         text,
         readAs: table.mapping,
-        implausible:
-          column !== undefined && looksLikeAnotherUnit(table.warnings, column),
+        unitDoubts: unitDoubts(
+          table.warnings,
+          columnOf(table.mapping, quantity),
+        ),
       });
     }
   }

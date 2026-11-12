@@ -2,6 +2,7 @@ import type { components } from "@seeband/api-client";
 import { create } from "zustand";
 
 import type { FitEvent } from "@/api/fitStream";
+import type { UnitDoubt } from "@/data/units";
 
 type Schemas = components["schemas"];
 
@@ -36,8 +37,8 @@ export interface SessionData {
   mapping?: readonly ColumnRole[] | undefined;
   /** The columns as the server read them, with the unit of each, so that a unit can change. */
   readAs?: readonly ColumnRole[] | undefined;
-  /** The values look like another unit, which a user must see before a fit. */
-  implausible?: boolean | undefined;
+  /** Why the unit of the quantity's column may be wrong, which a user must see before a fit. */
+  unitDoubts?: readonly UnitDoubt[] | undefined;
 }
 
 export type InterpolatedQuantities = Partial<

@@ -40,7 +40,7 @@ import {
   removeSingleFile,
 } from "@/data/singleFile";
 import { UnitSelect } from "@/data/UnitSelect";
-import { UNITS_OF } from "@/data/units";
+import { UNITS_OF, isUnitDoubt } from "@/data/units";
 import { formatNumber, withDecimalComma } from "@/lib/numbers";
 import { cn } from "@/lib/utils";
 import {
@@ -393,13 +393,9 @@ export function SingleFilePanel() {
   );
   // A failed read says so itself, and the last answer no longer applies.
   const settled = !file.loading && file.failure === null;
-  // Values that look like another unit show as an alert, as a fit from them is wrong by a factor.
-  const unitWarnings = table.warnings.filter(
-    ({ code }) => code === "implausible_magnitude",
-  );
-  const otherWarnings = table.warnings.filter(
-    ({ code }) => code !== "implausible_magnitude",
-  );
+  // Doubts about a unit show as an alert, as a fit from such values is wrong by a factor.
+  const unitWarnings = table.warnings.filter(({ code }) => isUnitDoubt(code));
+  const otherWarnings = table.warnings.filter(({ code }) => !isUnitDoubt(code));
   return (
     <div className="flex flex-col gap-2.5">
       {status}

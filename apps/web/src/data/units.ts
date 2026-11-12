@@ -36,14 +36,36 @@ export function withUnit(
   return mapping.map((item) => (item.role === role ? { ...item, unit } : item));
 }
 
-/** Whether the values of a column look like another unit, which a user must see before a fit. */
-export function looksLikeAnotherUnit(
+/**
+ * Why a column's unit may be wrong: values that look like another unit, or a unit its header names
+ * that was not used, so it was read in SI. A user must see either before a fit.
+ */
+export type UnitDoubt = Extract<
+  Issue["code"],
+  "implausible_magnitude" | "unit_assumed"
+>;
+
+export function isUnitDoubt(code: Issue["code"]): code is UnitDoubt {
+  return code === "implausible_magnitude" || code === "unit_assumed";
+}
+
+/** The column the server read a role from, if any. */
+export function columnOf(
+  mapping: readonly ColumnRole[] | undefined,
+  role: Role,
+): number | undefined {
+  return mapping?.find((item) => item.role === role)?.column;
+}
+
+/** The doubts about one column's unit, and none for a column not read, as another holds them. */
+export function unitDoubts(
   warnings: readonly Issue[],
   column: number | undefined,
-): boolean {
-  return warnings.some(
-    (issue) =>
-      issue.code === "implausible_magnitude" &&
-      (column === undefined || issue.column === column),
+): UnitDoubt[] {
+  if (column === undefined) {
+    return [];
+  }
+  return warnings.flatMap(({ code, column: at }) =>
+    at === column && isUnitDoubt(code) ? [code] : [],
   );
 }

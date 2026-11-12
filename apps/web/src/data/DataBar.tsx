@@ -25,14 +25,16 @@ export function DataBar() {
     models?.models.find(({ id }) => id === selection.model),
     selection.fitMode,
   );
-  // A table stays open, as its mapping is what a user checks after loading it. So do values that
-  // look like another unit, as a fit from them would be wrong by a factor.
+  // A table stays open, as its mapping is what a user checks after loading it. So do data with
+  // a doubt about their unit, as a fit from them would be wrong by a factor.
   const complete =
     dataMode === "separate" &&
     mode !== undefined &&
     !reading &&
     mode.quantities.every((quantity) => data[quantity] !== undefined) &&
-    !QUANTITIES.some((quantity) => data[quantity]?.implausible === true);
+    !QUANTITIES.some(
+      (quantity) => (data[quantity]?.unitDoubts?.length ?? 0) > 0,
+    );
 
   const [open, setOpen] = useState(!complete);
   // Data a user has just entered stay in view, so the panel folds only on Hide. It opens again as

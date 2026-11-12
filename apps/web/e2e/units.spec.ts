@@ -245,3 +245,38 @@ test("a table shows the first value in SI next to its unit", async ({
     { column: 1, role: "seebeck", unit: "uV/K" },
   ]);
 });
+
+test("values that look wrong in a column the slot does not use leave it alone", async ({
+  page,
+}) => {
+  await serveParse(
+    page,
+    parsedS("K", "uV/K", [{ code: "implausible_magnitude", column: 2 }]),
+  );
+  await page.goto("/fit");
+  await loadSeebeck(page);
+
+  await expect(seebeckUnit(page)).toHaveText("µV/K");
+  await expect(page.getByText("Check the unit", { exact: true })).toHaveCount(
+    0,
+  );
+});
+
+test("a unit the header names that SeeBand cannot read shows as an alert", async ({
+  page,
+}) => {
+  await serveParse(
+    page,
+    parsedS("K", "V/K", [{ code: "unit_assumed", column: 1 }]),
+  );
+  await page.goto("/fit");
+  await loadSeebeck(page);
+
+  await expect(page.getByText("Check the unit", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText(
+      /so the values are read in SI\. Choose the unit they are in/,
+    ),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Hide" })).toBeVisible();
+});
