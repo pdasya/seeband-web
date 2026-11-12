@@ -104,16 +104,18 @@ test("the panel says what each source expects, with its units", async ({
 }) => {
   await page.goto("/fit");
   await expect(
-    page.getByText("Each file: T in K and the value, in the unit its header"),
+    page.getByText("Each file: T and the value, in the units its header names"),
   ).toBeVisible();
 
   await page.getByRole("tab", { name: "Single file" }).click();
 
-  await expect(page.getByText("One table: a column for T in K")).toBeVisible();
   await expect(
-    page.getByText(/or the one you choose\. SI by default\./),
+    page.getByText("One table: a column for T, and for each quantity"),
   ).toBeVisible();
-  await expect(page.getByText("Each file: T in K")).toHaveCount(0);
+  await expect(
+    page.getByText(/or the ones you choose\. K and SI by default\./),
+  ).toBeVisible();
+  await expect(page.getByText("Each file: T and the value")).toHaveCount(0);
 });
 
 test("the first read sends no mapping, so that the server suggests one", async ({
