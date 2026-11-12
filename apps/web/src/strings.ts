@@ -156,13 +156,12 @@ export const STRINGS = {
       "The column names of this file do not match its columns. Choose what its columns hold.",
     belowZeroForRho:
       "Some values are below 0, which a resistivity cannot have.",
-    chooseColumns: "Choose T and one quantity.",
+    chooseColumns: (symbol: string) =>
+      `Choose the column that holds ${symbol}, or another quantity. The file loads once T and one quantity are chosen.`,
     slotBusy: (title: string) =>
       `The slot of ${title} has a file on its way. Finish there first, or choose another quantity.`,
-    goesToSlot: (title: string) => `It goes to the slot of ${title}.`,
     slotTaken: (title: string) =>
       `The slot of ${title} holds a file. Remove it first, or choose another quantity.`,
-    loadAs: (symbol: string) => `Load as ${symbol}`,
     tableSize: (rows: number, columns: number) =>
       `${String(rows)} rows · ${String(columns)} columns`,
     quantityNotFound: "This file has no column for this quantity.",

@@ -182,16 +182,13 @@ test("a file with no header sends the units chosen with its columns", async ({
       preview: [[100, 100, 7]],
       preview_si: [[100, null, null]],
     },
+    parsedS("C", "V/K"),
     parsedS("C", "uV/K"),
   );
   await page.goto("/fit");
   await loadSeebeck(page, "100 100 7\n");
 
-  await pick(
-    page,
-    page.getByRole("combobox", { name: "Quantity for column Column 2" }),
-    "S",
-  );
+  // T's unit is chosen before the quantity, as naming the quantity loads the file.
   await pick(
     page,
     page.getByRole("combobox", { name: "Unit of Column 1" }),
@@ -199,13 +196,20 @@ test("a file with no header sends the units chosen with its columns", async ({
   );
   await pick(
     page,
-    page.getByRole("combobox", { name: "Unit of Column 2" }),
-    "µV/K",
+    page.getByRole("combobox", { name: "Quantity for column Column 2" }),
+    "S",
   );
-  await page.getByRole("button", { name: "Load as S" }).click();
 
-  await expect(seebeckUnit(page)).toHaveText("µV/K");
+  await expect(temperatureUnit(page)).toHaveText("°C");
   expect(bodies[1]?.mapping).toEqual([
+    { column: 0, role: "temperature", unit: "C" },
+    { column: 1, role: "seebeck" },
+  ]);
+
+  // The quantity's unit is chosen on the loaded file.
+  await pick(page, seebeckUnit(page), "µV/K");
+  await expect(seebeckUnit(page)).toHaveText("µV/K");
+  expect(bodies[2]?.mapping).toEqual([
     { column: 0, role: "temperature", unit: "C" },
     { column: 1, role: "seebeck", unit: "uV/K" },
   ]);

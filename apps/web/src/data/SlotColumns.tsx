@@ -2,7 +2,6 @@ import { AlertCircleIcon } from "lucide-react";
 import type { Ref } from "react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -42,7 +41,6 @@ export function SlotColumns({
   firstSelect,
   onRole,
   onUnit,
-  onApply,
 }: {
   quantity: Quantity;
   choice: ColumnChoice;
@@ -50,7 +48,6 @@ export function SlotColumns({
   firstSelect: Ref<HTMLButtonElement>;
   onRole: (column: number, role: Role | null) => void;
   onUnit: (column: number, unit: Unit) => void;
-  onApply: () => void;
 }) {
   const target = chosenQuantity(choice.roles);
   const named = choice.named === null ? null : text.quantities[choice.named];
@@ -113,7 +110,8 @@ export function SlotColumns({
                   <SelectItem value={IGNORE}>{text.single.ignore}</SelectItem>
                 </SelectContent>
               </Select>
-              {role === null ? (
+              {/* A quantity's unit is chosen on the loaded file, as choosing it loads the file. */}
+              {role !== "temperature" ? (
                 <span />
               ) : (
                 <UnitSelect
@@ -142,27 +140,11 @@ export function SlotColumns({
           </AlertDescription>
         </Alert>
       )}
-      {target === null ? (
+      {target === null && (
         <p className="m-0 text-xs text-muted-foreground">
-          {text.chooseColumns}
+          {text.chooseColumns(text.quantities[quantity].symbol)}
         </p>
-      ) : (
-        target !== quantity && (
-          <p className="m-0 text-xs text-muted-foreground">
-            {text.goesToSlot(text.quantities[target].title)}
-          </p>
-        )
       )}
-      <Button
-        size="sm"
-        className="self-start"
-        disabled={target === null || choice.applying}
-        onClick={onApply}
-      >
-        {target === null
-          ? text.loadAs("…")
-          : text.loadAs(text.quantities[target].symbol)}
-      </Button>
     </div>
   );
 }

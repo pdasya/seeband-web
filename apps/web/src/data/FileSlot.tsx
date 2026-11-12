@@ -9,6 +9,7 @@ import { Fragment, useEffect, useRef } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { DropArea, useFileDrop } from "@/data/DropArea";
+import { chosenQuantity } from "@/data/columnChoice";
 import { SlotColumns } from "@/data/SlotColumns";
 import { UnitSelect } from "@/data/UnitSelect";
 import { unitOf } from "@/data/units";
@@ -77,7 +78,6 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
     upload,
     chooseRole,
     chooseColumnUnit,
-    applyChoice,
     changeUnit,
     remove,
     fail,
@@ -193,12 +193,17 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
             quantity={quantity}
             choice={state}
             firstSelect={firstSelect}
-            onRole={chooseRole}
-            onUnit={chooseColumnUnit}
-            onApply={() => {
-              keepFocus.current = true;
-              void applyChoice();
+            onRole={(column, role) => {
+              // A complete choice reads the file, and this card goes, so focus comes back.
+              const roles = state.roles.map((old, index) =>
+                index === column ? role : old,
+              );
+              if (chosenQuantity(roles) !== null) {
+                keepFocus.current = true;
+              }
+              chooseRole(column, role);
             }}
+            onUnit={chooseColumnUnit}
           />
         </div>
       </div>

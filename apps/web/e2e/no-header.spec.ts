@@ -148,7 +148,7 @@ const role = (page: Page, column: number) =>
   page.getByRole("combobox", {
     name: `Quantity for column Column ${String(column)}`,
   });
-const load = (page: Page) => page.getByRole("button", { name: /^Load as / });
+const hint = (page: Page) => page.getByText(/^Choose the column that holds /);
 const slot = (page: Page, quantity: string) =>
   page.locator(`[data-file-slot="${quantity}"]`);
 
@@ -166,7 +166,7 @@ const fileReads = (page: Page) =>
     return useSessionStore.getState().slotsReading.length;
   });
 
-test("two columns come chosen, and wait for one click before any use", async ({
+test("only T comes chosen, and the file waits for its quantity before any use", async ({
   page,
 }) => {
   const { guesses, bodies } = await open(page);
@@ -176,15 +176,18 @@ test("two columns come chosen, and wait for one click before any use", async ({
   await expect(question(page)).toBeVisible();
   await expect(slot(page, "seebeck")).toContainText("2 rows · 2 columns");
   await expect(role(page, 1)).toHaveText("T");
-  await expect(role(page, 2)).toHaveText("S");
+  await expect(role(page, 2)).toHaveText("Ignore");
   await expect(role(page, 2)).toBeFocused();
-  await expect(load(page)).toHaveText("Load as S");
+  await expect(hint(page)).toHaveText(
+    "Choose the column that holds S, or another quantity. The file loads once T and one quantity are chosen.",
+  );
   await expect(page.getByText(/^Its name suggests/)).toHaveCount(0);
   await expect(fitBadges(page)).toHaveText("Missing data: S, ρ");
   await page.waitForTimeout(300);
   expect(guesses).toEqual([]);
+  expect(bodies).toHaveLength(1);
 
-  await load(page).click();
+  await pick(page, 2, "S");
 
   await expect(question(page)).toHaveCount(0);
   await expect(slot(page, "seebeck").getByText("mine.txt")).toBeVisible();
@@ -210,8 +213,7 @@ test("a name of another quantity says so, and leaves the choice to the user", as
 
   await expect(page.getByText("Its name suggests Resistivity.")).toBeVisible();
   await expect(role(page, 2)).toHaveText("Ignore");
-  await expect(load(page)).toBeDisabled();
-  await expect(page.getByText("Choose T and one quantity.")).toBeVisible();
+  await expect(hint(page)).toBeVisible();
 });
 
 test("a choice of another quantity puts the file in its slot", async ({
@@ -221,10 +223,6 @@ test("a choice of another quantity puts the file in its slot", async ({
   await choose(page, "01_Fe2VAl09Si01_rho.txt");
 
   await pick(page, 2, "ρ");
-  await expect(
-    page.getByText("It goes to the slot of Resistivity."),
-  ).toBeVisible();
-  await load(page).click();
 
   await expect(
     slot(page, "resistivity").getByText("01_Fe2VAl09Si01_rho.txt"),
@@ -245,7 +243,6 @@ test("a slot that holds a file is not taken, and says so", async ({ page }) => {
 
   await choose(page, "x_rho.txt");
   await pick(page, 2, "ρ");
-  await load(page).click();
 
   await expect(
     page.getByText(
@@ -255,9 +252,10 @@ test("a slot that holds a file is not taken, and says so", async ({ page }) => {
   await expect(slot(page, "resistivity").getByText("theirs.txt")).toBeVisible();
   await expect(question(page)).toBeVisible();
 
-  // A new choice ends what was said about the last.
+  // A new choice ends what was said about the last, and loads the file where it can go.
   await pick(page, 2, "S");
   await expect(page.getByText(/^The slot of Resistivity holds/)).toHaveCount(0);
+  await expect(slot(page, "seebeck").getByText("x_rho.txt")).toBeVisible();
 });
 
 test("with more columns, only T comes chosen, and the rest is up to the user", async ({
@@ -271,10 +269,9 @@ test("with more columns, only T comes chosen, and the rest is up to the user", a
   await expect(role(page, 2)).toHaveText("Ignore");
   await expect(role(page, 3)).toHaveText("Ignore");
   await expect(role(page, 2)).toBeFocused();
-  await expect(load(page)).toBeDisabled();
+  await expect(hint(page)).toBeVisible();
 
   await pick(page, 3, "S");
-  await load(page).click();
 
   await expect(slot(page, "seebeck").getByText("mine.txt")).toBeVisible();
   expect(bodies.at(-1)?.mapping).toEqual([
@@ -283,18 +280,22 @@ test("with more columns, only T comes chosen, and the rest is up to the user", a
   ]);
 });
 
-test("two quantities, or none, cannot be loaded", async ({ page }) => {
-  await open(page, { columns: 3 });
+test("a quantity with no T, or two quantities, load nothing", async ({
+  page,
+}) => {
+  const { bodies } = await open(page, { columns: 3 });
   await choose(page, "mine.txt");
 
+  await pick(page, 1, "Ignore");
   await pick(page, 2, "S");
   await pick(page, 3, "ρ");
-  await expect(load(page)).toBeDisabled();
-  await expect(page.getByText("Choose T and one quantity.")).toBeVisible();
+  await pick(page, 1, "T");
 
-  await pick(page, 1, "Ignore");
-  await pick(page, 3, "Ignore");
-  await expect(load(page)).toBeDisabled();
+  await expect(question(page)).toBeVisible();
+  await expect(hint(page)).toBeVisible();
+  await page.waitForTimeout(300);
+  expect(bodies).toHaveLength(1);
+  expect(await fileReads(page)).toBe(1);
 });
 
 test("what the server finds wrong with a choice shows, and the file waits", async ({
@@ -306,13 +307,11 @@ test("what the server finds wrong with a choice shows, and the file waits", asyn
   await choose(page, "x.txt");
   await pick(page, 2, "ρ");
 
-  await load(page).click();
-
   await expect(page.getByRole("alert")).toContainText(
     "Line 2: A resistivity below 0, which no measurement gives.",
   );
   await expect(question(page)).toBeVisible();
-  await expect(load(page)).toBeEnabled();
+  await expect(role(page, 2)).toBeEnabled();
   await expect(slot(page, "resistivity")).toContainText("Drop a file");
 });
 
@@ -324,7 +323,7 @@ test("a name of the slot's own quantity says nothing more", async ({
   await choose(page, "01_Fe2VAl09Si01_see.txt");
 
   await expect(question(page)).toBeVisible();
-  await expect(role(page, 2)).toHaveText("S");
+  await expect(role(page, 2)).toHaveText("Ignore");
   await expect(page.getByText(/^Its name suggests/)).toHaveCount(0);
 });
 
@@ -402,7 +401,6 @@ test("interpolating sends the chosen columns again, not a guess", async ({
   const { bodies } = await open(page, { columns: 3 });
   await choose(page, "mine.txt");
   await pick(page, 3, "S");
-  await load(page).click();
   await expect(slot(page, "seebeck").getByText("mine.txt")).toBeVisible();
 
   await page.getByRole("switch", { name: /Interpolation/ }).click();
@@ -449,10 +447,6 @@ test("a slot whose own file waits for a choice is not taken", async ({
     .getByRole("combobox", { name: "Quantity for column Column 2" })
     .click();
   await page.getByRole("option", { name: "ρ", exact: true }).click();
-  await page
-    .locator('[data-file-slot="seebeck"]')
-    .getByRole("button", { name: /^Load as / })
-    .click();
 
   await expect(
     page.getByText(
@@ -486,7 +480,6 @@ test("values below 0 in the ρ slot leave the choice open, and S can take them",
   await expect(page.getByRole("alert")).toHaveCount(0);
 
   await pick(page, 2, "S");
-  await load(page).click();
 
   await expect(slot(page, "seebeck").getByText("n_type.txt")).toBeVisible();
   await expect(slot(page, "resistivity")).toContainText("Drop a file");
@@ -505,7 +498,7 @@ test("a header that does not fit says so, and its warning stays after the choice
     ),
   ).toBeVisible();
   await expect(question(page)).toHaveCount(0);
-  await load(page).click();
+  await pick(page, 2, "S");
   await expect(
     page.getByText("The header has a different number of columns."),
   ).toBeVisible();
@@ -523,9 +516,9 @@ test("the choice cannot change while it is read, and a removal then ends it", as
   });
   await choose(page, "mine.txt");
 
-  await load(page).click();
+  await pick(page, 2, "S");
   await expect(role(page, 2)).toBeDisabled();
-  await expect(load(page)).toBeDisabled();
+  await expect(role(page, 1)).toBeDisabled();
 
   await page.getByRole("button", { name: "Remove file S" }).click();
   gate.release();
@@ -547,11 +540,11 @@ test("a lost connection while the choice is read says so, and the file waits", a
   });
   await choose(page, "mine.txt");
 
-  await load(page).click();
+  await pick(page, 2, "S");
 
   await expect(page.getByRole("alert")).toBeVisible();
   await expect(question(page)).toBeVisible();
-  await expect(load(page)).toBeEnabled();
+  await expect(role(page, 2)).toBeEnabled();
   expect(await fileReads(page)).toBe(1);
 });
 

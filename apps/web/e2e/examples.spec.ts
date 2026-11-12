@@ -22,13 +22,28 @@ const EXAMPLES = fileURLToPath(
   ),
 );
 
-/** Chooses a file for the next empty slot, and loads it as chosen already, as the examples have no header. */
+const SYMBOL_OF_SUFFIX = { see: "S", rho: "ρ", hall: "R_H" } as const;
+
+/**
+ * Chooses a file for the next empty slot, then names the quantity of its second column, which
+ * loads it, as the examples have no header.
+ */
 async function loadExample(page: Page, name: string) {
+  const suffix = /_(see|rho|hall)\.txt$/.exec(name)?.[1] as
+    keyof typeof SYMBOL_OF_SUFFIX | undefined;
+  if (suffix === undefined) {
+    throw new Error(`No quantity in the name ${name}`);
+  }
   await page
     .locator('input[type="file"]')
     .first()
     .setInputFiles(`${EXAMPLES}${name}`);
-  await page.getByRole("button", { name: /^Load as / }).click();
+  await page
+    .getByRole("combobox", { name: "Quantity for column Column 2" })
+    .click();
+  await page
+    .getByRole("option", { name: SYMBOL_OF_SUFFIX[suffix], exact: true })
+    .click();
 }
 
 for (const example of ["01_Fe2VAl09Si01", "02_SiP", "03_AWI32_SI"]) {

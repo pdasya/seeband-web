@@ -51,6 +51,8 @@ export type UploadState =
 
 const IDLE: UploadState = { status: "idle", warnings: [] };
 
+type ChoiceState = Extract<UploadState, { status: "choose" }>;
+
 type Issue = Parameters<typeof issueMessage>[0];
 
 /** Warnings shown under a file. One about its unit shows on its own, as an alert. */
@@ -140,11 +142,7 @@ export function useFileUpload(quantity: Quantity) {
             columns: parsed.column_count,
             rows: parsed.row_count,
             firstRow: parsed.preview[0] ?? [],
-            roles: initialRoles(
-              parsed.column_count,
-              quantity,
-              other !== null || negative,
-            ),
+            roles: initialRoles(parsed.column_count),
             units: Array.from({ length: parsed.column_count }, () => null),
             named: other,
             negative,
@@ -196,25 +194,6 @@ export function useFileUpload(quantity: Quantity) {
     [endRead, quantity, removeData, setData, startRead],
   );
 
-  /** What one column holds, or nothing. */
-  const chooseRole = useCallback((column: number, role: Role | null) => {
-    setState((previous) =>
-      previous.status === "choose"
-        ? {
-            ...previous,
-            roles: previous.roles.map((old, index) =>
-              index === column ? role : old,
-            ),
-            // A unit belongs to the quantity it was chosen for.
-            units: previous.units.map((old, index) =>
-              index === column ? null : old,
-            ),
-            problems: [],
-          }
-        : previous,
-    );
-  }, []);
-
   /** The unit one column of a file with no header is written in. */
   const chooseColumnUnit = useCallback((column: number, unit: Unit) => {
     setState((previous) =>
@@ -231,84 +210,107 @@ export function useFileUpload(quantity: Quantity) {
   }, []);
 
   /** Reads the file again with the user's choice, into the slot of the quantity chosen. */
-  const applyChoice = useCallback(async () => {
-    if (state.status !== "choose" || state.applying) {
-      return;
-    }
-    const choice = state;
-    const target = chosenQuantity(choice.roles);
-    if (target === null) {
-      return;
-    }
-    const { data: text } = STRINGS;
-    const title = text.quantities[target].title;
-    const session = useSessionStore.getState();
-    // Another slot with a file of its own on the way would write over this one later.
-    const problem =
-      target === quantity
-        ? null
-        : session.slotsReading.includes(target)
-          ? text.slotBusy(title)
-          : session.data[target] !== undefined
-            ? text.slotTaken(title)
-            : null;
-    if (problem !== null) {
-      setState({ ...choice, problems: [problem] });
-      return;
-    }
-    const signal = newRequest();
-    setState({ ...choice, applying: true, problems: [] });
-    const mapping = mappingOf(choice.roles, choice.units);
-    try {
-      const parsed = await apiClient.postParse(
-        { text: choice.text, mapping },
-        signal,
-      );
-      if (signal.aborted) {
+  const applyChoice = useCallback(
+    async (choice: ChoiceState) => {
+      const target = chosenQuantity(choice.roles);
+      if (target === null) {
         return;
       }
-      const measurement = parsed.measurements[target];
-      if (parsed.errors.length > 0 || measurement === undefined) {
-        setState({
-          ...choice,
-          applying: false,
-          problems: noDataMessages(parsed.errors, parsed.warnings),
-        });
-        return;
-      }
-      setData(target, {
-        measurement,
-        source: { kind: "file", name: choice.name },
-        extrapolated: false,
-        text: choice.text,
-        mapping,
-        readAs: parsed.mapping,
-        implausible: looksLikeAnotherUnit(parsed.warnings, undefined),
-      });
-      setState(
+      const { data: text } = STRINGS;
+      const title = text.quantities[target].title;
+      const session = useSessionStore.getState();
+      // Another slot with a file of its own on the way would write over this one later.
+      const problem =
         target === quantity
-          ? {
-              status: "idle",
-              warnings: [
-                ...new Set([
-                  ...choice.fileWarnings,
-                  ...listedWarnings(parsed.warnings),
-                ]),
-              ],
-            }
-          : IDLE,
-      );
-      endRead();
-    } catch (error) {
-      if (!signal.aborted) {
-        setState({
-          ...choice,
-          applying: false,
-          problems: [failureMessage(error)],
-        });
+          ? null
+          : session.slotsReading.includes(target)
+            ? text.slotBusy(title)
+            : session.data[target] !== undefined
+              ? text.slotTaken(title)
+              : null;
+      if (problem !== null) {
+        setState({ ...choice, problems: [problem] });
+        return;
       }
-    }
-  }, [endRead, quantity, setData, state]);
+      const signal = newRequest();
+      setState({ ...choice, applying: true, problems: [] });
+      const mapping = mappingOf(choice.roles, choice.units);
+      try {
+        const parsed = await apiClient.postParse(
+          { text: choice.text, mapping },
+          signal,
+        );
+        if (signal.aborted) {
+          return;
+        }
+        const measurement = parsed.measurements[target];
+        if (parsed.errors.length > 0 || measurement === undefined) {
+          setState({
+            ...choice,
+            applying: false,
+            problems: noDataMessages(parsed.errors, parsed.warnings),
+          });
+          return;
+        }
+        setData(target, {
+          measurement,
+          source: { kind: "file", name: choice.name },
+          extrapolated: false,
+          text: choice.text,
+          mapping,
+          readAs: parsed.mapping,
+          implausible: looksLikeAnotherUnit(parsed.warnings, undefined),
+        });
+        setState(
+          target === quantity
+            ? {
+                status: "idle",
+                warnings: [
+                  ...new Set([
+                    ...choice.fileWarnings,
+                    ...listedWarnings(parsed.warnings),
+                  ]),
+                ],
+              }
+            : IDLE,
+        );
+        endRead();
+      } catch (error) {
+        if (!signal.aborted) {
+          setState({
+            ...choice,
+            applying: false,
+            problems: [failureMessage(error)],
+          });
+        }
+      }
+    },
+    [endRead, quantity, setData],
+  );
+
+  /**
+   * What one column holds, or nothing. A choice of T and one quantity reads the file at once, as
+   * for a single table: choosing is the user's confirmation, so nothing is chosen for them.
+   */
+  const chooseRole = useCallback(
+    (column: number, role: Role | null) => {
+      if (state.status !== "choose" || state.applying) {
+        return;
+      }
+      const next: ChoiceState = {
+        ...state,
+        roles: state.roles.map((old, index) => (index === column ? role : old)),
+        // A unit belongs to the role it was chosen for.
+        units: state.units.map((old, index) => (index === column ? null : old)),
+        problems: [],
+      };
+      setState(next);
+      if (chosenQuantity(next.roles) !== null) {
+        void applyChoice(next);
+      }
+    },
+    [applyChoice, state],
+  );
 
   /**
    * Reads the loaded file again with its values in another unit. A failure keeps the data as they
@@ -378,7 +380,6 @@ export function useFileUpload(quantity: Quantity) {
     upload,
     chooseRole,
     chooseColumnUnit,
-    applyChoice,
     changeUnit,
     remove,
     fail,
