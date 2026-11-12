@@ -10,6 +10,7 @@ const PARSED = {
   column_count: 2,
   row_count: 2,
   preview: [],
+  preview_si: [],
   mapping: [],
   measurements: {
     seebeck: {

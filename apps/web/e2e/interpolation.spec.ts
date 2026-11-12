@@ -30,6 +30,7 @@ function parsed(overrides: object = {}) {
     column_count: 2,
     row_count: 3,
     preview: [],
+    preview_si: [],
     mapping: [
       { column: 0, role: "temperature" },
       { column: 1, role: "seebeck" },

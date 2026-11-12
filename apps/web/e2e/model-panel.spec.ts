@@ -18,6 +18,7 @@ async function serveParse(page: Page, bodies: object[]) {
         column_count: 2,
         row_count: 3,
         preview: [],
+        preview_si: [],
         mapping: [],
         measurements: {
           seebeck: {
@@ -152,6 +153,7 @@ test("missing data are named for the mode, and go as data load", async ({
         column_count: 2,
         row_count: 3,
         preview: [],
+        preview_si: [],
         mapping: [],
         measurements: {
           seebeck: {
@@ -294,6 +296,7 @@ test("the data panel shows numbers with a comma too", async ({ page }) => {
         column_count: 2,
         row_count: 2,
         preview: [],
+        preview_si: [],
         mapping: [],
         measurements: {
           seebeck: {

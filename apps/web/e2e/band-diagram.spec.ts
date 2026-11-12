@@ -289,6 +289,7 @@ test("a failure of the curves does not show on it", async ({ page }) => {
         column_count: 2,
         row_count: 2,
         preview: [],
+        preview_si: [],
         mapping: [],
         measurements: {
           seebeck: {

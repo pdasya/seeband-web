@@ -7,6 +7,7 @@ const parsedFor = (quantity: string, points = 2) => ({
   column_count: 2,
   row_count: points,
   preview: [],
+  preview_si: [],
   mapping: [],
   measurements: {
     [quantity]: {

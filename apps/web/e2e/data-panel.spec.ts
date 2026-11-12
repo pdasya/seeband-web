@@ -16,6 +16,7 @@ function parsed(overrides: object = {}) {
     column_count: 2,
     row_count: 3,
     preview: [],
+    preview_si: [],
     mapping: [],
     measurements: { seebeck: SEEBECK },
     errors: [],
@@ -60,6 +61,7 @@ const PARSED_FOR_RELOAD = {
   column_count: 2,
   row_count: 1,
   preview: [],
+  preview_si: [],
   mapping: [],
   measurements: {
     seebeck: {
@@ -384,10 +386,10 @@ test("two columns with the same problem are told apart, with no console error", 
   await choose(page, "a.txt");
 
   await expect(
-    page.getByText("Column 3: A column with another unit"),
+    page.getByText("Column 3: A column in a unit SeeBand cannot read"),
   ).toBeVisible();
   await expect(
-    page.getByText("Column 4: A column with another unit"),
+    page.getByText("Column 4: A column in a unit SeeBand cannot read"),
   ).toBeVisible();
   expect(problems.filter((text) => text.includes("same key"))).toEqual([]);
 });

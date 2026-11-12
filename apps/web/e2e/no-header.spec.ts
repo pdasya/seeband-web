@@ -24,6 +24,10 @@ const answer = (extra: object) => ({
     [100, 1e-5, 7],
     [200, 2e-5, 8],
   ],
+  preview_si: [
+    [100, null, null],
+    [200, null, null],
+  ],
   mapping: [],
   measurements: {},
   errors: [],

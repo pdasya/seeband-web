@@ -29,6 +29,7 @@ const parsedFor = (quantity: string) => ({
   column_count: 2,
   row_count: 2,
   preview: [],
+  preview_si: [],
   mapping: [],
   measurements: {
     [quantity]: {
