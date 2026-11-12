@@ -280,3 +280,52 @@ test("a unit the header names that SeeBand cannot read shows as an alert", async
   ).toBeVisible();
   await expect(page.getByRole("button", { name: "Hide" })).toBeVisible();
 });
+
+test("the units wait while the file is read again, and focus comes back", async ({
+  page,
+}) => {
+  let release = () => {};
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let reads = 0;
+  await page.route("**/api/parse", async (route: Route) => {
+    reads += 1;
+    if (reads > 1) {
+      await held;
+    }
+    await route.fulfill({
+      json: reads > 1 ? parsedS("K", "uV/K") : parsedS("K", "V/K"),
+    });
+  });
+  await page.goto("/fit");
+  await loadSeebeck(page);
+  await expect(seebeckUnit(page)).toHaveText("V/K");
+
+  await pick(page, seebeckUnit(page), "µV/K");
+
+  await expect(seebeckUnit(page)).toBeDisabled();
+  await expect(temperatureUnit(page)).toBeDisabled();
+  release();
+  await expect(seebeckUnit(page)).toHaveText("µV/K");
+  await expect(seebeckUnit(page)).toBeEnabled();
+  await expect(seebeckUnit(page)).toBeFocused();
+});
+
+test("a read in another unit that fails says so as an alert, and keeps the data", async ({
+  page,
+}) => {
+  await serveParse(page, parsedS("K", "V/K"), {
+    ...parsedS("K", "uV/K"),
+    measurements: {},
+    errors: [{ code: "not_numeric", line: 2, column: 1 }],
+  });
+  await page.goto("/fit");
+  await loadSeebeck(page);
+
+  await pick(page, seebeckUnit(page), "µV/K");
+
+  await expect(page.getByRole("alert")).toContainText("Line 2:");
+  await expect(seebeckUnit(page)).toHaveText("V/K");
+  await expect(seebeckUnit(page)).toBeEnabled();
+});

@@ -1,3 +1,5 @@
+import type { Ref } from "react";
+
 import {
   Select,
   SelectContent,
@@ -18,6 +20,7 @@ export function UnitSelect({
   label,
   disabled = false,
   onChange,
+  ref,
 }: {
   role: Role;
   value: Unit;
@@ -25,6 +28,7 @@ export function UnitSelect({
   label: string;
   disabled?: boolean;
   onChange: (unit: Unit) => void;
+  ref?: Ref<HTMLButtonElement>;
 }) {
   return (
     <Select
@@ -35,6 +39,7 @@ export function UnitSelect({
       }}
     >
       <SelectTrigger
+        ref={ref}
         size="sm"
         className="w-full font-mono"
         aria-label={text.unitOf(label)}

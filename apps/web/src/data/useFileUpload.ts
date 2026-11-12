@@ -50,7 +50,14 @@ export interface ColumnChoice {
 }
 
 export type UploadState =
-  | { status: "idle"; warnings: readonly string[] }
+  | {
+      status: "idle";
+      warnings: readonly string[];
+      /** The loaded file is read again in another unit. */
+      rereading?: boolean;
+      /** Why it could not be, while its data stay as they were. */
+      failures?: readonly string[];
+    }
   | { status: "loading"; name: string }
   | { status: "failed"; name: string; errors: readonly string[] }
   | ({ status: "choose" } & ColumnChoice);
@@ -345,11 +352,26 @@ export function useFileUpload(quantity: Quantity) {
   const changeUnit = useCallback(
     async (role: Role, unit: Unit) => {
       const entry = useSessionStore.getState().data[quantity];
-      if (entry?.readAs === undefined) {
+      if (entry?.readAs === undefined || reading.current) {
         return;
       }
       const mapping = withUnit(entry.mapping ?? entry.readAs, role, unit);
       const signal = newRequest();
+      // Counted as on its way, and the selects wait, so that a second change cannot start from
+      // the old units, and the demo leaves the slot alone.
+      startRead();
+      setState((previous) =>
+        previous.status === "idle"
+          ? { ...previous, rereading: true, failures: [] }
+          : previous,
+      );
+      const failed = (failures: string[]) => {
+        setState((previous) =>
+          previous.status === "idle"
+            ? { ...previous, rereading: false, failures }
+            : previous,
+        );
+      };
       try {
         const parsed = await apiClient.postParse(
           { text: entry.text, mapping },
@@ -360,10 +382,7 @@ export function useFileUpload(quantity: Quantity) {
         }
         const measurement = parsed.measurements[quantity];
         if (parsed.errors.length > 0 || measurement === undefined) {
-          setState({
-            status: "idle",
-            warnings: noDataMessages(parsed.errors, parsed.warnings),
-          });
+          failed(noDataMessages(parsed.errors, parsed.warnings));
           return;
         }
         setData(quantity, {
@@ -379,11 +398,16 @@ export function useFileUpload(quantity: Quantity) {
         setState({ status: "idle", warnings: listedWarnings(parsed.warnings) });
       } catch (error) {
         if (!signal.aborted) {
-          setState({ status: "idle", warnings: [failureMessage(error)] });
+          failed([failureMessage(error)]);
+        }
+      } finally {
+        // A newer file or a removal has taken over the count of an aborted read.
+        if (!signal.aborted) {
+          endRead();
         }
       }
     },
-    [quantity, setData],
+    [endRead, quantity, setData, startRead],
   );
 
   const remove = useCallback(() => {
