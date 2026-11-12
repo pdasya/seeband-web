@@ -10,6 +10,7 @@ import {
 } from "@/data/messages";
 import { quantityFromName } from "@/data/quantityFromName";
 import { readFileText } from "@/data/readFile";
+import { looksLikeAnotherUnit, withUnit, type Unit } from "@/data/units";
 import {
   chosenQuantity,
   initialRoles,
@@ -28,6 +29,8 @@ export interface ColumnChoice {
   rows: number;
   firstRow: readonly number[];
   roles: readonly (Role | null)[];
+  /** The unit chosen for each column, or null for SI. */
+  units: readonly (Unit | null)[];
   /** Another quantity the file's name names, if any. */
   named: Quantity | null;
   /** Values below 0 in a ρ slot, which a resistivity cannot have. */
@@ -47,6 +50,15 @@ export type UploadState =
   | ({ status: "choose" } & ColumnChoice);
 
 const IDLE: UploadState = { status: "idle", warnings: [] };
+
+type Issue = Parameters<typeof issueMessage>[0];
+
+/** Warnings shown under a file. One about its unit shows on its own, as an alert. */
+function listedWarnings(warnings: readonly Issue[]): string[] {
+  return warnings
+    .filter(({ code }) => code !== "implausible_magnitude")
+    .map(issueMessage);
+}
 
 /**
  * Loads a file into one quantity of the session. A new file replaces the last one, and stops a
@@ -133,6 +145,7 @@ export function useFileUpload(quantity: Quantity) {
               quantity,
               other !== null || negative,
             ),
+            units: Array.from({ length: parsed.column_count }, () => null),
             named: other,
             negative,
             mismatch: parsed.warnings.some(
@@ -158,10 +171,12 @@ export function useFileUpload(quantity: Quantity) {
           source: { kind: "file", name: file.name },
           extrapolated: false,
           text,
+          readAs: parsed.mapping,
+          implausible: looksLikeAnotherUnit(parsed.warnings, undefined),
         });
         setState({
           status: "idle",
-          warnings: parsed.warnings.map(issueMessage),
+          warnings: listedWarnings(parsed.warnings),
         });
       } catch (error) {
         if (!signal.aborted) {
@@ -189,6 +204,25 @@ export function useFileUpload(quantity: Quantity) {
             ...previous,
             roles: previous.roles.map((old, index) =>
               index === column ? role : old,
+            ),
+            // A unit belongs to the quantity it was chosen for.
+            units: previous.units.map((old, index) =>
+              index === column ? null : old,
+            ),
+            problems: [],
+          }
+        : previous,
+    );
+  }, []);
+
+  /** The unit one column of a file with no header is written in. */
+  const chooseColumnUnit = useCallback((column: number, unit: Unit) => {
+    setState((previous) =>
+      previous.status === "choose"
+        ? {
+            ...previous,
+            units: previous.units.map((old, index) =>
+              index === column ? unit : old,
             ),
             problems: [],
           }
@@ -224,7 +258,7 @@ export function useFileUpload(quantity: Quantity) {
     }
     const signal = newRequest();
     setState({ ...choice, applying: true, problems: [] });
-    const mapping = mappingOf(choice.roles);
+    const mapping = mappingOf(choice.roles, choice.units);
     try {
       const parsed = await apiClient.postParse(
         { text: choice.text, mapping },
@@ -248,6 +282,8 @@ export function useFileUpload(quantity: Quantity) {
         extrapolated: false,
         text: choice.text,
         mapping,
+        readAs: parsed.mapping,
+        implausible: looksLikeAnotherUnit(parsed.warnings, undefined),
       });
       setState(
         target === quantity
@@ -256,7 +292,7 @@ export function useFileUpload(quantity: Quantity) {
               warnings: [
                 ...new Set([
                   ...choice.fileWarnings,
-                  ...parsed.warnings.map(issueMessage),
+                  ...listedWarnings(parsed.warnings),
                 ]),
               ],
             }
@@ -273,6 +309,51 @@ export function useFileUpload(quantity: Quantity) {
       }
     }
   }, [endRead, quantity, setData, state]);
+
+  /**
+   * Reads the loaded file again with its values in another unit. A failure keeps the data as they
+   * were, in the unit the card still shows.
+   */
+  const changeUnit = useCallback(
+    async (unit: Unit) => {
+      const entry = useSessionStore.getState().data[quantity];
+      if (entry?.readAs === undefined) {
+        return;
+      }
+      const mapping = withUnit(entry.mapping ?? entry.readAs, quantity, unit);
+      const signal = newRequest();
+      try {
+        const parsed = await apiClient.postParse(
+          { text: entry.text, mapping },
+          signal,
+        );
+        if (signal.aborted) {
+          return;
+        }
+        const measurement = parsed.measurements[quantity];
+        if (parsed.errors.length > 0 || measurement === undefined) {
+          setState({
+            status: "idle",
+            warnings: noDataMessages(parsed.errors, parsed.warnings),
+          });
+          return;
+        }
+        setData(quantity, {
+          ...entry,
+          measurement,
+          mapping,
+          readAs: parsed.mapping,
+          implausible: looksLikeAnotherUnit(parsed.warnings, undefined),
+        });
+        setState({ status: "idle", warnings: listedWarnings(parsed.warnings) });
+      } catch (error) {
+        if (!signal.aborted) {
+          setState({ status: "idle", warnings: [failureMessage(error)] });
+        }
+      }
+    },
+    [quantity, setData],
+  );
 
   const remove = useCallback(() => {
     current.current?.abort();
@@ -292,5 +373,14 @@ export function useFileUpload(quantity: Quantity) {
     [endRead, quantity, removeData],
   );
 
-  return { state, upload, chooseRole, applyChoice, remove, fail };
+  return {
+    state,
+    upload,
+    chooseRole,
+    chooseColumnUnit,
+    applyChoice,
+    changeUnit,
+    remove,
+    fail,
+  };
 }

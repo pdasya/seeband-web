@@ -25,12 +25,14 @@ export function DataBar() {
     models?.models.find(({ id }) => id === selection.model),
     selection.fitMode,
   );
-  // A table stays open, as its mapping is what a user checks after loading it.
+  // A table stays open, as its mapping is what a user checks after loading it. So do values that
+  // look like another unit, as a fit from them would be wrong by a factor.
   const complete =
     dataMode === "separate" &&
     mode !== undefined &&
     !reading &&
-    mode.quantities.every((quantity) => data[quantity] !== undefined);
+    mode.quantities.every((quantity) => data[quantity] !== undefined) &&
+    !QUANTITIES.some((quantity) => data[quantity]?.implausible === true);
 
   const [open, setOpen] = useState(!complete);
   // Folds as the data become complete, and opens as they stop being so, as a user then needs them.

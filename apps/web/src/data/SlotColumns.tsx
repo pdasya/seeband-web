@@ -11,6 +11,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { chosenQuantity, type Role } from "@/data/columnChoice";
+import { UnitSelect } from "@/data/UnitSelect";
+import { UNITS_OF, type Unit } from "@/data/units";
 import type { ColumnChoice } from "@/data/useFileUpload";
 import { formatNumber, withDecimalComma } from "@/lib/numbers";
 import { QUANTITIES, type Quantity } from "@/session/store";
@@ -39,6 +41,7 @@ export function SlotColumns({
   choice,
   firstSelect,
   onRole,
+  onUnit,
   onApply,
 }: {
   quantity: Quantity;
@@ -46,6 +49,7 @@ export function SlotColumns({
   /** Where focus goes once the choice shows. */
   firstSelect: Ref<HTMLButtonElement>;
   onRole: (column: number, role: Role | null) => void;
+  onUnit: (column: number, unit: Unit) => void;
   onApply: () => void;
 }) {
   const target = chosenQuantity(choice.roles);
@@ -72,43 +76,58 @@ export function SlotColumns({
       {Array.from({ length: choice.columns }, (_, column) => {
         const role = choice.roles[column] ?? null;
         const name = `${text.single.column} ${String(column + 1)}`;
+        const quantity = role === null || role === "temperature" ? null : role;
         return (
-          <div
-            key={column}
-            className="grid grid-cols-[minmax(0,1fr)_96px] items-center gap-2"
-          >
-            <div className="min-w-0">
-              <div className="truncate font-mono text-[13px] font-medium">
+          // The card is narrow, so the column's name and value take a line of their own, and the
+          // choices of quantity and unit the next.
+          <div key={column} className="flex flex-col gap-1">
+            <div className="flex min-w-0 items-baseline gap-2">
+              <span className="flex-none font-mono text-[13px] font-medium">
                 {name}
-              </div>
-              <div className="truncate font-mono text-xs text-muted-foreground">
+              </span>
+              <span className="truncate font-mono text-xs text-muted-foreground">
                 {firstValue(choice.firstRow[column], role)}
-              </div>
+              </span>
             </div>
-            <Select
-              disabled={choice.applying}
-              value={role ?? IGNORE}
-              onValueChange={(value) => {
-                onRole(column, value === IGNORE ? null : (value as Role));
-              }}
-            >
-              <SelectTrigger
-                ref={column === focusColumn ? firstSelect : undefined}
-                size="sm"
-                className="w-full"
-                aria-label={`${text.single.columnRole} ${name}`}
+            <div className="grid grid-cols-2 gap-2">
+              <Select
+                disabled={choice.applying}
+                value={role ?? IGNORE}
+                onValueChange={(value) => {
+                  onRole(column, value === IGNORE ? null : (value as Role));
+                }}
               >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {ROLES.map((option) => (
-                  <SelectItem key={option} value={option}>
-                    {roleSymbol(option)}
-                  </SelectItem>
-                ))}
-                <SelectItem value={IGNORE}>{text.single.ignore}</SelectItem>
-              </SelectContent>
-            </Select>
+                <SelectTrigger
+                  ref={column === focusColumn ? firstSelect : undefined}
+                  size="sm"
+                  className="w-full"
+                  aria-label={`${text.single.columnRole} ${name}`}
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ROLES.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {roleSymbol(option)}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value={IGNORE}>{text.single.ignore}</SelectItem>
+                </SelectContent>
+              </Select>
+              {quantity === null ? (
+                <span />
+              ) : (
+                <UnitSelect
+                  quantity={quantity}
+                  value={choice.units[column] ?? UNITS_OF[quantity][0]}
+                  label={name}
+                  disabled={choice.applying}
+                  onChange={(unit) => {
+                    onUnit(column, unit);
+                  }}
+                />
+              )}
+            </div>
           </div>
         );
       })}

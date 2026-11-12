@@ -32,8 +32,12 @@ export interface SessionData {
   extrapolated: boolean;
   /** The file's text, in memory only, as interpolating sends it again. */
   text: string;
-  /** The columns a user chose for a file with no header, sent again with the text. */
+  /** The columns and units a user chose, sent again with the text. */
   mapping?: readonly ColumnRole[] | undefined;
+  /** The columns as the server read them, with the unit of each, so that a unit can change. */
+  readAs?: readonly ColumnRole[] | undefined;
+  /** The values look like another unit, which a user must see before a fit. */
+  implausible?: boolean | undefined;
 }
 
 export type InterpolatedQuantities = Partial<

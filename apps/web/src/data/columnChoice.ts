@@ -1,3 +1,4 @@
+import type { Unit } from "@/data/units";
 import type { ColumnRole, Quantity } from "@/session/store";
 
 export type Role = ColumnRole["role"];
@@ -33,9 +34,21 @@ export function chosenQuantity(
     : null;
 }
 
-/** As `POST /api/parse` takes it, with the columns left out that hold nothing. */
-export function mappingOf(roles: readonly (Role | null)[]): ColumnRole[] {
-  return roles.flatMap((role, column) =>
-    role === null ? [] : [{ column, role }],
-  );
+/**
+ * As `POST /api/parse` takes it, with the columns left out that hold nothing, and the unit chosen
+ * for a quantity's column. With no unit, the server reads the column in SI.
+ */
+export function mappingOf(
+  roles: readonly (Role | null)[],
+  units: readonly (Unit | null)[] = [],
+): ColumnRole[] {
+  return roles.flatMap((role, column) => {
+    if (role === null) {
+      return [];
+    }
+    const unit = units[column] ?? null;
+    return role === "temperature" || unit === null
+      ? [{ column, role }]
+      : [{ column, role, unit }];
+  });
 }

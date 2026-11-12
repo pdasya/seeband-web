@@ -9,6 +9,9 @@ type Issue = components["schemas"]["IssueResponse"];
 // These name a column, and a file can have several of them.
 const ABOUT_A_COLUMN: ReadonlySet<Issue["code"]> = new Set([
   "unit_differs",
+  "unit_assumed",
+  "unit_not_allowed",
+  "implausible_magnitude",
   "repeated_header",
   "repeated_role",
 ]);
@@ -31,6 +34,7 @@ const QUANTITY_MISSING: ReadonlySet<Issue["code"]> = new Set([
 const ABOUT_THE_MAPPING: ReadonlySet<Issue["code"]> = new Set([
   "missing_temperature",
   "repeated_role",
+  "unit_not_allowed",
 ]);
 
 // A choice can mend these: a negative ρ may be S with its sign, which is common.

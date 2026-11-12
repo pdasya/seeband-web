@@ -1,10 +1,17 @@
-import { AlertCircleIcon, LoaderCircleIcon, XIcon } from "lucide-react";
+import {
+  AlertCircleIcon,
+  LoaderCircleIcon,
+  TriangleAlertIcon,
+  XIcon,
+} from "lucide-react";
 import { useEffect, useRef } from "react";
 
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { DropArea, useFileDrop } from "@/data/DropArea";
 import { SlotColumns } from "@/data/SlotColumns";
+import { UnitSelect } from "@/data/UnitSelect";
+import { unitOf } from "@/data/units";
 import { useFileUpload } from "@/data/useFileUpload";
 import { cn } from "@/lib/utils";
 import {
@@ -65,8 +72,16 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
   const { data: text } = STRINGS;
   const names = text.quantities[quantity];
   const data = useSessionStore((state) => state.data[quantity]);
-  const { state, upload, chooseRole, applyChoice, remove, fail } =
-    useFileUpload(quantity);
+  const {
+    state,
+    upload,
+    chooseRole,
+    chooseColumnUnit,
+    applyChoice,
+    changeUnit,
+    remove,
+    fail,
+  } = useFileUpload(quantity);
   const input = useRef<HTMLInputElement>(null);
   const removeButton = useRef<HTMLButtonElement>(null);
   const firstSelect = useRef<HTMLButtonElement>(null);
@@ -179,6 +194,7 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
             choice={state}
             firstSelect={firstSelect}
             onRole={chooseRole}
+            onUnit={chooseColumnUnit}
             onApply={() => {
               keepFocus.current = true;
               void applyChoice();
@@ -217,6 +233,29 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
             <XIcon aria-hidden="true" />
           </Button>
         </div>
+        {/* Demo data come in SI, and have no file to read again. */}
+        {data.readAs !== undefined && (
+          <div className="grid grid-cols-[auto_minmax(0,128px)] items-center justify-start gap-2 text-xs text-muted-foreground">
+            <span>{text.valuesIn}</span>
+            <UnitSelect
+              quantity={quantity}
+              value={unitOf(data.readAs, quantity)}
+              label={names.title}
+              onChange={(unit) => {
+                void changeUnit(unit);
+              }}
+            />
+          </div>
+        )}
+        {data.implausible === true && (
+          <Alert>
+            <TriangleAlertIcon aria-hidden="true" />
+            <AlertTitle>{text.checkUnitTitle}</AlertTitle>
+            <AlertDescription>
+              {text.issues.implausible_magnitude}
+            </AlertDescription>
+          </Alert>
+        )}
         {state.status === "idle" && state.warnings.length > 0 && (
           <ul className="m-0 list-none p-0 text-xs text-muted-foreground">
             {state.warnings.map((warning, index) => (

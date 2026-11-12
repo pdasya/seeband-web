@@ -79,9 +79,9 @@ export const STRINGS = {
     title: "Data",
     subtitle: {
       separate:
-        "Each file: T in K and the value. S in V/K, ρ in Ω·m, R_H in m³/C.",
+        "Each file: T in K and the value, in the unit its header names or the one you choose. SI by default.",
       single:
-        "One table: a column for T in K, and for each quantity. S in V/K, ρ in Ω·m, R_H in m³/C.",
+        "One table: a column for T in K, and for each quantity, in the unit its header names or the one you choose. SI by default.",
     },
     dropHint: "Drop a file or browse",
     source: {
@@ -177,6 +177,20 @@ export const STRINGS = {
       file_too_large: "This file is too large.",
       read_failed: "This could not be read. Choose a single file.",
     },
+    units: {
+      K: "K",
+      "V/K": "V/K",
+      "uV/K": "µV/K",
+      "Ohm*m": "Ω·m",
+      "mOhm*cm": "mΩ·cm",
+      "uOhm*m": "µΩ·m",
+      "m^3/C": "m³/C",
+      "cm^3/C": "cm³/C",
+    },
+    unitOf: (name: string) => `Unit of ${name}`,
+    valuesIn: "Values in",
+    inSi: (written: string, si: string) => `${written} = ${si} in SI`,
+    checkUnitTitle: "Check the unit",
     quantities: {
       seebeck: { symbol: "S", title: "Seebeck coefficient", unit: "V/K" },
       resistivity: { symbol: "ρ", title: "Resistivity", unit: "Ω·m" },
@@ -201,7 +215,12 @@ export const STRINGS = {
       repeated_role: "A quantity is assigned twice.",
       preamble_skipped: "A line of text before the header was left out.",
       header_mismatch: "The header has a different number of columns.",
-      unit_differs: "A column with another unit was not used.",
+      unit_differs: "A column in a unit SeeBand cannot read was not used.",
+      unit_assumed:
+        "Its header names a unit SeeBand cannot read, so it is read in the unit chosen here.",
+      unit_not_allowed: "This unit does not fit the quantity of this column.",
+      implausible_magnitude:
+        "These values are far from any usual size in SI, as when µV/K is read as V/K. Check the unit of this column.",
       repeated_header: "A second column for one quantity was not used.",
       columns_need_assigning: "More than two columns with no header.",
       expected_not_found: "This file has no column for this quantity.",
