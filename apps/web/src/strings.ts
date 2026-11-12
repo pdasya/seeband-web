@@ -188,7 +188,6 @@ export const STRINGS = {
       "cm^3/C": "cm³/C",
     },
     unitOf: (name: string) => `Unit of ${name}`,
-    columnIn: (symbol: string) => `${symbol} in`,
     temperature: "Temperature",
     inSi: (written: string, si: string) => `${written} = ${si} in SI`,
     checkUnitTitle: "Check the unit",

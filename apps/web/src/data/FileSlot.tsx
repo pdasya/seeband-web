@@ -240,11 +240,12 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
         </div>
         {/* Demo data come in SI, and have no file to read again. */}
         {data.readAs !== undefined && (
-          <div className="grid grid-cols-[auto_minmax(0,112px)] items-center justify-start gap-x-2 gap-y-1 text-xs text-muted-foreground">
+          // T and the quantity in one row, each symbol before its unit.
+          <div className="grid grid-cols-[auto_minmax(0,112px)_auto_minmax(0,112px)] items-center justify-start gap-x-2 text-xs text-muted-foreground">
             {(["temperature", quantity] as const).map((role) => (
               <Fragment key={role}>
-                <span>
-                  {text.columnIn(role === "temperature" ? "T" : names.symbol)}
+                <span className="font-mono">
+                  {role === "temperature" ? "T" : names.symbol}
                 </span>
                 <UnitSelect
                   role={role}
