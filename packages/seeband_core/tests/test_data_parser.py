@@ -225,6 +225,9 @@ def si_text() -> str:
         ("resistivity", "mOhm cm", "mOhm*cm"),
         ("resistivity", "mΩ·cm", "mOhm*cm"),
         ("resistivity", "µΩ·m", "uOhm*m"),
+        # OHM SIGN, as Excel and Windows write it, and the dot operator.
+        ("resistivity", "\u2126·m", "Ohm*m"),
+        ("resistivity", "m\u2126\u22c5cm", "mOhm*cm"),
         ("hall", "m^3/C", "m^3/C"),
         ("hall", "cm³/C", "cm^3/C"),
         ("hall", "cm3/C", "cm^3/C"),

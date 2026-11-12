@@ -208,13 +208,14 @@ def _unit_key(unit: str) -> str | None:
         ("µ", "u"),
         ("μ", "u"),
         ("Ω", "ohm"),
+        ("\u2126", "ohm"),  # OHM SIGN, as Excel and Windows write it
         ("ω", "ohm"),
         ("³", "3"),
         ("℃", "°C"),
         ("º", "°"),
     ):
         key = key.replace(written, spelling)
-    return re.sub(r"[*·^]", "", key).lower()
+    return re.sub(r"[*·⋅^]", "", key).lower()
 
 
 def header_unit(role: Role, unit: str) -> Unit | None:
