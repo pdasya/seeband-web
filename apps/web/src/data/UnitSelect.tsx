@@ -5,21 +5,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import type { Role } from "@/data/columnChoice";
 import { UNITS_OF, type Unit } from "@/data/units";
-import type { Quantity } from "@/session/store";
 import { STRINGS } from "@/strings";
 
 const { data: text } = STRINGS;
 
-/** The unit a quantity's column is written in. The server converts it to SI. */
+/** The unit a column is written in. The server converts it to SI. */
 export function UnitSelect({
-  quantity,
+  role,
   value,
   label,
   disabled = false,
   onChange,
 }: {
-  quantity: Quantity;
+  role: Role;
   value: Unit;
   /** The name of what the unit is for, for a screen reader. */
   label: string;
@@ -42,7 +42,7 @@ export function UnitSelect({
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        {UNITS_OF[quantity].map((unit) => (
+        {UNITS_OF[role].map((unit) => (
           <SelectItem key={unit} value={unit} className="font-mono">
             {text.units[unit]}
           </SelectItem>

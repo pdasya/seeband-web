@@ -315,12 +315,12 @@ export function useFileUpload(quantity: Quantity) {
    * were, in the unit the card still shows.
    */
   const changeUnit = useCallback(
-    async (unit: Unit) => {
+    async (role: Role, unit: Unit) => {
       const entry = useSessionStore.getState().data[quantity];
       if (entry?.readAs === undefined) {
         return;
       }
-      const mapping = withUnit(entry.mapping ?? entry.readAs, quantity, unit);
+      const mapping = withUnit(entry.mapping ?? entry.readAs, role, unit);
       const signal = newRequest();
       try {
         const parsed = await apiClient.postParse(

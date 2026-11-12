@@ -41,10 +41,11 @@ function contractUnits(): string[] {
 }
 
 describe("UNITS_OF", () => {
-  test("offers every unit of the contract but K, each once, with SI first", () => {
+  test("offers every unit of the contract, each once, with SI first", () => {
     const offered = Object.values(UNITS_OF).flat();
     expect(new Set(offered).size).toBe(offered.length);
-    expect([...offered, "K"].sort()).toEqual(contractUnits().sort());
+    expect([...offered].sort()).toEqual(contractUnits().sort());
+    expect(UNITS_OF.temperature).toEqual(["K", "C"]);
     expect(UNITS_OF.seebeck[0]).toBe("V/K");
     expect(UNITS_OF.resistivity[0]).toBe("Ohm*m");
     expect(UNITS_OF.hall[0]).toBe("m^3/C");
@@ -72,6 +73,7 @@ describe("unitOf", () => {
 
   test("falls back to SI with no mapping or no unit", () => {
     expect(unitOf(undefined, "hall")).toBe("m^3/C");
+    expect(unitOf(undefined, "temperature")).toBe("K");
     expect(unitOf([{ column: 1, role: "resistivity" }], "resistivity")).toBe(
       "Ohm*m",
     );
@@ -111,11 +113,11 @@ describe("looksLikeAnotherUnit", () => {
 });
 
 describe("mappingOf with units", () => {
-  test("sends a unit only for a quantity's column", () => {
+  test("sends the unit chosen for each column, T as well", () => {
     expect(
-      mappingOf(["temperature", null, "seebeck"], ["uV/K", null, "uV/K"]),
+      mappingOf(["temperature", null, "seebeck"], ["C", null, "uV/K"]),
     ).toEqual([
-      { column: 0, role: "temperature" },
+      { column: 0, role: "temperature", unit: "C" },
       { column: 2, role: "seebeck", unit: "uV/K" },
     ]);
   });

@@ -76,7 +76,6 @@ export function SlotColumns({
       {Array.from({ length: choice.columns }, (_, column) => {
         const role = choice.roles[column] ?? null;
         const name = `${text.single.column} ${String(column + 1)}`;
-        const quantity = role === null || role === "temperature" ? null : role;
         return (
           // The card is narrow, so the column's name and value take a line of their own, and the
           // choices of quantity and unit the next.
@@ -114,12 +113,12 @@ export function SlotColumns({
                   <SelectItem value={IGNORE}>{text.single.ignore}</SelectItem>
                 </SelectContent>
               </Select>
-              {quantity === null ? (
+              {role === null ? (
                 <span />
               ) : (
                 <UnitSelect
-                  quantity={quantity}
-                  value={choice.units[column] ?? UNITS_OF[quantity][0]}
+                  role={role}
+                  value={choice.units[column] ?? UNITS_OF[role][0]}
                   label={name}
                   disabled={choice.applying}
                   onChange={(unit) => {

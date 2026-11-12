@@ -36,7 +36,7 @@ export function chosenQuantity(
 
 /**
  * As `POST /api/parse` takes it, with the columns left out that hold nothing, and the unit chosen
- * for a quantity's column. With no unit, the server reads the column in SI.
+ * for a column. With no unit, the server reads the column in SI.
  */
 export function mappingOf(
   roles: readonly (Role | null)[],
@@ -47,8 +47,6 @@ export function mappingOf(
       return [];
     }
     const unit = units[column] ?? null;
-    return role === "temperature" || unit === null
-      ? [{ column, role }]
-      : [{ column, role, unit }];
+    return unit === null ? [{ column, role }] : [{ column, role, unit }];
   });
 }

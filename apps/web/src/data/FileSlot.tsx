@@ -4,7 +4,7 @@ import {
   TriangleAlertIcon,
   XIcon,
 } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { Fragment, useEffect, useRef } from "react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -235,16 +235,26 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
         </div>
         {/* Demo data come in SI, and have no file to read again. */}
         {data.readAs !== undefined && (
-          <div className="grid grid-cols-[auto_minmax(0,128px)] items-center justify-start gap-2 text-xs text-muted-foreground">
-            <span>{text.valuesIn}</span>
-            <UnitSelect
-              quantity={quantity}
-              value={unitOf(data.readAs, quantity)}
-              label={names.title}
-              onChange={(unit) => {
-                void changeUnit(unit);
-              }}
-            />
+          <div className="grid grid-cols-[auto_minmax(0,112px)] items-center justify-start gap-x-2 gap-y-1 text-xs text-muted-foreground">
+            {(["temperature", quantity] as const).map((role) => (
+              <Fragment key={role}>
+                <span>
+                  {text.columnIn(role === "temperature" ? "T" : names.symbol)}
+                </span>
+                <UnitSelect
+                  role={role}
+                  value={unitOf(data.readAs, role)}
+                  label={
+                    role === "temperature"
+                      ? `${text.temperature}, ${names.title}`
+                      : names.title
+                  }
+                  onChange={(unit) => {
+                    void changeUnit(role, unit);
+                  }}
+                />
+              </Fragment>
+            ))}
           </div>
         )}
         {data.implausible === true && (

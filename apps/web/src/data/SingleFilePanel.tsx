@@ -95,7 +95,7 @@ function firstValue(
 ): string {
   const isTemperature = item?.role === "temperature";
   const written = formatValue(table.preview[0]?.[column], isTemperature);
-  if (item === undefined || item.role === "temperature" || written === "") {
+  if (item === undefined || written === "") {
     return written;
   }
   const si = UNITS_OF[item.role][0];
@@ -104,7 +104,10 @@ function firstValue(
   const converted = table.preview_si[0]?.[column];
   return unit === si || converted === null || converted === undefined
     ? inUnit
-    : text.inSi(inUnit, `${formatValue(converted, false)} ${text.units[si]}`);
+    : text.inSi(
+        inUnit,
+        `${formatValue(converted, isTemperature)} ${text.units[si]}`,
+      );
 }
 
 function ColumnMapping({
@@ -128,8 +131,6 @@ function ColumnMapping({
         const name = columnName(table, column);
         const item = itemOf(column);
         const role = item?.role;
-        const quantity =
-          role === undefined || role === "temperature" ? null : role;
         return (
           <div
             key={column}
@@ -169,12 +170,12 @@ function ColumnMapping({
                 <SelectItem value={IGNORE}>{text.single.ignore}</SelectItem>
               </SelectContent>
             </Select>
-            {quantity === null ? (
+            {role === undefined ? (
               <span />
             ) : (
               <UnitSelect
-                quantity={quantity}
-                value={item?.unit ?? UNITS_OF[quantity][0]}
+                role={role}
+                value={item?.unit ?? UNITS_OF[role][0]}
                 label={name}
                 onChange={(unit) => {
                   void chooseUnit(column, unit);

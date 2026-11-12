@@ -79,9 +79,9 @@ export const STRINGS = {
     title: "Data",
     subtitle: {
       separate:
-        "Each file: T in K and the value, in the unit its header names or the one you choose. SI by default.",
+        "Each file: T and the value, in the units its header names or the ones you choose. K and SI by default.",
       single:
-        "One table: a column for T in K, and for each quantity, in the unit its header names or the one you choose. SI by default.",
+        "One table: a column for T, and for each quantity, in the units its header names or the ones you choose. K and SI by default.",
     },
     dropHint: "Drop a file or browse",
     source: {
@@ -179,6 +179,7 @@ export const STRINGS = {
     },
     units: {
       K: "K",
+      C: "°C",
       "V/K": "V/K",
       "uV/K": "µV/K",
       "Ohm*m": "Ω·m",
@@ -188,7 +189,8 @@ export const STRINGS = {
       "cm^3/C": "cm³/C",
     },
     unitOf: (name: string) => `Unit of ${name}`,
-    valuesIn: "Values in",
+    columnIn: (symbol: string) => `${symbol} in`,
+    temperature: "Temperature",
     inSi: (written: string, si: string) => `${written} = ${si} in SI`,
     checkUnitTitle: "Check the unit",
     quantities: {
@@ -209,7 +211,8 @@ export const STRINGS = {
       decimal_comma: "This looks like decimal commas. Use a decimal point.",
       too_few_rows: "Fewer than 2 rows.",
       missing_temperature: "No column holds the temperature.",
-      non_positive_temperature: "A temperature of 0 K or below.",
+      non_positive_temperature:
+        "A temperature of 0 K or below. If this column is in °C, choose °C for it.",
       negative_resistivity:
         "A resistivity below 0, which no measurement gives.",
       repeated_role: "A quantity is assigned twice.",
