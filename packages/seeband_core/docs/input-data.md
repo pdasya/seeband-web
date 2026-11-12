@@ -36,6 +36,22 @@ The largest |value| of each quantity, in SI, outside these limits gives the warn
 
 This catches µV/K read as V/K, which is 1e6 too large. It does not catch every wrong unit: the `02_SiP` example reaches ρ = 0.16 Ω·m and |R_H| = 0.013 m³/C, so a resistivity in mΩ·cm or a Hall coefficient in cm³/C read as SI can look possible. For those, only the unit chosen for the column protects the result.
 
+Only the largest |value| is checked, and T is not checked at all. These mistakes give no warning:
+
+| Mistake                                         | Passes without a warning when                          |
+| ----------------------------------------------- | ------------------------------------------------------ |
+| T in °C read as K, or T in K read as °C         | always                                                 |
+| ρ in mΩ·cm read as Ω·m (1e5 too large)          | ρ up to 1 mΩ·cm, as in many good thermoelectrics       |
+| ρ in µΩ·m read as Ω·m (1e6 too large)           | ρ up to 1 µΩ·m                                         |
+| ρ in mΩ·cm read as µΩ·m, or the other way (10×) | always                                                 |
+| ρ in Ω·m read as mΩ·cm or µΩ·m                  | ρ from 1e-5 or 1e-4 Ω·m                                |
+| R_H in cm³/C read as m³/C (1e6 too large)       | \|R_H\| up to 0.1 cm³/C, carriers from about 6e19 cm⁻³ |
+| R_H in m³/C read as cm³/C                       | \|R_H\| from 1e-7 m³/C                                 |
+| S in mV/K, which has no unit here, read as V/K  | \|S\| up to 10 mV/K                                    |
+| separate files with T in different units        | always, as files are not compared                      |
+
+`unit_assumed` says when a header names a unit that was not used. A column with no unit in its header is read in SI with no warning.
+
 ## Headers
 
 Any lines before the first row of numbers are text, and the last of them is the header. A line is text if a field does not start like a number, so a typo such as `3O0 1e-6` is an error on its line and does not become a header.
@@ -51,7 +67,7 @@ Names are matched without regard to case, except `T` and `S`: lower-case `t` and
 
 Where it is not clear what a column holds, the parser leaves it unassigned, because a wrong guess gives numbers that look fine. A user assigns it with `with_mapping`, or by passing `mapping` to `parse_table`.
 
-- A column with a unit in brackets that the parser cannot read, such as `S (mV/K)`, is not assigned, because its values would be wrong by a factor. Assigning it by hand reads it in SI, or in the unit chosen for it, and the warning becomes `unit_assumed`.
+- A column with a unit in brackets that the parser cannot read, such as `S (mV/K)`, is not assigned, because its values would be wrong by a factor. Assigning it by hand reads it in SI with the warning `unit_assumed`, or in a unit chosen for it with no warning.
 - A column assigned by hand keeps a unit its header names, such as `Svalues (uV/K)`.
 - A file with no header takes its first column as T. With two columns, the second is the quantity passed as `expected`. With more, the rest are not assigned. `headers` is then left out, and the web app asks the user what the columns hold before using it (D28).
 - A header with a different number of columns from the data gives no assignments.
