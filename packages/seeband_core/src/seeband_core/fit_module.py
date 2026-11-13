@@ -218,12 +218,13 @@ class PB_fit:
             maxfev=1000,
         )
 
-        # Save the current band parameters
-        current_meff = parameter_see[0] / degen
+        # The solver works in public R, so its value is returned as it is, not divided by N and
+        # multiplied again, which could change its last bit.
+        current_meff = parameter_see[0]
         current_gap = parameter_see[1]
         current_fermi_energy = parameter_see[2]
 
-        parameters = [current_meff * degen, current_gap, current_fermi_energy]
+        parameters = [current_meff, current_gap, current_fermi_energy]
         return parameters
 
     def spb_see_res_fit(
