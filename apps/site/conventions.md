@@ -1,4 +1,24 @@
-# Scattering conventions
+# Model conventions
+
+## DPB mass and degeneracy
+
+Let N = N₂/N₁. The public parameter `m_eff`, displayed as m₂/m₁, is the
+signed mass ratio R = m₂/|m₁|. Its magnitude is the band-mass ratio; its sign
+sets the type of band 2. The reference band 1 is hole-like. The low-level
+DPB formulas receive r = R/N, the mass ratio weighted by inverse degeneracy.
+
+In DPB S-only mode, both fitting and drawing convert R to r exactly once.
+Starts, fitted values, bounds and reported uncertainties remain in public
+R coordinates. The carrier-density weight is N |R|^(3/2) and the transport
+weight is N/R. At N = 1 the P6 conversion is the identity.
+
+The separate iterative-mode output/bounds inconsistency remains flagged
+by `dpb_loop_degeneracy` (#85). P6 repairs the S-only mismatch and does not
+establish the correctness of negative-mass transport (#104), collapsed
+bands (#107), the band diagram (#108), or chemical-potential root finding.
+Human physicist confirmation and parity (#71) remain outstanding.
+
+## Scattering
 
 For SPB and DPB acPhDis, C and D are dimensionless scattering ratios at 300 K.
 D applies only to DPB band 2. The low-level temperature-dependent transport

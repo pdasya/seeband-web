@@ -1,5 +1,18 @@
 # Golden results
 
+P6 adds `tests/fixtures/physics/p6.json`: explicitly synthetic nonunit-N
+S-only fit/recovery references. Historical desktop N = 1 captures remain
+unchanged, and their S-only replay still passes. The independent quadrature
+checks in `test_dpb_degeneracy.py` validate the density and transport weights
+separately from these model-generated regression expectations. See
+[the mass convention and residual investigation](dpb-s-degeneracy.md).
+
+Regenerate the P6 references from the repository root:
+
+```sh
+PYTHONPATH=packages/seeband_core/src uv run python packages/seeband_core/scripts/capture_p6_results.py
+```
+
 [`tests/fixtures/golden/`](../tests/fixtures/golden) records what the SeeBand desktop application computes for the 3 examples, in all 14 combinations of model, fit mode and scattering. Regression tests in the port compare against these files, with the intentional [P2 Hall correction](dpb-hall-prefactor.md) recorded in a separate set of web expectations. P3 similarly records corrected acPhDis derived curves in `tests/fixtures/physics/p3.json`; historical desktop captures remain unchanged.
 
 **They record the desktop's behaviour, not correct physics.** Known errors are included on purpose, and many fits are doubtful. The physics fixes change these results later, with a physicist's confirmation. [The summary](golden-results-summary.md), generated from the files, lists every run.

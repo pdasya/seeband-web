@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- P6 (#85, S-only scope): use the same degeneracy-weighted mass in DPB S
+  fitting and drawing. Public mass coordinates, bounds and uncertainties
+  stay unchanged; the low-level model receives R/N on both paths. Add
+  nonunit-degeneracy synthetic regression results and remove only the
+  S-only mismatch warning. The iterative-mode mass/bounds warning remains.
+
 - P3 (#82): convert acPhDis C and D from dimensionless ratios at 300 K
   to temperature scales in SPB/DPB conductivity, thermal conductivity and
   per-band curves, consistently with resistivity. Corrected σρ equals 1.

@@ -176,6 +176,12 @@ def test_known_issue_conditions_and_scope_reach_the_client(
     assert issues["collapsed_m_eff"]["condition"] == "collapsed_m_eff"
 
 
+def test_p6_removes_only_the_s_only_degeneracy_warning(modes: dict[str, dict[str, Any]]) -> None:
+    assert "dpb_s_degeneracy" not in {issue["id"] for issue in modes["dpb_s"]["known_issues"]}
+    for mode_id in ("dpb_s_rho", "dpb_s_rho_rh"):
+        assert "dpb_loop_degeneracy" in {issue["id"] for issue in modes[mode_id]["known_issues"]}
+
+
 def test_every_field_matches_the_registry(response: Any) -> None:
     """The values are checked in the core, so this checks that the route carries all of them."""
     models = response.json()["models"]

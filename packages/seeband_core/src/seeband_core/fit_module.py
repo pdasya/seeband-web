@@ -187,8 +187,10 @@ class PB_fit:
         parameter_see, _ = _curve_fit(
             progress,
             "see",
+            # Keep solver parameters, bounds and covariance in public R=m2/|m1| units.
+            # The low-level model takes the degeneracy-weighted ratio r=R/N.
             lambda T, meff, gap, fermi_energy: te.dpb_see_vs_temp(
-                temp_list, meff, gap, fermi_energy, degen, scal_fac=1e6
+                temp_list, meff / degen, gap, fermi_energy, degen, scal_fac=1e6
             ),
             temp_list,
             see_list * 1e6,
