@@ -51,12 +51,26 @@ def test_synthetic_fit_recovers_public_parameters_and_curve(degeneracy):
     assert np.all(np.array(fitted) <= bounds[1])
 
 
-def test_unit_degeneracy_preserves_original_objective():
+def test_unit_degeneracy_preserves_original_objective(monkeypatch):
     temperature = np.linspace(100.0, 800.0, 20)
     parameters = [1.2, 800.0, -150.0]
     _, drawn = fit_module.PB_fit().dpb_see_calc(100, 800, 20, parameters, 1.0)
     original = math_module.dpb_see_vs_temp(temperature, *parameters, 1.0)
     np.testing.assert_array_equal(drawn, original)
+
+    # The fit's own objective at N = 1 is the original formula, bit for bit.
+    def solver(objective, xdata, ydata, **kwargs):
+        np.testing.assert_array_equal(
+            objective(xdata, *parameters),
+            math_module.dpb_see_vs_temp(xdata, *parameters, 1.0, scal_fac=1e6),
+        )
+        return np.array(parameters), np.eye(3)
+
+    monkeypatch.setattr(fit_module.opt, "curve_fit", solver)
+    fitted = fit_module.PB_fit().dpb_see_fit(
+        temperature, original, parameters, ([0.8, 600, -250], [1.8, 1000, -50]), 1.0
+    )
+    assert fitted == parameters
 
 
 def independent_seebeck(temperature, ratio, gap, fermi_energy, degeneracy):
@@ -95,6 +109,13 @@ def independent_seebeck(temperature, ratio, gap, fermi_energy, degeneracy):
     return np.array(result)
 
 
+# The core reads F_1/2 from a table with steps of 1e-3 in the reduced potential, interpolated
+# linearly, which puts its charge root up to 1.2e-5 K off; fsolve's root matches the table's. Over
+# N in {1/3, 0.5, 1, 1.5, 3, 6}, three parameter sets and 31 temperatures from 50 to 800 K, S then
+# differs from quadrature by at most 4.3e-11 V/K.
+TABLE_TOLERANCE_V_PER_K = 1e-10
+
+
 @pytest.mark.parametrize("degeneracy", [1.0, 3.0, 1 / 3])
 def test_fit_objective_matches_independent_density_and_transport_weights(monkeypatch, degeneracy):
     temperature = np.array([100.0, 300.0, 700.0])
@@ -102,7 +123,9 @@ def test_fit_objective_matches_independent_density_and_transport_weights(monkeyp
     reference = independent_seebeck(temperature, *parameters, degeneracy)
 
     def solver(objective, xdata, ydata, **kwargs):
-        np.testing.assert_allclose(objective(xdata, *parameters) / 1e6, reference, atol=1e-11)
+        np.testing.assert_allclose(
+            objective(xdata, *parameters) / 1e6, reference, atol=TABLE_TOLERANCE_V_PER_K
+        )
         return np.array(parameters), np.eye(3)
 
     monkeypatch.setattr(fit_module.opt, "curve_fit", solver)

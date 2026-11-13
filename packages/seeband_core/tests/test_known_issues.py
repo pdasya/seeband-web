@@ -174,12 +174,19 @@ def test_a_flag_for_one_scattering_type_stays_there() -> None:
     assert "acphdis_curve_scale" not in ids("dpb_s_rho", "acPhDis", "seebeck_by_band")
 
 
+@pytest.mark.parametrize("ratio", [0.5, 2.0, 3.0])
+@pytest.mark.parametrize(
+    "kind",
+    [None, "measured", "seebeck_by_band", "chemical_potential", "carrier_concentration_by_band"],
+)
+def test_dpb_s_has_no_degeneracy_flag_at_any_ratio(ratio: float, kind: CurveKind | None) -> None:
+    # P6 fits and draws DPB S with the same R/N, so no flag on N2/N1 applies to it any more.
+    assert not {issue for issue in ids("dpb_s", None, kind, ratio=ratio) if "degeneracy" in issue}
+
+
 @pytest.mark.parametrize(
     ("condition_kwargs", "mode", "scattering", "kind", "issue", "active"),
     [
-        ({"ratio": 1.0}, "dpb_s", None, None, "dpb_s_degeneracy", False),
-        ({"ratio": 2.0}, "dpb_s", None, None, "dpb_s_degeneracy", False),
-        ({"ratio": 0.5}, "dpb_s", None, "chemical_potential", "dpb_s_degeneracy", False),
         ({"ratio": 2.0}, "dpb_s_rho", "acPh", None, "dpb_loop_degeneracy", True),
         ({"ratio": 2.0}, "dpb_s_rho", "acPh", "measured", "dpb_loop_degeneracy", False),
         ({"parameters": {"m_eff": 1.0}}, "dpb_s", None, None, "negative_m_eff_weight", False),
