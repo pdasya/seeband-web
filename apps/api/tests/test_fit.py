@@ -122,7 +122,11 @@ def test_result_equals_the_core(
 def test_single_pass_fit_sends_no_iteration_counter(
     client: TestClient, model_id: str, fit_mode_id: str, scattering: str | None
 ) -> None:
-    events = _events(client, _body(model_id, fit_mode_id, scattering=scattering))
+    body = _body(model_id, fit_mode_id, scattering=scattering)
+    if fit_mode_id == "spb_s_rho_rh":
+        # The demo's R_H is above 0, holes, and an electron start is refused.
+        body["start"] |= {"band_mass": -1.0, "fermi_energy": -100.0}
+    events = _events(client, body)
 
     assert [event["type"] for event in events] == ["started", "done"]
     assert "iterations" not in events[-1]["result"]
@@ -240,14 +244,16 @@ def test_only_points_in_the_fit_range_enter_the_fit(client: TestClient) -> None:
     assert body["parameters"] == expected.parameters
 
 
-def test_disabled_mode_is_refused(client: TestClient) -> None:
+def test_spb_hall_mode_validates_measurements_instead_of_refusing_mode(client: TestClient) -> None:
     response = client.post(
         "/api/fit", json=_body("spb", "spb_s_rho_rh", scattering="acPh") | {"measurements": {}}
     )
 
-    assert response.status_code == 409
-    assert response.json()["code"] == "fit_mode_disabled"
-    assert _details(response) == [(["body", "fit_mode"], "spb_hall_mode_disabled")]
+    assert response.status_code == 422
+    assert response.json()["code"] == "invalid_fit"
+    assert {tuple(location) for location, _ in _details(response)} == {
+        ("body", "measurements", quantity) for quantity in ("seebeck", "resistivity", "hall")
+    }
 
 
 @pytest.mark.parametrize(

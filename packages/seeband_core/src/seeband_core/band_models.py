@@ -116,11 +116,23 @@ def _degeneracy_ratio(request: CurveRequest | FitRequest) -> float:
 def _measurement_arrays(
     measurements: Mapping[Quantity, Measurement], quantities: Iterable[Quantity]
 ) -> list[Any]:
+    """Each quantity's temperatures and values, in ascending order of temperature.
+
+    The chemical potential is solved from one temperature to the next, starting each from the root
+    of the one before, which can miss the root on a step down to a much lower temperature. Files
+    come sorted (D22), and an API client's order now gives the same fit. Least squares does not
+    depend on the order of the points, so sorted data fit as before.
+    """
     arrays: list[Any] = []
     for quantity in quantities:
         if quantity not in measurements:
             raise ValueError(f"Missing measurement: {quantity}")
-        arrays += [measurements[quantity].temperature_k, measurements[quantity].values]
+        measurement = measurements[quantity]
+        temperatures, values = measurement.temperature_k, measurement.values
+        if np.any(np.diff(temperatures) < 0):
+            order = np.argsort(temperatures, kind="stable")
+            temperatures, values = temperatures[order], values[order]
+        arrays += [temperatures, values]
     return arrays
 
 
@@ -163,6 +175,8 @@ def _failure_message(error: Exception) -> str:
     text = str(error)
     if isinstance(error, ValueError) and "bounds" in text:
         return "The start values do not fit the bounds."
+    if isinstance(error, ValueError) and "contradicts the sign of R_H" in text:
+        return "The sign of the start band mass does not match the sign of R_H."
     if isinstance(error, ValueError) and "not finite" in text:
         return "The model gave values that are not finite during the fit."
     if isinstance(error, RuntimeError) and "Optimal parameters not found" in text:
@@ -248,12 +262,17 @@ class _BandModel:
             # With N2/N1 other than 1, the loop fits m_eff / N, and its bounds apply to that (D12).
             if fit_mode.iterative and spec.name == "m_eff":
                 value = value / ratio
-            # SPB S + rho + R_H returns C still multiplied by 300 (D6).
-            if fit_mode.id == "spb_s_rho_rh" and spec.name == "C":
-                value = value / 300.0
             if value <= bounds.lower or value >= bounds.upper:
                 found.append(spec.name)
             elif _is_at_bound(value, bounds.lower) or _is_at_bound(value, bounds.upper):
+                found.append(spec.name)
+            # The SPB Hall fit keeps the mass on the branch of its start, so 0 bounds it too.
+            elif (
+                spec.name == "band_mass"
+                and "hall" in stages
+                and bounds.lower < 0 < bounds.upper
+                and _is_at_bound(value, 0.0)
+            ):
                 found.append(spec.name)
         return tuple(found)
 
@@ -431,9 +450,7 @@ class SpbModel(_BandModel):
             elif scattering == "acPh":
                 errors |= _named_errors(["A"], res)
             else:
-                # S + rho returns C divided by 300, and S + rho + R_H does not (D6).
-                divisor = 300.0 if fit_mode.id == "spb_s_rho" else 1.0
-                errors |= _named_errors(["A", "C"], [res[0], res[1] / divisor])
+                errors |= _named_errors(["A", "C"], [res[0], res[1] / 300.0])
         if "hall" in stages:
             energy, covariance = stages["hall"]
             error = _standard_errors(covariance)[0]

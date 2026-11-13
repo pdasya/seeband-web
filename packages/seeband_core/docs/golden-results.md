@@ -138,3 +138,20 @@ PYTHONPATH=packages/seeband_core/src uv run python packages/seeband_core/scripts
 ```
 
 See [the convergence contract and scientific limits](dpb-convergence.md).
+
+## P4/P12 SPB Hall correction
+
+`tests/fixtures/physics/p4.json` records corrected Hall arrays for the historical
+SPB Hall calculation inputs, plus six explicitly synthetic known-parameter
+fits (two mass signs and three scattering mechanisms). The original desktop
+files remain unchanged; the desktop has no successful SPB Hall fit reference.
+The synthetic fit curves are generated model data, not measurements or
+independent physical evidence. Independent quadrature and limiting-factor
+tests in `test_spb_hall_physics.py` check the Hall statistics separately.
+See [the correction and remaining confirmation gates](spb-hall-fit.md).
+
+Regenerate from the repository root:
+
+```sh
+PYTHONPATH=packages/seeband_core/src uv run python packages/seeband_core/scripts/capture_p4_results.py
+```

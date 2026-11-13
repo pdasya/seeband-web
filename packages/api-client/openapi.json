@@ -70,16 +70,7 @@
                     "value": {
                       "code": "fit_mode_disabled",
                       "message": "This fit mode is disabled until its known issue is fixed",
-                      "details": [
-                        {
-                          "location": [
-                            "body",
-                            "fit_mode"
-                          ],
-                          "code": "spb_hall_mode_disabled",
-                          "message": "A known issue disables this mode"
-                        }
-                      ]
+                      "details": []
                     }
                   },
                   "invalid_fit": {
@@ -784,18 +775,18 @@
                                     "default": 1.0
                                   },
                                   "core_range": {
-                                    "minimum": -300.0,
-                                    "maximum": 300.0,
-                                    "step": 1.0,
-                                    "default": 100.0
+                                    "minimum": -3.0,
+                                    "maximum": 3.0,
+                                    "step": 0.01,
+                                    "default": 1.0
                                   },
                                   "display_scale": 0.01,
-                                  "fit_scale": 1.0,
+                                  "fit_scale": 0.01,
                                   "display_unit": "m_e",
                                   "display_factor": 1.0,
                                   "fit_bounds": {
-                                    "lower": -300.0,
-                                    "upper": 300.0
+                                    "lower": -3.0,
+                                    "upper": 3.0
                                   },
                                   "bounds_editable": true
                                 },
@@ -1006,35 +997,9 @@
                                   "relative": false
                                 }
                               ],
-                              "disabled": true,
-                              "disabled_by": [
-                                "spb_hall_mode_disabled"
-                              ],
+                              "disabled": false,
+                              "disabled_by": [],
                               "known_issues": [
-                                {
-                                  "id": "spb_hall_mode_disabled",
-                                  "severity": "disabled",
-                                  "message_key": "known_issue.spb_hall_mode_disabled",
-                                  "fixed_by": "#83",
-                                  "scattering": [],
-                                  "curve_kinds": [],
-                                  "columns": [],
-                                  "affects_fit": true
-                                },
-                                {
-                                  "id": "spb_hall_uses_fermi_energy",
-                                  "severity": "unreliable",
-                                  "message_key": "known_issue.spb_hall_uses_fermi_energy",
-                                  "fixed_by": "#103",
-                                  "scattering": [],
-                                  "curve_kinds": [
-                                    "measured"
-                                  ],
-                                  "columns": [
-                                    "hall_m3_per_c"
-                                  ],
-                                  "affects_fit": true
-                                },
                                 {
                                   "id": "no_chemical_potential",
                                   "severity": "unreliable",
@@ -2500,7 +2465,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "example": "\"012631450de323a98e74bec2ea4bbf50\""
+                "example": "\"cdab5d86fb63cf81381ab63a717227e2\""
               }
             }
           },
@@ -2547,16 +2512,7 @@
                     "value": {
                       "code": "fit_mode_disabled",
                       "message": "This fit mode is disabled until its known issue is fixed",
-                      "details": [
-                        {
-                          "location": [
-                            "body",
-                            "fit_mode"
-                          ],
-                          "code": "spb_hall_mode_disabled",
-                          "message": "A known issue disables this mode"
-                        }
-                      ]
+                      "details": []
                     }
                   },
                   "invalid_fit": {
@@ -2775,16 +2731,7 @@
                     "value": {
                       "code": "fit_mode_disabled",
                       "message": "This fit mode is disabled until its known issue is fixed",
-                      "details": [
-                        {
-                          "location": [
-                            "body",
-                            "fit_mode"
-                          ],
-                          "code": "spb_hall_mode_disabled",
-                          "message": "A known issue disables this mode"
-                        }
-                      ]
+                      "details": []
                     }
                   },
                   "invalid_fit": {
@@ -3023,16 +2970,7 @@
                     "value": {
                       "code": "fit_mode_disabled",
                       "message": "This fit mode is disabled until its known issue is fixed",
-                      "details": [
-                        {
-                          "location": [
-                            "body",
-                            "fit_mode"
-                          ],
-                          "code": "spb_hall_mode_disabled",
-                          "message": "A known issue disables this mode"
-                        }
-                      ]
+                      "details": []
                     }
                   },
                   "invalid_fit": {
@@ -3489,16 +3427,7 @@
                     "value": {
                       "code": "fit_mode_disabled",
                       "message": "This fit mode is disabled until its known issue is fixed",
-                      "details": [
-                        {
-                          "location": [
-                            "body",
-                            "fit_mode"
-                          ],
-                          "code": "spb_hall_mode_disabled",
-                          "message": "A known issue disables this mode"
-                        }
-                      ]
+                      "details": []
                     }
                   },
                   "invalid_fit": {
@@ -3841,16 +3770,7 @@
                     "value": {
                       "code": "fit_mode_disabled",
                       "message": "This fit mode is disabled until its known issue is fixed",
-                      "details": [
-                        {
-                          "location": [
-                            "body",
-                            "fit_mode"
-                          ],
-                          "code": "spb_hall_mode_disabled",
-                          "message": "A known issue disables this mode"
-                        }
-                      ]
+                      "details": []
                     }
                   },
                   "invalid_fit": {
@@ -4151,16 +4071,7 @@
                     "value": {
                       "code": "fit_mode_disabled",
                       "message": "This fit mode is disabled until its known issue is fixed",
-                      "details": [
-                        {
-                          "location": [
-                            "body",
-                            "fit_mode"
-                          ],
-                          "code": "spb_hall_mode_disabled",
-                          "message": "A known issue disables this mode"
-                        }
-                      ]
+                      "details": []
                     }
                   },
                   "invalid_fit": {
@@ -4803,16 +4714,7 @@
                     "value": {
                       "code": "fit_mode_disabled",
                       "message": "This fit mode is disabled until its known issue is fixed",
-                      "details": [
-                        {
-                          "location": [
-                            "body",
-                            "fit_mode"
-                          ],
-                          "code": "spb_hall_mode_disabled",
-                          "message": "A known issue disables this mode"
-                        }
-                      ]
+                      "details": []
                     }
                   },
                   "invalid_fit": {

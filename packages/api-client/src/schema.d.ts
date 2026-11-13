@@ -1309,7 +1309,7 @@ export interface operations {
                 headers: {
                     /** @example no-cache */
                     "Cache-Control"?: string;
-                    /** @example "012631450de323a98e74bec2ea4bbf50" */
+                    /** @example "cdab5d86fb63cf81381ab63a717227e2" */
                     ETag?: string;
                     [name: string]: unknown;
                 };

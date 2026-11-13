@@ -219,7 +219,7 @@ EXPECTED_PARAMETERS: dict[str, list[tuple[Any, ...]]] = {
         ("F", "unknown", "fitted", 0, 100000, 100, 4000, 1, 1, 1, (1, 1e7), False),
     ],
     "spb_s_rho_rh": [
-        ("band_mass", "m_e", "fitted", -300, 300, 1, 100, 0.01, 1, 0.01, (-300, 300), True),
+        ("band_mass", "m_e", "fitted", -300, 300, 1, 100, 0.01, 0.01, 0.01, (-3, 3), True),
         ("fermi_energy", *K_FULL, 1, 100, 1, 1, 1, (-3000, 3000), True),
         ("A", "unknown", "fitted", 0, 1000000, 1000, 40000, 1, 1, 1, (1, 1e7), False),
         ("C", "dimensionless", "fitted", 0, 300, 1, 100, 0.01, 1, 300, (0.001, 1000), False),

@@ -299,35 +299,6 @@ def test_request_bounds_override_only_what_they_name() -> None:
     assert 100 <= result.parameters["fermi_energy"] <= 110
 
 
-@pytest.mark.filterwarnings("ignore")
-def test_the_spb_hall_fit_keeps_its_recorded_problems() -> None:
-    model = registry.get("spb")
-    fit_mode = model.describe().fit_mode("spb_s_rho_rh")
-    measurements = recorded_measurements(fit_mode)
-    start = default_start(fit_mode)
-    # D3: a positive mass gives an empty start for E.
-    empty = model.fit(FitRequest("spb_s_rho_rh", measurements, start, scattering="acPh"))
-    assert (empty.status, empty.message) == ("failed", "The start values do not fit the bounds.")
-    float_mass = model.fit(
-        FitRequest("spb_s_rho_rh", measurements, start | {"band_mass": -1.5}, scattering="acPh")
-    )
-    assert (float_mass.status, float_mass.message) == (
-        "failed",
-        "The fit failed with an internal error.",
-    )
-    result = model.fit(
-        FitRequest(
-            "spb_s_rho_rh",
-            measurements,
-            start | {"band_mass": -1, "fermi_energy": -100},
-            bounds={"band_mass": Bounds(0, 10)},
-            scattering="acPh",
-        )
-    )
-    assert result.status == "converged"
-    assert set(result.parameters) == set(start)
-
-
 def test_degeneracy_is_the_ratio_of_the_two_bands() -> None:
     model = registry.get("dpb")
     fit_mode = model.describe().fit_mode("dpb_s")
@@ -439,10 +410,10 @@ def test_the_diagram_scales_band_2_as_the_desktop_does() -> None:
 
 
 def test_the_diagram_shows_a_mass_as_the_user_sees_it() -> None:
-    # This disabled mode holds its mass 100 times larger in core units (D3).
+    # The repaired mode uses physical masses in core and displayed values.
     fit_mode = registry.get("spb").describe().fit_mode("spb_s_rho_rh")
     result = registry.get("spb").band_diagram(
-        BandDiagramRequest("spb_s_rho_rh", {**default_start(fit_mode), "band_mass": 150.0})
+        BandDiagramRequest("spb_s_rho_rh", {**default_start(fit_mode), "band_mass": 1.5})
     )
 
     expected = parabolic_band(-40, 40, 100, 1.5, 0)[1]

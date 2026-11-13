@@ -33,16 +33,6 @@ ALL_CURVES = (*DPB_FIT_CURVES, "chemical_potential", "carrier_concentration_by_b
 # Written here so that a change of scope, severity or fix fails.
 # id: severity, fixed by, modes, scattering, curve kinds, affects fit, condition.
 EXPECTED: dict[str, tuple[Any, ...]] = {
-    "spb_hall_mode_disabled": ("disabled", "#83", ("spb_s_rho_rh",), (), (), True, None),
-    "spb_hall_uses_fermi_energy": (
-        "unreliable",
-        "#103",
-        ("spb_s_rho_rh",),
-        (),
-        ("measured",),
-        True,
-        None,
-    ),
     "acphdis_band_weight": (
         "unreliable",
         "#102",
@@ -175,13 +165,15 @@ def test_issues_for_mode_selects_by_mode() -> None:
 
 
 @pytest.mark.parametrize("name", [*SPB, *DPB])
-def test_only_the_spb_hall_mode_is_disabled(name: str) -> None:
-    assert fit_mode(name).disabled is (name == "spb_s_rho_rh")
+def test_repaired_modes_are_enabled(name: str) -> None:
+    assert not fit_mode(name).disabled
 
 
 @pytest.mark.parametrize("kind", ["measured", "chemical_potential", "thermal_conductivity", None])
-def test_a_disabled_mode_shows_on_every_result(kind: Any) -> None:
-    assert "spb_hall_mode_disabled" in ids("spb_s_rho_rh", "acPh", kind)
+def test_repaired_hall_flags_are_removed_from_every_result(kind: Any) -> None:
+    assert not {"spb_hall_mode_disabled", "spb_hall_uses_fermi_energy"} & set(
+        ids("spb_s_rho_rh", "acPh", kind)
+    )
 
 
 def test_a_flag_for_one_scattering_type_stays_there() -> None:
@@ -389,7 +381,7 @@ def test_a_failed_fit_lists_only_a_disabled_mode(monkeypatch: pytest.MonkeyPatch
             scattering="acPh",
         )
     )
-    assert (spb.status, spb.known_issues) == ("failed", ("spb_hall_mode_disabled",))
+    assert (spb.status, spb.known_issues) == ("failed", ())
 
 
 def curves(mode: str, scattering: str, kind: CurveKind, values: dict[str, float]) -> Any:

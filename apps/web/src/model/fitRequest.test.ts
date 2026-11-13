@@ -131,8 +131,26 @@ describe("fitRequest", () => {
   });
 
   test("a disabled or unknown mode cannot run", () => {
+    const withDisabledMode = models.map((model) => ({
+      ...model,
+      fit_modes: model.fit_modes.map((mode) =>
+        mode.id === "spb_s_rho_rh" ? { ...mode, disabled: true } : mode,
+      ),
+    }));
+    expect(
+      fitRequest(
+        {
+          ...STATE,
+          selection: {
+            ...STATE.selection,
+            model: "spb",
+            fitMode: "spb_s_rho_rh",
+          },
+        },
+        withDisabledMode,
+      ),
+    ).toEqual({ blocked: { reason: "no_mode" } });
     for (const selection of [
-      { ...STATE.selection, model: "spb", fitMode: "spb_s_rho_rh" },
       { ...STATE.selection, fitMode: "nope" },
       { ...STATE.selection, minTemperatureK: null },
     ]) {

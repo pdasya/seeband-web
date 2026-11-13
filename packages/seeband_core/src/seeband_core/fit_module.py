@@ -647,7 +647,7 @@ class PB_fit:
         limits_fermi_energy: tuple[list[float], list[float]],
         initial_parameter_res: list[float],
         limits_res: tuple[list[float], list[float]],
-        initial_mass1: list[int],
+        initial_mass1: list[float],
         limits_mass1: tuple[list[float], list[float]],
         scatter_type: str,
         progress: FitProgress | None = None,
@@ -678,7 +678,7 @@ class PB_fit:
             Initial fitting parameters of the resistivity
         limits_res : tuple(list[float], list[float])
             Lower and upper limits of the fitting parameters of the resistivity
-        initial_mass1 : list[int]
+        initial_mass1 : list[float]
             Initial mass of band 1 for the fit
         limits_mass1 : tuple[list[float], list[float]]
             Lower and upper limits of the mass of band 1 for the fit
@@ -689,20 +689,28 @@ class PB_fit:
         Returns
         -------
         out : list[float]
-            List containing the effective Fermi energy, scattering parameter A, scattering parameter
-            B, and, in case of acoustic-phonon + alloy-disorder scattering, scattering parameter C
-            and scattering parameter D, and parameter E
+            Fermi energy in K, A, C (the dimensionless ratio at 300 K), F, and signed
+            band mass in electron-mass units. Inactive scattering parameters retain their inputs.
         """
 
-        initial_para_E = [np.abs(initial_mass1[0]) ** (3 / 2)] * -np.sign(
-            initial_mass1[0]
-        )  #!!! Hotfix for the sign, this should be clarified for the final version!
-        limits_para_E = (
-            [np.abs(limits_mass1[0][0]) ** (3 / 2) * np.sign(limits_mass1[0][0])],
-            [np.abs(limits_mass1[1][0]) ** (3 / 2) * np.sign(limits_mass1[1][0])],
-        )  #!!! Hotfix for the sign, this should be clarified for the final version!
-
+        # Stay on the carrier branch selected by the starting mass. E decreases with m.
         band_mass = initial_mass1[0]
+        lower_mass, upper_mass = limits_mass1[0][0], limits_mass1[1][0]
+        if band_mass > 0:
+            lower_mass = max(0.0, lower_mass)
+        else:
+            upper_mass = min(0.0, upper_mass)
+        # A mass of 0 is on no branch, and a branch the bounds leave empty has no room to fit.
+        if band_mass == 0 or not lower_mass <= band_mass <= upper_mass or lower_mass >= upper_mass:
+            raise ValueError("The start band mass is outside the bounds of its carrier branch.")
+        # R_H has the sign of -m, so a start on the other branch can only end at a bound.
+        if np.sign(np.median(hall_list)) == np.sign(band_mass):
+            raise ValueError("The carrier type of the start band mass contradicts the sign of R_H.")
+        initial_para_E = [-np.sign(band_mass) * abs(band_mass) ** 1.5]
+        limits_para_E = (
+            [-np.sign(upper_mass) * abs(upper_mass) ** 1.5],
+            [-np.sign(lower_mass) * abs(lower_mass) ** 1.5],
+        )
 
         # Check if scatter_type is properly set to acPh, dis or acPhAlDi
         if scatter_type != "acPh" and scatter_type != "dis" and scatter_type != "acPhDis":
@@ -820,7 +828,7 @@ class PB_fit:
 
         # Save the current scattering parameters
         current_para_E = parameter_hall[0]
-        current_mass1 = current_para_E ** (2 / 3)
+        current_mass1 = -np.sign(current_para_E) * abs(current_para_E) ** (2 / 3)
 
         # Save all fitting parameters in a list and return the list
         parameters[0] = current_fermi_energy
@@ -830,7 +838,7 @@ class PB_fit:
         elif scatter_type == "dis":
             parameters[3] = current_para_A
         else:
-            parameters[1:3] = [current_para_A, current_para_B]
+            parameters[1:3] = [current_para_A, current_para_B / 300.0]
 
         return parameters
 
@@ -1508,9 +1516,8 @@ class PB_fit:
 
         temp_array = np.linspace(Tmin, Tmax, Tnumb)
 
-        para_E = np.abs(band_mass) ** (3 / 2) * -np.sign(
-            band_mass
-        )  #!!! Hotfixed this has to be looked at!
+        # E has the sign of -m, as in the fit, so R_H has the sign of -m.
+        para_E = np.abs(band_mass) ** (3 / 2) * -np.sign(band_mass)
 
         # Define the scattering parameters
         para_A = parameter_res[0]

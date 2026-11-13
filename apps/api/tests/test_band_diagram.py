@@ -112,7 +112,8 @@ def test_a_mode_with_no_degeneracy_refuses_one(client: TestClient) -> None:
     assert client.post("/api/band-diagram", json=body).status_code == 422
 
 
-def test_a_disabled_mode_is_refused(client: TestClient) -> None:
+def test_spb_hall_mode_serves_its_band_diagram(client: TestClient) -> None:
     response = client.post("/api/band-diagram", json=_body("spb", "spb_s_rho_rh"))
 
-    assert response.status_code == 409
+    assert response.status_code == 200
+    assert "band_1_energy_k" in response.json()["curves"]
