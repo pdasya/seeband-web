@@ -111,6 +111,11 @@ def p3_results() -> dict[str, Any]:
     return json.loads((GOLDEN.parent / "physics" / "p3.json").read_text())
 
 
+@cache
+def p5_results() -> dict[str, Any]:
+    return json.loads((GOLDEN.parent / "physics" / "p5.json").read_text())["results"]
+
+
 def core_arguments(
     function: str, args: list[Any], kwargs: dict[str, Any]
 ) -> tuple[list[Any], dict[str, Any]]:
@@ -327,6 +332,9 @@ def test_replay_matches_the_desktop(
     expected_p3 = p3_results()
     if identifier in expected_p3:
         call = dict(call, result=[call["result"][0], *expected_p3[identifier][1:]])
+    expected_p5 = p5_results()
+    if identifier in expected_p5:
+        call = dict(call, result=expected_p5[identifier]["result"])
     result = replay(mode, scattering, call)
     if not call["function"].endswith("_fit"):
         assert_close(result, call["result"], CURVE_TOLERANCE)
@@ -353,7 +361,13 @@ def recorded_iterative_runs() -> Iterator[tuple[str, str | None, int, dict[str, 
         document = json.loads((GOLDEN / f"{example}.json").read_text(encoding="utf-8"))
         for run in document["runs"]:
             if run["iterations"] is not None and "error" not in run["calls"][0]:
-                yield run["mode"], run["scattering"], run["iterations"], run["calls"][0]
+                call = run["calls"][0]
+                identifier = (
+                    f"{example}-{run['mode']}-{run['scattering']}-thread-{call['function']}"
+                )
+                corrected = p5_results().get(identifier)
+                iterations = corrected["iterations"] if corrected else run["iterations"]
+                yield run["mode"], run["scattering"], iterations, call
 
 
 @pytest.mark.filterwarnings("ignore")

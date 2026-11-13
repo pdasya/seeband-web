@@ -50,7 +50,7 @@ The arguments keep the desktop's own order and units, so they match the `fit_mod
 ## Results to treat with caution
 
 - **Most fits are doubtful.** The summary counts the runs where a fitted parameter stops at a bound or does not move.
-- **Every `acPhDis` fit stops early (D18).** In both DPB modes on all examples, the loop ends on the check of C and D alone, after 1 or 2 iterations, even though other parameters are still changing.
+- **Every desktop `acPhDis` fit stops early (D18).** In both DPB modes on all examples, the loop ends on the check of C and D alone, after 1 or 2 iterations, even though other parameters are still changing. P5 corrects this in the web version; historical captures remain unchanged.
 - **`02_SiP`, DPB:** m_eff comes out as about 4e-07, and in S + ρ + R_H, m₁ reaches its upper bound of 10. No net matches this example, so these fits start from the slider defaults. The logs show division by zero, overflow and a `fsolve` call limit.
 - **SPB S + ρ on `01` and `02`:** E_F stops at its lower bound of -3000 K. This window's mass defaults to -1.00, unlike the other SPB windows (D11).
 
@@ -115,3 +115,26 @@ Regenerate from the repository root:
 ```sh
 PYTHONPATH=packages/seeband_core/src uv run python packages/seeband_core/scripts/capture_p3_results.py
 ```
+
+## P5 convergence correction
+
+`tests/fixtures/physics/p5.json` records the corrected mixed-scattering DPB
+fit results, completed iteration counts and parameter histories, separately
+from the original desktop captures. Only the affected DPB fitting entry
+points use these corrected expectations. SPB and curve replay expectations
+remain unchanged.
+
+All six recorded cases (three examples and two DPB modes) complete three
+iterations without reaching their existing budgets. The desktop stopped at
+one iteration on `02_SiP` and two on the other examples. The Hall budget of
+20 is sufficient for these inputs; this does not guarantee convergence on
+other inputs. `02_SiP` still has the collapsed-band limitation (#107) and a
+Hall mass at its upper bound, so its fitted parameters remain unreliable.
+
+Regenerate from the repository root:
+
+```sh
+PYTHONPATH=packages/seeband_core/src uv run python packages/seeband_core/scripts/capture_p5_results.py
+```
+
+See [the convergence contract and scientific limits](dpb-convergence.md).

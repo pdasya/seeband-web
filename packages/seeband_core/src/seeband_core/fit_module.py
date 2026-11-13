@@ -1,4 +1,5 @@
 import copy
+import math
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
@@ -86,11 +87,22 @@ def _dpb_rho_model(
     )
 
 
+def _relative_change(current: float, previous: float) -> float:
+    """Keep the desktop relative error, defining zeros and invalid values explicitly."""
+    current, previous = float(current), float(previous)
+    if not math.isfinite(current) or not math.isfinite(previous):
+        return math.inf
+    if previous == 0:
+        return 0.0 if current == 0 else math.inf
+    change = abs((current - previous) / previous)
+    return change if math.isfinite(change) else math.inf
+
+
 class PB_fit:
     def is_accuracy_reached(self, threshold: float, *errors: float) -> bool:
         # Check if the error of all fitting parameters is smaller than threshold
         for error in errors:
-            if error > threshold:
+            if not math.isfinite(error) or error > threshold:
                 return False
         return True
 
@@ -578,25 +590,20 @@ class PB_fit:
                     )
 
             # Calculate the error of the fitting parameters of the resistivtiy
-            error_meff = np.abs((current_meff - prev_meff) / prev_meff)
-            error_gap = np.abs((current_gap - prev_gap) / prev_gap)
-            error_fermi_energy = np.abs(
-                (current_fermi_energy - prev_fermi_energy) / prev_fermi_energy
-            )
-            error_para_A = np.abs((current_para_A - prev_para_A) / prev_para_A)
-            error_para_B = np.abs((current_para_B - prev_para_B) / prev_para_B)
+            error_meff = _relative_change(current_meff, prev_meff)
+            error_gap = _relative_change(current_gap, prev_gap)
+            error_fermi_energy = _relative_change(current_fermi_energy, prev_fermi_energy)
+            error_para_A = _relative_change(current_para_A, prev_para_A)
+            error_para_B = _relative_change(current_para_B, prev_para_B)
             if scatter_type == "acPhDis":
-                error_para_C = np.abs((current_para_C - prev_para_C) / prev_para_C)
-                error_para_D = np.abs((current_para_D - prev_para_D) / prev_para_D)
+                error_para_C = _relative_change(current_para_C, prev_para_C)
+                error_para_D = _relative_change(current_para_D, prev_para_D)
 
             # Check if the error of all fitting parameters is smaller than threshold
-            if self.is_accuracy_reached(
-                threshold, error_meff, error_gap, error_fermi_energy, error_para_A, error_para_B
-            ):
-                break
-            if scatter_type == "acPhDis" and self.is_accuracy_reached(
-                threshold, error_para_C, error_para_D
-            ):
+            errors = [error_meff, error_gap, error_fermi_energy, error_para_A, error_para_B]
+            if scatter_type == "acPhDis":
+                errors.extend([error_para_C, error_para_D])
+            if self.is_accuracy_reached(threshold, *errors):
                 break
 
             # Save the current fitting parameters to determine the error in the next step
@@ -1057,25 +1064,20 @@ class PB_fit:
                     )
 
             # Calculate the error of the fitting parameters of the resistivtiy
-            error_meff = np.abs((current_meff - prev_meff) / prev_meff)
-            error_gap = np.abs((current_gap - prev_gap) / prev_gap)
-            error_fermi_energy = np.abs(
-                (current_fermi_energy - prev_fermi_energy) / prev_fermi_energy
-            )
-            error_para_A = np.abs((current_para_A - prev_para_A) / prev_para_A)
-            error_para_B = np.abs((current_para_B - prev_para_B) / prev_para_B)
+            error_meff = _relative_change(current_meff, prev_meff)
+            error_gap = _relative_change(current_gap, prev_gap)
+            error_fermi_energy = _relative_change(current_fermi_energy, prev_fermi_energy)
+            error_para_A = _relative_change(current_para_A, prev_para_A)
+            error_para_B = _relative_change(current_para_B, prev_para_B)
             if scatter_type == "acPhDis":
-                error_para_C = np.abs((current_para_C - prev_para_C) / prev_para_C)
-                error_para_D = np.abs((current_para_D - prev_para_D) / prev_para_D)
+                error_para_C = _relative_change(current_para_C, prev_para_C)
+                error_para_D = _relative_change(current_para_D, prev_para_D)
 
             # Check if the error of all fitting parameters is smaller than threshold
-            if self.is_accuracy_reached(
-                threshold, error_meff, error_gap, error_fermi_energy, error_para_A, error_para_B
-            ):
-                break
-            if scatter_type == "acPhDis" and self.is_accuracy_reached(
-                threshold, error_para_C, error_para_D
-            ):
+            errors = [error_meff, error_gap, error_fermi_energy, error_para_A, error_para_B]
+            if scatter_type == "acPhDis":
+                errors.extend([error_para_C, error_para_D])
+            if self.is_accuracy_reached(threshold, *errors):
                 break
 
             # Save the current fitting parameters to determine the error in the next step

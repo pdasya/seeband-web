@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- P5 (#84): require both parameter groups to converge in DPB acPhDis fits.
+  Zero-valued parameters no longer cause division by zero, and nonfinite
+  changes cannot be reported as converged. Unchanged zeros have zero change;
+  leaving zero requires another iteration. Preserve historical desktop
+  captures and record corrected fit expectations separately. The independent
+  acPhDis Seebeck grid-dependence issue (#102) remains flagged.
+
 - P3 (#82): convert acPhDis C and D from dimensionless ratios at 300 K
   to temperature scales in SPB/DPB conductivity, thermal conductivity and
   per-band curves, consistently with resistivity. Corrected σρ equals 1.

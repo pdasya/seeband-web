@@ -1805,18 +1805,6 @@
                                   "affects_fit": true
                                 },
                                 {
-                                  "id": "acphdis_early_stop",
-                                  "severity": "unreliable",
-                                  "message_key": "known_issue.acphdis_early_stop",
-                                  "fixed_by": "#84",
-                                  "scattering": [
-                                    "acPhDis"
-                                  ],
-                                  "curve_kinds": [],
-                                  "columns": [],
-                                  "affects_fit": true
-                                },
-                                {
                                   "id": "dpb_loop_degeneracy",
                                   "severity": "caution",
                                   "message_key": "known_issue.dpb_loop_degeneracy",
@@ -2376,18 +2364,6 @@
                                   "affects_fit": true
                                 },
                                 {
-                                  "id": "acphdis_early_stop",
-                                  "severity": "unreliable",
-                                  "message_key": "known_issue.acphdis_early_stop",
-                                  "fixed_by": "#84",
-                                  "scattering": [
-                                    "acPhDis"
-                                  ],
-                                  "curve_kinds": [],
-                                  "columns": [],
-                                  "affects_fit": true
-                                },
-                                {
                                   "id": "dpb_loop_degeneracy",
                                   "severity": "caution",
                                   "message_key": "known_issue.dpb_loop_degeneracy",
@@ -2524,7 +2500,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "example": "\"3b6657fe90a151c93f6883906422386a\""
+                "example": "\"012631450de323a98e74bec2ea4bbf50\""
               }
             }
           },
