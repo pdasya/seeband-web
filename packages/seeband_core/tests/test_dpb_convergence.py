@@ -167,3 +167,72 @@ def test_a_parameter_that_is_not_finite_fails_the_fit_with_its_reason():
     message = _failure_message(ValueError("A fitted parameter is not finite."))
 
     assert message == "The model gave values that are not finite during the fit."
+
+
+def _example03_inv4_args(hall):
+    """Example 03 in DPB acPhDis from C = 2, D = 0.5, the start #84 cites (INV-4)."""
+    import copy
+    import json
+    from pathlib import Path
+
+    document = json.loads((Path(__file__).parent / "fixtures/golden/03_AWI32_SI.json").read_text())
+    mode = "dpb_s_rho_rh" if hall else "dpb_s_rho"
+    run = next(r for r in document["runs"] if r["mode"] == mode and r["scattering"] == "acPhDis")
+    call = copy.deepcopy(run["calls"][0])
+    data = 6 if hall else 4
+    args = call["args"][: 16 if hall else 12]
+    for index in range(data):
+        args[index] = np.array(args[index])
+    scattering = list(args[data + 2])
+    scattering[2:4] = [2.0, 0.5]
+    args[data + 2] = scattering
+    return call["function"], args
+
+
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize("hall", [False, True])
+def test_example03_from_C2_Dhalf_reaches_the_independent_fixed_point(hall):
+    # The desktop rule stopped after 1 iteration, with m_eff +42.6 %, E_F +25.9 % and A +604 %, and
+    # S RMSE 5.04 uV/K. An outer loop written apart from the core, with no stop rule, settles at
+    # these values, with S RMSE 3.76 uV/K.
+    function, args = _example03_inv4_args(hall)
+    progress = FitProgress()
+
+    result = getattr(PB_fit(), function)(*args, progress=progress)
+
+    assert progress.iterations == 2
+    assert not progress.reached_iteration_limit
+    np.testing.assert_allclose(
+        [result[0], result[1], result[2], result[3]],
+        [1.835226, 2004.635, -259.3119, 281937.1],
+        rtol=1e-5,
+    )
+    np.testing.assert_allclose(result[4:7], [1.1, 2.0, 0.5], rtol=1e-9)
+
+
+@pytest.mark.filterwarnings("ignore")
+def test_a_start_at_fermi_energy_0_still_converges_at_its_start():
+    """NUM-2 of #84, as it stands: a known limitation, not a result to keep.
+
+    At E_F = 0 the chemical potential has no root (#106), S jumps there, and the Seebeck stage
+    returns its start unchanged, so no rule on changes can tell. This test fails, on purpose, once
+    #106 or #176 makes such a fit end otherwise; then change it to the new outcome.
+    """
+    from seeband_core.demo_dataset import load_demo_dataset
+    from seeband_core.model_catalog import registry
+    from seeband_core.model_interface import FitRequest
+    from seeband_core.model_scales import default_start
+
+    model = registry.get("dpb")
+    mode = model.describe().fit_mode("dpb_s_rho")
+    start = default_start(mode) | {"fermi_energy": 0.0}
+    data = load_demo_dataset().measurements
+
+    result = model.fit(
+        FitRequest(mode.id, {q: data[q] for q in mode.quantities}, start, scattering="acPh")
+    )
+
+    assert result.status == "converged"
+    assert result.iterations == 2
+    for name in ("m_eff", "band_gap", "fermi_energy"):
+        assert result.parameters[name] == start[name]
