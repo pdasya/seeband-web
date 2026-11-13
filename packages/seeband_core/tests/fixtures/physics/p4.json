@@ -1,11 +1,11 @@
 {
-  "provenance": "Synthetic exact-model data, not experimental validation. Human physicist confirmation remains pending before release.",
+  "provenance": "Synthetic exact-model data, not experimental validation. corrected_hall_curves replay the desktop's recorded inputs through this code, so they are regression baselines, not independent evidence. Human physicist confirmation remains pending before release.",
   "environment": {
     "python": "3.13.18",
     "numpy": "2.5.4",
     "scipy": "1.18.1"
   },
-  "desktop_hall_curves": {
+  "corrected_hall_curves": {
     "01_Fe2VAl09Si01-spb_s_rho_rh-acPh-slider-spb_see_res_hall_calc": [
       -1.874260678473466e-06,
       -1.90710362378609e-06,

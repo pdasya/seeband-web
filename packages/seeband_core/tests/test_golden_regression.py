@@ -328,9 +328,9 @@ def test_replay_matches_the_desktop(
     if identifier in expected_p3:
         call = dict(call, result=[call["result"][0], *expected_p3[identifier][1:]])
     expected_p4 = json.loads((GOLDEN.parent / "physics" / "p4.json").read_text())
-    if identifier in expected_p4["desktop_hall_curves"]:
+    if identifier in expected_p4["corrected_hall_curves"]:
         call = dict(
-            call, result=[*call["result"][:-1], expected_p4["desktop_hall_curves"][identifier]]
+            call, result=[*call["result"][:-1], expected_p4["corrected_hall_curves"][identifier]]
         )
     result = replay(mode, scattering, call)
     if not call["function"].endswith("_fit"):

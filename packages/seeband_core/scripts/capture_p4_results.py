@@ -20,12 +20,12 @@ TARGET = ROOT / "tests" / "fixtures" / "physics" / "p4.json"
 
 def main() -> None:
     replay = runpy.run_path(str(ROOT / "tests" / "test_golden_regression.py"))
-    desktop = {}
+    corrected = {}
     for identifier, (_example, mode, scattering, _source, call) in zip(
         replay["CALL_IDS"], replay["CALLS"], strict=True
     ):
         if call["function"] == "spb_see_res_hall_calc" and "error" not in call:
-            desktop[identifier] = replay["replay"](mode, scattering, call)[-1].tolist()
+            corrected[identifier] = replay["replay"](mode, scattering, call)[-1].tolist()
 
     synthetic = {}
     model = registry.get("spb")
@@ -74,13 +74,15 @@ def main() -> None:
         json.dumps(
             {
                 "provenance": "Synthetic exact-model data, not experimental validation. "
+                "corrected_hall_curves replay the desktop's recorded inputs through this code, "
+                "so they are regression baselines, not independent evidence. "
                 "Human physicist confirmation remains pending before release.",
                 "environment": {
                     "python": platform.python_version(),
                     "numpy": np.__version__,
                     "scipy": scipy.__version__,
                 },
-                "desktop_hall_curves": desktop,
+                "corrected_hall_curves": corrected,
                 "synthetic": synthetic,
             },
             indent=2,

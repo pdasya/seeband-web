@@ -1514,9 +1514,8 @@ class PB_fit:
 
         temp_array = np.linspace(Tmin, Tmax, Tnumb)
 
-        para_E = np.abs(band_mass) ** (3 / 2) * -np.sign(
-            band_mass
-        )  #!!! Hotfixed this has to be looked at!
+        # E has the sign of -m, as in the fit, so R_H has the sign of -m.
+        para_E = np.abs(band_mass) ** (3 / 2) * -np.sign(band_mass)
 
         # Define the scattering parameters
         para_A = parameter_res[0]
