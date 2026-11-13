@@ -1723,7 +1723,7 @@ class PB_fit:
         # Define the scattering parameters
         para_A = parameter_res[0]
         if scatter_type == "acPhDis":
-            para_B = parameter_res[1]
+            para_B = parameter_res[1] * 300.0
 
         # Calculate the 'pristine' conductivity of the band from the fitted band-structure
         # parameters with K = 1, abs(meff) = 1 and beta = 0
@@ -1775,7 +1775,7 @@ class PB_fit:
         # Define the scattering parameters
         para_A = parameter_res[0]
         if scatter_type == "acPhDis":
-            para_B = parameter_res[1]
+            para_B = parameter_res[1] * 300.0
 
         # Calculate the 'pristine' conductivity of the band from the fitted band-structure
         # parameters with K = 1, abs(meff) = 1 and beta = 0
@@ -1851,8 +1851,8 @@ class PB_fit:
         # Define the scattering parameters
         para_B = parameter_res[1]
         if scatter_type == "acPhDis":
-            para_C = parameter_res[2]
-            para_D = parameter_res[3]
+            para_C = parameter_res[2] * 300.0
+            para_D = parameter_res[3] * 300.0
 
         # Define the band structure parameters
         meff = parameter_see[0] / degen
@@ -1919,8 +1919,8 @@ class PB_fit:
         para_A = parameter_res[0]
         para_B = parameter_res[1]
         if scatter_type == "acPhDis":
-            para_C = parameter_res[2]
-            para_D = parameter_res[3]
+            para_C = parameter_res[2] * 300.0
+            para_D = parameter_res[3] * 300.0
 
         # Define the band structure parameters
         meff = parameter_see[0] / degen
@@ -2021,8 +2021,8 @@ class PB_fit:
         para_A = parameter_res[0]
         para_B = parameter_res[1]
         if scatter_type == "acPhDis":
-            para_C = parameter_res[2]
-            para_D = parameter_res[3]
+            para_C = parameter_res[2] * 300.0
+            para_D = parameter_res[3] * 300.0
 
         # Define the band structure parameters
         meff = parameter_see[0] / degen
@@ -2084,8 +2084,8 @@ class PB_fit:
         para_A = parameter_res[0]
         para_B = parameter_res[1]
         if scatter_type == "acPhDis":
-            para_C = parameter_res[2]
-            para_D = parameter_res[3]
+            para_C = parameter_res[2] * 300.0
+            para_D = parameter_res[3] * 300.0
 
         # Define the band structure parameters
         meff = parameter_see[0] / degen

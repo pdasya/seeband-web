@@ -351,11 +351,6 @@ const DERIVED: Record<string, Record<string, number[]>> = {
     carrier_concentration_band_2_per_cm3: [1e18, 2e18, 3e18],
   },
 };
-const SCALED = [
-  "electrical_conductivity",
-  "thermal_conductivity",
-  "seebeck_by_band",
-];
 
 async function serveCurves(page: Page) {
   const kinds: string[] = [];
@@ -377,12 +372,9 @@ async function serveCurves(page: Page) {
         known_issues:
           body.scattering !== "acPhDis"
             ? []
-            : SCALED.includes(kind)
-              ? ["acphdis_curve_scale"]
-              : // On the total of S, and on R_H, which no additional graph draws.
-                kind === "measured"
-                ? ["acphdis_band_weight"]
-                : [],
+            : kind === "measured"
+              ? ["acphdis_band_weight"]
+              : [],
       },
     });
   });
@@ -431,17 +423,10 @@ test("with acPhDis, σ, κ_e and S by band are flagged as unreliable", async ({
   await finishWith(page);
   await toResults(page);
 
-  for (const name of [
-    "Conductivity σ(T)",
-    "Thermal conductivity",
-    "Band contributions",
-  ]) {
+  for (const name of ["Conductivity σ(T)", "Thermal conductivity"]) {
     await expect(
-      graph(page, name).getByRole("heading").getByText("unreliable").first(),
-    ).toBeVisible();
-    await expect(graph(page, name)).toContainText(
-      /Unreliable: With acPhDis, σ, κ and S by band use another scale/,
-    );
+      graph(page, name).getByText("unreliable", { exact: true }),
+    ).toHaveCount(0);
   }
   await expect(
     graph(page, "Chemical potential").getByText("unreliable"),

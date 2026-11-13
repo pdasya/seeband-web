@@ -697,23 +697,6 @@
                               "disabled_by": [],
                               "known_issues": [
                                 {
-                                  "id": "acphdis_curve_scale",
-                                  "severity": "unreliable",
-                                  "message_key": "known_issue.acphdis_curve_scale",
-                                  "fixed_by": "#82",
-                                  "scattering": [
-                                    "acPhDis"
-                                  ],
-                                  "curve_kinds": [
-                                    "seebeck_by_band",
-                                    "electrical_conductivity",
-                                    "electrical_conductivity_by_band",
-                                    "thermal_conductivity"
-                                  ],
-                                  "columns": [],
-                                  "affects_fit": false
-                                },
-                                {
                                   "id": "no_chemical_potential",
                                   "severity": "unreliable",
                                   "message_key": "known_issue.no_chemical_potential",
@@ -1051,23 +1034,6 @@
                                     "hall_m3_per_c"
                                   ],
                                   "affects_fit": true
-                                },
-                                {
-                                  "id": "acphdis_curve_scale",
-                                  "severity": "unreliable",
-                                  "message_key": "known_issue.acphdis_curve_scale",
-                                  "fixed_by": "#82",
-                                  "scattering": [
-                                    "acPhDis"
-                                  ],
-                                  "curve_kinds": [
-                                    "seebeck_by_band",
-                                    "electrical_conductivity",
-                                    "electrical_conductivity_by_band",
-                                    "thermal_conductivity"
-                                  ],
-                                  "columns": [],
-                                  "affects_fit": false
                                 },
                                 {
                                   "id": "no_chemical_potential",
@@ -1822,23 +1788,6 @@
                               "disabled_by": [],
                               "known_issues": [
                                 {
-                                  "id": "acphdis_curve_scale",
-                                  "severity": "unreliable",
-                                  "message_key": "known_issue.acphdis_curve_scale",
-                                  "fixed_by": "#82",
-                                  "scattering": [
-                                    "acPhDis"
-                                  ],
-                                  "curve_kinds": [
-                                    "seebeck_by_band",
-                                    "electrical_conductivity",
-                                    "electrical_conductivity_by_band",
-                                    "thermal_conductivity"
-                                  ],
-                                  "columns": [],
-                                  "affects_fit": false
-                                },
-                                {
                                   "id": "acphdis_band_weight",
                                   "severity": "unreliable",
                                   "message_key": "known_issue.acphdis_band_weight",
@@ -2410,23 +2359,6 @@
                               "disabled_by": [],
                               "known_issues": [
                                 {
-                                  "id": "acphdis_curve_scale",
-                                  "severity": "unreliable",
-                                  "message_key": "known_issue.acphdis_curve_scale",
-                                  "fixed_by": "#82",
-                                  "scattering": [
-                                    "acPhDis"
-                                  ],
-                                  "curve_kinds": [
-                                    "seebeck_by_band",
-                                    "electrical_conductivity",
-                                    "electrical_conductivity_by_band",
-                                    "thermal_conductivity"
-                                  ],
-                                  "columns": [],
-                                  "affects_fit": false
-                                },
-                                {
                                   "id": "acphdis_band_weight",
                                   "severity": "unreliable",
                                   "message_key": "known_issue.acphdis_band_weight",
@@ -2592,7 +2524,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "example": "\"78e3749d4afdc48471804214ff99b995\""
+                "example": "\"3b6657fe90a151c93f6883906422386a\""
               }
             }
           },

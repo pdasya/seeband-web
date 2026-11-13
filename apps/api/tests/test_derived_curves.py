@@ -261,12 +261,12 @@ def test_bad_parameters_are_reported_before_an_unavailable_curve(client: TestCli
         ("dpb_s_rho", "acPhDis", "electrical_conductivity_by_band", "acphdis_curve_scale"),
     ],
 )
-def test_known_issues_are_flagged_on_affected_curves(
+def test_corrected_scaling_curves_have_no_obsolete_flag(
     client: TestClient, fit_mode_id: str, scattering: str, kind: str, issue: str
 ) -> None:
     body = client.post("/api/calc", json=_body(fit_mode_id, scattering, kind)).json()
 
-    assert issue in body["known_issues"]
+    assert issue not in body["known_issues"]
 
 
 def test_acphdis_flag_is_not_on_curves_it_does_not_change(client: TestClient) -> None:

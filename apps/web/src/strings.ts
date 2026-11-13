@@ -468,8 +468,6 @@ export const STRINGS = {
         "This fit fails on the desktop, and its mass and scales are wrong.",
       "known_issue.spb_hall_uses_fermi_energy":
         "SPB R_H uses the Fermi energy at 0 K instead of the chemical potential, which also affects this fit.",
-      "known_issue.acphdis_curve_scale":
-        "With acPhDis, σ, κ and S by band use another scale of C and D than ρ and S, so σ·ρ is not 1, and band contributions do not sum to S.",
       "known_issue.acphdis_band_weight":
         "With acPhDis, the band weight of the last temperature applies to all of S.",
       "known_issue.acphdis_early_stop":
