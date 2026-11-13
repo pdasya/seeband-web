@@ -30,6 +30,7 @@ const RESULT: FitResult = {
   parameter_errors: {},
   at_bounds: [],
   known_issues: [],
+  held: [],
 };
 const done = (result: Partial<FitResult>) =>
   ({ status: "done", result: { ...RESULT, ...result } }) as const;
@@ -355,6 +356,20 @@ describe("resultRows", () => {
       bounds: "",
     });
     expect(rows.find(({ name }) => name === "band_gap")?.meaning).not.toBe("");
+  });
+
+  test("a parameter held at its value says so, with no bounds", () => {
+    const rows = resultRows(
+      modelOf("dpb"),
+      modeOf("dpb_s_rho"),
+      selection("acPh"),
+      undefined,
+      done({}),
+      undefined,
+      ["band_gap"],
+    );
+    expect(statuses(rows)).toMatchObject({ band_gap: "held", m_eff: "fitted" });
+    expect(rows.find(({ name }) => name === "band_gap")?.bounds).toBe("");
   });
 
   test("DPB S: what needs ρ or R_H, and nothing that depends on a scattering", () => {

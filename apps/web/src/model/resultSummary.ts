@@ -96,6 +96,8 @@ export function parameterRows(
   saved: Readonly<Record<string, number>> | undefined,
   fit: FitState,
   custom?: Readonly<Record<string, FitBounds>>,
+  /** Fitted parameters the fit kept at their values, which no bound sets. */
+  held: readonly string[] = [],
 ): ParameterRow[] {
   const values = parameterValues(mode, saved);
   // A failed fit has fitted nothing, so it has reached no bound.
@@ -115,12 +117,14 @@ export function parameterRows(
       bounds:
         role === "fixed"
           ? parameterText.fixed
-          : bounds === undefined || bounds === null
-            ? text.noBounds
-            : text.boundsRange(
-                formatNumber(shownValue(parameter, inDisplay(bounds.lower))),
-                formatNumber(shownValue(parameter, inDisplay(bounds.upper))),
-              ),
+          : held.includes(name)
+            ? parameterText.held
+            : bounds === undefined || bounds === null
+              ? text.noBounds
+              : text.boundsRange(
+                  formatNumber(shownValue(parameter, inDisplay(bounds.lower))),
+                  formatNumber(shownValue(parameter, inDisplay(bounds.upper))),
+                ),
       atBound: atBounds.includes(name),
     };
   });
@@ -138,10 +142,14 @@ export function hasFittedValues(fit: FitState): boolean {
   }
 }
 
-/** Fitted, held at its value, or known only with data that this fit mode does not use. */
+/**
+ * Fitted, fixed by the mode, held at its value by the user, or known only with data that this fit
+ * mode does not use.
+ */
 export type ParameterStatus =
   | { kind: "fitted" }
   | { kind: "fixed" }
+  | { kind: "held" }
   | { kind: "needs"; quantities: Quantity[] };
 
 export interface ResultRow {
@@ -170,6 +178,7 @@ export function resultRows(
   saved: Readonly<Record<string, number>> | undefined,
   fit: FitState,
   custom?: Readonly<Record<string, FitBounds>>,
+  held: readonly string[] = [],
 ): ResultRow[] {
   const { scattering } = selection;
   const inUse = visibleParameters(mode, scattering);
@@ -179,15 +188,17 @@ export function resultRows(
     saved,
     fit,
     custom,
+    held,
   ).map((row, at) => {
     const parameter = inUse[at];
     const fixed = parameter?.role === "fixed";
+    const kept = !fixed && held.includes(row.name);
     return {
       ...row,
       meaning: parameter?.meaning ?? "",
       // The status says it is not fitted, so its bounds are left empty.
-      bounds: fixed ? "" : row.bounds,
-      status: { kind: fixed ? "fixed" : "fitted" },
+      bounds: fixed || kept ? "" : row.bounds,
+      status: { kind: fixed ? "fixed" : kept ? "held" : "fitted" },
     };
   });
   if (mode.degeneracy !== null && mode.degeneracy !== undefined) {

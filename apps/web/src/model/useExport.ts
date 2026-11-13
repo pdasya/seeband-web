@@ -193,6 +193,7 @@ export function useExport() {
             state.selection,
             state.parameters[mode.id],
             state.fit,
+            state.held[mode.id],
           ),
           type,
         );
@@ -242,6 +243,7 @@ export function useExport() {
               state.selection,
               state.parameters[mode.id],
               state.fit,
+              state.held[mode.id],
             ),
             graphs,
             energy,

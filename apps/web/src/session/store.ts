@@ -232,6 +232,8 @@ export interface SessionState {
   parameterResets: number;
   /** Bounds a fit of each mode uses in place of the description's, in core units. */
   customBounds: Record<string, Record<string, FitBounds>>;
+  /** Fitted parameters a fit of each mode keeps at their values, as the design's fix toggle. */
+  held: Record<string, readonly string[]>;
   /** Slots with a file on its way or waiting for a choice, which is the user's though not in `data`. */
   slotsReading: readonly Quantity[];
   /** What each model had when another was chosen, as the design keeps them apart. */
@@ -271,6 +273,7 @@ export interface SessionState {
     bounds: FitBounds | null,
   ) => void;
   clearCustomBounds: (fitMode: string) => void;
+  setHeld: (fitMode: string, parameter: string, held: boolean) => void;
   fileReadStarted: (quantity: Quantity) => void;
   fileReadEnded: (quantity: Quantity) => void;
   guessStarted: () => void;
@@ -426,6 +429,7 @@ export const createSessionStore = () =>
       fitStartValues: null,
       parameterResets: 0,
       customBounds: {},
+      held: {},
       slotsReading: [],
       savedModelSettings: {},
 
@@ -644,6 +648,21 @@ export const createSessionStore = () =>
           };
         });
       },
+      setHeld: (fitMode, parameter, held) => {
+        set((state) => {
+          const kept = (state.held[fitMode] ?? []).filter(
+            (name) => name !== parameter,
+          );
+          return {
+            held: {
+              ...state.held,
+              [fitMode]: held ? [...kept, parameter] : kept,
+            },
+            // A result of a fit that held other parameters is not one of this.
+            fit: withoutOldResult(state.fit),
+          };
+        });
+      },
       clearCustomBounds: (fitMode) => {
         set((state) => ({
           customBounds: withoutMode(state.customBounds, fitMode),
@@ -653,6 +672,9 @@ export const createSessionStore = () =>
       resetParameters: (fitMode) => {
         set((state) => ({
           customBounds: withoutMode(state.customBounds, fitMode),
+          held: Object.fromEntries(
+            Object.entries(state.held).filter(([name]) => name !== fitMode),
+          ),
           parameters: Object.fromEntries(
             Object.entries(state.parameters).filter(
               ([name]) => name !== fitMode,

@@ -34,6 +34,7 @@ const RESULT: FitResult = {
   parameter_errors: {},
   at_bounds: [],
   known_issues: [],
+  held: [],
 };
 const DONE: FitState = { status: "done", result: RESULT };
 const SELECTION = {
@@ -337,6 +338,34 @@ describe("the parameters file", () => {
     ).split("\n");
     expect(lines.find((line) => line.startsWith("m"))).toMatch(/\tfixed$/);
     expect(lines.some((line) => line.startsWith("N1"))).toBe(false);
+  });
+
+  test("a value held in the fit says so, in the text and the CSV", () => {
+    const fit: FitState = {
+      status: "done",
+      result: { ...RESULT, held: ["band_gap"] },
+    };
+    const lines = parametersFile(
+      [],
+      modeOf("dpb_s_rho"),
+      SELECTION,
+      { band_gap: 900 },
+      fit,
+      ["band_gap"],
+    ).split("\n");
+    expect(lines).toContain(
+      "E_g (position of band 2) [eV]\t0.077555999358\theld at its value",
+    );
+    expect(
+      parametersCsv(
+        [],
+        modeOf("dpb_s_rho"),
+        SELECTION,
+        { band_gap: 900 },
+        fit,
+        ["band_gap"],
+      ),
+    ).toMatch(/band_gap,.*,held at its value/);
   });
 });
 

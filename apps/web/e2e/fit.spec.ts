@@ -143,6 +143,66 @@ test("a fit sends its start values and data, and no bounds", async ({
     "seebeck",
   ]);
   expect(bodies[0]?.bounds).toBeUndefined();
+  expect(bodies[0]?.held).toBeUndefined();
+});
+
+const hold = (page: Page, name: string) =>
+  page.getByRole("button", { name: `Hold ${name} at its value in a fit` });
+
+test("a held parameter goes with the fit, stays editable, and its result says so", async ({
+  page,
+}) => {
+  await openWithData(page);
+
+  await hold(page, "E_g").click();
+
+  await expect(hold(page, "E_g")).toHaveAttribute("aria-pressed", "true");
+  await expect(badge(page, "held")).toHaveCount(1);
+  // The value it holds is still the user's to set.
+  await expect(field(page, "E_g")).toBeEditable();
+  await field(page, "E_g").fill("0,05");
+  await field(page, "E_g").blur();
+
+  await startFit(page);
+  const bodies = await fitBodies(page);
+  expect(bodies[0]?.held).toEqual(["band_gap"]);
+  expect(bodies[0]?.start.band_gap).toBe(580.225906087);
+  await expect(hold(page, "E_g")).toBeDisabled();
+
+  await send(page, {
+    type: "done",
+    result: {
+      ...RESULT,
+      parameters: { ...RESULT.parameters, band_gap: 580.225906087 },
+      held: ["band_gap"],
+    },
+  });
+  const row = page.getByRole("row").filter({ hasText: /^E_g/ });
+  await expect(row).toContainText("held");
+
+  // Releasing it is a new fit, so the result goes.
+  await hold(page, "E_g").click();
+  await expect(hold(page, "E_g")).toHaveAttribute("aria-pressed", "false");
+  await expect(badge(page, "held")).toHaveCount(0);
+});
+
+test("with every fitted parameter held, Run says to release one", async ({
+  page,
+}) => {
+  await openWithData(page);
+
+  for (const name of ["m₂/m₁", "E_g", "E_F", "A", "B"]) {
+    await hold(page, name).click();
+  }
+
+  await expect(run(page)).toBeDisabled();
+  await expect(
+    page.getByText("Every fitted parameter is held. Release one to fit."),
+  ).toBeVisible();
+
+  await reset(page).click();
+  await expect(run(page)).toBeEnabled();
+  await expect(hold(page, "A")).toHaveAttribute("aria-pressed", "false");
 });
 
 test("an iterative fit: status, counter, moving values and Stop", async ({

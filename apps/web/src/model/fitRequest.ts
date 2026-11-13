@@ -1,11 +1,20 @@
 import type { FitRequest } from "@/api/client";
-import { editableParameters, parameterValues } from "@/model/parameters";
+import {
+  editableParameters,
+  parameterValues,
+  visibleParameters,
+} from "@/model/parameters";
 import { fitModeOf, type ModelDescription } from "@/model/selection";
 import { fitData, type Quantity, type SessionState } from "@/session/store";
 
 type FitInputs = Pick<
   SessionState,
-  "selection" | "parameters" | "data" | "interpolation" | "customBounds"
+  | "selection"
+  | "parameters"
+  | "data"
+  | "interpolation"
+  | "customBounds"
+  | "held"
 >;
 
 /** Why a fit cannot start, for a text that names the quantities. */
@@ -15,6 +24,7 @@ export type FitBlocker =
   | { reason: "interpolating" }
   | { reason: "not_interpolated"; quantities: Quantity[] }
   | { reason: "no_points_in_range"; quantities: Quantity[] }
+  | { reason: "all_held" }
   | { reason: "start_outside_bounds"; parameters: string[] };
 
 /** Blockers that come from the request as it is, and so before it is built. */
@@ -77,6 +87,17 @@ export function fitRequest(
     return { blocked: { reason: "no_points_in_range", quantities: noPoints } };
   }
 
+  // Held parameters of another scattering type are not fitted, so the request leaves them out.
+  const fitted = visibleParameters(mode, selection.scattering)
+    .filter(({ role }) => role === "fitted")
+    .map(({ name }) => name);
+  const held = (state.held[mode.id] ?? []).filter((name) =>
+    fitted.includes(name),
+  );
+  if (fitted.length > 0 && held.length === fitted.length) {
+    return { blocked: { reason: "all_held" } };
+  }
+
   const custom = state.customBounds[mode.id] ?? {};
   const bounds = Object.fromEntries(
     editableParameters(mode, selection.scattering).flatMap(({ parameter }) => {
@@ -92,6 +113,7 @@ export function fitRequest(
       scattering: selection.scattering,
       start: parameterValues(mode, state.parameters[mode.id]),
       ...(Object.keys(bounds).length === 0 ? {} : { bounds }),
+      ...(held.length === 0 ? {} : { held }),
       min_temperature_k: minK,
       max_temperature_k: maxK,
       band_1_degeneracy: selection.band1Degeneracy,

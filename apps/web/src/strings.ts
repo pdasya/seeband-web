@@ -17,6 +17,8 @@ export const STRINGS = {
   parameters: {
     title: "Parameters",
     fixed: "not fitted",
+    held: "held",
+    hold: (symbol: string) => `Hold ${symbol} at its value in a fit`,
     about: (symbol: string) => `About ${symbol}`,
     // How a parameter is written. Any other shows its name, so a new one needs no change here.
     symbols: {
@@ -439,6 +441,7 @@ export const STRINGS = {
       notInterpolated: "No usable interpolated values for",
       noPointsInRange: "No points in the fit range for",
       startOutsideBounds: "A fit cannot start outside its bounds:",
+      allHeld: "Every fitted parameter is held. Release one to fit.",
     },
     rmse: "RMSE",
     degeneracySymbol: "N₁, N₂",
@@ -601,6 +604,7 @@ export const STRINGS = {
     status: {
       fitted: "fitted",
       fixed: "fixed",
+      held: "held at its value",
       atBound: "fitted, at bound",
       free: "not fitted yet",
     },
@@ -717,6 +721,7 @@ export const STRINGS = {
     status: {
       fitted: "fitted",
       fixed: "fixed",
+      held: "held",
       needs: (symbols: string) => `needs ${symbols}`,
     },
     notes: "Notes",

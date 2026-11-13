@@ -20,6 +20,7 @@ const RESULT: FitResult = {
   parameter_errors: {},
   at_bounds: [],
   known_issues: [],
+  held: [],
 };
 const done = (result: Partial<FitResult> = {}): FitState => ({
   status: "done",
@@ -54,6 +55,17 @@ describe("fitLog", () => {
       title: "Fit to ρ",
       text: "Finds F, G, in each of 3 iterations",
     });
+  });
+
+  test("a held parameter is found by no stage, and a stage with all held is left out", () => {
+    const steps = fitLog(modeOf("dpb_s_rho_rh"), "acPh", done(), null, false, [
+      "band_gap",
+      "m1",
+    ]);
+    expect(steps.map(({ text }) => text)).toContain(
+      "Finds m₂/m₁, E_F, in each of 3 iterations",
+    );
+    expect(steps.some(({ title }) => title === "Fit to R_H")).toBe(false);
   });
 
   test("a single pass runs each stage once, and says that it does not iterate", () => {

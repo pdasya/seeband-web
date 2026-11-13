@@ -143,6 +143,14 @@ The E(k) tab draws `POST /api/band-diagram` for the current values, with one req
 - **Reset restores them,** with the values. Default bounds restores only them.
 - **The fit range** is in the model panel, shared by all modes, as on the desktop.
 
+## Held parameters
+
+A lock in the row of each fitted parameter holds it at its value in a fit, as the design's fix toggle (D30). Held parameters go in `held` on `POST /api/fit`, for each mode and only those of the scattering in use, and the fit finds only the others.
+
+- **A held value stays editable,** as it is the value the fit keeps, and its row says "held". A change of what is held ends the last result, as for a value.
+- **Holding every fitted parameter stops Run,** and says to release one. Reset releases them all, with the values and bounds.
+- **Results, exports and the fit log** call them held, with no bounds, and the fit log leaves out a stage with all its parameters held.
+
 ## Result
 
 `model/ResultPanel.tsx` shows what the values on screen give, from `model/resultSummary.ts`.

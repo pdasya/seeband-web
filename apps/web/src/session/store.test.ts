@@ -17,6 +17,7 @@ const RESULT: FitResult = {
   parameter_errors: {},
   at_bounds: [],
   known_issues: [],
+  held: [],
 };
 const DATA: SessionData = {
   measurement: {
@@ -146,6 +147,20 @@ describe("a fit", () => {
   });
 });
 
+describe("held parameters", () => {
+  test("are kept for each mode, once each, and a reset releases those of its mode", () => {
+    state().setHeld("dpb_s", "band_gap", true);
+    state().setHeld("dpb_s", "band_gap", true);
+    state().setHeld("dpb_s", "m_eff", true);
+    state().setHeld("spb_s_rho", "A", true);
+    state().setHeld("dpb_s", "m_eff", false);
+    expect(state().held).toEqual({ dpb_s: ["band_gap"], spb_s_rho: ["A"] });
+
+    state().resetParameters("dpb_s");
+    expect(state().held).toEqual({ spb_s_rho: ["A"] });
+  });
+});
+
 describe("a change after a result", () => {
   test.each([
     ["data", () => state().setData("seebeck", DATA)],
@@ -153,6 +168,7 @@ describe("a change after a result", () => {
     ["selection", () => state().setSelection({ fitMode: "dpb_s" })],
     ["parameters", () => state().setParameters("dpb_s", { m_eff: 2 })],
     ["one parameter", () => state().setParameter("dpb_s", "m_eff", 2)],
+    ["a held parameter", () => state().setHeld("dpb_s", "band_gap", true)],
   ])("%s clears the result, which no longer matches", (_, change) => {
     state().fitEvent(state().fitRequested(), { type: "done", result: RESULT });
 
