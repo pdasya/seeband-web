@@ -131,6 +131,13 @@ one iteration on `02_SiP` and two on the other examples. The Hall budget of
 other inputs. `02_SiP` still has the collapsed-band limitation (#107) and a
 Hall mass at its upper bound, so its fitted parameters remain unreliable.
 
+`p5.json` is captured from this code, so it is a regression baseline. For 01
+and 03 its values lie within 1e-6 of the desktop captures, so only the
+iteration counts tell P5 from the desktop there. An outer loop written apart
+from the core corroborates all six entries, within 3.5e-8 for 01 and 03 and
+3.4e-6 in A for 02. The case where stopping early mattered, 03 from C = 2,
+D = 0.5, is tested in `test_dpb_convergence.py`.
+
 Regenerate from the repository root:
 
 ```sh

@@ -62,8 +62,9 @@ function endOf(
 
 /**
  * What a fit did, from its start values to why it ended. The end names the stop rule, not what it
- * proves: with acPhDis it checks C and D alone, which a known issue on the result says. The steps are the solver runs of the
- * mode's description, so a new mode needs no change here. A stopped fit ran only its loop.
+ * proves: a change of at most the threshold is not a fit that is sound. The steps are the solver
+ * runs of the mode's description, so a new mode needs no change here. A stopped fit ran only its
+ * loop.
  */
 export function fitLog(
   mode: FitModeDescription,
