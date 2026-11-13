@@ -688,13 +688,17 @@ class PB_fit:
 
         # Stay on the carrier branch selected by the starting mass. E decreases with m.
         band_mass = initial_mass1[0]
-        if band_mass == 0:
-            raise ValueError("The band mass must be nonzero.")
         lower_mass, upper_mass = limits_mass1[0][0], limits_mass1[1][0]
         if band_mass > 0:
             lower_mass = max(0.0, lower_mass)
         else:
             upper_mass = min(0.0, upper_mass)
+        # A mass of 0 is on no branch, and a branch the bounds leave empty has no room to fit.
+        if band_mass == 0 or not lower_mass <= band_mass <= upper_mass or lower_mass >= upper_mass:
+            raise ValueError("The start band mass is outside the bounds of its carrier branch.")
+        # R_H has the sign of -m, so a start on the other branch can only end at a bound.
+        if np.sign(np.median(hall_list)) == np.sign(band_mass):
+            raise ValueError("The carrier type of the start band mass contradicts the sign of R_H.")
         initial_para_E = [-np.sign(band_mass) * abs(band_mass) ** 1.5]
         limits_para_E = (
             [-np.sign(upper_mass) * abs(upper_mass) ** 1.5],

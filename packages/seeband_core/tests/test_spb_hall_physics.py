@@ -254,3 +254,53 @@ def test_a_fit_gives_the_same_result_for_points_in_any_order() -> None:
     assert sorted_fit.status == "converged"
     assert shuffled_fit.parameters == sorted_fit.parameters
     assert sorted_fit.parameters["band_mass"] == pytest.approx(-1.5, rel=2e-5)
+
+
+@pytest.mark.parametrize(
+    ("start", "bounds", "message"),
+    [
+        ({"band_mass": 0.0}, None, "The start values do not fit the bounds."),
+        # A start on the hole branch with bounds on the electron branch leaves no room to fit.
+        ({"band_mass": -1.0}, (0.5, 2.5), "The start values do not fit the bounds."),
+        # Hole data, whose R_H is above 0, from an electron start.
+        (
+            {"band_mass": 1.0, "fermi_energy": 150.0},
+            None,
+            "The sign of the start band mass does not match the sign of R_H.",
+        ),
+    ],
+)
+def test_a_start_the_hall_fit_cannot_use_fails_with_its_reason(
+    start: dict[str, float], bounds: tuple[float, float] | None, message: str
+) -> None:
+    from seeband_core.model_catalog import registry
+    from seeband_core.model_interface import Bounds, FitRequest
+
+    known, measurements = _synthetic_hole_data()
+    request = FitRequest(
+        "spb_s_rho_rh",
+        measurements,
+        known | {"fermi_energy": -150.0} | start,
+        {} if bounds is None else {"band_mass": Bounds(*bounds)},
+        "acPh",
+    )
+
+    result = registry.get("spb").fit(request)
+
+    assert result.status == "failed"
+    assert result.message == message
+
+
+def test_a_mass_at_the_branch_bound_of_0_is_at_a_bound() -> None:
+    from seeband_core.model_catalog import registry
+    from seeband_core.model_interface import FitRequest
+
+    known, measurements = _synthetic_hole_data()
+    model = registry.get("spb")
+    mode = model.describe().fit_mode("spb_s_rho_rh")
+    request = FitRequest("spb_s_rho_rh", measurements, known, scattering="acPh")
+    parameters = known | {"band_mass": 0.0}
+
+    at_bounds = model._at_bounds(request, mode, parameters, 1.0, {"hall": ()})
+
+    assert "band_mass" in at_bounds

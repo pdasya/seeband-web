@@ -175,6 +175,8 @@ def _failure_message(error: Exception) -> str:
     text = str(error)
     if isinstance(error, ValueError) and "bounds" in text:
         return "The start values do not fit the bounds."
+    if isinstance(error, ValueError) and "contradicts the sign of R_H" in text:
+        return "The sign of the start band mass does not match the sign of R_H."
     if isinstance(error, ValueError) and "not finite" in text:
         return "The model gave values that are not finite during the fit."
     if isinstance(error, RuntimeError) and "Optimal parameters not found" in text:
@@ -263,6 +265,14 @@ class _BandModel:
             if value <= bounds.lower or value >= bounds.upper:
                 found.append(spec.name)
             elif _is_at_bound(value, bounds.lower) or _is_at_bound(value, bounds.upper):
+                found.append(spec.name)
+            # The SPB Hall fit keeps the mass on the branch of its start, so 0 bounds it too.
+            elif (
+                spec.name == "band_mass"
+                and "hall" in stages
+                and bounds.lower < 0 < bounds.upper
+                and _is_at_bound(value, 0.0)
+            ):
                 found.append(spec.name)
         return tuple(found)
 

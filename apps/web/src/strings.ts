@@ -416,6 +416,8 @@ export const STRINGS = {
         "The model gave values that are not finite during the fit.",
       "The fit reached its limit of function evaluations.":
         "The fit reached its limit of function evaluations.",
+      "The sign of the start band mass does not match the sign of R_H.":
+        "The sign of the start band mass does not match the sign of R_H. A positive mass is an electron band, with R_H below 0.",
     },
     failures: {
       fit_timeout: "The fit ran past its time limit, and has ended.",

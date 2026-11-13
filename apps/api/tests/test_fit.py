@@ -122,7 +122,11 @@ def test_result_equals_the_core(
 def test_single_pass_fit_sends_no_iteration_counter(
     client: TestClient, model_id: str, fit_mode_id: str, scattering: str | None
 ) -> None:
-    events = _events(client, _body(model_id, fit_mode_id, scattering=scattering))
+    body = _body(model_id, fit_mode_id, scattering=scattering)
+    if fit_mode_id == "spb_s_rho_rh":
+        # The demo's R_H is above 0, holes, and an electron start is refused.
+        body["start"] |= {"band_mass": -1.0, "fermi_energy": -100.0}
+    events = _events(client, body)
 
     assert [event["type"] for event in events] == ["started", "done"]
     assert "iterations" not in events[-1]["result"]
