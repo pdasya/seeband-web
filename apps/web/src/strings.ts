@@ -62,10 +62,7 @@ export const STRINGS = {
       acPhDis: "Both mechanisms (acPhDis)",
     },
     disabledReason: "not available until a known error is fixed.",
-    disabledReasons: {
-      "known_issue.spb_hall_mode_disabled":
-        "not available until a known error is fixed. This fit fails on the desktop, and its mass and scales are wrong.",
-    },
+    disabledReasons: {},
     degeneracyHint: "Band degeneracies are not fitted.",
     degeneracyInvalid:
       "N₁ and N₂ must be above 0. The last valid value stays in use.",
@@ -464,10 +461,6 @@ export const STRINGS = {
     },
     knownIssueOther: "A known error applies to this result.",
     knownIssueTexts: {
-      "known_issue.spb_hall_mode_disabled":
-        "This fit fails on the desktop, and its mass and scales are wrong.",
-      "known_issue.spb_hall_uses_fermi_energy":
-        "SPB R_H uses the Fermi energy at 0 K instead of the chemical potential, which also affects this fit.",
       "known_issue.acphdis_band_weight":
         "With acPhDis, the band weight of the last temperature applies to all of S.",
       "known_issue.acphdis_early_stop":

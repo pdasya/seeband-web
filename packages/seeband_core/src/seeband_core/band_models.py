@@ -248,9 +248,6 @@ class _BandModel:
             # With N2/N1 other than 1, the loop fits m_eff / N, and its bounds apply to that (D12).
             if fit_mode.iterative and spec.name == "m_eff":
                 value = value / ratio
-            # SPB S + rho + R_H returns C still multiplied by 300 (D6).
-            if fit_mode.id == "spb_s_rho_rh" and spec.name == "C":
-                value = value / 300.0
             if value <= bounds.lower or value >= bounds.upper:
                 found.append(spec.name)
             elif _is_at_bound(value, bounds.lower) or _is_at_bound(value, bounds.upper):
@@ -431,9 +428,7 @@ class SpbModel(_BandModel):
             elif scattering == "acPh":
                 errors |= _named_errors(["A"], res)
             else:
-                # S + rho returns C divided by 300, and S + rho + R_H does not (D6).
-                divisor = 300.0 if fit_mode.id == "spb_s_rho" else 1.0
-                errors |= _named_errors(["A", "C"], [res[0], res[1] / divisor])
+                errors |= _named_errors(["A", "C"], [res[0], res[1] / 300.0])
         if "hall" in stages:
             energy, covariance = stages["hall"]
             error = _standard_errors(covariance)[0]

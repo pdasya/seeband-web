@@ -134,7 +134,7 @@ def _parameter(entry: dict[str, Any]) -> ParameterSpec:
         scattering=tuple(entry["scattering"]),
         value_range=ValueRange(slider["min"], slider["max"], slider["step"], slider["default"]),
         display_scale=entry["display_scale"],
-        fit_scale=entry["fit_scale"],
+        fit_scale=entry.get("web_fit_scale", entry["fit_scale"]),
         calc_scale=entry["calc_scale"],
         fit_bounds=Bounds(bounds["lower"], bounds["upper"]) if bounds else None,
         bounds_editable=entry.get("editable", False),

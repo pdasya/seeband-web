@@ -646,13 +646,14 @@ def spb_hall_vs_temp(
     factor = (
         3 * hbar**3 * np.pi**2 / (e * (2 * kB * me) ** (3 / 2)) * (0.5 + 2 * lamb) / (1 + lamb) ** 2
     )
+    chemical_potential = spb_chemPot_vs_temp(T, mass_sign, fermi_energy)
     result: np.ndarray = (
         factor
         * T ** (-1.5)
         * scal_fac
         / para_E
-        * fdint_vec(-0.5 + lamb, mass_sign * fermi_energy, T)
-        / fdint_vec(0 + lamb, mass_sign * fermi_energy, T) ** 2
+        * fdint_vec(-0.5 + lamb, mass_sign * chemical_potential, T)
+        / fdint_vec(0 + lamb, mass_sign * chemical_potential, T) ** 2
     )
     return result
 

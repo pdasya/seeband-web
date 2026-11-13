@@ -196,7 +196,8 @@ def test_default_start_values_are_inside_bounds(table: dict[str, Any]) -> None:
         for parameter in mode["parameters"]:
             bounds = parameter.get("web_fit_bounds") or parameter["default_fit_bounds"]
             if bounds:
-                start = parameter["slider"]["default"] * parameter["fit_scale"]
+                fit_scale = parameter.get("web_fit_scale", parameter["fit_scale"])
+                start = parameter["slider"]["default"] * fit_scale
                 assert bounds["lower"] <= start <= bounds["upper"], parameter["slider"]["widget"]
 
 
