@@ -150,7 +150,12 @@ describe("bandDiagramRequest", () => {
             fitMode: "spb_s_rho_rh",
           },
         },
-        models,
+        models.map((model) => ({
+          ...model,
+          fit_modes: model.fit_modes.map((mode) =>
+            mode.id === "spb_s_rho_rh" ? { ...mode, disabled: true } : mode,
+          ),
+        })),
       ),
     ).toBeNull();
   });

@@ -327,6 +327,11 @@ def test_replay_matches_the_desktop(
     expected_p3 = p3_results()
     if identifier in expected_p3:
         call = dict(call, result=[call["result"][0], *expected_p3[identifier][1:]])
+    expected_p4 = json.loads((GOLDEN.parent / "physics" / "p4.json").read_text())
+    if identifier in expected_p4["corrected_hall_curves"]:
+        call = dict(
+            call, result=[*call["result"][:-1], expected_p4["corrected_hall_curves"][identifier]]
+        )
     result = replay(mode, scattering, call)
     if not call["function"].endswith("_fit"):
         assert_close(result, call["result"], CURVE_TOLERANCE)
@@ -408,12 +413,12 @@ def first_call(document: dict[str, Any], function: str) -> dict[str, Any]:
 @pytest.mark.parametrize("scatter_type", ["acPh", "dis", "acPhDis"])
 def test_spb_hall_fit_leaves_its_inputs_unchanged(scatter_type: str) -> None:
     # This fit has no recorded call (D2), so its arguments are built from other recorded fits. A
-    # whole-number mass gets past the type error that a float mass causes at its start.
+    # signed physical mass and bounds stay on the valence-band branch.
     document = json.loads((GOLDEN / "03_AWI32_SI.json").read_text(encoding="utf-8"))
     data = first_call(document, "dpb_see_res_hall_fit")["args"][:6]
     start = first_call(document, "spb_see_res_fit")["args"][5:9]
     args, kwargs = core_arguments(
-        "spb_see_res_hall_fit", [*data, *start, [-1], ([0], [10]), scatter_type], {}
+        "spb_see_res_hall_fit", [*data, *start, [-1.5], ([-10.0], [-0.1]), scatter_type], {}
     )
     args_before = copy.deepcopy(args)
     result = invoke_core("spb_see_res_hall_fit", args, kwargs)

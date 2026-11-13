@@ -291,10 +291,10 @@ def test_the_hall_stage_error_is_carried_over_to_the_mass(
     assert result.parameter_errors == pytest.approx({"m1": 1.0})
 
 
-def test_spb_hall_keeps_c_undivided_as_its_result_does(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_spb_hall_scales_c_error_to_the_returned_ratio(monkeypatch: pytest.MonkeyPatch) -> None:
     stages = {"res": ([1.0, 1.0], [9.0, 16.0])}
     result = run_staged(monkeypatch, "spb", "spb_s_rho_rh", "acPhDis", stages, [1.0] * 5)
-    assert result.parameter_errors == pytest.approx({"A": 3.0, "C": 4.0})
+    assert result.parameter_errors == pytest.approx({"A": 3.0, "C": 4.0 / 300.0})
 
 
 @pytest.mark.parametrize("variance", [np.inf, np.nan, -1.0])
@@ -386,15 +386,17 @@ def test_bound_flags_divide_m_eff_by_n_in_the_loop_only(monkeypatch: pytest.Monk
     assert single.at_bounds == ("m_eff",)
 
 
-def test_bound_flags_follow_the_undivided_c_of_spb_hall(monkeypatch: pytest.MonkeyPatch) -> None:
-    # D6: this fit returns C still multiplied by 300, and C's upper bound is 1000.
+def test_bound_flags_follow_the_physical_c_ratio_of_spb_hall(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # C is the dimensionless ratio at 300 K, with upper bound 1000.
     stages = {"hall": ([1.0], [1.0])}
     inside = run_staged(
-        monkeypatch, "spb", "spb_s_rho_rh", "acPhDis", stages, [500.0, 2.0, 1500.0, 1.0, 1.0]
+        monkeypatch, "spb", "spb_s_rho_rh", "acPhDis", stages, [500.0, 2.0, 5.0, 1.0, 1.0]
     )
     assert "C" not in inside.at_bounds
     at_bound = run_staged(
-        monkeypatch, "spb", "spb_s_rho_rh", "acPhDis", stages, [500.0, 2.0, 300000.0, 1.0, 1.0]
+        monkeypatch, "spb", "spb_s_rho_rh", "acPhDis", stages, [500.0, 2.0, 1000.0, 1.0, 1.0]
     )
     assert "C" in at_bound.at_bounds
 
@@ -510,7 +512,7 @@ def test_stages_of_real_spb_fits_are_labelled(
         core.spb_see_res_fit(*a[:4], -1.0, *fermi, *res, scatter_type=scattering, progress=progress)
     else:
         core.spb_see_res_hall_fit(
-            *a, *fermi, *res, [-1], ([0], [10]), scattering, progress=progress
+            *a, *fermi, *res, [-1.5], ([-10.0], [-0.1]), scattering, progress=progress
         )
     assert {stage: len(fit[0]) for stage, fit in progress.stage_fits.items()} == lengths
 

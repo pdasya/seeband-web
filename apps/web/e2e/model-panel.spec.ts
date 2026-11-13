@@ -71,19 +71,16 @@ test("starts as the design does, with options from the API", async ({
   await expect(page.getByLabel("Upper bound, K")).toHaveValue("800");
 });
 
-test("SPB S + ρ + R_H cannot be chosen, and says why", async ({ page }) => {
+test("SPB S + ρ + R_H can be chosen after P4 and P12", async ({ page }) => {
   await open(page);
 
   await page.getByRole("radio", { name: "SPB" }).click();
 
-  const disabled = mode(page, "S + ρ + R_H");
-  await expect(disabled).toBeDisabled();
-  await expect(disabled).not.toBeChecked();
-  await expect(
-    page.getByText(/S \+ ρ \+ R_H: .*fails on the desktop/),
-  ).toBeVisible();
-  await disabled.click({ force: true });
-  await expect(disabled).not.toBeChecked();
+  const hall = mode(page, "S + ρ + R_H");
+  await expect(hall).toBeEnabled();
+  await hall.click();
+  await expect(hall).toBeChecked();
+  await expect(page.getByText(/fails on the desktop/)).toHaveCount(0);
 });
 
 test("DPB's S + ρ + R_H can be chosen, with no such text", async ({ page }) => {

@@ -30,24 +30,6 @@ COLLAPSED_M_EFF = 1e-5
 
 KNOWN_ISSUES: tuple[KnownIssue, ...] = (
     KnownIssue(
-        id="spb_hall_mode_disabled",
-        severity="disabled",
-        fixed_by="#83",
-        fit_modes=("spb_s_rho_rh",),
-        affects_fit=True,
-        explanation="This fit fails on the desktop, and its mass and scales are wrong (D2, D3, D6)",
-    ),
-    KnownIssue(
-        id="spb_hall_uses_fermi_energy",
-        severity="unreliable",
-        fixed_by="#103",
-        fit_modes=("spb_s_rho_rh",),
-        curve_kinds=("measured",),
-        columns=("hall_m3_per_c",),
-        affects_fit=True,
-        explanation="SPB R_H uses the Fermi energy at 0 K instead of the chemical potential",
-    ),
-    KnownIssue(
         id="acphdis_band_weight",
         severity="unreliable",
         fixed_by="#102",

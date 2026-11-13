@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- P4/P12 (#83, #103): enable SPB S + ρ + R_H after correcting signed
+  mass initialization, bounds and recovery, the mass control scale, and the
+  mixed-scattering C return scale at 300 K. SPB Hall curves and fits now use
+  the chemical potential at each temperature, conserving carrier density.
+  Hall factors recover the degenerate limit 1 and nondegenerate limit 3π/8.
+  Synthetic regression results replace no historical desktop captures.
+  Every fit now sorts its points by temperature, so an API client's order
+  gives the result a sorted file does; a Hall point beyond the reach of the
+  Fermi integrals (μ/T above 700) is NaN rather than a failed curve; and a
+  start mass of 0, on an empty branch, or of the wrong sign for R_H fails with
+  its reason. The band-mass error is conditional on E_F.
+  Human physicist confirmation and parity/author review remain pending;
+  enabling this mode is not scientific release approval.
+
 - P3 (#82): convert acPhDis C and D from dimensionless ratios at 300 K
   to temperature scales in SPB/DPB conductivity, thermal conductivity and
   per-band curves, consistently with resistivity. Corrected σρ equals 1.

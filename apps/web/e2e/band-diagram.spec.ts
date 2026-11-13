@@ -323,7 +323,9 @@ test("a failure of the curves does not show on it", async ({ page }) => {
   expect(asked.length).toBeGreaterThan(0);
 });
 
-test("a disabled mode asks for nothing", async ({ page }) => {
+test("the repaired SPB Hall mode requests its band diagram", async ({
+  page,
+}) => {
   const bodies = await open(page);
   await page.evaluate(async () => {
     const path = "/src/session/store.ts";
@@ -342,5 +344,9 @@ test("a disabled mode asks for nothing", async ({ page }) => {
   await field(page, "E_F").blur();
   await page.waitForTimeout(400);
 
-  expect(bodies).toHaveLength(asked);
+  await expect.poll(() => bodies.length).toBeGreaterThan(asked);
+  expect(bodies.at(-1)).toMatchObject({
+    model: "spb",
+    fit_mode: "spb_s_rho_rh",
+  });
 });

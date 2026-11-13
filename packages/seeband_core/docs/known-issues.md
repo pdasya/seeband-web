@@ -12,8 +12,6 @@ To remove a flag once its error is fixed, delete its entry and its row here, and
 
 | Id                           | Severity   | Where                                                                                              | Fixed by |
 | ---------------------------- | ---------- | -------------------------------------------------------------------------------------------------- | -------- |
-| `spb_hall_mode_disabled`     | disabled   | every result of SPB S + ρ + R_H                                                                    | #83      |
-| `spb_hall_uses_fermi_energy` | unreliable | R_H and the fit in SPB S + ρ + R_H                                                                 | #103     |
 | `acphdis_band_weight`        | unreliable | S with acPhDis in DPB S + ρ and S + ρ + R_H                                                        | #102     |
 | `acphdis_early_stop`         | unreliable | fits with acPhDis in those modes                                                                   | #84      |
 | `dpb_s_degeneracy`           | unreliable | all of DPB S, when N2/N1 is not 1                                                                  | #85      |
@@ -33,9 +31,11 @@ The DPB Hall-prefactor flag was removed by [P2](dpb-hall-prefactor.md), which co
 
 P3 (#82) removes the acPhDis curve-scale flag: derived curves now convert the dimensionless 300 K ratios C and D to temperature scales consistently with resistivity. The independent grid-dependent total-Seebeck error (#102) remains flagged.
 
+P4/P12 (#83, #103) remove the SPB Hall disabled-mode and stale-Fermi-energy flags after repairing the fit scales and using μ(T) in Hall integrals. See [the correction and synthetic validation](spb-hall-fit.md). Human physicist confirmation remains pending.
+
 ## What is not here
 
-- **Disabled is a flag.** The model still runs `spb_s_rho_rh`, because tests and V1 need it. The API refuses it with a 409, and does not offer it.
+- **Disabled is a flag.** The API refuses any mode carrying a disabled issue with a 409. No current mode carries one after P4/P12.
 - **F₀ underflowing (#105)** gives NaN or infinity at low temperatures with large gaps, which a client can see as non-finite values. The flag would need the result, not its inputs.
 - **No chemical potential in DPB (#106)** has no simple condition on the inputs, unlike SPB.
 - **E_F inside the gap (#107)** cannot be told from a good fit by its inputs alone, and `at_bounds` and `parameter_errors` report part of it.
