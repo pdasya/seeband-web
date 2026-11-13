@@ -116,11 +116,23 @@ def _degeneracy_ratio(request: CurveRequest | FitRequest) -> float:
 def _measurement_arrays(
     measurements: Mapping[Quantity, Measurement], quantities: Iterable[Quantity]
 ) -> list[Any]:
+    """Each quantity's temperatures and values, in ascending order of temperature.
+
+    The chemical potential is solved from one temperature to the next, starting each from the root
+    of the one before, which can miss the root on a step down to a much lower temperature. Files
+    come sorted (D22), and an API client's order now gives the same fit. Least squares does not
+    depend on the order of the points, so sorted data fit as before.
+    """
     arrays: list[Any] = []
     for quantity in quantities:
         if quantity not in measurements:
             raise ValueError(f"Missing measurement: {quantity}")
-        arrays += [measurements[quantity].temperature_k, measurements[quantity].values]
+        measurement = measurements[quantity]
+        temperatures, values = measurement.temperature_k, measurement.values
+        if np.any(np.diff(temperatures) < 0):
+            order = np.argsort(temperatures, kind="stable")
+            temperatures, values = temperatures[order], values[order]
+        arrays += [temperatures, values]
     return arrays
 
 
