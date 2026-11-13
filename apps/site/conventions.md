@@ -12,6 +12,15 @@ Starts, fitted values, bounds and reported uncertainties remain in public
 R coordinates. The carrier-density weight is N |R|^(3/2) and the transport
 weight is N/R. At N = 1 the P6 conversion is the identity.
 
+R is the ratio of single-valley band masses, not of density-of-states
+masses: entering m_d,2/m_d,1 would count N twice. The transport weight N/R
+holds for λ = 0 acoustic deformation-potential scattering with the same
+deformation potential and elastic constant in both bands, isotropic valleys
+whose band mass serves for both density and conduction, and no inter-valley
+or inter-band scattering, so that σᵢ ∝ Nᵢ/mᵢ. Other scattering gives another
+weight. For R < 0 the signed weight N/R is the open #104, under which the
+total conductivity vanishes at R = −N.
+
 The separate iterative-mode output/bounds inconsistency remains flagged
 by `dpb_loop_degeneracy` (#85). P6 repairs the S-only mismatch and does not
 establish the correctness of negative-mass transport (#104), collapsed
