@@ -69,7 +69,21 @@ describe("settingsFor", () => {
   });
 
   test("never chooses a disabled mode, even when asked", () => {
-    expect(settingsFor(spb, { fitMode: "spb_s_rho_rh" }).fitMode).toBe("spb_s");
+    const withDisabledHall = {
+      ...spb,
+      fit_modes: spb.fit_modes.map((mode) =>
+        mode.id === "spb_s_rho_rh" ? { ...mode, disabled: true } : mode,
+      ),
+    };
+    expect(
+      settingsFor(withDisabledHall, { fitMode: "spb_s_rho_rh" }).fitMode,
+    ).toBe("spb_s");
+  });
+
+  test("keeps the repaired SPB Hall mode when selected", () => {
+    expect(settingsFor(spb, { fitMode: "spb_s_rho_rh" }).fitMode).toBe(
+      "spb_s_rho_rh",
+    );
   });
 
   test("a mode of another model gives way", () => {

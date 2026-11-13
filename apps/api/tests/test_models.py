@@ -62,20 +62,18 @@ def test_lists_both_models_and_all_modes(response: Any) -> None:
     assert models[0]["default_curve_points"] == 50
 
 
-def test_spb_hall_mode_is_disabled_with_its_reason(modes: dict[str, dict[str, Any]]) -> None:
+def test_spb_hall_mode_is_enabled_after_p4_and_p12(modes: dict[str, dict[str, Any]]) -> None:
     mode = modes["spb_s_rho_rh"]
 
-    assert mode["disabled"] is True
-    assert mode["disabled_by"] == ["spb_hall_mode_disabled"]
-    reason = next(issue for issue in mode["known_issues"] if issue["id"] == mode["disabled_by"][0])
-    assert reason["severity"] == "disabled"
-    assert reason["message_key"] == "known_issue.spb_hall_mode_disabled"
-    assert reason["fixed_by"] == "#83"
+    assert mode["disabled"] is False
+    assert mode["disabled_by"] == []
+    assert not {"spb_hall_mode_disabled", "spb_hall_uses_fermi_energy"} & {
+        issue["id"] for issue in mode["known_issues"]
+    }
 
 
-def test_only_that_mode_is_disabled(modes: dict[str, dict[str, Any]]) -> None:
-    assert [name for name, mode in modes.items() if mode["disabled"]] == ["spb_s_rho_rh"]
-    assert all(mode["disabled_by"] == [] for mode in modes.values() if not mode["disabled"])
+def test_all_current_modes_are_enabled(modes: dict[str, dict[str, Any]]) -> None:
+    assert all(not mode["disabled"] and mode["disabled_by"] == [] for mode in modes.values())
 
 
 @pytest.mark.parametrize(
@@ -172,7 +170,8 @@ def test_known_issue_conditions_and_scope_reach_the_client(
     issues = {issue["id"]: issue for issue in modes["dpb_s_rho_rh"]["known_issues"]}
 
     assert "dpb_hall_prefactor" not in issues
-    assert issues["acphdis_early_stop"]["scattering"] == ["acPhDis"]
+    assert "acphdis_early_stop" not in issues
+    assert issues["acphdis_band_weight"]["scattering"] == ["acPhDis"]
     assert issues["collapsed_m_eff"]["condition"] == "collapsed_m_eff"
 
 

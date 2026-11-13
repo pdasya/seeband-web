@@ -66,9 +66,10 @@ def test_hall_matches_independent_putley_sum(scattering, degeneracy, weight):
 def test_single_band_hall_factor_limits(eta, expected):
     factor = 0.75 * integral(0.5, eta) * integral(-0.5, eta) / np.logaddexp(0, eta) ** 2
     assert factor == pytest.approx(expected, rel=1e-3)
-    # SPB's formula agrees at the same reduced potential; P12 is separate.
+    # Choose the zero-temperature Fermi energy whose conserved density gives this eta.
     temperature = np.array([300.0])
     density = (2 * m_e * Boltzmann * temperature) ** 1.5 / (2 * np.pi**2 * hbar**3)
     density *= integral(0.5, eta)
-    hall = math.spb_hall_vs_temp(temperature, -eta * 300.0, -1.0, 1.0)
+    fermi_energy = -300.0 * (1.5 * integral(0.5, eta)) ** (2 / 3)
+    hall = math.spb_hall_vs_temp(temperature, fermi_energy, -1.0, 1.0)
     np.testing.assert_allclose(hall * density * elementary_charge, factor, rtol=1e-5)

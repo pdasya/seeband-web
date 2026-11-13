@@ -616,6 +616,29 @@ def spb_thermCond_vs_temp_acPh_dis(
     return result
 
 
+# Above this reduced potential, exp(eta) in the Fermi integrals of order -1/2 and 0 overflows.
+MAX_REDUCED_POTENTIAL = 700.0
+# A chemical potential whose carrier density is further than this, relatively, from the density at
+# T = 0 is no root, and is left out rather than used.
+MAX_DENSITY_MISMATCH = 1e-6
+
+
+def _conserves_density(
+    chemical_potential: np.ndarray, T: np.ndarray, mass_sign: float, fermi_energy: float
+) -> np.ndarray:
+    """Whether each chemical potential keeps the carrier density at T = 0, or there is none."""
+    target = spb_carCon(fermi_energy, mass_sign, 0)
+    if not np.isfinite(target) or target <= 0:
+        # With no carriers at T = 0 there is no density to keep, as with E_F on the other side.
+        return np.ones(T.shape, dtype=bool)
+    usable = np.zeros(T.shape, dtype=bool)
+    for index, (mu, temp) in enumerate(zip(chemical_potential, T, strict=True)):
+        if np.isfinite(mu):
+            density = spb_carCon(mu, mass_sign, temp)
+            usable[index] = abs(density - target) <= MAX_DENSITY_MISMATCH * target
+    return usable
+
+
 # Calculates the Hall coefficient of a single band
 def spb_hall_vs_temp(
     T: np.ndarray,
@@ -646,14 +669,29 @@ def spb_hall_vs_temp(
     factor = (
         3 * hbar**3 * np.pi**2 / (e * (2 * kB * me) ** (3 / 2)) * (0.5 + 2 * lamb) / (1 + lamb) ** 2
     )
-    result: np.ndarray = (
-        factor
-        * T ** (-1.5)
-        * scal_fac
-        / para_E
-        * fdint_vec(-0.5 + lamb, mass_sign * fermi_energy, T)
-        / fdint_vec(0 + lamb, mass_sign * fermi_energy, T) ** 2
-    )
+    temperatures = np.asarray(T, dtype=float)
+    # The solve starts each temperature from the root of the one before, which fails on a step down
+    # to a much lower temperature, so it runs in ascending order and the result goes back in place.
+    order = np.argsort(temperatures, kind="stable")
+    chemical_potential = np.empty_like(temperatures)
+    chemical_potential[order] = spb_chemPot_vs_temp(temperatures[order], mass_sign, fermi_energy)
+    reduced = mass_sign * chemical_potential / temperatures
+    usable = _conserves_density(chemical_potential, temperatures, mass_sign, fermi_energy)
+    # The Fermi integrals overflow above a reduced potential of about 709, so those points are NaN,
+    # as in the other SPB curves, and not a failure of the whole curve.
+    usable &= ~(reduced > MAX_REDUCED_POTENTIAL)
+    result = np.full_like(temperatures, np.nan)
+    if usable.any():
+        mu = chemical_potential[usable]
+        at = temperatures[usable]
+        result[usable] = (
+            factor
+            * at ** (-1.5)
+            * scal_fac
+            / np.asarray(para_E, dtype=float)
+            * fdint_vec(-0.5 + lamb, mass_sign * mu, at)
+            / fdint_vec(0 + lamb, mass_sign * mu, at) ** 2
+        )
     return result
 
 

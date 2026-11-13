@@ -452,6 +452,7 @@
           },
           "display_scale": 0.01,
           "fit_scale": 1,
+          "web_fit_scale": 0.01,
           "calc_scale": 0.01,
           "fit_start_source": ["seeband.py:4930"],
           "calc_source": ["seeband.py:3558"],
@@ -460,6 +461,7 @@
             "upper": 300,
             "source": ["seeband.py:4931"]
           },
+          "web_fit_bounds": { "lower": -3, "upper": 3, "reason": "D3" },
           "bounds_origin": "slider_range",
           "editable": true,
           "edit_source": ["seeband.py:4487"],

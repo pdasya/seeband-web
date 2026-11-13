@@ -1,6 +1,6 @@
 # Curve availability
 
-Which curves each mode offers through `POST /api/calc`, from the desktop's additional graphs windows. Availability does not depend on scattering. SPB S + ρ + R_H is listed, but the mode is disabled, so the API refuses all its curves until #83.
+Which curves each mode offers through `POST /api/calc`, from the desktop's additional graphs windows. Availability does not depend on scattering. SPB S + ρ + R_H and its curves are enabled after the [P4/P12 correction](spb-hall-fit.md).
 
 | Kind                              | SPB S               | SPB S + ρ, S + ρ + R_H | DPB S               | DPB S + ρ     | DPB S + ρ + R_H |
 | --------------------------------- | ------------------- | ---------------------- | ------------------- | ------------- | --------------- |

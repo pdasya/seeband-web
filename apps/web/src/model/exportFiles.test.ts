@@ -105,8 +105,8 @@ describe("the header", () => {
       fit: { status: "idle" },
       issues: [
         {
-          id: "spb_hall_uses_fermi_energy",
-          text: "SPB R_H uses the Fermi energy at 0 K.",
+          id: "no_chemical_potential",
+          text: "The Fermi energy is outside the band.",
           severity: "unreliable",
           quantities: ["hall"],
           place: "curves",
@@ -123,7 +123,7 @@ describe("the header", () => {
     );
     expect(lines).toContain("No fit: the values are those on the screen");
     expect(lines.at(-1)).toBe(
-      "Unreliable: SPB R_H uses the Fermi energy at 0 K. (spb_hall_uses_fermi_energy)",
+      "Unreliable: The Fermi energy is outside the band. (no_chemical_potential)",
     );
   });
 
