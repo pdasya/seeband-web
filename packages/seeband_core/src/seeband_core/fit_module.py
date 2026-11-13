@@ -98,6 +98,12 @@ def _relative_change(current: float, previous: float) -> float:
     return change if math.isfinite(change) else math.inf
 
 
+def _require_finite(*values: float) -> None:
+    """Raise for a parameter value that is not finite, as no iteration can settle it."""
+    if not all(math.isfinite(float(value)) for value in values):
+        raise ValueError("A fitted parameter is not finite.")
+
+
 class PB_fit:
     def is_accuracy_reached(self, threshold: float, *errors: float) -> bool:
         # Check if the error of all fitting parameters is smaller than threshold
@@ -589,6 +595,16 @@ class PB_fit:
                         )[:9],
                     )
 
+            # A value that is not finite cannot settle, so the fit ends here, not at its budget.
+            _require_finite(
+                current_meff,
+                current_gap,
+                current_fermi_energy,
+                current_para_A,
+                current_para_B,
+                *([current_para_C, current_para_D] if scatter_type == "acPhDis" else []),
+            )
+
             # Calculate the error of the fitting parameters of the resistivtiy
             error_meff = _relative_change(current_meff, prev_meff)
             error_gap = _relative_change(current_gap, prev_gap)
@@ -1070,6 +1086,16 @@ class PB_fit:
                             ),
                         )[:9],
                     )
+
+            # A value that is not finite cannot settle, so the fit ends here, not at its budget.
+            _require_finite(
+                current_meff,
+                current_gap,
+                current_fermi_energy,
+                current_para_A,
+                current_para_B,
+                *([current_para_C, current_para_D] if scatter_type == "acPhDis" else []),
+            )
 
             # Calculate the error of the fitting parameters of the resistivtiy
             error_meff = _relative_change(current_meff, prev_meff)

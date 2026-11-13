@@ -31,6 +31,8 @@ def controlled_fit(monkeypatch, hall, moving, *, zero=False, zero_parameter=None
             result = bands.copy()
             if moving == "bands":
                 result[1] += 50
+            elif moving == "nan":
+                result[1] = np.nan
             elif isinstance(moving, int) and moving < 3:
                 result[moving] += 50
         elif stage == "res":
@@ -150,3 +152,18 @@ def test_each_zero_initial_must_settle_after_becoming_nonzero(monkeypatch, hall,
     progress, _ = controlled_fit(monkeypatch, hall, parameter, zero_parameter=parameter)
     assert progress.iterations == 2
     assert not progress.reached_iteration_limit
+
+
+@pytest.mark.parametrize("hall", [False, True])
+def test_a_parameter_that_is_not_finite_ends_the_fit_at_once(monkeypatch, hall):
+    # It cannot settle, so the loop must not run to its budget of 1000 solver rounds.
+    with pytest.raises(ValueError, match="not finite"):
+        controlled_fit(monkeypatch, hall, "nan", limit=1000)
+
+
+def test_a_parameter_that_is_not_finite_fails_the_fit_with_its_reason():
+    from seeband_core.band_models import _failure_message
+
+    message = _failure_message(ValueError("A fitted parameter is not finite."))
+
+    assert message == "The model gave values that are not finite during the fit."
