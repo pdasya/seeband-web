@@ -170,7 +170,8 @@ def test_known_issue_conditions_and_scope_reach_the_client(
     issues = {issue["id"]: issue for issue in modes["dpb_s_rho_rh"]["known_issues"]}
 
     assert "dpb_hall_prefactor" not in issues
-    assert issues["acphdis_early_stop"]["scattering"] == ["acPhDis"]
+    assert "acphdis_early_stop" not in issues
+    assert issues["acphdis_band_weight"]["scattering"] == ["acPhDis"]
     assert issues["collapsed_m_eff"]["condition"] == "collapsed_m_eff"
 
 

@@ -41,16 +41,6 @@ KNOWN_ISSUES: tuple[KnownIssue, ...] = (
         explanation="With acPhDis, the band weight of the last temperature applies to all of S",
     ),
     KnownIssue(
-        id="acphdis_early_stop",
-        severity="unreliable",
-        fixed_by="#84",
-        fit_modes=_DPB_LOOP,
-        scattering=("acPhDis",),
-        affects_fit=True,
-        explanation="With acPhDis, the fit stops when C and D alone settle, as every recorded fit "
-        "on the 3 examples did (D18)",
-    ),
-    KnownIssue(
         id="dpb_s_degeneracy",
         severity="unreliable",
         fixed_by="#85",

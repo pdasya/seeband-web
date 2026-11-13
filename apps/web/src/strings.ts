@@ -465,8 +465,6 @@ export const STRINGS = {
     knownIssueTexts: {
       "known_issue.acphdis_band_weight":
         "With acPhDis, the band weight of the last temperature applies to all of S.",
-      "known_issue.acphdis_early_stop":
-        "With acPhDis, this fit stops when C and D alone settle, so it can end before the other values do.",
       "known_issue.dpb_s_degeneracy":
         "With N₂/N₁ other than 1, a fitted m₂/m₁ does not match its curves.",
       "known_issue.dpb_loop_degeneracy":

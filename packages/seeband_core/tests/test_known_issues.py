@@ -42,7 +42,6 @@ EXPECTED: dict[str, tuple[Any, ...]] = {
         True,
         None,
     ),
-    "acphdis_early_stop": ("unreliable", "#84", LOOP, ("acPhDis",), (), True, None),
     "dpb_s_degeneracy": (
         "unreliable",
         "#85",
@@ -347,7 +346,7 @@ def test_a_fit_passes_its_degeneracy_and_scattering_on(monkeypatch: pytest.Monke
     with_n = fit_ids(monkeypatch, "dpb_s", [1.0, 500.0, 500.0], band_2_degeneracy=2.0)
     assert with_n == {"dpb_s_degeneracy"}
     acphdis = fit_ids(monkeypatch, "dpb_s_rho", loop, scattering="acPhDis")
-    assert acphdis == {"acphdis_band_weight", "acphdis_early_stop"}
+    assert acphdis == {"acphdis_band_weight"}
     acph = fit_ids(monkeypatch, "dpb_s_rho", loop, scattering="acPh", band_2_degeneracy=2.0)
     assert acph == {"dpb_loop_degeneracy"}
     made_up = fit_ids(monkeypatch, "spb_s", [100.0], extrapolated=True)
