@@ -3,6 +3,31 @@
 Read `CLAUDE.md` and `CONTRIBUTING.md` for the shared engineering rules. Codex
 roles are in `.codex/agents/*.toml`; Claude profiles do not choose Codex models.
 
+## Skills and plugin workflows
+
+Use the installed Matt Pocock Skills, Ponytail and Superpowers plugins for
+relevant tasks. Resolve skill locations from the session catalog and read the
+selected `SKILL.md` before applying it; keep machine-specific paths out of this file.
+
+- **Matt Pocock Skills:** use `mattpocock-skills:implement` for existing specs
+  or tickets, `diagnosing-bugs` for reported failures, `codebase-design` for
+  module boundaries, `code-review` for requested branch/PR reviews, and
+  `writing-for-agents` when editing agent instructions. Other skills follow
+  their declared triggers.
+- **Ponytail:** for coding tasks, load
+  `engineering-suite-ponytail:entry-ponytail` and its selected workflow.
+  Prefer existing code, the standard library and the smallest root-cause fix.
+  Use the audit or complexity-review workflows when that review is requested.
+- **Superpowers:** load `superpowers:using-superpowers` at task start, then
+  select the applicable discovery, planning, debugging, TDD and verification
+  workflows. Use worktree and delegation workflows within the policy below.
+
+Combine compatible skill steps into one workflow, reusing the existing spec
+and validation evidence. Ask about material decisions the task leaves open.
+Project rules govern model routing, concurrency, review count, validation
+ownership and publishing when plugin guidance differs. Skills do not supply
+human physicist confirmation.
+
 ## Delegation and model routing
 
 Use cost-conscious delegation proactively when it reduces duplicated reasoning.
