@@ -8,6 +8,11 @@
   the chemical potential at each temperature, conserving carrier density.
   Hall factors recover the degenerate limit 1 and nondegenerate limit 3π/8.
   Synthetic regression results replace no historical desktop captures.
+  Every fit now sorts its points by temperature, so an API client's order
+  gives the result a sorted file does; a Hall point beyond the reach of the
+  Fermi integrals (μ/T above 700) is NaN rather than a failed curve; and a
+  start mass of 0, on an empty branch, or of the wrong sign for R_H fails with
+  its reason. The band-mass error is conditional on E_F.
   Human physicist confirmation and parity/author review remain pending;
   enabling this mode is not scientific release approval.
 
