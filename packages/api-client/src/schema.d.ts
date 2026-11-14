@@ -734,7 +734,9 @@ export interface components {
          *     stages fixed, so in a staged fit they can be far too small, and are not plain uncertainties.
          *     `at_bounds` names fitted parameters that ended at a bound, which may be what set them.
          *     `known_issues` names known errors that apply, as in `GET /api/models`. `held` names the
-         *     parameters the request held, which come back as sent, with no error and no at-bound mark.
+         *     parameters the request held, which come back as sent, with no error and no at-bound mark; the
+         *     errors of the others hold the held values exact. A held value outside its bounds fails as a
+         *     start would. Holding m1, or the SPB Hall mass, skips the R_H stage.
          * @example {
          *       "at_bounds": [],
          *       "held": [],

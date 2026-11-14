@@ -151,6 +151,7 @@ A lock in the row of each fitted parameter holds it at its value in a fit, as th
 - **A held value stays editable,** as it is the value the fit keeps, and its row says "held". A change of what is held ends the last result, as for a value.
 - **Holding every fitted parameter stops Run,** and says to release one. Reset releases them all, with the values and bounds.
 - **Results, exports and the fit log** call them held, with no bounds, and the fit log leaves out a stage with all its parameters held.
+- **A held value must lie within its bounds,** as a start must, and the errors of the others take it as exact. Holding m₁, or the SPB mass in S + ρ + R_H, leaves R_H unused, as the stage that reads it fits only that.
 
 ## Result
 
