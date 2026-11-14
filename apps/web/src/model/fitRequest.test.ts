@@ -118,6 +118,23 @@ describe("fitRequest", () => {
     });
   });
 
+  test("the order of the clicks does not change the request", () => {
+    const one = fitRequest(
+      { ...STATE, held: { dpb_s_rho: ["fermi_energy", "band_gap"] } },
+      models,
+    );
+    const other = fitRequest(
+      { ...STATE, held: { dpb_s_rho: ["band_gap", "fermi_energy"] } },
+      models,
+    );
+    if (!("request" in one) || !("request" in other)) {
+      throw new Error("blocked");
+    }
+
+    expect(one.request.held).toEqual(["band_gap", "fermi_energy"]);
+    expect(fitInputsKey(one.request)).toBe(fitInputsKey(other.request));
+  });
+
   test("a change of what is held is a change of the fit", () => {
     const free = fitRequest(STATE, models);
     const held = fitRequest(

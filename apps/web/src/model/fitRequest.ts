@@ -91,9 +91,10 @@ export function fitRequest(
   const fitted = visibleParameters(mode, selection.scattering)
     .filter(({ role }) => role === "fitted")
     .map(({ name }) => name);
-  const held = (state.held[mode.id] ?? []).filter((name) =>
-    fitted.includes(name),
-  );
+  // Sorted, so that the order of the clicks does not make another request.
+  const held = (state.held[mode.id] ?? [])
+    .filter((name) => fitted.includes(name))
+    .sort();
   if (fitted.length > 0 && held.length === fitted.length) {
     return { blocked: { reason: "all_held" } };
   }
