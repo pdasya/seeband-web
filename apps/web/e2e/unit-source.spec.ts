@@ -33,6 +33,7 @@ function parsed({
   units = ["K", "V/K"],
   sources = ["default", "default"],
   preview = [100, 1e-4],
+  previewText = ["100", "1e-4"],
   previewSi = [100, 1e-4],
   rangeK = [100, 300],
   warnings = [],
@@ -41,6 +42,7 @@ function parsed({
   units?: [string, string];
   sources?: [Source, Source];
   preview?: [number, number];
+  previewText?: [string, string];
   previewSi?: [number, number];
   rangeK?: [number, number];
   warnings?: object[];
@@ -50,6 +52,7 @@ function parsed({
     column_count: 2,
     row_count: 2,
     preview: [preview],
+    preview_text: [previewText],
     preview_si: [previewSi],
     mapping: [
       {
@@ -177,6 +180,7 @@ test("a file card shows its first row as written, and in SI where the unit is an
       units: ["C", "uV/K"],
       sources: ["header", "header"],
       preview: [26.85, 100],
+      previewText: ["26.85", "1.0E+2"],
       previewSi: [300, 1e-4],
     }),
   );
@@ -185,7 +189,8 @@ test("a file card shows its first row as written, and in SI where the unit is an
 
   await expect(
     page.getByText(
-      "First row: T 26,85 °C = 300 K in SI · S 1,000e+2 µV/K = 1,000e-4 V/K in SI",
+      // As the file writes it, so that the user can find it there.
+      "First row: T 26.85 °C = 300 K in SI · S 1.0E+2 µV/K = 1,000e-4 V/K in SI",
       { exact: true },
     ),
   ).toBeVisible();
@@ -196,14 +201,20 @@ test("a doubt about a unit says which way it likely went, and Hide leaves a warn
 }) => {
   await serveParse(
     page,
-    parsed({ warnings: [{ code: "implausible_magnitude", column: 1 }] }),
+    parsed({
+      warnings: [
+        { code: "implausible_magnitude", column: 1, direction: "above" },
+      ],
+    }),
   );
   await page.goto("/fit");
   await load(page, "seebeck");
 
   await expect(page.getByText("Check the unit", { exact: true })).toBeVisible();
   await expect(
-    page.getByText(/If the file is in µV\/K, choose µV\/K\. If it is in mV\/K/),
+    page.getByText(
+      "These values are far larger than any usual Seebeck coefficient in V/K, the unit assumed. If the file is in µV/K or mV/K, choose it.",
+    ),
   ).toBeVisible();
 
   await page.getByRole("button", { name: "Hide" }).click();
