@@ -557,6 +557,9 @@ export interface components {
          *     `measurements` holds each quantity of the mode, and only points from `min_temperature_k` to
          *     `max_temperature_k`, inclusive, enter the fit. `extrapolated` says that interpolation made up
          *     some of these points, so that the result says so too.
+         *
+         *     `held` names fitted parameters to keep at their start values: the fit finds only the others.
+         *     A name the mode does not fit, for the scattering type, or every fitted parameter, is refused.
          * @example {
          *       "bounds": {
          *         "band_gap": {
@@ -627,6 +630,8 @@ export interface components {
              * @default false
              */
             extrapolated?: boolean;
+            /** Held */
+            held?: string[];
             /** Measurements */
             measurements: {
                 [key: string]: components["schemas"]["MeasurementInput"];
@@ -728,9 +733,13 @@ export interface components {
          *     `parameter_errors` holds standard errors from the last solver run of each stage, holding other
          *     stages fixed, so in a staged fit they can be far too small, and are not plain uncertainties.
          *     `at_bounds` names fitted parameters that ended at a bound, which may be what set them.
-         *     `known_issues` names known errors that apply, as in `GET /api/models`.
+         *     `known_issues` names known errors that apply, as in `GET /api/models`. `held` names the
+         *     parameters the request held, which come back as sent, with no error and no at-bound mark; the
+         *     errors of the others hold the held values exact. A held value outside its bounds fails as a
+         *     start would. Holding m1, or the SPB Hall mass, skips the R_H stage.
          * @example {
          *       "at_bounds": [],
+         *       "held": [],
          *       "known_issues": [],
          *       "parameter_errors": {
          *         "band_gap": 12,
@@ -767,6 +776,8 @@ export interface components {
             at_bounds: string[];
             /** Known Issues */
             known_issues: string[];
+            /** Held */
+            held: string[];
         };
         /**
          * FitStageResponse

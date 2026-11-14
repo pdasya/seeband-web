@@ -21,17 +21,69 @@ class FitProgress:
 
     `stage_fits` holds the fitted values and covariance of the last solver run of each stage: `see`,
     `res` and `hall`. These are in the units of that solver run.
+
+    `held` names, for a stage, the positions in its parameter vector that keep their start values:
+    the solver sees only the others. A held value has no variance, so its row and column of the
+    covariance are NaN, and a stage that holds every value is not run.
     """
 
     on_iteration: Callable[[int, list[float]], None] | None = None
     iterations: int = 0
     reached_iteration_limit: bool = False
     stage_fits: dict[str, tuple[np.ndarray, np.ndarray]] = field(default_factory=dict)
+    held: dict[str, frozenset[int]] = field(default_factory=dict)
+
+
+def _curve_fit_holding(
+    held: frozenset[int],
+    function: Callable[..., Any],
+    xdata: Any,
+    ydata: Any,
+    *,
+    p0: Any,
+    bounds: Any,
+    **kwargs: Any,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Run `curve_fit` on the values not held, with the held ones in their places.
+
+    A held value must lie within its bounds, as `curve_fit` asks of a start: the solver never sees
+    it, so nothing else would refuse an A below 0 or an m1 of 0.
+    """
+    start = np.asarray(p0, dtype=float)
+    lower = np.asarray(bounds[0], dtype=float)
+    upper = np.asarray(bounds[1], dtype=float)
+    positions = sorted(held)
+    if np.any(start[positions] < lower[positions]) or np.any(start[positions] > upper[positions]):
+        raise ValueError("A held value lies outside its bounds")
+    free = [index for index in range(len(start)) if index not in held]
+    covariance = np.full((len(start), len(start)), np.nan)
+    if not free:
+        return start.copy(), covariance
+
+    def reduced(x: Any, *values: float) -> Any:
+        full = start.copy()
+        full[free] = values
+        return function(x, *full)
+
+    fitted, free_covariance = opt.curve_fit(
+        reduced, xdata, ydata, p0=start[free], bounds=(lower[free], upper[free]), **kwargs
+    )
+    values = start.copy()
+    values[free] = fitted
+    covariance[np.ix_(free, free)] = free_covariance
+    return values, covariance
 
 
 def _curve_fit(progress: FitProgress | None, stage: str, *args: Any, **kwargs: Any) -> Any:
-    """Run `curve_fit`, and keep its result for the stage if anything follows the fit."""
-    result = opt.curve_fit(*args, **kwargs)
+    """Run `curve_fit`, and keep its result for the stage if anything follows the fit.
+
+    With values of the stage held, only the others are fitted.
+    """
+    held = progress.held.get(stage, frozenset()) if progress is not None else frozenset()
+    if held:
+        result = _curve_fit_holding(held, *args, **kwargs)
+    else:
+        result = opt.curve_fit(*args, **kwargs)
     if progress is not None:
         progress.stage_fits[stage] = (result[0], result[1])
     return result

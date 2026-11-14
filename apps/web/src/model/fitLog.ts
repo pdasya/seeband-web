@@ -72,11 +72,13 @@ export function fitLog(
   fit: FitState,
   startNet: NetRange | null,
   numerical = false,
+  held: readonly string[] = [],
 ): LogStep[] {
   const iterations = iterationsOf(fit);
+  // A held parameter keeps its value, so no step finds it.
   const fitted = new Set(
     visibleParameters(mode, scattering)
-      .filter(({ role }) => role === "fitted")
+      .filter(({ role, name }) => role === "fitted" && !held.includes(name))
       .map(({ name }) => name),
   );
   const ended =

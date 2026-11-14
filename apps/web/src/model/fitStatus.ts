@@ -99,6 +99,8 @@ export function fitBlockerText(blocker: FitBlocker): string {
       return `${text.blockers.notInterpolated} ${symbols(blocker.quantities)}.`;
     case "no_points_in_range":
       return `${text.blockers.noPointsInRange} ${symbols(blocker.quantities)}.`;
+    case "all_held":
+      return text.blockers.allHeld;
     case "start_outside_bounds":
       return `${text.blockers.startOutsideBounds} ${blocker.parameters.map(parameterSymbol).join(", ")}.`;
     default:

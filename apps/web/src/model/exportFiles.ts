@@ -228,6 +228,7 @@ function parameterRecords(
   scattering: string | null,
   saved: Readonly<Record<string, number>> | undefined,
   fit: FitState,
+  held: readonly string[],
 ): ParameterRecord[] {
   const values = parameterValues(mode, saved);
   const atBounds =
@@ -248,11 +249,13 @@ function parameterRecords(
       status:
         parameter.role === "fixed"
           ? text.status.fixed
-          : !fitted
-            ? text.status.free
-            : atBounds.includes(parameter.name)
-              ? text.status.atBound
-              : text.status.fitted,
+          : held.includes(parameter.name)
+            ? text.status.held
+            : !fitted
+              ? text.status.free
+              : atBounds.includes(parameter.name)
+                ? text.status.atBound
+                : text.status.fitted,
     };
   });
 }
@@ -273,12 +276,18 @@ export function parametersFile(
   selection: DegeneracySelection,
   saved: Readonly<Record<string, number>> | undefined,
   fit: FitState,
+  held: readonly string[] = [],
 ): string {
-  const lines = parameterRecords(mode, selection.scattering, saved, fit).map(
-    ({ symbol, meaning, unit, value, status }) =>
-      [text.parameter(symbol, meaning, unit), numberText(value), status].join(
-        "\t",
-      ),
+  const lines = parameterRecords(
+    mode,
+    selection.scattering,
+    saved,
+    fit,
+    held,
+  ).map(({ symbol, meaning, unit, value, status }) =>
+    [text.parameter(symbol, meaning, unit), numberText(value), status].join(
+      "\t",
+    ),
   );
   const degeneracy = hasDegeneracy(mode)
     ? [
@@ -308,9 +317,10 @@ export function parametersCsv(
   selection: DegeneracySelection,
   saved: Readonly<Record<string, number>> | undefined,
   fit: FitState,
+  held: readonly string[] = [],
 ): string {
   const records = [
-    ...parameterRecords(mode, selection.scattering, saved, fit),
+    ...parameterRecords(mode, selection.scattering, saved, fit, held),
     ...(hasDegeneracy(mode)
       ? [
           {

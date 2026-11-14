@@ -21,6 +21,7 @@ export function useFitControl() {
   const data = useSessionStore((state) => state.data);
   const interpolation = useSessionStore((state) => state.interpolation);
   const customBounds = useSessionStore((state) => state.customBounds);
+  const held = useSessionStore((state) => state.held);
   const fit = useSessionStore((state) => state.fit);
   const resetParameters = useSessionStore((state) => state.resetParameters);
 
@@ -31,10 +32,10 @@ export function useFitControl() {
   const prepared = useMemo(
     () =>
       fitRequest(
-        { selection, parameters, data, interpolation, customBounds },
+        { selection, parameters, data, interpolation, customBounds, held },
         models?.models,
       ),
-    [selection, parameters, data, interpolation, customBounds, models],
+    [selection, parameters, data, interpolation, customBounds, held, models],
   );
   const request = "request" in prepared ? prepared.request : null;
   const inputs = request === null ? null : fitInputsKey(request);

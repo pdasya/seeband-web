@@ -86,6 +86,7 @@ export function ResultPanel({ live }: { live: LiveCurves }) {
   const interpolation = useSessionStore((state) => state.interpolation);
   const fitState = useSessionStore((state) => state.fit);
   const customBounds = useSessionStore((state) => state.customBounds);
+  const held = useSessionStore((state) => state.held);
   const setChartPanel = useSessionStore((state) => state.setChartPanel);
   const panels = useSessionStore((state) => state.chartPanels);
   const exporter = useExport();
@@ -121,6 +122,7 @@ export function ResultPanel({ live }: { live: LiveCurves }) {
           parameters[mode.id],
           fitState,
           customBounds[mode.id],
+          held[mode.id],
         );
   const { minTemperatureK: minK, maxTemperatureK: maxK } = selection;
   const subtitle = [

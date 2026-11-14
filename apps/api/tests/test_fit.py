@@ -320,6 +320,56 @@ def test_bounds_of_a_parameter_of_another_scattering_type_are_refused(client: Te
     assert _details(response) == [(["body", "bounds", "F"], "parameter_not_fitted")]
 
 
+def test_held_parameters_reach_the_fit_and_come_back_as_sent(client: TestClient) -> None:
+    start = default_start(_mode("dpb", "dpb_s_rho"))
+    expected = _core_fit("dpb", "dpb_s_rho", scattering="acPh", held=frozenset({"band_gap", "A"}))
+
+    body = _result(client, _body("dpb", "dpb_s_rho", scattering="acPh", held=["band_gap", "A"]))
+
+    assert body["parameters"] == expected.parameters
+    assert body["parameters"]["band_gap"] == start["band_gap"]
+    assert body["parameters"]["A"] == start["A"]
+    assert body["held"] == ["A", "band_gap"]
+    assert "band_gap" not in body["parameter_errors"]
+
+
+def test_a_fit_with_nothing_held_says_so(client: TestClient) -> None:
+    assert _result(client, _body())["held"] == []
+
+
+@pytest.mark.parametrize(
+    ("changes", "expected"),
+    [
+        # SPB S does not fit the mass, and F belongs to dis.
+        (
+            {"model": "spb", "fit_mode": "spb_s", "start": default_start(_mode("spb", "spb_s"))}
+            | {"held": ["band_mass"]},
+            [(["body", "held", "band_mass"], "parameter_not_fitted")],
+        ),
+        (
+            {"fit_mode": "dpb_s_rho", "scattering": "acPh", "held": ["F"]}
+            | {"start": default_start(_mode("dpb", "dpb_s_rho"))},
+            [(["body", "held", "F"], "parameter_not_fitted")],
+        ),
+        (
+            {"held": ["m_eff", "band_gap", "fermi_energy"]},
+            [(["body", "held"], "nothing_to_fit")],
+        ),
+    ],
+)
+def test_holding_what_the_fit_does_not_find_or_everything_is_refused(
+    client: TestClient, changes: dict[str, Any], expected: list[tuple[list[str | int], str]]
+) -> None:
+    body = _body(**changes)
+    mode = _mode(body["model"], body["fit_mode"])
+    body["measurements"] = {quantity: DEMO_INPUT[quantity] for quantity in mode.quantities}
+
+    response = client.post("/api/fit", json=body)
+
+    assert response.status_code == 422
+    assert _details(response) == expected
+
+
 def test_degeneracy_is_refused_on_a_mode_without_one(client: TestClient) -> None:
     response = client.post("/api/fit", json=_body("spb", "spb_s", band_2_degeneracy=2.0))
 
