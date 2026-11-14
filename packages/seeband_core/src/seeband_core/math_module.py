@@ -1,10 +1,11 @@
 from collections.abc import Callable
+from dataclasses import dataclass
 from importlib import resources
 from typing import Any
 
 import mpmath
 import numpy as np
-from scipy.optimize import fsolve
+from scipy.optimize import brentq
 
 """
 #################################################
@@ -76,13 +77,10 @@ fdint_vec: Callable[..., Any] = np.vectorize(fdint_robust)
 def spb_fermiInt_vs_temp(
     s: float, T: np.ndarray, mass_sign: float, fermi_energy: float
 ) -> np.ndarray:
-    last_mu = fermi_energy
+    potentials = spb_chemPot_vs_temp(T, mass_sign, fermi_energy)
     fermiInt = np.zeros(shape=len(T))
 
-    for i, temp in enumerate(T):
-        mu = fsolve(spb_chemPot, [last_mu], (temp, mass_sign, fermi_energy))[0]
-        last_mu = mu
-
+    for i, (temp, mu) in enumerate(zip(T, potentials, strict=True)):
         fermiInt[i] = fdint_vec(s + lamb, mass_sign * mu, temp)
 
     return fermiInt
@@ -92,14 +90,11 @@ def spb_fermiInt_vs_temp(
 def dpb_fermiInt_vs_temp(
     s: float, T: np.ndarray, mass: float, gap: float, fermi_energy: float, degen: float
 ) -> tuple[np.ndarray, np.ndarray]:
-    last_mu = fermi_energy
+    potentials = dpb_chemPot_vs_temp(T, gap, mass, fermi_energy, degen)
     fermiInt_1 = np.zeros(shape=len(T))
     fermiInt_2 = np.zeros(shape=len(T))
 
-    for i, temp in enumerate(T):
-        mu = fsolve(dpb_chemPot, [last_mu], (temp, gap, mass, fermi_energy, degen))[0]
-        last_mu = mu
-
+    for i, (temp, mu) in enumerate(zip(T, potentials, strict=True)):
         fermiInt_1[i] = fdint_vec(s + lamb, -mu, temp)
         fermiInt_2[i] = fdint_vec(s + lamb, np.sign(mass) * (mu - gap), temp)
 
@@ -170,26 +165,154 @@ def spb_carCon(eta: float, meff: float, T: float) -> float:
         return carrier_concentration
 
 
-# Calculates the chemical potential of a single band at a temperature T
+class ChemicalPotentialError(ValueError):
+    """A density-conserving finite chemical potential could not be certified."""
+
+    def __init__(
+        self, temperature: float | None, reason: str, residual: float | None = None
+    ) -> None:
+        self.temperature = temperature
+        self.reason = reason
+        self.residual = residual
+        self.normalized_residual = residual
+        super().__init__(f"Chemical potential at {temperature} K: {reason} (residual={residual})")
+
+
+@dataclass(frozen=True)
+class ChemicalPotentialResult:
+    """Checked roots in kelvin, absolute normalized residuals and per-point status."""
+
+    chemical_potential: np.ndarray
+    normalized_residual: np.ndarray
+    status: np.ndarray
+
+
+def _chemical_potential_diagnostics(
+    temp_array: np.ndarray,
+    mass: float,
+    fermi_energy: float,
+    gap: float | None = None,
+    degen: float = 1.0,
+) -> ChemicalPotentialResult:
+    """Solve signed density balance in mu/T, then certify the unchanged density equation.
+
+    Each unique temperature uses an independent bracket, so caller ordering and other
+    temperatures cannot select a different root. Invalid points raise immediately.
+    """
+    temperatures = np.asarray(temp_array, dtype=float)
+    if temperatures.ndim != 1:
+        raise ChemicalPotentialError(None, "temperatures must be a one-dimensional array")
+    invalid = ~np.isfinite(temperatures) | (temperatures <= 0)
+    if invalid.any():
+        raise ChemicalPotentialError(
+            float(temperatures[invalid][0]), "temperature must be finite and positive"
+        )
+    if not np.isfinite(mass) or mass == 0 or not np.isfinite(fermi_energy):
+        raise ChemicalPotentialError(
+            None, "mass must be finite and nonzero; Fermi energy must be finite"
+        )
+    if gap is not None and (not np.isfinite(gap) or not np.isfinite(degen) or degen <= 0):
+        raise ChemicalPotentialError(
+            None, "gap must be finite and degeneracy must be finite and positive"
+        )
+    if (gap is None and fermi_energy * np.sign(mass) <= 0) or (
+        gap is not None and mass < 0 and fermi_energy >= max(0.0, gap)
+    ):
+        raise ChemicalPotentialError(None, "no finite root for zero carrier density")
+
+    with np.errstate(over="ignore", under="ignore", invalid="ignore"):
+        effective_mass = mass if gap is None else mass * np.float64(degen) ** (5 / 3)
+        target = (
+            spb_carCon(fermi_energy, mass, 0)
+            if gap is None
+            else (
+                -spb_carCon(fermi_energy, -1, 0)
+                + np.sign(mass) * spb_carCon(fermi_energy - gap, effective_mass, 0)
+            )
+        )
+    if not np.isfinite(effective_mass) or effective_mass == 0 or not np.isfinite(target):
+        raise ChemicalPotentialError(None, "nonfinite density parameters")
+
+    unique, inverse = np.unique(temperatures, return_inverse=True)
+    roots = np.empty_like(unique)
+    residuals = np.empty_like(unique)
+    for index, temp in enumerate(unique):
+
+        def balance(eta: float, temperature: float = float(temp)) -> float:
+            with np.errstate(over="ignore", under="ignore", invalid="ignore"):
+                mu = eta * temperature
+                first = spb_carCon(mu, mass if gap is None else -1, temperature)
+                second = 0.0 if gap is None else spb_carCon(mu - gap, effective_mass, temperature)
+                density = first if gap is None else -first + np.sign(mass) * second
+                scale = max(abs(first) + abs(second), abs(target))
+                if not np.isfinite(scale) or scale <= 0 or not np.isfinite(mu):
+                    raise ChemicalPotentialError(
+                        temperature, "density scale is not finite and positive"
+                    )
+                if scale < np.finfo(float).tiny:
+                    raise ChemicalPotentialError(
+                        temperature, "subnormal density scale cannot certify relative precision"
+                    )
+                return float((density - target) / scale)
+
+        width = max(1.0, abs(fermi_energy / temp), 0.0 if gap is None else abs(gap / temp))
+        try:
+            for _ in range(128):
+                left, right = balance(-width), balance(width)
+                if left == 0 or right == 0 or np.sign(left) != np.sign(right):
+                    break
+                width *= 2
+            else:
+                raise ChemicalPotentialError(float(temp), "could not bracket density balance")
+            eta = brentq(
+                balance,
+                -width,
+                width,
+                xtol=np.nextafter(0.0, 1.0),
+                rtol=4 * np.finfo(float).eps,
+                maxiter=256,
+            )
+            residual = abs(balance(eta))
+        except ChemicalPotentialError:
+            raise
+        except (ValueError, RuntimeError, OverflowError) as exc:
+            raise ChemicalPotentialError(float(temp), "bracketed density solve failed") from exc
+        if not np.isfinite(residual) or residual > 1e-12:
+            raise ChemicalPotentialError(
+                float(temp), "density residual exceeds tolerance", residual
+            )
+        roots[index] = eta * temp
+        residuals[index] = residual
+    return ChemicalPotentialResult(
+        roots[inverse], residuals[inverse], np.full(temperatures.shape, "converged")
+    )
+
+
+def spb_chemPot_diagnostics(
+    temp_array: np.ndarray, band_mass: float, fermi_energy: float
+) -> ChemicalPotentialResult:
+    """Return SPB roots and their density checks, or raise ChemicalPotentialError."""
+    return _chemical_potential_diagnostics(temp_array, band_mass, fermi_energy)
+
+
+def dpb_chemPot_diagnostics(
+    temp_array: np.ndarray, gap: float, meff: float, fermi_energy: float, degen: float
+) -> ChemicalPotentialResult:
+    """Return DPB roots and their density checks, or raise ChemicalPotentialError."""
+    return _chemical_potential_diagnostics(temp_array, meff, fermi_energy, gap, degen)
+
+
+# Calculates the signed density imbalance of a single band at a temperature T
 def spb_chemPot(eta_here: np.ndarray, temp: float, band_mass: float, fermi_energy: float) -> float:
     result = spb_carCon(eta_here[0], band_mass, temp) - spb_carCon(fermi_energy, band_mass, 0)
-    difference: float = np.abs(result)
-    return difference
+    return float(result)
 
 
 # Calculates the temperature-dependent chemical potential of a single band
 def spb_chemPot_vs_temp(
     temp_array: np.ndarray, band_mass: float, fermi_energy: float
 ) -> np.ndarray:
-    chemPot_array = np.zeros(shape=len(temp_array))
-    last_mu = fermi_energy
-
-    for i, temp in enumerate(temp_array):
-        mu = fsolve(spb_chemPot, [last_mu], (temp, band_mass, fermi_energy))[0]
-        last_mu = mu
-        chemPot_array[i] = mu
-
-    return chemPot_array
+    return spb_chemPot_diagnostics(temp_array, band_mass, fermi_energy).chemical_potential
 
 
 # Calculates the chemical potential of two bands at a temperature T with variable degeneracy ratio
@@ -205,23 +328,14 @@ def dpb_chemPot(
             + np.sign(meff) * spb_carCon(fermi_energy - gap, meff * degen ** (5 / 3), 0)
         )
     )
-    difference: float = np.abs(result)
-    return difference
+    return float(result)
 
 
 # Calculates the temperature-dependent chemical potential of two bands
 def dpb_chemPot_vs_temp(
     temp_array: np.ndarray, gap: float, meff: float, fermi_energy: float, degen: float
 ) -> np.ndarray:
-    chemPot_array = np.zeros(shape=len(temp_array))
-    last_mu = fermi_energy
-
-    for i, temp in enumerate(temp_array):
-        mu = fsolve(dpb_chemPot, [last_mu], (temp, gap, meff, fermi_energy, degen))[0]
-        last_mu = mu
-        chemPot_array[i] = mu
-
-    return chemPot_array
+    return dpb_chemPot_diagnostics(temp_array, gap, meff, fermi_energy, degen).chemical_potential
 
 
 # Calculates the temperature-dependent Lorenz number of a single band
@@ -296,15 +410,12 @@ def spb_see_vs_temp(
         Numpy array of Seebeck coefficient values
     """
 
-    last_mu = fermi_energy
+    potentials = spb_chemPot_vs_temp(temp_array, band_mass, fermi_energy)
     sig = np.zeros(shape=len(temp_array))
     ons = np.zeros(shape=len(temp_array))
     see = np.zeros(shape=len(temp_array))
 
-    for i, temp in enumerate(temp_array):
-        mu = fsolve(spb_chemPot, [last_mu], (temp, band_mass, fermi_energy))[0]
-        last_mu = mu
-
+    for i, (temp, mu) in enumerate(zip(temp_array, potentials, strict=True)):
         sig[i] = sigma_general(
             eta=mu, meff=band_mass, K=1, beta=-1, T=temp
         )  # beta = -1 to remove any temperature dependence that would cancel out eventually
@@ -670,11 +781,7 @@ def spb_hall_vs_temp(
         3 * hbar**3 * np.pi**2 / (e * (2 * kB * me) ** (3 / 2)) * (0.5 + 2 * lamb) / (1 + lamb) ** 2
     )
     temperatures = np.asarray(T, dtype=float)
-    # The solve starts each temperature from the root of the one before, which fails on a step down
-    # to a much lower temperature, so it runs in ascending order and the result goes back in place.
-    order = np.argsort(temperatures, kind="stable")
-    chemical_potential = np.empty_like(temperatures)
-    chemical_potential[order] = spb_chemPot_vs_temp(temperatures[order], mass_sign, fermi_energy)
+    chemical_potential = spb_chemPot_vs_temp(temperatures, mass_sign, fermi_energy)
     reduced = mass_sign * chemical_potential / temperatures
     usable = _conserves_density(chemical_potential, temperatures, mass_sign, fermi_energy)
     # The Fermi integrals overflow above a reduced potential of about 709, so those points are NaN,
@@ -728,17 +835,14 @@ def dpb_see_vs_temp(
         Numpy array of Seebeck coefficient values
     """
 
-    last_mu = fermi_energy
+    potentials = dpb_chemPot_vs_temp(T, gap, meff, fermi_energy, degen)
     sig1 = np.zeros(shape=len(T))
     sig2 = np.zeros(shape=len(T))
     ons1 = np.zeros(shape=len(T))
     ons2 = np.zeros(shape=len(T))
     see = np.zeros(shape=len(T))
 
-    for i, temp in enumerate(T):
-        mu = fsolve(dpb_chemPot, [last_mu], (temp, gap, meff, fermi_energy, degen))[0]
-        last_mu = mu
-
+    for i, (temp, mu) in enumerate(zip(T, potentials, strict=True)):
         factor = 1 / meff
 
         sig1[i] = sigma_general(

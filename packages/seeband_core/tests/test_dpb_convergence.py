@@ -211,13 +211,8 @@ def test_example03_from_C2_Dhalf_reaches_the_independent_fixed_point(hall):
 
 
 @pytest.mark.filterwarnings("ignore")
-def test_a_start_at_fermi_energy_0_still_converges_at_its_start():
-    """NUM-2 of #84, as it stands: a known limitation, not a result to keep.
-
-    At E_F = 0 the chemical potential has no root (#106), S jumps there, and the Seebeck stage
-    returns its start unchanged, so no rule on changes can tell. This test fails, on purpose, once
-    #106 or #176 makes such a fit end otherwise; then change it to the new outcome.
-    """
+def test_a_start_at_fermi_energy_0_is_no_longer_a_solver_fixed_point():
+    """P8 removes the artificial zero-start fixed point, without asserting fit credibility."""
     from seeband_core.demo_dataset import load_demo_dataset
     from seeband_core.model_catalog import registry
     from seeband_core.model_interface import FitRequest
@@ -233,6 +228,8 @@ def test_a_start_at_fermi_energy_0_still_converges_at_its_start():
     )
 
     assert result.status == "converged"
-    assert result.iterations == 2
-    for name in ("m_eff", "band_gap", "fermi_energy"):
-        assert result.parameters[name] == start[name]
+    assert result.iterations is not None and result.iterations > 0
+    assert any(
+        abs(result.parameters[name] - start[name]) > 1e-6
+        for name in ("m_eff", "band_gap", "fermi_energy")
+    )

@@ -13,6 +13,7 @@ import numpy as np
 import pytest
 from seeband_core import band_models, fit_module
 from seeband_core.band_models import parabolic_band
+from seeband_core.math_module import ChemicalPotentialError
 from seeband_core.model_catalog import registry
 from seeband_core.model_interface import (
     BandDiagramRequest,
@@ -1091,6 +1092,10 @@ def test_updates_of_a_hall_fit_keep_the_start_value_of_m1() -> None:
         (ValueError("Inconsistent shapes between bounds and `x0` 123.456"), "fit the bounds"),
         (ValueError("Residuals are not finite in the initial point 123.456"), "not finite"),
         (RuntimeError("Optimal parameters not found: 123.456"), "limit of function evaluations"),
+        (
+            ChemicalPotentialError(123.456, "density residual exceeds tolerance", 0.1),
+            "chemical-potential balance",
+        ),
         (TypeError("can't multiply 123.456"), "internal error"),
         (IndexError("index 123.456 is out of bounds"), "internal error"),
         (RecursionError("too deep 123.456"), "internal error"),
