@@ -37,6 +37,11 @@ function parsedS(
       [200, 200],
       [300, 300],
     ],
+    preview_text: [
+      ["100", "100"],
+      ["200", "200"],
+      ["300", "300"],
+    ],
     preview_si: [
       [100, 1e-4],
       [200, 2e-4],
@@ -234,12 +239,13 @@ test("a table shows the first value in SI next to its unit", async ({
       mimeType: "text/plain",
       buffer: Buffer.from("T S\n100 100\n"),
     });
-  await expect(page.getByText("1,000e+2 V/K")).toBeVisible();
+  // The value as the file writes it, in the unit it is read in.
+  await expect(page.getByText("100 V/K", { exact: true })).toBeVisible();
 
   await pick(page, page.getByRole("combobox", { name: "Unit of S" }), "µV/K");
 
   await expect(
-    page.getByText("1,000e+2 µV/K = 1,000e-4 V/K in SI"),
+    page.getByText("100 µV/K = 1,000e-4 V/K in SI", { exact: true }),
   ).toBeVisible();
   expect(bodies[1]?.mapping).toEqual([
     { column: 0, role: "temperature", unit: "K" },
