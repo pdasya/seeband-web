@@ -1,5 +1,26 @@
 # Model conventions
 
+## SPB Hall
+
+For the enabled SPB Hall mode, `x = sign(m) μ(T)/T`, where μ(T) conserves
+the carrier density set by E_F at zero temperature. The signed mass m is in
+units of mₑ: positive for electrons and negative for holes. A point with signed reduced potential
+`x > 700` is outside the supported integral range and returns NaN. For
+acoustic scattering,
+
+`R_H n e = -sign(m) 3 F_{-1/2}(x) F_{1/2}(x) / (4 F_0(x)^2)`.
+
+Here F_j are unnormalised Fermi integrals, n is the positive carrier density
+in m⁻³, e is the positive elementary charge, and the scattering exponent is
+λ = 0. The magnitude approaches 1 and 3π/8 in the degenerate and
+nondegenerate limits, respectively.
+
+The fitted Hall amplitude is `E = -sign(m) |m|^(3/2)` and its inverse is
+`m = -sign(E) |E|^(2/3)`. Mixed-scattering `C` is dimensionless at 300 K.
+Reported band-mass errors are conditional on the Seebeck-stage `E_F`.
+See the [SPB Hall fit notes](../../packages/seeband_core/docs/spb-hall-fit.md).
+Human physicist confirmation remains pending.
+
 ## DPB mass and degeneracy
 
 Let N = N₂/N₁. The public parameter `m_eff`, displayed as m₂/m₁, is the
@@ -13,13 +34,20 @@ R coordinates. The carrier-density weight is N |R|^(3/2) and the transport
 weight is N/R. At N = 1 the P6 conversion is the identity.
 
 R is the ratio of single-valley band masses, not of density-of-states
-masses: entering m_d,2/m_d,1 would count N twice. The transport weight N/R
-holds for λ = 0 acoustic deformation-potential scattering with the same
-deformation potential and elastic constant in both bands, isotropic valleys
-whose band mass serves for both density and conduction, and no inter-valley
-or inter-band scattering, so that σᵢ ∝ Nᵢ/mᵢ. Other scattering gives another
-weight. For R < 0 the signed weight N/R is the open #104, under which the
-total conductivity vanishes at R = −N.
+masses: entering m_d,2/m_d,1 would count N twice. For R > 0, the transport
+weight N/R holds for λ = 0 acoustic deformation-potential scattering with
+the same deformation potential and elastic constant in both bands,
+isotropic valleys whose band mass serves for both density and conduction,
+and no inter-valley or inter-band scattering. Under these assumptions the
+positive longitudinal mass/valley prefactor is Nᵢ/|mᵢ|; band occupations
+and scattering factors still enter the conductivity. This is not a formula
+for the entire conductivity independent of band filling. Other scattering
+mechanisms need different transport factors.
+
+For R < 0 the signed S-only transport weight N/R is the open #104. In this
+S-only expression, cancellation at R = −N requires equal band occupation
+integrals, as for coincident band edges (E_g = 0); it is not a general result
+for negative R or for other transport weights.
 
 The separate iterative-mode output/bounds inconsistency remains flagged
 by `dpb_loop_degeneracy` (#85). P6 repairs the S-only mismatch and does not
