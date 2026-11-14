@@ -235,7 +235,7 @@ class _BandModel:
         not_fitted = sorted(name for name in request.held if name not in fitted)
         if not_fitted:
             raise ValueError(f"Fit mode {fit_mode.id} does not fit parameters {not_fitted}")
-        if fitted and fitted <= request.held:
+        if fitted and fitted <= frozenset(request.held):
             raise ValueError("A fit needs at least one parameter that is not held")
         for quantity in fit_mode.quantities:
             if quantity in request.measurements:
@@ -378,8 +378,10 @@ class _BandModel:
             callback = on_iteration
 
             def report(iteration: int, values: list[float]) -> None:
-                # A parameter fitted after the loop is not in `values`, so it keeps its start.
+                # A parameter fitted after the loop is not in `values`, so it keeps its start. A
+                # held one goes back as sent, not through the loop's units, such as m_eff / N * N.
                 latest.update(zip(names, values, strict=False))
+                latest.update({name: request.start[name] for name in request.held})
                 try:
                     callback(IterationUpdate(iteration, dict(latest)))
                 except FitStopped:

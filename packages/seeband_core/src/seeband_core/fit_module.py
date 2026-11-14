@@ -44,8 +44,17 @@ def _curve_fit_holding(
     bounds: Any,
     **kwargs: Any,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Run `curve_fit` on the values not held, with the held ones in their places."""
+    """Run `curve_fit` on the values not held, with the held ones in their places.
+
+    A held value must lie within its bounds, as `curve_fit` asks of a start: the solver never sees
+    it, so nothing else would refuse an A below 0 or an m1 of 0.
+    """
     start = np.asarray(p0, dtype=float)
+    lower = np.asarray(bounds[0], dtype=float)
+    upper = np.asarray(bounds[1], dtype=float)
+    positions = sorted(held)
+    if np.any(start[positions] < lower[positions]) or np.any(start[positions] > upper[positions]):
+        raise ValueError("A held value lies outside its bounds")
     free = [index for index in range(len(start)) if index not in held]
     covariance = np.full((len(start), len(start)), np.nan)
     if not free:
@@ -56,8 +65,6 @@ def _curve_fit_holding(
         full[free] = values
         return function(x, *full)
 
-    lower = np.asarray(bounds[0], dtype=float)
-    upper = np.asarray(bounds[1], dtype=float)
     fitted, free_covariance = opt.curve_fit(
         reduced, xdata, ydata, p0=start[free], bounds=(lower[free], upper[free]), **kwargs
     )

@@ -1479,7 +1479,7 @@ def test_a_held_value_has_no_covariance_and_the_others_are_fitted() -> None:
         ("spb_s", None, {"band_mass"}, "does not fit parameters"),
         # F belongs to dis, not acPh.
         ("dpb_s_rho", "acPh", {"F"}, "does not fit parameters"),
-        ("dpb_s_rho", "acPh", {"nothing"}, "has no parameters|does not fit parameters"),
+        ("dpb_s_rho", "acPh", {"nothing"}, "does not fit parameters"),
         ("spb_s", None, {"fermi_energy"}, "at least one parameter that is not held"),
     ],
 )
@@ -1489,3 +1489,209 @@ def test_holding_what_the_fit_does_not_find_or_everything_is_an_error(
     model_id = fit_mode_id.split("_")[0]
     with pytest.raises(ValueError, match=message):
         fit(model_id, fit_mode_id, scattering, held)
+
+
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize(
+    ("model_id", "fit_mode_id", "name", "value"),
+    [
+        ("dpb", "dpb_s_rho", "A", -1.0),
+        ("dpb", "dpb_s_rho", "band_gap", -6001.0),
+        ("dpb", "dpb_s_rho_rh", "m1", 0.0),
+        ("spb", "spb_s_rho", "A", -1.0),
+    ],
+)
+def test_a_held_value_outside_its_bounds_fails_as_a_start_would(
+    model_id: str, fit_mode_id: str, name: str, value: float
+) -> None:
+    # The solver never sees a held value, so without this an A below 0 came back converged.
+    model = registry.get(model_id)
+    fit_mode = model.describe().fit_mode(fit_mode_id)
+    start = default_start(fit_mode) | {name: value}
+    request = FitRequest(fit_mode_id, recorded_measurements(fit_mode), start, scattering="acPh")
+
+    held = model.fit(dataclasses.replace(request, held=frozenset({name})))
+    free = model.fit(request)
+
+    assert held.status == free.status == "failed"
+    assert held.message == free.message == "The start values do not fit the bounds."
+
+
+@pytest.mark.filterwarnings("ignore")
+def test_iteration_updates_carry_a_held_value_exactly() -> None:
+    # The loop holds m_eff / N, so N = 3 would stream 0.8300000000000001 for 0.83.
+    model = registry.get("dpb")
+    fit_mode = model.describe().fit_mode("dpb_s_rho")
+    start = default_start(fit_mode) | {"m_eff": 0.83}
+    updates: list[IterationUpdate] = []
+
+    result = model.fit(
+        FitRequest(
+            "dpb_s_rho",
+            recorded_measurements(fit_mode),
+            start,
+            scattering="acPh",
+            band_1_degeneracy=1.0,
+            band_2_degeneracy=3.0,
+            held=frozenset({"m_eff"}),
+        ),
+        on_iteration=updates.append,
+    )
+
+    assert updates
+    assert all(update.parameters["m_eff"] == 0.83 for update in updates)
+    assert result.parameters["m_eff"] == 0.83
+
+
+def _limits(fit_mode: FitMode, name: str) -> tuple[float, float]:
+    bounds = {spec.name: spec.fit_bounds for spec in fit_mode.parameters}[name]
+    assert bounds is not None
+    return bounds.lower, bounds.upper
+
+
+@pytest.mark.filterwarnings("ignore")
+def test_a_held_fermi_energy_in_spb_hall_fits_as_a_fit_written_by_hand() -> None:
+    # With E_F held, the S stage is skipped: rho takes the start E_F, then R_H fits E.
+    model = registry.get("spb")
+    fit_mode = model.describe().fit_mode("spb_s_rho_rh")
+    data = recorded_measurements(fit_mode)
+    start = default_start(fit_mode) | {"band_mass": -1.0, "fermi_energy": -100.0}
+    result = model.fit(
+        FitRequest(fit_mode.id, data, start, scattering="acPh", held=frozenset({"fermi_energy"}))
+    )
+
+    temperature_rho, rho = data["resistivity"].temperature_k, data["resistivity"].values
+    temperature_hall, hall = data["hall"].temperature_k, data["hall"].values
+    mass, fermi = start["band_mass"], start["fermi_energy"]
+    f0 = te.spb_fermiInt_vs_temp(
+        s=0, T=temperature_rho, mass_sign=np.sign(mass), fermi_energy=fermi
+    )
+    low_a, high_a = _limits(fit_mode, "A")
+    a, _ = opt.curve_fit(
+        lambda T, value: te.spb_rho_vs_temp_acPh(T, f0, value, scal_fac=1e8),
+        temperature_rho,
+        rho * 1e8,
+        p0=[start["A"]],
+        bounds=([low_a], [high_a]),
+        maxfev=50_000,
+    )
+    low_m, high_m = _limits(fit_mode, "band_mass")
+    high_m = min(0.0, high_m)
+    energy, _ = opt.curve_fit(
+        lambda T, value: te.spb_hall_vs_temp(T, fermi, np.sign(mass), value, scal_fac=1e10),
+        temperature_hall,
+        hall * 1e10,
+        p0=[-np.sign(mass) * abs(mass) ** 1.5],
+        bounds=(
+            [-np.sign(high_m) * abs(high_m) ** 1.5],
+            [-np.sign(low_m) * abs(low_m) ** 1.5],
+        ),
+        maxfev=5000,
+    )
+
+    assert result.status == "converged"
+    assert result.parameters["A"] == pytest.approx(a[0], rel=1e-12)
+    assert result.parameters["band_mass"] == pytest.approx(
+        -np.sign(energy[0]) * abs(energy[0]) ** (2 / 3), rel=1e-12
+    )
+
+
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize("held", ["m_eff", "band_gap"])
+def test_a_held_parameter_in_a_dpb_loop_at_n_2_fits_as_a_loop_written_by_hand(held: str) -> None:
+    # The loop fits m_eff / N, so a held m_eff enters as start / N (D12), and the P5 stop rule
+    # needs every free change within the threshold.
+    model = registry.get("dpb")
+    fit_mode = model.describe().fit_mode("dpb_s_rho")
+    data = recorded_measurements(fit_mode)
+    degeneracy = 2.0
+    start = default_start(fit_mode)
+    result = model.fit(
+        FitRequest(
+            fit_mode.id,
+            data,
+            start,
+            scattering="acPh",
+            band_1_degeneracy=1.0,
+            band_2_degeneracy=degeneracy,
+            held=frozenset({held}),
+        )
+    )
+
+    temperature_s, seebeck = data["seebeck"].temperature_k, data["seebeck"].values
+    temperature_rho, rho = data["resistivity"].temperature_k, data["resistivity"].values
+    band_names = ("m_eff", "band_gap", "fermi_energy")
+    see = [start["m_eff"], start["band_gap"], start["fermi_energy"]]
+    if held == "m_eff":
+        see[0] = see[0] / degeneracy
+    see_bounds = (
+        [_limits(fit_mode, name)[0] for name in band_names],
+        [_limits(fit_mode, name)[1] for name in band_names],
+    )
+    scattering = [start["A"], start["B"]]
+    scattering_bounds = (
+        [_limits(fit_mode, "A")[0], _limits(fit_mode, "B")[0]],
+        [_limits(fit_mode, "A")[1], _limits(fit_mode, "B")[1]],
+    )
+    held_at = band_names.index(held)
+    free = [index for index in range(3) if index != held_at]
+    previous = [see[0] / degeneracy, see[1], see[2], *scattering]
+    iterations = 1
+    while True:
+        b, kept = scattering[1], see[held_at]
+
+        def model_s(T: Any, *values: float, b: float = b, kept: float = kept) -> Any:
+            full = [0.0, 0.0, 0.0]
+            full[held_at] = kept
+            for index, value in zip(free, values, strict=True):
+                full[index] = value
+            return te.dpb_see_vs_temp_single_scatter(
+                temperature_s, full[0], full[1], full[2], degeneracy, b, scal_fac=1e6
+            )
+
+        fitted, _ = opt.curve_fit(
+            model_s,
+            temperature_s,
+            seebeck * 1e6,
+            p0=[see[index] for index in free],
+            bounds=([see_bounds[0][i] for i in free], [see_bounds[1][i] for i in free]),
+            maxfev=1000,
+        )
+        for index, value in zip(free, fitted, strict=True):
+            see[index] = value
+        f1, f2 = te.dpb_fermiInt_vs_temp(
+            s=0, T=temperature_rho, mass=see[0], gap=see[1], fermi_energy=see[2], degen=degeneracy
+        )
+        fitted_rho, _ = opt.curve_fit(
+            lambda T, a, b, f1=f1, f2=f2, mass=see[0]: te.dpb_rho_vs_temp_acPh(
+                T, f1, f2, a, b, mass, scal_fac=1e8
+            ),
+            temperature_rho,
+            rho * 1e8,
+            p0=scattering,
+            bounds=scattering_bounds,
+            maxfev=50_000,
+        )
+        scattering = list(fitted_rho)
+        current = [see[0], see[1], see[2], *scattering]
+        changes = [
+            0.0 if old == 0 and new == 0 else abs((new - old) / old)
+            for new, old in zip(current, previous, strict=True)
+        ]
+        if all(change <= fit_mode.threshold for change in changes):
+            break
+        previous = current
+        iterations += 1
+
+    expected = {
+        "m_eff": see[0] * degeneracy,
+        "band_gap": see[1],
+        "fermi_energy": see[2],
+        "A": scattering[0],
+        "B": scattering[1],
+    }
+    assert result.iterations == iterations
+    assert result.parameters[held] == start[held]
+    for name, value in expected.items():
+        if name != held:
+            assert result.parameters[name] == pytest.approx(value, rel=1e-12), name
