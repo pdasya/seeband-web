@@ -68,6 +68,7 @@ Unit = Literal[
     "Ohm*cm",
     "mOhm*cm",
     "uOhm*m",
+    "uOhm*cm",
     "S/m",
     "S/cm",
     "m^3/C",
@@ -127,6 +128,7 @@ UNITS: Mapping[Role, Mapping[Unit, Conversion]] = {
         "Ohm*cm": Conversion(-2),
         "mOhm*cm": Conversion(-5),
         "uOhm*m": Conversion(-6),
+        "uOhm*cm": Conversion(-8),
     },
     "conductivity": {"S/m": Conversion(), "S/cm": Conversion(2)},
     "hall": {"m^3/C": Conversion(), "cm^3/C": Conversion(-6)},
@@ -140,6 +142,7 @@ _HEADER_UNITS: Mapping[Role, Mapping[str, Unit]] = {
         "ohmcm": "Ohm*cm",
         "mohmcm": "mOhm*cm",
         "uohmm": "uOhm*m",
+        "uohmcm": "uOhm*cm",
     },
     "conductivity": {
         "s/m": "S/m",
