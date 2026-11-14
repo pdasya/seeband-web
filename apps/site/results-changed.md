@@ -19,7 +19,13 @@ solve, stable negative F₁/₂ tail and rejection of analytically invalid optim
 trial points. Invalid starts and uncertifiable density roots fail explicitly;
 transport underflow can still yield nonfinite points. See the
 [solver contract](../../packages/seeband_core/docs/chemical-potential.md).
-P9 remains a separate pending change.
+Core `0.1.2` adds P9: neural-net selection uses the actual minimum and maximum
+temperatures, and paired rows are sorted on a copy before preparing the input.
+Direct callers sending unsorted rows can receive a net or a different net
+compared with earlier versions. Parsed web uploads are already sorted, so
+this correction leaves their initial values unchanged. Estimates remain
+starting values without a known error bar; no measurements are removed or
+averaged.
 
 P10 adds result-version and provenance metadata only; it does not change
 formulas or fitting. Core version `0.1.0` is the first traceable version.

@@ -41,6 +41,7 @@ Human physicist confirmation remains pending.
 in core 0.1.0 and the remaining confirmation gates.
 
 Core `0.1.1` adds the P8 solver and domain-aware fitting described above.
+Core `0.1.2` adds P9 neural-net selection from the actual temperature span.
 Core version `0.1.0` is the first traceable `seeband_core` version. Earlier
 results may have been produced by different corrected states while reporting
 `0.0.0`; a missing version is unknown and must not be inferred from this
@@ -54,6 +55,13 @@ This metadata does not approve a scientific release. Human physicist
 confirmation and the desktop comparison tracked by #71 remain open; author
 review #80 was closed at the project owner’s request; author contact and
 confirmation remain pending.
+
+## Neural-net initial values
+
+P9 chooses the first supported neural-net range covered by the actual minimum
+and maximum temperatures. Paired T–S rows are sorted on a copy before
+preparing the input; no measurements are removed or averaged. A network
+estimate is only a starting value, not evidence that a model fits the sample.
 
 ## DPB mass and degeneracy
 

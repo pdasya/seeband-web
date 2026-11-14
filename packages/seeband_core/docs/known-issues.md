@@ -49,7 +49,7 @@ P4/P12 (#83, #103) remove the SPB Hall disabled-mode and stale-Fermi-energy flag
 - **No chemical potential in DPB (#106)** has no simple condition on the inputs, unlike SPB.
 - **E_F inside the gap (#107)** cannot be told from a good fit by its inputs alone, and `at_bounds` and `parameter_errors` report part of it.
 - **`underdetermined` interpolation** has no issue that fixes it, because it describes the data. `InterpolatedData` reports it.
-- **Choosing a net by the first and last rows (P9)** does not reach this path, because the parser sorts (D22). A client can send `POST /api/guess` unsorted rows, and its answer then carries the warning `unsorted_temperature`. It belongs to no mode, so it is not an entry here.
+- **Neural-net range selection (P9)** now uses actual Tmin/Tmax and sorts paired input rows before inference. The parser already sorts files (D22), and direct `POST /api/guess` callers now get the same range and prediction for reordered distinct-temperature rows. `unsorted_temperature` remains input provenance. It belongs to no mode, so it is not a registry entry.
 - **Missing desktop coverage (#71)** remains open, including the desktop/web
   parity gate; corrected web results do not establish desktop parity.
 

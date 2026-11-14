@@ -327,7 +327,7 @@ export interface components {
          *     by name with its unit: `electrical_conductivity_s_per_m` is 1/rho, with null for a rho of 0 or
          *     below. They use no model, so they go with the data the request sent, interpolated or not.
          * @example {
-         *       "core_version": "0.1.1",
+         *       "core_version": "0.1.2",
          *       "curves": {
          *         "resistivity_ohm_m": [
          *           0.000036627,
@@ -378,7 +378,7 @@ export interface components {
             /**
              * Core Version
              * @description Core software version for provenance, not certification.
-             * @default 0.1.1
+             * @default 0.1.2
              */
             core_version?: string;
             /** Curves */
@@ -767,7 +767,7 @@ export interface components {
          *     start would. Holding m1, or the SPB Hall mass, skips the R_H stage.
          * @example {
          *       "at_bounds": [],
-         *       "core_version": "0.1.1",
+         *       "core_version": "0.1.2",
          *       "held": [],
          *       "known_issues": [],
          *       "parameter_errors": {
@@ -791,7 +791,7 @@ export interface components {
             /**
              * Core Version
              * @description Core software version for provenance, not certification.
-             * @default 0.1.1
+             * @default 0.1.2
              */
             core_version?: string;
             /**
@@ -871,9 +871,9 @@ export interface components {
         };
         /**
          * GuessNoNet
-         * @description No net fits: the first and last rows do not span any of `available_ranges`.
+         * @description No net fits the actual minimum and maximum temperatures.
          *
-         *     A client should keep its current values, as the desktop does.
+         *     Legacy first/last fields report the minimum/maximum. Keep the current values.
          */
         GuessNoNet: {
             /**
@@ -916,7 +916,7 @@ export interface components {
          * @description Measured Seebeck data, in V/K, with all rows of the data.
          *
          *     Unlike `POST /api/calc`, this takes every row and not only the fit range, as the desktop does.
-         *     Rows are read in the order sent, and the choice of net reads the first and last.
+         *     The net is chosen from actual Tmin/Tmax; paired rows are sorted before preparing its input.
          * @example {
          *       "model": "dpb",
          *       "seebeck_v_per_k": [
@@ -971,7 +971,7 @@ export interface components {
         /**
          * HealthResponse
          * @example {
-         *       "core_version": "0.1.1",
+         *       "core_version": "0.1.2",
          *       "status": "ok",
          *       "version": "1.0.0"
          *     }
@@ -987,7 +987,7 @@ export interface components {
             /**
              * Core Version
              * @description Core software version for provenance, not certification.
-             * @default 0.1.1
+             * @default 0.1.2
              */
             core_version?: string;
         };

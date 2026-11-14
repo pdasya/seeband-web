@@ -11,10 +11,14 @@ SPB numerical initial estimates and DPB neural guesses are described in [Initial
 ## Calculation versions
 
 `seeband_core.__version__` is the package version source. Core `0.1.0`
-identifies the P2–P7 calculation state; the API reports it as `core_version`
-on health, curve and fit responses. The API's own `version` remains separate.
+identifies the P2–P7 calculation state. Core `0.1.1` adds P8, and core `0.1.2`
+adds P9 neural-net selection from actual Tmin/Tmax with paired-row sorting
+on a copy. Direct callers with unsorted rows can receive different initial
+values; already sorted inputs retain their results. The API reports the
+installed core as `core_version` on health, curve and fit responses. The API's
+own `version` remains separate.
 Future changes that can alter calculated results need a new core version and
-an updated results note; pending fixes must not silently reuse `0.1.0`.
+an updated results note; pending fixes must not silently reuse the previous version.
 
 Exports distinguish the core that produced a fit or curve from the server
 queried during export. Older results without provenance remain unknown.

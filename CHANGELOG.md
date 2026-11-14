@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- P9 (#88), core `0.1.2`: choose the DPB neural network from the actual minimum and
+  maximum temperatures, then sort paired temperature/Seebeck rows before
+  preparing its input. Reversed or shuffled distinct-temperature rows now use
+  the same network and prediction as sorted data. Keep the unsorted-input provenance warning,
+  with corrected wording. Legacy no-net first/last fields now report actual
+  minimum/maximum coverage. Network weights, range priority, polynomial
+  degree and fit criteria are unchanged. Preserve original desktop captures
+  and record the corrected reversed-row expectation separately.
+
 - P8 (#87), core `0.1.1`: solve the signed carrier balance independently at
   each temperature with a checked bracketed method. Use the same negative-tail
   Fermi approximation in a stable algebraic form. Reject analytically invalid

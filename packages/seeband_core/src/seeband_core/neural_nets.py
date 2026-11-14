@@ -1,7 +1,7 @@
 """Neural net start values for DPB fits, ported from SeeBand modules/neural_nets.py.
 
-Each net is four dense layers, run here with numpy instead of TensorFlow. Every step keeps the
-desktop's behaviour, including choosing the net from the first and last rows, which P9 fixes.
+Each net is four dense layers, run here with numpy instead of TensorFlow. P9 chooses the net
+from the real temperature span and orders paired rows before preparing its input.
 """
 
 import math
@@ -61,16 +61,17 @@ class NeuralNetGuess:
 
 @dataclass(frozen=True)
 class NoNeuralNet:
-    """No net fits the data. The first and last temperatures are what the choice was based on."""
+    """No net fits the data; legacy first/last names hold the minimum/maximum temperature."""
 
     first_temperature_k: float
     last_temperature_k: float
 
 
 def select_range(temperature_k: np.ndarray) -> tuple[int, int] | None:
-    """Return the first net range spanned by the first and last rows, or None."""
+    """Return the first net range spanned by the actual minimum and maximum, or None."""
+    minimum_k, maximum_k = np.min(temperature_k), np.max(temperature_k)
     for low_k, high_k in NET_RANGES_K:
-        if temperature_k[0] <= low_k and temperature_k[-1] >= high_k:
+        if minimum_k <= low_k and maximum_k >= high_k:
             return low_k, high_k
     return None
 
@@ -88,7 +89,7 @@ def interpolate_seebeck(
 
 
 def temperatures_are_sorted(temperature_k: np.ndarray) -> bool:
-    """Say whether the rows rise. If not, the first and last rows are not the real span (P9)."""
+    """Say whether the submitted rows rise, for input-provenance warnings."""
     return bool(np.all(temperature_k[:-1] <= temperature_k[1:]))
 
 
@@ -201,6 +202,8 @@ def predict_band_parameters(
     temperature_k: np.ndarray, seebeck_v_per_k: np.ndarray
 ) -> NeuralNetGuess | NoNeuralNet:
     """Predict DPB start values. Non-finite values can come back in a guess, as on the desktop."""
+    order = np.argsort(temperature_k, kind="stable")
+    temperature_k, seebeck_v_per_k = temperature_k[order], seebeck_v_per_k[order]
     range_k = select_range(temperature_k)
     if range_k is None:
         return NoNeuralNet(float(temperature_k[0]), float(temperature_k[-1]))
