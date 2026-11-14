@@ -11,9 +11,10 @@ import {
   quantityMark,
   resultIssues,
   resultRows,
+  rmseSymbol,
 } from "@/model/resultSummary";
 import type { FitModeDescription, ModelDescription } from "@/model/selection";
-import type { FitResult } from "@/session/store";
+import type { FitResult, SessionData } from "@/session/store";
 import { STRINGS } from "@/strings";
 
 const models = MODELS.models as ModelDescription[];
@@ -35,6 +36,21 @@ const RESULT: FitResult = {
 const done = (result: Partial<FitResult>) =>
   ({ status: "done", result: { ...RESULT, ...result } }) as const;
 const NO_FLAGS = { fit: [], measured: [], derived: [] };
+
+describe("rmseSymbol", () => {
+  const entry = (loadedAs: "resistivity" | "conductivity") =>
+    ({ measurement: { loaded_as: loadedAs } }) as unknown as SessionData;
+
+  test("is ρ = 1/σ where ρ came from a σ file, as the RMSE compares with 1/σ", () => {
+    expect(
+      rmseSymbol("resistivity", { resistivity: entry("conductivity") }),
+    ).toBe("ρ = 1/σ");
+    expect(
+      rmseSymbol("resistivity", { resistivity: entry("resistivity") }),
+    ).toBe("ρ");
+    expect(rmseSymbol("seebeck", {})).toBe("S");
+  });
+});
 
 describe("fitIterations", () => {
   test("comes from the state a fit is in", () => {

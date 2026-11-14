@@ -78,9 +78,9 @@ export const STRINGS = {
     title: "Data",
     subtitle: {
       separate:
-        "Each file: T and the value, in the units its header names or the ones you choose. With neither: T in K, S in V/K, ρ in Ω·m, R_H in m³/C.",
+        "Each file: T and the value, in the units its header names or the ones you choose. With neither: T in K, S in V/K, ρ in Ω·m or σ in S/m, R_H in m³/C.",
       single:
-        "One table: a column for T, and for each quantity, in the units its header names or the ones you choose. With neither: T in K, S in V/K, ρ in Ω·m, R_H in m³/C.",
+        "One table: a column for T, and for each quantity, in the units its header names or the ones you choose. With neither: T in K, S in V/K, ρ in Ω·m or σ in S/m, R_H in m³/C.",
     },
     dropHint: "Drop a file or browse",
     source: {
@@ -166,6 +166,12 @@ export const STRINGS = {
       "The column names of this file do not match its columns. Choose what its columns hold.",
     belowZeroForRho:
       "Some values are below 0, which a resistivity cannot have.",
+    readAsLabel: "Load ρ, or σ in its place",
+    readAsInverse: "read as ρ = 1/σ",
+    /** The symbol of ρ where it is 1/σ of a σ file, as an RMSE of it compares with 1/σ. */
+    inverseSigma: "ρ = 1/σ",
+    belowZeroForSigma:
+      "Some values are 0 or below, which a conductivity cannot have.",
     chooseColumns: (symbol: string) =>
       `Choose the column that holds ${symbol}, or another quantity. The file loads once T and one quantity are chosen.`,
     slotBusy: (title: string) =>
@@ -195,6 +201,8 @@ export const STRINGS = {
       "Ohm*m": "Ω·m",
       "mOhm*cm": "mΩ·cm",
       "uOhm*m": "µΩ·m",
+      "S/m": "S/m",
+      "S/cm": "S/cm",
       "m^3/C": "m³/C",
       "cm^3/C": "cm³/C",
     },
@@ -205,6 +213,7 @@ export const STRINGS = {
     quantities: {
       seebeck: { symbol: "S", title: "Seebeck coefficient", unit: "V/K" },
       resistivity: { symbol: "ρ", title: "Resistivity", unit: "Ω·m" },
+      conductivity: { symbol: "σ", title: "Conductivity", unit: "S/m" },
       hall: { symbol: "R_H", title: "Hall coefficient", unit: "m³/C" },
     },
     issues: {
@@ -224,6 +233,10 @@ export const STRINGS = {
         "A temperature of 0 K or below. If this column is in °C, choose °C for it.",
       negative_resistivity:
         "A resistivity below 0, which no measurement gives.",
+      non_positive_conductivity:
+        "A conductivity of 0 or below, which has no resistivity.",
+      resistivity_and_conductivity:
+        "A file can hold ρ or σ, not both. Choose one of them.",
       repeated_role: "A quantity is assigned twice.",
       preamble_skipped: "A line of text before the header was left out.",
       header_mismatch: "The header has a different number of columns.",
@@ -263,6 +276,9 @@ export const STRINGS = {
     bandGapMetric: (gap: string, unit: string) => `E_g = ${gap} ${unit}`,
     conductivityDescription: "Chart of σ against temperature",
     conductivityPoints: "1/ρ of the data",
+    conductivityPointsFromSigma: "σ data",
+    conductivityPointsFromSigmaNote:
+      "Points are the loaded σ data in the fit range, as 1/ρ of the ρ = 1/σ a fit uses. The line is the model's σ.",
     conductivityPointsInterpolated: "1/ρ of the interpolated data",
     conductivityPointsNote:
       "Points are 1/ρ of the ρ data in the fit range, which the server calculates. The line is the model's σ.",
@@ -350,6 +366,9 @@ export const STRINGS = {
     model: "Model",
     measurements: "Measurements",
     measurementsDemo: "Measurements (demo)",
+    measurementsFromSigma: "1/σ of the σ data",
+    resistivityFromSigmaNote:
+      "Points are 1/σ of the loaded σ data, which the server calculates. The fit and its RMSE use them as ρ.",
     interpolated: "Interpolated",
     updating: "Updating…",
     lastCurveStays: "The last curve stays on the chart.",
@@ -545,6 +564,8 @@ export const STRINGS = {
         `Interpolated ${quantity} only over ${minK}-${maxK} K, where its data end`,
       degeneracies: (n1: string, n2: string) =>
         `Band degeneracies N1 = ${n1}, N2 = ${n2}`,
+      fromConductivity:
+        "rho is 1/sigma of the loaded conductivity data, so its RMSE compares the fit with 1/sigma",
       fit: (status: string, iterations: number | null) =>
         iterations === null
           ? `Fit ${status}`
@@ -561,6 +582,8 @@ export const STRINGS = {
     columns: {
       temperature: "Temperature [K]",
       experimental: (quantity: string) => `Experimental ${quantity}`,
+      experimentalFromSigma: (quantity: string) =>
+        `Experimental ${quantity}, 1/sigma of the loaded conductivity`,
       interpolated: (quantity: string) => `Interpolated ${quantity}`,
       preFit: (quantity: string) => `Pre-fit ${quantity}`,
       fit: (quantity: string) => `Fit ${quantity}`,

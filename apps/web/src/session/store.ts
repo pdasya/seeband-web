@@ -6,12 +6,35 @@ import type { UnitDoubt } from "@/data/units";
 
 type Schemas = components["schemas"];
 
-export type Quantity = NonNullable<Schemas["ParseRequest"]["expected"]>;
+/** A quantity a fit uses. A conductivity loads as the resistivity 1/σ, so it is not one. */
+export type Quantity = Schemas["FitStageResponse"]["quantity"];
+/** What a file can hold for a quantity: the quantity itself, or σ in place of ρ. */
+export type LoadedQuantity = NonNullable<Schemas["ParseRequest"]["expected"]>;
 export const QUANTITIES: readonly Quantity[] = [
   "seebeck",
   "resistivity",
   "hall",
 ];
+/** What a file can hold, in the order a choice lists them: σ beside ρ, which it takes the place of. */
+export const LOADED_QUANTITIES: readonly LoadedQuantity[] = [
+  "seebeck",
+  "resistivity",
+  "conductivity",
+  "hall",
+];
+
+/** The quantity a fit takes from what a file held: ρ = 1/σ for a conductivity. */
+export function quantityOf(loaded: LoadedQuantity): Quantity {
+  return loaded === "conductivity" ? "resistivity" : loaded;
+}
+
+/** What the data of a quantity were loaded as, which is the quantity itself unless ρ came from σ. */
+export function loadedAs(
+  quantity: Quantity,
+  data: Pick<SessionData, "measurement"> | undefined,
+): LoadedQuantity {
+  return data?.measurement.loaded_as ?? quantity;
+}
 export type ParsedTable = Schemas["ParseResponse"];
 export type ColumnRole = Schemas["ColumnRole"];
 export type ModelSettings = Pick<

@@ -404,9 +404,9 @@ export interface components {
              * Role
              * @enum {string}
              */
-            role: "temperature" | "seebeck" | "resistivity" | "hall";
+            role: "temperature" | "seebeck" | "resistivity" | "conductivity" | "hall";
             /** Unit */
-            unit?: ("K" | "C" | "V/K" | "uV/K" | "Ohm*m" | "mOhm*cm" | "uOhm*m" | "m^3/C" | "cm^3/C") | null;
+            unit?: ("K" | "C" | "V/K" | "uV/K" | "Ohm*m" | "mOhm*cm" | "uOhm*m" | "S/m" | "S/cm" | "m^3/C" | "cm^3/C") | null;
         };
         /**
          * CurveAvailabilityResponse
@@ -990,7 +990,7 @@ export interface components {
              * Code
              * @enum {string}
              */
-            code: "no_data" | "wrong_encoding" | "line_too_long" | "too_many_problems" | "too_few_columns" | "wrong_column_count" | "missing_value" | "not_numeric" | "not_finite" | "decimal_comma" | "too_few_rows" | "missing_temperature" | "non_positive_temperature" | "negative_resistivity" | "repeated_role" | "unit_not_allowed" | "preamble_skipped" | "header_mismatch" | "unit_differs" | "repeated_header" | "columns_need_assigning" | "expected_not_found" | "no_quantity" | "few_rows" | "unsorted_temperature" | "duplicate_temperature" | "unit_assumed" | "implausible_magnitude";
+            code: "no_data" | "wrong_encoding" | "line_too_long" | "too_many_problems" | "too_few_columns" | "wrong_column_count" | "missing_value" | "not_numeric" | "not_finite" | "decimal_comma" | "too_few_rows" | "missing_temperature" | "non_positive_temperature" | "negative_resistivity" | "non_positive_conductivity" | "resistivity_and_conductivity" | "repeated_role" | "unit_not_allowed" | "preamble_skipped" | "header_mismatch" | "unit_differs" | "repeated_header" | "columns_need_assigning" | "expected_not_found" | "no_quantity" | "few_rows" | "unsorted_temperature" | "duplicate_temperature" | "unit_assumed" | "implausible_magnitude";
             /** Line */
             line?: number | null;
             /** Column */
@@ -1050,6 +1050,10 @@ export interface components {
         /**
          * MeasurementResponse
          * @description Measured data sorted by temperature, in V/K, ohm m or m^3/C, and its size and range.
+         *
+         *     `loaded_as` is what the text held: the quantity itself, or `conductivity` for a resistivity
+         *     that the core computed as 1/sigma from a column of sigma. Its interpolation, fits and RMSE all
+         *     use that resistivity.
          */
         MeasurementResponse: {
             /** Temperature K */
@@ -1062,6 +1066,11 @@ export interface components {
             min_temperature_k: number;
             /** Max Temperature K */
             max_temperature_k: number;
+            /**
+             * Loaded As
+             * @enum {string}
+             */
+            loaded_as: "seebeck" | "resistivity" | "conductivity" | "hall";
         };
         /**
          * ModelResponse
@@ -1183,15 +1192,16 @@ export interface components {
          * ParseRequest
          * @description A text to read, as the client read it from a file or table.
          *
-         *     `expected` names the quantity of a file meant to hold one. `mapping` replaces the suggested
-         *     columns with a user's choice, and the text is sent again each time, as the API keeps nothing.
+         *     `expected` names the quantity of a file meant to hold one, and `conductivity` reads its values
+         *     as sigma, which comes back as the resistivity 1/sigma. `mapping` replaces the suggested columns
+         *     with a user's choice, and the text is sent again each time, as the API keeps nothing.
          *     `interpolate` asks for each quantity on a grid within this range and its measured range.
          */
         ParseRequest: {
             /** Text */
             text: string;
             /** Expected */
-            expected?: ("seebeck" | "resistivity" | "hall") | null;
+            expected?: ("seebeck" | "resistivity" | "conductivity" | "hall") | null;
             /** Mapping */
             mapping?: components["schemas"]["ColumnRole"][] | null;
             interpolate?: components["schemas"]["InterpolationRange"] | null;

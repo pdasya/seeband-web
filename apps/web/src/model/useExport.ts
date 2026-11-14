@@ -21,6 +21,7 @@ import { calcRequest, derivedRequest } from "@/model/liveCurves";
 import { hasFittedValues, resultIssues } from "@/model/resultSummary";
 import { fitModeOf } from "@/model/selection";
 import {
+  loadedAs,
   QUANTITIES,
   useSessionStore,
   type SessionState,
@@ -120,6 +121,9 @@ export function useExport() {
       ),
       issues,
       limitedRanges: limitedRanges(state.interpolation, mode.quantities),
+      fromConductivity:
+        mode.quantities.includes("resistivity") &&
+        loadedAs("resistivity", state.data.resistivity) === "conductivity",
     };
     return { state, mode, header: exportHeader(info) };
   };

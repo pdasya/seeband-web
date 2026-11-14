@@ -26,6 +26,7 @@ const DATA: SessionData = {
     points: 1,
     min_temperature_k: 100,
     max_temperature_k: 100,
+    loaded_as: "seebeck",
   },
   source: { kind: "demo", messageKey: "demo_dataset.synthetic" },
   extrapolated: false,

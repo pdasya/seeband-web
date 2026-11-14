@@ -3,6 +3,7 @@ import { failureMessage } from "@/data/messages";
 import { readFileText } from "@/data/readFile";
 import { columnOf, unitDoubts, type Unit } from "@/data/units";
 import {
+  loadedAs,
   QUANTITIES,
   useSessionStore,
   type ColumnRole,
@@ -42,7 +43,7 @@ function applyTable(name: string, text: string, table: ParsedTable) {
         readAs: table.mapping,
         unitDoubts: unitDoubts(
           table.warnings,
-          columnOf(table.mapping, quantity),
+          columnOf(table.mapping, loadedAs(quantity, { measurement })),
         ),
       });
     }

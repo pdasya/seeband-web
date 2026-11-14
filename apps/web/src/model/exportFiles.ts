@@ -72,6 +72,8 @@ export interface ExportContext {
   issues: readonly ResultIssue[];
   /** Quantities whose data narrowed their interpolation, and the range a fit used. */
   limitedRanges?: readonly LimitedRange[];
+  /** Whether ρ is 1/σ of a σ file, as its points and RMSE are then not what was loaded. */
+  fromConductivity?: boolean;
 }
 
 function fitLine(fit: FitState): string {
@@ -117,6 +119,9 @@ export function exportHeader(context: ExportContext): string[] {
         numberText(maxK),
       ),
     ),
+    ...(context.fromConductivity === true
+      ? [text.header.fromConductivity]
+      : []),
     ...(context.degeneracy
       ? [
           text.header.degeneracies(
@@ -182,7 +187,9 @@ export function dataFile(
       ...(measured === undefined
         ? []
         : pair(
-            text.columns.experimental(name),
+            measured.loaded_as === "conductivity"
+              ? text.columns.experimentalFromSigma(name)
+              : text.columns.experimental(name),
             measured.temperature_k,
             measured.values,
           )),

@@ -33,6 +33,7 @@ import {
   hasFittedValues,
   resultIssues,
   resultRows,
+  rmseSymbol,
   rmseText,
   type ParameterStatus,
 } from "@/model/resultSummary";
@@ -491,7 +492,7 @@ export function ResultsPage() {
           return (
             <Kpi
               key={quantity}
-              label={text.rmse(dataText.quantities[quantity].symbol)}
+              label={text.rmse(rmseSymbol(quantity, data))}
               value={rmse === undefined ? text.noValue : rmseText(rmse)}
               detail={detail}
             />

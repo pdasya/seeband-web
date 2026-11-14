@@ -1,5 +1,5 @@
 import type { Unit } from "@/data/units";
-import type { ColumnRole, Quantity } from "@/session/store";
+import { quantityOf, type ColumnRole, type Quantity } from "@/session/store";
 
 export type Role = ColumnRole["role"];
 
@@ -14,15 +14,16 @@ export function initialRoles(columns: number): (Role | null)[] {
   );
 }
 
-/** The quantity a choice gives, or null unless it has one T and one quantity. */
+/** The quantity a choice gives, or null unless it has one T and one quantity. σ gives ρ = 1/σ. */
 export function chosenQuantity(
   roles: readonly (Role | null)[],
 ): Quantity | null {
   // Two chosen, of which one is a quantity, leaves T as the other.
   const chosen = roles.filter((role) => role !== null);
   const quantities = chosen.filter((role) => role !== "temperature");
-  return chosen.length === 2 && quantities.length === 1
-    ? (quantities[0] as Quantity)
+  const [only] = quantities;
+  return chosen.length === 2 && quantities.length === 1 && only !== undefined
+    ? quantityOf(only)
     : null;
 }
 
