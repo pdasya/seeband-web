@@ -21,5 +21,6 @@ P10 adds result-version and provenance metadata only; it does not change
 formulas or fitting. Core version `0.1.0` is the first traceable version.
 Earlier results reporting `0.0.0` may represent different corrected states,
 and a missing version remains unknown. Human physicist confirmation and the
-desktop parity gate (#71) remain open; author review #80 remains open as well.
+desktop parity gate (#71) remain open. Author review #80 was closed at the
+project owner’s request; author contact and confirmation remain pending.
 No sample-specific fitting claim is made here.

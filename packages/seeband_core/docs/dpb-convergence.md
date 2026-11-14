@@ -36,10 +36,11 @@ the fixed point an outer loop written apart from the core reaches, with S RMSE
 
 The existing budgets remain 1000 completed iterations for S + ρ and 20 for
 S + ρ + R_H. Reaching a budget is reported as `iteration_limit`, not success.
-Through the API, S + ρ cannot reach its budget: 1000 iterations on 03 with
-acPhDis took 87.5 s, past the 60 s fit time limit, so a fit that does not
-settle ends as `fit_timeout`, with no values. A parameter drifting near 0, or
-flipping between two values, now runs to that limit where the desktop rule
+On the measured 03 example with acPhDis, 1000 iterations took 87.5 s, longer
+than the default 60 s fit time limit. This is one measured case, not a general
+API limit: timeout settings, data and hardware can differ. A fit exceeding its
+configured timeout ends as `fit_timeout`, with no values. A parameter drifting
+near 0, or flipping between two values, now runs to that limit where the desktop rule
 stopped after one iteration; this was not seen on real data.
 The inherited final Seebeck-only update at the limit is unchanged; #176
 tracks the broader stopping rule and consistency of the final model.
@@ -52,9 +53,10 @@ More iterations may expose these limitations instead of repairing them.
 
 ## What P5 does not fix
 
-NUM-2 of #84 remains as a symptom. With E_F = 0 at the start, the chemical
-potential has no root (`fsolve` returns μ = 0 with `ier` = 5, #106), S jumps at
-E_F = 0, and the Seebeck stage returns its start unchanged in every
+NUM-2 of #84 remains as a symptom. With E_F = 0 at the start, the
+valence/conduction chemical-potential equation has a root, but the legacy `fsolve` can fail to
+converge to it or remain stuck (see #87, #106 and #176). S jumps at E_F = 0,
+and the Seebeck stage returns its start unchanged in every
 iteration. Such a fit still ends as `converged` after two iterations, at its
 start values, with S RMSE 52.4 µV/K on the demo data, because a value that
 does not move is a change of 0. No rule on changes can tell this apart; it

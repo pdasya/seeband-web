@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Documentation review: correct the signed SPB Hall cutoff and clarify DPB
+  convergence timing, interpolation coverage, degeneracy cancellation and the
+  open negative-weight interpretation. No calculation behavior changed.
+
 - P10: expose the installed `seeband_core` version (`0.1.0`) in health,
   calculation and fit API responses, and record separate server, fit and curve
   provenance in shared export headers. This is result metadata only; it changes
@@ -42,8 +46,8 @@
   Hall factors recover the degenerate limit 1 and nondegenerate limit 3π/8.
   Synthetic regression results replace no historical desktop captures.
   Every fit now sorts its points by temperature, so an API client's order
-  gives the result a sorted file does; a Hall point beyond the reach of the
-  Fermi integrals (μ/T above 700) is NaN rather than a failed curve; and a
+  gives the result a sorted file does; a Hall point with signed reduced
+  potential x = sign(m) μ(T)/T above 700 is NaN rather than a failed curve; and a
   start mass of 0, on an empty branch, or of the wrong sign for R_H fails with
   its reason. The band-mass error is conditional on E_F.
   Human physicist confirmation and parity/author review remain pending;
