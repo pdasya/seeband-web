@@ -100,7 +100,7 @@ const temperatureUnit = (page: Page) =>
     name: "Unit of Temperature, Seebeck coefficient",
   });
 
-const ASSUMED = /, assumed SI$/;
+const ASSUMED = /, assumed$/;
 
 test.beforeEach(async ({ page }) => {
   await serveModels(page);
@@ -118,13 +118,19 @@ test("a unit nothing named is marked as assumed, and choosing one, even SI, remo
   await load(page, "seebeck");
 
   await expect(seebeckUnit(page)).toHaveText("V/K");
-  await expect(seebeckUnit(page)).toHaveAccessibleName(ASSUMED);
+  // The name replaces the text shown, so it names the unit as well.
+  await expect(seebeckUnit(page)).toHaveAccessibleName(
+    "Unit of Seebeck coefficient: V/K, assumed",
+  );
   await expect(temperatureUnit(page)).toHaveText("K");
   await expect(temperatureUnit(page)).toHaveAccessibleName(ASSUMED);
   await expect(
-    page.getByText("No unit was named for T, S, so SI is assumed.", {
-      exact: false,
-    }),
+    page.getByText(
+      "SI is assumed for T, S, as no unit SeeBand reads was named.",
+      {
+        exact: false,
+      },
+    ),
   ).toBeVisible();
 
   await seebeckUnit(page).click();
@@ -136,7 +142,7 @@ test("a unit nothing named is marked as assumed, and choosing one, even SI, remo
   await expect(seebeckUnit(page)).toHaveText("V/K");
   await expect(temperatureUnit(page)).toHaveAccessibleName(ASSUMED);
   await expect(
-    page.getByText("No unit was named for T, so SI is assumed.", {
+    page.getByText("SI is assumed for T, as no unit SeeBand reads was named.", {
       exact: false,
     }),
   ).toBeVisible();
@@ -197,7 +203,7 @@ test("a doubt about a unit says which way it likely went, and Hide leaves a warn
 
   await expect(page.getByText("Check the unit", { exact: true })).toBeVisible();
   await expect(
-    page.getByText(/written in µV\/K but read as V\/K/),
+    page.getByText(/If the file is in µV\/K, choose µV\/K\. If it is in mV\/K/),
   ).toBeVisible();
 
   await page.getByRole("button", { name: "Hide" }).click();
@@ -234,9 +240,15 @@ test("separate files whose T is about 273 K apart are flagged, as °C read as K 
   await expect(page.getByText("Check the unit of T")).toBeVisible();
   await expect(
     page.getByText(
-      /T of S \(300–800 K\) and of ρ \(27–527 K\) are about 273 K apart/,
+      /T of ρ \(27–527 K\) is about 273 K below T of S \(300–800 K\) at both ends.*If the file of ρ gives T in °C, choose °C for its T\. If both give T in K, nothing needs to change\./,
     ),
   ).toBeVisible();
+
+  // A hint, not a doubt: Hide still folds the data, and the bar says it in words.
+  await page.getByRole("button", { name: "Hide" }).click();
+  await expect(
+    page.getByRole("region", { name: "Data" }).getByRole("listitem"),
+  ).toContainText(["T · check the unit"]);
 });
 
 test("a column of a single table read in SI by default is marked as assumed", async ({
@@ -261,7 +273,7 @@ test("a column of a single table read in SI by default is marked as assumed", as
   await expect(unitOfT).toHaveText("K");
   await expect(unitOfT).not.toHaveAccessibleName(ASSUMED);
   await expect(
-    page.getByText("No unit was named for S, so SI is assumed.", {
+    page.getByText("SI is assumed for S, as no unit SeeBand reads was named.", {
       exact: false,
     }),
   ).toBeVisible();

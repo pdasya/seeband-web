@@ -149,6 +149,7 @@ export const STRINGS = {
       notLoaded: (symbol: string) => `${symbol} · not loaded`,
       checkUnit: (symbol: string, points: number) =>
         `${symbol} · ${String(points)} pts · check the unit`,
+      checkTemperature: "T · check the unit",
     },
     demoLoading: "Loading the demo data…",
     demoFailed:
@@ -220,10 +221,8 @@ export const STRINGS = {
     firstRow: (values: string) => `First row: ${values}`,
     temperatureRanges: {
       title: "Check the unit of T",
-      shifted: (first: string, second: string) =>
-        `T of ${first} and of ${second} are about 273 K apart at both ends, as when one file gives T in °C and it is read as K. Choose °C for T in that file if so.`,
-      apart: (first: string, second: string) =>
-        `T of ${first} and of ${second} have no temperature in common. Check that both files give T in the same unit.`,
+      shifted: (lower: string, higher: string, lowerSymbol: string) =>
+        `T of ${lower} is about 273 K below T of ${higher} at both ends, as when T in °C is read as K. If the file of ${lowerSymbol} gives T in °C, choose °C for its T. If both give T in K, nothing needs to change.`,
     },
     // Which way a wrong unit most likely went, by quantity, when values read in SI look far off.
     implausible: {

@@ -33,8 +33,8 @@ export function DataBar() {
     selection.fitMode,
   );
   // A table stays open, as its mapping is what a user checks after loading it. So do data with
-  // a doubt about their unit, or T ranges that look like different units of T, as a fit from them
-  // would be wrong by a factor.
+  // a doubt about their unit, as a fit from them would be wrong by a factor. T ranges that look like
+  // °C beside K are only a hint, as two runs can cover such ranges, so they show but do not hold it.
   const complete =
     dataMode === "separate" &&
     mode !== undefined &&
@@ -42,8 +42,7 @@ export function DataBar() {
     mode.quantities.every((quantity) => data[quantity] !== undefined) &&
     !QUANTITIES.some(
       (quantity) => (data[quantity]?.unitDoubts?.length ?? 0) > 0,
-    ) &&
-    sessionMismatches(data).length === 0;
+    );
 
   const [open, setOpen] = useState(!complete);
   // Data a user has just entered stay in view, so the panel folds only on Hide. It opens again as
@@ -88,8 +87,8 @@ export function DataBar() {
 
   const doubted = (quantity: (typeof QUANTITIES)[number]) =>
     (data[quantity]?.unitDoubts?.length ?? 0) > 0;
-  const anyDoubt =
-    QUANTITIES.some(doubted) || sessionMismatches(data).length > 0;
+  const temperatureHint = sessionMismatches(data).length > 0;
+  const anyDoubt = QUANTITIES.some(doubted) || temperatureHint;
   const names = [
     ...new Set(
       QUANTITIES.flatMap((quantity) => {
@@ -159,6 +158,12 @@ export function DataBar() {
                 </li>
               );
             })}
+            {temperatureHint && (
+              <li className="inline-flex items-center gap-1 rounded-full border border-warning-border bg-warning-background px-2.5 py-px text-xs font-medium text-warning-badge-foreground">
+                <TriangleAlertIcon className="size-3" aria-hidden="true" />
+                {text.bar.checkTemperature}
+              </li>
+            )}
           </ul>
           {toggle(barToggle)}
         </section>

@@ -7,49 +7,42 @@ export interface TemperatureRange {
 }
 
 /**
- * Two files whose T ranges suggest that one is in another unit: `shifted` by about 273.15 K at
- * both ends, as °C read as K gives, or `apart`, with no T in common.
+ * Two files whose T ranges are about 273.15 K apart at both ends, as °C read as K gives: T of
+ * `lower` sits below T of `higher` by the offset.
  */
 export interface RangeMismatch {
-  kind: "shifted" | "apart";
-  first: Quantity;
-  second: Quantity;
+  lower: Quantity;
+  higher: Quantity;
 }
 
 const CELSIUS_OFFSET_K = 273.15;
 /**
- * How far from 273.15 K both ends may be and still count as shifted. Files of one sample are often
- * measured between the same set points, so both ends move by the offset. A tenth of it leaves room
- * for set points a few kelvin apart, and keeps a range that only starts 273 K higher out.
+ * How far from 273.15 K each end may be. Files of one sample measured between the same set points
+ * move by the offset at both ends, give or take rounding of the set points. Ranges that only meet,
+ * such as a Hall run to 300 K beside an S run from 300 K, differ by more at one end, and do not
+ * count: 2–300 K beside 300–573 K are 298 K and 273 K apart.
  */
-const SHIFT_TOLERANCE_K = 0.1 * CELSIUS_OFFSET_K;
+const SHIFT_TOLERANCE_K = 10;
 
 function isOffset(difference: number): boolean {
-  return Math.abs(Math.abs(difference) - CELSIUS_OFFSET_K) <= SHIFT_TOLERANCE_K;
+  return Math.abs(difference - CELSIUS_OFFSET_K) <= SHIFT_TOLERANCE_K;
 }
 
-function mismatchOf(
-  a: TemperatureRange,
-  b: TemperatureRange,
-): RangeMismatch["kind"] | null {
-  const low = a.min_temperature_k - b.min_temperature_k;
-  const high = a.max_temperature_k - b.max_temperature_k;
-  if (Math.sign(low) === Math.sign(high) && isOffset(low) && isOffset(high)) {
-    return "shifted";
+/** Which of two ranges sits about 273 K below the other at both ends, if either. */
+function lowerOf(a: TemperatureRange, b: TemperatureRange): "a" | "b" | null {
+  const shiftedBy = (low: TemperatureRange, high: TemperatureRange) =>
+    isOffset(high.min_temperature_k - low.min_temperature_k) &&
+    isOffset(high.max_temperature_k - low.max_temperature_k);
+  if (shiftedBy(a, b)) {
+    return "a";
   }
-  if (
-    a.max_temperature_k < b.min_temperature_k ||
-    b.max_temperature_k < a.min_temperature_k
-  ) {
-    return "apart";
-  }
-  return null;
+  return shiftedBy(b, a) ? "b" : null;
 }
 
 /**
- * Pairs of separate files whose T ranges look like different units of T. Nothing is changed: T is
- * read as each file says, and only a user knows which is right. A hint, not a check, as files can
- * cover different ranges on purpose.
+ * Pairs of separate files whose T ranges look like K beside °C read as K. Nothing is changed: T is
+ * read as each file says, and only a user knows which is right. A hint, not a check, as two runs
+ * can also cover such ranges on purpose.
  */
 export function temperatureMismatches(
   ranges: Partial<Record<Quantity, TemperatureRange>>,
@@ -61,8 +54,15 @@ export function temperatureMismatches(
     loaded.slice(index + 1).flatMap((second) => {
       const a = ranges[first];
       const b = ranges[second];
-      const kind = a && b ? mismatchOf(a, b) : null;
-      return kind === null ? [] : [{ kind, first, second }];
+      const lower = a && b ? lowerOf(a, b) : null;
+      if (lower === null) {
+        return [];
+      }
+      return [
+        lower === "a"
+          ? { lower: first, higher: second }
+          : { lower: second, higher: first },
+      ];
     }),
   );
 }

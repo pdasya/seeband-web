@@ -18,7 +18,7 @@ function rangeText({
   return `${formatNumber(low)}–${formatNumber(high)} K`;
 }
 
-/** Separate files whose T ranges look like different units of T, as K beside °C gives. */
+/** Separate files whose T ranges look like K beside °C read as K. */
 export function TemperatureRangeWarning({ className }: { className?: string }) {
   const data = useSessionStore((state) => state.data);
   const mismatches = sessionMismatches(data);
@@ -38,9 +38,13 @@ export function TemperatureRangeWarning({ className }: { className?: string }) {
       <AlertTitle>{text.temperatureRanges.title}</AlertTitle>
       <AlertDescription>
         <ul className="m-0 list-none p-0">
-          {mismatches.map(({ kind, first, second }) => (
-            <li key={`${first}-${second}`}>
-              {text.temperatureRanges[kind](named(first), named(second))}
+          {mismatches.map(({ lower, higher }) => (
+            <li key={`${lower}-${higher}`}>
+              {text.temperatureRanges.shifted(
+                named(lower),
+                named(higher),
+                text.quantities[loadedAs(lower, data[lower])].symbol,
+              )}
             </li>
           ))}
         </ul>
