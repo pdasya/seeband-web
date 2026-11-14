@@ -18,7 +18,12 @@ from seeband_core.model_catalog import registry
 FIXTURE = Path(__file__).parent / "fixtures" / "neural_net_references.json"
 CASES: list[dict[str, Any]] = json.loads(FIXTURE.read_text(encoding="utf-8"))["cases"]
 SELECTED = [case for case in CASES if case["selected_range_k"] is not None]
-NO_NET = [case for case in CASES if case["selected_range_k"] is None]
+NO_NET = [
+    case
+    for case in CASES
+    if case["selected_range_k"] is None and case["name"] != "01_reversed_rows"
+]
+P9 = json.loads((FIXTURE.parent / "physics" / "p9.json").read_text())
 BAND_KEYS = ("m_eff", "band_gap_k", "fermi_energy_k")
 # docs/neural-net-references.md gives the measured differences behind these.
 INTERPOLATION_TOLERANCE = 1e-9
@@ -71,9 +76,9 @@ def range_of(case: dict[str, Any]) -> tuple[int, int]:
 
 
 @pytest.mark.parametrize("case", CASES, ids=lambda case: case["name"])
-def test_selected_range_matches_the_desktop(case: dict[str, Any]) -> None:
+def test_selected_range_matches_desktop_or_documented_p9_correction(case: dict[str, Any]) -> None:
     selected = neural_nets.select_range(arrays(case)[0])
-    expected = case["selected_range_k"]
+    expected = P9["overrides"].get(case["name"], case)["selected_range_k"]
     assert selected == (tuple(expected) if expected else None)
 
 
@@ -95,8 +100,36 @@ def test_first_matching_range_wins(
     assert neural_nets.select_range(np.array([first_k, last_k])) == expected
 
 
-def test_selection_reads_only_the_first_and_last_rows() -> None:
-    assert neural_nets.select_range(np.array([100.0, 1000.0, 400.0])) == (100, 400)
+def test_selection_uses_real_extrema_instead_of_endpoint_rows() -> None:
+    assert neural_nets.select_range(np.array([100.0, 1000.0, 400.0])) == (300, 800)
+
+
+@pytest.mark.parametrize("case", SELECTED, ids=lambda case: case["name"])
+@pytest.mark.parametrize("permutation", ["reversed", "shuffled"])
+def test_prediction_is_independent_of_paired_row_order(case, permutation):
+    temperature_k, seebeck = arrays(case)
+    order = (
+        np.arange(len(temperature_k))[::-1]
+        if permutation == "reversed"
+        else np.random.default_rng(9).permutation(len(temperature_k))
+    )
+    temperatures, values = temperature_k[order], seebeck[order]
+    before_t, before_s = temperatures.copy(), values.copy()
+    guess = neural_nets.predict_band_parameters(temperatures, values)
+    assert isinstance(guess, neural_nets.NeuralNetGuess)
+    assert guess.range_k == range_of(case)
+    assert [guess.m_eff, guess.band_gap_k, guess.fermi_energy_k] == pytest.approx(
+        band(case["prediction"]), rel=BAND_TOLERANCE
+    )
+    np.testing.assert_array_equal(temperatures, before_t)
+    np.testing.assert_array_equal(values, before_s)
+
+
+def test_unsorted_no_net_reports_real_coverage():
+    result = neural_nets.predict_band_parameters(
+        np.array([500.0, 350.0, 450.0]), np.array([1e-5, 2e-5, 3e-5])
+    )
+    assert result == neural_nets.NoNeuralNet(350.0, 500.0)
 
 
 @pytest.mark.parametrize("case", SELECTED, ids=lambda case: case["name"])
@@ -338,3 +371,17 @@ def test_weights_are_unchanged(range_k: tuple[int, int]) -> None:
     name = f"net_{range_k[0]}_{range_k[1]}.npz"
     content = resources.files("seeband_core").joinpath("data", "neural_nets", name).read_bytes()
     assert hashlib.sha256(content).hexdigest() == WEIGHTS_SHA256[range_k]
+
+
+def test_p9_corrected_reversed_case_preserves_desktop_evidence():
+    assert P9["desktop_reference_sha256"] == hashlib.sha256(FIXTURE.read_bytes()).hexdigest()
+    for name, expected in P9["overrides"].items():
+        original = next(case for case in CASES if case["name"] == name)
+        reference = next(case for case in CASES if case["name"] == expected["reference_case"])
+        assert expected["prediction"] == reference["prediction"]
+        assert expected["selected_range_k"] == reference["selected_range_k"]
+        guess = neural_nets.predict_band_parameters(*arrays(original))
+        assert isinstance(guess, neural_nets.NeuralNetGuess)
+        assert [guess.m_eff, guess.band_gap_k, guess.fermi_energy_k] == pytest.approx(
+            band(expected["prediction"]), rel=BAND_TOLERANCE
+        )

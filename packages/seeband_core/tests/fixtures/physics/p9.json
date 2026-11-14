@@ -1,0 +1,23 @@
+{
+ "description": "P9 reversed-row expectation taken from the unchanged sorted desktop case; weights and inference unchanged.",
+ "desktop_reference_sha256": "3cdd4bd60a7e40348d0f57da4901b478e4f6dcbda3d1c7bb18ac240e084dd012",
+ "overrides": {
+  "01_reversed_rows": {
+   "reference_case": "01_Fe2VAl09Si01",
+   "selected_range_k": [
+    400,
+    700
+   ],
+   "prediction": {
+    "m_eff": 1.5733331451840007,
+    "band_gap_k": 553.8617343869512,
+    "fermi_energy_k": 1169.6619051766006
+   },
+   "desktop_start_values": {
+    "m_eff": 1.57,
+    "band_gap_k": 554,
+    "fermi_energy_k": 1170
+   }
+  }
+ }
+}

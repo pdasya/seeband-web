@@ -396,7 +396,7 @@ export const STRINGS = {
       low_temperature_omitted:
         "Very low-temperature rows were omitted to avoid overflow in the existing SPB formula.",
       unsorted_temperature:
-        "The temperatures in these data do not rise, so the net may not suit them.",
+        "Temperature–value pairs were sorted before preparing the estimate.",
       underdetermined_fit:
         "These data have too few temperatures to set the net's input, so its values mean little.",
     },

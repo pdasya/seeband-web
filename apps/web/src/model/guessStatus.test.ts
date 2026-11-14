@@ -33,7 +33,7 @@ describe("guessMessages", () => {
     ).toContain("too few temperatures");
     expect(
       guessMessages({ ...APPLIED, warnings: ["unsorted_temperature"] })[0],
-    ).toContain("do not rise");
+    ).toContain("sorted before");
     // This one has its own outcome, so no text repeats it.
     expect(
       guessMessages({ ...APPLIED, warnings: ["m_eff_rounds_to_zero"] }),

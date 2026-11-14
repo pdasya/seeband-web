@@ -27,7 +27,11 @@ FIXTURE = (
 )
 CASES: list[dict[str, Any]] = json.loads(FIXTURE.read_text(encoding="utf-8"))["cases"]
 SELECTED = [case for case in CASES if case["selected_range_k"] is not None]
-NO_NET = [case for case in CASES if case["selected_range_k"] is None]
+NO_NET = [
+    case
+    for case in CASES
+    if case["selected_range_k"] is None and case["name"] != "01_reversed_rows"
+]
 DPB = registry.get("dpb").describe()
 # Written by hand from the desktop's recorded values, so that a change to the fixture fails here.
 # case: (range, m_eff, band gap in K, Fermi energy in K)
@@ -314,25 +318,27 @@ def test_too_few_rows_for_a_net_are_not_flagged_as_a_bad_fit(client: TestClient)
     assert _post(client, [450.0, 500.0], [1e-4, 1e-4]).json()["warnings"] == []
 
 
-def test_order_of_rows_decides_the_net_as_on_the_desktop_and_is_flagged(
+def test_real_temperature_span_decides_the_net_and_original_order_is_flagged(
     client: TestClient,
 ) -> None:
-    """P9 fixes this, and the parser sorts rows, so a client normally sends them sorted."""
     temperature_k = [100.0, 1000.0, 200.0, 300.0, 350.0, 500.0, 600.0, 400.0]
 
     body = _post(client, temperature_k, _mild(temperature_k)).json()
 
-    assert body["net_range"] == {"min_temperature_k": 100.0, "max_temperature_k": 400.0}
+    assert body["net_range"] == {"min_temperature_k": 300.0, "max_temperature_k": 800.0}
     assert body["warnings"] == ["unsorted_temperature"]
 
 
-def test_reversed_rows_get_no_net_and_the_flag(client: TestClient) -> None:
+def test_reversed_rows_get_the_sorted_prediction_and_keep_provenance(client: TestClient) -> None:
     case = next(case for case in CASES if case["name"] == "01_reversed_rows")
 
     body = _post(client, case["temperature_k"], case["seebeck_v_per_k"]).json()
 
-    assert body["status"] == "no_net"
-    assert (body["first_temperature_k"], body["last_temperature_k"]) == (750.0, 25.0)
+    reference = next(case for case in CASES if case["name"] == "01_Fe2VAl09Si01")
+    assert body["status"] == "guess"
+    assert body["net_range"] == {"min_temperature_k": 400.0, "max_temperature_k": 700.0}
+    assert body["prediction"] == pytest.approx(reference["prediction"], rel=1e-12)
+    assert body["start_values"] == _start_values(reference)
     assert body["warnings"] == ["unsorted_temperature"]
 
 
@@ -350,8 +356,8 @@ def test_equal_temperatures_in_a_row_count_as_sorted(client: TestClient) -> None
     assert body["warnings"] == []
 
 
-def test_order_of_middle_rows_changes_no_net_and_barely_any_value(client: TestClient) -> None:
-    """The fit does not depend on the order, apart from rounding."""
+def test_reordering_middle_rows_preserves_prediction(client: TestClient) -> None:
+    """Paired rows are sorted before preparing the network input."""
     case = next(case for case in CASES if case["name"] == "01_Fe2VAl09Si01")
     order = [0, *range(28, 0, -1), 29]
     temperature_k = [case["temperature_k"][index] for index in order]
@@ -360,7 +366,7 @@ def test_order_of_middle_rows_changes_no_net_and_barely_any_value(client: TestCl
     body = _post(client, temperature_k, seebeck).json()
 
     assert body["prediction"]["band_gap_k"] == pytest.approx(
-        case["prediction"]["band_gap_k"], rel=1e-5
+        case["prediction"]["band_gap_k"], rel=1e-12
     )
     assert body["warnings"] == ["unsorted_temperature"]
 
@@ -650,3 +656,10 @@ def test_unavailable_model_is_checked_before_calculation(monkeypatch):
     monkeypatch.setattr(registry, "descriptions", lambda: [description])
     with pytest.raises(ApiError):
         _check_model("spb")
+
+
+def test_unsorted_no_net_reports_minimum_and_maximum(client: TestClient):
+    body = _post(client, [500.0, 350.0, 450.0], [1e-4, 1e-4, 1e-4]).json()
+    assert body["status"] == "no_net"
+    assert (body["first_temperature_k"], body["last_temperature_k"]) == (350.0, 500.0)
+    assert body["warnings"] == ["unsorted_temperature"]

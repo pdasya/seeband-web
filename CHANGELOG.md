@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- P9 (#88): choose the DPB neural network from the actual minimum and
+  maximum temperatures, then sort paired temperature/Seebeck rows before
+  preparing its input. Reversed or shuffled rows now use the same network
+  and prediction as sorted data. Keep the unsorted-input provenance warning,
+  with corrected wording. Legacy no-net first/last fields now report actual
+  minimum/maximum coverage. Network weights, range priority, polynomial
+  degree and fit criteria are unchanged. Preserve original desktop captures
+  and record the corrected reversed-row expectation separately.
+
 - P6 (#85, S-only scope): use the same degeneracy-weighted mass in DPB S
   fitting and drawing. Public mass coordinates, bounds and uncertainties
   stay unchanged; the low-level model receives R/N on both paths. Add
