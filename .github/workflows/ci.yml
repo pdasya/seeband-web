@@ -30,10 +30,10 @@ jobs:
         run: uv run ruff format --check .
       - name: Mypy
         run: uv run mypy
-      - name: Diagnose P8 regression failures first
-        run: uv run pytest packages/seeband_core/tests/test_golden_regression.py -k p8 -x --tb=short
       - name: Pytest, including that the OpenAPI contract is up to date
-        run: uv run pytest
+        run: |
+          uv run pytest packages/seeband_core/tests/test_golden_regression.py -x --tb=short
+          uv run pytest --ignore=packages/seeband_core/tests/test_golden_regression.py -x --tb=short
       - name: Built package
         run: |
           uv build --wheel --package seeband-core --out-dir dist
