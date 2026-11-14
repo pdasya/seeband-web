@@ -381,7 +381,7 @@ def test_mapping_and_expected_reach_the_parser_with_interpolation(client: TestCl
 def test_value_that_is_not_finite_comes_back_as_null() -> None:
     table = parse_table("T S\n100 1\n200 2\n", "seebeck")
     data = InterpolatedData(
-        Measurement(np.array([100.0, 200.0]), np.array([np.inf, 1.0])), False, 2, False
+        Measurement(np.array([100.0, 200.0]), np.array([np.inf, 1.0])), False, 2, False, False
     )
 
     response = to_parse_response(ParseOutcome(table, {"seebeck": data}, ()))
@@ -406,9 +406,10 @@ def test_interpolation_equals_the_core_and_keeps_the_originals(client: TestClien
     data = body["interpolated"]["seebeck"]
     assert data["temperature_k"] == expected.measurement.temperature_k.tolist()
     assert data["values"] == expected.measurement.values.tolist()
-    assert len(data["values"]) == 37
+    assert len(data["values"]) == 35
     assert data["extrapolated"] is expected.extrapolated
-    assert data["extrapolated"] is True
+    assert data["extrapolated"] is False
+    assert data["range_limited"] is True
     assert data["measured_points_in_range"] == expected.measured_points_in_range
     assert data["underdetermined"] is False
     assert body["interpolation_failed"] == []
@@ -421,6 +422,53 @@ def test_interpolation_reports_data_that_do_not_set_the_polynomial(client: TestC
 
     assert body["interpolated"]["seebeck"]["underdetermined"] is True
     assert body["interpolated"]["seebeck"]["extrapolated"] is False
+    assert body["interpolated"]["seebeck"]["range_limited"] is False
+
+
+def test_no_measured_overlap_reaches_existing_failure_response(client: TestClient) -> None:
+    body = _parse(
+        client, SIX_ROWS, interpolate={"min_temperature_k": 700.0, "max_temperature_k": 800.0}
+    )
+    assert body["interpolated"] == {}
+    assert body["interpolation_failed"] == ["seebeck"]
+    assert body["measurements"]["seebeck"]["points"] == 6
+
+
+@pytest.mark.parametrize("hall_overlaps", [True, False])
+def test_each_quantity_uses_its_own_overlap_and_failure_keeps_other_quantities(
+    monkeypatch: pytest.MonkeyPatch,
+    hall_overlaps: bool,
+) -> None:
+    # The text parser uses one shared temperature column. Supply valid parsed measurements
+    # with distinct domains to exercise the worker's per-quantity interpolation contract.
+    from dataclasses import replace
+
+    table = parse_table("T S rho RH\n100 1 4 7\n200 2 5 8\n300 3 6 9\n")
+    measurements = {
+        "seebeck": Measurement(np.array([25.0, 400.0, 750.0]), np.array([1e-6, 2e-6, 3e-6])),
+        "resistivity": Measurement(np.array([100.0, 500.0, 900.0]), np.array([1e-5, 2e-5, 3e-5])),
+        "hall": Measurement(
+            np.array([200.0, 600.0] if hall_overlaps else [900.0, 1000.0]),
+            np.array([1e-8, 2e-8]),
+        ),
+    }
+    monkeypatch.setattr(
+        parse_worker, "_read", lambda *args: replace(table, measurements=measurements)
+    )
+    outcome = parse_worker.parse("", None, None, parse_worker.FitRange(50.0, 800.0))
+    response = to_parse_response(outcome)
+    assert response.interpolation_failed == ([] if hall_overlaps else ["hall"])
+    assert outcome.failure_types == (() if hall_overlaps else ("ValueError",))
+    assert response.interpolated["seebeck"].temperature_k == np.linspace(50, 750, 35).tolist()
+    assert response.interpolated["resistivity"].temperature_k == np.linspace(100, 800, 35).tolist()
+    if hall_overlaps:
+        assert response.interpolated["hall"].temperature_k == np.linspace(200, 600, 20).tolist()
+    for data in response.interpolated.values():
+        assert data.range_limited
+        assert not data.extrapolated
+    assert response.measurements["hall"].temperature_k == (
+        [200.0, 600.0] if hall_overlaps else [900.0, 1000.0]
+    )
 
 
 @pytest.mark.parametrize("failing", [1.0, 4.0, 7.0], ids=["first", "middle", "last"])

@@ -61,7 +61,7 @@ class ParseRequest(BaseModel):
 
     `expected` names the quantity of a file meant to hold one. `mapping` replaces the suggested
     columns with a user's choice, and the text is sent again each time, as the API keeps nothing.
-    `interpolate` asks for each quantity on a grid over this fit range.
+    `interpolate` asks for each quantity on a grid within this range and its measured range.
     """
 
     text: Annotated[str, Field(max_length=MAX_TEXT_CHARACTERS)]
@@ -101,15 +101,16 @@ class MeasurementResponse(BaseModel):
 class InterpolatedResponse(BaseModel):
     """A quantity on the interpolation grid. `null` marks a value that is not finite.
 
-    `extrapolated` means that some of the grid lies outside the data, so those values are made up,
-    and a fit from them should say so through `extrapolated` in its request.
-    `measured_points_in_range` of 0 means that all the values are made up. `underdetermined` means
-    that the data do not set the polynomial.
+    `range_limited` means the requested range extends beyond this quantity's measured range.
+    `extrapolated` is retained for compatibility and is false for new server results.
+    `measured_points_in_range` counts source points in the requested range; zero can occur between
+    sparse measurements. `underdetermined` means that the data do not set the polynomial.
     """
 
     temperature_k: list[float]
     values: list[float | None]
     extrapolated: bool
+    range_limited: bool
     measured_points_in_range: int
     underdetermined: bool
 
@@ -168,6 +169,7 @@ def _interpolated(data: InterpolatedData) -> InterpolatedResponse:
         temperature_k=data.measurement.temperature_k.tolist(),
         values=finite_or_none(data.measurement.values),
         extrapolated=data.extrapolated,
+        range_limited=data.range_limited,
         measured_points_in_range=data.measured_points_in_range,
         underdetermined=data.underdetermined,
     )
@@ -296,6 +298,7 @@ PARSE_EXAMPLE_RESPONSES: dict[str, dict[str, Any]] = {
                 "temperature_k": [100.0, 130.0, 160.0],
                 "values": [1.0e-6, 2.0e-6, 3.0e-6],
                 "extrapolated": False,
+                "range_limited": False,
                 "measured_points_in_range": 3,
                 "underdetermined": True,
             }

@@ -938,10 +938,10 @@ export interface components {
          * InterpolatedResponse
          * @description A quantity on the interpolation grid. `null` marks a value that is not finite.
          *
-         *     `extrapolated` means that some of the grid lies outside the data, so those values are made up,
-         *     and a fit from them should say so through `extrapolated` in its request.
-         *     `measured_points_in_range` of 0 means that all the values are made up. `underdetermined` means
-         *     that the data do not set the polynomial.
+         *     `range_limited` means the requested range extends beyond this quantity's measured range.
+         *     `extrapolated` is retained for compatibility and is false for new server results.
+         *     `measured_points_in_range` counts source points in the requested range; zero can occur between
+         *     sparse measurements. `underdetermined` means that the data do not set the polynomial.
          */
         InterpolatedResponse: {
             /** Temperature K */
@@ -950,6 +950,8 @@ export interface components {
             values: (number | null)[];
             /** Extrapolated */
             extrapolated: boolean;
+            /** Range Limited */
+            range_limited: boolean;
             /** Measured Points In Range */
             measured_points_in_range: number;
             /** Underdetermined */
@@ -1168,7 +1170,7 @@ export interface components {
          *
          *     `expected` names the quantity of a file meant to hold one. `mapping` replaces the suggested
          *     columns with a user's choice, and the text is sent again each time, as the API keeps nothing.
-         *     `interpolate` asks for each quantity on a grid over this fit range.
+         *     `interpolate` asks for each quantity on a grid within this range and its measured range.
          */
         ParseRequest: {
             /** Text */

@@ -10,9 +10,10 @@ const MEASUREMENT = {
   max_temperature_k: 300,
 };
 const INTERPOLATED = {
-  temperature_k: [50, 425, 800],
+  temperature_k: [100, 200, 300],
   values: [1, 2, 3],
   extrapolated: false,
+  range_limited: true,
   measured_points_in_range: 3,
   underdetermined: false,
 };
@@ -79,6 +80,60 @@ async function loadSeebeck(page: Page, name = "s.txt") {
 
 const interpolationSwitch = (page: Page) =>
   page.getByRole("switch", { name: /Interpolation/ });
+
+test("a fit range beyond the measurements shows that interpolation was limited", async ({
+  page,
+}) => {
+  await setUp(page, (body, route) =>
+    route.fulfill({
+      json: parsed(
+        body.interpolate === undefined
+          ? {}
+          : { interpolated: { seebeck: INTERPOLATED } },
+      ),
+    }),
+  );
+  await loadSeebeck(page);
+  await interpolationSwitch(page).click();
+
+  await expect(page.getByRole("alert")).toContainText(
+    "limited to the overlap of the fit range and measured range",
+  );
+  await expect(page.getByRole("alert")).not.toContainText(
+    "some values are made up",
+  );
+});
+
+test("an interior window with no measured point is interpolation, not extrapolation", async ({
+  page,
+}) => {
+  await setUp(page, (body, route) =>
+    route.fulfill({
+      json: parsed(
+        body.interpolate === undefined
+          ? {}
+          : {
+              interpolated: {
+                seebeck: {
+                  ...INTERPOLATED,
+                  range_limited: false,
+                  measured_points_in_range: 0,
+                },
+              },
+            },
+      ),
+    }),
+  );
+  await loadSeebeck(page);
+  await interpolationSwitch(page).click();
+
+  await expect(page.getByRole("alert")).toContainText(
+    "interpolate between measurements",
+  );
+  await expect(page.getByRole("alert")).not.toContainText(
+    "every value is made up",
+  );
+});
 
 test("turning it on asks for the default fit range, and off asks nothing", async ({
   page,

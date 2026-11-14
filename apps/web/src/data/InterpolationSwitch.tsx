@@ -31,8 +31,13 @@ function flagsOf(
   if (result.values.some((value) => value === null)) {
     messages.push(flags.notFinite);
   }
+  if (result.range_limited) {
+    messages.push(flags.rangeLimited);
+  }
   if (result.measured_points_in_range === 0) {
-    messages.push(flags.noMeasuredPoints);
+    messages.push(
+      result.extrapolated ? flags.noMeasuredPoints : flags.interiorWindow,
+    );
   } else if (result.extrapolated) {
     messages.push(flags.extrapolated);
   }

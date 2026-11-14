@@ -3369,6 +3369,7 @@
                             3e-06
                           ],
                           "extrapolated": false,
+                          "range_limited": false,
                           "measured_points_in_range": 3,
                           "underdetermined": true
                         }
@@ -6447,6 +6448,10 @@
             "type": "boolean",
             "title": "Extrapolated"
           },
+          "range_limited": {
+            "type": "boolean",
+            "title": "Range Limited"
+          },
           "measured_points_in_range": {
             "type": "integer",
             "title": "Measured Points In Range"
@@ -6461,11 +6466,12 @@
           "temperature_k",
           "values",
           "extrapolated",
+          "range_limited",
           "measured_points_in_range",
           "underdetermined"
         ],
         "title": "InterpolatedResponse",
-        "description": "A quantity on the interpolation grid. `null` marks a value that is not finite.\n\n`extrapolated` means that some of the grid lies outside the data, so those values are made up,\nand a fit from them should say so through `extrapolated` in its request.\n`measured_points_in_range` of 0 means that all the values are made up. `underdetermined` means\nthat the data do not set the polynomial."
+        "description": "A quantity on the interpolation grid. `null` marks a value that is not finite.\n\n`range_limited` means the requested range extends beyond this quantity's measured range.\n`extrapolated` is retained for compatibility and is false for new server results.\n`measured_points_in_range` counts source points in the requested range; zero can occur between\nsparse measurements. `underdetermined` means that the data do not set the polynomial."
       },
       "InterpolationRange": {
         "properties": {
@@ -7025,7 +7031,7 @@
           "text"
         ],
         "title": "ParseRequest",
-        "description": "A text to read, as the client read it from a file or table.\n\n`expected` names the quantity of a file meant to hold one. `mapping` replaces the suggested\ncolumns with a user's choice, and the text is sent again each time, as the API keeps nothing.\n`interpolate` asks for each quantity on a grid over this fit range."
+        "description": "A text to read, as the client read it from a file or table.\n\n`expected` names the quantity of a file meant to hold one. `mapping` replaces the suggested\ncolumns with a user's choice, and the text is sent again each time, as the API keeps nothing.\n`interpolate` asks for each quantity on a grid within this range and its measured range."
       },
       "ParseResponse": {
         "properties": {

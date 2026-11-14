@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- P7 (#86): evaluate interpolation only on the overlap of each quantity's
+  measured temperature range and the requested fit range. Unsupported or
+  too-short overlaps fail explicitly instead of extrapolating synthetic
+  points into the fit. Show when measured coverage limits the range; retain
+  legacy extrapolation provenance warnings. The polynomial degree and fit
+  criteria are unchanged, with separate corrected regression expectations.
+
 - P5 (#84): require both parameter groups to converge in DPB acPhDis fits.
   Zero-valued parameters no longer cause division by zero, and nonfinite
   changes cannot be reported as converged. Unchanged zeros have zero change;

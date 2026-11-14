@@ -95,10 +95,15 @@ export const STRINGS = {
       invalidRange:
         "This fit range cannot be interpolated. It must start above 0 K, and span 20 to 200000 K.",
       flags: {
-        failed: "could not be interpolated, so a fit cannot use it.",
+        failed:
+          "could not be interpolated within measured coverage (at least 20 K overlap is needed), so a fit cannot use it.",
         notFinite: "the polynomial overflowed, so a fit cannot use it.",
         noMeasuredPoints:
           "no measured point lies in the fit range, so every value is made up.",
+        interiorWindow:
+          "no measured point lies inside the fit range; these values interpolate between measurements.",
+        rangeLimited:
+          "interpolation is limited to the overlap of the fit range and measured range.",
         extrapolated:
           "the grid goes beyond the data, so some values are made up.",
         underdetermined: "too few points set the polynomial.",
