@@ -165,6 +165,8 @@ def _fit_mode(entry: dict[str, Any]) -> FitMode:
         ),
         relative_curve_kinds=RELATIVE_CURVE_KINDS.get(entry["id"], ()),
         stages=STAGES[entry["id"]],
+        # In DPB, E_g is the edge of band 2 above that of band 1, in K at every scale.
+        band_2_edge="band_gap" if entry["id"].startswith("dpb_") else None,
     )
 
 

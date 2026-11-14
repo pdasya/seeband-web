@@ -163,6 +163,15 @@ def replaced(spec: ParameterSpec = SLOPE, **changes: Any) -> ParameterSpec:
             description(FitMode("m", ("seebeck",), (replaced(fit_bounds=Bounds(2, 1)),))),
             "inverted bounds",
         ),
+        (
+            description(FitMode("m", ("seebeck",), (SLOPE,), band_2_edge="gap")),
+            "no parameter in K for band 2",
+        ),
+        (
+            # A parameter of that name, but not an energy in K.
+            description(FitMode("m", ("seebeck",), (SLOPE,), band_2_edge=SLOPE.name)),
+            "no parameter in K for band 2",
+        ),
     ],
 )
 def test_invalid_descriptions_are_refused_and_leave_nothing_behind(
@@ -572,3 +581,12 @@ def test_every_parameter_in_k_is_shown_in_ev_and_others_as_they_were() -> None:
                     assert core_to_display(spec, 2.0) == pytest.approx(
                         2.0 * spec.display_scale / spec.fit_scale
                     )
+
+
+def test_the_edge_of_band_2_is_e_g_in_dpb_and_none_in_spb() -> None:
+    from seeband_core.model_catalog import registry as catalog
+
+    for model in catalog.descriptions():
+        for fit_mode in model.fit_modes:
+            expected = "band_gap" if model.id == "dpb" else None
+            assert fit_mode.band_2_edge == expected, fit_mode.id

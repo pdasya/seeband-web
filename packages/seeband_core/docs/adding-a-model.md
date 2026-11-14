@@ -48,6 +48,8 @@ A known error goes in `known_issues.py`. `FitMode.known_issues` and `FitMode.dis
 
 `FitMode.curve_kinds` lists the curves a mode offers. `unavailable_curves` says why others are missing, as a code that a client shows through i18n, and a kind in neither reports `not_provided`. `relative_curve_kinds` names curves whose size rests on an assumed value.
 
+`FitMode.band_2_edge` names the parameter whose core value is the edge of band 2 above that of band 1, in K, and is None for a mode with one band. The registry refuses a name that is not a parameter in K. The μ(T) chart and the band diagram read it to draw band 2's edge and show E_g, so a two-band model with another parameter name needs no client change. DPB sets `band_gap`.
+
 ## Values and scales
 
 Requests and results hold **core units**: the values the calculations take and return. `model_scales` is the only place that converts them, so the API and client do not. Use `core_to_display` and `display_to_core` for what a user sees, `core_range` and `display_range` for a control, and `default_start` for a complete set of start values. A scale must be above 0, and a fraction must be 1/n, which the registry checks.

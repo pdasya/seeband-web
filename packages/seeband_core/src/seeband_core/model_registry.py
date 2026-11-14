@@ -23,6 +23,12 @@ def _check(description: ModelDescription) -> None:
         names = [spec.name for spec in fit_mode.parameters]
         if len(set(names)) != len(names):
             raise ValueError(f"Fit mode {fit_mode.id} repeats a parameter: {names}")
+        if fit_mode.band_2_edge is not None and not any(
+            spec.name == fit_mode.band_2_edge and spec.unit == "K" for spec in fit_mode.parameters
+        ):
+            raise ValueError(
+                f"Fit mode {fit_mode.id} has no parameter in K for band 2: {fit_mode.band_2_edge}"
+            )
         for unavailable in fit_mode.unavailable_curves:
             if unavailable.kind in fit_mode.curve_kinds:
                 raise ValueError(f"Fit mode {fit_mode.id} both has and lacks {unavailable.kind}")
