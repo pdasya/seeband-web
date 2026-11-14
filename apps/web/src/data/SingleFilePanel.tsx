@@ -204,11 +204,7 @@ function unitWarningMessage(
   if (item === undefined || !isUnitDoubt(warning.code)) {
     return issueMessage(warning);
   }
-  return unitDoubtMessage(
-    warning.code,
-    item.role,
-    item.unit ?? UNITS_OF[item.role][0],
-  );
+  return unitDoubtMessage(warning.code, item.role, item);
 }
 
 /** From the session, not the last answer, as this is what a fit would use. */

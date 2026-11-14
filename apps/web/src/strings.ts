@@ -213,9 +213,10 @@ export const STRINGS = {
     inSi: (written: string, si: string) => `${written} = ${si} in SI`,
     checkUnitTitle: "Check the unit",
     /** The name of a unit select whose unit is SI only because nothing named one. */
-    unitAssumedOf: (name: string) => `Unit of ${name}, assumed SI`,
+    unitAssumedOf: (name: string, unit: string) =>
+      `Unit of ${name}: ${unit}, assumed`,
     unitsAssumed: (symbols: string) =>
-      `No unit was named for ${symbols}, so SI is assumed. Choose the unit if the values are written in another.`,
+      `SI is assumed for ${symbols}, as no unit SeeBand reads was named. Choose the unit if the values are written in another.`,
     firstRow: (values: string) => `First row: ${values}`,
     temperatureRanges: {
       title: "Check the unit of T",
@@ -226,17 +227,21 @@ export const STRINGS = {
     },
     // Which way a wrong unit most likely went, by quantity, when values read in SI look far off.
     implausible: {
+      // Read in SI as nothing named a unit. The size can be off either way, so no direction is
+      // claimed; a unit SeeBand cannot read must be converted, as choosing a listed one is 1000× off.
       inSi: {
         seebeck:
-          "These values are far from any usual Seebeck coefficient in V/K. Values written in µV/K but read as V/K come out a million times too large: if the file is in µV/K, choose µV/K.",
+          "These values are far from any usual Seebeck coefficient in V/K, the unit assumed. If the file is in µV/K, choose µV/K. If it is in mV/K, which SeeBand does not read, convert the column to V/K or µV/K first: choosing µV/K would make the values 1000 times too small.",
         resistivity:
-          "These values are far from any usual resistivity in Ω·m. Values written in mΩ·cm or µΩ·m but read as Ω·m come out 10⁵ or 10⁶ times too large: choose the unit the file is in.",
+          "These values are far from any usual resistivity in Ω·m, the unit assumed. If the file is in mΩ·cm or µΩ·m, choose it. If it is in Ω·cm, which SeeBand does not read, convert the column to Ω·m or mΩ·cm first: choosing mΩ·cm would make the values 1000 times too small.",
         conductivity:
-          "These values are far from any usual conductivity in S/m. Values written in S/cm but read as S/m come out a hundred times too small: if the file is in S/cm, choose S/cm.",
-        hall: "These values are far from any usual Hall coefficient in m³/C. Values written in cm³/C but read as m³/C come out a million times too large: if the file is in cm³/C, choose cm³/C.",
+          "These values are far from any usual conductivity in S/m, the unit assumed. If the file is in S/cm, choose S/cm. Otherwise, convert the column to S/m or S/cm.",
+        hall: "These values are far from any usual Hall coefficient in m³/C, the unit assumed. If the file is in cm³/C, choose cm³/C. Otherwise, convert the column to m³/C or cm³/C.",
       },
-      inUnit: (unit: string) =>
-        `These values are far from any usual size when read in ${unit}. Check that the file is in ${unit}, or choose the unit it is in.`,
+      inChosenUnit: (unit: string) =>
+        `These values are far from any usual size in ${unit}, the unit chosen. Check that the file is in ${unit}, or choose the unit it is in.`,
+      inHeaderUnit: (unit: string) =>
+        `These values are far from any usual size in ${unit}, the unit the header names. Check the file: its header may name the wrong unit.`,
     },
     quantities: {
       seebeck: { symbol: "S", title: "Seebeck coefficient", unit: "V/K" },

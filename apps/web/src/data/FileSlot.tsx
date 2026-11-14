@@ -399,7 +399,9 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
                     {unitDoubtMessage(
                       doubt,
                       loadedAs(quantity, data),
-                      unitOf(data.readAs, loadedAs(quantity, data)),
+                      data.readAs?.find(
+                        ({ role }) => role === loadedAs(quantity, data),
+                      ),
                     )}
                   </li>
                 ))}

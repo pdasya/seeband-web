@@ -97,20 +97,26 @@ export function unitDoubts(
 }
 
 /**
- * What a doubt about a column's unit means for its quantity, and what to do. Values that look far
- * from any usual size read in SI most likely came in the lab unit the quantity is often written in;
- * read in another unit, the unit chosen is what to check. The size itself is the server's to judge.
+ * What a doubt about a column's unit means for its quantity, and what to do. Values read in SI as
+ * nothing named a unit name the lab units the quantity is often written in, and those SeeBand
+ * cannot read; a unit the header named or the user chose is what to check. The size itself is the
+ * server's to judge, and it does not say whether values are too large or too small.
  */
 export function unitDoubtMessage(
   doubt: UnitDoubt,
   role: Role,
-  unit: Unit,
+  item: Pick<ColumnRead, "unit" | "unit_source"> | undefined,
 ): string {
   const { data: text } = STRINGS;
   if (doubt === "unit_assumed" || role === "temperature") {
     return text.issues[doubt];
   }
-  return unit === UNITS_OF[role][0]
-    ? text.implausible.inSi[role]
-    : text.implausible.inUnit(text.units[unit]);
+  const unit = item?.unit ?? UNITS_OF[role][0];
+  const label = text.units[unit];
+  if (item?.unit_source === "header") {
+    return text.implausible.inHeaderUnit(label);
+  }
+  return item?.unit_source === "chosen" || unit !== UNITS_OF[role][0]
+    ? text.implausible.inChosenUnit(label)
+    : text.implausible.inSi[role];
 }

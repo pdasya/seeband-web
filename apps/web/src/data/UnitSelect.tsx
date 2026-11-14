@@ -52,7 +52,12 @@ export function UnitSelect({
         size="sm"
         // Dashed and muted, as the unit is the placeholder: the card's note says why.
         className={cn("w-full font-mono", assumed && "border-dashed")}
-        aria-label={assumed ? text.unitAssumedOf(label) : text.unitOf(label)}
+        // The name replaces the shown unit for a screen reader, so it names the unit too.
+        aria-label={
+          assumed
+            ? text.unitAssumedOf(label, text.units[value])
+            : text.unitOf(label)
+        }
       >
         <SelectValue placeholder={text.units[value]} />
       </SelectTrigger>

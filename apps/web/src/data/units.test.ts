@@ -191,30 +191,67 @@ describe("unitIsDefault", () => {
 
 describe("unitDoubtMessage", () => {
   const { data: text } = STRINGS;
+  const assumed = (unit: Unit) => ({ unit, unit_source: "default" as const });
 
-  test("says which lab unit values read in SI most likely came in", () => {
-    expect(unitDoubtMessage("implausible_magnitude", "seebeck", "V/K")).toBe(
-      text.implausible.inSi.seebeck,
+  test("names the lab units a quantity read in SI by default is often written in", () => {
+    const seebeck = unitDoubtMessage(
+      "implausible_magnitude",
+      "seebeck",
+      assumed("V/K"),
     );
+    expect(seebeck).toBe(text.implausible.inSi.seebeck);
+    expect(seebeck).toContain("choose µV/K");
     expect(
-      unitDoubtMessage("implausible_magnitude", "seebeck", "V/K"),
-    ).toContain("µV/K");
-    expect(
-      unitDoubtMessage("implausible_magnitude", "hall", "m^3/C"),
+      unitDoubtMessage("implausible_magnitude", "hall", assumed("m^3/C")),
     ).toContain("cm³/C");
     expect(
-      unitDoubtMessage("implausible_magnitude", "conductivity", "S/m"),
+      unitDoubtMessage("implausible_magnitude", "conductivity", assumed("S/m")),
     ).toContain("S/cm");
   });
 
-  test("asks to check a unit that was chosen, rather than suggest it again", () => {
-    expect(unitDoubtMessage("implausible_magnitude", "seebeck", "uV/K")).toBe(
-      text.implausible.inUnit("µV/K"),
+  test("warns that mV/K and Ω·cm must be converted, as a listed unit would be 1000× off", () => {
+    // 0.2 mV/K chosen as µV/K reads 2e-7 V/K, which passes the size check unwarned.
+    expect(text.implausible.inSi.seebeck).toMatch(
+      /mV\/K, which SeeBand does not read, convert/,
+    );
+    expect(text.implausible.inSi.resistivity).toMatch(
+      /Ω·cm, which SeeBand does not read, convert/,
     );
   });
 
+  test("claims no direction, as the size check fires on both sides", () => {
+    for (const message of Object.values(text.implausible.inSi)) {
+      expect(message).not.toMatch(/too large|too small: if/);
+    }
+  });
+
+  test("asks to check a unit that was chosen, rather than suggest another", () => {
+    expect(
+      unitDoubtMessage("implausible_magnitude", "seebeck", {
+        unit: "uV/K",
+        unit_source: "chosen",
+      }),
+    ).toBe(text.implausible.inChosenUnit("µV/K"));
+    // Choosing SI is a choice too, so it is not told to choose SI's lab unit.
+    expect(
+      unitDoubtMessage("implausible_magnitude", "seebeck", {
+        unit: "V/K",
+        unit_source: "chosen",
+      }),
+    ).toBe(text.implausible.inChosenUnit("V/K"));
+  });
+
+  test("asks to check the file where its header names the unit", () => {
+    expect(
+      unitDoubtMessage("implausible_magnitude", "seebeck", {
+        unit: "V/K",
+        unit_source: "header",
+      }),
+    ).toBe(text.implausible.inHeaderUnit("V/K"));
+  });
+
   test("keeps the text of an unreadable header unit", () => {
-    expect(unitDoubtMessage("unit_assumed", "seebeck", "V/K")).toBe(
+    expect(unitDoubtMessage("unit_assumed", "seebeck", assumed("V/K"))).toBe(
       text.issues.unit_assumed,
     );
   });
