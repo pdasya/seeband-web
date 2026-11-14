@@ -53,9 +53,9 @@ export function download(
   }, RELEASE_AFTER_MS);
 }
 
-async function apiVersion(): Promise<string | null> {
+async function serverVersions() {
   try {
-    return (await apiClient.getHealth()).version;
+    return await apiClient.getHealth();
   } catch {
     return null;
   }
@@ -100,6 +100,7 @@ export function useExport() {
     extraIssues: {
       measured?: readonly string[];
       derived?: readonly string[];
+      coreVersions?: readonly (string | undefined)[];
     } = {},
   ) => {
     const issues = resultIssues(mode, {
@@ -107,9 +108,12 @@ export function useExport() {
       measured: extraIssues.measured ?? [],
       derived: extraIssues.derived ?? [],
     });
+    const server = await serverVersions();
     const info = {
       appVersion: __APP_VERSION__,
-      apiVersion: await apiVersion(),
+      apiVersion: server?.version ?? null,
+      serverCoreVersion: server?.core_version ?? null,
+      curveCoreVersions: extraIssues.coreVersions ?? [],
       date: new Date().toISOString(),
       modelId: model.id,
       modeLabel: modeLabel(mode),
@@ -178,6 +182,9 @@ export function useExport() {
     const made = await context(now, {
       measured: [...(preFit?.known_issues ?? []), ...(fit?.known_issues ?? [])],
       derived: graphs.flatMap(({ result }) => result.known_issues),
+      coreVersions: [preFit, fit, ...graphs.map(({ result }) => result)]
+        .filter((result): result is CalcResponse => result !== null)
+        .map((result) => result.core_version),
     });
     return { ...made, preFit, fit, graphs, missing };
   };
@@ -284,11 +291,15 @@ export function useExport() {
       temperatureK: readonly number[],
       curves: readonly { name: string; values: readonly (number | null)[] }[],
       issues: readonly string[],
+      coreVersion?: string,
     ) =>
       run(async () => {
         const now = snapshot();
         if (now !== null) {
-          const { header } = await context(now, { derived: issues });
+          const { header } = await context(now, {
+            derived: issues,
+            coreVersions: [coreVersion],
+          });
           download(
             text.graphFile(name),
             graphFile(header, temperatureK, curves, energy),

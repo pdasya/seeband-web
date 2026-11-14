@@ -6,6 +6,13 @@
   convergence timing, interpolation coverage, degeneracy cancellation and the
   open negative-weight interpretation. No calculation behavior changed.
 
+- P10: expose the installed `seeband_core` version (`0.1.0`) in health,
+  calculation and fit API responses, and record separate server, fit and curve
+  provenance in shared export headers. This is result metadata only; it changes
+  no formulas or fit behavior. Older results without a recorded version remain
+  unknown and are not assigned a version retroactively. This is not release
+  approval; scientific confirmation and the desktop parity work remain open.
+
 - FS18: preserve a conductivity file's source quantity when requesting
   interpolation without an explicit column mapping. Explicit mappings and
   chosen units remain in use. Browser regressions cover conductivity upload,

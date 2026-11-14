@@ -1,6 +1,8 @@
 # Known issues
 
-The first stage ports the desktop exactly, so its errors stay until the Physics fixes stage. `known_issues.py` records them, so that users see them and do not take doubtful numbers as sound.
+`known_issues.py` records active limitations so users can interpret affected
+results. Corrections remove only the issue they resolve; other limitations
+remain listed until they are separately fixed and validated.
 
 - `FitMode.known_issues` lists what applies to a mode, in descriptions. `FitMode.disabled` says that a client must not offer it.
 - `known_issues` on a `FitResult` or `CurveResult` lists the ids that apply to that result, with their conditions checked. A failed fit lists only a disabled mode.
@@ -48,4 +50,5 @@ P4/P12 (#83, #103) remove the SPB Hall disabled-mode and stale-Fermi-energy flag
 - **E_F inside the gap (#107)** cannot be told from a good fit by its inputs alone, and `at_bounds` and `parameter_errors` report part of it.
 - **`underdetermined` interpolation** has no issue that fixes it, because it describes the data. `InterpolatedData` reports it.
 - **Choosing a net by the first and last rows (P9)** does not reach this path, because the parser sorts (D22). A client can send `POST /api/guess` unsorted rows, and its answer then carries the warning `unsorted_temperature`. It belongs to no mode, so it is not an entry here.
-- **The Conventions page** does not exist yet, so S3 takes its note on known issues from this list.
+- **Missing desktop coverage (#71)** remains open, including the desktop/web
+  parity gate; corrected web results do not establish desktop parity.
