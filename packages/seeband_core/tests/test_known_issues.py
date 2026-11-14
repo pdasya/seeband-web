@@ -33,15 +33,6 @@ ALL_CURVES = (*DPB_FIT_CURVES, "chemical_potential", "carrier_concentration_by_b
 # Written here so that a change of scope, severity or fix fails.
 # id: severity, fixed by, modes, scattering, curve kinds, affects fit, condition.
 EXPECTED: dict[str, tuple[Any, ...]] = {
-    "acphdis_band_weight": (
-        "unreliable",
-        "#102",
-        LOOP,
-        ("acPhDis",),
-        ("measured", "seebeck"),
-        True,
-        None,
-    ),
     "dpb_loop_degeneracy": ("caution", "#85", LOOP, (), (), True, "degeneracy_not_one"),
     "negative_m_eff_weight": (
         "caution",
@@ -344,7 +335,7 @@ def test_a_fit_passes_its_degeneracy_and_scattering_on(monkeypatch: pytest.Monke
     with_n = fit_ids(monkeypatch, "dpb_s", [1.0, 500.0, 500.0], band_2_degeneracy=2.0)
     assert with_n == set()
     acphdis = fit_ids(monkeypatch, "dpb_s_rho", loop, scattering="acPhDis")
-    assert acphdis == {"acphdis_band_weight"}
+    assert acphdis == set()
     acph = fit_ids(monkeypatch, "dpb_s_rho", loop, scattering="acPh", band_2_degeneracy=2.0)
     assert acph == {"dpb_loop_degeneracy"}
     made_up = fit_ids(monkeypatch, "spb_s", [100.0], extrapolated=True)
@@ -405,7 +396,7 @@ class TestTheErrorsAreStillThere:
             ]
             assert np.allclose(sigma * rho, 1.0)
 
-    def test_acphdis_seebeck_depends_on_the_grid(self) -> None:
+    def test_repaired_acphdis_seebeck_is_independent_of_the_grid(self) -> None:
         model = registry.get("dpb")
         start = default_start(fit_mode("dpb_s_rho"))
         values = start | {
@@ -420,4 +411,4 @@ class TestTheErrorsAreStillThere:
             request = CurveRequest("dpb_s_rho", values, 100, high_k, 3, "acPhDis")
             return float(model.calculate(request).curves["seebeck_v_per_k"][0])
 
-        assert at_low_end(400) != pytest.approx(at_low_end(800), rel=1e-3, abs=0)
+        assert at_low_end(400) == at_low_end(800)

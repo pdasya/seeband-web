@@ -9,3 +9,7 @@ These modules, `neural_nets`, the neural net weights and the Fermi table keep th
 SPB numerical initial estimates and DPB neural guesses are described in [Initial guess](docs/initial-guess.md).
 
 [Checked chemical potential](docs/chemical-potential.md) describes signed carrier conservation, solver diagnostics and explicit no-root/precision failures (P8).
+
+[Pointwise acPhDis Seebeck](docs/dpb-acphdis-weight.md) describes P11 and the
+changed fits on the P8 solver base. Core `0.1.1` identifies this calculation
+state; future numerical changes need a new core version.

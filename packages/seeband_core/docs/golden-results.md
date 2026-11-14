@@ -187,3 +187,11 @@ for these same inputs. These generated expectations are regression evidence,
 not independent proof of physics. The dedicated conservation, domain and
 order-independence tests check the solver separately. See
 [the signed-balance contract and limitations](chemical-potential.md).
+
+## P11 pointwise mixed-scattering weight
+
+`tests/fixtures/physics/p11.json` overrides only the affected mixed-scattering
+fit and total-Seebeck calls. Unaffected calls retain P8 expectations, and all
+desktop/P8 recordings remain unchanged. The fixture includes explicit failed
+fits, not replacement numbers. See [the correction, example parameter
+movements and scientific limits](dpb-acphdis-weight.md).

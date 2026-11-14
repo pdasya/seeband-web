@@ -413,7 +413,7 @@ test("known errors of a tab's curves are named while it is open", async ({
       json: {
         temperature_k: [100, 300, 500],
         curves: CURVES[body.kind ?? "measured"],
-        known_issues: body.kind === undefined ? [] : ["acphdis_band_weight"],
+        known_issues: body.kind === undefined ? [] : ["collapsed_m_eff"],
         rmse: {},
       },
     });
@@ -421,13 +421,13 @@ test("known errors of a tab's curves are named while it is open", async ({
 
   await show(page, "Band contributions");
   await expect(
-    page.getByText(/band weight of the last temperature/),
+    page.getByText(/the other band has no weight left/),
   ).toBeVisible();
 
   await show(page, "Seebeck S(T)");
-  await expect(
-    page.getByText(/band weight of the last temperature/),
-  ).toHaveCount(0);
+  await expect(page.getByText(/the other band has no weight left/)).toHaveCount(
+    0,
+  );
 });
 
 function hold() {
@@ -454,13 +454,13 @@ test("known errors of a tab go with it at once, also if the next curve fails", a
     return route.fulfill({
       json: answerFor(
         body,
-        body.kind === "seebeck_by_band" ? ["acphdis_band_weight"] : [],
+        body.kind === "seebeck_by_band" ? ["collapsed_m_eff"] : [],
       ),
     });
   });
   await show(page, "Band contributions");
   await expect(
-    page.getByText(/band weight of the last temperature/),
+    page.getByText(/the other band has no weight left/),
   ).toBeVisible();
   const gate = hold();
   await page.route("**/api/calc", async (route) => {
@@ -472,15 +472,15 @@ test("known errors of a tab go with it at once, also if the next curve fails", a
   });
 
   await show(page, "Chemical potential μ(T)");
-  await expect(
-    page.getByText(/band weight of the last temperature/),
-  ).toHaveCount(0);
+  await expect(page.getByText(/the other band has no weight left/)).toHaveCount(
+    0,
+  );
 
   gate.release();
   await expect(page.getByRole("alert")).toContainText("no result");
-  await expect(
-    page.getByText(/band weight of the last temperature/),
-  ).toHaveCount(0);
+  await expect(page.getByText(/the other band has no weight left/)).toHaveCount(
+    0,
+  );
   await expect(page.getByRole("alert")).not.toContainText("last curve");
 });
 

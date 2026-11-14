@@ -5,7 +5,13 @@ import { strFromU8, unzipSync } from "fflate";
 import { expect, test, type Page } from "@playwright/test";
 
 import { fakeFit } from "./support/fakeFit";
-import { CALC, DEMO, serveModels } from "./support/models";
+import {
+  CALC,
+  DEMO,
+  MODELS_WITH_SEEBECK_ISSUE,
+  serveModels,
+  SYNTHETIC_SEEBECK_ISSUE,
+} from "./support/models";
 
 const PARSED = (quantity: string) => ({
   headers: ["T", "x"],
@@ -337,7 +343,7 @@ test("a start from the neural net says which net", async ({ page }) => {
   );
 });
 
-// Each kind of curve, with flags the server would add for acPhDis.
+// Synthetic curves; the measured response can carry an active warning for export tests.
 const DERIVED: Record<string, Record<string, number[]>> = {
   chemical_potential: { chemical_potential_k: [-100, 0, 100] },
   electrical_conductivity: { electrical_conductivity_s_per_m: [1e5, 8e4, 6e4] },
@@ -353,6 +359,9 @@ const DERIVED: Record<string, Record<string, number[]>> = {
 };
 
 async function serveCurves(page: Page) {
+  await page.route("**/api/models", (route) =>
+    route.fulfill({ json: MODELS_WITH_SEEBECK_ISSUE }),
+  );
   const kinds: string[] = [];
   await page.route("**/api/calc", (route) => {
     const body = route.request().postDataJSON() as {
@@ -373,7 +382,7 @@ async function serveCurves(page: Page) {
           body.scattering !== "acPhDis"
             ? []
             : kind === "measured"
-              ? ["acphdis_band_weight"]
+              ? [SYNTHETIC_SEEBECK_ISSUE.id]
               : [],
       },
     });
@@ -414,7 +423,7 @@ test("the additional graphs draw each curve the mode offers", async ({
   await expect(page.getByText("unreliable")).toHaveCount(0);
 });
 
-test("with acPhDis, σ, κ_e and S by band are flagged as unreliable", async ({
+test("a measured S warning follows its total into the band graph", async ({
   page,
 }) => {
   await openFit(page, serveCurves);
@@ -433,10 +442,10 @@ test("with acPhDis, σ, κ_e and S by band are flagged as unreliable", async ({
   ).toHaveCount(0);
   // The total of S drawn with the bands has its own flag, and σ, which does not draw it, has not.
   await expect(graph(page, "Band contributions")).toContainText(
-    "Unreliable: With acPhDis, the band weight of the last temperature applies to all of S.",
+    "Unreliable: A known error applies to this result.",
   );
   await expect(graph(page, "Conductivity σ(T)")).not.toContainText(
-    "band weight of the last temperature",
+    "A known error applies to this result.",
   );
   await expect(graph(page, "Band contributions")).not.toContainText(
     "DPB R_H is half",
@@ -585,7 +594,7 @@ test("each additional graph downloads its own curves and flags", async ({
   );
   const lines = file.split("\n");
   expect(lines).toContain(
-    "# Unreliable: With acPhDis, the band weight of the last temperature applies to all of S. (acphdis_band_weight)",
+    "# Unreliable: A known error applies to this result. (synthetic_seebeck_issue)",
   );
   expect(
     lines.find((line) => line.startsWith("Temperature"))?.split("\t"),

@@ -55,10 +55,15 @@ to total σ. Electronic κ includes the two Lorenz terms and the bipolar term
 T σ₁σ₂/(σ₁+σ₂) (S₁−S₂)². Here S₁ and S₂ are each band's own Seebeck coefficient;
 the plotted contributions are σᵢSᵢ/(σ₁+σ₂).
 
-The existing total-Seebeck grid-weighting error (#102) is separate: on a
-multi-point grid the total can still disagree with the sum of the corrected
-band contributions. Its warning remains visible. Other known model-domain
-and numerical limitations remain listed in the core's known-issues document.
+P11 (#102) uses q(T) = B (C_K + T) / ((D_K + T) r) at each temperature
+in total DPB acPhDis Seebeck, where r is the internal mass coordinate and
+C_K = 300 K × C, D_K = 300 K × D. The total equals the sum of the weighted
+band contributions on the same grid. P8 supplies the independent checked
+chemical-potential solve; other mass/degeneracy and model limitations remain.
 
 The P3 correction has automated identity checks. Human physicist confirmation
 and the complete #71 desktop/web comparison remain outstanding.
+
+Core version `0.1.1` identifies this P8-based P11 calculation state. P10
+export-provenance metadata and P9 network-selection changes remain separate
+pending work; this version does not imply human physicist confirmation.

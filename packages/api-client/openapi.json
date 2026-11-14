@@ -1737,23 +1737,6 @@
                               "disabled_by": [],
                               "known_issues": [
                                 {
-                                  "id": "acphdis_band_weight",
-                                  "severity": "unreliable",
-                                  "message_key": "known_issue.acphdis_band_weight",
-                                  "fixed_by": "#102",
-                                  "scattering": [
-                                    "acPhDis"
-                                  ],
-                                  "curve_kinds": [
-                                    "measured",
-                                    "seebeck"
-                                  ],
-                                  "columns": [
-                                    "seebeck_v_per_k"
-                                  ],
-                                  "affects_fit": true
-                                },
-                                {
                                   "id": "dpb_loop_degeneracy",
                                   "severity": "caution",
                                   "message_key": "known_issue.dpb_loop_degeneracy",
@@ -2296,23 +2279,6 @@
                               "disabled_by": [],
                               "known_issues": [
                                 {
-                                  "id": "acphdis_band_weight",
-                                  "severity": "unreliable",
-                                  "message_key": "known_issue.acphdis_band_weight",
-                                  "fixed_by": "#102",
-                                  "scattering": [
-                                    "acPhDis"
-                                  ],
-                                  "curve_kinds": [
-                                    "measured",
-                                    "seebeck"
-                                  ],
-                                  "columns": [
-                                    "seebeck_v_per_k"
-                                  ],
-                                  "affects_fit": true
-                                },
-                                {
                                   "id": "dpb_loop_degeneracy",
                                   "severity": "caution",
                                   "message_key": "known_issue.dpb_loop_degeneracy",
@@ -2449,7 +2415,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "example": "\"a4b52d092d5223d4c684b06f796d2afd\""
+                "example": "\"361f957aa19f272710a73f5485a46eca\""
               }
             }
           },

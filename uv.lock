@@ -849,7 +849,6 @@ requires-dist = [
 
 [[package]]
 name = "seeband-core"
-version = "0.0.0"
 source = { editable = "packages/seeband_core" }
 dependencies = [
     { name = "mpmath" },

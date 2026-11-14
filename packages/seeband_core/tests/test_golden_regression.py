@@ -123,6 +123,16 @@ def p8_results() -> dict[str, Any]:
     return json.loads((GOLDEN.parent / "physics" / "p8.json").read_text())["results"]
 
 
+@cache
+def p11_results() -> dict[str, Any]:
+    return json.loads((GOLDEN.parent / "physics" / "p11.json").read_text())["results"]
+
+
+def current_expectation(identifier: str, call: dict[str, Any]) -> dict[str, Any]:
+    key = p8_key(identifier, call)
+    return p11_results().get(key, p8_results()[key])
+
+
 def p8_key(identifier: str, call: dict[str, Any]) -> str:
     # A graph can call the same function repeatedly with different band parameters.
     inputs = json.dumps([call["args"], call["kwargs"]], sort_keys=True).encode()
@@ -133,7 +143,7 @@ def assert_p8_replay(
     identifier: str, mode: str, scattering: str | None, call: dict[str, Any]
 ) -> None:
     """Compare every original input with separately recorded P8 results, including failures."""
-    expected = p8_results()[p8_key(identifier, call)]
+    expected = current_expectation(identifier, call)
     if call["function"].endswith("_fit"):
         result = replay_fit(mode, call)
         assert result.status == expected["status"]
@@ -356,7 +366,7 @@ def bounds_received(function: str, args: list[Any]) -> list[tuple[float, float]]
 
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize(("example", "mode", "scattering", "source", "call"), CALLS, ids=CALL_IDS)
-def test_replay_matches_p8_expectations(
+def test_replay_matches_current_expectations(
     example: str, mode: str, scattering: str | None, source: str, call: dict[str, Any]
 ) -> None:
     identifier = f"{example}-{mode}-{scattering}-{source}-{call['function']}"
@@ -371,10 +381,12 @@ def recorded_iterative_runs() -> Iterator[tuple[str, str, dict[str, Any]]]:
 
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize(("identifier", "mode", "call"), list(recorded_iterative_runs()))
-def test_iterations_match_p8_expectations(identifier: str, mode: str, call: dict[str, Any]) -> None:
+def test_iterations_match_current_expectations(
+    identifier: str, mode: str, call: dict[str, Any]
+) -> None:
     result = replay_fit(mode, call)
-    assert result.status == p8_results()[p8_key(identifier, call)]["status"]
-    assert result.iterations == p8_results()[p8_key(identifier, call)]["iterations"]
+    assert result.status == current_expectation(identifier, call)["status"]
+    assert result.iterations == current_expectation(identifier, call)["iterations"]
 
 
 def same_value(first: Any, second: Any) -> bool:
@@ -457,3 +469,17 @@ def test_coverage_of_public_methods_is_as_documented() -> None:
 def test_unstable_list_only_holds_cases_that_exist() -> None:
     found = {(mode, scattering) for example, mode, scattering, *_ in CALLS if example == "02_SiP"}
     assert UNSTABLE_02 <= found
+
+
+def test_p11_preserves_p8_regression_evidence():
+    document = json.loads((GOLDEN.parent / "physics" / "p11.json").read_text())
+    assert (
+        document["p8_sha256"]
+        == hashlib.sha256((GOLDEN.parent / "physics" / "p8.json").read_bytes()).hexdigest()
+    )
+    expected_keys = {
+        p8_key(identifier, call)
+        for identifier, (_, _, scattering, _, call) in zip(CALL_IDS, CALLS, strict=True)
+        if scattering == "acPhDis" and call["function"] in document["affected_functions"]
+    }
+    assert set(document["results"]) == expected_keys

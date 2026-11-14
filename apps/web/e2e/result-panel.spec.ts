@@ -2,7 +2,13 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { show } from "./support/fitScreen";
 import { fakeFit } from "./support/fakeFit";
-import { CALC, serveModels } from "./support/models";
+import {
+  CALC,
+  MODELS,
+  MODELS_WITH_SEEBECK_ISSUE,
+  serveModels,
+  SYNTHETIC_SEEBECK_ISSUE,
+} from "./support/models";
 
 const PARSED = (quantity: string) => ({
   headers: ["T", "x"],
@@ -42,9 +48,13 @@ const RMSE = {
 };
 
 /** DPB S + ρ with its data, the design's first state. */
-async function open(page: Page, calc: object = { ...CALC, rmse: RMSE }) {
+async function open(
+  page: Page,
+  calc: object = { ...CALC, rmse: RMSE },
+  models = MODELS,
+) {
   await fakeFit(page);
-  await serveModels(page);
+  await serveModels(page, models);
   await page.route("**/api/calc", (route) => route.fulfill({ json: calc }));
   await page.route("**/api/parse", (route) => {
     const { expected } = route.request().postDataJSON() as {
@@ -357,16 +367,20 @@ for (const [name, change] of [
 test("an error of one quantity marks that RMSE, with its text beside it", async ({
   page,
 }) => {
-  await open(page, {
-    ...CALC,
-    rmse: RMSE,
-    known_issues: ["acphdis_band_weight"],
-  });
+  await open(
+    page,
+    {
+      ...CALC,
+      rmse: RMSE,
+      known_issues: [SYNTHETIC_SEEBECK_ISSUE.id],
+    },
+    MODELS_WITH_SEEBECK_ISSUE,
+  );
 
   await expect(metric(page, "RMSE, S").getByText("unreliable")).toBeVisible();
   await expect(metric(page, "RMSE, ρ").getByText("unreliable")).toHaveCount(0);
   const text = page.getByText(
-    "Unreliable: With acPhDis, the band weight of the last temperature applies to all of S.",
+    "Unreliable: A known error applies to this result.",
   );
   await expect(text).toBeVisible();
 

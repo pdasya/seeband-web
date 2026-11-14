@@ -28,7 +28,7 @@ converged.
 
 On example 03 from C = 2, D = 0.5, the case #84 cites, the desktop rule stopped
 after one iteration in which m_eff changed by +42.6 %, E_F by +25.9 % and A by
-+604 %, with S RMSE 5.04 µV/K. P5 takes two iterations and ends within 3e-6 of
++604 %, with S RMSE 5.04 µV/K. At P5, the fit took two iterations and ended within 3e-6 of
 the fixed point an outer loop written apart from the core reaches, with S RMSE
 3.76 µV/K.
 
@@ -46,8 +46,9 @@ tracks the broader stopping rule and consistency of the final model.
 
 Parameter stability at the existing tolerance is not evidence of a good
 residual, identifiable material parameters or a global optimum. The separate
-acPhDis total-Seebeck grid dependence (#102), collapsed-band behavior,
-chemical-potential solver and underflow limitations remain unresolved.
+collapsed-band behavior and Fermi-integral underflow limitations remain unresolved.
+P8 separately repairs the chemical-potential solver; P11 repairs acPhDis
+total-Seebeck grid dependence (#102) and changes the numerical fixed point.
 More iterations may expose these limitations instead of repairing them.
 
 ## What P5 does not fix
@@ -64,3 +65,9 @@ Historical desktop golden files remain unchanged. P5 records corrected
 expectations separately and tests both group-order failures, zero inputs,
 nonfinite changes and the iteration limit. Human physicist confirmation
 and parity (#71) remain pending; agent review supplies neither.
+
+P11 changes the S objective for C ≠ D. The historical P5 fixed-point numbers
+above remain evidence for the older formula; current P11 regressions are
+recorded separately in `tests/fixtures/physics/p11.json`. Group convergence
+checks, budgets, objectives apart from the repaired weight, and fit bounds
+are unchanged. See [the pointwise weight correction](dpb-acphdis-weight.md).
