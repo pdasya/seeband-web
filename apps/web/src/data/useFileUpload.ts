@@ -369,8 +369,13 @@ export function useFileUpload(
       if (entry?.readAs === undefined || reading.current) {
         return;
       }
-      // Only units a user chose go again, so that one read in SI by default stays marked so.
-      const mapping = withUnit(requestMapping(entry.readAs), role, unit);
+      // Only units a user chose go again, so that one read in SI by default stays marked so: the
+      // choices kept from before, or else those the answer says were chosen.
+      const mapping = withUnit(
+        entry.mapping ?? requestMapping(entry.readAs),
+        role,
+        unit,
+      );
       const signal = newRequest();
       // Counted as on its way, and the selects wait, so that a second change cannot start from
       // the old units, and the demo leaves the slot alone.
