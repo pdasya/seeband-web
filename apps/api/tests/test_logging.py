@@ -300,8 +300,8 @@ def test_calculation_through_real_workers_logs_no_values(tmp_path: Path) -> None
     body = {
         "model": "spb",
         "fit_mode": "spb_s",
-        # A band mass of 0 gives results that are not finite, which makes the core warn.
-        "parameters": {"band_mass": 0.0, "fermi_energy": 1234.5678},
+        # F0 underflows in transport, while the chemical-potential density solve converges.
+        "parameters": {"band_mass": 1.0, "fermi_energy": 1e6},
         "min_temperature_k": 123.456789,
         "max_temperature_k": 765.4321,
         "measurements": {
@@ -312,6 +312,10 @@ def test_calculation_through_real_workers_logs_no_values(tmp_path: Path) -> None
     with running_server(command, port, log_path, env) as client:
         response = client.post("/api/calc", json=body, timeout=30)
         assert response.status_code == 200
+        result = response.json()
+        assert result["curves"]["seebeck_v_per_k"]
+        assert all(value is None for value in result["curves"]["seebeck_v_per_k"])
+        assert result["rmse"]["seebeck"] == {"value": None, "unit": "uV/K"}
         # Few rows make the fit warn, and a Seebeck this large makes the prediction not finite.
         guess_seebeck = "1.123456789"
         guess = {
@@ -333,7 +337,7 @@ def test_calculation_through_real_workers_logs_no_values(tmp_path: Path) -> None
     log = log_path.read_text(encoding="utf-8")
     for value in (
         measured,
-        "1234.5678",
+        "1000000.0",
         "123.456789",
         "765.4321",
         "333.3331",

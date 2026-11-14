@@ -23,3 +23,6 @@ state. A version identifies software behavior, not physical validity or human
 physicist confirmation. See [results that changed](../../apps/site/results-changed.md).
 
 [Author review packet](docs/author-review/README.md) tracks the evidence, open questions and owner handoff for P1 (#80).
+
+[Checked chemical potential](docs/chemical-potential.md) describes carrier conservation,
+solver diagnostics and explicit no-root/precision failures in core `0.1.1` (P8).

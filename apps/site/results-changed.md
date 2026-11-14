@@ -14,8 +14,12 @@ valid or matches the desktop.
 | P6 (#85), DPB S-only degeneracy        | S-only fitting and drawing applied degeneracy differently to the public mass ratio R.                     | Both convert R to the low-level model ratio R/N once; public values and bounds remain in R.                                              | [DPB S-only degeneracy correction](../../packages/seeband_core/docs/dpb-s-degeneracy.md)          |
 | P7 (#86), interpolation support        | Requested fit ranges could generate synthetic interpolation points outside measured temperature coverage. | For measurements spanning 25–750 K and a request of 50–800 K, interpolation uses 50–750 K, or 35 points.                                 | [Interpolation support](../../packages/seeband_core/docs/interpolation.md)                        |
 
-Core `0.1.0` includes the landed P2–P7 corrections listed above. P8 and P9
-remain separate pending changes and are not included in this version note.
+Core `0.1.0` includes the landed P2–P7 corrections listed above. Core `0.1.1` additionally includes P8: a checked signed chemical-potential
+solve, stable negative F₁/₂ tail and rejection of analytically invalid optimizer
+trial points. Invalid starts and uncertifiable density roots fail explicitly;
+transport underflow can still yield nonfinite points. See the
+[solver contract](../../packages/seeband_core/docs/chemical-potential.md).
+P9 remains a separate pending change.
 
 P10 adds result-version and provenance metadata only; it does not change
 formulas or fitting. Core version `0.1.0` is the first traceable version.

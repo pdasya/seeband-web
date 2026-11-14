@@ -16,7 +16,8 @@ jobs:
   python:
     name: Python
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # Allow the expanded numerical/API suite to finish on slower hosted runners.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
@@ -30,7 +31,9 @@ jobs:
       - name: Mypy
         run: uv run mypy
       - name: Pytest, including that the OpenAPI contract is up to date
-        run: uv run pytest
+        run: |
+          uv run pytest packages/seeband_core/tests/test_golden_regression.py -x --tb=short
+          uv run pytest --ignore=packages/seeband_core/tests/test_golden_regression.py -x --tb=short
       - name: Built package
         run: |
           uv build --wheel --package seeband-core --out-dir dist

@@ -34,6 +34,80 @@ class FitProgress:
     held: dict[str, frozenset[int]] = field(default_factory=dict)
 
 
+def _curve_fit_density_domain(
+    function: Callable[..., Any], xdata: Any, ydata: Any, *, p0: Any, bounds: Any, **kwargs: Any
+) -> Any:
+    """Reject only proven no-root trials; require a valid start and finite Jacobian.
+
+    Keep SciPy's default differences on valid stencils. At the density-domain
+    boundary, reverse or shorten an offending difference instead of returning inf.
+    Numerical failures at admissible parameters always propagate.
+    """
+    function(xdata, *p0)
+    first_evaluation = True
+    measured = np.asarray(ydata, dtype=float)
+
+    def model(x: Any, *parameters: float) -> Any:
+        nonlocal first_evaluation
+        initial = first_evaluation
+        first_evaluation = False
+        try:
+            return function(x, *parameters)
+        except te.NoFiniteChemicalPotentialError as exc:
+            if initial:
+                raise te.ChemicalPotentialError(
+                    exc.temperature,
+                    "optimizer's initial interior adjustment left the density domain",
+                ) from exc
+            return np.full(np.shape(ydata), np.inf)
+
+    def jacobian(x: Any, *parameters: float) -> np.ndarray:
+        point = np.asarray(parameters, dtype=float)
+        # SciPy differences (model - data), not the model alone. Subtract data
+        # before differencing to preserve its floating-point cancellation.
+        base = np.asarray(function(x, *point), dtype=float) - measured
+
+        def evaluate(values: np.ndarray) -> np.ndarray:
+            return np.asarray(function(x, *values), dtype=float) - measured
+
+        lower, upper = np.broadcast_arrays(bounds[0], bounds[1], point)[:2]
+        columns = []
+        for index, value in enumerate(point):
+            # SciPy's default 2-point relative step, adjusted to the box bounds.
+            step = np.sqrt(np.finfo(float).eps) * max(1.0, abs(value))
+            step *= 1 if value >= 0 else -1
+            below, above = value - lower[index], upper[index] - value
+            if value + step < lower[index] or value + step > upper[index]:
+                if abs(step) <= max(below, above):
+                    step = -step
+                else:
+                    step = above if above >= below else -below
+            for _ in range(54):
+                for direction in (1, -1):
+                    trial = point.copy()
+                    trial[index] = value + direction * step
+                    delta = trial[index] - value
+                    if delta == 0 or trial[index] < lower[index] or trial[index] > upper[index]:
+                        continue
+                    try:
+                        column = (evaluate(trial) - base) / delta
+                    except te.NoFiniteChemicalPotentialError:
+                        continue
+                    break
+                else:
+                    step *= 0.5
+                    continue
+                columns.append(column)
+                break
+            else:
+                raise te.ChemicalPotentialError(None, "no admissible finite-difference stencil")
+        # Match SciPy's column-major Jacobian layout as well as its arithmetic;
+        # layout affects subsequent linear-algebra rounding and fit trajectories.
+        return np.asarray(columns).T
+
+    return opt.curve_fit(model, xdata, ydata, p0=p0, bounds=bounds, jac=jacobian, **kwargs)
+
+
 def _curve_fit_holding(
     held: frozenset[int],
     function: Callable[..., Any],
@@ -58,6 +132,7 @@ def _curve_fit_holding(
     free = [index for index in range(len(start)) if index not in held]
     covariance = np.full((len(start), len(start)), np.nan)
     if not free:
+        function(xdata, *start)
         return start.copy(), covariance
 
     def reduced(x: Any, *values: float) -> Any:
@@ -65,7 +140,7 @@ def _curve_fit_holding(
         full[free] = values
         return function(x, *full)
 
-    fitted, free_covariance = opt.curve_fit(
+    fitted, free_covariance = _curve_fit_density_domain(
         reduced, xdata, ydata, p0=start[free], bounds=(lower[free], upper[free]), **kwargs
     )
     values = start.copy()
@@ -83,7 +158,7 @@ def _curve_fit(progress: FitProgress | None, stage: str, *args: Any, **kwargs: A
     if held:
         result = _curve_fit_holding(held, *args, **kwargs)
     else:
-        result = opt.curve_fit(*args, **kwargs)
+        result = _curve_fit_density_domain(*args, **kwargs)
     if progress is not None:
         progress.stage_fits[stage] = (result[0], result[1])
     return result
