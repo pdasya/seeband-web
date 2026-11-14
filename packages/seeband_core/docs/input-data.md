@@ -51,9 +51,9 @@ Only the largest |value| is checked, and T is not checked at all. These mistakes
 | R_H in cm³/C read as m³/C (1e6 too large)       | \|R_H\| up to 0.1 cm³/C, carriers from about 6e19 cm⁻³ |
 | R_H in m³/C read as cm³/C                       | \|R_H\| from 1e-7 m³/C                                 |
 | S in mV/K, which has no unit here, read as V/K  | \|S\| up to 10 mV/K                                    |
-| separate files with T in different units        | always, as files are not compared                      |
+| separate files with T in different units        | always here, as the parser reads one file at a time    |
 
-`unit_assumed` says when a header names a unit that was not used. A column with no unit in its header is read in SI with no warning.
+`unit_assumed` says when a header names a unit that was not used. A column with no unit in its header is read in SI with no warning. The web app compares the T ranges of separate files, and marks a unit nothing named (FS22).
 
 `unit_sources` says where each column's unit came from, so that a client can show a unit nothing named:
 
