@@ -93,3 +93,29 @@ The existing no-carrier chemical-potential issue (#106) remains flagged when
 `m E_F <= 0`. The existing solver and Fermi-integral underflow limitations
 are not resolved by this correction. The Hall expression here assumes the
 core's default scattering exponent λ = 0.
+
+## Reconciliation of the pre-review Hall draft
+
+The merged P4 review fixes (`62b13a0`, PR #201) take precedence over the
+initial P4 commit (`62f1477`). They already validate the mass branch and
+Hall sign, identify its zero branch bound, sort fit inputs and preserve
+usable curve points while marking transport overflow as NaN. Independent
+quadrature tests use the documented Fermi-integral error budget above.
+
+P8 supersedes the draft's separate Hall-only chemical-potential solver:
+all paths share a signed bracketed solve with a checked normalized residual
+at most 1e-12, deterministic independent temperature solves and explicit
+invalid-domain/precision failures. The draft's fsolve-first fallback and
+1e-8 residual check are therefore redundant. No separate Hall solver or
+blanket rejection based on |E_F|/T is needed. The existing per-point check
+uses the actual sign(m) μ(T)/T and keeps the established NaN behavior for
+transport outside its numerical range.
+
+The retained draft tests extend coverage to singleton and duplicate
+Hall-temperature batches, both carrier signs and multi-temperature
+quadrature on both sides of the −9.9 and 19.9 Fermi-integral switches.
+They reuse the existing independent 1.5e-5 approximation budget rather than
+the draft's unsupported 2e-6 threshold. No formula, model data, fit objective,
+weight, bound or approximation tolerance was changed in this reconciliation.
+The tests do not resolve the remaining physical-model limitations or supply
+human physicist confirmation.
