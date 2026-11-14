@@ -42,7 +42,7 @@ function applyTable(name: string, text: string, table: ParsedTable) {
         readAs: table.mapping,
         unitDoubts: unitDoubts(
           table.warnings,
-          columnOf(table.mapping, quantity),
+          columnOf(table.mapping, measurement.loaded_as),
         ),
       });
     }

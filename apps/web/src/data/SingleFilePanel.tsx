@@ -44,6 +44,8 @@ import { UNITS_OF, isUnitDoubt } from "@/data/units";
 import { formatNumber, withDecimalComma } from "@/lib/numbers";
 import { cn } from "@/lib/utils";
 import {
+  LOADED_QUANTITIES,
+  loadedAs,
   QUANTITIES,
   useSessionStore,
   type ColumnRole,
@@ -53,7 +55,10 @@ import { STRINGS } from "@/strings";
 
 const IGNORE = "ignore";
 const PREVIEW_ROWS = 3;
-const ROLES: readonly ColumnRole["role"][] = ["temperature", ...QUANTITIES];
+const ROLES: readonly ColumnRole["role"][] = [
+  "temperature",
+  ...LOADED_QUANTITIES,
+];
 
 const { data: text } = STRINGS;
 
@@ -196,7 +201,10 @@ function ParsedChips() {
     <div className="flex flex-wrap gap-1.5">
       {QUANTITIES.map((quantity) => {
         const measurement = data[quantity]?.measurement;
-        const { symbol } = text.quantities[quantity];
+        const loaded = loadedAs(quantity, data[quantity]);
+        const { symbol } = text.quantities[loaded];
+        // A fit takes ρ = 1/σ from a σ column, which the chip says.
+        const read = loaded === quantity ? "" : ` · ${text.readAsInverse}`;
         return (
           <Badge
             key={quantity}
@@ -204,7 +212,7 @@ function ParsedChips() {
           >
             {measurement === undefined
               ? `${symbol} · ${text.single.notFound}`
-              : `${symbol} · ${String(measurement.points)} ${text.points}`}
+              : `${symbol} · ${String(measurement.points)} ${text.points}${read}`}
           </Badge>
         );
       })}
@@ -318,7 +326,7 @@ export function SingleFilePanel() {
 
   const data = useSessionStore((state) => state.data);
   const loaded = QUANTITIES.filter((q) => data[q] !== undefined)
-    .map((q) => text.quantities[q].title)
+    .map((q) => text.quantities[loadedAs(q, data[q])].title)
     .join(", ");
   let announcement = "";
   if (file?.loading === true) {
