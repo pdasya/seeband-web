@@ -35,8 +35,11 @@ temperature range. A requested 50–800 K window with measurements spanning
 25–750 K therefore produces interpolation over 50–750 K, and the interface
 notes the coverage limit. Quantities keep their independent temperature grids.
 
-There must be at least 20 K of overlap. No overlap, a single-temperature
-intersection or a shorter overlap makes that quantity unavailable to a fit.
+There must be at least 20 K of overlap, and 40 K where the data narrow the
+range, so that the grid has two points. No overlap, a single-temperature
+intersection or a shorter overlap makes that quantity unavailable to a fit,
+and the interface says which of these it was. Results and exports name the
+range a fit used for a quantity the data narrowed.
 Source data are unchanged. The polynomial still uses all supplied points;
 this support restriction does not cure overshoot, underdetermination or
 poor physical model agreement, and interpolated points are not independent
