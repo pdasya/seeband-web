@@ -24,6 +24,7 @@ import {
   type Role,
 } from "@/data/columnChoice";
 import {
+  loadedAs,
   useSessionStore,
   type LoadedQuantity,
   type Quantity,
@@ -191,7 +192,7 @@ export function useFileUpload(
           readAs: parsed.mapping,
           unitDoubts: unitDoubts(
             parsed.warnings,
-            columnOf(parsed.mapping, measurement.loaded_as),
+            columnOf(parsed.mapping, loadedAs(quantity, { measurement })),
           ),
         });
         setState({
@@ -269,7 +270,7 @@ export function useFileUpload(
           readAs: parsed.mapping,
           unitDoubts: unitDoubts(
             parsed.warnings,
-            columnOf(parsed.mapping, measurement.loaded_as),
+            columnOf(parsed.mapping, loadedAs(target, { measurement })),
           ),
         });
         setState(
@@ -401,7 +402,7 @@ export function useFileUpload(
           readAs: parsed.mapping,
           unitDoubts: unitDoubts(
             parsed.warnings,
-            columnOf(parsed.mapping, measurement.loaded_as),
+            columnOf(parsed.mapping, loadedAs(quantity, { measurement })),
           ),
         });
         setState({ status: "idle", warnings: listedWarnings(parsed.warnings) });
