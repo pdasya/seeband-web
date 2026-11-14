@@ -3206,7 +3206,8 @@
                           ],
                           "points": 3,
                           "min_temperature_k": 100.0,
-                          "max_temperature_k": 300.0
+                          "max_temperature_k": 300.0,
+                          "loaded_as": "seebeck"
                         }
                       },
                       "errors": [],
@@ -3332,7 +3333,8 @@
                           ],
                           "points": 3,
                           "min_temperature_k": 100.0,
-                          "max_temperature_k": 160.0
+                          "max_temperature_k": 160.0,
+                          "loaded_as": "seebeck"
                         }
                       },
                       "errors": [],
@@ -4479,7 +4481,8 @@
                           ],
                           "points": 31,
                           "min_temperature_k": 50.0,
-                          "max_temperature_k": 800.0
+                          "max_temperature_k": 800.0,
+                          "loaded_as": "seebeck"
                         },
                         "resistivity": {
                           "temperature_k": [
@@ -4550,7 +4553,8 @@
                           ],
                           "points": 31,
                           "min_temperature_k": 50.0,
-                          "max_temperature_k": 800.0
+                          "max_temperature_k": 800.0,
+                          "loaded_as": "resistivity"
                         },
                         "hall": {
                           "temperature_k": [
@@ -4621,7 +4625,8 @@
                           ],
                           "points": 31,
                           "min_temperature_k": 50.0,
-                          "max_temperature_k": 800.0
+                          "max_temperature_k": 800.0,
+                          "loaded_as": "hall"
                         }
                       },
                       "errors": [],
@@ -5270,6 +5275,7 @@
               "temperature",
               "seebeck",
               "resistivity",
+              "conductivity",
               "hall"
             ],
             "title": "Role"
@@ -5286,6 +5292,8 @@
                   "Ohm*m",
                   "mOhm*cm",
                   "uOhm*m",
+                  "S/m",
+                  "S/cm",
                   "m^3/C",
                   "cm^3/C"
                 ]
@@ -6537,6 +6545,8 @@
               "missing_temperature",
               "non_positive_temperature",
               "negative_resistivity",
+              "non_positive_conductivity",
+              "resistivity_and_conductivity",
               "repeated_role",
               "unit_not_allowed",
               "preamble_skipped",
@@ -6762,6 +6772,16 @@
           "max_temperature_k": {
             "type": "number",
             "title": "Max Temperature K"
+          },
+          "loaded_as": {
+            "type": "string",
+            "enum": [
+              "seebeck",
+              "resistivity",
+              "conductivity",
+              "hall"
+            ],
+            "title": "Loaded As"
           }
         },
         "type": "object",
@@ -6770,10 +6790,11 @@
           "values",
           "points",
           "min_temperature_k",
-          "max_temperature_k"
+          "max_temperature_k",
+          "loaded_as"
         ],
         "title": "MeasurementResponse",
-        "description": "Measured data sorted by temperature, in V/K, ohm m or m^3/C, and its size and range."
+        "description": "Measured data sorted by temperature, in V/K, ohm m or m^3/C, and its size and range.\n\n`loaded_as` is what the text held: the quantity itself, or `conductivity` for a resistivity\nthat the core computed as 1/sigma from a column of sigma. Its interpolation, fits and RMSE all\nuse that resistivity."
       },
       "ModelResponse": {
         "properties": {
@@ -7017,6 +7038,7 @@
                 "enum": [
                   "seebeck",
                   "resistivity",
+                  "conductivity",
                   "hall"
                 ]
               },
@@ -7056,7 +7078,7 @@
           "text"
         ],
         "title": "ParseRequest",
-        "description": "A text to read, as the client read it from a file or table.\n\n`expected` names the quantity of a file meant to hold one. `mapping` replaces the suggested\ncolumns with a user's choice, and the text is sent again each time, as the API keeps nothing.\n`interpolate` asks for each quantity on a grid within this range and its measured range."
+        "description": "A text to read, as the client read it from a file or table.\n\n`expected` names the quantity of a file meant to hold one, and `conductivity` reads its values\nas sigma, which comes back as the resistivity 1/sigma. `mapping` replaces the suggested columns\nwith a user's choice, and the text is sent again each time, as the API keeps nothing.\n`interpolate` asks for each quantity on a grid within this range and its measured range."
       },
       "ParseResponse": {
         "properties": {

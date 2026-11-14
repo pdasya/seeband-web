@@ -8,7 +8,15 @@ from http import HTTPStatus
 from typing import Annotated, Any, Self
 
 from pydantic import BaseModel, Field, model_validator
-from seeband_core.data_parser import IssueCode, ParsedTable, ParseIssue, Role, Unit, si_column
+from seeband_core.data_parser import (
+    IssueCode,
+    LoadedQuantity,
+    ParsedTable,
+    ParseIssue,
+    Role,
+    Unit,
+    si_column,
+)
 from seeband_core.interpolation import (
     InterpolatedData,
     InterpolationFailure,
@@ -63,13 +71,14 @@ class InterpolationRange(BaseModel):
 class ParseRequest(BaseModel):
     """A text to read, as the client read it from a file or table.
 
-    `expected` names the quantity of a file meant to hold one. `mapping` replaces the suggested
-    columns with a user's choice, and the text is sent again each time, as the API keeps nothing.
+    `expected` names the quantity of a file meant to hold one, and `conductivity` reads its values
+    as sigma, which comes back as the resistivity 1/sigma. `mapping` replaces the suggested columns
+    with a user's choice, and the text is sent again each time, as the API keeps nothing.
     `interpolate` asks for each quantity on a grid within this range and its measured range.
     """
 
     text: Annotated[str, Field(max_length=MAX_TEXT_CHARACTERS)]
-    expected: Quantity | None = None
+    expected: LoadedQuantity | None = None
     mapping: list[ColumnRole] | None = None
     interpolate: InterpolationRange | None = None
 
@@ -93,13 +102,19 @@ class IssueResponse(BaseModel):
 
 
 class MeasurementResponse(BaseModel):
-    """Measured data sorted by temperature, in V/K, ohm m or m^3/C, and its size and range."""
+    """Measured data sorted by temperature, in V/K, ohm m or m^3/C, and its size and range.
+
+    `loaded_as` is what the text held: the quantity itself, or `conductivity` for a resistivity
+    that the core computed as 1/sigma from a column of sigma. Its interpolation, fits and RMSE all
+    use that resistivity.
+    """
 
     temperature_k: list[float]
     values: list[float]
     points: int
     min_temperature_k: float
     max_temperature_k: float
+    loaded_as: LoadedQuantity
 
 
 class InterpolatedResponse(BaseModel):
@@ -161,7 +176,7 @@ def _issue(issue: ParseIssue) -> IssueResponse:
     return IssueResponse(code=issue.code, line=issue.line, column=issue.column)
 
 
-def _measurement(measurement: Measurement) -> MeasurementResponse:
+def _measurement(measurement: Measurement, loaded_as: LoadedQuantity) -> MeasurementResponse:
     temperature_k = measurement.temperature_k
     return MeasurementResponse(
         temperature_k=temperature_k.tolist(),
@@ -169,6 +184,7 @@ def _measurement(measurement: Measurement) -> MeasurementResponse:
         points=temperature_k.size,
         min_temperature_k=float(temperature_k.min()),
         max_temperature_k=float(temperature_k.max()),
+        loaded_as=loaded_as,
     )
 
 
@@ -212,7 +228,7 @@ def to_parse_response(outcome: ParseOutcome) -> ParseResponse:
             for column, role in table.mapping.items()
         ],
         measurements={
-            quantity: _measurement(measurement)
+            quantity: _measurement(measurement, table.loaded_as[quantity])
             for quantity, measurement in table.measurements.items()
         },
         errors=[_issue(issue) for issue in table.errors],
@@ -267,6 +283,7 @@ PARSE_EXAMPLE_RESPONSES: dict[str, dict[str, Any]] = {
                 "points": 3,
                 "min_temperature_k": 100.0,
                 "max_temperature_k": 300.0,
+                "loaded_as": "seebeck",
             }
         },
         "errors": [],
@@ -301,6 +318,7 @@ PARSE_EXAMPLE_RESPONSES: dict[str, dict[str, Any]] = {
                 "points": 3,
                 "min_temperature_k": 100.0,
                 "max_temperature_k": 160.0,
+                "loaded_as": "seebeck",
             }
         },
         "errors": [],
