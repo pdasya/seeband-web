@@ -352,7 +352,7 @@ def test_known_issues_reach_the_client(client: TestClient) -> None:
     body = client.post("/api/calc", json=_body(scattering="acPhDis")).json()
 
     assert "acphdis_curve_scale" not in body["known_issues"]
-    assert "acphdis_band_weight" in body["known_issues"]
+    assert "acphdis_band_weight" not in body["known_issues"]
 
 
 def test_extrapolated_data_is_flagged(client: TestClient) -> None:

@@ -30,17 +30,6 @@ COLLAPSED_M_EFF = 1e-5
 
 KNOWN_ISSUES: tuple[KnownIssue, ...] = (
     KnownIssue(
-        id="acphdis_band_weight",
-        severity="unreliable",
-        fixed_by="#102",
-        fit_modes=_DPB_LOOP,
-        scattering=("acPhDis",),
-        curve_kinds=("measured", "seebeck"),
-        columns=("seebeck_v_per_k",),
-        affects_fit=True,
-        explanation="With acPhDis, the band weight of the last temperature applies to all of S",
-    ),
-    KnownIssue(
         id="dpb_loop_degeneracy",
         severity="caution",
         fixed_by="#85",

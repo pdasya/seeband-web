@@ -33,7 +33,7 @@ m1 below 0 gives complex values, which the API refuses with `calculation_failed`
 
 ## Known errors in these curves
 
-P3 (#82) makes acPhDis conductivity, thermal conductivity and band contributions use the same 300 K scattering-parameter scale as resistivity. σρ = 1 and band conductivities add to total σ. Summed Seebeck contributions agree with the total on single-point grids; on multi-point grids the separate total-Seebeck weighting error (#102) remains.
+P3 (#82) makes acPhDis conductivity, thermal conductivity and band contributions use the same 300 K scattering-parameter scale as resistivity. σρ = 1 and band conductivities add to total σ. P11 (#102) also makes the summed weighted Seebeck contributions agree with total S on multi-point grids by applying each temperature's weight separately.
 
 ## Differences from the desktop
 

@@ -62,7 +62,7 @@ def test_thermal_conductivity_uses_the_same_scattering_scale(model_id: str) -> N
         )
         expected = t * (lorenz[0] * sigma[0] + lorenz[1] * sigma[1])
         expected += t * sigma[0] * sigma[1] / total_sigma * (own_s[0] - own_s[1]) ** 2
-        # Single-point requests avoid the separate grid-dependent total-S error (#102).
+        # Also cross-check individual points; P11 tests the complete-grid sum separately.
         for temperature in t:
             point = model.calculate(
                 CurveRequest(mode_id, parameters, temperature, temperature, 1, "acPhDis")

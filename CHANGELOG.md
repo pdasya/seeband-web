@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- P11 (#102), core 0.1.1: apply the acPhDis band weight at each temperature
+  in total DPB Seebeck, consistently with the weighted band contributions.
+  Fit objectives, plotted curves and RMSE now use the same pointwise formula;
+  C/D units, scattering laws, fit weights, bounds and stop thresholds are
+  unchanged. Remove the repaired warning, preserve original desktop/P8
+  evidence and record changed mixed-scattering results separately. This
+  branch depends on P8 for checked grid-independent chemical potentials.
+  Human physicist confirmation, parity and author review remain pending.
+
 - P8 (#87): solve the signed carrier balance with a bracketed method in
   reduced chemical potential, check the normalized residual at every
   temperature, and restore the input order after sorting and deduplication.

@@ -12,7 +12,6 @@ To remove a flag once its error is fixed, delete its entry and its row here, and
 
 | Id                           | Severity   | Where                                                                                              | Fixed by |
 | ---------------------------- | ---------- | -------------------------------------------------------------------------------------------------- | -------- |
-| `acphdis_band_weight`        | unreliable | S with acPhDis in DPB S + ρ and S + ρ + R_H                                                        | #102     |
 | `dpb_loop_degeneracy`        | caution    | fits in the other DPB modes, when N2/N1 is not 1                                                   | #85      |
 | `negative_m_eff_weight`      | caution    | DPB, when m_eff is below 0. This may be intended, and a physicist decides                          | #104     |
 | `collapsed_m_eff`            | unreliable | DPB, when m_eff is near 0, as on `02_SiP` (D19)                                                    | #107     |
@@ -27,11 +26,11 @@ The caller sets `extrapolated`, from `InterpolatedData`, since a fit does not kn
 
 The DPB Hall-prefactor flag was removed by [P2](dpb-hall-prefactor.md), which corrects the coefficient in all three scattering modes.
 
-P3 (#82) removes the acPhDis curve-scale flag: derived curves now convert the dimensionless 300 K ratios C and D to temperature scales consistently with resistivity. The independent grid-dependent total-Seebeck error (#102) remains flagged.
+P3 (#82) removes the acPhDis curve-scale flag: derived curves now convert the dimensionless 300 K ratios C and D to temperature scales consistently with resistivity. P11 subsequently fixes the independent grid-dependent total-Seebeck error (#102).
 
 P6 fixes the S-only part of #85: fitting and drawing now pass the same internal mass R/N to the numerical model. The S-only mismatch flag is removed. The separate iterative-mode mass/bounds caution (`dpb_loop_degeneracy`, also tracked by #85) remains unresolved. See [the mass convention and validation](dpb-s-degeneracy.md).
 
-P5 (#84) removes the early-stop flag: DPB mixed-scattering fits now require both parameter groups to converge and handle zero/nonfinite changes explicitly. See [the convergence correction](dpb-convergence.md). This does not fix #102 or replace human physicist confirmation.
+P5 (#84) removes the early-stop flag: DPB mixed-scattering fits now require both parameter groups to converge and handle zero/nonfinite changes explicitly. See [the convergence correction](dpb-convergence.md). P11 separately fixes #102; neither correction replaces human physicist confirmation.
 
 P4/P12 (#83, #103) remove the SPB Hall disabled-mode and stale-Fermi-energy flags after repairing the fit scales and using μ(T) in Hall integrals. See [the correction and synthetic validation](spb-hall-fit.md). Human physicist confirmation remains pending.
 
@@ -46,3 +45,5 @@ P4/P12 (#83, #103) remove the SPB Hall disabled-mode and stale-Fermi-energy flag
 - **The Conventions page** does not exist yet, so S3 takes its note on known issues from this list.
 
 P8 (#87) replaces silent chemical-potential failures with checked signed-balance solves. It leaves unrelated transport, degeneracy, underflow and fit-credibility warnings in place. See [the solver contract](chemical-potential.md).
+
+P11 (#102) removes `acphdis_band_weight`: total DPB acPhDis Seebeck now uses the weight at each temperature, as the band contributions already did. Shared P8 solves make the complete path independent of temperature order. Human physicist confirmation remains pending.

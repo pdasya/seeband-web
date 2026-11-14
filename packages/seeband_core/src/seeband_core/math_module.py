@@ -927,8 +927,6 @@ def dpb_see_vs_temp_double_scatter(
     factor = para_B * (para_C + temp_array) / (para_D + temp_array) / meff
 
     for i, temp in enumerate(temp_array):
-        factor = para_B * (para_C + temp) / (para_D + temp) / meff
-
         sig1[i] = sigma_general(
             eta=chemPot_array[i], meff=-1, K=1, beta=-1, T=temp
         )  # beta = -1 to remove any temperature dependence that would cancel out eventually
