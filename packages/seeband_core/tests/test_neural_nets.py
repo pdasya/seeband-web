@@ -378,6 +378,7 @@ def test_p9_corrected_reversed_case_preserves_desktop_evidence():
     for name, expected in P9["overrides"].items():
         original = next(case for case in CASES if case["name"] == name)
         reference = next(case for case in CASES if case["name"] == expected["reference_case"])
+        assert expected["desktop_start_values"] == reference["desktop_start_values"]
         assert expected["prediction"] == reference["prediction"]
         assert expected["selected_range_k"] == reference["selected_range_k"]
         guess = neural_nets.predict_band_parameters(*arrays(original))

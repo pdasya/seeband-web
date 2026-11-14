@@ -9,6 +9,7 @@ from typing import Any
 import numpy as np
 import pool_functions
 import pytest
+import seeband_core
 from fastapi.testclient import TestClient
 from seeband_api.calc import CalcRequest, CalcResponse, _to_response
 from seeband_api.calc_pool import CalcPool
@@ -51,6 +52,13 @@ def _body(**changes: Any) -> dict[str, Any]:
 
 def _details(response: Any) -> list[tuple[list[str | int], str]]:
     return [(detail["location"], detail["code"]) for detail in response.json()["details"]]
+
+
+def test_calculation_identifies_the_core_version(client: TestClient) -> None:
+    response = client.post("/api/calc", json=_body())
+
+    assert response.status_code == 200
+    assert response.json()["core_version"] == seeband_core.__version__
 
 
 @pytest.mark.parametrize(("model_id", "fit_mode_id", "scattering"), MODES)
@@ -369,7 +377,7 @@ def test_values_that_are_not_finite_come_back_as_null(client: TestClient) -> Non
         json={
             "model": "spb",
             "fit_mode": "spb_s",
-            "parameters": {"band_mass": 0.0, "fermi_energy": 100.0},
+            "parameters": {"band_mass": 1.0, "fermi_energy": 1e6},
             "min_temperature_k": 100,
             "max_temperature_k": 500,
             "points": 5,
@@ -380,6 +388,45 @@ def test_values_that_are_not_finite_come_back_as_null(client: TestClient) -> Non
     assert response.status_code == 200
     assert response.json()["curves"]["seebeck_v_per_k"] == [None] * 5
     assert response.json()["rmse"]["seebeck"] == {"value": None, "unit": "uV/K"}
+
+
+@pytest.mark.parametrize(
+    "parameters",
+    [
+        {"band_mass": 0.0, "fermi_energy": 100.0},
+        {"band_mass": 1.0, "fermi_energy": 0.0},
+        {"band_mass": -1.0, "fermi_energy": 100.0},
+    ],
+)
+def test_spb_without_a_finite_chemical_potential_is_an_explicit_error(
+    client: TestClient, parameters: dict[str, float]
+) -> None:
+    response = client.post(
+        "/api/calc",
+        json=_body(model="spb", fit_mode="spb_s", scattering=None, parameters=parameters),
+    )
+    assert response.status_code == 422
+    assert response.json()["code"] == "calculation_failed"
+    assert response.json()["details"] == []
+
+
+@pytest.mark.parametrize(("band_gap", "fermi_energy"), [(1000.0, 1000.0), (-100.0, 0.0)])
+def test_dpb_without_a_finite_chemical_potential_is_an_explicit_error(
+    client: TestClient, band_gap: float, fermi_energy: float
+) -> None:
+    response = client.post(
+        "/api/calc",
+        json=_body(
+            model="dpb",
+            fit_mode="dpb_s",
+            scattering=None,
+            parameters={"m_eff": -1.0, "band_gap": band_gap, "fermi_energy": fermi_energy},
+        ),
+    )
+
+    assert response.status_code == 422
+    assert response.json()["code"] == "calculation_failed"
+    assert response.json()["details"] == []
 
 
 def test_parameters_with_no_result_answer_a_clear_error(client: TestClient) -> None:

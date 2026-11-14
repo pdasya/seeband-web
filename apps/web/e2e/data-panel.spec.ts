@@ -24,6 +24,7 @@ function parsed(overrides: object = {}) {
     warnings_omitted: 0,
     interpolated: {},
     interpolation_failed: [],
+    interpolation_failure_reasons: {},
     ...overrides,
   };
 }
@@ -77,6 +78,7 @@ const PARSED_FOR_RELOAD = {
   warnings_omitted: 0,
   interpolated: {},
   interpolation_failed: [],
+  interpolation_failure_reasons: {},
 };
 
 test.beforeEach(async ({ page }) => {
@@ -580,10 +582,10 @@ test("a slot shows focus when reached with the keyboard", async ({ page }) => {
   await page.keyboard.press("Tab");
 
   await expect(seebeckInput(page)).toBeFocused();
+  // The frame of the slot, which also holds the ρ slot's switch.
   const outline = await page
-    .locator("label")
-    .first()
-    .evaluate((label) => getComputedStyle(label).outlineStyle);
+    .locator('[data-file-slot="seebeck"]')
+    .evaluate((slot) => getComputedStyle(slot).outlineStyle);
 
   expect(outline).toBe("solid");
 });

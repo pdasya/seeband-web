@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
+import { limitedRanges } from "@/model/interpolatedRanges";
 
 import { modelsQuery } from "@/api/queries";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +22,7 @@ import {
   parameterRows,
   quantityMark,
   resultIssues,
+  rmseSymbol,
   rmseText,
   type ResultIssue,
 } from "@/model/resultSummary";
@@ -85,6 +87,7 @@ export function ResultPanel({ live }: { live: LiveCurves }) {
   const interpolation = useSessionStore((state) => state.interpolation);
   const fitState = useSessionStore((state) => state.fit);
   const customBounds = useSessionStore((state) => state.customBounds);
+  const held = useSessionStore((state) => state.held);
   const setChartPanel = useSessionStore((state) => state.setChartPanel);
   const panels = useSessionStore((state) => state.chartPanels);
   const exporter = useExport();
@@ -120,6 +123,7 @@ export function ResultPanel({ live }: { live: LiveCurves }) {
           parameters[mode.id],
           fitState,
           customBounds[mode.id],
+          held[mode.id],
         );
   const { minTemperatureK: minK, maxTemperatureK: maxK } = selection;
   const subtitle = [
@@ -128,6 +132,16 @@ export function ResultPanel({ live }: { live: LiveCurves }) {
     minK === null || maxK === null
       ? null
       : fit.rangeSummary(formatNumber(minK), formatNumber(maxK)),
+    ...(mode === undefined
+      ? []
+      : limitedRanges(interpolation, mode.quantities)
+    ).map(({ quantity, minK: low, maxK: high }) =>
+      fit.limitedRangeSummary(
+        dataText.quantities[quantity].symbol,
+        formatNumber(low),
+        formatNumber(high),
+      ),
+    ),
   ]
     .filter((part) => part !== null && part !== undefined)
     .join(" · ");
@@ -159,7 +173,7 @@ export function ResultPanel({ live }: { live: LiveCurves }) {
             return (
               <Metric
                 key={quantity}
-                label={`${fit.rmse}, ${dataText.quantities[quantity].symbol}`}
+                label={`${fit.rmse}, ${rmseSymbol(quantity, data)}`}
                 mark={
                   mark !== null && (
                     <Badge variant="outline">{fit.issueMark[mark]}</Badge>

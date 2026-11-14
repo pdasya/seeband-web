@@ -14,37 +14,28 @@ import { chosenQuantity, type Role } from "@/data/columnChoice";
 import { UnitSelect } from "@/data/UnitSelect";
 import { UNITS_OF, type Unit } from "@/data/units";
 import type { ColumnChoice } from "@/data/useFileUpload";
-import { formatNumber, withDecimalComma } from "@/lib/numbers";
-import { QUANTITIES, type Quantity } from "@/session/store";
+import { LOADED_QUANTITIES, type LoadedQuantity } from "@/session/store";
 import { STRINGS } from "@/strings";
 
 const { data: text } = STRINGS;
 const IGNORE = "ignore";
-const ROLES: readonly Role[] = ["temperature", ...QUANTITIES];
+const ROLES: readonly Role[] = ["temperature", ...LOADED_QUANTITIES];
 
 function roleSymbol(role: Role): string {
   return role === "temperature" ? "T" : text.quantities[role].symbol;
 }
 
-function firstValue(value: number | undefined, role: Role | null): string {
-  if (value === undefined) {
-    return "";
-  }
-  return role === "temperature"
-    ? formatNumber(value)
-    : withDecimalComma(value.toExponential(3));
-}
-
 /** What each column of a file with no header holds, as for a single file, then the slot to use. */
 export function SlotColumns({
-  quantity,
+  expected,
   choice,
   firstSelect,
   onRole,
   onUnit,
   onRetry,
 }: {
-  quantity: Quantity;
+  /** What the slot reads a file as, which may be σ in place of ρ. */
+  expected: LoadedQuantity;
   choice: ColumnChoice;
   /** Where focus goes once the choice shows. */
   firstSelect: Ref<HTMLButtonElement>;
@@ -64,9 +55,11 @@ export function SlotColumns({
       <p className="m-0 text-xs">
         {choice.mismatch ? text.headerMismatchQuestion : text.noHeaderQuestion}
       </p>
-      {choice.negative && (
+      {choice.belowZero !== null && (
         <p className="m-0 text-xs text-muted-foreground">
-          {text.belowZeroForRho}
+          {choice.belowZero === "resistivity"
+            ? text.belowZeroForRho
+            : text.belowZeroForSigma}
         </p>
       )}
       {named !== null && (
@@ -86,7 +79,7 @@ export function SlotColumns({
                 {name}
               </span>
               <span className="truncate font-mono text-xs text-muted-foreground">
-                {firstValue(choice.firstRow[column], role)}
+                {choice.firstRow[column] ?? ""}
               </span>
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -122,6 +115,8 @@ export function SlotColumns({
                   role={role}
                   value={choice.units[column] ?? UNITS_OF[role][0]}
                   label={name}
+                  // A file with no header names no unit, so SI is assumed until one is chosen.
+                  assumed={choice.units[column] == null}
                   disabled={choice.applying}
                   onChange={(unit) => {
                     onUnit(column, unit);
@@ -158,7 +153,7 @@ export function SlotColumns({
       )}
       {target === null && (
         <p className="m-0 text-xs text-muted-foreground">
-          {text.chooseColumns(text.quantities[quantity].symbol)}
+          {text.chooseColumns(text.quantities[expected].symbol)}
         </p>
       )}
     </div>

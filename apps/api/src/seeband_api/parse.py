@@ -8,8 +8,22 @@ from http import HTTPStatus
 from typing import Annotated, Any, Self
 
 from pydantic import BaseModel, Field, model_validator
-from seeband_core.data_parser import IssueCode, ParsedTable, ParseIssue, Role, Unit, si_column
-from seeband_core.interpolation import InterpolatedData, interpolation_grid_k
+from seeband_core.data_parser import (
+    Direction,
+    IssueCode,
+    LoadedQuantity,
+    ParsedTable,
+    ParseIssue,
+    Role,
+    Unit,
+    UnitSource,
+    si_column,
+)
+from seeband_core.interpolation import (
+    InterpolatedData,
+    InterpolationFailure,
+    interpolation_grid_k,
+)
 from seeband_core.model_interface import Measurement, Quantity
 
 from seeband_api.calc_pool import CalcPoolDep
@@ -45,6 +59,14 @@ class ColumnRole(BaseModel):
     unit: Unit | None = None
 
 
+class ColumnRead(ColumnRole):
+    """A column as the parser read it. `unit_source` says where its unit came from: `chosen` by the
+    request, named by the column's `header`, or SI by `default`, as nothing named one. It is left
+    out where `unit` is, as with errors."""
+
+    unit_source: UnitSource | None = None
+
+
 class InterpolationRange(BaseModel):
     min_temperature_k: PositiveFloat
     max_temperature_k: PositiveFloat
@@ -59,13 +81,14 @@ class InterpolationRange(BaseModel):
 class ParseRequest(BaseModel):
     """A text to read, as the client read it from a file or table.
 
-    `expected` names the quantity of a file meant to hold one. `mapping` replaces the suggested
-    columns with a user's choice, and the text is sent again each time, as the API keeps nothing.
-    `interpolate` asks for each quantity on a grid over this fit range.
+    `expected` names the quantity of a file meant to hold one, and `conductivity` reads its values
+    as sigma, which comes back as the resistivity 1/sigma. `mapping` replaces the suggested columns
+    with a user's choice, and the text is sent again each time, as the API keeps nothing.
+    `interpolate` asks for each quantity on a grid within this range and its measured range.
     """
 
     text: Annotated[str, Field(max_length=MAX_TEXT_CHARACTERS)]
-    expected: Quantity | None = None
+    expected: LoadedQuantity | None = None
     mapping: list[ColumnRole] | None = None
     interpolate: InterpolationRange | None = None
 
@@ -80,36 +103,46 @@ class ParseRequest(BaseModel):
 class IssueResponse(BaseModel):
     """A problem in the data, as a code a client translates, in `input-data.md` of the core.
 
-    `line` counts every line of the text from 1, and `column` from 0.
+    `line` counts every line of the text from 1, and `column` from 0. `direction` says, for
+    `implausible_magnitude`, whether the largest |value| is `above` the quantity's upper limit or
+    `below` its lower one. No issue carries a measured value.
     """
 
     code: IssueCode
     line: int | None = None
     column: int | None = None
+    direction: Direction | None = None
 
 
 class MeasurementResponse(BaseModel):
-    """Measured data sorted by temperature, in V/K, ohm m or m^3/C, and its size and range."""
+    """Measured data sorted by temperature, in V/K, ohm m or m^3/C, and its size and range.
+
+    `loaded_as` is what the text held: the quantity itself, or `conductivity` for a resistivity
+    that the core computed as 1/sigma from a column of sigma. Its interpolation, fits and RMSE all
+    use that resistivity.
+    """
 
     temperature_k: list[float]
     values: list[float]
     points: int
     min_temperature_k: float
     max_temperature_k: float
+    loaded_as: LoadedQuantity
 
 
 class InterpolatedResponse(BaseModel):
     """A quantity on the interpolation grid. `null` marks a value that is not finite.
 
-    `extrapolated` means that some of the grid lies outside the data, so those values are made up,
-    and a fit from them should say so through `extrapolated` in its request.
-    `measured_points_in_range` of 0 means that all the values are made up. `underdetermined` means
-    that the data do not set the polynomial.
+    `range_limited` means the requested range extends beyond this quantity's measured range.
+    `extrapolated` is retained for compatibility and is false for new server results.
+    `measured_points_in_range` counts source points in the requested range; zero can occur between
+    sparse measurements. `underdetermined` means that the data do not set the polynomial.
     """
 
     temperature_k: list[float]
     values: list[float | None]
     extrapolated: bool
+    range_limited: bool
     measured_points_in_range: int
     underdetermined: bool
 
@@ -119,26 +152,33 @@ class ParseResponse(BaseModel):
 
     `measurements` is empty with any `errors`. `headers` is left out when no header matches the
     columns. `column_count` is 0 when neither a row nor a header sets it. `preview` holds the first
-    rows that could be read, in the order of the text and as written, and `row_count` all of them.
-    `preview_si` holds the same rows in SI, with `null` for a column with no role or no unit:
-    with `errors`, only a unit the request chose is kept. `mapping` is the
-    suggestion or the user's choice, and with no readable rows, always the suggestion. `warnings`
+    rows that could be read, in the order of the text and as read, and `row_count` all of them.
+    `preview_text` holds the same values exactly as the text writes them, such as `2E+2`, for a
+    user to compare with the file. `preview_si` holds the same rows in SI, with `null` for a
+    column with no role or no unit: with `errors`, only a unit the request chose is kept.
+    `mapping` is the suggestion or the user's choice, and with no readable rows, always the
+    suggestion. `warnings`
     holds every kind, with at most 100 `preamble_skipped`, and `warnings_omitted` counts the rest.
-    `interpolation_failed` names quantities that could not be interpolated.
+    `interpolation_failed` names quantities that could not be interpolated, and
+    `interpolation_failure_reasons` says why for each: `no_overlap` (the fit range and the measured
+    range do not overlap), `overlap_too_short` (under 20 K, or under 40 K where the data narrow the
+    range, which would give one grid point) or `fit_failed` (the polynomial could not be fitted).
     """
 
     headers: list[str] | None = None
     column_count: int
     row_count: int
     preview: list[list[float]]
+    preview_text: list[list[str]]
     preview_si: list[list[float | None]]
-    mapping: list[ColumnRole]
+    mapping: list[ColumnRead]
     measurements: dict[Quantity, MeasurementResponse]
     errors: list[IssueResponse]
     warnings: list[IssueResponse]
     warnings_omitted: int
     interpolated: dict[Quantity, InterpolatedResponse]
     interpolation_failed: list[Quantity]
+    interpolation_failure_reasons: dict[Quantity, InterpolationFailure]
 
 
 def _refuse(code: str, message: str, location: list[str | int]) -> ApiError:
@@ -149,10 +189,12 @@ def _refuse(code: str, message: str, location: list[str | int]) -> ApiError:
 
 
 def _issue(issue: ParseIssue) -> IssueResponse:
-    return IssueResponse(code=issue.code, line=issue.line, column=issue.column)
+    return IssueResponse(
+        code=issue.code, line=issue.line, column=issue.column, direction=issue.direction
+    )
 
 
-def _measurement(measurement: Measurement) -> MeasurementResponse:
+def _measurement(measurement: Measurement, loaded_as: LoadedQuantity) -> MeasurementResponse:
     temperature_k = measurement.temperature_k
     return MeasurementResponse(
         temperature_k=temperature_k.tolist(),
@@ -160,6 +202,7 @@ def _measurement(measurement: Measurement) -> MeasurementResponse:
         points=temperature_k.size,
         min_temperature_k=float(temperature_k.min()),
         max_temperature_k=float(temperature_k.max()),
+        loaded_as=loaded_as,
     )
 
 
@@ -168,6 +211,7 @@ def _interpolated(data: InterpolatedData) -> InterpolatedResponse:
         temperature_k=data.measurement.temperature_k.tolist(),
         values=finite_or_none(data.measurement.values),
         extrapolated=data.extrapolated,
+        range_limited=data.range_limited,
         measured_points_in_range=data.measured_points_in_range,
         underdetermined=data.underdetermined,
     )
@@ -196,13 +240,19 @@ def to_parse_response(outcome: ParseOutcome) -> ParseResponse:
         column_count=table.column_count or len(table.headers or ()),
         row_count=row_count,
         preview=[[float(column[row]) for column in columns] for row in range(preview_rows)],
+        preview_text=[[texts[row] for texts in table.texts] for row in range(preview_rows)],
         preview_si=_preview_si(table, preview_rows),
         mapping=[
-            ColumnRole(column=column, role=role, unit=table.units.get(column))
+            ColumnRead(
+                column=column,
+                role=role,
+                unit=table.units.get(column),
+                unit_source=table.unit_sources.get(column),
+            )
             for column, role in table.mapping.items()
         ],
         measurements={
-            quantity: _measurement(measurement)
+            quantity: _measurement(measurement, table.loaded_as[quantity])
             for quantity, measurement in table.measurements.items()
         },
         errors=[_issue(issue) for issue in table.errors],
@@ -212,6 +262,7 @@ def to_parse_response(outcome: ParseOutcome) -> ParseResponse:
             quantity: _interpolated(data) for quantity, data in outcome.interpolated.items()
         },
         interpolation_failed=list(outcome.interpolation_failed),
+        interpolation_failure_reasons=dict(outcome.failure_reasons),
     )
 
 
@@ -232,19 +283,29 @@ PARSE_EXAMPLE_REQUESTS: dict[str, dict[str, Any]] = {
         "interpolate": {"min_temperature_k": 100.0, "max_temperature_k": 160.0},
     },
 }
-_NO_INTERPOLATION: dict[str, Any] = {"interpolated": {}, "interpolation_failed": []}
-_T_S_MAPPING = [
-    {"column": 0, "role": "temperature", "unit": "K"},
-    {"column": 1, "role": "seebeck", "unit": "V/K"},
-]
+_NO_INTERPOLATION: dict[str, Any] = {
+    "interpolated": {},
+    "interpolation_failed": [],
+    "interpolation_failure_reasons": {},
+}
+
+
+def _t_s_mapping(source: str) -> list[dict[str, Any]]:
+    return [
+        {"column": 0, "role": "temperature", "unit": "K", "unit_source": source},
+        {"column": 1, "role": "seebeck", "unit": "V/K", "unit_source": source},
+    ]
+
+
 PARSE_EXAMPLE_RESPONSES: dict[str, dict[str, Any]] = {
     "clean": {
         "headers": ["T (K)", "S (V/K)"],
         "column_count": 2,
         "row_count": 3,
         "preview": [[300.0, 1.0e-4], [100.0, 2.0e-5], [200.0, 6.0e-5]],
+        "preview_text": [["300", "1.0e-4"], ["100", "2.0e-5"], ["200", "6.0e-5"]],
         "preview_si": [[300.0, 1.0e-4], [100.0, 2.0e-5], [200.0, 6.0e-5]],
-        "mapping": _T_S_MAPPING,
+        "mapping": _t_s_mapping("header"),
         "measurements": {
             "seebeck": {
                 "temperature_k": [100.0, 200.0, 300.0],
@@ -252,6 +313,7 @@ PARSE_EXAMPLE_RESPONSES: dict[str, dict[str, Any]] = {
                 "points": 3,
                 "min_temperature_k": 100.0,
                 "max_temperature_k": 300.0,
+                "loaded_as": "seebeck",
             }
         },
         "errors": [],
@@ -264,6 +326,7 @@ PARSE_EXAMPLE_RESPONSES: dict[str, dict[str, Any]] = {
         "column_count": 2,
         "row_count": 1,
         "preview": [[100.0, 1.0e-6]],
+        "preview_text": [["100", "1.0e-6"]],
         "preview_si": [[None, None]],
         "mapping": [{"column": 0, "role": "temperature"}, {"column": 1, "role": "seebeck"}],
         "measurements": {},
@@ -277,8 +340,9 @@ PARSE_EXAMPLE_RESPONSES: dict[str, dict[str, Any]] = {
         "column_count": 2,
         "row_count": 3,
         "preview": [[100.0, 1.0e-6], [130.0, 2.0e-6], [160.0, 3.0e-6]],
+        "preview_text": [["100", "1.0e-6"], ["130", "2.0e-6"], ["160", "3.0e-6"]],
         "preview_si": [[100.0, 1.0e-6], [130.0, 2.0e-6], [160.0, 3.0e-6]],
-        "mapping": _T_S_MAPPING,
+        "mapping": _t_s_mapping("default"),
         "measurements": {
             "seebeck": {
                 "temperature_k": [100.0, 130.0, 160.0],
@@ -286,6 +350,7 @@ PARSE_EXAMPLE_RESPONSES: dict[str, dict[str, Any]] = {
                 "points": 3,
                 "min_temperature_k": 100.0,
                 "max_temperature_k": 160.0,
+                "loaded_as": "seebeck",
             }
         },
         "errors": [],
@@ -296,11 +361,13 @@ PARSE_EXAMPLE_RESPONSES: dict[str, dict[str, Any]] = {
                 "temperature_k": [100.0, 130.0, 160.0],
                 "values": [1.0e-6, 2.0e-6, 3.0e-6],
                 "extrapolated": False,
+                "range_limited": False,
                 "measured_points_in_range": 3,
                 "underdetermined": True,
             }
         },
         "interpolation_failed": [],
+        "interpolation_failure_reasons": {},
     },
 }
 

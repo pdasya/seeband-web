@@ -84,8 +84,8 @@ KNOWN_ISSUES: tuple[KnownIssue, ...] = (
         ),
         affects_fit=True,
         condition="fermi_energy_outside_band",
-        explanation="With the Fermi energy outside the band, there are no carriers, and the solved "
-        "chemical potential and curves mean nothing",
+        explanation="The zero-temperature carrier constraint has no finite-temperature root. "
+        "P8 reports this domain explicitly; the legacy flag does not imply a curve is returned.",
     ),
     KnownIssue(
         id="hall_dis_no_reference",

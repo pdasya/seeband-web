@@ -177,3 +177,28 @@ Regenerate from the repository root:
 ```sh
 PYTHONPATH=packages/seeband_core/src uv run python packages/seeband_core/scripts/capture_p4_results.py
 ```
+
+## P8 chemical-potential solver
+
+`tests/fixtures/physics/p8.json` records the checked solver's results and
+failures for every historical call. Original desktop, P2, P3, P4 and P5
+evidence remains unchanged. Independent desktop replays retain the earlier
+P2–P5 corrections, and a separate replay checks the P8 expectations for the
+same inputs. These generated expectations are regression evidence,
+not independent proof of physics. The dedicated conservation, domain and
+order-independence tests check the solver separately. See
+[the signed-balance contract and limitations](chemical-potential.md).
+
+Both desktop and P8 fit replays use the named cross-platform rules in the
+regression table above. P8 does not impose a tighter rule on an already
+unstable fit. SPB S on `02_SiP` keeps its existing relative tolerance of
+1e-4; a Linux P8 run differed from the recorded E_F by 2.04e-5.
+
+The listed D19 fits still require convergence, finite band parameters,
+the `collapsed_m_eff` warning, a mass magnitude below 1e-5, and band gap
+and E_F within their original bounds and relative tolerance of 1e-5.
+Their scattering values remain machine dependent. Their iteration counts
+must be integers from 1 through the mode's configured budget; single-pass
+fits must report no iteration count. Stable fits retain exact recorded
+iteration counts. P8 status and message comparisons, curve tolerances and
+the original desktop evidence remain unchanged.

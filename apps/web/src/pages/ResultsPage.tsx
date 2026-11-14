@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { DownloadIcon, InfoIcon, PrinterIcon } from "lucide-react";
 import { useId, useMemo, type ReactNode } from "react";
 import { Link } from "react-router";
+import { limitedRanges } from "@/model/interpolatedRanges";
 
 import { modelsQuery } from "@/api/queries";
 import { TransportChart } from "@/charts/TransportChart";
@@ -32,6 +33,7 @@ import {
   hasFittedValues,
   resultIssues,
   resultRows,
+  rmseSymbol,
   rmseText,
   type ParameterStatus,
 } from "@/model/resultSummary";
@@ -99,6 +101,8 @@ function StatusCell({ status }: { status: ParameterStatus }) {
       return <Badge variant="success">{text.status.fitted}</Badge>;
     case "fixed":
       return <Badge variant="neutral">{text.status.fixed}</Badge>;
+    case "held":
+      return <Badge variant="neutral">{text.status.held}</Badge>;
     default:
       return (
         <Badge variant="warning">
@@ -252,6 +256,7 @@ function MoreGraph({
                 answer.temperature_k,
                 exported,
                 issues.map(({ id }) => id),
+                answer.core_version,
               );
             }
           }}
@@ -310,6 +315,8 @@ export function ResultsPage() {
   const data = useSessionStore((state) => state.data);
   const fit = useSessionStore((state) => state.fit);
   const customBounds = useSessionStore((state) => state.customBounds);
+  const held = useSessionStore((state) => state.held);
+  const interpolation = useSessionStore((state) => state.interpolation);
   const numericalStart = useSessionStore((state) => state.fitStartNumerical);
   const startNet = useSessionStore((state) => state.fitStartNet);
 
@@ -368,6 +375,14 @@ export function ResultsPage() {
       minK === null || maxK === null
         ? null
         : fitText.rangeSummary(formatNumber(minK), formatNumber(maxK)),
+      ...limitedRanges(interpolation, mode.quantities).map(
+        ({ quantity, minK: low, maxK: high }) =>
+          fitText.limitedRangeSummary(
+            dataText.quantities[quantity].symbol,
+            formatNumber(low),
+            formatNumber(high),
+          ),
+      ),
     ].filter((part) => part !== null),
   );
 
@@ -378,6 +393,7 @@ export function ResultsPage() {
     parameters[mode.id],
     fit,
     customBounds[mode.id],
+    held[mode.id],
   );
   const issues = resultIssues(mode, {
     fit: fit.status === "done" ? fit.result.known_issues : [],
@@ -409,7 +425,11 @@ export function ResultsPage() {
   return (
     <div className="flex flex-col gap-4">
       {title}
-      <ReportHeader apiVersion={report.apiVersion} />
+      <ReportHeader
+        apiVersion={report.apiVersion}
+        serverCoreVersion={report.serverCoreVersion}
+        curveCoreVersions={report.curveCoreVersions}
+      />
       <PageHeading
         title={text.title}
         subtitle={subtitle}
@@ -477,7 +497,7 @@ export function ResultsPage() {
           return (
             <Kpi
               key={quantity}
-              label={text.rmse(dataText.quantities[quantity].symbol)}
+              label={text.rmse(rmseSymbol(quantity, data))}
               value={rmse === undefined ? text.noValue : rmseText(rmse)}
               detail={detail}
             />
@@ -552,7 +572,14 @@ export function ResultsPage() {
         <div className="min-w-0 flex-[1_1_320px] print:hidden">
           <Panel title={text.log.title} subtitle={text.log.subtitle}>
             <FitLog
-              steps={fitLog(mode, scattering, fit, startNet, numericalStart)}
+              steps={fitLog(
+                mode,
+                scattering,
+                fit,
+                startNet,
+                numericalStart,
+                held[mode.id],
+              )}
             />
           </Panel>
         </div>

@@ -26,6 +26,7 @@ const PARSED = {
   warnings_omitted: 0,
   interpolated: {},
   interpolation_failed: [],
+  interpolation_failure_reasons: {},
 };
 
 function hold() {

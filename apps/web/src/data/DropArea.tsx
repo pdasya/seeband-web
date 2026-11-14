@@ -46,18 +46,23 @@ export function useFileDrop({ onFile, onSeveralFiles }: FileDropHandlers) {
   };
 }
 
-/** The dashed place to drop or choose a file. */
+/**
+ * The dashed place to drop or choose a file. A `footer` sits inside the same frame, below the part
+ * that opens the file picker, so a control there neither opens it nor shifts the slot.
+ */
 export function DropArea({
   icon,
   title,
   inputRef,
   slotId,
+  footer,
   ...handlers
 }: FileDropHandlers & {
   icon: ReactNode;
   title: string;
   inputRef?: Ref<HTMLInputElement>;
   slotId: string;
+  footer?: ReactNode;
 }) {
   const { dragging, dropTarget } = useFileDrop(handlers);
   const onChoose = (event: ChangeEvent<HTMLInputElement>) => {
@@ -69,32 +74,39 @@ export function DropArea({
     }
   };
   return (
-    <label
+    <div
       data-file-slot={slotId}
       className={cn(
-        "relative flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-[var(--color-zinc-300)] bg-[var(--color-zinc-50)] px-3 py-2.5 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring",
+        "rounded-lg border border-dashed border-[var(--color-zinc-300)] bg-[var(--color-zinc-50)] has-[input[type=file]:focus-visible]:outline-2 has-[input[type=file]:focus-visible]:outline-offset-2 has-[input[type=file]:focus-visible]:outline-ring",
         dragging && "border-ring bg-muted",
       )}
       {...dropTarget}
     >
-      {icon}
-      <div className="min-w-0 flex-auto">
-        <div className="text-[13px] font-medium">{title}</div>
-        <div className="text-xs text-muted-foreground">
-          {STRINGS.data.dropHint}
+      <label className="relative flex cursor-pointer items-center gap-3 px-3 py-2.5">
+        {icon}
+        <div className="min-w-0 flex-auto">
+          <div className="text-[13px] font-medium">{title}</div>
+          <div className="text-xs text-muted-foreground">
+            {STRINGS.data.dropHint}
+          </div>
         </div>
-      </div>
-      <UploadIcon
-        className="size-4 flex-none text-muted-foreground"
-        aria-hidden="true"
-      />
-      <input
-        ref={inputRef}
-        type="file"
-        accept={ACCEPTED_EXTENSIONS.join(",")}
-        className="sr-only"
-        onChange={onChoose}
-      />
-    </label>
+        <UploadIcon
+          className="size-4 flex-none text-muted-foreground"
+          aria-hidden="true"
+        />
+        <input
+          ref={inputRef}
+          type="file"
+          accept={ACCEPTED_EXTENSIONS.join(",")}
+          className="sr-only"
+          onChange={onChoose}
+        />
+      </label>
+      {footer !== undefined && (
+        <div className="border-t border-dashed border-[var(--color-zinc-300)] px-3 py-2">
+          {footer}
+        </div>
+      )}
+    </div>
   );
 }

@@ -2,14 +2,49 @@
 
 ## Unreleased
 
-- P9 (#88): choose the DPB neural network from the actual minimum and
+- P9 (#88), core `0.1.2`: choose the DPB neural network from the actual minimum and
   maximum temperatures, then sort paired temperature/Seebeck rows before
-  preparing its input. Reversed or shuffled rows now use the same network
-  and prediction as sorted data. Keep the unsorted-input provenance warning,
+  preparing its input. Reversed or shuffled distinct-temperature rows now use
+  the same network and prediction as sorted data. Keep the unsorted-input provenance warning,
   with corrected wording. Legacy no-net first/last fields now report actual
   minimum/maximum coverage. Network weights, range priority, polynomial
   degree and fit criteria are unchanged. Preserve original desktop captures
   and record the corrected reversed-row expectation separately.
+
+- P8 (#87), core `0.1.1`: solve the signed carrier balance independently at
+  each temperature with a checked bracketed method. Use the same negative-tail
+  Fermi approximation in a stable algebraic form. Reject analytically invalid
+  optimizer trial points without hiding numerical failures at valid parameters;
+  invalid starts and uncertifiable density roots still fail explicitly. Keep
+  desktop compatibility tests alongside separate P8 regression expectations.
+  No bounds, fit weights or conservation tolerance are relaxed.
+
+- Documentation review: correct the signed SPB Hall cutoff and clarify DPB
+  convergence timing, interpolation coverage, degeneracy cancellation and the
+  open negative-weight interpretation. No calculation behavior changed.
+
+- P10: expose the installed `seeband_core` version (`0.1.0`) in health,
+  calculation and fit API responses, and record separate server, fit and curve
+  provenance in shared export headers. This is result metadata only; it changes
+  no formulas or fit behavior. Older results without a recorded version remain
+  unknown and are not assigned a version retroactively. This is not release
+  approval; scientific confirmation and the desktop parity work remain open.
+
+- FS18: preserve a conductivity file's source quantity when requesting
+  interpolation without an explicit column mapping. Explicit mappings and
+  chosen units remain in use. Browser regressions cover conductivity upload,
+  headerless column choice, S/cm units and the resistivity sent to a fit.
+
+- P7 (#86): evaluate interpolation only on the overlap of each quantity's
+  measured temperature range and the requested fit range. Unsupported or
+  too-short overlaps fail explicitly instead of extrapolating synthetic
+  points into the fit. Show when measured coverage limits the range; retain
+  legacy extrapolation provenance warnings. The polynomial degree and fit
+  criteria are unchanged, with separate corrected regression expectations.
+  An overlap the data narrow needs 40 K, so that the grid has two points;
+  each refusal says why (`interpolation_failure_reasons`); a window with no
+  measured point says that the polynomial alone sets it; and results and
+  exports name the range a fit used.
 
 - P6 (#85, S-only scope): use the same degeneracy-weighted mass in DPB S
   fitting and drawing. Public mass coordinates, bounds and uncertainties
@@ -33,9 +68,9 @@
   Hall factors recover the degenerate limit 1 and nondegenerate limit 3π/8.
   Synthetic regression results replace no historical desktop captures.
   Every fit now sorts its points by temperature, so an API client's order
-  gives the result a sorted file does; a Hall point beyond the reach of the
-  Fermi integrals (μ/T above 700) is NaN rather than a failed curve; and a
-  start mass of 0, on an empty branch, or of the wrong sign for R_H fails with
+  gives the result a sorted file does; a Hall point with signed reduced
+  potential x = sign(m) μ(T)/T above 700 is NaN rather than a failed curve;
+  a start mass of 0, on an empty branch, or of the wrong sign for R_H fails with
   its reason. The band-mass error is conditional on E_F.
   Human physicist confirmation and parity/author review remain pending;
   enabling this mode is not scientific release approval.

@@ -1,9 +1,12 @@
 import asyncio
+import json
 import math
 from collections.abc import Iterator
+from pathlib import Path
 from typing import Any
 
 import pytest
+import seeband_core
 from fastapi.testclient import TestClient
 from jsonschema import Draft202012Validator
 from running_server import read_events
@@ -99,6 +102,12 @@ def _details(response: Any) -> list[tuple[list[str | int], str]]:
     return [(detail["location"], detail["code"]) for detail in response.json()["details"]]
 
 
+def test_fit_result_identifies_the_core_version(client: TestClient) -> None:
+    result = _result(client, _body("spb", "spb_s"))
+
+    assert result["core_version"] == seeband_core.__version__
+
+
 @pytest.mark.parametrize(("model_id", "fit_mode_id", "scattering"), MODES)
 def test_result_equals_the_core(
     client: TestClient, model_id: str, fit_mode_id: str, scattering: str | None
@@ -190,6 +199,55 @@ def test_start_outside_the_bounds_is_a_failed_fit(client: TestClient) -> None:
     assert body["status"] == "failed"
     assert "bound" in body["message"].lower()
     assert body["parameters"] == default_start(_mode("dpb", "dpb_s"))
+
+
+@pytest.mark.parametrize(
+    ("model", "mode", "start"),
+    [
+        ("spb", "spb_s", {"band_mass": 1.0, "fermi_energy": 0.0}),
+        ("dpb", "dpb_s", {"m_eff": -1.0, "band_gap": 1000.0, "fermi_energy": 1000.0}),
+    ],
+)
+def test_no_root_at_the_start_ends_with_a_failed_fit(
+    client: TestClient, model: str, mode: str, start: dict[str, float]
+) -> None:
+    events = _events(client, _body(model, mode, start=start))
+
+    assert [event["type"] for event in events] == ["started", "done"]
+    result = events[-1]["result"]
+    assert result["status"] == "failed"
+    assert (
+        result["message"] == "The chemical-potential balance could not be verified during the fit."
+    )
+    assert result["parameters"] == start
+
+
+def test_valid_start_recovers_from_no_root_optimizer_trials(client: TestClient) -> None:
+    # The historical SiP fit has a valid start and optimum, but TRF probes E_F <= 0.
+    fixture = (
+        Path(__file__).resolve().parents[3]
+        / "packages/seeband_core/tests/fixtures/golden/02_SiP.json"
+    )
+    document = json.loads(fixture.read_text())
+    run = next(run for run in document["runs"] if run["mode"] == "spb_s")
+    call = run["calls"][0]
+    temperature, seebeck, mass, start, bounds = call["args"]
+    result = _result(
+        client,
+        _body(
+            "spb",
+            "spb_s",
+            start={"band_mass": mass, "fermi_energy": start[0]},
+            bounds={"fermi_energy": {"lower": bounds[0][0], "upper": bounds[1][0]}},
+            min_temperature_k=min(temperature),
+            max_temperature_k=max(temperature),
+            measurements={"seebeck": {"temperature_k": temperature, "values": seebeck}},
+        ),
+    )
+
+    assert result["status"] == "converged"
+    assert "message" not in result
+    assert result["parameters"]["fermi_energy"] == pytest.approx(call["result"][0], rel=1e-4)
 
 
 def test_degeneracies_reach_the_fit(client: TestClient) -> None:
@@ -318,6 +376,56 @@ def test_bounds_of_a_parameter_of_another_scattering_type_are_refused(client: Te
     )
 
     assert _details(response) == [(["body", "bounds", "F"], "parameter_not_fitted")]
+
+
+def test_held_parameters_reach_the_fit_and_come_back_as_sent(client: TestClient) -> None:
+    start = default_start(_mode("dpb", "dpb_s_rho"))
+    expected = _core_fit("dpb", "dpb_s_rho", scattering="acPh", held=frozenset({"band_gap", "A"}))
+
+    body = _result(client, _body("dpb", "dpb_s_rho", scattering="acPh", held=["band_gap", "A"]))
+
+    assert body["parameters"] == expected.parameters
+    assert body["parameters"]["band_gap"] == start["band_gap"]
+    assert body["parameters"]["A"] == start["A"]
+    assert body["held"] == ["A", "band_gap"]
+    assert "band_gap" not in body["parameter_errors"]
+
+
+def test_a_fit_with_nothing_held_says_so(client: TestClient) -> None:
+    assert _result(client, _body())["held"] == []
+
+
+@pytest.mark.parametrize(
+    ("changes", "expected"),
+    [
+        # SPB S does not fit the mass, and F belongs to dis.
+        (
+            {"model": "spb", "fit_mode": "spb_s", "start": default_start(_mode("spb", "spb_s"))}
+            | {"held": ["band_mass"]},
+            [(["body", "held", "band_mass"], "parameter_not_fitted")],
+        ),
+        (
+            {"fit_mode": "dpb_s_rho", "scattering": "acPh", "held": ["F"]}
+            | {"start": default_start(_mode("dpb", "dpb_s_rho"))},
+            [(["body", "held", "F"], "parameter_not_fitted")],
+        ),
+        (
+            {"held": ["m_eff", "band_gap", "fermi_energy"]},
+            [(["body", "held"], "nothing_to_fit")],
+        ),
+    ],
+)
+def test_holding_what_the_fit_does_not_find_or_everything_is_refused(
+    client: TestClient, changes: dict[str, Any], expected: list[tuple[list[str | int], str]]
+) -> None:
+    body = _body(**changes)
+    mode = _mode(body["model"], body["fit_mode"])
+    body["measurements"] = {quantity: DEMO_INPUT[quantity] for quantity in mode.quantities}
+
+    response = client.post("/api/fit", json=body)
+
+    assert response.status_code == 422
+    assert _details(response) == expected
 
 
 def test_degeneracy_is_refused_on_a_mode_without_one(client: TestClient) -> None:

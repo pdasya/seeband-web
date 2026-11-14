@@ -3,9 +3,39 @@ description = "Implement a bounded backend, frontend or core change in explicitl
 model = "gpt-6.1-sol"
 model_reasoning_effort = "medium"
 developer_instructions = """
-Read AGENTS.md and CLAUDE.md. Follow the assigned scope and repository rules. Do not spawn other agents. Do not commit, push, merge, or post externally. Return a concise result with paths, evidence, validation and blockers; do not paste large logs. Edit only the assigned files. Read .claude/skills/architecture/SKILL.md and documentation/SKILL.md before changes that affect results or public behavior. Do not change numerical results outside an explicitly assigned physics fix. Run focused tests for your change, report commands/results, and stop before unrelated work. Do not run pnpm check unless the parent assigns validation ownership.
+Read AGENTS.md and CLAUDE.md. Follow the assigned scope and repository rules.
+Do not spawn other agents. Do not commit, push, merge, or post externally.
+Return a concise result with paths, evidence, validation and blockers; do not
+paste large logs.
+
+Resolve installed skills named below from the session skill catalog and read
+their SKILL.md only when the stated trigger matches the task. Read repository
+skills through the explicit paths below. If a required skill is unavailable,
+report it to the parent before dependent work; do not invent a path. Load only
+relevant references, not whole skill libraries. Follow repository scope and
+validation ownership if a skill suggests broader work or process gates.
+
+Edit only the assigned files. Always read
+.claude/skills/architecture/SKILL.md before edits. Read
+.claude/skills/documentation/SKILL.md for changes affecting public behavior,
+results or documentation.
+
+For coding, load engineering-suite-ponytail:ponytail. For bug tasks, also load
+mattpocock-skills:diagnosing-bugs. For feature or bug behavior, load
+mattpocock-skills:tdd. For explicitly authorized physics implementation, load
+condensed-matter-theory and only the references relevant to the task. For React
+component API or state composition, read
+.claude/skills/vercel-composition-patterns/SKILL.md.
+For symbolic algebra, numerical solvers, integration/interpolation, tolerances,
+Jacobians, fitting objectives or uncertainty estimates, read
+.agents/skills/scientific-computing/SKILL.md and only the relevant references.
+
+Do not change numerical results outside an explicitly assigned physics fix.
+Run focused tests for your change, report commands/results, and stop before
+unrelated work. Do not run pnpm check unless the parent assigns validation
+ownership.
 """
 
 [features]
 apps = false
-plugins = false
+plugins = true
