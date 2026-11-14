@@ -172,6 +172,18 @@ def replaced(spec: ParameterSpec = SLOPE, **changes: Any) -> ParameterSpec:
             description(FitMode("m", ("seebeck",), (SLOPE,), band_2_edge=SLOPE.name)),
             "no parameter in K for band 2",
         ),
+        (
+            # In K as shown, but its core value is twice that, so a line there would be wrong.
+            description(
+                FitMode(
+                    "m",
+                    ("seebeck",),
+                    (replaced(name="gap", unit="K", display_scale=1, fit_scale=2),),
+                    band_2_edge="gap",
+                )
+            ),
+            "no parameter in K for band 2",
+        ),
     ],
 )
 def test_invalid_descriptions_are_refused_and_leave_nothing_behind(
