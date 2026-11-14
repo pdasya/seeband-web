@@ -6,6 +6,7 @@ import { modelsQuery } from "@/api/queries";
 import { failureMessage } from "@/data/messages";
 import {
   QUANTITIES,
+  loadedAs,
   useSessionStore,
   type InterpolatedQuantities,
   type InterpolationFailureReason,
@@ -67,7 +68,11 @@ function requestsFor(range: FitRange): InterpolationRequest[] {
             // A user's choice of columns goes again, or the server would guess anew.
             body:
               entry.mapping === undefined
-                ? { text: entry.text, expected: quantity, interpolate }
+                ? {
+                    text: entry.text,
+                    expected: loadedAs(quantity, entry),
+                    interpolate,
+                  }
                 : {
                     text: entry.text,
                     mapping: [...entry.mapping],
