@@ -1,11 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import { InfoIcon } from "lucide-react";
+import { InfoIcon, LockIcon, LockOpenIcon } from "lucide-react";
 import { useId, useState } from "react";
 
 import { modelsQuery } from "@/api/queries";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
+import { Toggle } from "@/components/ui/toggle";
 import {
   Tooltip,
   TooltipContent,
@@ -55,6 +56,7 @@ function ParameterControl({
   value,
   disabled,
   onChange,
+  held,
 }: {
   parameter: ParameterDescription;
   /** While a fit moves the values, as it would overwrite a change. */
@@ -62,6 +64,8 @@ function ParameterControl({
   /** In core units. */
   value: number;
   onChange: (value: number) => void;
+  /** For a fitted parameter: whether a fit keeps it at its value, and how to change that. */
+  held?: { value: boolean; onChange: (held: boolean) => void } | undefined;
 }) {
   const id = useId();
   const hintId = useId();
@@ -131,7 +135,28 @@ function ParameterControl({
           {parameter.role === "fixed" && (
             <Badge variant="secondary">{text.fixed}</Badge>
           )}
+          {held?.value === true && (
+            <Badge variant="secondary">{text.held}</Badge>
+          )}
         </div>
+        {/* The value stays editable while held: it is the value the fit keeps. */}
+        {held !== undefined && (
+          <Toggle
+            variant="outline"
+            size="sm"
+            className="ml-auto size-7 min-w-7"
+            disabled={disabled}
+            pressed={held.value}
+            onPressedChange={held.onChange}
+            aria-label={text.hold(label)}
+          >
+            {held.value ? (
+              <LockIcon aria-hidden="true" />
+            ) : (
+              <LockOpenIcon aria-hidden="true" />
+            )}
+          </Toggle>
+        )}
         <Input
           id={id}
           disabled={disabled}
@@ -218,6 +243,8 @@ export function ParametersPanel() {
   const setParameter = useSessionStore((state) => state.setParameter);
   const resets = useSessionStore((state) => state.parameterResets);
   const customBounds = useSessionStore((state) => state.customBounds);
+  const held = useSessionStore((state) => state.held);
+  const setHeld = useSessionStore((state) => state.setHeld);
   const active = useSessionStore((state) => isFitActive(state.fit));
 
   const model = data?.models.find(({ id }) => id === selection.model);
@@ -250,6 +277,16 @@ export function ParametersPanel() {
               onChange={(value) => {
                 setParameter(mode.id, parameter.name, value);
               }}
+              held={
+                parameter.role === "fitted"
+                  ? {
+                      value: (held[mode.id] ?? []).includes(parameter.name),
+                      onChange: (next) => {
+                        setHeld(mode.id, parameter.name, next);
+                      },
+                    }
+                  : undefined
+              }
             />
           ))}
         </div>

@@ -115,7 +115,7 @@ test("the panel says what each source expects, with its units", async ({
   ).toBeVisible();
   await expect(
     page.getByText(
-      /or the ones you choose\. With neither: T in K, S in V\/K, ρ in Ω·m, R_H in m³\/C\./,
+      /or the ones you choose\. With neither: T in K, S in V\/K, ρ in Ω·m or σ in S\/m, R_H in m³\/C\./,
     ),
   ).toBeVisible();
   await expect(page.getByText("Each file: T and the value")).toHaveCount(0);

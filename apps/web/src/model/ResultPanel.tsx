@@ -22,6 +22,7 @@ import {
   parameterRows,
   quantityMark,
   resultIssues,
+  rmseSymbol,
   rmseText,
   type ResultIssue,
 } from "@/model/resultSummary";
@@ -86,6 +87,7 @@ export function ResultPanel({ live }: { live: LiveCurves }) {
   const interpolation = useSessionStore((state) => state.interpolation);
   const fitState = useSessionStore((state) => state.fit);
   const customBounds = useSessionStore((state) => state.customBounds);
+  const held = useSessionStore((state) => state.held);
   const setChartPanel = useSessionStore((state) => state.setChartPanel);
   const panels = useSessionStore((state) => state.chartPanels);
   const exporter = useExport();
@@ -121,6 +123,7 @@ export function ResultPanel({ live }: { live: LiveCurves }) {
           parameters[mode.id],
           fitState,
           customBounds[mode.id],
+          held[mode.id],
         );
   const { minTemperatureK: minK, maxTemperatureK: maxK } = selection;
   const subtitle = [
@@ -170,7 +173,7 @@ export function ResultPanel({ live }: { live: LiveCurves }) {
             return (
               <Metric
                 key={quantity}
-                label={`${fit.rmse}, ${dataText.quantities[quantity].symbol}`}
+                label={`${fit.rmse}, ${rmseSymbol(quantity, data)}`}
                 mark={
                   mark !== null && (
                     <Badge variant="outline">{fit.issueMark[mark]}</Badge>

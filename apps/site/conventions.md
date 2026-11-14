@@ -4,9 +4,9 @@
 
 For the enabled SPB Hall mode, `x = sign(m) μ(T)/T`, where μ(T) conserves
 the carrier density set by E_F at zero temperature. The signed mass m is in
-units of mₑ: positive for electrons and negative for holes. A point with signed
-reduced potential `x > 700` is outside the supported integral range and returns
-NaN. For acoustic scattering,
+units of mₑ: positive for electrons and negative for holes. A point with signed reduced potential
+`x > 700` is outside the supported integral range and returns NaN. For
+acoustic scattering,
 
 `R_H n e = -sign(m) 3 F_{-1/2}(x) F_{1/2}(x) / (4 F_0(x)^2)`.
 
@@ -63,8 +63,8 @@ and scattering factors still enter the conductivity. This is not a formula
 for the entire conductivity independent of band filling. Other scattering
 mechanisms need different transport factors.
 
-For R < 0 the signed S-only transport weight N/R is the open #104. In
-this S-only expression, cancellation at R = −N requires equal band occupation
+For R < 0 the signed S-only transport weight N/R is the open #104. In this
+S-only expression, cancellation at R = −N requires equal band occupation
 integrals, as for coincident band edges (E_g = 0); it is not a general result
 for negative R or for other transport weights.
 

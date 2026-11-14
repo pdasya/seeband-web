@@ -74,6 +74,8 @@ export interface ExportContext {
   issues: readonly ResultIssue[];
   /** Quantities whose data narrowed their interpolation, and the range a fit used. */
   limitedRanges?: readonly LimitedRange[];
+  /** Whether ρ is 1/σ of a σ file, as its points and RMSE are then not what was loaded. */
+  fromConductivity?: boolean;
 }
 
 function fitLine(fit: FitState): string {
@@ -149,6 +151,9 @@ export function exportHeader(context: ExportContext): string[] {
         numberText(maxK),
       ),
     ),
+    ...(context.fromConductivity === true
+      ? [text.header.fromConductivity]
+      : []),
     ...(context.degeneracy
       ? [
           text.header.degeneracies(
@@ -214,7 +219,9 @@ export function dataFile(
       ...(measured === undefined
         ? []
         : pair(
-            text.columns.experimental(name),
+            measured.loaded_as === "conductivity"
+              ? text.columns.experimentalFromSigma(name)
+              : text.columns.experimental(name),
             measured.temperature_k,
             measured.values,
           )),
@@ -260,6 +267,7 @@ function parameterRecords(
   scattering: string | null,
   saved: Readonly<Record<string, number>> | undefined,
   fit: FitState,
+  held: readonly string[],
 ): ParameterRecord[] {
   const values = parameterValues(mode, saved);
   const atBounds =
@@ -280,11 +288,13 @@ function parameterRecords(
       status:
         parameter.role === "fixed"
           ? text.status.fixed
-          : !fitted
-            ? text.status.free
-            : atBounds.includes(parameter.name)
-              ? text.status.atBound
-              : text.status.fitted,
+          : held.includes(parameter.name)
+            ? text.status.held
+            : !fitted
+              ? text.status.free
+              : atBounds.includes(parameter.name)
+                ? text.status.atBound
+                : text.status.fitted,
     };
   });
 }
@@ -305,12 +315,18 @@ export function parametersFile(
   selection: DegeneracySelection,
   saved: Readonly<Record<string, number>> | undefined,
   fit: FitState,
+  held: readonly string[] = [],
 ): string {
-  const lines = parameterRecords(mode, selection.scattering, saved, fit).map(
-    ({ symbol, meaning, unit, value, status }) =>
-      [text.parameter(symbol, meaning, unit), numberText(value), status].join(
-        "\t",
-      ),
+  const lines = parameterRecords(
+    mode,
+    selection.scattering,
+    saved,
+    fit,
+    held,
+  ).map(({ symbol, meaning, unit, value, status }) =>
+    [text.parameter(symbol, meaning, unit), numberText(value), status].join(
+      "\t",
+    ),
   );
   const degeneracy = hasDegeneracy(mode)
     ? [
@@ -340,9 +356,10 @@ export function parametersCsv(
   selection: DegeneracySelection,
   saved: Readonly<Record<string, number>> | undefined,
   fit: FitState,
+  held: readonly string[] = [],
 ): string {
   const records = [
-    ...parameterRecords(mode, selection.scattering, saved, fit),
+    ...parameterRecords(mode, selection.scattering, saved, fit, held),
     ...(hasDegeneracy(mode)
       ? [
           {

@@ -3,7 +3,14 @@
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 
-from seeband_core.data_parser import ParsedTable, Role, Unit, parse_table, with_mapping
+from seeband_core.data_parser import (
+    LoadedQuantity,
+    ParsedTable,
+    Role,
+    Unit,
+    parse_table,
+    with_mapping,
+)
 from seeband_core.interpolation import (
     InterpolatedData,
     InterpolationFailure,
@@ -37,7 +44,7 @@ class ParseOutcome:
 
 def _read(
     text: str,
-    expected: Quantity | None,
+    expected: LoadedQuantity | None,
     mapping: Mapping[int, Role] | None,
     units: Mapping[int, Unit] | None,
 ) -> ParsedTable:
@@ -57,7 +64,7 @@ def _read(
 
 def parse(
     text: str,
-    expected: Quantity | None,
+    expected: LoadedQuantity | None,
     mapping: Mapping[int, Role] | None,
     fit_range: FitRange | None,
     units: Mapping[int, Unit] | None = None,

@@ -54,12 +54,77 @@ def test_returns_points_range_and_mapping(client: TestClient) -> None:
             "points": 6,
             "min_temperature_k": 100.0,
             "max_temperature_k": 600.0,
+            "loaded_as": "seebeck",
         }
     }
     assert body["errors"] == []
     assert body["warnings"] == []
     assert body["interpolated"] == {}
     assert body["interpolation_failed"] == []
+
+
+SIGMA_ROWS = "T\tsigma (S/cm)\n100\t400\n200\t500\n300\t625\n400\t800\n500\t1000\n600\t1250\n"
+
+
+def test_a_conductivity_comes_back_as_its_resistivity(client: TestClient) -> None:
+    body = _parse(client, SIGMA_ROWS, expected="resistivity")
+
+    assert body["errors"] == []
+    assert body["warnings"] == []
+    assert body["mapping"] == [
+        {"column": 0, "role": "temperature", "unit": "K"},
+        {"column": 1, "role": "conductivity", "unit": "S/cm"},
+    ]
+    measurement = body["measurements"]["resistivity"]
+    assert measurement["loaded_as"] == "conductivity"
+    assert measurement["values"] == [
+        1.0 / (sigma * 100) for sigma in (400, 500, 625, 800, 1000, 1250)
+    ]
+    # The preview keeps sigma, as written and in SI.
+    assert body["preview"][0] == [100.0, 400.0]
+    assert body["preview_si"][0] == [100.0, 40000.0]
+    assert set(body["measurements"]) == {"resistivity"}
+
+
+def test_a_conductivity_with_no_header_takes_its_unit_from_the_mapping(client: TestClient) -> None:
+    text = "100 400\n200 500\n300 625\n400 800\n500 1000\n600 1250\n"
+    unit_chosen = _parse(
+        client,
+        text,
+        mapping=[
+            {"column": 0, "role": "temperature"},
+            {"column": 1, "role": "conductivity", "unit": "S/cm"},
+        ],
+    )
+    expected = _parse(client, text, expected="conductivity")
+
+    assert expected["mapping"][1] == {"column": 1, "role": "conductivity", "unit": "S/m"}
+    assert (
+        unit_chosen["measurements"]["resistivity"]["values"]
+        == _parse(client, SIGMA_ROWS)["measurements"]["resistivity"]["values"]
+    )
+    assert expected["measurements"]["resistivity"]["loaded_as"] == "conductivity"
+
+
+def test_a_conductivity_interpolates_as_the_resistivity_it_gives(client: TestClient) -> None:
+    grid = {"min_temperature_k": 100.0, "max_temperature_k": 600.0}
+    sigma = _parse(client, SIGMA_ROWS, interpolate=grid)
+    rho_text = "T rho\n" + "".join(
+        f"{t} {1.0 / (s * 100)!r}\n"
+        for t, s in zip(
+            (100, 200, 300, 400, 500, 600), (400, 500, 625, 800, 1000, 1250), strict=True
+        )
+    )
+    rho = _parse(client, rho_text, interpolate=grid)
+
+    assert sigma["interpolated"]["resistivity"] == rho["interpolated"]["resistivity"]
+
+
+def test_a_conductivity_of_zero_is_refused_with_its_line(client: TestClient) -> None:
+    body = _parse(client, "T sigma (S/m)\n100 4e4\n200 0\n300 5e4\n")
+
+    assert body["errors"] == [{"code": "non_positive_conductivity", "line": 3, "column": 1}]
+    assert body["measurements"] == {}
 
 
 @pytest.mark.parametrize("path", sorted(EXAMPLES.glob("*.txt")), ids=lambda path: path.name)
@@ -120,6 +185,18 @@ ERROR_CASES: list[tuple[str, dict[str, Any], str]] = [
     ("missing_temperature", {"mapping": [{"column": 1, "role": "seebeck"}]}, SIX_ROWS),
     ("non_positive_temperature", {}, "T S\n0 1\n100 2\n"),
     ("negative_resistivity", {"expected": "resistivity"}, "T rho\n100 -1e-5\n200 1e-5\n"),
+    ("non_positive_conductivity", {"expected": "conductivity"}, "T sigma\n100 -1e5\n200 1e5\n"),
+    (
+        "resistivity_and_conductivity",
+        {
+            "mapping": [
+                {"column": 0, "role": "temperature"},
+                {"column": 1, "role": "resistivity"},
+                {"column": 2, "role": "conductivity"},
+            ]
+        },
+        "100 1e-5 1e5\n200 2e-5 5e4\n",
+    ),
     (
         "repeated_role",
         {

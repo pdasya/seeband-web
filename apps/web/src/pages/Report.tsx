@@ -16,7 +16,12 @@ import {
 } from "@/model/chartTabs";
 import type { FitModeDescription } from "@/model/selection";
 import type { LiveCalc } from "@/model/useLiveCurves";
-import { QUANTITIES, useSessionStore, type ChartTab } from "@/session/store";
+import {
+  loadedAs,
+  QUANTITIES,
+  useSessionStore,
+  type ChartTab,
+} from "@/session/store";
 import { STRINGS } from "@/strings";
 
 const { report: text, chart: chartText, data: dataText } = STRINGS;
@@ -238,7 +243,7 @@ export function ReportHeader({
           return [
             <li key={quantity}>
               {text.file(
-                dataText.quantities[quantity].symbol,
+                dataText.quantities[loadedAs(quantity, entry)].symbol,
                 source.kind === "file" ? source.name : dataText.demoSource,
                 measurement.points,
                 measurement.min_temperature_k,

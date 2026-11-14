@@ -34,6 +34,7 @@ const RESULT: FitResult = {
   parameter_errors: {},
   at_bounds: [],
   known_issues: [],
+  held: [],
 };
 const DONE: FitState = { status: "done", result: RESULT };
 const SELECTION = {
@@ -113,6 +114,14 @@ describe("the header", () => {
     const lines = exportHeader({ ...CONTEXT, serverCoreVersion: "0.1.0" });
     expect(lines).toContain("Fit core unknown");
     expect(lines).not.toContain("Fit core 0.1.0");
+  });
+
+  test("says where ρ is 1/σ of a σ file", () => {
+    const lines = exportHeader({ ...CONTEXT, fromConductivity: true });
+    expect(lines).toContain(
+      "rho is 1/sigma of the loaded conductivity data, so its RMSE compares the fit with 1/sigma",
+    );
+    expect(exportHeader(CONTEXT).join("\n")).not.toContain("1/sigma");
   });
 
   test("names the range a fit used where the data narrowed the interpolation", () => {
@@ -209,6 +218,7 @@ describe("the data file", () => {
           points: 3,
           min_temperature_k: 100,
           max_temperature_k: 200,
+          loaded_as: "seebeck",
         },
         source: { kind: "file", name: "s.txt" },
         extrapolated: false,
@@ -371,6 +381,34 @@ describe("the parameters file", () => {
     expect(lines.find((line) => line.startsWith("m"))).toMatch(/\tfixed$/);
     expect(lines.some((line) => line.startsWith("N1"))).toBe(false);
   });
+
+  test("a value held in the fit says so, in the text and the CSV", () => {
+    const fit: FitState = {
+      status: "done",
+      result: { ...RESULT, held: ["band_gap"] },
+    };
+    const lines = parametersFile(
+      [],
+      modeOf("dpb_s_rho"),
+      SELECTION,
+      { band_gap: 900 },
+      fit,
+      ["band_gap"],
+    ).split("\n");
+    expect(lines).toContain(
+      "E_g (position of band 2) [eV]\t0.077555999358\theld at its value",
+    );
+    expect(
+      parametersCsv(
+        [],
+        modeOf("dpb_s_rho"),
+        SELECTION,
+        { band_gap: 900 },
+        fit,
+        ["band_gap"],
+      ),
+    ).toMatch(/band_gap,.*,held at its value/);
+  });
 });
 
 describe("a graph file", () => {
@@ -418,6 +456,7 @@ describe("the other formats", () => {
           points: 2,
           min_temperature_k: 100,
           max_temperature_k: 150,
+          loaded_as: "seebeck",
         },
         source: { kind: "file", name: "s.txt" },
         extrapolated: false,

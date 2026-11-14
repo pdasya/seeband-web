@@ -13,6 +13,11 @@
   unknown and are not assigned a version retroactively. This is not release
   approval; scientific confirmation and the desktop parity work remain open.
 
+- FS18: preserve a conductivity file's source quantity when requesting
+  interpolation without an explicit column mapping. Explicit mappings and
+  chosen units remain in use. Browser regressions cover conductivity upload,
+  headerless column choice, S/cm units and the resistivity sent to a fit.
+
 - P7 (#86): evaluate interpolation only on the overlap of each quantity's
   measured temperature range and the requested fit range. Unsupported or
   too-short overlaps fail explicitly instead of extrapolating synthetic
@@ -47,8 +52,8 @@
   Synthetic regression results replace no historical desktop captures.
   Every fit now sorts its points by temperature, so an API client's order
   gives the result a sorted file does; a Hall point with signed reduced
-  potential x = sign(m) μ(T)/T above 700 is NaN rather than a failed curve; and a
-  start mass of 0, on an empty branch, or of the wrong sign for R_H fails with
+  potential x = sign(m) μ(T)/T above 700 is NaN rather than a failed curve;
+  a start mass of 0, on an empty branch, or of the wrong sign for R_H fails with
   its reason. The band-mass error is conditional on E_F.
   Human physicist confirmation and parity/author review remain pending;
   enabling this mode is not scientific release approval.

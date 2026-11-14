@@ -33,6 +33,7 @@ import {
   hasFittedValues,
   resultIssues,
   resultRows,
+  rmseSymbol,
   rmseText,
   type ParameterStatus,
 } from "@/model/resultSummary";
@@ -100,6 +101,8 @@ function StatusCell({ status }: { status: ParameterStatus }) {
       return <Badge variant="success">{text.status.fitted}</Badge>;
     case "fixed":
       return <Badge variant="neutral">{text.status.fixed}</Badge>;
+    case "held":
+      return <Badge variant="neutral">{text.status.held}</Badge>;
     default:
       return (
         <Badge variant="warning">
@@ -312,6 +315,7 @@ export function ResultsPage() {
   const data = useSessionStore((state) => state.data);
   const fit = useSessionStore((state) => state.fit);
   const customBounds = useSessionStore((state) => state.customBounds);
+  const held = useSessionStore((state) => state.held);
   const interpolation = useSessionStore((state) => state.interpolation);
   const numericalStart = useSessionStore((state) => state.fitStartNumerical);
   const startNet = useSessionStore((state) => state.fitStartNet);
@@ -389,6 +393,7 @@ export function ResultsPage() {
     parameters[mode.id],
     fit,
     customBounds[mode.id],
+    held[mode.id],
   );
   const issues = resultIssues(mode, {
     fit: fit.status === "done" ? fit.result.known_issues : [],
@@ -492,7 +497,7 @@ export function ResultsPage() {
           return (
             <Kpi
               key={quantity}
-              label={text.rmse(dataText.quantities[quantity].symbol)}
+              label={text.rmse(rmseSymbol(quantity, data))}
               value={rmse === undefined ? text.noValue : rmseText(rmse)}
               detail={detail}
             />
@@ -567,7 +572,14 @@ export function ResultsPage() {
         <div className="min-w-0 flex-[1_1_320px] print:hidden">
           <Panel title={text.log.title} subtitle={text.log.subtitle}>
             <FitLog
-              steps={fitLog(mode, scattering, fit, startNet, numericalStart)}
+              steps={fitLog(
+                mode,
+                scattering,
+                fit,
+                startNet,
+                numericalStart,
+                held[mode.id],
+              )}
             />
           </Panel>
         </div>

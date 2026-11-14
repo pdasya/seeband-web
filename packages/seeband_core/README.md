@@ -21,3 +21,5 @@ queried during export. Older results without provenance remain unknown.
 Version `0.0.0` was reused during development and cannot identify one numerical
 state. A version identifies software behavior, not physical validity or human
 physicist confirmation. See [results that changed](../../apps/site/results-changed.md).
+
+[Author review packet](docs/author-review/README.md) tracks the evidence, open questions and owner handoff for P1 (#80).
