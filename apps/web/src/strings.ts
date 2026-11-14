@@ -147,6 +147,9 @@ export const STRINGS = {
       points: (symbol: string, points: number) =>
         `${symbol} · ${String(points)} pts`,
       notLoaded: (symbol: string) => `${symbol} · not loaded`,
+      checkUnit: (symbol: string, points: number) =>
+        `${symbol} · ${String(points)} pts · check the unit`,
+      checkTemperature: "T · check the unit",
     },
     demoLoading: "Loading the demo data…",
     demoFailed:
@@ -198,7 +201,9 @@ export const STRINGS = {
       C: "°C",
       "V/K": "V/K",
       "uV/K": "µV/K",
+      "mV/K": "mV/K",
       "Ohm*m": "Ω·m",
+      "Ohm*cm": "Ω·cm",
       "mOhm*cm": "mΩ·cm",
       "uOhm*m": "µΩ·m",
       "S/m": "S/m",
@@ -210,6 +215,45 @@ export const STRINGS = {
     temperature: "Temperature",
     inSi: (written: string, si: string) => `${written} = ${si} in SI`,
     checkUnitTitle: "Check the unit",
+    /** The name of a unit select whose unit is SI only because nothing named one. */
+    unitAssumedOf: (name: string, unit: string) =>
+      `Unit of ${name}: ${unit}, assumed`,
+    unitsAssumed: (symbols: string) =>
+      `SI is assumed for ${symbols}, as no unit SeeBand reads was named. Choose the unit if the values are written in another.`,
+    firstRow: (values: string) => `First row: ${values}`,
+    temperatureRanges: {
+      title: "Check the unit of T",
+      shifted: (lower: string, higher: string, lowerSymbol: string) =>
+        `T of ${lower} is about 273 K below T of ${higher} at both ends, as when T in °C is read as K. If the file of ${lowerSymbol} gives T in °C, choose °C for its T. If both give T in K, nothing needs to change.`,
+    },
+    // Which way a wrong unit most likely went, by quantity, when values read in SI look far off.
+    // Values far outside a quantity's usual size, by which limit they pass. Only a hint names a
+    // unit to choose, where the usual lab unit read as SI would give that side.
+    implausible: {
+      size: { above: "larger", below: "smaller" },
+      names: {
+        seebeck: "Seebeck coefficient",
+        resistivity: "resistivity",
+        conductivity: "conductivity",
+        hall: "Hall coefficient",
+      },
+      inSi: (size: string, name: string, unit: string) =>
+        `These values are far ${size} than any usual ${name} in ${unit}, the unit assumed.`,
+      hints: {
+        seebeck: { above: "If the file is in µV/K or mV/K, choose it." },
+        resistivity: {
+          above: "If the file is in Ω·cm, mΩ·cm or µΩ·m, choose it.",
+        },
+        conductivity: { below: "If the file is in S/cm, choose S/cm." },
+        hall: { above: "If the file is in cm³/C, choose cm³/C." },
+      } as Partial<Record<string, Partial<Record<"above" | "below", string>>>>,
+      checkColumn:
+        "Check that the column holds this quantity, and the unit its values are in.",
+      inChosenUnit: (size: string, unit: string) =>
+        `These values are far ${size} than any usual size in ${unit}, the unit chosen. Check that the file is in ${unit}, or choose the unit it is in.`,
+      inHeaderUnit: (size: string, unit: string) =>
+        `These values are far ${size} than any usual size in ${unit}, the unit the header names. Check the file: its header may name the wrong unit.`,
+    },
     quantities: {
       seebeck: { symbol: "S", title: "Seebeck coefficient", unit: "V/K" },
       resistivity: { symbol: "ρ", title: "Resistivity", unit: "Ω·m" },
@@ -245,7 +289,7 @@ export const STRINGS = {
         "Its header names a unit SeeBand cannot read, so the values are read in SI. Choose the unit they are in, or convert the column to one listed here.",
       unit_not_allowed: "This unit does not fit the quantity of this column.",
       implausible_magnitude:
-        "These values are far from any usual size in SI, as when µV/K is read as V/K. Check the unit of this column.",
+        "These values are far from any usual size for this quantity. Check the unit of this column.",
       repeated_header: "A second column for one quantity was not used.",
       columns_need_assigning: "More than two columns with no header.",
       expected_not_found: "This file has no column for this quantity.",

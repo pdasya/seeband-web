@@ -11,9 +11,15 @@ import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { Role } from "@/data/columnChoice";
 import { DropArea, useFileDrop } from "@/data/DropArea";
+import { valueInUnit } from "@/data/firstValue";
 import { SlotColumns } from "@/data/SlotColumns";
 import { UnitSelect } from "@/data/UnitSelect";
-import { unitOf } from "@/data/units";
+import {
+  columnOf,
+  unitDoubtMessage,
+  unitIsDefault,
+  unitOf,
+} from "@/data/units";
 import { useFileUpload } from "@/data/useFileUpload";
 import { cn } from "@/lib/utils";
 import {
@@ -95,6 +101,45 @@ function ReadAs({
       ))}
     </ToggleGroup>
   );
+}
+
+/** T and what was loaded, in the order the card shows their units. */
+function cardRoles(quantity: Quantity, entry: SessionData) {
+  return ["temperature", loadedAs(quantity, entry)] as const;
+}
+
+function roleSymbol(role: Role): string {
+  return role === "temperature" ? "T" : STRINGS.data.quantities[role].symbol;
+}
+
+/** The file's first row in its units and in SI, for a user to check the units against. */
+function firstRowLine(quantity: Quantity, entry: SessionData): string | null {
+  const { firstRow, readAs } = entry;
+  if (firstRow === undefined || readAs === undefined) {
+    return null;
+  }
+  const values = cardRoles(quantity, entry).flatMap((role) => {
+    const column = columnOf(readAs, role);
+    if (column === undefined) {
+      return [];
+    }
+    const shown = valueInUnit(
+      firstRow.written[column],
+      firstRow.si[column],
+      role,
+      unitOf(readAs, role),
+    );
+    return shown === "" ? [] : [`${roleSymbol(role)} ${shown}`];
+  });
+  return values.length === 0 ? null : STRINGS.data.firstRow(values.join(" · "));
+}
+
+/** The symbols of the card's columns read in SI only because nothing named their unit. */
+function assumedSymbols(quantity: Quantity, entry: SessionData): string[] {
+  const { readAs } = entry;
+  return cardRoles(quantity, entry)
+    .filter((role) => unitIsDefault(readAs?.find((item) => item.role === role)))
+    .map(roleSymbol);
 }
 
 function FileName({ children }: { children: string }) {
@@ -271,6 +316,8 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
   }
 
   if (data !== undefined) {
+    const firstRow = firstRowLine(quantity, data);
+    const assumed = assumedSymbols(quantity, data);
     return (
       <div className="flex flex-col gap-1.5">
         {status}
@@ -302,33 +349,44 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
         {data.readAs !== undefined && (
           // T and the quantity in one row, each symbol before its unit.
           <div className="grid grid-cols-[auto_minmax(0,112px)_auto_minmax(0,112px)] items-center justify-start gap-x-2 text-xs text-muted-foreground">
-            {(["temperature", loadedAs(quantity, data)] as const).map(
-              (role) => (
-                <Fragment key={role}>
-                  <span className="font-mono">
-                    {role === "temperature" ? "T" : names.symbol}
-                  </span>
-                  <UnitSelect
-                    ref={(select) => {
-                      unitSelects.current[role] = select;
-                    }}
-                    role={role}
-                    value={unitOf(data.readAs, role)}
-                    disabled={rereading}
-                    label={
-                      role === "temperature"
-                        ? `${text.temperature}, ${names.title}`
-                        : names.title
-                    }
-                    onChange={(unit) => {
-                      unitFocus.current = role;
-                      void changeUnit(role, unit);
-                    }}
-                  />
-                </Fragment>
-              ),
-            )}
+            {cardRoles(quantity, data).map((role) => (
+              <Fragment key={role}>
+                <span className="font-mono">
+                  {role === "temperature" ? "T" : names.symbol}
+                </span>
+                <UnitSelect
+                  ref={(select) => {
+                    unitSelects.current[role] = select;
+                  }}
+                  role={role}
+                  value={unitOf(data.readAs, role)}
+                  assumed={unitIsDefault(
+                    data.readAs?.find((item) => item.role === role),
+                  )}
+                  disabled={rereading}
+                  label={
+                    role === "temperature"
+                      ? `${text.temperature}, ${names.title}`
+                      : names.title
+                  }
+                  onChange={(unit) => {
+                    unitFocus.current = role;
+                    void changeUnit(role, unit);
+                  }}
+                />
+              </Fragment>
+            ))}
           </div>
+        )}
+        {firstRow !== null && (
+          <div className="font-mono text-xs break-words text-muted-foreground">
+            {firstRow}
+          </div>
+        )}
+        {assumed.length > 0 && (
+          <p className="m-0 text-xs text-muted-foreground">
+            {text.unitsAssumed(assumed.join(", "))}
+          </p>
         )}
         {data.unitDoubts !== undefined && data.unitDoubts.length > 0 && (
           <Alert>
@@ -337,7 +395,15 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
             <AlertDescription>
               <ul className="m-0 list-none p-0">
                 {data.unitDoubts.map((doubt) => (
-                  <li key={doubt}>{text.issues[doubt]}</li>
+                  <li key={doubt.code}>
+                    {unitDoubtMessage(
+                      doubt,
+                      loadedAs(quantity, data),
+                      data.readAs?.find(
+                        ({ role }) => role === loadedAs(quantity, data),
+                      ),
+                    )}
+                  </li>
                 ))}
               </ul>
             </AlertDescription>

@@ -1,10 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import { CheckIcon, ChevronDownIcon } from "lucide-react";
+import { CheckIcon, ChevronDownIcon, TriangleAlertIcon } from "lucide-react";
 import { useEffect, useRef, useState, type RefObject } from "react";
 
 import { modelsQuery } from "@/api/queries";
 import { Button } from "@/components/ui/button";
 import { DataPanel } from "@/data/DataPanel";
+import { sessionMismatches } from "@/data/temperatureRanges";
+import { cn } from "@/lib/utils";
 import { fitModeOf } from "@/model/selection";
 import {
   loadedAs,
@@ -31,7 +33,8 @@ export function DataBar() {
     selection.fitMode,
   );
   // A table stays open, as its mapping is what a user checks after loading it. So do data with
-  // a doubt about their unit, as a fit from them would be wrong by a factor.
+  // a doubt about their unit, as a fit from them would be wrong by a factor. T ranges that look like
+  // °C beside K are only a hint, as two runs can cover such ranges, so they show but do not hold it.
   const complete =
     dataMode === "separate" &&
     mode !== undefined &&
@@ -82,6 +85,10 @@ export function DataBar() {
     </Button>
   );
 
+  const doubted = (quantity: (typeof QUANTITIES)[number]) =>
+    (data[quantity]?.unitDoubts?.length ?? 0) > 0;
+  const temperatureHint = sessionMismatches(data).length > 0;
+  const anyDoubt = QUANTITIES.some(doubted) || temperatureHint;
   const names = [
     ...new Set(
       QUANTITIES.flatMap((quantity) => {
@@ -103,8 +110,20 @@ export function DataBar() {
           aria-label={text.title}
           className="flex flex-wrap items-center gap-x-3.5 gap-y-2 min-h-[58px] rounded-xl border bg-card px-3 py-2.5 shadow-card"
         >
-          <span className="flex size-8 flex-none items-center justify-center rounded-md bg-muted">
-            <CheckIcon className="size-4" aria-hidden="true" />
+          {/* A unit in doubt keeps its warning in view, as a fit from it is wrong by a factor. */}
+          <span
+            className={cn(
+              "flex size-8 flex-none items-center justify-center rounded-md",
+              anyDoubt
+                ? "bg-warning-background text-warning-badge-foreground"
+                : "bg-muted",
+            )}
+          >
+            {anyDoubt ? (
+              <TriangleAlertIcon className="size-4" aria-hidden="true" />
+            ) : (
+              <CheckIcon className="size-4" aria-hidden="true" />
+            )}
           </span>
           <div className="min-w-0 flex-[0_1_auto]">
             <div className="text-[13px] font-semibold">{text.bar.loaded}</div>
@@ -117,17 +136,34 @@ export function DataBar() {
               const points = data[quantity]?.measurement.points;
               const symbol =
                 text.quantities[loadedAs(quantity, data[quantity])].symbol;
+              const doubt = points !== undefined && doubted(quantity);
               return (
                 <li
                   key={quantity}
-                  className="rounded-full border px-2.5 py-px text-xs font-medium text-muted-foreground"
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-full border px-2.5 py-px text-xs font-medium",
+                    doubt
+                      ? "border-warning-border bg-warning-background text-warning-badge-foreground"
+                      : "text-muted-foreground",
+                  )}
                 >
+                  {doubt && (
+                    <TriangleAlertIcon className="size-3" aria-hidden="true" />
+                  )}
                   {points === undefined
                     ? text.bar.notLoaded(symbol)
-                    : text.bar.points(symbol, points)}
+                    : doubt
+                      ? text.bar.checkUnit(symbol, points)
+                      : text.bar.points(symbol, points)}
                 </li>
               );
             })}
+            {temperatureHint && (
+              <li className="inline-flex items-center gap-1 rounded-full border border-warning-border bg-warning-background px-2.5 py-px text-xs font-medium text-warning-badge-foreground">
+                <TriangleAlertIcon className="size-3" aria-hidden="true" />
+                {text.bar.checkTemperature}
+              </li>
+            )}
           </ul>
           {toggle(barToggle)}
         </section>

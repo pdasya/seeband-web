@@ -2,7 +2,7 @@ import type { components } from "@seeband/api-client";
 import { create } from "zustand";
 
 import type { FitEvent } from "@/api/fitStream";
-import type { UnitDoubt } from "@/data/units";
+import type { UnitDoubtIssue } from "@/data/units";
 
 type Schemas = components["schemas"];
 
@@ -37,6 +37,8 @@ export function loadedAs(
 }
 export type ParsedTable = Schemas["ParseResponse"];
 export type ColumnRole = Schemas["ColumnRole"];
+/** A column as the server read it, with where its unit came from. */
+export type ColumnRead = Schemas["ColumnRead"];
 export type ModelSettings = Pick<
   Selection,
   "fitMode" | "scattering" | "band1Degeneracy" | "band2Degeneracy"
@@ -59,9 +61,38 @@ export interface SessionData {
   /** The columns and units a user chose, sent again with the text. */
   mapping?: readonly ColumnRole[] | undefined;
   /** The columns as the server read them, with the unit of each, so that a unit can change. */
-  readAs?: readonly ColumnRole[] | undefined;
+  readAs?: readonly ColumnRead[] | undefined;
   /** Why the unit of the quantity's column may be wrong, which a user must see before a fit. */
-  unitDoubts?: readonly UnitDoubt[] | undefined;
+  unitDoubts?: readonly UnitDoubtIssue[] | undefined;
+  /** The file's first row, as written and in SI, so that a user can check the units against it. */
+  firstRow?: FirstRow | undefined;
+}
+
+/** One row of a file by column: exactly as written, and in SI, with null for a column not read. */
+export interface FirstRow {
+  written: readonly string[];
+  si: readonly (number | null)[];
+}
+
+/**
+ * A row of an answer's preview exactly as the text writes it. An answer from before the server
+ * sent the text gives the values as read instead.
+ */
+export function writtenRow(
+  table: ParsedTable,
+  row: number,
+): readonly string[] | undefined {
+  const texts: ParsedTable["preview_text"] | undefined = table.preview_text;
+  return texts?.[row] ?? table.preview[row]?.map(String);
+}
+
+/** The first row of an answer, if it has one. */
+export function firstRowOf(table: ParsedTable): FirstRow | undefined {
+  const written = writtenRow(table, 0);
+  const si = table.preview_si[0];
+  return written === undefined || si === undefined
+    ? undefined
+    : { written, si };
 }
 
 export type InterpolatedQuantities = Partial<
@@ -117,7 +148,8 @@ export const INITIAL_CHART_PANELS: readonly ChartTab[] = [
 export interface SingleFile {
   name: string;
   text: string;
-  mapping: readonly ColumnRole[];
+  /** The user's mapping while it is read, then the server's, with where each unit came from. */
+  mapping: readonly ColumnRead[];
   table: ParsedTable | null;
   loading: boolean;
   failure: string | null;

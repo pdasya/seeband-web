@@ -59,8 +59,24 @@ IssueCode = Literal[
     "implausible_magnitude",
 ]
 Unit = Literal[
-    "K", "C", "V/K", "uV/K", "Ohm*m", "mOhm*cm", "uOhm*m", "S/m", "S/cm", "m^3/C", "cm^3/C"
+    "K",
+    "C",
+    "V/K",
+    "uV/K",
+    "mV/K",
+    "Ohm*m",
+    "Ohm*cm",
+    "mOhm*cm",
+    "uOhm*m",
+    "S/m",
+    "S/cm",
+    "m^3/C",
+    "cm^3/C",
 ]
+# Which limit of `PLAUSIBLE_MAGNITUDE` a quantity's largest |value| is beyond.
+Direction = Literal["above", "below"]
+# Where a column's unit came from: a user's choice, its header, or SI as nothing named one.
+UnitSource = Literal["chosen", "header", "default"]
 
 MIN_ROWS = 2
 # Below this, the degree 5 fit that chooses DPB start values is not determined.
@@ -105,16 +121,26 @@ class Conversion:
 # The units a column can be read in. The first of each is SI and the default.
 UNITS: Mapping[Role, Mapping[Unit, Conversion]] = {
     "temperature": {"K": Conversion(), "C": Conversion(offset=Decimal("273.15"))},
-    "seebeck": {"V/K": Conversion(), "uV/K": Conversion(-6)},
-    "resistivity": {"Ohm*m": Conversion(), "mOhm*cm": Conversion(-5), "uOhm*m": Conversion(-6)},
+    "seebeck": {"V/K": Conversion(), "uV/K": Conversion(-6), "mV/K": Conversion(-3)},
+    "resistivity": {
+        "Ohm*m": Conversion(),
+        "Ohm*cm": Conversion(-2),
+        "mOhm*cm": Conversion(-5),
+        "uOhm*m": Conversion(-6),
+    },
     "conductivity": {"S/m": Conversion(), "S/cm": Conversion(2)},
     "hall": {"m^3/C": Conversion(), "cm^3/C": Conversion(-6)},
 }
 # How a header writes each unit, after `_unit_key`.
 _HEADER_UNITS: Mapping[Role, Mapping[str, Unit]] = {
     "temperature": {"k": "K", "kelvin": "K", "c": "C", "°c": "C", "degc": "C", "celsius": "C"},
-    "seebeck": {"v/k": "V/K", "uv/k": "uV/K"},
-    "resistivity": {"ohmm": "Ohm*m", "mohmcm": "mOhm*cm", "uohmm": "uOhm*m"},
+    "seebeck": {"v/k": "V/K", "uv/k": "uV/K", "mv/k": "mV/K"},
+    "resistivity": {
+        "ohmm": "Ohm*m",
+        "ohmcm": "Ohm*cm",
+        "mohmcm": "mOhm*cm",
+        "uohmm": "uOhm*m",
+    },
     "conductivity": {
         "s/m": "S/m",
         "s/cm": "S/cm",
@@ -158,11 +184,17 @@ _NAME_AND_UNIT = re.compile(r"([^(\[]*)(?:[(\[]([^)\]]*)[)\]])?\s*")
 
 @dataclass(frozen=True)
 class ParseIssue:
-    """A problem in the data. `line` counts every line of the text from 1, and `column` from 0."""
+    """A problem in the data. `line` counts every line of the text from 1, and `column` from 0.
+
+    `direction` says, for `implausible_magnitude`, whether the largest |value| is `above` the
+    quantity's upper limit or `below` its lower one, so that a client can say which way a unit is
+    likely wrong. It carries no measured value.
+    """
 
     code: IssueCode
     line: int | None = None
     column: int | None = None
+    direction: Direction | None = None
 
 
 @dataclass(frozen=True, eq=False)
@@ -176,7 +208,9 @@ class ParsedTable:
     mapped column is read in. `measurements` is in SI, sorted by temperature, and is empty with any
     `errors`. `loaded_as` names what the text held for each measurement: `conductivity` for a
     resistivity that is 1/sigma of a conductivity column. `header_units` holds the unit text of each
-    header that has one, so that a column assigned by hand is read in it.
+    header that has one, so that a column assigned by hand is read in it. `unit_sources` says where
+    the unit of each column in `units` came from: `default` is SI taken as nothing named a unit, or
+    as the header named one this cannot read, which `unit_assumed` then says.
     """
 
     headers: tuple[str, ...] | None
@@ -191,6 +225,7 @@ class ParsedTable:
     header_units: Mapping[int, str] = dataclasses.field(default_factory=dict)
     texts: tuple[tuple[str, ...], ...] = ()
     loaded_as: Mapping[Quantity, LoadedQuantity] = dataclasses.field(default_factory=dict)
+    unit_sources: Mapping[int, UnitSource] = dataclasses.field(default_factory=dict)
 
 
 def _content_lines(text: str) -> list[tuple[int, str]]:
@@ -333,23 +368,26 @@ def si_column(table: ParsedTable, index: int, rows: int | None = None) -> np.nda
 
 def _units_for(
     mapping: Mapping[int, Role], chosen: Mapping[int, Unit], header_units: Mapping[int, str]
-) -> tuple[dict[int, Unit], list[ParseIssue]]:
-    """The unit of each mapped column: the user's, then its header's, then SI.
+) -> tuple[dict[int, Unit], dict[int, UnitSource], list[ParseIssue]]:
+    """The unit of each mapped column, and where it came from: the user's, its header's, or SI.
 
     A header unit that cannot be read leaves SI, with a warning that says so.
     """
     units: dict[int, Unit] = {}
+    sources: dict[int, UnitSource] = {}
     warnings: list[ParseIssue] = []
     for index, role in mapping.items():
         if index in chosen:
             units[index] = chosen[index]
+            sources[index] = "chosen"
             continue
         written = header_units.get(index)
         read = None if written is None else header_unit(role, written)
         if written is not None and read is None:
             warnings.append(ParseIssue("unit_assumed", column=index))
         units[index] = next(iter(UNITS[role])) if read is None else read
-    return units, warnings
+        sources[index] = "default" if read is None else "header"
+    return units, sources, warnings
 
 
 def _measure(
@@ -435,8 +473,12 @@ def _measure(
         if role != "temperature":
             values = loaded[index][order]
             low, high = PLAUSIBLE_MAGNITUDE[role]
-            if not low <= float(np.max(np.abs(values))) <= high:
-                warnings.append(ParseIssue("implausible_magnitude", column=index))
+            largest = float(np.max(np.abs(values)))
+            if not low <= largest <= high:
+                direction: Direction = "above" if largest > high else "below"
+                warnings.append(
+                    ParseIssue("implausible_magnitude", column=index, direction=direction)
+                )
             quantity = QUANTITY_OF[role]
             if role == "conductivity":
                 values = resistivity_from_conductivity(values)
@@ -493,16 +535,19 @@ def with_mapping(
     if wrong:
         kept_errors += tuple(ParseIssue("unit_not_allowed", column=index) for index in wrong)
     if kept_errors:
+        kept_units = {index: unit for index, unit in chosen.items() if index not in wrong}
+        kept_sources: dict[int, UnitSource] = dict.fromkeys(kept_units, "chosen")
         return replace(
             table,
             mapping=dict(mapping),
-            units={index: unit for index, unit in chosen.items() if index not in wrong},
+            units=kept_units,
+            unit_sources=kept_sources,
             measurements={},
             loaded_as={},
             errors=kept_errors,
             warnings=kept_warnings,
         )
-    column_units, unit_warnings = _units_for(mapping, chosen, table.header_units)
+    column_units, unit_sources, unit_warnings = _units_for(mapping, chosen, table.header_units)
     measurements, loaded_as, errors, warnings = _measure(
         table.columns, table.texts, table.lines, mapping, column_units
     )
@@ -510,6 +555,7 @@ def with_mapping(
         table,
         mapping=dict(mapping),
         units=column_units,
+        unit_sources=unit_sources,
         measurements=measurements,
         loaded_as=loaded_as,
         errors=tuple(errors),

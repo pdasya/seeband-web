@@ -5,6 +5,7 @@ import { DemoNotice } from "@/data/DemoNotice";
 import { FileSlot } from "@/data/FileSlot";
 import { InterpolationSwitch } from "@/data/InterpolationSwitch";
 import { SingleFilePanel } from "@/data/SingleFilePanel";
+import { TemperatureRangeWarning } from "@/data/TemperatureRangeWarning";
 import { useSessionStore, type DataMode } from "@/session/store";
 import { Panel } from "@/shell/layout";
 import { STRINGS } from "@/strings";
@@ -52,6 +53,7 @@ export function DataPanel({ action }: { action?: ReactNode }) {
           <FileSlot quantity="seebeck" />
           <FileSlot quantity="resistivity" />
           <FileSlot quantity="hall" />
+          <TemperatureRangeWarning className="md:col-span-3" />
         </TabsContent>
         <TabsContent value="single">
           <SingleFilePanel />

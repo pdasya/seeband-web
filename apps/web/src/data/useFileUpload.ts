@@ -13,6 +13,7 @@ import { readFileText } from "@/data/readFile";
 import {
   columnOf,
   isUnitDoubt,
+  requestMapping,
   unitDoubts,
   withUnit,
   type Unit,
@@ -24,10 +25,12 @@ import {
   type Role,
 } from "@/data/columnChoice";
 import {
+  firstRowOf,
   loadedAs,
   useSessionStore,
   type LoadedQuantity,
   type Quantity,
+  writtenRow,
 } from "@/session/store";
 import { STRINGS } from "@/strings";
 
@@ -38,7 +41,8 @@ export interface ColumnChoice {
   text: string;
   columns: number;
   rows: number;
-  firstRow: readonly number[];
+  /** The first row exactly as the file writes it. */
+  firstRow: readonly string[];
   roles: readonly (Role | null)[];
   /** The unit chosen for each column, or null for SI. */
   units: readonly (Unit | null)[];
@@ -161,7 +165,7 @@ export function useFileUpload(
             text,
             columns: parsed.column_count,
             rows: parsed.row_count,
-            firstRow: parsed.preview[0] ?? [],
+            firstRow: writtenRow(parsed, 0) ?? [],
             roles: initialRoles(parsed.column_count),
             units: Array.from({ length: parsed.column_count }, () => null),
             named: other,
@@ -194,6 +198,7 @@ export function useFileUpload(
             parsed.warnings,
             columnOf(parsed.mapping, loadedAs(quantity, { measurement })),
           ),
+          firstRow: firstRowOf(parsed),
         });
         setState({
           status: "idle",
@@ -272,6 +277,7 @@ export function useFileUpload(
             parsed.warnings,
             columnOf(parsed.mapping, loadedAs(target, { measurement })),
           ),
+          firstRow: firstRowOf(parsed),
         });
         setState(
           target === quantity
@@ -365,7 +371,13 @@ export function useFileUpload(
       if (entry?.readAs === undefined || reading.current) {
         return;
       }
-      const mapping = withUnit(entry.mapping ?? entry.readAs, role, unit);
+      // Only units a user chose go again, so that one read in SI by default stays marked so: the
+      // choices kept from before, or else those the answer says were chosen.
+      const mapping = withUnit(
+        entry.mapping ?? requestMapping(entry.readAs),
+        role,
+        unit,
+      );
       const signal = newRequest();
       // Counted as on its way, and the selects wait, so that a second change cannot start from
       // the old units, and the demo leaves the slot alone.
@@ -404,6 +416,7 @@ export function useFileUpload(
             parsed.warnings,
             columnOf(parsed.mapping, loadedAs(quantity, { measurement })),
           ),
+          firstRow: firstRowOf(parsed),
         });
         setState({ status: "idle", warnings: listedWarnings(parsed.warnings) });
       } catch (error) {

@@ -43,9 +43,10 @@ def test_returns_points_range_and_mapping(client: TestClient) -> None:
     assert body["headers"] == ["T", "S"]
     assert body["column_count"] == 2
     assert body["row_count"] == 6
+    # The header names no unit, so both are SI by default.
     assert body["mapping"] == [
-        {"column": 0, "role": "temperature", "unit": "K"},
-        {"column": 1, "role": "seebeck", "unit": "V/K"},
+        {"column": 0, "role": "temperature", "unit": "K", "unit_source": "default"},
+        {"column": 1, "role": "seebeck", "unit": "V/K", "unit_source": "default"},
     ]
     assert body["measurements"] == {
         "seebeck": {
@@ -72,8 +73,8 @@ def test_a_conductivity_comes_back_as_its_resistivity(client: TestClient) -> Non
     assert body["errors"] == []
     assert body["warnings"] == []
     assert body["mapping"] == [
-        {"column": 0, "role": "temperature", "unit": "K"},
-        {"column": 1, "role": "conductivity", "unit": "S/cm"},
+        {"column": 0, "role": "temperature", "unit": "K", "unit_source": "default"},
+        {"column": 1, "role": "conductivity", "unit": "S/cm", "unit_source": "header"},
     ]
     measurement = body["measurements"]["resistivity"]
     assert measurement["loaded_as"] == "conductivity"
@@ -98,7 +99,13 @@ def test_a_conductivity_with_no_header_takes_its_unit_from_the_mapping(client: T
     )
     expected = _parse(client, text, expected="conductivity")
 
-    assert expected["mapping"][1] == {"column": 1, "role": "conductivity", "unit": "S/m"}
+    assert expected["mapping"][1] == {
+        "column": 1,
+        "role": "conductivity",
+        "unit": "S/m",
+        "unit_source": "default",
+    }
+    assert unit_chosen["mapping"][1]["unit_source"] == "chosen"
     assert (
         unit_chosen["measurements"]["resistivity"]["values"]
         == _parse(client, SIGMA_ROWS)["measurements"]["resistivity"]["values"]
@@ -225,11 +232,11 @@ WARNING_CASES: list[tuple[str, dict[str, Any], str]] = [
         {"mapping": [{"column": 0, "role": "temperature"}, {"column": 1, "role": "seebeck"}]},
         "T S rho\n100 1\n200 2\n",
     ),
-    ("unit_differs", {}, "T (K)\tS (mV/K)\n100\t1\n200\t2\n"),
+    ("unit_differs", {}, "T (K)\tS (nV/K)\n100\t1\n200\t2\n"),
     (
         "unit_assumed",
         {"mapping": [{"column": 0, "role": "temperature"}, {"column": 1, "role": "seebeck"}]},
-        "T (K)\tS (mV/K)\n100\t1e-6\n200\t2e-6\n",
+        "T (K)\tS (nV/K)\n100\t1e-6\n200\t2e-6\n",
     ),
     ("implausible_magnitude", {}, "T S\n100 50\n200 60\n"),
     ("repeated_header", {}, "T S S\n100 1 2\n200 2 3\n"),
@@ -273,7 +280,9 @@ def test_each_warning_code_reaches_the_client(
 def test_a_user_can_assign_columns(client: TestClient) -> None:
     text = "100 1 7\n200 2 8\n"
     first = _parse(client, text)
-    assert first["mapping"] == [{"column": 0, "role": "temperature", "unit": "K"}]
+    assert first["mapping"] == [
+        {"column": 0, "role": "temperature", "unit": "K", "unit_source": "default"}
+    ]
     assert first["measurements"] == {}
 
     second = _parse(
@@ -292,7 +301,12 @@ def test_a_user_can_assign_columns(client: TestClient) -> None:
 def test_a_unit_named_in_the_header_is_read_and_returned(client: TestClient) -> None:
     body = _parse(client, "T (K)\tS (uV/K)\n100\t50\n200\t80\n")
 
-    assert body["mapping"][1] == {"column": 1, "role": "seebeck", "unit": "uV/K"}
+    assert body["mapping"][1] == {
+        "column": 1,
+        "role": "seebeck",
+        "unit": "uV/K",
+        "unit_source": "header",
+    }
     assert body["measurements"]["seebeck"]["values"] == pytest.approx([5e-5, 8e-5], rel=1e-15)
     assert body["preview"] == [[100.0, 50.0], [200.0, 80.0]]
     assert [row[0] for row in body["preview_si"]] == [100.0, 200.0]
@@ -320,15 +334,38 @@ def test_a_column_with_no_role_has_no_si_preview(client: TestClient) -> None:
 def test_microvolts_read_as_volts_are_called_implausible(client: TestClient) -> None:
     body = _parse(client, "T S\n100 50\n200 80\n")
 
-    assert {"code": "implausible_magnitude", "column": 1} in body["warnings"]
+    assert {"code": "implausible_magnitude", "column": 1, "direction": "above"} in body["warnings"]
     # Read as written: the warning only says that it looks wrong.
     assert body["measurements"]["seebeck"]["values"] == [50.0, 80.0]
+
+
+def test_a_magnitude_warning_says_which_limit_is_passed(client: TestClient) -> None:
+    above = _parse(client, "T S\n100 50\n200 60\n")
+    below = _parse(client, "T S\n100 1e-12\n200 2e-12\n")
+
+    assert {"code": "implausible_magnitude", "column": 1, "direction": "above"} in above["warnings"]
+    assert {"code": "implausible_magnitude", "column": 1, "direction": "below"} in below["warnings"]
+
+
+def test_mv_per_k_and_ohm_cm_are_units(client: TestClient) -> None:
+    body = _parse(client, "T\tS (mV/K)\trho (Ω·cm)\n100\t0.2\t5\n200\t0.3\t6\n")
+
+    assert [item["unit"] for item in body["mapping"]] == ["K", "mV/K", "Ohm*cm"]
+    assert body["measurements"]["seebeck"]["values"] == [2e-4, 3e-4]
+    assert body["measurements"]["resistivity"]["values"] == [5e-2, 6e-2]
+
+
+def test_the_preview_keeps_each_value_as_written(client: TestClient) -> None:
+    body = _parse(client, "T\tS (uV/K)\n300.0\t0.00012345\n400\t2E+2\n")
+
+    assert body["preview_text"] == [["300.0", "0.00012345"], ["400", "2E+2"]]
+    assert body["preview"][0] == [300.0, 0.00012345]
 
 
 def test_an_unknown_unit_is_refused_by_the_contract(client: TestClient) -> None:
     mapping = [
         {"column": 0, "role": "temperature"},
-        {"column": 1, "role": "seebeck", "unit": "mV/K"},
+        {"column": 1, "role": "seebeck", "unit": "nV/K"},
     ]
     response = client.post("/api/parse", json={"text": SIX_ROWS, "mapping": mapping})
 
@@ -340,7 +377,7 @@ def test_expected_names_the_second_column(client: TestClient) -> None:
 
 
 def test_many_preamble_warnings_are_cut_and_hide_nothing_else(client: TestClient) -> None:
-    text = "x y\n" * 150 + "T (K)\tS (mV/K)\n300\t1\n100\t2\n100\t3\n"
+    text = "x y\n" * 150 + "T (K)\tS (nV/K)\n300\t1\n100\t2\n100\t3\n"
 
     body = _parse(client, text, expected="seebeck")
 

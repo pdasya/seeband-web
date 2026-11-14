@@ -1,8 +1,9 @@
 import { apiClient, type ParseRequest } from "@/api/client";
 import { failureMessage } from "@/data/messages";
 import { readFileText } from "@/data/readFile";
-import { columnOf, unitDoubts, type Unit } from "@/data/units";
+import { columnOf, requestMapping, unitDoubts, type Unit } from "@/data/units";
 import {
+  firstRowOf,
   loadedAs,
   QUANTITIES,
   useSessionStore,
@@ -45,6 +46,7 @@ function applyTable(name: string, text: string, table: ParsedTable) {
           table.warnings,
           columnOf(table.mapping, loadedAs(quantity, { measurement })),
         ),
+        firstRow: firstRowOf(table),
       });
     }
   }
@@ -126,7 +128,9 @@ export async function assignColumn(
   if (current === null) {
     return;
   }
-  const others = current.mapping.filter((item) => item.column !== column);
+  const others = requestMapping(current.mapping).filter(
+    (item) => item.column !== column,
+  );
   const mapping = role === null ? others : [...others, { column, role }];
   await read(current.name, current.text, mapping, current.table);
 }
@@ -137,7 +141,8 @@ export async function chooseUnit(column: number, unit: Unit) {
   if (current === null) {
     return;
   }
-  const mapping = current.mapping.map((item) =>
+  // Only units a user chose go again, so that a column read in SI by default stays marked so.
+  const mapping = requestMapping(current.mapping).map((item) =>
     item.column === column ? { ...item, unit } : item,
   );
   await read(current.name, current.text, mapping, current.table);

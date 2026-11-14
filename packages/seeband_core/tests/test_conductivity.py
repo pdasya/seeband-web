@@ -154,7 +154,7 @@ def test_a_file_with_rho_and_sigma_headers_keeps_the_first() -> None:
 def test_an_implausible_conductivity_is_a_warning_on_its_column() -> None:
     # S/cm values of a semiconductor read as S/m would be fine; 1e12 S/m is no measurement.
     table = parse_table("T sigma\n300 1e12\n400 2e12\n")
-    assert ParseIssue("implausible_magnitude", column=1) in table.warnings
+    assert ParseIssue("implausible_magnitude", column=1, direction="above") in table.warnings
     assert table.errors == ()
 
 
