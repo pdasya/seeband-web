@@ -217,6 +217,13 @@ export const STRINGS = {
     unitsAssumed: (symbols: string) =>
       `No unit was named for ${symbols}, so SI is assumed. Choose the unit if the values are written in another.`,
     firstRow: (values: string) => `First row: ${values}`,
+    temperatureRanges: {
+      title: "Check the unit of T",
+      shifted: (first: string, second: string) =>
+        `T of ${first} and of ${second} are about 273 K apart at both ends, as when one file gives T in °C and it is read as K. Choose °C for T in that file if so.`,
+      apart: (first: string, second: string) =>
+        `T of ${first} and of ${second} have no temperature in common. Check that both files give T in the same unit.`,
+    },
     // Which way a wrong unit most likely went, by quantity, when values read in SI look far off.
     implausible: {
       inSi: {

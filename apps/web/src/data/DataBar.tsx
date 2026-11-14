@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 import { modelsQuery } from "@/api/queries";
 import { Button } from "@/components/ui/button";
 import { DataPanel } from "@/data/DataPanel";
+import { sessionMismatches } from "@/data/temperatureRanges";
 import { cn } from "@/lib/utils";
 import { fitModeOf } from "@/model/selection";
 import {
@@ -32,7 +33,8 @@ export function DataBar() {
     selection.fitMode,
   );
   // A table stays open, as its mapping is what a user checks after loading it. So do data with
-  // a doubt about their unit, as a fit from them would be wrong by a factor.
+  // a doubt about their unit, or T ranges that look like different units of T, as a fit from them
+  // would be wrong by a factor.
   const complete =
     dataMode === "separate" &&
     mode !== undefined &&
@@ -40,7 +42,8 @@ export function DataBar() {
     mode.quantities.every((quantity) => data[quantity] !== undefined) &&
     !QUANTITIES.some(
       (quantity) => (data[quantity]?.unitDoubts?.length ?? 0) > 0,
-    );
+    ) &&
+    sessionMismatches(data).length === 0;
 
   const [open, setOpen] = useState(!complete);
   // Data a user has just entered stay in view, so the panel folds only on Hide. It opens again as
@@ -85,7 +88,8 @@ export function DataBar() {
 
   const doubted = (quantity: (typeof QUANTITIES)[number]) =>
     (data[quantity]?.unitDoubts?.length ?? 0) > 0;
-  const anyDoubt = QUANTITIES.some(doubted);
+  const anyDoubt =
+    QUANTITIES.some(doubted) || sessionMismatches(data).length > 0;
   const names = [
     ...new Set(
       QUANTITIES.flatMap((quantity) => {
