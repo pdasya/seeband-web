@@ -40,10 +40,9 @@ Positive mass represents electrons and negative mass represents holes.
   which files already were (D22), and the Hall curve solves in ascending order
   and puts the values back. A root whose carrier density is more than 1e-6
   from the density at 0 K is NaN, not a value. The solver itself is #87.
-- **Reduced potential above 700.** The Fermi integrals of order −½ and 0
-  overflow past about 709, so a Hall point with μ/T above 700 is NaN, as S and
-  ρ are in the other SPB modes, and the rest of the curve stays. A fit with
-  such a point fails as not finite.
+- **Signed reduced potential above 700.** The Hall integrals use
+  `x = sign(m) μ(T)/T`; a point with `x > 700` returns NaN and the rest of the
+  curve stays. A fit with such a point fails as not finite.
 - **Start mass.** A mass of 0, or a start on a branch the bounds leave empty,
   fails with "The start values do not fit the bounds.". A start whose sign
   disagrees with the median sign of the R_H data fails with "The sign of the

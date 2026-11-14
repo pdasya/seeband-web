@@ -39,13 +39,15 @@ the inherited chemical-potential solver remain relevant.
   `parameter_errors` are not intervals over N.
 - **Bounds on R confine the internal ratio to bounds/N.** With the default
   bounds of −3 to 3, `01_Fe2VAl09Si01` at N = 6 stops at R = 3, named in
-  `at_bounds`, with an RMSE of 4.948 µV/K; before P6 the same fit sat at
-  R = 3.877 (r = 0.646) with 3.549. Whether default bounds should scale with
-  N is for a physicist.
-- **Negative R (#104) now has its zero at R = −N.** The signed transport
-  weight N/R makes the total conductivity vanish there, so S is NaN: R = −3,
-  N = 3, E_g 0 and E_F −300 K give NaN at 300 K, inside the default bounds.
-  Only the caution flag `negative_m_eff_weight` covers negative R.
+  `at_bounds`, with an RMSE of 4.948 µV/K. Whether default bounds should scale
+  with N is for a physicist.
+- **Negative-R transport remains unresolved (#104).** The S-only
+  transport weight N/R can be negative, so the positive-conductivity
+  interpretation is unavailable. In this expression, cancellation at R = −N
+  requires equal occupation integrals, as for coincident band edges (E_g = 0);
+  it is not general across models. For example, R = −3, N = 3, E_g = 0 and
+  E_F = −300 K gives NaN at 300 K. The `negative_m_eff_weight` flag remains a
+  caution; no safe physical interpretation is established.
 - **E_F inside the gap is not determined.** With 0 < E_F < E_g there is no net
   charge at T = 0, so S does not depend on E_F, and its error comes back as 0,
   which means the data do not determine it.
