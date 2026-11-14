@@ -5,6 +5,7 @@ import { MODELS } from "../../e2e/support/models";
 
 import type { BandDiagramResponse, CalcResponse } from "@/api/client";
 import {
+  band2EdgeShown,
   bandGapForTab,
   chartTabView,
   derivedKind,
@@ -300,6 +301,31 @@ describe("the chemical potential", () => {
         dpb_s: { band_gap: 750 },
       }),
     ).toBeUndefined();
+  });
+
+  test("the band diagram shows E_g of the parameter the description names, in eV", () => {
+    const dpb = mode("dpb_s");
+    const renamed: FitModeDescription = {
+      ...dpb,
+      parameters: dpb.parameters.map((parameter) =>
+        parameter.name === "band_gap"
+          ? { ...parameter, name: "delta" }
+          : parameter,
+      ),
+      band_2_edge: "delta",
+    };
+    const shownForDpb = band2EdgeShown(dpb, {});
+    expect(shownForDpb).toBeDefined();
+    // The same as DPB's own, as only the name changed: 1000 K, in eV to the field's step.
+    expect(band2EdgeShown(renamed, {})).toBe(shownForDpb);
+    expect(band2EdgeShown(renamed, { dpb_s: { delta: 2000 } })).toBe(
+      band2EdgeShown(dpb, { dpb_s: { band_gap: 2000 } }),
+    );
+  });
+
+  test("a mode with one band shows no E_g", () => {
+    expect(band2EdgeShown(mode("spb_s"), {})).toBeUndefined();
+    expect(band2EdgeShown(undefined, {})).toBeUndefined();
   });
 
   test("other tabs do not follow E_g", () => {

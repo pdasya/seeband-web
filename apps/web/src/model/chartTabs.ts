@@ -8,7 +8,7 @@ import type {
   ChartMeasurements,
   ReferenceLine,
 } from "@/charts/figure";
-import { parameterValues } from "@/model/parameters";
+import { coreToDisplay, parameterValues, shownValue } from "@/model/parameters";
 import type { FitModeDescription } from "@/model/selection";
 import type { ChartTab, Quantity, SessionState } from "@/session/store";
 import { STRINGS } from "@/strings";
@@ -143,6 +143,21 @@ export function band2EdgeK(
   return mode === undefined || edge === undefined
     ? undefined
     : parameterValues(mode, parameters[mode.id])[edge.name];
+}
+
+/**
+ * The edge of band 2 as its field shows it, in the unit a user sees and to the same step, for the
+ * band diagram's E_g. None for a mode with one band.
+ */
+export function band2EdgeShown(
+  mode: FitModeDescription | undefined,
+  parameters: SessionState["parameters"],
+): number | undefined {
+  const edge = band2EdgeParameter(mode);
+  const value = band2EdgeK(mode, parameters);
+  return edge === undefined || value === undefined
+    ? undefined
+    : shownValue(edge, coreToDisplay(edge, value));
 }
 
 /** E_g for the line on μ, and for that tab only, so that other tabs do not follow its value. */

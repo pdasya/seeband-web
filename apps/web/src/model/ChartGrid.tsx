@@ -17,8 +17,7 @@ import {
 } from "@/components/ui/select";
 import { formatNumber } from "@/lib/numbers";
 import {
-  band2EdgeK,
-  band2EdgeParameter,
+  band2EdgeShown,
   bandGapForTab,
   CHART_TABS,
   chartTabView,
@@ -28,7 +27,6 @@ import {
   isQuantityTab,
 } from "@/model/chartTabs";
 import { retriesByItself } from "@/model/latestOnly";
-import { coreToDisplay, shownValue } from "@/model/parameters";
 import { rmseText } from "@/model/resultSummary";
 import { fitModeOf } from "@/model/selection";
 import type { LiveCalc, LiveCurves } from "@/model/useLiveCurves";
@@ -129,19 +127,14 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
   const busy = (usesMeasured && measured.busy) || onTab.busy;
 
   const rmse = isQuantityTab(tab) ? measured.result?.rmse?.[tab] : undefined;
-  const gap = tab === "band_diagram" ? band2EdgeK(mode, parameters) : undefined;
   // Shown as its field shows it, to the same step.
-  const gapParameter = band2EdgeParameter(mode);
+  const gap =
+    tab === "band_diagram" ? band2EdgeShown(mode, parameters) : undefined;
   const metric =
     rmse !== undefined
       ? `${STRINGS.fit.rmse} ${rmseText(rmse)}`
-      : gap !== undefined && gapParameter !== undefined
-        ? text.bandGapMetric(
-            formatNumber(
-              shownValue(gapParameter, coreToDisplay(gapParameter, gap)),
-            ),
-            energy.unit,
-          )
+      : gap !== undefined
+        ? text.bandGapMetric(formatNumber(gap), energy.unit)
         : "";
 
   return (
