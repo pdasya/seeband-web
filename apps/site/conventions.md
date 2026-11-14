@@ -1,5 +1,15 @@
 # Model conventions
 
+## Neural-net initial values
+
+P9 chooses the first supported neural-net range covered by actual Tmin and
+Tmax. Paired T–S rows are sorted on a copy before preparing the degree-5
+polynomial input; no measurements are removed or averaged. Network weights,
+range priority and inference arithmetic are unchanged. A network estimate
+is an initial value, not evidence that a model fits the sample. Original
+row-order warnings remain provenance, and original desktop captures stay
+unchanged.
+
 ## DPB mass and degeneracy
 
 Let N = N₂/N₁. The public parameter `m_eff`, displayed as m₂/m₁, is the

@@ -196,11 +196,11 @@ Median response time for a 50-point curve, through the app in one process with a
 
 `POST /api/guess` takes `model`, `temperature_k` and `seebeck_v_per_k`, and answers with SPB numerical estimates or DPB start values from the neural net. SPB returns `status: numerical_guess`, `start_values`, and `warnings`; no network range or network prediction applies. For DPB data that fit the contract, it answers 200, apart from the errors listed below, and `status` says which of three answers it is:
 
-| `status`     | Meaning                                                                                                | Holds                                                                       |
-| ------------ | ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
-| `guess`      | a net fits, and its prediction is finite                                                               | `net_range`, `start_values`, `prediction`, `warnings`                       |
-| `no_net`     | the first and last rows span no net's range, with `reason` `temperature_span`. Keep the current values | `first_temperature_k`, `last_temperature_k`, `available_ranges`, `warnings` |
-| `not_finite` | a net fits, but a value of its prediction is not finite. Keep the current values                       | `net_range`, `warnings`                                                     |
+| `status`     | Meaning                                                                                                               | Holds                                                                       |
+| ------------ | --------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `guess`      | a net fits, and its prediction is finite                                                                              | `net_range`, `start_values`, `prediction`, `warnings`                       |
+| `no_net`     | the actual temperature minimum/maximum span no net's range, with `reason` `temperature_span`. Keep the current values | `first_temperature_k`, `last_temperature_k`, `available_ranges`, `warnings` |
+| `not_finite` | a net fits, but a value of its prediction is not finite. Keep the current values                                      | `net_range`, `warnings`                                                     |
 
 - **Use `start_values`, unless the warning `m_eff_rounds_to_zero` is there.** They go into `parameters` of `POST /api/calc`, by the names in `GET /api/models`, and the mode's other parameters keep their values. `m_eff` is dimensionless, and `band_gap` and `fermi_energy` are in K. The API keeps energies in K; the controls display energies in eV using model metadata. They are rounded and limited as the desktop's sliders do, so they lie in `core_range`: a gap of 52464 K starts at 3000 K. `step` does not apply: 554 K is a valid gap.
 - **`prediction` is the net's own result**, before rounding and limits, in `m_eff`, `band_gap_k` and `fermi_energy_k`. It equals the core's exactly.
@@ -215,7 +215,7 @@ For SPB, `sign_only_parameters` marks parameters whose magnitude must be preserv
 
 | Code                   | Meaning                                                                                                                                                                                                                                       |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `unsorted_temperature` | The rows do not rise. The net is still chosen by the first and last rows, as on the desktop, until [P9](https://github.com/pdasya/seeband-web/issues/88). The parser sorts its rows, so it does not send these                                |
+| `unsorted_temperature` | The submitted rows do not rise. P9 chooses the net from actual Tmin/Tmax and sorts paired T–S rows before preparing its input; this warning records original order. The parser already sorts files.                                           |
 | `underdetermined_fit`  | The data do not set the degree-5 polynomial behind the net's input, which takes 6 distinct temperatures. The values then mean little                                                                                                          |
 | `m_eff_rounds_to_zero` | The predicted `m_eff` is at most 0.005 in size, so it starts at 0. `POST /api/calc` then answers `calculation_failed`, and a fit from it fails. Constant S of -450 to -600 µV/K from 300 to 800 K gives this. Ask the user for a mass instead |
 
@@ -284,3 +284,5 @@ An unhandled `Exception` logs its type and its `file:line:function` frames. So d
 ## The contract
 
 `packages/api-client/openapi.json` is generated from this app. See [`packages/api-client`](../../packages/api-client/README.md).
+
+P9 keeps the legacy `no_net` fields `first_temperature_k` and `last_temperature_k` for compatibility; they report the actual minimum and maximum temperature, including for unsorted direct requests.

@@ -94,7 +94,7 @@ class GuessRequest(BaseModel):
     """Measured Seebeck data, in V/K, with all rows of the data.
 
     Unlike `POST /api/calc`, this takes every row and not only the fit range, as the desktop does.
-    Rows are read in the order sent, and the choice of net reads the first and last.
+    The net is chosen from actual Tmin/Tmax; paired rows are sorted before preparing its input.
     """
 
     model_config = ConfigDict(json_schema_extra={"examples": [REQUEST_EXAMPLE]})
@@ -159,9 +159,9 @@ class GuessUnsupported(BaseModel):
 
 
 class GuessNoNet(BaseModel):
-    """No net fits: the first and last rows do not span any of `available_ranges`.
+    """No net fits the actual minimum and maximum temperatures.
 
-    A client should keep its current values, as the desktop does.
+    Legacy first/last fields report the minimum/maximum. Keep the current values.
     """
 
     status: Literal["no_net"]
