@@ -68,7 +68,7 @@ function fileSummary(quantity: Quantity, entry: SessionData): string {
 
 /**
  * Whether the ρ slot reads its next file as σ, which the server turns into ρ = 1/σ. A switch inside
- * the slot, so the three slots stay level.
+ * the slot, so the tops of the three slots stay level. Turned on, a note says what the fit uses.
  */
 function ReadAs({
   value,
@@ -79,19 +79,29 @@ function ReadAs({
 }) {
   const { data: text } = STRINGS;
   const id = useId();
+  const sigma = value === "conductivity";
   return (
-    <div className="flex items-center justify-between gap-2">
-      <label htmlFor={id} className="text-xs text-muted-foreground">
-        {text.readAsLabel}
-      </label>
-      <Switch
-        id={id}
-        size="sm"
-        checked={value === "conductivity"}
-        onCheckedChange={(checked) => {
-          onChange(checked ? "conductivity" : "resistivity");
-        }}
-      />
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center justify-between gap-2">
+        <label htmlFor={id} className="text-xs">
+          {text.readAsLabel}
+        </label>
+        <Switch
+          id={id}
+          checked={sigma}
+          aria-describedby={sigma ? `${id}-note` : undefined}
+          // The track off is pale on the slot's ground, so a border keeps its state visible.
+          className="data-[state=unchecked]:border-[var(--color-zinc-400)]"
+          onCheckedChange={(checked) => {
+            onChange(checked ? "conductivity" : "resistivity");
+          }}
+        />
+      </div>
+      {sigma && (
+        <p id={`${id}-note`} className="m-0 text-xs text-muted-foreground">
+          {text.readAsNote}
+        </p>
+      )}
     </div>
   );
 }
@@ -157,6 +167,12 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
   const data = useSessionStore((state) => state.data[quantity]);
   // Only ρ has another quantity a file can hold in its place.
   const [readAs, setReadAs] = useState<LoadedQuantity>(quantity);
+  // A loaded file's header can say otherwise than the switch did, so the next file is read as
+  // what the card shows, not as a switch that is hidden while a file is loaded.
+  const shown = data === undefined ? null : loadedAs(quantity, data);
+  if (shown !== null && shown !== readAs) {
+    setReadAs(shown);
+  }
   const names =
     text.quantities[data === undefined ? readAs : loadedAs(quantity, data)];
   const {

@@ -170,6 +170,8 @@ export const STRINGS = {
     belowZeroForRho:
       "Some values are below 0, which a resistivity cannot have.",
     readAsLabel: "Load σ instead",
+    readAsNote: "The fit uses ρ = 1/σ, which the server computes.",
+    unitGroups: { metre: "Per metre", centimetre: "Per centimetre" },
     readAsInverse: "read as ρ = 1/σ",
     /** The symbol of ρ where it is 1/σ of a σ file, as an RMSE of it compares with 1/σ. */
     inverseSigma: "ρ = 1/σ",
@@ -243,7 +245,8 @@ export const STRINGS = {
       hints: {
         seebeck: { above: "If the file is in µV/K or mV/K, choose it." },
         resistivity: {
-          above: "If the file is in Ω·cm, mΩ·cm, µΩ·m or µΩ·cm, choose it.",
+          above:
+            "If the file is in Ω·cm, mΩ·cm, µΩ·m or µΩ·cm, choose it. If the column holds σ, remove the file and load it as σ instead. Each unit gives other values in SI, so check the first row.",
         },
         conductivity: { below: "If the file is in S/cm, choose S/cm." },
         hall: { above: "If the file is in cm³/C, choose cm³/C." },

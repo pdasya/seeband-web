@@ -289,3 +289,39 @@ test("a column of a single table read in SI by default is marked as assumed", as
     }),
   ).toBeVisible();
 });
+
+test("the units of ρ come grouped by metre and centimetre, and µΩ·cm reads the file again", async ({
+  page,
+}) => {
+  const bodies = await serveParse(
+    page,
+    parsed({ quantity: "resistivity", units: ["K", "Ohm*m"] }),
+    parsed({
+      quantity: "resistivity",
+      units: ["K", "uOhm*cm"],
+      sources: ["default", "chosen"],
+    }),
+  );
+  await page.goto("/fit");
+  await load(page, "resistivity", "rho.txt");
+
+  const unitOfRho = page.getByRole("combobox", {
+    name: /^Unit of Resistivity/,
+  });
+  await unitOfRho.click();
+  await expect(page.getByRole("group")).toHaveCount(2);
+  await expect(
+    page.getByRole("group", { name: "Per metre" }).getByRole("option"),
+  ).toHaveText(["Ω·m", "µΩ·m"]);
+  await expect(
+    page.getByRole("group", { name: "Per centimetre" }).getByRole("option"),
+  ).toHaveText(["Ω·cm", "mΩ·cm", "µΩ·cm"]);
+  await page.getByRole("option", { name: "µΩ·cm", exact: true }).click();
+
+  await expect(unitOfRho).toHaveText("µΩ·cm");
+  expect(bodies[1]?.mapping?.[1]).toEqual({
+    column: 1,
+    role: "resistivity",
+    unit: "uOhm*cm",
+  });
+});
