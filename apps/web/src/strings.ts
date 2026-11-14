@@ -169,7 +169,7 @@ export const STRINGS = {
       "The column names of this file do not match its columns. Choose what its columns hold.",
     belowZeroForRho:
       "Some values are below 0, which a resistivity cannot have.",
-    readAsLabel: "Load ρ, or σ in its place",
+    readAsLabel: "Load σ instead",
     readAsInverse: "read as ρ = 1/σ",
     /** The symbol of ρ where it is 1/σ of a σ file, as an RMSE of it compares with 1/σ. */
     inverseSigma: "ρ = 1/σ",

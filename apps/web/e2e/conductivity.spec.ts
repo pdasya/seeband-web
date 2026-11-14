@@ -71,6 +71,8 @@ async function loadRhoSlot(page: Page, name = "sigma.txt") {
 }
 
 const rhoSlot = (page: Page) => page.locator('[data-file-slot="resistivity"]');
+const sigmaSwitch = (page: Page) =>
+  page.getByRole("switch", { name: "Load σ instead" });
 
 test.beforeEach(async ({ page }) => {
   await serveModels(page);
@@ -131,9 +133,7 @@ for (const headerless of [false, true]) {
         });
       });
       await page.goto("/fit");
-      await page
-        .getByRole("radio", { name: "Conductivity", exact: true })
-        .click();
+      await sigmaSwitch(page).click();
       const sigmaText = `${headerless ? "" : "T sigma\n"}100 4e4\n200 4e4\n`;
       await rhoSlot(page)
         .locator('input[type="file"]')
@@ -202,13 +202,14 @@ test("the ρ slot reads a file as σ once σ is chosen, and the card says ρ = 1
   const bodies = await serveParse(page, parsedSigma("S/m"));
   await page.goto("/fit");
 
-  const choice = page.getByRole("radiogroup", {
-    name: "Load ρ, or σ in its place",
-  });
-  await expect(
-    choice.getByRole("radio", { name: "Resistivity" }),
-  ).toBeChecked();
-  await choice.getByRole("radio", { name: "Conductivity" }).click();
+  // Inside the ρ slot, which stays level with the others; off reads ρ.
+  await expect(rhoSlot(page).getByRole("switch")).toHaveAccessibleName(
+    "Load σ instead",
+  );
+  await expect(sigmaSwitch(page)).not.toBeChecked();
+  await sigmaSwitch(page).click();
+  await expect(sigmaSwitch(page)).toBeChecked();
+  await expect(rhoSlot(page).getByText("Conductivity")).toBeVisible();
   await loadRhoSlot(page);
 
   await expect(
@@ -230,10 +231,7 @@ test("choosing S/cm reads the σ column again in it", async ({ page }) => {
     parsedSigma("S/cm"),
   );
   await page.goto("/fit");
-  await page
-    .getByRole("radiogroup", { name: "Load ρ, or σ in its place" })
-    .getByRole("radio", { name: "Conductivity" })
-    .click();
+  await sigmaSwitch(page).click();
   await loadRhoSlot(page);
 
   await page.getByRole("combobox", { name: "Unit of Conductivity" }).click();
@@ -362,10 +360,7 @@ test("a file with no header in the σ slot asks for its columns, naming σ", asy
     parsedSigma("S/m"),
   );
   await page.goto("/fit");
-  await page
-    .getByRole("radiogroup", { name: "Load ρ, or σ in its place" })
-    .getByRole("radio", { name: "Conductivity" })
-    .click();
+  await sigmaSwitch(page).click();
   await page
     .locator('input[type="file"]')
     .nth(1)
