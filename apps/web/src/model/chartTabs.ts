@@ -123,14 +123,36 @@ export function isQuantityTab(tab: ChartTab): tab is Quantity {
   return tab in QUANTITY_TABS;
 }
 
+/**
+ * The parameter a mode names as the edge of band 2, by `band_2_edge` in its description, so that
+ * no model's parameter name is written here. None for a mode with one band.
+ */
+export function band2EdgeParameter(mode: FitModeDescription | undefined) {
+  const name = mode?.band_2_edge;
+  return name == null
+    ? undefined
+    : mode?.parameters.find((parameter) => parameter.name === name);
+}
+
+/** The edge of band 2 above band 1, in K, from the current value or its default. */
+export function band2EdgeK(
+  mode: FitModeDescription | undefined,
+  parameters: SessionState["parameters"],
+): number | undefined {
+  const edge = band2EdgeParameter(mode);
+  return mode === undefined || edge === undefined
+    ? undefined
+    : parameterValues(mode, parameters[mode.id])[edge.name];
+}
+
 /** E_g for the line on μ, and for that tab only, so that other tabs do not follow its value. */
 export function bandGapForTab(
   tab: ChartTab,
   mode: FitModeDescription | undefined,
   parameters: SessionState["parameters"],
 ): number | undefined {
-  return tab === "chemical_potential" && mode !== undefined
-    ? parameterValues(mode, parameters[mode.id]).band_gap
+  return tab === "chemical_potential"
+    ? band2EdgeK(mode, parameters)
     : undefined;
 }
 

@@ -263,6 +263,45 @@ describe("the chemical potential", () => {
     expect(at(750)[1]?.value).toBe(750);
   });
 
+  test("a made-up two-band model draws band 2 from the parameter its description names", () => {
+    const dpb = mode("dpb_s");
+    const renamed: FitModeDescription = {
+      ...dpb,
+      parameters: dpb.parameters.map((parameter) =>
+        parameter.name === "band_gap"
+          ? { ...parameter, name: "delta" }
+          : parameter,
+      ),
+      band_2_edge: "delta",
+    };
+    const lines = (parameters: Parameters<typeof bandGapForTab>[2]) =>
+      chartTabView(
+        "chemical_potential",
+        renamed,
+        {
+          ...loaded(),
+          bandGapK: bandGapForTab("chemical_potential", renamed, parameters),
+        },
+        null,
+        derived,
+      ).referenceLines;
+
+    expect(lines({})).toEqual([
+      { value: 0, label: "band 1 top" },
+      { value: 1000, label: "band 2 bottom (E_g)" },
+    ]);
+    expect(lines({ dpb_s: { delta: 640 } })[1]?.value).toBe(640);
+  });
+
+  test("a parameter called band_gap places nothing unless the description names it", () => {
+    const unnamed: FitModeDescription = { ...mode("dpb_s"), band_2_edge: null };
+    expect(
+      bandGapForTab("chemical_potential", unnamed, {
+        dpb_s: { band_gap: 750 },
+      }),
+    ).toBeUndefined();
+  });
+
   test("other tabs do not follow E_g", () => {
     expect(
       bandGapForTab("seebeck", mode("dpb_s"), { dpb_s: { band_gap: 750 } }),
