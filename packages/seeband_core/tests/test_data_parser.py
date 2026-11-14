@@ -471,6 +471,41 @@ def test_a_known_header_unit_carries_over_to_a_hand_assignment() -> None:
     np.testing.assert_allclose(assigned.measurements["seebeck"].values, [1e-4, 2e-4], rtol=1e-15)
 
 
+def test_a_unit_says_whether_it_was_chosen_named_by_the_header_or_taken_as_si() -> None:
+    named = parse_table("T (K)\tS (uV/K)\n300\t100\n400\t200\n")
+    assert named.unit_sources == {0: "header", 1: "header"}
+
+    unnamed = parse_table("T S\n300 1e-4\n400 2e-4\n")
+    assert unnamed.unit_sources == {0: "default", 1: "default"}
+    no_header = parse_table("300 1e-4\n400 2e-4\n", expected="seebeck")
+    assert no_header.unit_sources == {0: "default", 1: "default"}
+
+    chosen = parse_table(
+        "300 100\n400 200\n", mapping={0: "temperature", 1: "seebeck"}, units={1: "V/K"}
+    )
+    # Choosing SI for a column read in SI by default still says that a user chose it.
+    assert chosen.unit_sources == {0: "default", 1: "chosen"}
+
+
+def test_an_unreadable_header_unit_is_si_by_default() -> None:
+    table = with_mapping(
+        parse_table("T S (mV/s)\n300 1e-4\n400 2e-4\n"), {0: "temperature", 1: "seebeck"}
+    )
+    assert table.unit_sources == {0: "default", 1: "default"}
+    assert ParseIssue("unit_assumed", column=1) in table.warnings
+
+
+def test_a_unit_kept_with_errors_is_the_one_chosen() -> None:
+    table = parse_table(
+        "300 100\n400 200\n",
+        mapping={0: "temperature", 1: "seebeck"},
+        units={0: "V/K", 1: "uV/K"},
+    )
+    assert table.errors == (ParseIssue("unit_not_allowed", column=0),)
+    assert table.units == {1: "uV/K"}
+    assert table.unit_sources == {1: "chosen"}
+
+
 def test_a_column_with_an_error_does_not_replace_the_real_one() -> None:
     table = parse_table("T S(err) S\n300 9 1\n400 9 2\n")
     assert table.mapping == {0: "temperature", 2: "seebeck"}

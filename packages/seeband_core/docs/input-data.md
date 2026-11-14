@@ -55,6 +55,16 @@ Only the largest |value| is checked, and T is not checked at all. These mistakes
 
 `unit_assumed` says when a header names a unit that was not used. A column with no unit in its header is read in SI with no warning.
 
+`unit_sources` says where each column's unit came from, so that a client can show a unit nothing named:
+
+| Source    | Meaning                                                                                      |
+| --------- | -------------------------------------------------------------------------------------------- |
+| `chosen`  | the user chose it, also when it is SI                                                        |
+| `header`  | the column's header named it                                                                 |
+| `default` | SI, as nothing named a unit, or the header named one the parser cannot read (`unit_assumed`) |
+
+A file with no header has every column `default` until a user chooses.
+
 ## Headers
 
 Any lines before the first row of numbers are text, and the last of them is the header. A line is text if a field does not start like a number, so a typo such as `3O0 1e-6` is an error on its line and does not become a header.
