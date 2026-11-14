@@ -10,10 +10,12 @@ import {
 } from "@/model/parameters";
 import type { FitModeDescription, ModelDescription } from "@/model/selection";
 import {
+  loadedAs,
   QUANTITIES,
   type FitState,
   type Quantity,
   type Selection,
+  type SessionState,
 } from "@/session/store";
 import { STRINGS } from "@/strings";
 
@@ -61,6 +63,19 @@ export function fitEndNote(
     default:
       return null;
   }
+}
+
+/**
+ * What an RMSE of a quantity is named with. ρ from a σ file is ρ = 1/σ, as its RMSE compares the
+ * curve with 1/σ, not with what was loaded (D31).
+ */
+export function rmseSymbol(
+  quantity: Quantity,
+  data: SessionState["data"],
+): string {
+  return loadedAs(quantity, data[quantity]) === "conductivity"
+    ? STRINGS.data.inverseSigma
+    : STRINGS.data.quantities[quantity].symbol;
 }
 
 /** An RMSE as the panels show it, with the unit the user reads. */

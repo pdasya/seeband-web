@@ -22,6 +22,7 @@ import {
   parameterRows,
   quantityMark,
   resultIssues,
+  rmseSymbol,
   rmseText,
   type ResultIssue,
 } from "@/model/resultSummary";
@@ -172,7 +173,7 @@ export function ResultPanel({ live }: { live: LiveCurves }) {
             return (
               <Metric
                 key={quantity}
-                label={`${fit.rmse}, ${dataText.quantities[quantity].symbol}`}
+                label={`${fit.rmse}, ${rmseSymbol(quantity, data)}`}
                 mark={
                   mark !== null && (
                     <Badge variant="outline">{fit.issueMark[mark]}</Badge>
