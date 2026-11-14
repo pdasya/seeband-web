@@ -300,7 +300,7 @@ def test_calculation_through_real_workers_logs_no_values(tmp_path: Path) -> None
     body = {
         "model": "spb",
         "fit_mode": "spb_s",
-        # A band mass of 0 gives results that are not finite, which makes the core warn.
+        # P8 rejects zero mass; its diagnostic must not leak request values to logs.
         "parameters": {"band_mass": 0.0, "fermi_energy": 1234.5678},
         "min_temperature_k": 123.456789,
         "max_temperature_k": 765.4321,
@@ -311,7 +311,8 @@ def test_calculation_through_real_workers_logs_no_values(tmp_path: Path) -> None
 
     with running_server(command, port, log_path, env) as client:
         response = client.post("/api/calc", json=body, timeout=30)
-        assert response.status_code == 200
+        assert response.status_code == 422
+        assert response.json()["code"] == "calculation_failed"
         # Few rows make the fit warn, and a Seebeck this large makes the prediction not finite.
         guess_seebeck = "1.123456789"
         guess = {

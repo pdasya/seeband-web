@@ -2,14 +2,27 @@
 
 ## Unreleased
 
+- P8 (#87): solve the signed carrier balance with a bracketed method in
+  reduced chemical potential, check the normalized residual at every
+  temperature, and restore the input order after sorting and deduplication.
+  All SPB/DPB transport and Fermi-integral paths use the same checked solve.
+  Invalid domains and failed conservation checks now fail explicitly instead
+  of silently using an unconverged number. The DPB E_F = 0 case has a finite
+  solution; its former stuck-at-start behavior was a solver error.
+  Historical desktop captures remain unchanged, with separate P8 regression
+  expectations. Fermi-integral approximations, fit objectives, weights and
+  bounds are unchanged; physical validity and human confirmation remain
+  separate from numerical convergence.
+
 - P5 (#84): require both parameter groups to converge in DPB acPhDis fits.
   Zero-valued parameters no longer cause division by zero, and nonfinite
   changes cannot be reported as converged. Unchanged zeros have zero change;
   leaving zero requires another iteration. Preserve historical desktop
   captures and record corrected fit expectations separately. The independent
   acPhDis Seebeck grid-dependence issue (#102) remains flagged. A parameter
-  that is not finite now fails the fit at once. NUM-2 of #84 is not fixed: a
-  fit from E_F = 0 still converges at its start values (#106, #176).
+  that is not finite now fails the fit at once. At P5, NUM-2 of #84
+  remained; P8 subsequently repairs the chemical-potential solver behind the
+  E_F = 0 stuck-stage symptom. The broader fit checks of #176 remain separate.
 
 - P4/P12 (#83, #103): enable SPB S + ρ + R_H after correcting signed
   mass initialization, bounds and recovery, the mass control scale, and the

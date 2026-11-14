@@ -38,8 +38,10 @@ P4/P12 (#83, #103) remove the SPB Hall disabled-mode and stale-Fermi-energy flag
 
 - **Disabled is a flag.** The API refuses any mode carrying a disabled issue with a 409. No current mode carries one after P4/P12.
 - **F₀ underflowing (#105)** gives NaN or infinity at low temperatures with large gaps, which a client can see as non-finite values. The flag would need the result, not its inputs.
-- **No chemical potential in DPB (#106)** has no simple condition on the inputs, unlike SPB.
+- **No chemical potential (#106):** SPB has no finite-temperature root when `sign(m) E_F <= 0`. For DPB with positive degeneracies and nonzero mass, a valence/conduction pair (`m_eff > 0`) always has a root; two valence bands (`m_eff < 0`) have one only when `E_F < max(0, E_g)`. P8 explicitly rejects no-root domains and unverified solves. The remaining #106 parameterization and physicist decisions are not resolved by changing the numerical method.
 - **E_F inside the gap (#107)** cannot be told from a good fit by its inputs alone, and `at_bounds` and `parameter_errors` report part of it.
 - **`underdetermined` interpolation** has no issue that fixes it, because it describes the data. `InterpolatedData` reports it.
 - **Choosing a net by the first and last rows (P9)** does not reach this path, because the parser sorts (D22). A client can send `POST /api/guess` unsorted rows, and its answer then carries the warning `unsorted_temperature`. It belongs to no mode, so it is not an entry here.
 - **The Conventions page** does not exist yet, so S3 takes its note on known issues from this list.
+
+P8 (#87) replaces silent chemical-potential failures with checked signed-balance solves. It leaves unrelated transport, degeneracy, underflow and fit-credibility warnings in place. See [the solver contract](chemical-potential.md).

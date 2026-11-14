@@ -52,14 +52,13 @@ More iterations may expose these limitations instead of repairing them.
 
 ## What P5 does not fix
 
-NUM-2 of #84 remains as a symptom. With E_F = 0 at the start, the chemical
-potential has no root (`fsolve` returns μ = 0 with `ier` = 5, #106), S jumps at
-E_F = 0, and the Seebeck stage returns its start unchanged in every
-iteration. Such a fit still ends as `converged` after two iterations, at its
-start values, with S RMSE 52.4 µV/K on the demo data, because a value that
-does not move is a change of 0. No rule on changes can tell this apart; it
-needs #106, or the stuck-stage check of #176. A test pins the current result
-so that a fix there shows.
+At P5, NUM-2 of #84 remained: from E_F = 0, `fsolve` returned μ = 0 with
+`ier` = 5 and left the Seebeck stage at its start. The earlier explanation
+that this DPB case had no root was incorrect. A valence/conduction pair has
+a unique finite-temperature root, including at zero net doping. P8 replaces
+this solver and checks conservation; see [the solver contract](chemical-potential.md).
+Parameter stability still does not prove that a fit describes measurements,
+and the broader stopping/consistency checks of #176 remain separate.
 
 Historical desktop golden files remain unchanged. P5 records corrected
 expectations separately and tests both group-order failures, zero inputs,

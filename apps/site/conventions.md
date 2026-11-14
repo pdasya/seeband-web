@@ -1,4 +1,20 @@
-# Scattering conventions
+# Calculation conventions
+
+## Chemical potential
+
+SPB and DPB solve the signed carrier balance at each temperature with a
+bracketed method in μ/T. The target density still comes from E_F at 0 K.
+Each returned point has normalized density residual at most 1e-12, against
+the unchanged Fermi-integral approximation; an unverified point fails
+explicitly. Temperature order and repeated points do not change the solution.
+
+SPB requires sign(m) E_F > 0. DPB with one valence and one conduction band
+has a finite root even at zero net doping. Two valence bands require
+E_F < max(0, E_g). Zero mass and nonpositive degeneracies are invalid.
+These checks do not establish fit quality, repair transport limitations or
+replace human physicist confirmation and the #71 comparison.
+
+## Scattering conventions
 
 For SPB and DPB acPhDis, C and D are dimensionless scattering ratios at 300 K.
 D applies only to DPB band 2. The low-level temperature-dependent transport

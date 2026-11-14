@@ -20,6 +20,7 @@ from seeband_core.known_issues import (
     band_diagram_issue_ids,
     disabled_issue_ids,
 )
+from seeband_core.math_module import ChemicalPotentialError
 from seeband_core.model_descriptions import (
     DPB_BANDS as _DPB_BANDS,
 )
@@ -172,6 +173,8 @@ class _CallbackError(Exception):
 
 def _failure_message(error: Exception) -> str:
     """Return fixed text for a failed fit, because solver messages are not written for users."""
+    if isinstance(error, ChemicalPotentialError):
+        return "The chemical-potential balance could not be verified during the fit."
     text = str(error)
     if isinstance(error, ValueError) and "bounds" in text:
         return "The start values do not fit the bounds."
