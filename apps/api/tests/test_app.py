@@ -1,4 +1,5 @@
 import pytest
+import seeband_core
 from fastapi import APIRouter, FastAPI, HTTPException
 from fastapi.testclient import TestClient
 from pydantic import BaseModel, ValidationError
@@ -50,7 +51,11 @@ def test_health_returns_status_and_version(client: TestClient) -> None:
     response = client.get("/api/health")
 
     assert response.status_code == 200
-    assert response.json() == {"status": "ok", "version": API_VERSION}
+    assert response.json() == {
+        "status": "ok",
+        "version": API_VERSION,
+        "core_version": seeband_core.__version__,
+    }
 
 
 def test_unknown_path_uses_the_error_format(client: TestClient) -> None:

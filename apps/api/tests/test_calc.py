@@ -9,6 +9,7 @@ from typing import Any
 import numpy as np
 import pool_functions
 import pytest
+import seeband_core
 from fastapi.testclient import TestClient
 from seeband_api.calc import CalcRequest, CalcResponse, _to_response
 from seeband_api.calc_pool import CalcPool
@@ -51,6 +52,13 @@ def _body(**changes: Any) -> dict[str, Any]:
 
 def _details(response: Any) -> list[tuple[list[str | int], str]]:
     return [(detail["location"], detail["code"]) for detail in response.json()["details"]]
+
+
+def test_calculation_identifies_the_core_version(client: TestClient) -> None:
+    response = client.post("/api/calc", json=_body())
+
+    assert response.status_code == 200
+    assert response.json()["core_version"] == seeband_core.__version__
 
 
 @pytest.mark.parametrize(("model_id", "fit_mode_id", "scattering"), MODES)

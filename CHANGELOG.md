@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- P10: expose the installed `seeband_core` version (`0.1.0`) in health,
+  calculation and fit API responses, and record separate server, fit and curve
+  provenance in shared export headers. This is result metadata only; it changes
+  no formulas or fit behavior. Older results without a recorded version remain
+  unknown and are not assigned a version retroactively. This is not release
+  approval; scientific confirmation and the desktop parity work remain open.
+
 - P7 (#86): evaluate interpolation only on the overlap of each quantity's
   measured temperature range and the requested fit range. Unsupported or
   too-short overlaps fail explicitly instead of extrapolating synthetic
