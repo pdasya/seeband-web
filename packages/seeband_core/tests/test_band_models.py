@@ -1334,6 +1334,39 @@ def test_a_held_parameter_keeps_its_start_through_every_stage(
     assert any(result.parameters[other] != start[other] for other in others)
 
 
+def spb_hall_held_cases() -> list[tuple[str, str]]:
+    fit_mode = registry.get("spb").describe().fit_mode("spb_s_rho_rh")
+    return [
+        (scattering, spec.name)
+        for scattering in fit_mode.scattering
+        for spec in fit_mode.parameters_for(scattering)
+        if spec.role == "fitted"
+    ]
+
+
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize(("scattering", "name"), spb_hall_held_cases())
+def test_a_held_parameter_keeps_its_start_in_the_spb_hall_mode(scattering: str, name: str) -> None:
+    # The recorded data are p-type, so the fit starts on the hole branch (P4).
+    model = registry.get("spb")
+    fit_mode = model.describe().fit_mode("spb_s_rho_rh")
+    start = default_start(fit_mode) | {"band_mass": -1.0, "fermi_energy": -100.0}
+    result = model.fit(
+        FitRequest(
+            fit_mode.id,
+            recorded_measurements(fit_mode),
+            start,
+            scattering=scattering,
+            held=frozenset({name}),
+        )
+    )
+
+    assert result.status == "converged", result.message
+    assert result.parameters[name] == start[name]
+    assert name not in result.parameter_errors
+    assert name not in result.at_bounds
+
+
 @pytest.mark.filterwarnings("ignore")
 def test_with_only_the_fermi_energy_free_nothing_else_changes() -> None:
     names = fitted_names("dpb", "dpb_s_rho", "acPh")
