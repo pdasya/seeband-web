@@ -520,6 +520,35 @@ def test_the_magnitude_warning_says_which_limit_is_passed(
     assert [issue.direction for issue in magnitude] == ([] if direction is None else [direction])
 
 
+# Rows of the "passes without a warning" table in input-data.md: the role, the unit the values are
+# read in, written values that pass, and the first written values past the table's bound.
+SILENT_MISTAKES: list[tuple[Any, Any, list[float], list[float]]] = [
+    ("resistivity", "Ohm*m", [1.0, 0.5], [1.5]),  # Ω·cm, mΩ·cm, µΩ·m or µΩ·cm up to 1
+    ("resistivity", "uOhm*cm", [0.01, 1e8], [0.009]),  # mΩ·cm or Ω·m from 0.01
+    ("resistivity", "uOhm*m", [1e-4, 1e6], [9e-5]),  # Ω·m from 1e-4, µΩ·cm and mΩ·cm always
+    ("resistivity", "mOhm*cm", [1e-5, 1e5], [9e-6]),  # Ω·m from 1e-5, µΩ·cm always
+    ("seebeck", "V/K", [0.01, 0.005], [0.02]),  # mV/K up to 0.01
+    ("seebeck", "mV/K", [10.0], [11.0]),  # µV/K up to 10
+    ("seebeck", "uV/K", [0.1, 100.0], [0.09]),  # mV/K from 0.1
+]
+
+
+@pytest.mark.parametrize(("role", "read_as", "passing", "warned"), SILENT_MISTAKES)
+def test_the_documented_silent_mistakes_pass_and_end_where_the_table_says(
+    role: Any, read_as: Any, passing: list[float], warned: list[float]
+) -> None:
+    def warns(value: float) -> bool:
+        table = parse_table(
+            f"100 {value!r}\n200 {value!r}\n",
+            mapping={0: "temperature", 1: role},
+            units={1: read_as},
+        )
+        return any(issue.code == "implausible_magnitude" for issue in table.warnings)
+
+    assert [warns(value) for value in passing] == [False] * len(passing)
+    assert [warns(value) for value in warned] == [True] * len(warned)
+
+
 def test_a_unit_from_another_quantity_is_refused_and_reads_nothing() -> None:
     table = parse_table(si_text(), mapping={0: "temperature", 1: "seebeck"}, units={1: "cm^3/C"})
     assert table.errors == (ParseIssue("unit_not_allowed", column=1),)

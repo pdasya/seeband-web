@@ -41,18 +41,27 @@ This catches µV/K read as V/K, which is 1e6 too large. The warning says which l
 
 Only the largest |value| is checked, and T is not checked at all. These mistakes give no warning:
 
-| Mistake                                         | Passes without a warning when                                |
-| ----------------------------------------------- | ------------------------------------------------------------ |
-| T in °C read as K, or T in K read as °C         | always                                                       |
-| ρ in mΩ·cm read as Ω·m (1e5 too large)          | ρ up to 1 mΩ·cm, as in many good thermoelectrics             |
-| ρ in µΩ·m read as Ω·m (1e6 too large)           | ρ up to 1 µΩ·m                                               |
-| ρ in µΩ·cm read as Ω·m (1e8 too large)          | ρ up to 1 µΩ·cm; metals, from about 2 µΩ·cm, get the warning |
-| ρ in mΩ·cm read as µΩ·m, or the other way (10×) | always                                                       |
-| ρ in Ω·m read as mΩ·cm or µΩ·m                  | ρ from 1e-5 or 1e-4 Ω·m                                      |
-| R_H in cm³/C read as m³/C (1e6 too large)       | \|R_H\| up to 0.1 cm³/C, carriers from about 6e19 cm⁻³       |
-| R_H in m³/C read as cm³/C                       | \|R_H\| from 1e-7 m³/C                                       |
-| S in mV/K read as V/K                           | \|S\| up to 10 mV/K                                          |
-| separate files with T in different units        | always here, as the parser reads one file at a time          |
+| Mistake                                          | Passes without a warning when                                |
+| ------------------------------------------------ | ------------------------------------------------------------ |
+| T in °C read as K, or T in K read as °C          | always                                                       |
+| ρ in Ω·cm read as Ω·m (100× too large)           | ρ up to 1 Ω·cm                                               |
+| ρ in mΩ·cm read as Ω·m (1e5 too large)           | ρ up to 1 mΩ·cm, as in many good thermoelectrics             |
+| ρ in µΩ·m read as Ω·m (1e6 too large)            | ρ up to 1 µΩ·m                                               |
+| ρ in µΩ·cm read as Ω·m (1e8 too large)           | ρ up to 1 µΩ·cm; metals, from about 2 µΩ·cm, get the warning |
+| ρ in mΩ·cm read as µΩ·m, or the other way (10×)  | always                                                       |
+| ρ in µΩ·cm read as µΩ·m, or the other way (100×) | always                                                       |
+| ρ in mΩ·cm read as µΩ·cm (1000× too small)       | ρ from 0.01 mΩ·cm, so almost always                          |
+| ρ in µΩ·cm read as mΩ·cm (1000× too large)       | always                                                       |
+| ρ in Ω·m read as mΩ·cm or µΩ·m                   | ρ from 1e-5 or 1e-4 Ω·m                                      |
+| ρ in Ω·m read as µΩ·cm (1e8 too small)           | ρ from 0.01 Ω·m                                              |
+| R_H in cm³/C read as m³/C (1e6 too large)        | \|R_H\| up to 0.1 cm³/C, carriers from about 6e19 cm⁻³       |
+| R_H in m³/C read as cm³/C                        | \|R_H\| from 1e-7 m³/C                                       |
+| S in mV/K read as V/K (1000× too large)          | \|S\| up to 0.01 mV/K, that is 10 µV/K                       |
+| S in µV/K read as mV/K (1000× too large)         | \|S\| up to 10 µV/K                                          |
+| S in mV/K read as µV/K (1000× too small)         | \|S\| from 0.1 mV/K, that is 100 µV/K                        |
+| separate files with T in different units         | always here, as the parser reads one file at a time          |
+
+`test_the_documented_silent_mistakes_pass_and_end_where_the_table_says` checks each row with a unit against `PLAUSIBLE_MAGNITUDE`, so the table and the limits cannot drift apart. A unit select cannot tell these apart either: the first row as written beside its SI value is what shows a wrong choice.
 
 `unit_assumed` says when a header names a unit that was not used. A column with no unit in its header is read in SI with no warning. The web app compares the T ranges of separate files, and marks a unit nothing named (FS22).
 
