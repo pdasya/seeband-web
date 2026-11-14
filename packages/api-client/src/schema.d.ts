@@ -390,6 +390,25 @@ export interface components {
             };
         };
         /**
+         * ColumnRead
+         * @description A column as the parser read it. `unit_source` says where its unit came from: `chosen` by the
+         *     request, named by the column's `header`, or SI by `default`, as nothing named one. It is left
+         *     out where `unit` is, as with errors.
+         */
+        ColumnRead: {
+            /** Column */
+            column: number;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "temperature" | "seebeck" | "resistivity" | "conductivity" | "hall";
+            /** Unit */
+            unit?: ("K" | "C" | "V/K" | "uV/K" | "Ohm*m" | "mOhm*cm" | "uOhm*m" | "S/m" | "S/cm" | "m^3/C" | "cm^3/C") | null;
+            /** Unit Source */
+            unit_source?: ("chosen" | "header" | "default") | null;
+        };
+        /**
          * ColumnRole
          * @description What a column holds, and the unit its values are written in. Columns count from 0.
          *
@@ -471,7 +490,7 @@ export interface components {
             /** Preview Si */
             preview_si: (number | null)[][];
             /** Mapping */
-            mapping: components["schemas"]["ColumnRole"][];
+            mapping: components["schemas"]["ColumnRead"][];
             /** Measurements */
             measurements: {
                 [key: string]: components["schemas"]["MeasurementResponse"];
@@ -1234,7 +1253,7 @@ export interface components {
             /** Preview Si */
             preview_si: (number | null)[][];
             /** Mapping */
-            mapping: components["schemas"]["ColumnRole"][];
+            mapping: components["schemas"]["ColumnRead"][];
             /** Measurements */
             measurements: {
                 [key: string]: components["schemas"]["MeasurementResponse"];

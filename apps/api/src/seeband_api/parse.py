@@ -15,6 +15,7 @@ from seeband_core.data_parser import (
     ParseIssue,
     Role,
     Unit,
+    UnitSource,
     si_column,
 )
 from seeband_core.interpolation import (
@@ -55,6 +56,14 @@ class ColumnRole(BaseModel):
     column: Annotated[int, Field(ge=0, strict=True)]
     role: Role
     unit: Unit | None = None
+
+
+class ColumnRead(ColumnRole):
+    """A column as the parser read it. `unit_source` says where its unit came from: `chosen` by the
+    request, named by the column's `header`, or SI by `default`, as nothing named one. It is left
+    out where `unit` is, as with errors."""
+
+    unit_source: UnitSource | None = None
 
 
 class InterpolationRange(BaseModel):
@@ -155,7 +164,7 @@ class ParseResponse(BaseModel):
     row_count: int
     preview: list[list[float]]
     preview_si: list[list[float | None]]
-    mapping: list[ColumnRole]
+    mapping: list[ColumnRead]
     measurements: dict[Quantity, MeasurementResponse]
     errors: list[IssueResponse]
     warnings: list[IssueResponse]
@@ -224,7 +233,12 @@ def to_parse_response(outcome: ParseOutcome) -> ParseResponse:
         preview=[[float(column[row]) for column in columns] for row in range(preview_rows)],
         preview_si=_preview_si(table, preview_rows),
         mapping=[
-            ColumnRole(column=column, role=role, unit=table.units.get(column))
+            ColumnRead(
+                column=column,
+                role=role,
+                unit=table.units.get(column),
+                unit_source=table.unit_sources.get(column),
+            )
             for column, role in table.mapping.items()
         ],
         measurements={
@@ -264,10 +278,15 @@ _NO_INTERPOLATION: dict[str, Any] = {
     "interpolation_failed": [],
     "interpolation_failure_reasons": {},
 }
-_T_S_MAPPING = [
-    {"column": 0, "role": "temperature", "unit": "K"},
-    {"column": 1, "role": "seebeck", "unit": "V/K"},
-]
+
+
+def _t_s_mapping(source: str) -> list[dict[str, Any]]:
+    return [
+        {"column": 0, "role": "temperature", "unit": "K", "unit_source": source},
+        {"column": 1, "role": "seebeck", "unit": "V/K", "unit_source": source},
+    ]
+
+
 PARSE_EXAMPLE_RESPONSES: dict[str, dict[str, Any]] = {
     "clean": {
         "headers": ["T (K)", "S (V/K)"],
@@ -275,7 +294,7 @@ PARSE_EXAMPLE_RESPONSES: dict[str, dict[str, Any]] = {
         "row_count": 3,
         "preview": [[300.0, 1.0e-4], [100.0, 2.0e-5], [200.0, 6.0e-5]],
         "preview_si": [[300.0, 1.0e-4], [100.0, 2.0e-5], [200.0, 6.0e-5]],
-        "mapping": _T_S_MAPPING,
+        "mapping": _t_s_mapping("header"),
         "measurements": {
             "seebeck": {
                 "temperature_k": [100.0, 200.0, 300.0],
@@ -310,7 +329,7 @@ PARSE_EXAMPLE_RESPONSES: dict[str, dict[str, Any]] = {
         "row_count": 3,
         "preview": [[100.0, 1.0e-6], [130.0, 2.0e-6], [160.0, 3.0e-6]],
         "preview_si": [[100.0, 1.0e-6], [130.0, 2.0e-6], [160.0, 3.0e-6]],
-        "mapping": _T_S_MAPPING,
+        "mapping": _t_s_mapping("default"),
         "measurements": {
             "seebeck": {
                 "temperature_k": [100.0, 130.0, 160.0],

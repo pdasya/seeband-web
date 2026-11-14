@@ -43,9 +43,10 @@ def test_returns_points_range_and_mapping(client: TestClient) -> None:
     assert body["headers"] == ["T", "S"]
     assert body["column_count"] == 2
     assert body["row_count"] == 6
+    # The header names no unit, so both are SI by default.
     assert body["mapping"] == [
-        {"column": 0, "role": "temperature", "unit": "K"},
-        {"column": 1, "role": "seebeck", "unit": "V/K"},
+        {"column": 0, "role": "temperature", "unit": "K", "unit_source": "default"},
+        {"column": 1, "role": "seebeck", "unit": "V/K", "unit_source": "default"},
     ]
     assert body["measurements"] == {
         "seebeck": {
@@ -72,8 +73,8 @@ def test_a_conductivity_comes_back_as_its_resistivity(client: TestClient) -> Non
     assert body["errors"] == []
     assert body["warnings"] == []
     assert body["mapping"] == [
-        {"column": 0, "role": "temperature", "unit": "K"},
-        {"column": 1, "role": "conductivity", "unit": "S/cm"},
+        {"column": 0, "role": "temperature", "unit": "K", "unit_source": "default"},
+        {"column": 1, "role": "conductivity", "unit": "S/cm", "unit_source": "header"},
     ]
     measurement = body["measurements"]["resistivity"]
     assert measurement["loaded_as"] == "conductivity"
@@ -98,7 +99,13 @@ def test_a_conductivity_with_no_header_takes_its_unit_from_the_mapping(client: T
     )
     expected = _parse(client, text, expected="conductivity")
 
-    assert expected["mapping"][1] == {"column": 1, "role": "conductivity", "unit": "S/m"}
+    assert expected["mapping"][1] == {
+        "column": 1,
+        "role": "conductivity",
+        "unit": "S/m",
+        "unit_source": "default",
+    }
+    assert unit_chosen["mapping"][1]["unit_source"] == "chosen"
     assert (
         unit_chosen["measurements"]["resistivity"]["values"]
         == _parse(client, SIGMA_ROWS)["measurements"]["resistivity"]["values"]
@@ -273,7 +280,9 @@ def test_each_warning_code_reaches_the_client(
 def test_a_user_can_assign_columns(client: TestClient) -> None:
     text = "100 1 7\n200 2 8\n"
     first = _parse(client, text)
-    assert first["mapping"] == [{"column": 0, "role": "temperature", "unit": "K"}]
+    assert first["mapping"] == [
+        {"column": 0, "role": "temperature", "unit": "K", "unit_source": "default"}
+    ]
     assert first["measurements"] == {}
 
     second = _parse(
@@ -292,7 +301,12 @@ def test_a_user_can_assign_columns(client: TestClient) -> None:
 def test_a_unit_named_in_the_header_is_read_and_returned(client: TestClient) -> None:
     body = _parse(client, "T (K)\tS (uV/K)\n100\t50\n200\t80\n")
 
-    assert body["mapping"][1] == {"column": 1, "role": "seebeck", "unit": "uV/K"}
+    assert body["mapping"][1] == {
+        "column": 1,
+        "role": "seebeck",
+        "unit": "uV/K",
+        "unit_source": "header",
+    }
     assert body["measurements"]["seebeck"]["values"] == pytest.approx([5e-5, 8e-5], rel=1e-15)
     assert body["preview"] == [[100.0, 50.0], [200.0, 80.0]]
     assert [row[0] for row in body["preview_si"]] == [100.0, 200.0]

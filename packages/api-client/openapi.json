@@ -3184,12 +3184,14 @@
                         {
                           "column": 0,
                           "role": "temperature",
-                          "unit": "K"
+                          "unit": "K",
+                          "unit_source": "header"
                         },
                         {
                           "column": 1,
                           "role": "seebeck",
-                          "unit": "V/K"
+                          "unit": "V/K",
+                          "unit_source": "header"
                         }
                       ],
                       "measurements": {
@@ -3311,12 +3313,14 @@
                         {
                           "column": 0,
                           "role": "temperature",
-                          "unit": "K"
+                          "unit": "K",
+                          "unit_source": "default"
                         },
                         {
                           "column": 1,
                           "role": "seebeck",
-                          "unit": "V/K"
+                          "unit": "V/K",
+                          "unit_source": "default"
                         }
                       ],
                       "measurements": {
@@ -4393,22 +4397,26 @@
                         {
                           "column": 0,
                           "role": "temperature",
-                          "unit": "K"
+                          "unit": "K",
+                          "unit_source": "default"
                         },
                         {
                           "column": 1,
                           "role": "seebeck",
-                          "unit": "V/K"
+                          "unit": "V/K",
+                          "unit_source": "default"
                         },
                         {
                           "column": 2,
                           "role": "resistivity",
-                          "unit": "Ohm*m"
+                          "unit": "Ohm*m",
+                          "unit_source": "default"
                         },
                         {
                           "column": 3,
                           "role": "hall",
-                          "unit": "m^3/C"
+                          "unit": "m^3/C",
+                          "unit_source": "default"
                         }
                       ],
                       "measurements": {
@@ -5262,6 +5270,73 @@
           }
         ]
       },
+      "ColumnRead": {
+        "properties": {
+          "column": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Column"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "temperature",
+              "seebeck",
+              "resistivity",
+              "conductivity",
+              "hall"
+            ],
+            "title": "Role"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "K",
+                  "C",
+                  "V/K",
+                  "uV/K",
+                  "Ohm*m",
+                  "mOhm*cm",
+                  "uOhm*m",
+                  "S/m",
+                  "S/cm",
+                  "m^3/C",
+                  "cm^3/C"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "unit_source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "chosen",
+                  "header",
+                  "default"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit Source"
+          }
+        },
+        "type": "object",
+        "required": [
+          "column",
+          "role"
+        ],
+        "title": "ColumnRead",
+        "description": "A column as the parser read it. `unit_source` says where its unit came from: `chosen` by the\nrequest, named by the column's `header`, or SI by `default`, as nothing named one. It is left\nout where `unit` is, as with errors."
+      },
       "ColumnRole": {
         "properties": {
           "column": {
@@ -5458,7 +5533,7 @@
           },
           "mapping": {
             "items": {
-              "$ref": "#/components/schemas/ColumnRole"
+              "$ref": "#/components/schemas/ColumnRead"
             },
             "type": "array",
             "title": "Mapping"
@@ -7133,7 +7208,7 @@
           },
           "mapping": {
             "items": {
-              "$ref": "#/components/schemas/ColumnRole"
+              "$ref": "#/components/schemas/ColumnRead"
             },
             "type": "array",
             "title": "Mapping"
