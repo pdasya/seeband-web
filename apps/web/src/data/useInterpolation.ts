@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { apiClient, type ParseRequest } from "@/api/client";
 import { modelsQuery } from "@/api/queries";
 import { failureMessage } from "@/data/messages";
+import { requestMapping } from "@/data/units";
 import {
   QUANTITIES,
   loadedAs,
@@ -52,7 +53,7 @@ function requestsFor(range: FitRange): InterpolationRequest[] {
           {
             body: {
               text: singleFile.text,
-              mapping: [...singleFile.mapping],
+              mapping: requestMapping(singleFile.mapping),
               interpolate,
             },
             quantities: QUANTITIES,

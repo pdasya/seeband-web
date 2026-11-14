@@ -1,8 +1,10 @@
 import type { components } from "@seeband/api-client";
 
 import type { Role } from "@/data/columnChoice";
+import { STRINGS } from "@/strings";
 
 type ColumnRole = components["schemas"]["ColumnRole"];
+type ColumnRead = components["schemas"]["ColumnRead"];
 type Issue = components["schemas"]["IssueResponse"];
 
 /** A unit a column can be read in. The core holds the conversions, and converts to SI. */
@@ -26,6 +28,29 @@ export function unitOf(
   role: Role,
 ): Unit {
   return mapping?.find((item) => item.role === role)?.unit ?? UNITS_OF[role][0];
+}
+
+/**
+ * Whether a column was read in SI only because nothing named its unit: no header unit, a header
+ * unit the parser cannot read, or no header at all. A user's choice, even of SI, ends it.
+ */
+export function unitIsDefault(
+  item: Pick<ColumnRead, "unit_source"> | undefined,
+) {
+  return item?.unit_source === "default";
+}
+
+/**
+ * The mapping to send again with the text: a unit only where a user chose it, so that a header
+ * unit is read from the header again, and a column read in SI by default stays marked as such.
+ * An answer that does not say where a unit came from keeps it, as before the source was known.
+ */
+export function requestMapping(readAs: readonly ColumnRead[]): ColumnRole[] {
+  return readAs.map(({ column, role, unit, unit_source: source }) =>
+    unit != null && (source === "chosen" || source == null)
+      ? { column, role, unit }
+      : { column, role },
+  );
 }
 
 /** A mapping with the column of one role read in another unit. */
@@ -69,4 +94,23 @@ export function unitDoubts(
   return warnings.flatMap(({ code, column: at }) =>
     at === column && isUnitDoubt(code) ? [code] : [],
   );
+}
+
+/**
+ * What a doubt about a column's unit means for its quantity, and what to do. Values that look far
+ * from any usual size read in SI most likely came in the lab unit the quantity is often written in;
+ * read in another unit, the unit chosen is what to check. The size itself is the server's to judge.
+ */
+export function unitDoubtMessage(
+  doubt: UnitDoubt,
+  role: Role,
+  unit: Unit,
+): string {
+  const { data: text } = STRINGS;
+  if (doubt === "unit_assumed" || role === "temperature") {
+    return text.issues[doubt];
+  }
+  return unit === UNITS_OF[role][0]
+    ? text.implausible.inSi[role]
+    : text.implausible.inUnit(text.units[unit]);
 }

@@ -147,6 +147,8 @@ export const STRINGS = {
       points: (symbol: string, points: number) =>
         `${symbol} · ${String(points)} pts`,
       notLoaded: (symbol: string) => `${symbol} · not loaded`,
+      checkUnit: (symbol: string, points: number) =>
+        `${symbol} · ${String(points)} pts · check the unit`,
     },
     demoLoading: "Loading the demo data…",
     demoFailed:
@@ -210,6 +212,25 @@ export const STRINGS = {
     temperature: "Temperature",
     inSi: (written: string, si: string) => `${written} = ${si} in SI`,
     checkUnitTitle: "Check the unit",
+    /** The name of a unit select whose unit is SI only because nothing named one. */
+    unitAssumedOf: (name: string) => `Unit of ${name}, assumed SI`,
+    unitsAssumed: (symbols: string) =>
+      `No unit was named for ${symbols}, so SI is assumed. Choose the unit if the values are written in another.`,
+    firstRow: (values: string) => `First row: ${values}`,
+    // Which way a wrong unit most likely went, by quantity, when values read in SI look far off.
+    implausible: {
+      inSi: {
+        seebeck:
+          "These values are far from any usual Seebeck coefficient in V/K. Values written in µV/K but read as V/K come out a million times too large: if the file is in µV/K, choose µV/K.",
+        resistivity:
+          "These values are far from any usual resistivity in Ω·m. Values written in mΩ·cm or µΩ·m but read as Ω·m come out 10⁵ or 10⁶ times too large: choose the unit the file is in.",
+        conductivity:
+          "These values are far from any usual conductivity in S/m. Values written in S/cm but read as S/m come out a hundred times too small: if the file is in S/cm, choose S/cm.",
+        hall: "These values are far from any usual Hall coefficient in m³/C. Values written in cm³/C but read as m³/C come out a million times too large: if the file is in cm³/C, choose cm³/C.",
+      },
+      inUnit: (unit: string) =>
+        `These values are far from any usual size when read in ${unit}. Check that the file is in ${unit}, or choose the unit it is in.`,
+    },
     quantities: {
       seebeck: { symbol: "S", title: "Seebeck coefficient", unit: "V/K" },
       resistivity: { symbol: "ρ", title: "Resistivity", unit: "Ω·m" },

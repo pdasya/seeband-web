@@ -13,6 +13,7 @@ import { readFileText } from "@/data/readFile";
 import {
   columnOf,
   isUnitDoubt,
+  requestMapping,
   unitDoubts,
   withUnit,
   type Unit,
@@ -24,6 +25,7 @@ import {
   type Role,
 } from "@/data/columnChoice";
 import {
+  firstRowOf,
   loadedAs,
   useSessionStore,
   type LoadedQuantity,
@@ -194,6 +196,7 @@ export function useFileUpload(
             parsed.warnings,
             columnOf(parsed.mapping, loadedAs(quantity, { measurement })),
           ),
+          firstRow: firstRowOf(parsed),
         });
         setState({
           status: "idle",
@@ -272,6 +275,7 @@ export function useFileUpload(
             parsed.warnings,
             columnOf(parsed.mapping, loadedAs(target, { measurement })),
           ),
+          firstRow: firstRowOf(parsed),
         });
         setState(
           target === quantity
@@ -365,7 +369,8 @@ export function useFileUpload(
       if (entry?.readAs === undefined || reading.current) {
         return;
       }
-      const mapping = withUnit(entry.mapping ?? entry.readAs, role, unit);
+      // Only units a user chose go again, so that one read in SI by default stays marked so.
+      const mapping = withUnit(requestMapping(entry.readAs), role, unit);
       const signal = newRequest();
       // Counted as on its way, and the selects wait, so that a second change cannot start from
       // the old units, and the demo leaves the slot alone.
@@ -404,6 +409,7 @@ export function useFileUpload(
             parsed.warnings,
             columnOf(parsed.mapping, loadedAs(quantity, { measurement })),
           ),
+          firstRow: firstRowOf(parsed),
         });
         setState({ status: "idle", warnings: listedWarnings(parsed.warnings) });
       } catch (error) {

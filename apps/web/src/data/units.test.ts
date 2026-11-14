@@ -8,7 +8,10 @@ import { mappingOf } from "@/data/columnChoice";
 import {
   UNITS_OF,
   columnOf,
+  requestMapping,
+  unitDoubtMessage,
   unitDoubts,
+  unitIsDefault,
   unitOf,
   withUnit,
   type Unit,
@@ -145,5 +148,74 @@ describe("mappingOf with units", () => {
       { column: 0, role: "temperature" },
       { column: 1, role: "hall" },
     ]);
+  });
+});
+
+describe("requestMapping", () => {
+  test("sends again only the units a user chose", () => {
+    expect(
+      requestMapping([
+        { column: 0, role: "temperature", unit: "K", unit_source: "default" },
+        { column: 1, role: "seebeck", unit: "uV/K", unit_source: "header" },
+        { column: 2, role: "hall", unit: "cm^3/C", unit_source: "chosen" },
+      ]),
+    ).toEqual([
+      { column: 0, role: "temperature" },
+      { column: 1, role: "seebeck" },
+      { column: 2, role: "hall", unit: "cm^3/C" },
+    ]);
+  });
+
+  test("keeps a unit whose source the answer does not give", () => {
+    expect(
+      requestMapping([
+        { column: 1, role: "seebeck", unit: "uV/K" },
+        { column: 0, role: "temperature" },
+      ]),
+    ).toEqual([
+      { column: 1, role: "seebeck", unit: "uV/K" },
+      { column: 0, role: "temperature" },
+    ]);
+  });
+});
+
+describe("unitIsDefault", () => {
+  test("holds only for a unit nothing named", () => {
+    expect(unitIsDefault({ unit_source: "default" })).toBe(true);
+    expect(unitIsDefault({ unit_source: "header" })).toBe(false);
+    expect(unitIsDefault({ unit_source: "chosen" })).toBe(false);
+    expect(unitIsDefault({})).toBe(false);
+    expect(unitIsDefault(undefined)).toBe(false);
+  });
+});
+
+describe("unitDoubtMessage", () => {
+  const { data: text } = STRINGS;
+
+  test("says which lab unit values read in SI most likely came in", () => {
+    expect(unitDoubtMessage("implausible_magnitude", "seebeck", "V/K")).toBe(
+      text.implausible.inSi.seebeck,
+    );
+    expect(
+      unitDoubtMessage("implausible_magnitude", "seebeck", "V/K"),
+    ).toContain("µV/K");
+    expect(
+      unitDoubtMessage("implausible_magnitude", "hall", "m^3/C"),
+    ).toContain("cm³/C");
+    expect(
+      unitDoubtMessage("implausible_magnitude", "conductivity", "S/m"),
+    ).toContain("S/cm");
+  });
+
+  test("asks to check a unit that was chosen, rather than suggest it again", () => {
+    expect(unitDoubtMessage("implausible_magnitude", "seebeck", "uV/K")).toBe(
+      text.implausible.inUnit("µV/K"),
+    );
+  });
+
+  test("keeps the text of an unreadable header unit", () => {
+    expect(unitDoubtMessage("unit_assumed", "seebeck", "V/K")).toBe(
+      text.issues.unit_assumed,
+    );
   });
 });

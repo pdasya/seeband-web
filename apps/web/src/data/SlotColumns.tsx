@@ -125,6 +125,8 @@ export function SlotColumns({
                   role={role}
                   value={choice.units[column] ?? UNITS_OF[role][0]}
                   label={name}
+                  // A file with no header names no unit, so SI is assumed until one is chosen.
+                  assumed={choice.units[column] == null}
                   disabled={choice.applying}
                   onChange={(unit) => {
                     onUnit(column, unit);

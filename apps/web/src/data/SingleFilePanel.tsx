@@ -39,15 +39,21 @@ import {
   loadSingleFile,
   removeSingleFile,
 } from "@/data/singleFile";
+import { formatValue, valueInUnit } from "@/data/firstValue";
 import { UnitSelect } from "@/data/UnitSelect";
-import { UNITS_OF, isUnitDoubt } from "@/data/units";
-import { formatNumber, withDecimalComma } from "@/lib/numbers";
+import {
+  UNITS_OF,
+  isUnitDoubt,
+  unitDoubtMessage,
+  unitIsDefault,
+} from "@/data/units";
 import { cn } from "@/lib/utils";
 import {
   LOADED_QUANTITIES,
   loadedAs,
   QUANTITIES,
   useSessionStore,
+  type ColumnRead,
   type ColumnRole,
   type ParsedTable,
 } from "@/session/store";
@@ -64,15 +70,6 @@ const { data: text } = STRINGS;
 
 function roleSymbol(role: ColumnRole["role"]): string {
   return role === "temperature" ? "T" : text.quantities[role].symbol;
-}
-
-function formatValue(value: number | undefined, isTemperature: boolean) {
-  if (value === undefined) {
-    return "";
-  }
-  return isTemperature
-    ? formatNumber(value)
-    : withDecimalComma(value.toExponential(3));
 }
 
 function FileIcon() {
@@ -95,24 +92,19 @@ function columnName(table: ParsedTable, column: number): string {
  */
 function firstValue(
   table: ParsedTable,
-  item: ColumnRole | undefined,
+  item: ColumnRead | undefined,
   column: number,
 ): string {
-  const isTemperature = item?.role === "temperature";
-  const written = formatValue(table.preview[0]?.[column], isTemperature);
-  if (item === undefined || written === "") {
-    return written;
+  const written = table.preview[0]?.[column];
+  if (item === undefined) {
+    return formatValue(written, false);
   }
-  const si = UNITS_OF[item.role][0];
-  const unit = item.unit ?? si;
-  const inUnit = `${written} ${text.units[unit]}`;
-  const converted = table.preview_si[0]?.[column];
-  return unit === si || converted === null || converted === undefined
-    ? inUnit
-    : text.inSi(
-        inUnit,
-        `${formatValue(converted, isTemperature)} ${text.units[si]}`,
-      );
+  return valueInUnit(
+    written,
+    table.preview_si[0]?.[column],
+    item.role,
+    item.unit ?? UNITS_OF[item.role][0],
+  );
 }
 
 function ColumnMapping({
@@ -120,10 +112,13 @@ function ColumnMapping({
   mapping,
 }: {
   table: ParsedTable;
-  mapping: readonly ColumnRole[];
+  mapping: readonly ColumnRead[];
 }) {
   const itemOf = (column: number) =>
     mapping.find((item) => item.column === column);
+  const assumed = mapping
+    .filter((item) => unitIsDefault(item))
+    .map((item) => roleSymbol(item.role));
   return (
     <>
       <div className="flex flex-col gap-0.5 pt-1">
@@ -182,6 +177,7 @@ function ColumnMapping({
                 role={role}
                 value={item?.unit ?? UNITS_OF[role][0]}
                 label={name}
+                assumed={unitIsDefault(item)}
                 onChange={(unit) => {
                   void chooseUnit(column, unit);
                 }}
@@ -190,7 +186,28 @@ function ColumnMapping({
           </div>
         );
       })}
+      {assumed.length > 0 && (
+        <p className="m-0 text-xs text-muted-foreground">
+          {text.unitsAssumed(assumed.join(", "))}
+        </p>
+      )}
     </>
+  );
+}
+
+/** A doubt about a column's unit, in the words of the quantity the column holds. */
+function unitWarningMessage(
+  warning: ParsedTable["warnings"][number],
+  mapping: readonly ColumnRead[],
+): string {
+  const item = mapping.find(({ column }) => column === warning.column);
+  if (item === undefined || !isUnitDoubt(warning.code)) {
+    return issueMessage(warning);
+  }
+  return unitDoubtMessage(
+    warning.code,
+    item.role,
+    item.unit ?? UNITS_OF[item.role][0],
   );
 }
 
@@ -225,7 +242,7 @@ function Preview({
   mapping,
 }: {
   table: ParsedTable;
-  mapping: readonly ColumnRole[];
+  mapping: readonly ColumnRead[];
 }) {
   const roleOf = (column: number) =>
     mapping.find((item) => item.column === column)?.role;
@@ -452,7 +469,7 @@ export function SingleFilePanel() {
           <AlertDescription>
             <ul className="m-0 list-none p-0">
               {unitWarnings.map((warning, index) => (
-                <li key={index}>{issueMessage(warning)}</li>
+                <li key={index}>{unitWarningMessage(warning, file.mapping)}</li>
               ))}
             </ul>
           </AlertDescription>
