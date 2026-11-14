@@ -500,6 +500,7 @@ test("Data to file has the data, and the curves before and after the fit", async
       return route.fulfill({
         json: {
           ...CALC,
+          core_version: "0.1.0",
           curves: {
             seebeck_v_per_k: [1e-4, 2e-4, 3e-4],
             resistivity_ohm_m: [1e-5, 2e-5, 3e-5],
@@ -509,7 +510,7 @@ test("Data to file has the data, and the curves before and after the fit", async
       });
     }),
   );
-  await finishWith(page);
+  await finishWith(page, { core_version: "0.0.0" });
   await toResults(page);
 
   bodies.length = 0;
@@ -517,6 +518,8 @@ test("Data to file has the data, and the curves before and after the fit", async
   const lines = file.split("\n");
   expect(lines[0]).toMatch(/^# SeeBand Web /);
   expect(lines).toContain("# Model DPB, fit mode S + ρ");
+  expect(lines).toContain("# Fit core 0.0.0");
+  expect(lines).toContain("# Curve core 0.1.0");
   expect(lines).toContain("# Fit converged, 5 iterations");
   const legends = lines.find((line) => line.startsWith("Temperature"));
   expect(legends?.split("\t")).toEqual([
@@ -807,7 +810,7 @@ test("Report (PDF) prints the results with each chart as a picture, and only the
     };
   });
   await openFit(page, serveCurves);
-  await finishWith(page);
+  await finishWith(page, { core_version: "0.0.0" });
   await toResults(page);
 
   await page.getByRole("button", { name: "Report (PDF)" }).click();
@@ -847,6 +850,7 @@ test("Report (PDF) prints the results with each chart as a picture, and only the
   await page.emulateMedia({ media: "print" });
   await expect(report).toBeVisible();
   await expect(page.getByText("SeeBand Web report")).toBeVisible();
+  await expect(page.getByText("Fit core 0.0.0", { exact: true })).toBeVisible();
   await expect(
     page.getByText(/^S: f0\.txt, 2 points, 100–200 K$/),
   ).toBeVisible();

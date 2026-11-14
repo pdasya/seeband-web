@@ -327,6 +327,7 @@ export interface components {
          *     by name with its unit: `electrical_conductivity_s_per_m` is 1/rho, with null for a rho of 0 or
          *     below. They use no model, so they go with the data the request sent, interpolated or not.
          * @example {
+         *       "core_version": "0.1.0",
          *       "curves": {
          *         "resistivity_ohm_m": [
          *           0.000036627,
@@ -374,6 +375,12 @@ export interface components {
         CalcResponse: {
             /** Temperature K */
             temperature_k: number[];
+            /**
+             * Core Version
+             * @description Core software version for provenance, not certification.
+             * @default 0.1.0
+             */
+            core_version?: string;
             /** Curves */
             curves: {
                 [key: string]: (number | null)[];
@@ -739,6 +746,7 @@ export interface components {
          *     start would. Holding m1, or the SPB Hall mass, skips the R_H stage.
          * @example {
          *       "at_bounds": [],
+         *       "core_version": "0.1.0",
          *       "held": [],
          *       "known_issues": [],
          *       "parameter_errors": {
@@ -759,6 +767,12 @@ export interface components {
             parameters: {
                 [key: string]: number | null;
             };
+            /**
+             * Core Version
+             * @description Core software version for provenance, not certification.
+             * @default 0.1.0
+             */
+            core_version?: string;
             /**
              * Status
              * @enum {string}
@@ -936,6 +950,7 @@ export interface components {
         /**
          * HealthResponse
          * @example {
+         *       "core_version": "0.1.0",
          *       "status": "ok",
          *       "version": "1.0.0"
          *     }
@@ -948,6 +963,12 @@ export interface components {
             status: "ok";
             /** Version */
             version: string;
+            /**
+             * Core Version
+             * @description Core software version for provenance, not certification.
+             * @default 0.1.0
+             */
+            core_version?: string;
         };
         /**
          * InterpolatedResponse

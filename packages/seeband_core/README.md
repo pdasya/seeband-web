@@ -8,4 +8,18 @@ These modules, `neural_nets`, the neural net weights and the Fermi table keep th
 
 SPB numerical initial estimates and DPB neural guesses are described in [Initial guess](docs/initial-guess.md).
 
+## Calculation versions
+
+`seeband_core.__version__` is the package version source. Core `0.1.0`
+identifies the P2–P7 calculation state; the API reports it as `core_version`
+on health, curve and fit responses. The API's own `version` remains separate.
+Future changes that can alter calculated results need a new core version and
+an updated results note; pending fixes must not silently reuse `0.1.0`.
+
+Exports distinguish the core that produced a fit or curve from the server
+queried during export. Older results without provenance remain unknown.
+Version `0.0.0` was reused during development and cannot identify one numerical
+state. A version identifies software behavior, not physical validity or human
+physicist confirmation. See [results that changed](../../apps/site/results-changed.md).
+
 [Author review packet](docs/author-review/README.md) tracks the evidence, open questions and owner handoff for P1 (#80).

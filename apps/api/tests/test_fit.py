@@ -4,6 +4,7 @@ from collections.abc import Iterator
 from typing import Any
 
 import pytest
+import seeband_core
 from fastapi.testclient import TestClient
 from jsonschema import Draft202012Validator
 from running_server import read_events
@@ -97,6 +98,12 @@ def _result(client: TestClient, body: dict[str, Any]) -> dict[str, Any]:
 
 def _details(response: Any) -> list[tuple[list[str | int], str]]:
     return [(detail["location"], detail["code"]) for detail in response.json()["details"]]
+
+
+def test_fit_result_identifies_the_core_version(client: TestClient) -> None:
+    result = _result(client, _body("spb", "spb_s"))
+
+    assert result["core_version"] == seeband_core.__version__
 
 
 @pytest.mark.parametrize(("model_id", "fit_mode_id", "scattering"), MODES)

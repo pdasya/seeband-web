@@ -256,6 +256,7 @@ function MoreGraph({
                 answer.temperature_k,
                 exported,
                 issues.map(({ id }) => id),
+                answer.core_version,
               );
             }
           }}
@@ -424,7 +425,11 @@ export function ResultsPage() {
   return (
     <div className="flex flex-col gap-4">
       {title}
-      <ReportHeader apiVersion={report.apiVersion} />
+      <ReportHeader
+        apiVersion={report.apiVersion}
+        serverCoreVersion={report.serverCoreVersion}
+        curveCoreVersions={report.curveCoreVersions}
+      />
       <PageHeading
         title={text.title}
         subtitle={subtitle}
