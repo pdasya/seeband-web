@@ -205,8 +205,10 @@ class PB_fit:
         parameter_see, _ = _curve_fit(
             progress,
             "see",
+            # Keep solver parameters, bounds and covariance in public R=m2/|m1| units.
+            # The low-level model takes the degeneracy-weighted ratio r=R/N.
             lambda T, meff, gap, fermi_energy: te.dpb_see_vs_temp(
-                temp_list, meff, gap, fermi_energy, degen, scal_fac=1e6
+                temp_list, meff / degen, gap, fermi_energy, degen, scal_fac=1e6
             ),
             temp_list,
             see_list * 1e6,
@@ -216,12 +218,13 @@ class PB_fit:
             maxfev=1000,
         )
 
-        # Save the current band parameters
-        current_meff = parameter_see[0] / degen
+        # The solver works in public R, so its value is returned as it is, not divided by N and
+        # multiplied again, which could change its last bit.
+        current_meff = parameter_see[0]
         current_gap = parameter_see[1]
         current_fermi_energy = parameter_see[2]
 
-        parameters = [current_meff * degen, current_gap, current_fermi_energy]
+        parameters = [current_meff, current_gap, current_fermi_energy]
         return parameters
 
     def spb_see_res_fit(
