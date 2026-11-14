@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- FS18: preserve a conductivity file's source quantity when requesting
+  interpolation without an explicit column mapping. Explicit mappings and
+  chosen units remain in use. Browser regressions cover conductivity upload,
+  headerless column choice, S/cm units and the resistivity sent to a fit.
+
 - P7 (#86): evaluate interpolation only on the overlap of each quantity's
   measured temperature range and the requested fit range. Unsupported or
   too-short overlaps fail explicitly instead of extrapolating synthetic

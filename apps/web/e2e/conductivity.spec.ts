@@ -1,11 +1,14 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
 
 import { serveModels } from "./support/models";
+import { fakeFit } from "./support/fakeFit";
+import { openData } from "./support/fitScreen";
 
 interface ParseBody {
   text: string;
   expected?: string;
   mapping?: { column: number; role: string; unit?: string }[];
+  interpolate?: object;
 }
 
 // ρ = 1/σ of σ = 4e4 and 5e4 S/m, as the server gives it.
@@ -72,6 +75,126 @@ const rhoSlot = (page: Page) => page.locator('[data-file-slot="resistivity"]');
 test.beforeEach(async ({ page }) => {
   await serveModels(page);
 });
+
+for (const headerless of [false, true]) {
+  test(
+    headerless
+      ? "headerless σ keeps its chosen S/cm mapping through interpolation and fitting"
+      : "unmapped σ preserves request provenance through interpolation and fitting",
+    async ({ page }) => {
+      await fakeFit(page);
+      const bodies: ParseBody[] = [];
+      // Freeze the parser contract at the HTTP boundary. A recognized σ header wins over
+      // `expected`; headerless input uses `expected` until the user supplies a mapping.
+      await page.route("**/api/parse", (route) => {
+        const body = route.request().postDataJSON() as ParseBody;
+        bodies.push(body);
+        const column = body.mapping?.find(({ column }) => column === 1);
+        const role =
+          column?.role ??
+          (body.text.startsWith("T S")
+            ? "seebeck"
+            : body.text.startsWith("T sigma")
+              ? "conductivity"
+              : body.expected);
+        const unit = column?.unit ?? (role === "conductivity" ? "S/m" : "V/K");
+        const quantity = role === "conductivity" ? "resistivity" : "seebeck";
+        const value =
+          role === "seebeck" ? 1e-4 : unit === "S/cm" ? 2.5e-7 : 2.5e-5;
+        const measurement = {
+          ...RESISTIVITY,
+          values: [value, value],
+          loaded_as: role,
+        };
+        return route.fulfill({
+          json: parsedSigma(unit, {
+            headers: body.text.startsWith("T ") ? ["T", role] : undefined,
+            mapping: [
+              { column: 0, role: "temperature", unit: "K" },
+              { column: 1, role, unit },
+            ],
+            measurements: { [quantity]: measurement },
+            interpolated:
+              body.interpolate === undefined
+                ? {}
+                : {
+                    [quantity]: {
+                      temperature_k: [100, 125, 150, 175, 200],
+                      values: [value, value, value, value, value],
+                      extrapolated: false,
+                      range_limited: true,
+                      measured_points_in_range: 2,
+                      underdetermined: true,
+                    },
+                  },
+          }),
+        });
+      });
+      await page.goto("/fit");
+      await page
+        .getByRole("radio", { name: "Conductivity", exact: true })
+        .click();
+      const sigmaText = `${headerless ? "" : "T sigma\n"}100 4e4\n200 4e4\n`;
+      await rhoSlot(page)
+        .locator('input[type="file"]')
+        .setInputFiles({
+          name: "sigma.txt",
+          mimeType: "text/plain",
+          buffer: Buffer.from(sigmaText),
+        });
+      if (headerless) {
+        await page
+          .getByRole("combobox", { name: "Quantity for column Column 2" })
+          .click();
+        await page.getByRole("option", { name: "σ", exact: true }).click();
+        await page
+          .getByRole("combobox", { name: "Unit of Conductivity" })
+          .click();
+        await page.getByRole("option", { name: "S/cm", exact: true }).click();
+        await expect(
+          page.getByRole("combobox", { name: "Unit of Conductivity" }),
+        ).toHaveText("S/cm");
+      }
+      await expect(rhoSlot(page).getByText(/read as ρ = 1\/σ/)).toBeVisible();
+      await page
+        .locator('[data-file-slot="seebeck"] input[type="file"]')
+        .setInputFiles({
+          name: "s.txt",
+          mimeType: "text/plain",
+          buffer: Buffer.from("T S\n100 1e-4\n200 1e-4\n"),
+        });
+      await openData(page);
+      await page.getByRole("switch", { name: /Interpolation/ }).click();
+      await expect
+        .poll(() => bodies.filter((body) => body.interpolate !== undefined))
+        .toHaveLength(2);
+      const sigmaRequest = bodies.find(
+        (body) => body.interpolate !== undefined && body.text === sigmaText,
+      );
+      if (headerless) {
+        expect(sigmaRequest?.mapping).toEqual([
+          { column: 0, role: "temperature" },
+          { column: 1, role: "conductivity", unit: "S/cm" },
+        ]);
+        expect(sigmaRequest?.expected).toBeUndefined();
+      } else {
+        expect(sigmaRequest?.mapping).toBeUndefined();
+        expect(sigmaRequest?.expected).toBe("conductivity");
+      }
+      await page.getByRole("button", { name: "Run fit" }).click();
+      await expect
+        .poll(() => page.evaluate(() => window.fitTest.bodies.length))
+        .toBe(1);
+      const fit = await page.evaluate(() => window.fitTest.bodies[0]);
+      expect(fit?.measurements.resistivity).toEqual({
+        temperature_k: [100, 125, 150, 175, 200],
+        values: headerless
+          ? [2.5e-7, 2.5e-7, 2.5e-7, 2.5e-7, 2.5e-7]
+          : [2.5e-5, 2.5e-5, 2.5e-5, 2.5e-5, 2.5e-5],
+      });
+    },
+  );
+}
 
 test("the ρ slot reads a file as σ once σ is chosen, and the card says ρ = 1/σ", async ({
   page,
