@@ -206,6 +206,7 @@ export const STRINGS = {
       "Ohm*cm": "Ω·cm",
       "mOhm*cm": "mΩ·cm",
       "uOhm*m": "µΩ·m",
+      "uOhm*cm": "µΩ·cm",
       "S/m": "S/m",
       "S/cm": "S/cm",
       "m^3/C": "m³/C",
@@ -242,7 +243,7 @@ export const STRINGS = {
       hints: {
         seebeck: { above: "If the file is in µV/K or mV/K, choose it." },
         resistivity: {
-          above: "If the file is in Ω·cm, mΩ·cm or µΩ·m, choose it.",
+          above: "If the file is in Ω·cm, mΩ·cm, µΩ·m or µΩ·cm, choose it.",
         },
         conductivity: { below: "If the file is in S/cm, choose S/cm." },
         hall: { above: "If the file is in cm³/C, choose cm³/C." },

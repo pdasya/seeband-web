@@ -17,7 +17,7 @@ export type Unit = NonNullable<ColumnRole["unit"]>;
 export const UNITS_OF: Readonly<Record<Role, readonly [Unit, ...Unit[]]>> = {
   temperature: ["K", "C"],
   seebeck: ["V/K", "uV/K", "mV/K"],
-  resistivity: ["Ohm*m", "Ohm*cm", "mOhm*cm", "uOhm*m"],
+  resistivity: ["Ohm*m", "Ohm*cm", "mOhm*cm", "uOhm*m", "uOhm*cm"],
   conductivity: ["S/m", "S/cm"],
   hall: ["m^3/C", "cm^3/C"],
 };
