@@ -41,21 +41,6 @@ KNOWN_ISSUES: tuple[KnownIssue, ...] = (
         explanation="With acPhDis, the band weight of the last temperature applies to all of S",
     ),
     KnownIssue(
-        id="dpb_s_degeneracy",
-        severity="unreliable",
-        fixed_by="#85",
-        fit_modes=("dpb_s",),
-        curve_kinds=(
-            "measured",
-            "seebeck_by_band",
-            "chemical_potential",
-            "carrier_concentration_by_band",
-        ),
-        affects_fit=True,
-        condition="degeneracy_not_one",
-        explanation="With N2/N1 other than 1, a fitted m_eff does not match its curves (D12)",
-    ),
-    KnownIssue(
         id="dpb_loop_degeneracy",
         severity="caution",
         fixed_by="#85",

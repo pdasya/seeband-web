@@ -14,6 +14,12 @@
   bounds are unchanged; physical validity and human confirmation remain
   separate from numerical convergence.
 
+- P6 (#85, S-only scope): use the same degeneracy-weighted mass in DPB S
+  fitting and drawing. Public mass coordinates, bounds and uncertainties
+  stay unchanged; the low-level model receives R/N on both paths. Add
+  nonunit-degeneracy synthetic regression results and remove only the
+  S-only mismatch warning. The iterative-mode mass/bounds warning remains.
+
 - P5 (#84): require both parameter groups to converge in DPB acPhDis fits.
   Zero-valued parameters no longer cause division by zero, and nonfinite
   changes cannot be reported as converged. Unchanged zeros have zero change;
