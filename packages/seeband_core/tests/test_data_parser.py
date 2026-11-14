@@ -178,7 +178,7 @@ def test_lower_case_t_and_s_are_not_taken_for_temperature_or_seebeck(text: str) 
 @pytest.mark.parametrize(
     ("header", "column"),
     [
-        ("T,S (mV/K)", 1),
+        ("T,S (nV/K)", 1),
         ("T,S (err)", 1),
         ("T (F),S", 0),
         ("T (°F),S", 0),
@@ -250,7 +250,7 @@ def test_a_header_names_its_unit_in_any_usual_spelling(role: Any, written: str, 
         # Mega is not milli: lower case alone would read it 1e9 off.
         ("resistivity", "MOhm cm"),
         ("resistivity", "MΩ·cm"),
-        ("seebeck", "mV/K"),
+        ("seebeck", "nV/K"),
         ("seebeck", "V/s"),
         ("hall", "cm^3/A"),
         ("temperature", "°F"),
@@ -433,12 +433,50 @@ def test_lab_units_read_as_si_are_called_implausible() -> None:
 
 def test_large_hall_values_read_as_si_are_called_implausible() -> None:
     table = parse_table("T RH\n100 0.5\n200 0.3\n")
-    assert ParseIssue("implausible_magnitude", column=1) in table.warnings
+    assert ParseIssue("implausible_magnitude", column=1, direction="above") in table.warnings
 
 
 def test_si_values_far_too_small_are_called_implausible() -> None:
     table = parse_table("T S\n100 1e-12\n200 2e-12\n")
-    assert ParseIssue("implausible_magnitude", column=1) in table.warnings
+    assert ParseIssue("implausible_magnitude", column=1, direction="below") in table.warnings
+
+
+@pytest.mark.parametrize(
+    ("header", "unit", "si"),
+    [
+        ("S (mV/K)", "mV/K", [2e-4, 3e-4]),
+        ("rho (Ohm cm)", "Ohm*cm", [2e-3, 3e-3]),
+        ("rho (Ω·cm)", "Ohm*cm", [2e-3, 3e-3]),
+    ],
+)
+def test_millivolts_per_kelvin_and_ohm_centimetres_are_read(
+    header: str, unit: str, si: list[float]
+) -> None:
+    table = parse_table(f"T\t{header}\n100\t0.2\n200\t0.3\n")
+    assert table.units[1] == unit
+    assert table.unit_sources[1] == "header"
+    assert list(table.measurements.values())[0].values.tolist() == si
+    assert table.warnings == (ParseIssue("few_rows"),)
+
+
+@pytest.mark.parametrize(
+    ("text", "unit", "direction"),
+    [
+        # 0.2 mV/K read as µV/K is 2e-7 V/K, just inside the limits: only mV/K is right.
+        ("100 200\n200 300\n", "V/K", "above"),
+        ("100 0.2\n200 0.3\n", "mV/K", None),
+        # 5 Ω·cm read as Ω·m is 5 Ω·m, above the limit.
+        ("100 5\n200 6\n", "Ohm*m", "above"),
+        ("100 5\n200 6\n", "Ohm*cm", None),
+    ],
+)
+def test_the_magnitude_warning_says_which_limit_is_passed(
+    text: str, unit: Any, direction: str | None
+) -> None:
+    role: Any = "seebeck" if "V/K" in unit else "resistivity"
+    table = parse_table(text, mapping={0: "temperature", 1: role}, units={1: unit})
+    magnitude = [issue for issue in table.warnings if issue.code == "implausible_magnitude"]
+    assert [issue.direction for issue in magnitude] == ([] if direction is None else [direction])
 
 
 def test_a_unit_from_another_quantity_is_refused_and_reads_nothing() -> None:

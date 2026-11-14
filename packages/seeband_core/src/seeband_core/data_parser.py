@@ -59,8 +59,22 @@ IssueCode = Literal[
     "implausible_magnitude",
 ]
 Unit = Literal[
-    "K", "C", "V/K", "uV/K", "Ohm*m", "mOhm*cm", "uOhm*m", "S/m", "S/cm", "m^3/C", "cm^3/C"
+    "K",
+    "C",
+    "V/K",
+    "uV/K",
+    "mV/K",
+    "Ohm*m",
+    "Ohm*cm",
+    "mOhm*cm",
+    "uOhm*m",
+    "S/m",
+    "S/cm",
+    "m^3/C",
+    "cm^3/C",
 ]
+# Which limit of `PLAUSIBLE_MAGNITUDE` a quantity's largest |value| is beyond.
+Direction = Literal["above", "below"]
 # Where a column's unit came from: a user's choice, its header, or SI as nothing named one.
 UnitSource = Literal["chosen", "header", "default"]
 
@@ -107,16 +121,26 @@ class Conversion:
 # The units a column can be read in. The first of each is SI and the default.
 UNITS: Mapping[Role, Mapping[Unit, Conversion]] = {
     "temperature": {"K": Conversion(), "C": Conversion(offset=Decimal("273.15"))},
-    "seebeck": {"V/K": Conversion(), "uV/K": Conversion(-6)},
-    "resistivity": {"Ohm*m": Conversion(), "mOhm*cm": Conversion(-5), "uOhm*m": Conversion(-6)},
+    "seebeck": {"V/K": Conversion(), "uV/K": Conversion(-6), "mV/K": Conversion(-3)},
+    "resistivity": {
+        "Ohm*m": Conversion(),
+        "Ohm*cm": Conversion(-2),
+        "mOhm*cm": Conversion(-5),
+        "uOhm*m": Conversion(-6),
+    },
     "conductivity": {"S/m": Conversion(), "S/cm": Conversion(2)},
     "hall": {"m^3/C": Conversion(), "cm^3/C": Conversion(-6)},
 }
 # How a header writes each unit, after `_unit_key`.
 _HEADER_UNITS: Mapping[Role, Mapping[str, Unit]] = {
     "temperature": {"k": "K", "kelvin": "K", "c": "C", "°c": "C", "degc": "C", "celsius": "C"},
-    "seebeck": {"v/k": "V/K", "uv/k": "uV/K"},
-    "resistivity": {"ohmm": "Ohm*m", "mohmcm": "mOhm*cm", "uohmm": "uOhm*m"},
+    "seebeck": {"v/k": "V/K", "uv/k": "uV/K", "mv/k": "mV/K"},
+    "resistivity": {
+        "ohmm": "Ohm*m",
+        "ohmcm": "Ohm*cm",
+        "mohmcm": "mOhm*cm",
+        "uohmm": "uOhm*m",
+    },
     "conductivity": {
         "s/m": "S/m",
         "s/cm": "S/cm",
@@ -160,11 +184,17 @@ _NAME_AND_UNIT = re.compile(r"([^(\[]*)(?:[(\[]([^)\]]*)[)\]])?\s*")
 
 @dataclass(frozen=True)
 class ParseIssue:
-    """A problem in the data. `line` counts every line of the text from 1, and `column` from 0."""
+    """A problem in the data. `line` counts every line of the text from 1, and `column` from 0.
+
+    `direction` says, for `implausible_magnitude`, whether the largest |value| is `above` the
+    quantity's upper limit or `below` its lower one, so that a client can say which way a unit is
+    likely wrong. It carries no measured value.
+    """
 
     code: IssueCode
     line: int | None = None
     column: int | None = None
+    direction: Direction | None = None
 
 
 @dataclass(frozen=True, eq=False)
@@ -443,8 +473,12 @@ def _measure(
         if role != "temperature":
             values = loaded[index][order]
             low, high = PLAUSIBLE_MAGNITUDE[role]
-            if not low <= float(np.max(np.abs(values))) <= high:
-                warnings.append(ParseIssue("implausible_magnitude", column=index))
+            largest = float(np.max(np.abs(values)))
+            if not low <= largest <= high:
+                direction: Direction = "above" if largest > high else "below"
+                warnings.append(
+                    ParseIssue("implausible_magnitude", column=index, direction=direction)
+                )
             quantity = QUANTITY_OF[role]
             if role == "conductivity":
                 values = resistivity_from_conductivity(values)
