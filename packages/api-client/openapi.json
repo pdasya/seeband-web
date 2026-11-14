@@ -3221,7 +3221,8 @@
                       ],
                       "warnings_omitted": 0,
                       "interpolated": {},
-                      "interpolation_failed": []
+                      "interpolation_failed": [],
+                      "interpolation_failure_reasons": {}
                     }
                   },
                   "with_errors": {
@@ -3265,7 +3266,8 @@
                       "warnings": [],
                       "warnings_omitted": 0,
                       "interpolated": {},
-                      "interpolation_failed": []
+                      "interpolation_failed": [],
+                      "interpolation_failure_reasons": {}
                     }
                   },
                   "interpolated": {
@@ -3353,11 +3355,13 @@
                             3e-06
                           ],
                           "extrapolated": false,
+                          "range_limited": false,
                           "measured_points_in_range": 3,
                           "underdetermined": true
                         }
                       },
-                      "interpolation_failed": []
+                      "interpolation_failed": [],
+                      "interpolation_failure_reasons": {}
                     }
                   }
                 }
@@ -4625,6 +4629,7 @@
                       "warnings_omitted": 0,
                       "interpolated": {},
                       "interpolation_failed": [],
+                      "interpolation_failure_reasons": {},
                       "synthetic": true,
                       "message_key": "demo_dataset.synthetic",
                       "known_issues": [],
@@ -5508,6 +5513,25 @@
             "type": "array",
             "title": "Interpolation Failed"
           },
+          "interpolation_failure_reasons": {
+            "additionalProperties": {
+              "type": "string",
+              "enum": [
+                "no_overlap",
+                "overlap_too_short",
+                "fit_failed"
+              ]
+            },
+            "propertyNames": {
+              "enum": [
+                "seebeck",
+                "resistivity",
+                "hall"
+              ]
+            },
+            "type": "object",
+            "title": "Interpolation Failure Reasons"
+          },
           "synthetic": {
             "type": "boolean",
             "const": true,
@@ -5560,6 +5584,7 @@
           "warnings_omitted",
           "interpolated",
           "interpolation_failed",
+          "interpolation_failure_reasons",
           "synthetic",
           "message_key",
           "known_issues",
@@ -6431,6 +6456,10 @@
             "type": "boolean",
             "title": "Extrapolated"
           },
+          "range_limited": {
+            "type": "boolean",
+            "title": "Range Limited"
+          },
           "measured_points_in_range": {
             "type": "integer",
             "title": "Measured Points In Range"
@@ -6445,11 +6474,12 @@
           "temperature_k",
           "values",
           "extrapolated",
+          "range_limited",
           "measured_points_in_range",
           "underdetermined"
         ],
         "title": "InterpolatedResponse",
-        "description": "A quantity on the interpolation grid. `null` marks a value that is not finite.\n\n`extrapolated` means that some of the grid lies outside the data, so those values are made up,\nand a fit from them should say so through `extrapolated` in its request.\n`measured_points_in_range` of 0 means that all the values are made up. `underdetermined` means\nthat the data do not set the polynomial."
+        "description": "A quantity on the interpolation grid. `null` marks a value that is not finite.\n\n`range_limited` means the requested range extends beyond this quantity's measured range.\n`extrapolated` is retained for compatibility and is false for new server results.\n`measured_points_in_range` counts source points in the requested range; zero can occur between\nsparse measurements. `underdetermined` means that the data do not set the polynomial."
       },
       "InterpolationRange": {
         "properties": {
@@ -7009,7 +7039,7 @@
           "text"
         ],
         "title": "ParseRequest",
-        "description": "A text to read, as the client read it from a file or table.\n\n`expected` names the quantity of a file meant to hold one. `mapping` replaces the suggested\ncolumns with a user's choice, and the text is sent again each time, as the API keeps nothing.\n`interpolate` asks for each quantity on a grid over this fit range."
+        "description": "A text to read, as the client read it from a file or table.\n\n`expected` names the quantity of a file meant to hold one. `mapping` replaces the suggested\ncolumns with a user's choice, and the text is sent again each time, as the API keeps nothing.\n`interpolate` asks for each quantity on a grid within this range and its measured range."
       },
       "ParseResponse": {
         "properties": {
@@ -7126,6 +7156,25 @@
             },
             "type": "array",
             "title": "Interpolation Failed"
+          },
+          "interpolation_failure_reasons": {
+            "additionalProperties": {
+              "type": "string",
+              "enum": [
+                "no_overlap",
+                "overlap_too_short",
+                "fit_failed"
+              ]
+            },
+            "propertyNames": {
+              "enum": [
+                "seebeck",
+                "resistivity",
+                "hall"
+              ]
+            },
+            "type": "object",
+            "title": "Interpolation Failure Reasons"
           }
         },
         "type": "object",
@@ -7140,10 +7189,11 @@
           "warnings",
           "warnings_omitted",
           "interpolated",
-          "interpolation_failed"
+          "interpolation_failed",
+          "interpolation_failure_reasons"
         ],
         "title": "ParseResponse",
-        "description": "What the text holds. A file with problems is still a 200, with a preview and its `errors`.\n\n`measurements` is empty with any `errors`. `headers` is left out when no header matches the\ncolumns. `column_count` is 0 when neither a row nor a header sets it. `preview` holds the first\nrows that could be read, in the order of the text and as written, and `row_count` all of them.\n`preview_si` holds the same rows in SI, with `null` for a column with no role or no unit:\nwith `errors`, only a unit the request chose is kept. `mapping` is the\nsuggestion or the user's choice, and with no readable rows, always the suggestion. `warnings`\nholds every kind, with at most 100 `preamble_skipped`, and `warnings_omitted` counts the rest.\n`interpolation_failed` names quantities that could not be interpolated."
+        "description": "What the text holds. A file with problems is still a 200, with a preview and its `errors`.\n\n`measurements` is empty with any `errors`. `headers` is left out when no header matches the\ncolumns. `column_count` is 0 when neither a row nor a header sets it. `preview` holds the first\nrows that could be read, in the order of the text and as written, and `row_count` all of them.\n`preview_si` holds the same rows in SI, with `null` for a column with no role or no unit:\nwith `errors`, only a unit the request chose is kept. `mapping` is the\nsuggestion or the user's choice, and with no readable rows, always the suggestion. `warnings`\nholds every kind, with at most 100 `preamble_skipped`, and `warnings_omitted` counts the rest.\n`interpolation_failed` names quantities that could not be interpolated, and\n`interpolation_failure_reasons` says why for each: `no_overlap` (the fit range and the measured\nrange do not overlap), `overlap_too_short` (under 20 K, or under 40 K where the data narrow the\nrange, which would give one grid point) or `fit_failed` (the polynomial could not be fitted)."
       },
       "Prediction": {
         "properties": {

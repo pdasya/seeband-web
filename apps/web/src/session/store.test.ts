@@ -287,6 +287,7 @@ describe("interpolation", () => {
     temperature_k: [50, 100],
     values: [5, 6],
     extrapolated: true,
+    range_limited: false,
     measured_points_in_range: 1,
     underdetermined: false,
   };

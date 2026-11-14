@@ -23,6 +23,11 @@ To remove a flag once its error is fixed, delete its entry and its row here, and
 
 `affects_band_diagram` puts an entry on the sketch of E(k) alone, through `band_diagram_issue_ids`.
 
+P7 (#86) limits new interpolation to measured support and reports a limited
+range separately. `interpolation_extrapolates` is retained for legacy or
+external data explicitly marked `extrapolated` by the caller; the repaired
+server interpolation no longer emits that provenance flag itself.
+
 The caller sets `extrapolated`, from `InterpolatedData`, since a fit does not know where its data came from.
 
 The DPB Hall-prefactor flag was removed by [P2](dpb-hall-prefactor.md), which corrects the coefficient in all three scattering modes.

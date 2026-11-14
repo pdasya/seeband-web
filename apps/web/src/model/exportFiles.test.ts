@@ -95,6 +95,17 @@ describe("the header", () => {
     ]);
   });
 
+  test("names the range a fit used where the data narrowed the interpolation", () => {
+    const lines = exportHeader({
+      ...CONTEXT,
+      limitedRanges: [{ quantity: "seebeck", minK: 50, maxK: 750 }],
+    });
+    expect(lines).toContain("Fit range 50-800 K");
+    expect(lines).toContain(
+      "Interpolated S only over 50-750 K, where its data end",
+    );
+  });
+
   test("demo data, known issues, no fit, no scattering and one band", () => {
     const lines = exportHeader({
       ...CONTEXT,
@@ -249,6 +260,7 @@ describe("the data file", () => {
               temperature_k: [100],
               values: [1e-4],
               extrapolated: false,
+              range_limited: false,
               measured_points_in_range: 1,
               underdetermined: false,
             },
@@ -275,6 +287,7 @@ describe("the data file", () => {
               temperature_k: [100, 120],
               values: [1e-4, 1.2e-4],
               extrapolated: false,
+              range_limited: false,
               measured_points_in_range: 2,
               underdetermined: false,
             },

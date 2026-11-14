@@ -8,6 +8,7 @@ import {
   QUANTITIES,
   useSessionStore,
   type InterpolatedQuantities,
+  type InterpolationFailureReason,
   type Quantity,
 } from "@/session/store";
 
@@ -117,6 +118,8 @@ export function useInterpolation() {
         }
         const values: InterpolatedQuantities = {};
         const failed: Quantity[] = [];
+        const reasons: Partial<Record<Quantity, InterpolationFailureReason>> =
+          {};
         let failure: string | null = null;
         answers.forEach((answer, index) => {
           const quantities = requests[index]?.quantities ?? [];
@@ -133,10 +136,15 @@ export function useInterpolation() {
             }
             if (answer.value.interpolation_failed.includes(quantity)) {
               failed.push(quantity);
+              const reason =
+                answer.value.interpolation_failure_reasons[quantity];
+              if (reason !== undefined) {
+                reasons[quantity] = reason;
+              }
             }
           }
         });
-        finish(values, failed, failure);
+        finish(values, failed, failure, reasons);
       });
     }, DEBOUNCE_MS);
     return () => {

@@ -10,9 +10,10 @@ const MEASUREMENT = {
   max_temperature_k: 300,
 };
 const INTERPOLATED = {
-  temperature_k: [50, 425, 800],
+  temperature_k: [100, 200, 300],
   values: [1, 2, 3],
   extrapolated: false,
+  range_limited: true,
   measured_points_in_range: 3,
   underdetermined: false,
 };
@@ -41,6 +42,7 @@ function parsed(overrides: object = {}) {
     warnings_omitted: 0,
     interpolated: {},
     interpolation_failed: [],
+    interpolation_failure_reasons: {},
     ...overrides,
   };
 }
@@ -79,6 +81,59 @@ async function loadSeebeck(page: Page, name = "s.txt") {
 
 const interpolationSwitch = (page: Page) =>
   page.getByRole("switch", { name: /Interpolation/ });
+
+test("a fit range beyond the measurements shows that interpolation was limited", async ({
+  page,
+}) => {
+  await setUp(page, (body, route) =>
+    route.fulfill({
+      json: parsed(
+        body.interpolate === undefined
+          ? {}
+          : { interpolated: { seebeck: INTERPOLATED } },
+      ),
+    }),
+  );
+  await loadSeebeck(page);
+  await interpolationSwitch(page).click();
+
+  // The range a fit uses is named, as the fit range alone would claim more.
+  await expect(page.getByRole("alert")).toContainText(
+    "S: the measured range limits interpolation to 100–300 K",
+  );
+  await expect(page.getByRole("alert")).not.toContainText(
+    "some values are made up",
+  );
+});
+
+test("a window between measurements with no measured point says the polynomial alone sets it", async ({
+  page,
+}) => {
+  await setUp(page, (body, route) =>
+    route.fulfill({
+      json: parsed(
+        body.interpolate === undefined
+          ? {}
+          : {
+              interpolated: {
+                seebeck: {
+                  ...INTERPOLATED,
+                  range_limited: false,
+                  measured_points_in_range: 0,
+                },
+              },
+            },
+      ),
+    }),
+  );
+  await loadSeebeck(page);
+  await interpolationSwitch(page).click();
+
+  // Between sparse measurements a degree-10 polynomial can be far off, as beyond them.
+  await expect(page.getByRole("alert")).toContainText(
+    "every value comes from the polynomial alone",
+  );
+});
 
 test("turning it on asks for the default fit range, and off asks nothing", async ({
   page,
@@ -167,7 +222,7 @@ test("each flag is shown for its quantity", async ({ page }) => {
   await expect(alert).toHaveCount(0);
 });
 
-test("no measured point in range says that every value is made up", async ({
+test("data a client marked as extrapolated, with no measured point, say the polynomial alone sets them", async ({
   page,
 }) => {
   await setUp(page, (body, route) =>
@@ -191,7 +246,9 @@ test("no measured point in range says that every value is made up", async ({
 
   await interpolationSwitch(page).click();
 
-  await expect(page.getByRole("alert")).toContainText("every value is made up");
+  await expect(page.getByRole("alert")).toContainText(
+    "every value comes from the polynomial alone",
+  );
   await expect(page.getByRole("alert")).not.toContainText("some values");
 });
 
@@ -218,6 +275,36 @@ test("a quantity that fails or overflows is named", async ({ page }) => {
     "S: could not be interpolated",
   );
 });
+
+for (const [reason, says] of [
+  ["no_overlap", "S: its measured range does not overlap the fit range"],
+  [
+    "overlap_too_short",
+    "S: its measured range overlaps the fit range too little",
+  ],
+  ["fit_failed", "S: the polynomial could not be fitted to its data"],
+] as const) {
+  test(`a quantity refused for ${reason} says why`, async ({ page }) => {
+    await setUp(page, (body, route) =>
+      route.fulfill({
+        json: parsed(
+          body.interpolate === undefined
+            ? {}
+            : {
+                interpolation_failed: ["seebeck"],
+                interpolation_failure_reasons: { seebeck: reason },
+              },
+        ),
+      }),
+    );
+    await loadSeebeck(page);
+
+    await interpolationSwitch(page).click();
+
+    await expect(page.getByRole("alert")).toContainText(says);
+    await expect(page.getByRole("alert")).not.toContainText("20 K");
+  });
+}
 
 test("a range it cannot use, and a server that is down, have their messages", async ({
   page,

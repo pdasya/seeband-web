@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- P7 (#86): evaluate interpolation only on the overlap of each quantity's
+  measured temperature range and the requested fit range. Unsupported or
+  too-short overlaps fail explicitly instead of extrapolating synthetic
+  points into the fit. Show when measured coverage limits the range; retain
+  legacy extrapolation provenance warnings. The polynomial degree and fit
+  criteria are unchanged, with separate corrected regression expectations.
+  An overlap the data narrow needs 40 K, so that the grid has two points;
+  each refusal says why (`interpolation_failure_reasons`); a window with no
+  measured point says that the polynomial alone sets it; and results and
+  exports name the range a fit used.
+
 - P6 (#85, S-only scope): use the same degeneracy-weighted mass in DPB S
   fitting and drawing. Public mass coordinates, bounds and uncertainties
   stay unchanged; the low-level model receives R/N on both paths. Add

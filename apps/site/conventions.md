@@ -27,6 +27,28 @@ establish the correctness of negative-mass transport (#104), collapsed
 bands (#107), the band diagram (#108), or chemical-potential root finding.
 Human physicist confirmation and parity (#71) remain outstanding.
 
+## Interpolation support
+
+Interpolation evaluates the existing degree-10 Chebyshev fit only on the
+intersection of the requested fit range and each quantity's measured
+temperature range. A requested 50–800 K window with measurements spanning
+25–750 K therefore produces interpolation over 50–750 K, and the interface
+notes the coverage limit. Quantities keep their independent temperature grids.
+
+There must be at least 20 K of overlap, and 40 K where the data narrow the
+range, so that the grid has two points. No overlap, a single-temperature
+intersection or a shorter overlap makes that quantity unavailable to a fit,
+and the interface says which of these it was. Results and exports name the
+range a fit used for a quantity the data narrowed.
+Source data are unchanged. The polynomial still uses all supplied points;
+this support restriction does not cure overshoot, underdetermination or
+poor physical model agreement, and interpolated points are not independent
+measurements. No sample-dependent model adjustment is made.
+
+New server interpolation does not extrapolate. Explicit legacy/external
+extrapolation provenance remains flagged. Human physicist confirmation and
+the #71 parity gate remain separate from this numerical-domain correction.
+
 ## Scattering
 
 For SPB and DPB acPhDis, C and D are dimensionless scattering ratios at 300 K.

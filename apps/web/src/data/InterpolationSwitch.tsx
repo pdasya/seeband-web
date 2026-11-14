@@ -4,25 +4,34 @@ import { useId } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
 import { useFitRange } from "@/data/useInterpolation";
-import { QUANTITIES, useSessionStore, type Quantity } from "@/session/store";
+import {
+  QUANTITIES,
+  useSessionStore,
+  type InterpolationState,
+  type Quantity,
+} from "@/session/store";
 import { formatNumber } from "@/lib/numbers";
 import { STRINGS } from "@/strings";
 
 const { data: text } = STRINGS;
 
 /** What a user must know about each quantity's interpolated values. */
-function flagsOf(
+export function flagsOf(
   quantity: Quantity,
-  interpolated: ReturnType<
-    typeof useSessionStore.getState
-  >["interpolation"]["values"],
-  failed: readonly Quantity[],
+  interpolation: Pick<
+    InterpolationState,
+    "values" | "failed" | "failureReasons"
+  >,
 ): string[] {
   const { symbol } = text.quantities[quantity];
   const flags = text.interpolation.flags;
-  if (failed.includes(quantity)) {
-    return [`${symbol}: ${flags.failed}`];
+  if (interpolation.failed.includes(quantity)) {
+    const reason = interpolation.failureReasons?.[quantity];
+    return [
+      `${symbol}: ${reason === undefined ? flags.failed : flags.failedBecause[reason]}`,
+    ];
   }
+  const interpolated = interpolation.values;
   const result = interpolated[quantity];
   if (result === undefined) {
     return [];
@@ -31,6 +40,16 @@ function flagsOf(
   if (result.values.some((value) => value === null)) {
     messages.push(flags.notFinite);
   }
+  if (result.range_limited && result.temperature_k.length > 0) {
+    messages.push(
+      flags.rangeLimited(
+        formatNumber(Math.min(...result.temperature_k)),
+        formatNumber(Math.max(...result.temperature_k)),
+      ),
+    );
+  }
+  // With no measured point in the window, the polynomial alone sets every value, whether the window
+  // lies between measurements or beyond them.
   if (result.measured_points_in_range === 0) {
     messages.push(flags.noMeasuredPoints);
   } else if (result.extrapolated) {
@@ -50,9 +69,7 @@ export function InterpolationSwitch() {
   const range = useFitRange();
 
   const flags = interpolation.enabled
-    ? QUANTITIES.flatMap((quantity) =>
-        flagsOf(quantity, interpolation.values, interpolation.failed),
-      )
+    ? QUANTITIES.flatMap((quantity) => flagsOf(quantity, interpolation))
     : [];
   return (
     <div className="flex flex-col gap-1.5 pt-1.5">
