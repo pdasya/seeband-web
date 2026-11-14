@@ -232,11 +232,11 @@ WARNING_CASES: list[tuple[str, dict[str, Any], str]] = [
         {"mapping": [{"column": 0, "role": "temperature"}, {"column": 1, "role": "seebeck"}]},
         "T S rho\n100 1\n200 2\n",
     ),
-    ("unit_differs", {}, "T (K)\tS (mV/K)\n100\t1\n200\t2\n"),
+    ("unit_differs", {}, "T (K)\tS (nV/K)\n100\t1\n200\t2\n"),
     (
         "unit_assumed",
         {"mapping": [{"column": 0, "role": "temperature"}, {"column": 1, "role": "seebeck"}]},
-        "T (K)\tS (mV/K)\n100\t1e-6\n200\t2e-6\n",
+        "T (K)\tS (nV/K)\n100\t1e-6\n200\t2e-6\n",
     ),
     ("implausible_magnitude", {}, "T S\n100 50\n200 60\n"),
     ("repeated_header", {}, "T S S\n100 1 2\n200 2 3\n"),
@@ -334,15 +334,38 @@ def test_a_column_with_no_role_has_no_si_preview(client: TestClient) -> None:
 def test_microvolts_read_as_volts_are_called_implausible(client: TestClient) -> None:
     body = _parse(client, "T S\n100 50\n200 80\n")
 
-    assert {"code": "implausible_magnitude", "column": 1} in body["warnings"]
+    assert {"code": "implausible_magnitude", "column": 1, "direction": "above"} in body["warnings"]
     # Read as written: the warning only says that it looks wrong.
     assert body["measurements"]["seebeck"]["values"] == [50.0, 80.0]
+
+
+def test_a_magnitude_warning_says_which_limit_is_passed(client: TestClient) -> None:
+    above = _parse(client, "T S\n100 50\n200 60\n")
+    below = _parse(client, "T S\n100 1e-12\n200 2e-12\n")
+
+    assert {"code": "implausible_magnitude", "column": 1, "direction": "above"} in above["warnings"]
+    assert {"code": "implausible_magnitude", "column": 1, "direction": "below"} in below["warnings"]
+
+
+def test_mv_per_k_and_ohm_cm_are_units(client: TestClient) -> None:
+    body = _parse(client, "T\tS (mV/K)\trho (Ω·cm)\n100\t0.2\t5\n200\t0.3\t6\n")
+
+    assert [item["unit"] for item in body["mapping"]] == ["K", "mV/K", "Ohm*cm"]
+    assert body["measurements"]["seebeck"]["values"] == [2e-4, 3e-4]
+    assert body["measurements"]["resistivity"]["values"] == [5e-2, 6e-2]
+
+
+def test_the_preview_keeps_each_value_as_written(client: TestClient) -> None:
+    body = _parse(client, "T\tS (uV/K)\n300.0\t0.00012345\n400\t2E+2\n")
+
+    assert body["preview_text"] == [["300.0", "0.00012345"], ["400", "2E+2"]]
+    assert body["preview"][0] == [300.0, 0.00012345]
 
 
 def test_an_unknown_unit_is_refused_by_the_contract(client: TestClient) -> None:
     mapping = [
         {"column": 0, "role": "temperature"},
-        {"column": 1, "role": "seebeck", "unit": "mV/K"},
+        {"column": 1, "role": "seebeck", "unit": "nV/K"},
     ]
     response = client.post("/api/parse", json={"text": SIX_ROWS, "mapping": mapping})
 
@@ -354,7 +377,7 @@ def test_expected_names_the_second_column(client: TestClient) -> None:
 
 
 def test_many_preamble_warnings_are_cut_and_hide_nothing_else(client: TestClient) -> None:
-    text = "x y\n" * 150 + "T (K)\tS (mV/K)\n300\t1\n100\t2\n100\t3\n"
+    text = "x y\n" * 150 + "T (K)\tS (nV/K)\n300\t1\n100\t2\n100\t3\n"
 
     body = _parse(client, text, expected="seebeck")
 

@@ -3166,6 +3166,20 @@
                           6e-05
                         ]
                       ],
+                      "preview_text": [
+                        [
+                          "300",
+                          "1.0e-4"
+                        ],
+                        [
+                          "100",
+                          "2.0e-5"
+                        ],
+                        [
+                          "200",
+                          "6.0e-5"
+                        ]
+                      ],
                       "preview_si": [
                         [
                           300.0,
@@ -3242,6 +3256,12 @@
                           1e-06
                         ]
                       ],
+                      "preview_text": [
+                        [
+                          "100",
+                          "1.0e-6"
+                        ]
+                      ],
                       "preview_si": [
                         [
                           null,
@@ -3293,6 +3313,20 @@
                         [
                           160.0,
                           3e-06
+                        ]
+                      ],
+                      "preview_text": [
+                        [
+                          "100",
+                          "1.0e-6"
+                        ],
+                        [
+                          "130",
+                          "2.0e-6"
+                        ],
+                        [
+                          "160",
+                          "3.0e-6"
                         ]
                       ],
                       "preview_si": [
@@ -4331,6 +4365,68 @@
                           2.6601184106241833e-07
                         ]
                       ],
+                      "preview_text": [
+                        [
+                          "50.0",
+                          "9.268892694384608e-05",
+                          "6.114959298287624e-06",
+                          "5.959825101441012e-07"
+                        ],
+                        [
+                          "75.0",
+                          "0.00013063742872412742",
+                          "9.902036137652306e-06",
+                          "6.11473399997891e-07"
+                        ],
+                        [
+                          "100.0",
+                          "0.00015817298717411932",
+                          "1.4283697194756858e-05",
+                          "6.243234571981225e-07"
+                        ],
+                        [
+                          "125.0",
+                          "0.00018508771206913953",
+                          "1.8939864426941722e-05",
+                          "6.364995875481932e-07"
+                        ],
+                        [
+                          "150.0",
+                          "0.0002008961323606316",
+                          "2.4172951253570913e-05",
+                          "6.234965756109561e-07"
+                        ],
+                        [
+                          "175.0",
+                          "0.0002065060336835406",
+                          "2.876149230362729e-05",
+                          "5.942928199146077e-07"
+                        ],
+                        [
+                          "200.0",
+                          "0.00020076334664054232",
+                          "3.233885960184509e-05",
+                          "5.249569530886411e-07"
+                        ],
+                        [
+                          "225.0",
+                          "0.00018535678356561513",
+                          "3.4310336596647014e-05",
+                          "4.3863309321808774e-07"
+                        ],
+                        [
+                          "250.0",
+                          "0.00016400387682983324",
+                          "3.454218618855157e-05",
+                          "3.4273395168925865e-07"
+                        ],
+                        [
+                          "275.0",
+                          "0.00014354013305271633",
+                          "3.3544002341563496e-05",
+                          "2.6601184106241833e-07"
+                        ]
+                      ],
                       "preview_si": [
                         [
                           50.0,
@@ -5297,7 +5393,9 @@
                   "C",
                   "V/K",
                   "uV/K",
+                  "mV/K",
                   "Ohm*m",
+                  "Ohm*cm",
                   "mOhm*cm",
                   "uOhm*m",
                   "S/m",
@@ -5364,7 +5462,9 @@
                   "C",
                   "V/K",
                   "uV/K",
+                  "mV/K",
                   "Ohm*m",
+                  "Ohm*cm",
                   "mOhm*cm",
                   "uOhm*m",
                   "S/m",
@@ -5514,6 +5614,16 @@
             "type": "array",
             "title": "Preview"
           },
+          "preview_text": {
+            "items": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Preview Text"
+          },
           "preview_si": {
             "items": {
               "items": {
@@ -5659,6 +5769,7 @@
           "column_count",
           "row_count",
           "preview",
+          "preview_text",
           "preview_si",
           "mapping",
           "measurements",
@@ -6660,6 +6771,21 @@
               }
             ],
             "title": "Column"
+          },
+          "direction": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "above",
+                  "below"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Direction"
           }
         },
         "type": "object",
@@ -6667,7 +6793,7 @@
           "code"
         ],
         "title": "IssueResponse",
-        "description": "A problem in the data, as a code a client translates, in `input-data.md` of the core.\n\n`line` counts every line of the text from 1, and `column` from 0."
+        "description": "A problem in the data, as a code a client translates, in `input-data.md` of the core.\n\n`line` counts every line of the text from 1, and `column` from 0. `direction` says, for\n`implausible_magnitude`, whether the largest |value| is `above` the quantity's upper limit or\n`below` its lower one. No issue carries a measured value."
       },
       "KnownIssueResponse": {
         "properties": {
@@ -7189,6 +7315,16 @@
             "type": "array",
             "title": "Preview"
           },
+          "preview_text": {
+            "items": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Preview Text"
+          },
           "preview_si": {
             "items": {
               "items": {
@@ -7296,6 +7432,7 @@
           "column_count",
           "row_count",
           "preview",
+          "preview_text",
           "preview_si",
           "mapping",
           "measurements",
@@ -7307,7 +7444,7 @@
           "interpolation_failure_reasons"
         ],
         "title": "ParseResponse",
-        "description": "What the text holds. A file with problems is still a 200, with a preview and its `errors`.\n\n`measurements` is empty with any `errors`. `headers` is left out when no header matches the\ncolumns. `column_count` is 0 when neither a row nor a header sets it. `preview` holds the first\nrows that could be read, in the order of the text and as written, and `row_count` all of them.\n`preview_si` holds the same rows in SI, with `null` for a column with no role or no unit:\nwith `errors`, only a unit the request chose is kept. `mapping` is the\nsuggestion or the user's choice, and with no readable rows, always the suggestion. `warnings`\nholds every kind, with at most 100 `preamble_skipped`, and `warnings_omitted` counts the rest.\n`interpolation_failed` names quantities that could not be interpolated, and\n`interpolation_failure_reasons` says why for each: `no_overlap` (the fit range and the measured\nrange do not overlap), `overlap_too_short` (under 20 K, or under 40 K where the data narrow the\nrange, which would give one grid point) or `fit_failed` (the polynomial could not be fitted)."
+        "description": "What the text holds. A file with problems is still a 200, with a preview and its `errors`.\n\n`measurements` is empty with any `errors`. `headers` is left out when no header matches the\ncolumns. `column_count` is 0 when neither a row nor a header sets it. `preview` holds the first\nrows that could be read, in the order of the text and as read, and `row_count` all of them.\n`preview_text` holds the same values exactly as the text writes them, such as `2E+2`, for a\nuser to compare with the file. `preview_si` holds the same rows in SI, with `null` for a\ncolumn with no role or no unit: with `errors`, only a unit the request chose is kept.\n`mapping` is the suggestion or the user's choice, and with no readable rows, always the\nsuggestion. `warnings`\nholds every kind, with at most 100 `preamble_skipped`, and `warnings_omitted` counts the rest.\n`interpolation_failed` names quantities that could not be interpolated, and\n`interpolation_failure_reasons` says why for each: `no_overlap` (the fit range and the measured\nrange do not overlap), `overlap_too_short` (under 20 K, or under 40 K where the data narrow the\nrange, which would give one grid point) or `fit_failed` (the polynomial could not be fitted)."
       },
       "Prediction": {
         "properties": {

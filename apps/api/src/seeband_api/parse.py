@@ -9,6 +9,7 @@ from typing import Annotated, Any, Self
 
 from pydantic import BaseModel, Field, model_validator
 from seeband_core.data_parser import (
+    Direction,
     IssueCode,
     LoadedQuantity,
     ParsedTable,
@@ -102,12 +103,15 @@ class ParseRequest(BaseModel):
 class IssueResponse(BaseModel):
     """A problem in the data, as a code a client translates, in `input-data.md` of the core.
 
-    `line` counts every line of the text from 1, and `column` from 0.
+    `line` counts every line of the text from 1, and `column` from 0. `direction` says, for
+    `implausible_magnitude`, whether the largest |value| is `above` the quantity's upper limit or
+    `below` its lower one. No issue carries a measured value.
     """
 
     code: IssueCode
     line: int | None = None
     column: int | None = None
+    direction: Direction | None = None
 
 
 class MeasurementResponse(BaseModel):
@@ -148,10 +152,12 @@ class ParseResponse(BaseModel):
 
     `measurements` is empty with any `errors`. `headers` is left out when no header matches the
     columns. `column_count` is 0 when neither a row nor a header sets it. `preview` holds the first
-    rows that could be read, in the order of the text and as written, and `row_count` all of them.
-    `preview_si` holds the same rows in SI, with `null` for a column with no role or no unit:
-    with `errors`, only a unit the request chose is kept. `mapping` is the
-    suggestion or the user's choice, and with no readable rows, always the suggestion. `warnings`
+    rows that could be read, in the order of the text and as read, and `row_count` all of them.
+    `preview_text` holds the same values exactly as the text writes them, such as `2E+2`, for a
+    user to compare with the file. `preview_si` holds the same rows in SI, with `null` for a
+    column with no role or no unit: with `errors`, only a unit the request chose is kept.
+    `mapping` is the suggestion or the user's choice, and with no readable rows, always the
+    suggestion. `warnings`
     holds every kind, with at most 100 `preamble_skipped`, and `warnings_omitted` counts the rest.
     `interpolation_failed` names quantities that could not be interpolated, and
     `interpolation_failure_reasons` says why for each: `no_overlap` (the fit range and the measured
@@ -163,6 +169,7 @@ class ParseResponse(BaseModel):
     column_count: int
     row_count: int
     preview: list[list[float]]
+    preview_text: list[list[str]]
     preview_si: list[list[float | None]]
     mapping: list[ColumnRead]
     measurements: dict[Quantity, MeasurementResponse]
@@ -182,7 +189,9 @@ def _refuse(code: str, message: str, location: list[str | int]) -> ApiError:
 
 
 def _issue(issue: ParseIssue) -> IssueResponse:
-    return IssueResponse(code=issue.code, line=issue.line, column=issue.column)
+    return IssueResponse(
+        code=issue.code, line=issue.line, column=issue.column, direction=issue.direction
+    )
 
 
 def _measurement(measurement: Measurement, loaded_as: LoadedQuantity) -> MeasurementResponse:
@@ -231,6 +240,7 @@ def to_parse_response(outcome: ParseOutcome) -> ParseResponse:
         column_count=table.column_count or len(table.headers or ()),
         row_count=row_count,
         preview=[[float(column[row]) for column in columns] for row in range(preview_rows)],
+        preview_text=[[texts[row] for texts in table.texts] for row in range(preview_rows)],
         preview_si=_preview_si(table, preview_rows),
         mapping=[
             ColumnRead(
@@ -293,6 +303,7 @@ PARSE_EXAMPLE_RESPONSES: dict[str, dict[str, Any]] = {
         "column_count": 2,
         "row_count": 3,
         "preview": [[300.0, 1.0e-4], [100.0, 2.0e-5], [200.0, 6.0e-5]],
+        "preview_text": [["300", "1.0e-4"], ["100", "2.0e-5"], ["200", "6.0e-5"]],
         "preview_si": [[300.0, 1.0e-4], [100.0, 2.0e-5], [200.0, 6.0e-5]],
         "mapping": _t_s_mapping("header"),
         "measurements": {
@@ -315,6 +326,7 @@ PARSE_EXAMPLE_RESPONSES: dict[str, dict[str, Any]] = {
         "column_count": 2,
         "row_count": 1,
         "preview": [[100.0, 1.0e-6]],
+        "preview_text": [["100", "1.0e-6"]],
         "preview_si": [[None, None]],
         "mapping": [{"column": 0, "role": "temperature"}, {"column": 1, "role": "seebeck"}],
         "measurements": {},
@@ -328,6 +340,7 @@ PARSE_EXAMPLE_RESPONSES: dict[str, dict[str, Any]] = {
         "column_count": 2,
         "row_count": 3,
         "preview": [[100.0, 1.0e-6], [130.0, 2.0e-6], [160.0, 3.0e-6]],
+        "preview_text": [["100", "1.0e-6"], ["130", "2.0e-6"], ["160", "3.0e-6"]],
         "preview_si": [[100.0, 1.0e-6], [130.0, 2.0e-6], [160.0, 3.0e-6]],
         "mapping": _t_s_mapping("default"),
         "measurements": {

@@ -404,7 +404,7 @@ export interface components {
              */
             role: "temperature" | "seebeck" | "resistivity" | "conductivity" | "hall";
             /** Unit */
-            unit?: ("K" | "C" | "V/K" | "uV/K" | "Ohm*m" | "mOhm*cm" | "uOhm*m" | "S/m" | "S/cm" | "m^3/C" | "cm^3/C") | null;
+            unit?: ("K" | "C" | "V/K" | "uV/K" | "mV/K" | "Ohm*m" | "Ohm*cm" | "mOhm*cm" | "uOhm*m" | "S/m" | "S/cm" | "m^3/C" | "cm^3/C") | null;
             /** Unit Source */
             unit_source?: ("chosen" | "header" | "default") | null;
         };
@@ -425,7 +425,7 @@ export interface components {
              */
             role: "temperature" | "seebeck" | "resistivity" | "conductivity" | "hall";
             /** Unit */
-            unit?: ("K" | "C" | "V/K" | "uV/K" | "Ohm*m" | "mOhm*cm" | "uOhm*m" | "S/m" | "S/cm" | "m^3/C" | "cm^3/C") | null;
+            unit?: ("K" | "C" | "V/K" | "uV/K" | "mV/K" | "Ohm*m" | "Ohm*cm" | "mOhm*cm" | "uOhm*m" | "S/m" | "S/cm" | "m^3/C" | "cm^3/C") | null;
         };
         /**
          * CurveAvailabilityResponse
@@ -487,6 +487,8 @@ export interface components {
             row_count: number;
             /** Preview */
             preview: number[][];
+            /** Preview Text */
+            preview_text: string[][];
             /** Preview Si */
             preview_si: (number | null)[][];
             /** Mapping */
@@ -1002,7 +1004,9 @@ export interface components {
          * IssueResponse
          * @description A problem in the data, as a code a client translates, in `input-data.md` of the core.
          *
-         *     `line` counts every line of the text from 1, and `column` from 0.
+         *     `line` counts every line of the text from 1, and `column` from 0. `direction` says, for
+         *     `implausible_magnitude`, whether the largest |value| is `above` the quantity's upper limit or
+         *     `below` its lower one. No issue carries a measured value.
          */
         IssueResponse: {
             /**
@@ -1014,6 +1018,8 @@ export interface components {
             line?: number | null;
             /** Column */
             column?: number | null;
+            /** Direction */
+            direction?: ("above" | "below") | null;
         };
         /**
          * KnownIssueResponse
@@ -1231,10 +1237,12 @@ export interface components {
          *
          *     `measurements` is empty with any `errors`. `headers` is left out when no header matches the
          *     columns. `column_count` is 0 when neither a row nor a header sets it. `preview` holds the first
-         *     rows that could be read, in the order of the text and as written, and `row_count` all of them.
-         *     `preview_si` holds the same rows in SI, with `null` for a column with no role or no unit:
-         *     with `errors`, only a unit the request chose is kept. `mapping` is the
-         *     suggestion or the user's choice, and with no readable rows, always the suggestion. `warnings`
+         *     rows that could be read, in the order of the text and as read, and `row_count` all of them.
+         *     `preview_text` holds the same values exactly as the text writes them, such as `2E+2`, for a
+         *     user to compare with the file. `preview_si` holds the same rows in SI, with `null` for a
+         *     column with no role or no unit: with `errors`, only a unit the request chose is kept.
+         *     `mapping` is the suggestion or the user's choice, and with no readable rows, always the
+         *     suggestion. `warnings`
          *     holds every kind, with at most 100 `preamble_skipped`, and `warnings_omitted` counts the rest.
          *     `interpolation_failed` names quantities that could not be interpolated, and
          *     `interpolation_failure_reasons` says why for each: `no_overlap` (the fit range and the measured
@@ -1250,6 +1258,8 @@ export interface components {
             row_count: number;
             /** Preview */
             preview: number[][];
+            /** Preview Text */
+            preview_text: string[][];
             /** Preview Si */
             preview_si: (number | null)[][];
             /** Mapping */
