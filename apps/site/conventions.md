@@ -1,4 +1,18 @@
-# Model conventions
+# Calculation conventions
+
+## Chemical potential
+
+SPB and DPB solve the signed carrier balance at each temperature with a
+bracketed method in μ/T. The target density still comes from E_F at 0 K.
+Each returned point has normalized density residual at most 1e-12, against
+the unchanged Fermi-integral approximation; an unverified point fails
+explicitly. Temperature order and repeated points do not change the solution.
+
+SPB requires sign(m) E_F > 0. DPB with one valence and one conduction band
+has a finite root even at zero net doping. Two valence bands require
+E_F < max(0, E_g). Zero mass and nonpositive degeneracies are invalid.
+These checks do not establish fit quality, repair transport limitations or
+replace human physicist confirmation and the #71 comparison.
 
 ## SPB Hall
 
@@ -26,6 +40,7 @@ Human physicist confirmation remains pending.
 [Results that changed](results-changed.md) lists the P2–P7 corrections included
 in core 0.1.0 and the remaining confirmation gates.
 
+Core `0.1.1` adds the P8 solver and domain-aware fitting described above.
 Core version `0.1.0` is the first traceable `seeband_core` version. Earlier
 results may have been produced by different corrected states while reporting
 `0.0.0`; a missing version is unknown and must not be inferred from this
@@ -71,7 +86,8 @@ for negative R or for other transport weights.
 The separate iterative-mode output/bounds inconsistency remains flagged
 by `dpb_loop_degeneracy` (#85). P6 repairs the S-only mismatch and does not
 establish the correctness of negative-mass transport (#104), collapsed
-bands (#107), the band diagram (#108), or chemical-potential root finding.
+bands (#107) or the band diagram (#108). P8 checks chemical-potential roots
+as described above.
 Human physicist confirmation and parity (#71) remain outstanding.
 
 ## Interpolation support

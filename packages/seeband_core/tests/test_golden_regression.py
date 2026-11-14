@@ -1,7 +1,8 @@
-"""Replay every call recorded from the desktop window through the ported modules.
+"""Replay historical desktop inputs against independent desktop and generated P8 expectations.
 
 Golden results were captured on one Mac with Python 3.11, numpy 1.26 and scipy 1.17. The project
 uses newer versions, and CI runs on Linux, so this is the check across versions and machines.
+P8 expectations are recorded separately; original desktop evidence remains unchanged.
 docs/golden-results.md gives the measured differences.
 
 CURVE_TOLERANCE is tight, because curves are direct calculations. FIT_TOLERANCE is looser, because
@@ -18,6 +19,7 @@ spb_see_res_hall_fit has no recorded call, so it names the function and its argu
 
 import contextlib
 import copy
+import hashlib
 import inspect
 import json
 import math
@@ -114,6 +116,67 @@ def p3_results() -> dict[str, Any]:
 @cache
 def p5_results() -> dict[str, Any]:
     return json.loads((GOLDEN.parent / "physics" / "p5.json").read_text())["results"]
+
+
+@cache
+def p8_results() -> dict[str, Any]:
+    return json.loads((GOLDEN.parent / "physics" / "p8.json").read_text())["results"]
+
+
+def p8_key(identifier: str, call: dict[str, Any]) -> str:
+    # A graph can call the same function repeatedly with different band parameters.
+    inputs = json.dumps([call["args"], call["kwargs"]], sort_keys=True).encode()
+    return identifier + "-" + hashlib.sha256(inputs).hexdigest()[:16]
+
+
+def assert_p8_replay(
+    identifier: str, mode: str, scattering: str | None, call: dict[str, Any]
+) -> None:
+    """Compare every original input with separately recorded P8 results, including failures."""
+    expected = p8_results()[p8_key(identifier, call)]
+    if call["function"].endswith("_fit"):
+        result = replay_fit(mode, call)
+        assert result.status == expected["status"]
+        assert result.message == expected["message"]
+        assert_fit_iterations(identifier, mode, scattering, result, expected["iterations"])
+        assert result.parameters.keys() == expected["parameters"].keys()
+        if result.status == "converged":
+            expected_values = [
+                expected["parameters"][name] for name in FIT_RESULT_NAMES[call["function"]]
+            ]
+            named_case = assert_named_fit_case(
+                identifier, mode, scattering, call, result, expected_values
+            )
+        else:
+            named_case = False
+        if not named_case:
+            assert result.parameters == pytest.approx(
+                expected["parameters"], rel=FIT_TOLERANCE, abs=1e-9
+            )
+        else:
+            # Parameters outside the recorded fitted vector (such as band_mass)
+            # retain their original P8 comparison contract.
+            for name in result.parameters.keys() - FIT_RESULT_NAMES[call["function"]]:
+                assert result.parameters[name] == pytest.approx(
+                    expected["parameters"][name], rel=FIT_TOLERANCE, abs=1e-9
+                )
+    elif "error_type" in expected:
+        with pytest.raises(ValueError) as caught:
+            replay(mode, scattering, call)
+        assert type(caught.value).__name__ == expected["error_type"]
+        assert str(caught.value) == expected["error"]
+    else:
+        assert_close(replay(mode, scattering, call), expected["result"], CURVE_TOLERANCE)
+
+
+def test_p8_preserves_all_desktop_inputs_and_evidence() -> None:
+    document = json.loads((GOLDEN.parent / "physics" / "p8.json").read_text())
+    assert set(document["results"]) == {
+        p8_key(identifier, call) for identifier, (*_, call) in zip(CALL_IDS, CALLS, strict=True)
+    }
+    assert set(document["desktop_sha256"]) == {f"{name}.json" for name in EXAMPLES}
+    for name, sha in document["desktop_sha256"].items():
+        assert hashlib.sha256((GOLDEN / name).read_bytes()).hexdigest() == sha
 
 
 def core_arguments(
@@ -309,6 +372,59 @@ def bounds_received(function: str, args: list[Any]) -> list[tuple[float, float]]
     return pairs
 
 
+def assert_named_fit_case(
+    identifier: str,
+    mode: str,
+    scattering: str | None,
+    call: dict[str, Any],
+    result: FitResult,
+    expected: Any,
+) -> bool:
+    """Apply the existing machine-dependent fit policies to either reference source."""
+    values = [result.parameters[name] for name in FIT_RESULT_NAMES[call["function"]]]
+    if identifier.startswith("02_SiP-") and (mode, scattering) in UNSTABLE_02:
+        recorded = list(flat(expected))
+        assert len(values) == len(recorded)
+        assert all(math.isfinite(value) for value in values[:3])
+        assert "collapsed_m_eff" in result.known_issues
+        assert abs(values[0]) < COLLAPSED_M_EFF
+        assert_close(values[1:3], recorded[1:3], FIT_TOLERANCE)
+        bounds = bounds_received(call["function"], call["args"])
+        for value, (lower, upper) in zip(values[:3], bounds[:3], strict=True):
+            assert lower <= value <= upper
+    elif identifier.startswith("01_Fe2VAl09Si01-") and mode == "d1":
+        assert_close(values, expected, D1_01_TOLERANCE)
+    elif identifier.startswith("02_SiP-") and mode == "spb_s":
+        assert_close(values, expected, SPB_S_02_TOLERANCE)
+    else:
+        return False
+    return True
+
+
+def assert_fit_iterations(
+    identifier: str,
+    mode: str,
+    scattering: str | None,
+    result: FitResult,
+    expected: int | None,
+) -> None:
+    if (
+        result.status == "converged"
+        and identifier.startswith("02_SiP-")
+        and (mode, scattering) in UNSTABLE_02
+    ):
+        fit_mode = "dpb_s_rho_rh" if mode == "d1" else mode
+        description = default_registry.get("dpb").describe().fit_mode(fit_mode)
+        if description.iterative:
+            assert type(result.iterations) is int
+            assert description.max_iterations is not None
+            assert 1 <= result.iterations <= description.max_iterations
+        else:
+            assert result.iterations is None
+    else:
+        assert result.iterations == expected
+
+
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize(("example", "mode", "scattering", "source", "call"), CALLS, ids=CALL_IDS)
 def test_replay_matches_the_desktop(
@@ -340,24 +456,14 @@ def test_replay_matches_the_desktop(
         call = dict(
             call, result=[*call["result"][:-1], expected_p4["corrected_hall_curves"][identifier]]
         )
-    result = replay(mode, scattering, call)
-    if not call["function"].endswith("_fit"):
-        assert_close(result, call["result"], CURVE_TOLERANCE)
-    elif example == "02_SiP" and (mode, scattering) in UNSTABLE_02:
-        values, recorded = list(flat(result)), list(flat(call["result"]))
-        assert len(values) == len(recorded)
-        assert abs(values[0]) < COLLAPSED_M_EFF
-        assert_close(values[1:3], recorded[1:3], FIT_TOLERANCE)
-        bounds = bounds_received(call["function"], call["args"])
-        fitted = [(v, b) for v, b in zip(values, bounds, strict=False)]
-        for value, (lower, upper) in fitted[:3]:
-            assert lower <= value <= upper
-    elif example == "01_Fe2VAl09Si01" and mode == "d1":
-        assert_close(result, call["result"], D1_01_TOLERANCE)
-    elif example == "02_SiP" and mode == "spb_s":
-        assert_close(result, call["result"], SPB_S_02_TOLERANCE)
+    if call["function"].endswith("_fit"):
+        result = replay_fit(mode, call)
+        assert result.status == "converged"
+        if not assert_named_fit_case(identifier, mode, scattering, call, result, call["result"]):
+            values = [result.parameters[name] for name in FIT_RESULT_NAMES[call["function"]]]
+            assert_close(values, call["result"], FIT_TOLERANCE)
     else:
-        assert_close(result, call["result"], FIT_TOLERANCE)
+        assert_close(replay(mode, scattering, call), call["result"], CURVE_TOLERANCE)
 
 
 def recorded_iterative_runs() -> Iterator[tuple[str, str | None, int, dict[str, Any]]]:
@@ -385,6 +491,37 @@ def test_iterations_match_the_desktop(
     result = replay_fit(mode, call)
     assert result.status == "converged"
     assert result.iterations == iterations
+
+
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize(("example", "mode", "scattering", "source", "call"), CALLS, ids=CALL_IDS)
+def test_replay_matches_p8_expectations(
+    example: str, mode: str, scattering: str | None, source: str, call: dict[str, Any]
+) -> None:
+    identifier = f"{example}-{mode}-{scattering}-{source}-{call['function']}"
+    assert_p8_replay(identifier, mode, scattering, call)
+
+
+def p8_iterative_runs() -> Iterator[tuple[str, str, dict[str, Any]]]:
+    for identifier, (_, mode, _, source, call) in zip(CALL_IDS, CALLS, strict=True):
+        if source == "thread" and call["function"] in {"dpb_see_res_fit", "dpb_see_res_hall_fit"}:
+            yield identifier, mode, call
+
+
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize(("identifier", "mode", "call"), list(p8_iterative_runs()))
+def test_iterations_match_p8_expectations(identifier: str, mode: str, call: dict[str, Any]) -> None:
+    result = replay_fit(mode, call)
+    if "error" not in call:
+        assert result.status == "converged"
+    assert result.status == p8_results()[p8_key(identifier, call)]["status"]
+    assert_fit_iterations(
+        identifier,
+        mode,
+        recorded_arguments(call).get("scatter_type"),
+        result,
+        p8_results()[p8_key(identifier, call)]["iterations"],
+    )
 
 
 def same_value(first: Any, second: Any) -> bool:
@@ -467,3 +604,89 @@ def test_coverage_of_public_methods_is_as_documented() -> None:
 def test_unstable_list_only_holds_cases_that_exist() -> None:
     found = {(mode, scattering) for example, mode, scattering, *_ in CALLS if example == "02_SiP"}
     assert UNSTABLE_02 <= found
+
+
+@pytest.mark.parametrize(
+    ("energy", "accepted"),
+    [(3.7588615470073488, True), (3.758784715324298 * 1.001, False)],
+)
+def test_p8_spb_sip_uses_the_existing_cross_platform_fit_contract(
+    monkeypatch: pytest.MonkeyPatch, energy: float, accepted: bool
+) -> None:
+    identifier = "02_SiP-spb_s-None-thread-spb_see_fit"
+    call = CALLS[CALL_IDS.index(identifier)][-1]
+    expected = p8_results()[p8_key(identifier, call)]
+    result = FitResult(
+        expected["parameters"] | {"fermi_energy": energy},
+        "converged",
+        iterations=expected["iterations"],
+        message=expected["message"],
+    )
+    monkeypatch.setattr(f"{__name__}.replay_fit", lambda *args: result)
+    if accepted:
+        assert_p8_replay(identifier, "spb_s", None, call)
+    else:
+        with pytest.raises(AssertionError):
+            assert_p8_replay(identifier, "spb_s", None, call)
+
+
+@pytest.mark.parametrize(
+    "change", ["allowed", "mass", "gap", "fermi", "warning", "status", "message"]
+)
+def test_p8_d19_keeps_the_existing_physical_and_failure_checks(
+    monkeypatch: pytest.MonkeyPatch, change: str
+) -> None:
+    identifier = "02_SiP-dpb_s_rho-acPh-thread-dpb_see_res_fit"
+    call = CALLS[CALL_IDS.index(identifier)][-1]
+    expected = p8_results()[p8_key(identifier, call)]
+    parameters = dict(expected["parameters"])
+    # D19 already permits machine-dependent scattering after the mass collapses.
+    parameters["A"] = 40000.0
+    if change == "mass":
+        parameters["m_eff"] = COLLAPSED_M_EFF
+    elif change == "gap":
+        parameters["band_gap"] *= 1.001
+    elif change == "fermi":
+        parameters["fermi_energy"] *= 1.001
+    result = FitResult(
+        parameters,
+        "failed" if change == "status" else "converged",
+        iterations=1,
+        message="unexpected failure" if change == "message" else expected["message"],
+        known_issues=() if change == "warning" else ("collapsed_m_eff",),
+    )
+    monkeypatch.setattr(f"{__name__}.replay_fit", lambda *args: result)
+    if change == "allowed":
+        assert_p8_replay(identifier, "dpb_s_rho", "acPh", call)
+    else:
+        with pytest.raises(AssertionError):
+            assert_p8_replay(identifier, "dpb_s_rho", "acPh", call)
+
+
+@pytest.mark.parametrize("iterations", [0, 1, 1000, 1001, None, 1.5])
+def test_d19_iterations_stay_within_the_existing_mode_budget(iterations: Any) -> None:
+    result = FitResult({}, "converged", iterations=iterations)
+    if type(iterations) is int and 1 <= iterations <= 1000:
+        assert_fit_iterations("02_SiP-dpb_s_rho-acPh-thread", "dpb_s_rho", "acPh", result, 3)
+    else:
+        with pytest.raises(AssertionError):
+            assert_fit_iterations("02_SiP-dpb_s_rho-acPh-thread", "dpb_s_rho", "acPh", result, 3)
+
+
+def test_stable_iterations_remain_exact_and_noniterative_d19_remains_none() -> None:
+    with pytest.raises(AssertionError):
+        assert_fit_iterations(
+            "01_Fe2VAl09Si01-dpb_s_rho-acPh-thread",
+            "dpb_s_rho",
+            "acPh",
+            FitResult({}, "converged", iterations=2),
+            3,
+        )
+    with pytest.raises(AssertionError):
+        assert_fit_iterations(
+            "02_SiP-dpb_s-None-thread",
+            "dpb_s",
+            None,
+            FitResult({}, "converged", iterations=1),
+            None,
+        )

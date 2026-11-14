@@ -52,3 +52,10 @@ P4/P12 (#83, #103) remove the SPB Hall disabled-mode and stale-Fermi-energy flag
 - **Choosing a net by the first and last rows (P9)** does not reach this path, because the parser sorts (D22). A client can send `POST /api/guess` unsorted rows, and its answer then carries the warning `unsorted_temperature`. It belongs to no mode, so it is not an entry here.
 - **Missing desktop coverage (#71)** remains open, including the desktop/web
   parity gate; corrected web results do not establish desktop parity.
+
+P8 (#87) checks density roots before transport. An uncertifiable density root
+fails the calculation request (HTTP 422) or fit explicitly; no partial array
+is used. Successful density checks do not prevent the separate F₀ transport
+cancellation/underflow (#105), which can still produce nonfinite curve points.
+Invalid optimizer trial domains are rejected separately from numerical failures;
+invalid starts still fail. See [the solver contract](chemical-potential.md).

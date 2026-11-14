@@ -1,6 +1,8 @@
 import asyncio
+import json
 import math
 from collections.abc import Iterator
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -197,6 +199,55 @@ def test_start_outside_the_bounds_is_a_failed_fit(client: TestClient) -> None:
     assert body["status"] == "failed"
     assert "bound" in body["message"].lower()
     assert body["parameters"] == default_start(_mode("dpb", "dpb_s"))
+
+
+@pytest.mark.parametrize(
+    ("model", "mode", "start"),
+    [
+        ("spb", "spb_s", {"band_mass": 1.0, "fermi_energy": 0.0}),
+        ("dpb", "dpb_s", {"m_eff": -1.0, "band_gap": 1000.0, "fermi_energy": 1000.0}),
+    ],
+)
+def test_no_root_at_the_start_ends_with_a_failed_fit(
+    client: TestClient, model: str, mode: str, start: dict[str, float]
+) -> None:
+    events = _events(client, _body(model, mode, start=start))
+
+    assert [event["type"] for event in events] == ["started", "done"]
+    result = events[-1]["result"]
+    assert result["status"] == "failed"
+    assert (
+        result["message"] == "The chemical-potential balance could not be verified during the fit."
+    )
+    assert result["parameters"] == start
+
+
+def test_valid_start_recovers_from_no_root_optimizer_trials(client: TestClient) -> None:
+    # The historical SiP fit has a valid start and optimum, but TRF probes E_F <= 0.
+    fixture = (
+        Path(__file__).resolve().parents[3]
+        / "packages/seeband_core/tests/fixtures/golden/02_SiP.json"
+    )
+    document = json.loads(fixture.read_text())
+    run = next(run for run in document["runs"] if run["mode"] == "spb_s")
+    call = run["calls"][0]
+    temperature, seebeck, mass, start, bounds = call["args"]
+    result = _result(
+        client,
+        _body(
+            "spb",
+            "spb_s",
+            start={"band_mass": mass, "fermi_energy": start[0]},
+            bounds={"fermi_energy": {"lower": bounds[0][0], "upper": bounds[1][0]}},
+            min_temperature_k=min(temperature),
+            max_temperature_k=max(temperature),
+            measurements={"seebeck": {"temperature_k": temperature, "values": seebeck}},
+        ),
+    )
+
+    assert result["status"] == "converged"
+    assert "message" not in result
+    assert result["parameters"]["fermi_energy"] == pytest.approx(call["result"][0], rel=1e-4)
 
 
 def test_degeneracies_reach_the_fit(client: TestClient) -> None:

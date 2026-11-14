@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- P8 (#87), core `0.1.1`: solve the signed carrier balance independently at
+  each temperature with a checked bracketed method. Use the same negative-tail
+  Fermi approximation in a stable algebraic form. Reject analytically invalid
+  optimizer trial points without hiding numerical failures at valid parameters;
+  invalid starts and uncertifiable density roots still fail explicitly. Keep
+  desktop compatibility tests alongside separate P8 regression expectations.
+  No bounds, fit weights or conservation tolerance are relaxed.
+
 - Documentation review: correct the signed SPB Hall cutoff and clarify DPB
   convergence timing, interpolation coverage, degeneracy cancellation and the
   open negative-weight interpretation. No calculation behavior changed.
