@@ -36,10 +36,11 @@ the fixed point an outer loop written apart from the core reaches, with S RMSE
 
 The existing budgets remain 1000 completed iterations for S + ρ and 20 for
 S + ρ + R_H. Reaching a budget is reported as `iteration_limit`, not success.
-Through the API, S + ρ cannot reach its budget: 1000 iterations on 03 with
-acPhDis took 87.5 s, past the 60 s fit time limit, so a fit that does not
-settle ends as `fit_timeout`, with no values. A parameter drifting near 0, or
-flipping between two values, now runs to that limit where the desktop rule
+On the measured 03 example with acPhDis, 1000 iterations took 87.5 s, longer
+than the default 60 s fit time limit. This is one measured case, not a general
+API limit: timeout settings, data and hardware can differ. A fit exceeding its
+configured timeout ends as `fit_timeout`, with no values. A parameter drifting
+near 0, or flipping between two values, now runs to that limit where the desktop rule
 stopped after one iteration; this was not seen on real data.
 The inherited final Seebeck-only update at the limit is unchanged; #176
 tracks the broader stopping rule and consistency of the final model.

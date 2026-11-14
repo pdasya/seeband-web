@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Documentation review: correct the signed SPB Hall cutoff and clarify DPB
+  convergence timing, interpolation coverage, degeneracy cancellation and the
+  open negative-weight interpretation. No calculation behavior changed.
+
 - P8 (#87): solve the signed carrier balance with a bracketed method in
   reduced chemical potential, check the normalized residual at every
   temperature, and restore the input order after sorting and deduplication.
@@ -37,8 +41,8 @@
   Hall factors recover the degenerate limit 1 and nondegenerate limit 3π/8.
   Synthetic regression results replace no historical desktop captures.
   Every fit now sorts its points by temperature, so an API client's order
-  gives the result a sorted file does; a Hall point beyond the reach of the
-  Fermi integrals (μ/T above 700) is NaN rather than a failed curve; and a
+  gives the result a sorted file does; a Hall point with signed reduced
+  potential x = sign(m) μ(T)/T above 700 is NaN rather than a failed curve; and a
   start mass of 0, on an empty branch, or of the wrong sign for R_H fails with
   its reason. The band-mass error is conditional on E_F.
   Human physicist confirmation and parity/author review remain pending;
