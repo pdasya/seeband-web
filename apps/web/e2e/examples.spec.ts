@@ -92,9 +92,6 @@ test("a desktop example, with no header and in SI, is marked as assumed and need
   await expect(unitOfS).toHaveAccessibleName(
     "Unit of Seebeck coefficient: V/K, assumed",
   );
-  await expect(
-    page.getByText("SI is assumed for T, S,", { exact: false }),
-  ).toBeVisible();
   await expect(page.getByText("Check the unit", { exact: true })).toHaveCount(
     0,
   );
@@ -108,9 +105,6 @@ test("a desktop example, with no header and in SI, is marked as assumed and need
   await unitOfS.click();
   await page.getByRole("option", { name: "V/K", exact: true }).click();
   await expect(unitOfS).toHaveAccessibleName("Unit of Seebeck coefficient");
-  await expect(
-    page.getByText("SI is assumed for T,", { exact: false }),
-  ).toBeVisible();
 
   await page.getByRole("button", { name: "Hide" }).click();
   await expect(

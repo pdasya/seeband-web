@@ -582,10 +582,10 @@ test("a slot shows focus when reached with the keyboard", async ({ page }) => {
   await page.keyboard.press("Tab");
 
   await expect(seebeckInput(page)).toBeFocused();
+  // The frame of the slot, which also holds the ρ slot's switch.
   const outline = await page
-    .locator("label")
-    .first()
-    .evaluate((label) => getComputedStyle(label).outlineStyle);
+    .locator('[data-file-slot="seebeck"]')
+    .evaluate((slot) => getComputedStyle(slot).outlineStyle);
 
   expect(outline).toBe("solid");
 });

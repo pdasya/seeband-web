@@ -411,7 +411,7 @@ export interface components {
              */
             role: "temperature" | "seebeck" | "resistivity" | "conductivity" | "hall";
             /** Unit */
-            unit?: ("K" | "C" | "V/K" | "uV/K" | "mV/K" | "Ohm*m" | "Ohm*cm" | "mOhm*cm" | "uOhm*m" | "S/m" | "S/cm" | "m^3/C" | "cm^3/C") | null;
+            unit?: ("K" | "C" | "V/K" | "uV/K" | "mV/K" | "Ohm*m" | "Ohm*cm" | "mOhm*cm" | "uOhm*m" | "uOhm*cm" | "S/m" | "S/cm" | "m^3/C" | "cm^3/C") | null;
             /** Unit Source */
             unit_source?: ("chosen" | "header" | "default") | null;
         };
@@ -432,7 +432,7 @@ export interface components {
              */
             role: "temperature" | "seebeck" | "resistivity" | "conductivity" | "hall";
             /** Unit */
-            unit?: ("K" | "C" | "V/K" | "uV/K" | "mV/K" | "Ohm*m" | "Ohm*cm" | "mOhm*cm" | "uOhm*m" | "S/m" | "S/cm" | "m^3/C" | "cm^3/C") | null;
+            unit?: ("K" | "C" | "V/K" | "uV/K" | "mV/K" | "Ohm*m" | "Ohm*cm" | "mOhm*cm" | "uOhm*m" | "uOhm*cm" | "S/m" | "S/cm" | "m^3/C" | "cm^3/C") | null;
         };
         /**
          * CurveAvailabilityResponse

@@ -3,7 +3,9 @@ import type { Ref } from "react";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -62,11 +64,27 @@ export function UnitSelect({
         <SelectValue placeholder={text.units[value]} />
       </SelectTrigger>
       <SelectContent>
-        {UNITS_OF[role].map((unit) => (
-          <SelectItem key={unit} value={unit} className="font-mono">
-            {text.units[unit]}
-          </SelectItem>
-        ))}
+        {role === "resistivity"
+          ? // Grouped by length unit, so a prefix is not mistaken across m and cm.
+            (["metre", "centimetre"] as const).map((group) => (
+              <SelectGroup key={group}>
+                <SelectLabel>{text.unitGroups[group]}</SelectLabel>
+                {UNITS_OF[role]
+                  .filter(
+                    (unit) => unit.endsWith("cm") === (group === "centimetre"),
+                  )
+                  .map((unit) => (
+                    <SelectItem key={unit} value={unit} className="font-mono">
+                      {text.units[unit]}
+                    </SelectItem>
+                  ))}
+              </SelectGroup>
+            ))
+          : UNITS_OF[role].map((unit) => (
+              <SelectItem key={unit} value={unit} className="font-mono">
+                {text.units[unit]}
+              </SelectItem>
+            ))}
       </SelectContent>
     </Select>
   );

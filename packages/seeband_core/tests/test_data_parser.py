@@ -12,6 +12,7 @@ from seeband_core.data_parser import (
     MAX_ERRORS,
     MAX_LINE_LENGTH,
     MIN_ROWS,
+    QUANTITY_OF,
     UNITS,
     ParseIssue,
     header_unit,
@@ -182,7 +183,7 @@ def test_lower_case_t_and_s_are_not_taken_for_temperature_or_seebeck(text: str) 
         ("T,S (err)", 1),
         ("T (F),S", 0),
         ("T (°F),S", 0),
-        ("T,rho (uOhm cm)", 1),
+        ("T,rho (nOhm cm)", 1),
     ],
 )
 def test_a_column_in_another_unit_is_not_read_as_if_in_ours(header: str, column: int) -> None:
@@ -225,6 +226,13 @@ def si_text() -> str:
         ("resistivity", "mOhm cm", "mOhm*cm"),
         ("resistivity", "mΩ·cm", "mOhm*cm"),
         ("resistivity", "µΩ·m", "uOhm*m"),
+        ("resistivity", "Ohm cm", "Ohm*cm"),
+        ("resistivity", "Ω·cm", "Ohm*cm"),
+        ("resistivity", "µΩ·cm", "uOhm*cm"),
+        ("resistivity", "uOhm cm", "uOhm*cm"),
+        ("resistivity", "μ\u2126\u22c5cm", "uOhm*cm"),
+        ("seebeck", "mV/K", "mV/K"),
+        ("seebeck", "mV / K", "mV/K"),
         # OHM SIGN, as Excel and Windows write it, and the dot operator.
         ("resistivity", "\u2126·m", "Ohm*m"),
         ("resistivity", "m\u2126\u22c5cm", "mOhm*cm"),
@@ -303,6 +311,27 @@ def test_lab_units_named_in_the_header_read_the_same_as_si() -> None:
         )
 
 
+@pytest.mark.parametrize(
+    ("header", "unit", "exponent"),
+    [("mV/K", "mV/K", 3), ("Ω·cm", "Ohm*cm", 2), ("µΩ·cm", "uOhm*cm", 8)],
+)
+def test_the_lab_units_of_fs23_read_the_same_as_si_from_a_header_or_a_choice(
+    header: str, unit: Any, exponent: int
+) -> None:
+    role: Any = "seebeck" if unit == "mV/K" else "resistivity"
+    column = 1 if role == "seebeck" else 2
+    si = parse_table(si_text())
+    rows = [line.split() for line in si_text().strip().splitlines()[1:]]
+    values = "".join(f"{row[0]}\t{Decimal(row[column]).scaleb(exponent)}\n" for row in rows)
+    named = parse_table(f"T\tx ({header})\n{values}", mapping={0: "temperature", 1: role})
+    chosen = parse_table(values, mapping={0: "temperature", 1: role}, units={1: unit})
+    assert named.units[1] == chosen.units[1] == unit
+    assert (named.unit_sources[1], chosen.unit_sources[1]) == ("header", "chosen")
+    expected = si.measurements[QUANTITY_OF[role]].values.tolist()
+    assert named.measurements[QUANTITY_OF[role]].values.tolist() == expected
+    assert chosen.measurements[QUANTITY_OF[role]].values.tolist() == expected
+
+
 def test_lab_units_chosen_by_a_user_read_the_same_as_si() -> None:
     mapping: Any = {0: "temperature", 1: "seebeck", 2: "resistivity", 3: "hall"}
     chosen: Any = {1: "uV/K", 2: "mOhm*cm", 3: "cm^3/C"}
@@ -321,8 +350,20 @@ def _in_lab_units(path: Path, exponent: int) -> str:
     return "\n".join(f"{t} {Decimal(v).scaleb(exponent)}" for t, v in rows) + "\n"
 
 
-def test_a_fit_from_lab_units_equals_the_fit_from_si() -> None:
-    """FS20: SI data and the same data in µV/K and mΩ·cm give the same parameters."""
+@pytest.mark.parametrize(
+    ("seebeck_unit", "seebeck_exponent", "resistivity_unit", "resistivity_exponent"),
+    [
+        # FS20
+        ("uV/K", 6, "mOhm*cm", 5),
+        # FS23: the units labs also write, for semiconductors and metals.
+        ("mV/K", 3, "Ohm*cm", 2),
+        ("mV/K", 3, "uOhm*cm", 8),
+    ],
+)
+def test_a_fit_from_lab_units_equals_the_fit_from_si(
+    seebeck_unit: Any, seebeck_exponent: int, resistivity_unit: Any, resistivity_exponent: int
+) -> None:
+    """SI data and the same data in lab units give the same parameters."""
     example = FIXTURES / "examples" / "01_Fe2VAl09Si01"
     si = {
         "seebeck": parse_table(Path(f"{example}_see.txt").read_text(), "seebeck"),
@@ -330,14 +371,14 @@ def test_a_fit_from_lab_units_equals_the_fit_from_si() -> None:
     }
     lab = {
         "seebeck": parse_table(
-            _in_lab_units(Path(f"{example}_see.txt"), 6),
+            _in_lab_units(Path(f"{example}_see.txt"), seebeck_exponent),
             mapping={0: "temperature", 1: "seebeck"},
-            units={1: "uV/K"},
+            units={1: seebeck_unit},
         ),
         "resistivity": parse_table(
-            _in_lab_units(Path(f"{example}_rho.txt"), 5),
+            _in_lab_units(Path(f"{example}_rho.txt"), resistivity_exponent),
             mapping={0: "temperature", 1: "resistivity"},
-            units={1: "mOhm*cm"},
+            units={1: resistivity_unit},
         ),
     }
     model = registry.get("dpb")
@@ -477,6 +518,35 @@ def test_the_magnitude_warning_says_which_limit_is_passed(
     table = parse_table(text, mapping={0: "temperature", 1: role}, units={1: unit})
     magnitude = [issue for issue in table.warnings if issue.code == "implausible_magnitude"]
     assert [issue.direction for issue in magnitude] == ([] if direction is None else [direction])
+
+
+# Rows of the "passes without a warning" table in input-data.md: the role, the unit the values are
+# read in, written values that pass, and the first written values past the table's bound.
+SILENT_MISTAKES: list[tuple[Any, Any, list[float], list[float]]] = [
+    ("resistivity", "Ohm*m", [1.0, 0.5], [1.5]),  # Ω·cm, mΩ·cm, µΩ·m or µΩ·cm up to 1
+    ("resistivity", "uOhm*cm", [0.01, 1e8], [0.009]),  # mΩ·cm or Ω·m from 0.01
+    ("resistivity", "uOhm*m", [1e-4, 1e6], [9e-5]),  # Ω·m from 1e-4, µΩ·cm and mΩ·cm always
+    ("resistivity", "mOhm*cm", [1e-5, 1e5], [9e-6]),  # Ω·m from 1e-5, µΩ·cm always
+    ("seebeck", "V/K", [0.01, 0.005], [0.02]),  # mV/K up to 0.01
+    ("seebeck", "mV/K", [10.0], [11.0]),  # µV/K up to 10
+    ("seebeck", "uV/K", [0.1, 100.0], [0.09]),  # mV/K from 0.1
+]
+
+
+@pytest.mark.parametrize(("role", "read_as", "passing", "warned"), SILENT_MISTAKES)
+def test_the_documented_silent_mistakes_pass_and_end_where_the_table_says(
+    role: Any, read_as: Any, passing: list[float], warned: list[float]
+) -> None:
+    def warns(value: float) -> bool:
+        table = parse_table(
+            f"100 {value!r}\n200 {value!r}\n",
+            mapping={0: "temperature", 1: role},
+            units={1: read_as},
+        )
+        return any(issue.code == "implausible_magnitude" for issue in table.warnings)
+
+    assert [warns(value) for value in passing] == [False] * len(passing)
+    assert [warns(value) for value in warned] == [True] * len(warned)
 
 
 def test_a_unit_from_another_quantity_is_refused_and_reads_nothing() -> None:

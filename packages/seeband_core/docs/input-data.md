@@ -12,15 +12,15 @@
 
 ## Units
 
-| Quantity | Units (`Unit`)                         | Factor to SI        |
-| -------- | -------------------------------------- | ------------------- |
-| T        | `K`, `C` (°C)                          | 1; °C adds 273.15   |
-| S        | `V/K`, `uV/K`, `mV/K`                  | 1, 1e-6, 1e-3       |
-| ρ        | `Ohm*m`, `Ohm*cm`, `mOhm*cm`, `uOhm*m` | 1, 1e-2, 1e-5, 1e-6 |
-| σ        | `S/m`, `S/cm`                          | 1, 100              |
-| R_H      | `m^3/C`, `cm^3/C`                      | 1, 1e-6             |
+| Quantity | Units (`Unit`)                                    | Factor to SI              |
+| -------- | ------------------------------------------------- | ------------------------- |
+| T        | `K`, `C` (°C)                                     | 1; °C adds 273.15         |
+| S        | `V/K`, `uV/K`, `mV/K`                             | 1, 1e-6, 1e-3             |
+| ρ        | `Ohm*m`, `Ohm*cm`, `mOhm*cm`, `uOhm*m`, `uOhm*cm` | 1, 1e-2, 1e-5, 1e-6, 1e-8 |
+| σ        | `S/m`, `S/cm`                                     | 1, 100                    |
+| R_H      | `m^3/C`, `cm^3/C`                                 | 1, 1e-6                   |
 
-`UNITS` holds this table as a power of ten and an offset for each unit, and `to_si` applies it in decimal, to the value as written, with one rounding. So `50.1` in µV/K gives the very float that `5.01e-5` in V/K does, and `26.85` °C that of `300` K. A float product would not: `50 * 1e-6` is `4.9999999999999996e-05`, and a fit turns that last bit into differences of about 1e-8 in its parameters. A fit from the same data in µV/K and mΩ·cm equals the fit from SI exactly. `ParsedTable.units` gives the unit each mapped column was read in, and `columns` keeps the values as written, for a preview.
+`UNITS` holds this table as a power of ten and an offset for each unit, and `to_si` applies it in decimal, to the value as written, with one rounding. So `50.1` in µV/K gives the very float that `5.01e-5` in V/K does, and `26.85` °C that of `300` K. A float product would not: `50 * 1e-6` is `4.9999999999999996e-05`, and a fit turns that last bit into differences of about 1e-8 in its parameters. A fit from the same data in µV/K and mΩ·cm, or in mV/K with Ω·cm or µΩ·cm, equals the fit from SI to 1e-12 relative (`test_a_fit_from_lab_units_equals_the_fit_from_si`). Ω·cm suits semiconductors, µΩ·cm metals (FS23). `ParsedTable.units` gives the unit each mapped column was read in, and `columns` keeps the values as written, for a preview.
 
 A header's unit is read in any usual spelling: spaces, `*`, `·`, `⋅` and `^` do not matter, `µ`, `μ` and `u` are the same, `Ω` is `Ohm` (the Greek capital and the ohm sign U+2126, which Excel and Windows write), and `³` is `3`. So `S (µV/K)`, `rho (mΩ·cm)` and `RH (cm³/C)` read in those units. σ also reads `1/Ohm m`, `1/Ω cm`, `Ohm^-1 m^-1` and `Ohm^-1 cm^-1` as S/m and S/cm, but not `1/(Ohm m)`, as brackets inside a unit end it. Case does matter for a leading `M`, as mega is not milli: `MOhm cm` is not read as `mOhm cm`.
 
@@ -41,17 +41,27 @@ This catches µV/K read as V/K, which is 1e6 too large. The warning says which l
 
 Only the largest |value| is checked, and T is not checked at all. These mistakes give no warning:
 
-| Mistake                                         | Passes without a warning when                          |
-| ----------------------------------------------- | ------------------------------------------------------ |
-| T in °C read as K, or T in K read as °C         | always                                                 |
-| ρ in mΩ·cm read as Ω·m (1e5 too large)          | ρ up to 1 mΩ·cm, as in many good thermoelectrics       |
-| ρ in µΩ·m read as Ω·m (1e6 too large)           | ρ up to 1 µΩ·m                                         |
-| ρ in mΩ·cm read as µΩ·m, or the other way (10×) | always                                                 |
-| ρ in Ω·m read as mΩ·cm or µΩ·m                  | ρ from 1e-5 or 1e-4 Ω·m                                |
-| R_H in cm³/C read as m³/C (1e6 too large)       | \|R_H\| up to 0.1 cm³/C, carriers from about 6e19 cm⁻³ |
-| R_H in m³/C read as cm³/C                       | \|R_H\| from 1e-7 m³/C                                 |
-| S in mV/K read as V/K                           | \|S\| up to 10 mV/K                                    |
-| separate files with T in different units        | always here, as the parser reads one file at a time    |
+| Mistake                                          | Passes without a warning when                                |
+| ------------------------------------------------ | ------------------------------------------------------------ |
+| T in °C read as K, or T in K read as °C          | always                                                       |
+| ρ in Ω·cm read as Ω·m (100× too large)           | ρ up to 1 Ω·cm                                               |
+| ρ in mΩ·cm read as Ω·m (1e5 too large)           | ρ up to 1 mΩ·cm, as in many good thermoelectrics             |
+| ρ in µΩ·m read as Ω·m (1e6 too large)            | ρ up to 1 µΩ·m                                               |
+| ρ in µΩ·cm read as Ω·m (1e8 too large)           | ρ up to 1 µΩ·cm; metals, from about 2 µΩ·cm, get the warning |
+| ρ in mΩ·cm read as µΩ·m, or the other way (10×)  | always                                                       |
+| ρ in µΩ·cm read as µΩ·m, or the other way (100×) | always                                                       |
+| ρ in mΩ·cm read as µΩ·cm (1000× too small)       | ρ from 0.01 mΩ·cm, so almost always                          |
+| ρ in µΩ·cm read as mΩ·cm (1000× too large)       | always                                                       |
+| ρ in Ω·m read as mΩ·cm or µΩ·m                   | ρ from 1e-5 or 1e-4 Ω·m                                      |
+| ρ in Ω·m read as µΩ·cm (1e8 too small)           | ρ from 0.01 Ω·m                                              |
+| R_H in cm³/C read as m³/C (1e6 too large)        | \|R_H\| up to 0.1 cm³/C, carriers from about 6e19 cm⁻³       |
+| R_H in m³/C read as cm³/C                        | \|R_H\| from 1e-7 m³/C                                       |
+| S in mV/K read as V/K (1000× too large)          | \|S\| up to 0.01 mV/K, that is 10 µV/K                       |
+| S in µV/K read as mV/K (1000× too large)         | \|S\| up to 10 µV/K                                          |
+| S in mV/K read as µV/K (1000× too small)         | \|S\| from 0.1 mV/K, that is 100 µV/K                        |
+| separate files with T in different units         | always here, as the parser reads one file at a time          |
+
+`test_the_documented_silent_mistakes_pass_and_end_where_the_table_says` checks each row with a unit against `PLAUSIBLE_MAGNITUDE`, so the table and the limits cannot drift apart. A unit select cannot tell these apart either: the first row as written beside its SI value is what shows a wrong choice.
 
 `unit_assumed` says when a header names a unit that was not used. A column with no unit in its header is read in SI with no warning. The web app compares the T ranges of separate files, and marks a unit nothing named (FS22).
 
@@ -69,13 +79,13 @@ A file with no header has every column `default` until a user chooses.
 
 Any lines before the first row of numbers are text, and the last of them is the header. A line is text if a field does not start like a number, so a typo such as `3O0 1e-6` is an error on its line and does not become a header.
 
-| Quantity | Recognised headers     | Unit in brackets, if given |
-| -------- | ---------------------- | -------------------------- |
-| T        | T, T_K, temp           | K, °C (also C, degC, ℃)    |
-| S        | S, seebeck             | V/K, µV/K, mV/K            |
-| ρ        | rho, ρ, resistivity    | Ω·m, Ω·cm, mΩ·cm, µΩ·m     |
-| σ        | sigma, σ, conductivity | S/m, S/cm                  |
-| R_H      | RH, R_H, hall          | m^3/C, m³/C                |
+| Quantity | Recognised headers     | Unit in brackets, if given    |
+| -------- | ---------------------- | ----------------------------- |
+| T        | T, T_K, temp           | K, °C (also C, degC, ℃)       |
+| S        | S, seebeck             | V/K, µV/K, mV/K               |
+| ρ        | rho, ρ, resistivity    | Ω·m, Ω·cm, mΩ·cm, µΩ·m, µΩ·cm |
+| σ        | sigma, σ, conductivity | S/m, S/cm                     |
+| R_H      | RH, R_H, hall          | m^3/C, m³/C                   |
 
 Names are matched without regard to case, except `T` and `S`: lower-case `t` and `s` usually mean time and a standard deviation.
 

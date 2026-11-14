@@ -53,9 +53,10 @@ describe("UNITS_OF", () => {
     expect(UNITS_OF.seebeck).toEqual(["V/K", "uV/K", "mV/K"]);
     expect(UNITS_OF.resistivity).toEqual([
       "Ohm*m",
+      "uOhm*m",
       "Ohm*cm",
       "mOhm*cm",
-      "uOhm*m",
+      "uOhm*cm",
     ]);
     expect(UNITS_OF.hall[0]).toBe("m^3/C");
   });
@@ -215,7 +216,11 @@ describe("unitDoubtMessage", () => {
       "These values are far larger than any usual Seebeck coefficient in V/K, the unit assumed. If the file is in µV/K or mV/K, choose it.",
     );
     expect(unitDoubtMessage(above, "resistivity", assumed("Ohm*m"))).toContain(
-      "Ω·cm, mΩ·cm or µΩ·m",
+      "Ω·cm, mΩ·cm, µΩ·m or µΩ·cm",
+    );
+    // A σ column read as ρ looks far above too, and a ρ unit would only hide it.
+    expect(unitDoubtMessage(above, "resistivity", assumed("Ohm*m"))).toContain(
+      "If the column holds σ",
     );
     expect(unitDoubtMessage(above, "hall", assumed("m^3/C"))).toContain(
       "choose cm³/C",

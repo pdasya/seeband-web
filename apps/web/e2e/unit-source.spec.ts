@@ -127,14 +127,6 @@ test("a unit nothing named is marked as assumed, and choosing one, even SI, remo
   );
   await expect(temperatureUnit(page)).toHaveText("K");
   await expect(temperatureUnit(page)).toHaveAccessibleName(ASSUMED);
-  await expect(
-    page.getByText(
-      "SI is assumed for T, S, as no unit SeeBand reads was named.",
-      {
-        exact: false,
-      },
-    ),
-  ).toBeVisible();
 
   await seebeckUnit(page).click();
   await page.getByRole("option", { name: "V/K", exact: true }).click();
@@ -144,11 +136,6 @@ test("a unit nothing named is marked as assumed, and choosing one, even SI, remo
   );
   await expect(seebeckUnit(page)).toHaveText("V/K");
   await expect(temperatureUnit(page)).toHaveAccessibleName(ASSUMED);
-  await expect(
-    page.getByText("SI is assumed for T, as no unit SeeBand reads was named.", {
-      exact: false,
-    }),
-  ).toBeVisible();
   // T was not chosen, so it goes again with no unit and stays assumed.
   expect(bodies[1]?.mapping).toEqual([
     { column: 0, role: "temperature" },
@@ -283,9 +270,40 @@ test("a column of a single table read in SI by default is marked as assumed", as
   const unitOfT = page.getByRole("combobox", { name: "Unit of T (K)" });
   await expect(unitOfT).toHaveText("K");
   await expect(unitOfT).not.toHaveAccessibleName(ASSUMED);
-  await expect(
-    page.getByText("SI is assumed for S, as no unit SeeBand reads was named.", {
-      exact: false,
+});
+
+test("the units of ρ come grouped by metre and centimetre, and µΩ·cm reads the file again", async ({
+  page,
+}) => {
+  const bodies = await serveParse(
+    page,
+    parsed({ quantity: "resistivity", units: ["K", "Ohm*m"] }),
+    parsed({
+      quantity: "resistivity",
+      units: ["K", "uOhm*cm"],
+      sources: ["default", "chosen"],
     }),
-  ).toBeVisible();
+  );
+  await page.goto("/fit");
+  await load(page, "resistivity", "rho.txt");
+
+  const unitOfRho = page.getByRole("combobox", {
+    name: /^Unit of Resistivity/,
+  });
+  await unitOfRho.click();
+  await expect(page.getByRole("group")).toHaveCount(2);
+  await expect(
+    page.getByRole("group", { name: "Per metre" }).getByRole("option"),
+  ).toHaveText(["Ω·m", "µΩ·m"]);
+  await expect(
+    page.getByRole("group", { name: "Per centimetre" }).getByRole("option"),
+  ).toHaveText(["Ω·cm", "mΩ·cm", "µΩ·cm"]);
+  await page.getByRole("option", { name: "µΩ·cm", exact: true }).click();
+
+  await expect(unitOfRho).toHaveText("µΩ·cm");
+  expect(bodies[1]?.mapping?.[1]).toEqual({
+    column: 1,
+    role: "resistivity",
+    unit: "uOhm*cm",
+  });
 });

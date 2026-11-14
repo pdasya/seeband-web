@@ -4,11 +4,11 @@ import {
   TriangleAlertIcon,
   XIcon,
 } from "lucide-react";
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useId, useRef, useState } from "react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Switch } from "@/components/ui/switch";
 import type { Role } from "@/data/columnChoice";
 import { DropArea, useFileDrop } from "@/data/DropArea";
 import { valueInUnit } from "@/data/firstValue";
@@ -66,7 +66,10 @@ function fileSummary(quantity: Quantity, entry: SessionData): string {
   return `${String(measurement.points)} ${data.points} · ${low}–${high} K · ${read}`;
 }
 
-/** Whether the ρ slot reads its next file as ρ or as σ, which the server turns into ρ = 1/σ. */
+/**
+ * Whether the ρ slot reads its next file as σ, which the server turns into ρ = 1/σ. A switch inside
+ * the slot, so the tops of the three slots stay level. Turned on, a note says what the fit uses.
+ */
 function ReadAs({
   value,
   onChange,
@@ -75,31 +78,31 @@ function ReadAs({
   onChange: (value: LoadedQuantity) => void;
 }) {
   const { data: text } = STRINGS;
+  const id = useId();
+  const sigma = value === "conductivity";
   return (
-    <ToggleGroup
-      type="single"
-      variant="outline"
-      size="sm"
-      aria-label={text.readAsLabel}
-      value={value}
-      onValueChange={(next) => {
-        // Pressing the chosen one would otherwise leave nothing chosen.
-        if (next === "resistivity" || next === "conductivity") {
-          onChange(next);
-        }
-      }}
-    >
-      {(["resistivity", "conductivity"] as const).map((option) => (
-        <ToggleGroupItem
-          key={option}
-          value={option}
-          aria-label={text.quantities[option].title}
-          className="px-3 font-mono aria-checked:bg-accent aria-checked:text-accent-foreground"
-        >
-          {text.quantities[option].symbol}
-        </ToggleGroupItem>
-      ))}
-    </ToggleGroup>
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center justify-between gap-2">
+        <label htmlFor={id} className="text-xs">
+          {text.readAsLabel}
+        </label>
+        <Switch
+          id={id}
+          checked={sigma}
+          aria-describedby={sigma ? `${id}-note` : undefined}
+          // The track off is pale on the slot's ground, so a border keeps its state visible.
+          className="data-[state=unchecked]:border-[var(--color-zinc-400)]"
+          onCheckedChange={(checked) => {
+            onChange(checked ? "conductivity" : "resistivity");
+          }}
+        />
+      </div>
+      {sigma && (
+        <p id={`${id}-note`} className="m-0 text-xs text-muted-foreground">
+          {text.readAsNote}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -134,14 +137,6 @@ function firstRowLine(quantity: Quantity, entry: SessionData): string | null {
   return values.length === 0 ? null : STRINGS.data.firstRow(values.join(" · "));
 }
 
-/** The symbols of the card's columns read in SI only because nothing named their unit. */
-function assumedSymbols(quantity: Quantity, entry: SessionData): string[] {
-  const { readAs } = entry;
-  return cardRoles(quantity, entry)
-    .filter((role) => unitIsDefault(readAs?.find((item) => item.role === role)))
-    .map(roleSymbol);
-}
-
 function FileName({ children }: { children: string }) {
   // It is cut short in the card, so the full name is in its tooltip.
   return (
@@ -164,6 +159,12 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
   const data = useSessionStore((state) => state.data[quantity]);
   // Only ρ has another quantity a file can hold in its place.
   const [readAs, setReadAs] = useState<LoadedQuantity>(quantity);
+  // A loaded file's header can say otherwise than the switch did, so the next file is read as
+  // what the card shows, not as a switch that is hidden while a file is loaded.
+  const shown = data === undefined ? null : loadedAs(quantity, data);
+  if (shown !== null && shown !== readAs) {
+    setReadAs(shown);
+  }
   const names =
     text.quantities[data === undefined ? readAs : loadedAs(quantity, data)];
   const {
@@ -317,7 +318,6 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
 
   if (data !== undefined) {
     const firstRow = firstRowLine(quantity, data);
-    const assumed = assumedSymbols(quantity, data);
     return (
       <div className="flex flex-col gap-1.5">
         {status}
@@ -383,11 +383,6 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
             {firstRow}
           </div>
         )}
-        {assumed.length > 0 && (
-          <p className="m-0 text-xs text-muted-foreground">
-            {text.unitsAssumed(assumed.join(", "))}
-          </p>
-        )}
         {data.unitDoubts !== undefined && data.unitDoubts.length > 0 && (
           <Alert>
             <TriangleAlertIcon aria-hidden="true" />
@@ -437,14 +432,16 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
   return (
     <div className="flex flex-col gap-1.5">
       {status}
-      {quantity === "resistivity" && (
-        <ReadAs value={readAs} onChange={setReadAs} />
-      )}
       <DropArea
         slotId={quantity}
         icon={<Symbol filled={false}>{names.symbol}</Symbol>}
         title={names.title}
         inputRef={input}
+        footer={
+          quantity === "resistivity" ? (
+            <ReadAs value={readAs} onChange={setReadAs} />
+          ) : undefined
+        }
         {...handlers}
       />
       {state.status === "failed" && (

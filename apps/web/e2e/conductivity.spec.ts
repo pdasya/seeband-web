@@ -71,6 +71,8 @@ async function loadRhoSlot(page: Page, name = "sigma.txt") {
 }
 
 const rhoSlot = (page: Page) => page.locator('[data-file-slot="resistivity"]');
+const sigmaSwitch = (page: Page) =>
+  page.getByRole("switch", { name: "Load σ instead" });
 
 test.beforeEach(async ({ page }) => {
   await serveModels(page);
@@ -131,9 +133,7 @@ for (const headerless of [false, true]) {
         });
       });
       await page.goto("/fit");
-      await page
-        .getByRole("radio", { name: "Conductivity", exact: true })
-        .click();
+      await sigmaSwitch(page).click();
       const sigmaText = `${headerless ? "" : "T sigma\n"}100 4e4\n200 4e4\n`;
       await rhoSlot(page)
         .locator('input[type="file"]')
@@ -202,13 +202,19 @@ test("the ρ slot reads a file as σ once σ is chosen, and the card says ρ = 1
   const bodies = await serveParse(page, parsedSigma("S/m"));
   await page.goto("/fit");
 
-  const choice = page.getByRole("radiogroup", {
-    name: "Load ρ, or σ in its place",
-  });
-  await expect(
-    choice.getByRole("radio", { name: "Resistivity" }),
-  ).toBeChecked();
-  await choice.getByRole("radio", { name: "Conductivity" }).click();
+  // Inside the ρ slot, which stays level with the others; off reads ρ.
+  await expect(rhoSlot(page).getByRole("switch")).toHaveAccessibleName(
+    "Load σ instead",
+  );
+  await expect(sigmaSwitch(page)).not.toBeChecked();
+  await expect(rhoSlot(page).getByText(/ρ = 1\/σ/)).toHaveCount(0);
+  await sigmaSwitch(page).click();
+  await expect(sigmaSwitch(page)).toBeChecked();
+  await expect(rhoSlot(page).getByText("Conductivity")).toBeVisible();
+  // Before a file, the slot says what the fit will use, also to a screen reader.
+  await expect(sigmaSwitch(page)).toHaveAccessibleDescription(
+    "The fit uses ρ = 1/σ, which the server computes.",
+  );
   await loadRhoSlot(page);
 
   await expect(
@@ -230,10 +236,7 @@ test("choosing S/cm reads the σ column again in it", async ({ page }) => {
     parsedSigma("S/cm"),
   );
   await page.goto("/fit");
-  await page
-    .getByRole("radiogroup", { name: "Load ρ, or σ in its place" })
-    .getByRole("radio", { name: "Conductivity" })
-    .click();
+  await sigmaSwitch(page).click();
   await loadRhoSlot(page);
 
   await page.getByRole("combobox", { name: "Unit of Conductivity" }).click();
@@ -362,10 +365,7 @@ test("a file with no header in the σ slot asks for its columns, naming σ", asy
     parsedSigma("S/m"),
   );
   await page.goto("/fit");
-  await page
-    .getByRole("radiogroup", { name: "Load ρ, or σ in its place" })
-    .getByRole("radio", { name: "Conductivity" })
-    .click();
+  await sigmaSwitch(page).click();
   await page
     .locator('input[type="file"]')
     .nth(1)
@@ -389,4 +389,41 @@ test("a file with no header in the σ slot asks for its columns, naming σ", asy
     { column: 0, role: "temperature" },
     { column: 1, role: "conductivity" },
   ]);
+});
+
+test("after a ρ file with a header, the hidden switch reads the next file as ρ", async ({
+  page,
+}) => {
+  const rho = {
+    ...parsedSigma("Ohm*m"),
+    headers: ["T", "rho"],
+    mapping: [
+      { column: 0, role: "temperature", unit: "K" },
+      { column: 1, role: "resistivity", unit: "Ohm*m" },
+    ],
+    measurements: { resistivity: { ...RESISTIVITY, loaded_as: "resistivity" } },
+  };
+  const bodies = await serveParse(page, rho, rho);
+  await page.goto("/fit");
+  await sigmaSwitch(page).click();
+  await loadRhoSlot(page, "rho.txt");
+  await expect(rhoSlot(page).getByText(/^2 points · .* Ω·m$/)).toBeVisible();
+
+  // A file dropped on the loaded card goes as what the card shows, not as σ.
+  const dataTransfer = await page.evaluateHandle(() => {
+    const transfer = new DataTransfer();
+    transfer.items.add(
+      new File(["100 1e-5\n200 2e-5\n"], "rho2.txt", { type: "text/plain" }),
+    );
+    return transfer;
+  });
+  await rhoSlot(page).first().dispatchEvent("drop", { dataTransfer });
+  await expect(rhoSlot(page).getByText("rho2.txt")).toBeVisible();
+  expect(bodies.map(({ expected }) => expected)).toEqual([
+    "conductivity",
+    "resistivity",
+  ]);
+
+  await rhoSlot(page).getByRole("button", { name: "Remove file ρ" }).click();
+  await expect(sigmaSwitch(page)).not.toBeChecked();
 });

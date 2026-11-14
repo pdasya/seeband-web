@@ -169,7 +169,9 @@ export const STRINGS = {
       "The column names of this file do not match its columns. Choose what its columns hold.",
     belowZeroForRho:
       "Some values are below 0, which a resistivity cannot have.",
-    readAsLabel: "Load ρ, or σ in its place",
+    readAsLabel: "Load σ instead",
+    readAsNote: "The fit uses ρ = 1/σ, which the server computes.",
+    unitGroups: { metre: "Per metre", centimetre: "Per centimetre" },
     readAsInverse: "read as ρ = 1/σ",
     /** The symbol of ρ where it is 1/σ of a σ file, as an RMSE of it compares with 1/σ. */
     inverseSigma: "ρ = 1/σ",
@@ -206,6 +208,7 @@ export const STRINGS = {
       "Ohm*cm": "Ω·cm",
       "mOhm*cm": "mΩ·cm",
       "uOhm*m": "µΩ·m",
+      "uOhm*cm": "µΩ·cm",
       "S/m": "S/m",
       "S/cm": "S/cm",
       "m^3/C": "m³/C",
@@ -218,8 +221,6 @@ export const STRINGS = {
     /** The name of a unit select whose unit is SI only because nothing named one. */
     unitAssumedOf: (name: string, unit: string) =>
       `Unit of ${name}: ${unit}, assumed`,
-    unitsAssumed: (symbols: string) =>
-      `SI is assumed for ${symbols}, as no unit SeeBand reads was named. Choose the unit if the values are written in another.`,
     firstRow: (values: string) => `First row: ${values}`,
     temperatureRanges: {
       title: "Check the unit of T",
@@ -242,7 +243,8 @@ export const STRINGS = {
       hints: {
         seebeck: { above: "If the file is in µV/K or mV/K, choose it." },
         resistivity: {
-          above: "If the file is in Ω·cm, mΩ·cm or µΩ·m, choose it.",
+          above:
+            "If the file is in Ω·cm, mΩ·cm, µΩ·m or µΩ·cm, choose it. If the column holds σ, remove the file and load it as σ instead. Each unit gives other values in SI, so check the first row.",
         },
         conductivity: { below: "If the file is in S/cm, choose S/cm." },
         hall: { above: "If the file is in cm³/C, choose cm³/C." },
