@@ -137,14 +137,6 @@ function firstRowLine(quantity: Quantity, entry: SessionData): string | null {
   return values.length === 0 ? null : STRINGS.data.firstRow(values.join(" · "));
 }
 
-/** The symbols of the card's columns read in SI only because nothing named their unit. */
-function assumedSymbols(quantity: Quantity, entry: SessionData): string[] {
-  const { readAs } = entry;
-  return cardRoles(quantity, entry)
-    .filter((role) => unitIsDefault(readAs?.find((item) => item.role === role)))
-    .map(roleSymbol);
-}
-
 function FileName({ children }: { children: string }) {
   // It is cut short in the card, so the full name is in its tooltip.
   return (
@@ -326,7 +318,6 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
 
   if (data !== undefined) {
     const firstRow = firstRowLine(quantity, data);
-    const assumed = assumedSymbols(quantity, data);
     return (
       <div className="flex flex-col gap-1.5">
         {status}
@@ -391,11 +382,6 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
           <div className="font-mono text-xs break-words text-muted-foreground">
             {firstRow}
           </div>
-        )}
-        {assumed.length > 0 && (
-          <p className="m-0 text-xs text-muted-foreground">
-            {text.unitsAssumed(assumed.join(", "))}
-          </p>
         )}
         {data.unitDoubts !== undefined && data.unitDoubts.length > 0 && (
           <Alert>

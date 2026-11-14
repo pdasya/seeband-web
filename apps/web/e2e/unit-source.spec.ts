@@ -127,14 +127,6 @@ test("a unit nothing named is marked as assumed, and choosing one, even SI, remo
   );
   await expect(temperatureUnit(page)).toHaveText("K");
   await expect(temperatureUnit(page)).toHaveAccessibleName(ASSUMED);
-  await expect(
-    page.getByText(
-      "SI is assumed for T, S, as no unit SeeBand reads was named.",
-      {
-        exact: false,
-      },
-    ),
-  ).toBeVisible();
 
   await seebeckUnit(page).click();
   await page.getByRole("option", { name: "V/K", exact: true }).click();
@@ -144,11 +136,6 @@ test("a unit nothing named is marked as assumed, and choosing one, even SI, remo
   );
   await expect(seebeckUnit(page)).toHaveText("V/K");
   await expect(temperatureUnit(page)).toHaveAccessibleName(ASSUMED);
-  await expect(
-    page.getByText("SI is assumed for T, as no unit SeeBand reads was named.", {
-      exact: false,
-    }),
-  ).toBeVisible();
   // T was not chosen, so it goes again with no unit and stays assumed.
   expect(bodies[1]?.mapping).toEqual([
     { column: 0, role: "temperature" },
@@ -283,11 +270,6 @@ test("a column of a single table read in SI by default is marked as assumed", as
   const unitOfT = page.getByRole("combobox", { name: "Unit of T (K)" });
   await expect(unitOfT).toHaveText("K");
   await expect(unitOfT).not.toHaveAccessibleName(ASSUMED);
-  await expect(
-    page.getByText("SI is assumed for S, as no unit SeeBand reads was named.", {
-      exact: false,
-    }),
-  ).toBeVisible();
 });
 
 test("the units of ρ come grouped by metre and centimetre, and µΩ·cm reads the file again", async ({

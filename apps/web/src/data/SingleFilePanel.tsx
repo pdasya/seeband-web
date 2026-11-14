@@ -117,9 +117,6 @@ function ColumnMapping({
 }) {
   const itemOf = (column: number) =>
     mapping.find((item) => item.column === column);
-  const assumed = mapping
-    .filter((item) => unitIsDefault(item))
-    .map((item) => roleSymbol(item.role));
   return (
     <>
       <div className="flex flex-col gap-0.5 pt-1">
@@ -187,11 +184,6 @@ function ColumnMapping({
           </div>
         );
       })}
-      {assumed.length > 0 && (
-        <p className="m-0 text-xs text-muted-foreground">
-          {text.unitsAssumed(assumed.join(", "))}
-        </p>
-      )}
     </>
   );
 }

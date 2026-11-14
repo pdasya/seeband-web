@@ -221,8 +221,6 @@ export const STRINGS = {
     /** The name of a unit select whose unit is SI only because nothing named one. */
     unitAssumedOf: (name: string, unit: string) =>
       `Unit of ${name}: ${unit}, assumed`,
-    unitsAssumed: (symbols: string) =>
-      `SI is assumed for ${symbols}, as no unit SeeBand reads was named. Choose the unit if the values are written in another.`,
     firstRow: (values: string) => `First row: ${values}`,
     temperatureRanges: {
       title: "Check the unit of T",
