@@ -96,6 +96,14 @@ describe("the header", () => {
     ]);
   });
 
+  test("says where ρ is 1/σ of a σ file", () => {
+    const lines = exportHeader({ ...CONTEXT, fromConductivity: true });
+    expect(lines).toContain(
+      "rho is 1/sigma of the loaded conductivity data, so its RMSE compares the fit with 1/sigma",
+    );
+    expect(exportHeader(CONTEXT).join("\n")).not.toContain("1/sigma");
+  });
+
   test("names the range a fit used where the data narrowed the interpolation", () => {
     const lines = exportHeader({
       ...CONTEXT,

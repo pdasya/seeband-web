@@ -600,3 +600,69 @@ describe("the points of σ", () => {
     ).toBe(false);
   });
 });
+
+describe("ρ from a σ file", () => {
+  const fromSigma = () => {
+    const state = loaded("resistivity");
+    const entry = state.data.resistivity;
+    if (entry === undefined) {
+      throw new Error("no data");
+    }
+    entry.measurement.loaded_as = "conductivity";
+    return state;
+  };
+
+  test("names its points 1/σ and says the fit uses them", () => {
+    const view = chartTabView(
+      "resistivity",
+      mode("dpb_s_rho"),
+      fromSigma(),
+      null,
+      null,
+    );
+    expect(view.measurements?.label).toBe("1/σ of the σ data");
+    expect(view.note).toMatch(/^Points are 1\/σ of the loaded σ data/);
+  });
+
+  test("still says first when the mode has no ρ", () => {
+    const view = chartTabView(
+      "resistivity",
+      mode("dpb_s"),
+      fromSigma(),
+      null,
+      null,
+    );
+    expect(view.note).toBe(
+      chartTabView(
+        "resistivity",
+        mode("dpb_s"),
+        loaded("resistivity"),
+        null,
+        null,
+      ).note,
+    );
+  });
+
+  test("shows the σ data on the σ chart", () => {
+    const view = chartTabView(
+      "conductivity",
+      mode("dpb_s_rho"),
+      fromSigma(),
+      {
+        temperature_k: [100],
+        curves: {},
+        known_issues: [],
+        rmse: {},
+        measured_points: {
+          electrical_conductivity_s_per_m: {
+            temperature_k: [100],
+            values: [5e5],
+          },
+        },
+      },
+      null,
+    );
+    expect(view.measurements?.label).toBe("σ data");
+    expect(view.note).toMatch(/^Points are the loaded σ data in the fit range/);
+  });
+});

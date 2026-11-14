@@ -276,6 +276,9 @@ export const STRINGS = {
     bandGapMetric: (gap: string, unit: string) => `E_g = ${gap} ${unit}`,
     conductivityDescription: "Chart of σ against temperature",
     conductivityPoints: "1/ρ of the data",
+    conductivityPointsFromSigma: "σ data",
+    conductivityPointsFromSigmaNote:
+      "Points are the loaded σ data in the fit range, as 1/ρ of the ρ = 1/σ a fit uses. The line is the model's σ.",
     conductivityPointsInterpolated: "1/ρ of the interpolated data",
     conductivityPointsNote:
       "Points are 1/ρ of the ρ data in the fit range, which the server calculates. The line is the model's σ.",
@@ -363,6 +366,9 @@ export const STRINGS = {
     model: "Model",
     measurements: "Measurements",
     measurementsDemo: "Measurements (demo)",
+    measurementsFromSigma: "1/σ of the σ data",
+    resistivityFromSigmaNote:
+      "Points are 1/σ of the loaded σ data, which the server calculates. The fit and its RMSE use them as ρ.",
     interpolated: "Interpolated",
     updating: "Updating…",
     lastCurveStays: "The last curve stays on the chart.",
@@ -558,6 +564,8 @@ export const STRINGS = {
         `Interpolated ${quantity} only over ${minK}-${maxK} K, where its data end`,
       degeneracies: (n1: string, n2: string) =>
         `Band degeneracies N1 = ${n1}, N2 = ${n2}`,
+      fromConductivity:
+        "rho is 1/sigma of the loaded conductivity data, so its RMSE compares the fit with 1/sigma",
       fit: (status: string, iterations: number | null) =>
         iterations === null
           ? `Fit ${status}`
@@ -574,6 +582,8 @@ export const STRINGS = {
     columns: {
       temperature: "Temperature [K]",
       experimental: (quantity: string) => `Experimental ${quantity}`,
+      experimentalFromSigma: (quantity: string) =>
+        `Experimental ${quantity}, 1/sigma of the loaded conductivity`,
       interpolated: (quantity: string) => `Interpolated ${quantity}`,
       preFit: (quantity: string) => `Pre-fit ${quantity}`,
       fit: (quantity: string) => `Fit ${quantity}`,
