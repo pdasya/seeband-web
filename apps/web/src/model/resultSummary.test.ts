@@ -232,7 +232,7 @@ describe("resultIssues", () => {
   test("with no measured curve, a fit's flag goes with the fitted values", () => {
     const [issue] = resultIssues(mode, {
       ...NO_FLAGS,
-      fit: ["acphdis_early_stop"],
+      fit: ["dpb_loop_degeneracy"],
     });
     expect(issue?.quantities).toEqual([]);
     expect(issue?.place).toBe("fit");

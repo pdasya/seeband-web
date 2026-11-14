@@ -49,9 +49,12 @@ def stored_document() -> dict[str, Any]:
 def fit(model_id: str, fit_mode: FitMode, scattering: str | None) -> Any:
     measurements = load_demo_dataset().measurements
     data = {quantity: measurements[quantity] for quantity in fit_mode.quantities}
-    return registry.get(model_id).fit(
-        FitRequest(fit_mode.id, data, default_start(fit_mode), scattering=scattering)
-    )
+    start = default_start(fit_mode)
+    if fit_mode.id == "spb_s_rho_rh":
+        # The demo's S and R_H are above 0, holes, so the SPB Hall fit starts on the hole branch,
+        # as the app's automatic SPB sign does (D28). The default electron mass is refused.
+        start |= {"band_mass": -1.0, "fermi_energy": -100.0}
+    return registry.get(model_id).fit(FitRequest(fit_mode.id, data, start, scattering=scattering))
 
 
 def test_the_same_data_come_on_every_load() -> None:

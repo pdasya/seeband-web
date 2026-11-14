@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { DownloadIcon, InfoIcon, PrinterIcon } from "lucide-react";
 import { useId, useMemo, type ReactNode } from "react";
 import { Link } from "react-router";
+import { limitedRanges } from "@/model/interpolatedRanges";
 
 import { modelsQuery } from "@/api/queries";
 import { TransportChart } from "@/charts/TransportChart";
@@ -313,6 +314,7 @@ export function ResultsPage() {
   const fit = useSessionStore((state) => state.fit);
   const customBounds = useSessionStore((state) => state.customBounds);
   const held = useSessionStore((state) => state.held);
+  const interpolation = useSessionStore((state) => state.interpolation);
   const numericalStart = useSessionStore((state) => state.fitStartNumerical);
   const startNet = useSessionStore((state) => state.fitStartNet);
 
@@ -371,6 +373,14 @@ export function ResultsPage() {
       minK === null || maxK === null
         ? null
         : fitText.rangeSummary(formatNumber(minK), formatNumber(maxK)),
+      ...limitedRanges(interpolation, mode.quantities).map(
+        ({ quantity, minK: low, maxK: high }) =>
+          fitText.limitedRangeSummary(
+            dataText.quantities[quantity].symbol,
+            formatNumber(low),
+            formatNumber(high),
+          ),
+      ),
     ].filter((part) => part !== null),
   );
 

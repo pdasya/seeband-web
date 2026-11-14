@@ -64,13 +64,7 @@ ERROR_EXAMPLES: dict[str, dict[str, Any]] = {
     "fit_mode_disabled": {
         "code": "fit_mode_disabled",
         "message": "This fit mode is disabled until its known issue is fixed",
-        "details": [
-            {
-                "location": ["body", "fit_mode"],
-                "code": "spb_hall_mode_disabled",
-                "message": "A known issue disables this mode",
-            }
-        ],
+        "details": [],
     },
     "invalid_fit": {
         "code": "invalid_fit",

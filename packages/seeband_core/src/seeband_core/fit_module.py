@@ -1,4 +1,5 @@
 import copy
+import math
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
@@ -131,11 +132,28 @@ def _dpb_rho_model(
     )
 
 
+def _relative_change(current: float, previous: float) -> float:
+    """Keep the desktop relative error, defining zeros and invalid values explicitly."""
+    current, previous = float(current), float(previous)
+    if not math.isfinite(current) or not math.isfinite(previous):
+        return math.inf
+    if previous == 0:
+        return 0.0 if current == 0 else math.inf
+    change = abs((current - previous) / previous)
+    return change if math.isfinite(change) else math.inf
+
+
+def _require_finite(*values: float) -> None:
+    """Raise for a parameter value that is not finite, as no iteration can settle it."""
+    if not all(math.isfinite(float(value)) for value in values):
+        raise ValueError("A fitted parameter is not finite.")
+
+
 class PB_fit:
     def is_accuracy_reached(self, threshold: float, *errors: float) -> bool:
         # Check if the error of all fitting parameters is smaller than threshold
         for error in errors:
-            if error > threshold:
+            if not math.isfinite(error) or error > threshold:
                 return False
         return True
 
@@ -232,8 +250,10 @@ class PB_fit:
         parameter_see, _ = _curve_fit(
             progress,
             "see",
+            # Keep solver parameters, bounds and covariance in public R=m2/|m1| units.
+            # The low-level model takes the degeneracy-weighted ratio r=R/N.
             lambda T, meff, gap, fermi_energy: te.dpb_see_vs_temp(
-                temp_list, meff, gap, fermi_energy, degen, scal_fac=1e6
+                temp_list, meff / degen, gap, fermi_energy, degen, scal_fac=1e6
             ),
             temp_list,
             see_list * 1e6,
@@ -243,12 +263,13 @@ class PB_fit:
             maxfev=1000,
         )
 
-        # Save the current band parameters
-        current_meff = parameter_see[0] / degen
+        # The solver works in public R, so its value is returned as it is, not divided by N and
+        # multiplied again, which could change its last bit.
+        current_meff = parameter_see[0]
         current_gap = parameter_see[1]
         current_fermi_energy = parameter_see[2]
 
-        parameters = [current_meff * degen, current_gap, current_fermi_energy]
+        parameters = [current_meff, current_gap, current_fermi_energy]
         return parameters
 
     def spb_see_res_fit(
@@ -622,26 +643,31 @@ class PB_fit:
                         )[:9],
                     )
 
-            # Calculate the error of the fitting parameters of the resistivtiy
-            error_meff = np.abs((current_meff - prev_meff) / prev_meff)
-            error_gap = np.abs((current_gap - prev_gap) / prev_gap)
-            error_fermi_energy = np.abs(
-                (current_fermi_energy - prev_fermi_energy) / prev_fermi_energy
+            # A value that is not finite cannot settle, so the fit ends here, not at its budget.
+            _require_finite(
+                current_meff,
+                current_gap,
+                current_fermi_energy,
+                current_para_A,
+                current_para_B,
+                *([current_para_C, current_para_D] if scatter_type == "acPhDis" else []),
             )
-            error_para_A = np.abs((current_para_A - prev_para_A) / prev_para_A)
-            error_para_B = np.abs((current_para_B - prev_para_B) / prev_para_B)
+
+            # Calculate the error of the fitting parameters of the resistivtiy
+            error_meff = _relative_change(current_meff, prev_meff)
+            error_gap = _relative_change(current_gap, prev_gap)
+            error_fermi_energy = _relative_change(current_fermi_energy, prev_fermi_energy)
+            error_para_A = _relative_change(current_para_A, prev_para_A)
+            error_para_B = _relative_change(current_para_B, prev_para_B)
             if scatter_type == "acPhDis":
-                error_para_C = np.abs((current_para_C - prev_para_C) / prev_para_C)
-                error_para_D = np.abs((current_para_D - prev_para_D) / prev_para_D)
+                error_para_C = _relative_change(current_para_C, prev_para_C)
+                error_para_D = _relative_change(current_para_D, prev_para_D)
 
             # Check if the error of all fitting parameters is smaller than threshold
-            if self.is_accuracy_reached(
-                threshold, error_meff, error_gap, error_fermi_energy, error_para_A, error_para_B
-            ):
-                break
-            if scatter_type == "acPhDis" and self.is_accuracy_reached(
-                threshold, error_para_C, error_para_D
-            ):
+            errors = [error_meff, error_gap, error_fermi_energy, error_para_A, error_para_B]
+            if scatter_type == "acPhDis":
+                errors.extend([error_para_C, error_para_D])
+            if self.is_accuracy_reached(threshold, *errors):
                 break
 
             # Save the current fitting parameters to determine the error in the next step
@@ -685,7 +711,7 @@ class PB_fit:
         limits_fermi_energy: tuple[list[float], list[float]],
         initial_parameter_res: list[float],
         limits_res: tuple[list[float], list[float]],
-        initial_mass1: list[int],
+        initial_mass1: list[float],
         limits_mass1: tuple[list[float], list[float]],
         scatter_type: str,
         progress: FitProgress | None = None,
@@ -716,7 +742,7 @@ class PB_fit:
             Initial fitting parameters of the resistivity
         limits_res : tuple(list[float], list[float])
             Lower and upper limits of the fitting parameters of the resistivity
-        initial_mass1 : list[int]
+        initial_mass1 : list[float]
             Initial mass of band 1 for the fit
         limits_mass1 : tuple[list[float], list[float]]
             Lower and upper limits of the mass of band 1 for the fit
@@ -727,20 +753,28 @@ class PB_fit:
         Returns
         -------
         out : list[float]
-            List containing the effective Fermi energy, scattering parameter A, scattering parameter
-            B, and, in case of acoustic-phonon + alloy-disorder scattering, scattering parameter C
-            and scattering parameter D, and parameter E
+            Fermi energy in K, A, C (the dimensionless ratio at 300 K), F, and signed
+            band mass in electron-mass units. Inactive scattering parameters retain their inputs.
         """
 
-        initial_para_E = [np.abs(initial_mass1[0]) ** (3 / 2)] * -np.sign(
-            initial_mass1[0]
-        )  #!!! Hotfix for the sign, this should be clarified for the final version!
-        limits_para_E = (
-            [np.abs(limits_mass1[0][0]) ** (3 / 2) * np.sign(limits_mass1[0][0])],
-            [np.abs(limits_mass1[1][0]) ** (3 / 2) * np.sign(limits_mass1[1][0])],
-        )  #!!! Hotfix for the sign, this should be clarified for the final version!
-
+        # Stay on the carrier branch selected by the starting mass. E decreases with m.
         band_mass = initial_mass1[0]
+        lower_mass, upper_mass = limits_mass1[0][0], limits_mass1[1][0]
+        if band_mass > 0:
+            lower_mass = max(0.0, lower_mass)
+        else:
+            upper_mass = min(0.0, upper_mass)
+        # A mass of 0 is on no branch, and a branch the bounds leave empty has no room to fit.
+        if band_mass == 0 or not lower_mass <= band_mass <= upper_mass or lower_mass >= upper_mass:
+            raise ValueError("The start band mass is outside the bounds of its carrier branch.")
+        # R_H has the sign of -m, so a start on the other branch can only end at a bound.
+        if np.sign(np.median(hall_list)) == np.sign(band_mass):
+            raise ValueError("The carrier type of the start band mass contradicts the sign of R_H.")
+        initial_para_E = [-np.sign(band_mass) * abs(band_mass) ** 1.5]
+        limits_para_E = (
+            [-np.sign(upper_mass) * abs(upper_mass) ** 1.5],
+            [-np.sign(lower_mass) * abs(lower_mass) ** 1.5],
+        )
 
         # Check if scatter_type is properly set to acPh, dis or acPhAlDi
         if scatter_type != "acPh" and scatter_type != "dis" and scatter_type != "acPhDis":
@@ -858,7 +892,7 @@ class PB_fit:
 
         # Save the current scattering parameters
         current_para_E = parameter_hall[0]
-        current_mass1 = current_para_E ** (2 / 3)
+        current_mass1 = -np.sign(current_para_E) * abs(current_para_E) ** (2 / 3)
 
         # Save all fitting parameters in a list and return the list
         parameters[0] = current_fermi_energy
@@ -868,7 +902,7 @@ class PB_fit:
         elif scatter_type == "dis":
             parameters[3] = current_para_A
         else:
-            parameters[1:3] = [current_para_A, current_para_B]
+            parameters[1:3] = [current_para_A, current_para_B / 300.0]
 
         return parameters
 
@@ -1101,26 +1135,31 @@ class PB_fit:
                         )[:9],
                     )
 
-            # Calculate the error of the fitting parameters of the resistivtiy
-            error_meff = np.abs((current_meff - prev_meff) / prev_meff)
-            error_gap = np.abs((current_gap - prev_gap) / prev_gap)
-            error_fermi_energy = np.abs(
-                (current_fermi_energy - prev_fermi_energy) / prev_fermi_energy
+            # A value that is not finite cannot settle, so the fit ends here, not at its budget.
+            _require_finite(
+                current_meff,
+                current_gap,
+                current_fermi_energy,
+                current_para_A,
+                current_para_B,
+                *([current_para_C, current_para_D] if scatter_type == "acPhDis" else []),
             )
-            error_para_A = np.abs((current_para_A - prev_para_A) / prev_para_A)
-            error_para_B = np.abs((current_para_B - prev_para_B) / prev_para_B)
+
+            # Calculate the error of the fitting parameters of the resistivtiy
+            error_meff = _relative_change(current_meff, prev_meff)
+            error_gap = _relative_change(current_gap, prev_gap)
+            error_fermi_energy = _relative_change(current_fermi_energy, prev_fermi_energy)
+            error_para_A = _relative_change(current_para_A, prev_para_A)
+            error_para_B = _relative_change(current_para_B, prev_para_B)
             if scatter_type == "acPhDis":
-                error_para_C = np.abs((current_para_C - prev_para_C) / prev_para_C)
-                error_para_D = np.abs((current_para_D - prev_para_D) / prev_para_D)
+                error_para_C = _relative_change(current_para_C, prev_para_C)
+                error_para_D = _relative_change(current_para_D, prev_para_D)
 
             # Check if the error of all fitting parameters is smaller than threshold
-            if self.is_accuracy_reached(
-                threshold, error_meff, error_gap, error_fermi_energy, error_para_A, error_para_B
-            ):
-                break
-            if scatter_type == "acPhDis" and self.is_accuracy_reached(
-                threshold, error_para_C, error_para_D
-            ):
+            errors = [error_meff, error_gap, error_fermi_energy, error_para_A, error_para_B]
+            if scatter_type == "acPhDis":
+                errors.extend([error_para_C, error_para_D])
+            if self.is_accuracy_reached(threshold, *errors):
                 break
 
             # Save the current fitting parameters to determine the error in the next step
@@ -1551,9 +1590,8 @@ class PB_fit:
 
         temp_array = np.linspace(Tmin, Tmax, Tnumb)
 
-        para_E = np.abs(band_mass) ** (3 / 2) * -np.sign(
-            band_mass
-        )  #!!! Hotfixed this has to be looked at!
+        # E has the sign of -m, as in the fit, so R_H has the sign of -m.
+        para_E = np.abs(band_mass) ** (3 / 2) * -np.sign(band_mass)
 
         # Define the scattering parameters
         para_A = parameter_res[0]
@@ -1768,7 +1806,7 @@ class PB_fit:
         # Define the scattering parameters
         para_A = parameter_res[0]
         if scatter_type == "acPhDis":
-            para_B = parameter_res[1]
+            para_B = parameter_res[1] * 300.0
 
         # Calculate the 'pristine' conductivity of the band from the fitted band-structure
         # parameters with K = 1, abs(meff) = 1 and beta = 0
@@ -1820,7 +1858,7 @@ class PB_fit:
         # Define the scattering parameters
         para_A = parameter_res[0]
         if scatter_type == "acPhDis":
-            para_B = parameter_res[1]
+            para_B = parameter_res[1] * 300.0
 
         # Calculate the 'pristine' conductivity of the band from the fitted band-structure
         # parameters with K = 1, abs(meff) = 1 and beta = 0
@@ -1896,8 +1934,8 @@ class PB_fit:
         # Define the scattering parameters
         para_B = parameter_res[1]
         if scatter_type == "acPhDis":
-            para_C = parameter_res[2]
-            para_D = parameter_res[3]
+            para_C = parameter_res[2] * 300.0
+            para_D = parameter_res[3] * 300.0
 
         # Define the band structure parameters
         meff = parameter_see[0] / degen
@@ -1964,8 +2002,8 @@ class PB_fit:
         para_A = parameter_res[0]
         para_B = parameter_res[1]
         if scatter_type == "acPhDis":
-            para_C = parameter_res[2]
-            para_D = parameter_res[3]
+            para_C = parameter_res[2] * 300.0
+            para_D = parameter_res[3] * 300.0
 
         # Define the band structure parameters
         meff = parameter_see[0] / degen
@@ -2066,8 +2104,8 @@ class PB_fit:
         para_A = parameter_res[0]
         para_B = parameter_res[1]
         if scatter_type == "acPhDis":
-            para_C = parameter_res[2]
-            para_D = parameter_res[3]
+            para_C = parameter_res[2] * 300.0
+            para_D = parameter_res[3] * 300.0
 
         # Define the band structure parameters
         meff = parameter_see[0] / degen
@@ -2129,8 +2167,8 @@ class PB_fit:
         para_A = parameter_res[0]
         para_B = parameter_res[1]
         if scatter_type == "acPhDis":
-            para_C = parameter_res[2]
-            para_D = parameter_res[3]
+            para_C = parameter_res[2] * 300.0
+            para_D = parameter_res[3] * 300.0
 
         # Define the band structure parameters
         meff = parameter_see[0] / degen

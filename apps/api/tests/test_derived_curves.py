@@ -33,6 +33,7 @@ HALL = [*RHO, "hall_m3_per_c"]
 OFFERED: dict[str, dict[str, list[str]]] = {
     "spb_s": {"measured": S, **MU},
     "spb_s_rho": {"measured": RHO, **MU, **SIGMA, **KAPPA},
+    "spb_s_rho_rh": {"measured": HALL, **MU, **SIGMA, **KAPPA},
     "dpb_s": {
         "measured": S,
         "seebeck_by_band": BY_BAND_COLUMNS["seebeck_by_band"],
@@ -57,6 +58,12 @@ REFUSED: dict[str, dict[str, str]] = {
         "electrical_conductivity_by_band": "single_band",
         "carrier_concentration_by_band": "not_on_desktop",
     },
+    "spb_s_rho_rh": {
+        "seebeck": "same_as_measured",
+        "seebeck_by_band": "single_band",
+        "electrical_conductivity_by_band": "single_band",
+        "carrier_concentration_by_band": "not_on_desktop",
+    },
     "dpb_s": {
         "seebeck": "same_as_measured",
         "electrical_conductivity": "needs_resistivity",
@@ -69,6 +76,7 @@ REFUSED: dict[str, dict[str, str]] = {
 SCATTERING: dict[str, tuple[str | None, ...]] = {
     "spb_s": (None,),
     "spb_s_rho": ("acPh", "dis", "acPhDis"),
+    "spb_s_rho_rh": ("acPh", "dis", "acPhDis"),
     "dpb_s": (None,),
     "dpb_s_rho": ("acPh", "dis", "acPhDis"),
     "dpb_s_rho_rh": ("acPh", "dis", "acPhDis"),
@@ -177,7 +185,7 @@ def test_models_list_the_same_matrix(modes: dict[str, dict[str, Any]], fit_mode_
     assert all("reason" not in curve for curve in curves.values() if curve["available"])
 
 
-def test_disabled_mode_lists_its_curves_and_refuses_them(
+def test_spb_hall_mode_lists_and_serves_its_curves(
     client: TestClient, modes: dict[str, dict[str, Any]]
 ) -> None:
     curves = {curve["kind"]: curve for curve in modes["spb_s_rho_rh"]["curves"]}
@@ -185,8 +193,8 @@ def test_disabled_mode_lists_its_curves_and_refuses_them(
 
     response = client.post("/api/calc", json=_body("spb_s_rho_rh", "acPh", "chemical_potential"))
 
-    assert response.status_code == 409
-    assert response.json()["code"] == "fit_mode_disabled"
+    assert response.status_code == 200
+    assert len(response.json()["curves"]["chemical_potential_k"]) == 8
 
 
 @pytest.mark.parametrize(
@@ -238,10 +246,11 @@ def test_negative_m1_in_n_is_refused(client: TestClient) -> None:
     assert response.json()["code"] == "calculation_failed"
 
 
-def test_disabled_mode_answers_first_even_for_a_curve_it_lacks(client: TestClient) -> None:
+def test_spb_hall_mode_reports_why_a_curve_is_unavailable(client: TestClient) -> None:
     response = client.post("/api/calc", json=_body("spb_s_rho_rh", "acPh", "seebeck_by_band"))
 
-    assert response.status_code == 409
+    assert response.status_code == 422
+    assert response.json()["code"] == "curve_unavailable"
 
 
 def test_bad_parameters_are_reported_before_an_unavailable_curve(client: TestClient) -> None:
@@ -261,12 +270,12 @@ def test_bad_parameters_are_reported_before_an_unavailable_curve(client: TestCli
         ("dpb_s_rho", "acPhDis", "electrical_conductivity_by_band", "acphdis_curve_scale"),
     ],
 )
-def test_known_issues_are_flagged_on_affected_curves(
+def test_corrected_scaling_curves_have_no_obsolete_flag(
     client: TestClient, fit_mode_id: str, scattering: str, kind: str, issue: str
 ) -> None:
     body = client.post("/api/calc", json=_body(fit_mode_id, scattering, kind)).json()
 
-    assert issue in body["known_issues"]
+    assert issue not in body["known_issues"]
 
 
 def test_acphdis_flag_is_not_on_curves_it_does_not_change(client: TestClient) -> None:

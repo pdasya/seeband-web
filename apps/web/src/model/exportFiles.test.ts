@@ -96,6 +96,17 @@ describe("the header", () => {
     ]);
   });
 
+  test("names the range a fit used where the data narrowed the interpolation", () => {
+    const lines = exportHeader({
+      ...CONTEXT,
+      limitedRanges: [{ quantity: "seebeck", minK: 50, maxK: 750 }],
+    });
+    expect(lines).toContain("Fit range 50-800 K");
+    expect(lines).toContain(
+      "Interpolated S only over 50-750 K, where its data end",
+    );
+  });
+
   test("demo data, known issues, no fit, no scattering and one band", () => {
     const lines = exportHeader({
       ...CONTEXT,
@@ -106,8 +117,8 @@ describe("the header", () => {
       fit: { status: "idle" },
       issues: [
         {
-          id: "spb_hall_uses_fermi_energy",
-          text: "SPB R_H uses the Fermi energy at 0 K.",
+          id: "no_chemical_potential",
+          text: "The Fermi energy is outside the band.",
           severity: "unreliable",
           quantities: ["hall"],
           place: "curves",
@@ -124,7 +135,7 @@ describe("the header", () => {
     );
     expect(lines).toContain("No fit: the values are those on the screen");
     expect(lines.at(-1)).toBe(
-      "Unreliable: SPB R_H uses the Fermi energy at 0 K. (spb_hall_uses_fermi_energy)",
+      "Unreliable: The Fermi energy is outside the band. (no_chemical_potential)",
     );
   });
 
@@ -250,6 +261,7 @@ describe("the data file", () => {
               temperature_k: [100],
               values: [1e-4],
               extrapolated: false,
+              range_limited: false,
               measured_points_in_range: 1,
               underdetermined: false,
             },
@@ -276,6 +288,7 @@ describe("the data file", () => {
               temperature_k: [100, 120],
               values: [1e-4, 1.2e-4],
               extrapolated: false,
+              range_limited: false,
               measured_points_in_range: 2,
               underdetermined: false,
             },

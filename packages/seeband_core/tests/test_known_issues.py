@@ -33,30 +33,6 @@ ALL_CURVES = (*DPB_FIT_CURVES, "chemical_potential", "carrier_concentration_by_b
 # Written here so that a change of scope, severity or fix fails.
 # id: severity, fixed by, modes, scattering, curve kinds, affects fit, condition.
 EXPECTED: dict[str, tuple[Any, ...]] = {
-    "spb_hall_mode_disabled": ("disabled", "#83", ("spb_s_rho_rh",), (), (), True, None),
-    "spb_hall_uses_fermi_energy": (
-        "unreliable",
-        "#103",
-        ("spb_s_rho_rh",),
-        (),
-        ("measured",),
-        True,
-        None,
-    ),
-    "acphdis_curve_scale": (
-        "unreliable",
-        "#82",
-        ("spb_s_rho", "spb_s_rho_rh", "dpb_s_rho", "dpb_s_rho_rh"),
-        ("acPhDis",),
-        (
-            "seebeck_by_band",
-            "electrical_conductivity",
-            "electrical_conductivity_by_band",
-            "thermal_conductivity",
-        ),
-        False,
-        None,
-    ),
     "acphdis_band_weight": (
         "unreliable",
         "#102",
@@ -65,16 +41,6 @@ EXPECTED: dict[str, tuple[Any, ...]] = {
         ("measured", "seebeck"),
         True,
         None,
-    ),
-    "acphdis_early_stop": ("unreliable", "#84", LOOP, ("acPhDis",), (), True, None),
-    "dpb_s_degeneracy": (
-        "unreliable",
-        "#85",
-        ("dpb_s",),
-        (),
-        ("measured", "seebeck_by_band", "chemical_potential", "carrier_concentration_by_band"),
-        True,
-        "degeneracy_not_one",
     ),
     "dpb_loop_degeneracy": ("caution", "#85", LOOP, (), (), True, "degeneracy_not_one"),
     "negative_m_eff_weight": (
@@ -190,28 +156,37 @@ def test_issues_for_mode_selects_by_mode() -> None:
 
 
 @pytest.mark.parametrize("name", [*SPB, *DPB])
-def test_only_the_spb_hall_mode_is_disabled(name: str) -> None:
-    assert fit_mode(name).disabled is (name == "spb_s_rho_rh")
+def test_repaired_modes_are_enabled(name: str) -> None:
+    assert not fit_mode(name).disabled
 
 
 @pytest.mark.parametrize("kind", ["measured", "chemical_potential", "thermal_conductivity", None])
-def test_a_disabled_mode_shows_on_every_result(kind: Any) -> None:
-    assert "spb_hall_mode_disabled" in ids("spb_s_rho_rh", "acPh", kind)
+def test_repaired_hall_flags_are_removed_from_every_result(kind: Any) -> None:
+    assert not {"spb_hall_mode_disabled", "spb_hall_uses_fermi_energy"} & set(
+        ids("spb_s_rho_rh", "acPh", kind)
+    )
 
 
 def test_a_flag_for_one_scattering_type_stays_there() -> None:
     assert "hall_dis_no_reference" in ids("dpb_s_rho_rh", "dis")
     assert "hall_dis_no_reference" not in ids("dpb_s_rho_rh", "acPh")
     assert "acphdis_curve_scale" not in ids("dpb_s_rho", "acPh", "thermal_conductivity")
-    assert "acphdis_curve_scale" in ids("dpb_s_rho", "acPhDis", "seebeck_by_band")
+    assert "acphdis_curve_scale" not in ids("dpb_s_rho", "acPhDis", "seebeck_by_band")
+
+
+@pytest.mark.parametrize("ratio", [0.5, 2.0, 3.0])
+@pytest.mark.parametrize(
+    "kind",
+    [None, "measured", "seebeck_by_band", "chemical_potential", "carrier_concentration_by_band"],
+)
+def test_dpb_s_has_no_degeneracy_flag_at_any_ratio(ratio: float, kind: CurveKind | None) -> None:
+    # P6 fits and draws DPB S with the same R/N, so no flag on N2/N1 applies to it any more.
+    assert not {issue for issue in ids("dpb_s", None, kind, ratio=ratio) if "degeneracy" in issue}
 
 
 @pytest.mark.parametrize(
     ("condition_kwargs", "mode", "scattering", "kind", "issue", "active"),
     [
-        ({"ratio": 1.0}, "dpb_s", None, None, "dpb_s_degeneracy", False),
-        ({"ratio": 2.0}, "dpb_s", None, None, "dpb_s_degeneracy", True),
-        ({"ratio": 0.5}, "dpb_s", None, "chemical_potential", "dpb_s_degeneracy", True),
         ({"ratio": 2.0}, "dpb_s_rho", "acPh", None, "dpb_loop_degeneracy", True),
         ({"ratio": 2.0}, "dpb_s_rho", "acPh", "measured", "dpb_loop_degeneracy", False),
         ({"parameters": {"m_eff": 1.0}}, "dpb_s", None, None, "negative_m_eff_weight", False),
@@ -317,11 +292,11 @@ def curve_ids(fit_mode_id: str, scattering: str | None = None, **kw: Any) -> set
 @pytest.mark.filterwarnings("ignore")
 def test_curves_carry_their_issues_through_the_model() -> None:
     assert curve_ids("dpb_s") == set()
-    assert curve_ids("dpb_s", band_2_degeneracy=2.0) == {"dpb_s_degeneracy"}
+    assert curve_ids("dpb_s", band_2_degeneracy=2.0) == set()
     assert curve_ids("dpb_s", values={"m_eff": -1.0, "band_gap": -200.0}) == {
         "negative_m_eff_weight"
     }
-    assert curve_ids("dpb_s_rho", "acPhDis", kind="thermal_conductivity") == {"acphdis_curve_scale"}
+    assert curve_ids("dpb_s_rho", "acPhDis", kind="thermal_conductivity") == set()
     assert curve_ids("dpb_s_rho", "acPh", kind="thermal_conductivity") == set()
     assert curve_ids("dpb_s_rho_rh", "acPh") == set()
     assert curve_ids("spb_s", extrapolated=True) == {"interpolation_extrapolates"}
@@ -367,9 +342,9 @@ def test_a_fit_reads_conditions_from_its_result_not_its_start(
 def test_a_fit_passes_its_degeneracy_and_scattering_on(monkeypatch: pytest.MonkeyPatch) -> None:
     loop = [1.0, 500.0, 500.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
     with_n = fit_ids(monkeypatch, "dpb_s", [1.0, 500.0, 500.0], band_2_degeneracy=2.0)
-    assert with_n == {"dpb_s_degeneracy"}
+    assert with_n == set()
     acphdis = fit_ids(monkeypatch, "dpb_s_rho", loop, scattering="acPhDis")
-    assert acphdis == {"acphdis_band_weight", "acphdis_early_stop"}
+    assert acphdis == {"acphdis_band_weight"}
     acph = fit_ids(monkeypatch, "dpb_s_rho", loop, scattering="acPh", band_2_degeneracy=2.0)
     assert acph == {"dpb_loop_degeneracy"}
     made_up = fit_ids(monkeypatch, "spb_s", [100.0], extrapolated=True)
@@ -404,7 +379,7 @@ def test_a_failed_fit_lists_only_a_disabled_mode(monkeypatch: pytest.MonkeyPatch
             scattering="acPh",
         )
     )
-    assert (spb.status, spb.known_issues) == ("failed", ("spb_hall_mode_disabled",))
+    assert (spb.status, spb.known_issues) == ("failed", ())
 
 
 def curves(mode: str, scattering: str, kind: CurveKind, values: dict[str, float]) -> Any:
@@ -416,14 +391,14 @@ def curves(mode: str, scattering: str, kind: CurveKind, values: dict[str, float]
 class TestTheErrorsAreStillThere:
     """Each of these fails once its error is fixed, and that is the prompt to remove its flag."""
 
-    def test_acphdis_conductivity_is_not_the_inverse_of_resistivity(self) -> None:
+    def test_acphdis_conductivity_is_the_inverse_of_resistivity(self) -> None:
         for mode in ("spb_s_rho", "dpb_s_rho"):
             values = default_start(fit_mode(mode))
             rho = curves(mode, "acPhDis", "measured", values)["resistivity_ohm_m"]
             sigma = curves(mode, "acPhDis", "electrical_conductivity", values)[
                 "electrical_conductivity_s_per_m"
             ]
-            assert not np.allclose(sigma * rho, 1.0)
+            assert np.allclose(sigma * rho, 1.0)
             rho = curves(mode, "acPh", "measured", values)["resistivity_ohm_m"]
             sigma = curves(mode, "acPh", "electrical_conductivity", values)[
                 "electrical_conductivity_s_per_m"

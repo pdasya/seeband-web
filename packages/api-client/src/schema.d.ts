@@ -488,6 +488,10 @@ export interface components {
             };
             /** Interpolation Failed */
             interpolation_failed: ("seebeck" | "resistivity" | "hall")[];
+            /** Interpolation Failure Reasons */
+            interpolation_failure_reasons: {
+                [key: string]: "no_overlap" | "overlap_too_short" | "fit_failed";
+            };
             /**
              * Synthetic
              * @constant
@@ -947,10 +951,10 @@ export interface components {
          * InterpolatedResponse
          * @description A quantity on the interpolation grid. `null` marks a value that is not finite.
          *
-         *     `extrapolated` means that some of the grid lies outside the data, so those values are made up,
-         *     and a fit from them should say so through `extrapolated` in its request.
-         *     `measured_points_in_range` of 0 means that all the values are made up. `underdetermined` means
-         *     that the data do not set the polynomial.
+         *     `range_limited` means the requested range extends beyond this quantity's measured range.
+         *     `extrapolated` is retained for compatibility and is false for new server results.
+         *     `measured_points_in_range` counts source points in the requested range; zero can occur between
+         *     sparse measurements. `underdetermined` means that the data do not set the polynomial.
          */
         InterpolatedResponse: {
             /** Temperature K */
@@ -959,6 +963,8 @@ export interface components {
             values: (number | null)[];
             /** Extrapolated */
             extrapolated: boolean;
+            /** Range Limited */
+            range_limited: boolean;
             /** Measured Points In Range */
             measured_points_in_range: number;
             /** Underdetermined */
@@ -1177,7 +1183,7 @@ export interface components {
          *
          *     `expected` names the quantity of a file meant to hold one. `mapping` replaces the suggested
          *     columns with a user's choice, and the text is sent again each time, as the API keeps nothing.
-         *     `interpolate` asks for each quantity on a grid over this fit range.
+         *     `interpolate` asks for each quantity on a grid within this range and its measured range.
          */
         ParseRequest: {
             /** Text */
@@ -1199,7 +1205,10 @@ export interface components {
          *     with `errors`, only a unit the request chose is kept. `mapping` is the
          *     suggestion or the user's choice, and with no readable rows, always the suggestion. `warnings`
          *     holds every kind, with at most 100 `preamble_skipped`, and `warnings_omitted` counts the rest.
-         *     `interpolation_failed` names quantities that could not be interpolated.
+         *     `interpolation_failed` names quantities that could not be interpolated, and
+         *     `interpolation_failure_reasons` says why for each: `no_overlap` (the fit range and the measured
+         *     range do not overlap), `overlap_too_short` (under 20 K, or under 40 K where the data narrow the
+         *     range, which would give one grid point) or `fit_failed` (the polynomial could not be fitted).
          */
         ParseResponse: {
             /** Headers */
@@ -1230,6 +1239,10 @@ export interface components {
             };
             /** Interpolation Failed */
             interpolation_failed: ("seebeck" | "resistivity" | "hall")[];
+            /** Interpolation Failure Reasons */
+            interpolation_failure_reasons: {
+                [key: string]: "no_overlap" | "overlap_too_short" | "fit_failed";
+            };
         };
         /**
          * Prediction
@@ -1318,7 +1331,7 @@ export interface operations {
                 headers: {
                     /** @example no-cache */
                     "Cache-Control"?: string;
-                    /** @example "78e3749d4afdc48471804214ff99b995" */
+                    /** @example "a4b52d092d5223d4c684b06f796d2afd" */
                     ETag?: string;
                     [name: string]: unknown;
                 };

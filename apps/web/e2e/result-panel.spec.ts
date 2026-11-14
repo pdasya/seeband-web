@@ -25,6 +25,7 @@ const PARSED = (quantity: string) => ({
   warnings_omitted: 0,
   interpolated: {},
   interpolation_failed: [],
+  interpolation_failure_reasons: {},
 });
 
 const RESULT = {
@@ -184,18 +185,16 @@ test("an edit ends what was said about the fit", async ({ page }) => {
   await open(page);
   await finishWith(page, {
     at_bounds: ["band_gap"],
-    known_issues: ["acphdis_early_stop"],
+    known_issues: ["dpb_loop_degeneracy"],
     iterations: 5,
   });
-  await expect(page.getByText(/stops when C and D alone settle/)).toBeVisible();
+  await expect(page.getByText(/returns m₂\/m₁ times N₂\/N₁/)).toBeVisible();
 
   await page.getByRole("slider", { name: "E_g" }).press("ArrowRight");
 
   await expect(table(page).getByText("at bound")).toHaveCount(0);
   await expect(page.getByText(/may have been set/)).toHaveCount(0);
-  await expect(page.getByText(/stops when C and D alone settle/)).toHaveCount(
-    0,
-  );
+  await expect(page.getByText(/returns m₂\/m₁ times N₂\/N₁/)).toHaveCount(0);
   await expect(iterations(page)).toContainText("—");
 });
 
@@ -318,12 +317,12 @@ test("a fit the server ended early keeps its marks and flags", async ({
   await finishWith(page, {
     status: "stopped",
     at_bounds: ["band_gap"],
-    known_issues: ["acphdis_early_stop"],
+    known_issues: ["dpb_loop_degeneracy"],
   });
 
   await expect(page.getByText(/these are its last values/)).toBeVisible();
   await expect(row(page, "E_g").getByText("at bound")).toBeVisible();
-  await expect(page.getByText(/stops when C and D alone settle/)).toBeVisible();
+  await expect(page.getByText(/returns m₂\/m₁ times N₂\/N₁/)).toBeVisible();
 });
 
 for (const [name, change] of [
@@ -344,17 +343,13 @@ for (const [name, change] of [
     await open(page);
     await finishWith(page, {
       at_bounds: ["band_gap"],
-      known_issues: ["acphdis_early_stop"],
+      known_issues: ["dpb_loop_degeneracy"],
     });
-    await expect(
-      page.getByText(/stops when C and D alone settle/),
-    ).toBeVisible();
+    await expect(page.getByText(/returns m₂\/m₁ times N₂\/N₁/)).toBeVisible();
 
     await change(page);
 
-    await expect(page.getByText(/stops when C and D alone settle/)).toHaveCount(
-      0,
-    );
+    await expect(page.getByText(/returns m₂\/m₁ times N₂\/N₁/)).toHaveCount(0);
     await expect(table(page).getByText("at bound")).toHaveCount(0);
     await expect(page.getByText(/may have been set/)).toHaveCount(0);
   });
@@ -401,11 +396,11 @@ test("an error of the fit alone goes under the fitted values, once", async ({
   await open(page, {
     ...CALC,
     rmse: RMSE,
-    known_issues: ["acphdis_early_stop"],
+    known_issues: ["dpb_loop_degeneracy"],
   });
-  await finishWith(page, { known_issues: ["acphdis_early_stop"] });
+  await finishWith(page, { known_issues: ["dpb_loop_degeneracy"] });
 
-  const text = page.getByText(/stops when C and D alone settle/);
+  const text = page.getByText(/returns m₂\/m₁ times N₂\/N₁/);
   await expect(text).toHaveCount(1);
   await expect(page.locator("dl").getByText("unreliable")).toHaveCount(0);
 

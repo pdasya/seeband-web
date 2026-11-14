@@ -468,7 +468,7 @@ def test_values_outside_a_control_are_allowed(client: TestClient) -> None:
     assert client.post("/api/calc", json=_body(parameters=parameters)).status_code == 200
 
 
-def test_disabled_mode_is_refused_with_its_reason(client: TestClient) -> None:
+def test_spb_hall_mode_returns_finite_hall_curves(client: TestClient) -> None:
     response = client.post(
         "/api/calc",
         json=_body(
@@ -478,15 +478,10 @@ def test_disabled_mode_is_refused_with_its_reason(client: TestClient) -> None:
         ),
     )
 
-    assert response.status_code == 409
-    assert response.json()["code"] == "fit_mode_disabled"
-    assert response.json()["details"] == [
-        {
-            "location": ["body", "fit_mode"],
-            "code": "spb_hall_mode_disabled",
-            "message": "A known issue disables this mode",
-        }
-    ]
+    assert response.status_code == 200
+    hall = response.json()["curves"]["hall_m3_per_c"]
+    assert len(hall) == 11
+    assert all(value is not None and math.isfinite(value) for value in hall)
 
 
 @pytest.mark.parametrize(

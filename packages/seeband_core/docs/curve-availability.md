@@ -1,6 +1,6 @@
 # Curve availability
 
-Which curves each mode offers through `POST /api/calc`, from the desktop's additional graphs windows. Availability does not depend on scattering. SPB S + ρ + R_H is listed, but the mode is disabled, so the API refuses all its curves until #83.
+Which curves each mode offers through `POST /api/calc`, from the desktop's additional graphs windows. Availability does not depend on scattering. SPB S + ρ + R_H and its curves are enabled after the [P4/P12 correction](spb-hall-fit.md).
 
 | Kind                              | SPB S               | SPB S + ρ, S + ρ + R_H | DPB S               | DPB S + ρ     | DPB S + ρ + R_H |
 | --------------------------------- | ------------------- | ---------------------- | ------------------- | ------------- | --------------- |
@@ -33,7 +33,7 @@ m1 below 0 gives complex values, which the API refuses with `calculation_failed`
 
 ## Known errors in these curves
 
-With `acPhDis`, `seebeck_by_band`, `electrical_conductivity`, `electrical_conductivity_by_band` and `thermal_conductivity` are **wrong**, and `acphdis_curve_scale` flags them until #82: σ · ρ is not 1, and the band contributions to S need not sum to S.
+P3 (#82) makes acPhDis conductivity, thermal conductivity and band contributions use the same 300 K scattering-parameter scale as resistivity. σρ = 1 and band conductivities add to total σ. Summed Seebeck contributions agree with the total on single-point grids; on multi-point grids the separate total-Seebeck weighting error (#102) remains.
 
 ## Differences from the desktop
 

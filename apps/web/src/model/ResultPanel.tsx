@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
+import { limitedRanges } from "@/model/interpolatedRanges";
 
 import { modelsQuery } from "@/api/queries";
 import { Badge } from "@/components/ui/badge";
@@ -130,6 +131,16 @@ export function ResultPanel({ live }: { live: LiveCurves }) {
     minK === null || maxK === null
       ? null
       : fit.rangeSummary(formatNumber(minK), formatNumber(maxK)),
+    ...(mode === undefined
+      ? []
+      : limitedRanges(interpolation, mode.quantities)
+    ).map(({ quantity, minK: low, maxK: high }) =>
+      fit.limitedRangeSummary(
+        dataText.quantities[quantity].symbol,
+        formatNumber(low),
+        formatNumber(high),
+      ),
+    ),
   ]
     .filter((part) => part !== null && part !== undefined)
     .join(" · ");

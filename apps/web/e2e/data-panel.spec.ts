@@ -24,6 +24,7 @@ function parsed(overrides: object = {}) {
     warnings_omitted: 0,
     interpolated: {},
     interpolation_failed: [],
+    interpolation_failure_reasons: {},
     ...overrides,
   };
 }
@@ -77,6 +78,7 @@ const PARSED_FOR_RELOAD = {
   warnings_omitted: 0,
   interpolated: {},
   interpolation_failed: [],
+  interpolation_failure_reasons: {},
 };
 
 test.beforeEach(async ({ page }) => {

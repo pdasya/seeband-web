@@ -64,10 +64,7 @@ export const STRINGS = {
       acPhDis: "Both mechanisms (acPhDis)",
     },
     disabledReason: "not available until a known error is fixed.",
-    disabledReasons: {
-      "known_issue.spb_hall_mode_disabled":
-        "not available until a known error is fixed. This fit fails on the desktop, and its mass and scales are wrong.",
-    },
+    disabledReasons: {},
     degeneracyHint: "Band degeneracies are not fitted.",
     degeneracyInvalid:
       "N₁ and N₂ must be above 0. The last valid value stays in use.",
@@ -101,9 +98,20 @@ export const STRINGS = {
         "This fit range cannot be interpolated. It must start above 0 K, and span 20 to 200000 K.",
       flags: {
         failed: "could not be interpolated, so a fit cannot use it.",
+        // Why the server refused, by its reason code.
+        failedBecause: {
+          no_overlap:
+            "its measured range does not overlap the fit range, so a fit cannot use it.",
+          overlap_too_short:
+            "its measured range overlaps the fit range too little to interpolate, so a fit cannot use it.",
+          fit_failed:
+            "the polynomial could not be fitted to its data, so a fit cannot use it.",
+        },
         notFinite: "the polynomial overflowed, so a fit cannot use it.",
         noMeasuredPoints:
-          "no measured point lies in the fit range, so every value is made up.",
+          "no measured point lies in the fit range, so every value comes from the polynomial alone, which can be far off between measurements.",
+        rangeLimited: (minK: string, maxK: string) =>
+          `the measured range limits interpolation to ${minK}–${maxK} K, and a fit uses only that.`,
         extrapolated:
           "the grid goes beyond the data, so some values are made up.",
         underdetermined: "too few points set the polynomial.",
@@ -421,6 +429,8 @@ export const STRINGS = {
         "The model gave values that are not finite during the fit.",
       "The fit reached its limit of function evaluations.":
         "The fit reached its limit of function evaluations.",
+      "The sign of the start band mass does not match the sign of R_H.":
+        "The sign of the start band mass does not match the sign of R_H. A positive mass is an electron band, with R_H below 0.",
     },
     failures: {
       fit_timeout: "The fit ran past its time limit, and has ended.",
@@ -467,18 +477,8 @@ export const STRINGS = {
     },
     knownIssueOther: "A known error applies to this result.",
     knownIssueTexts: {
-      "known_issue.spb_hall_mode_disabled":
-        "This fit fails on the desktop, and its mass and scales are wrong.",
-      "known_issue.spb_hall_uses_fermi_energy":
-        "SPB R_H uses the Fermi energy at 0 K instead of the chemical potential, which also affects this fit.",
-      "known_issue.acphdis_curve_scale":
-        "With acPhDis, σ, κ and S by band use another scale of C and D than ρ and S, so σ·ρ is not 1, and band contributions do not sum to S.",
       "known_issue.acphdis_band_weight":
         "With acPhDis, the band weight of the last temperature applies to all of S.",
-      "known_issue.acphdis_early_stop":
-        "With acPhDis, this fit stops when C and D alone settle, so it can end before the other values do.",
-      "known_issue.dpb_s_degeneracy":
-        "With N₂/N₁ other than 1, a fitted m₂/m₁ does not match its curves.",
       "known_issue.dpb_loop_degeneracy":
         "With N₂/N₁ other than 1, the fit returns m₂/m₁ times N₂/N₁, so the value shown can leave its bounds. The bounds and the at-bound mark apply to the value before that factor.",
       "known_issue.negative_m_eff_weight":
@@ -498,6 +498,8 @@ export const STRINGS = {
     noIterations: "—",
     iterationLimit: (limit: number) => `limit ${String(limit)}`,
     rangeSummary: (minK: string, maxK: string) => `range ${minK}–${maxK} K`,
+    limitedRangeSummary: (symbol: string, minK: string, maxK: string) =>
+      `${symbol} only ${minK}–${maxK} K`,
     endNotes: {
       iterationLimit: (limit: number | null) =>
         limit === null
@@ -539,6 +541,8 @@ export const STRINGS = {
         `Model ${model}, fit mode ${mode}`,
       scattering: (scattering: string) => `Scattering ${scattering}`,
       range: (minK: string, maxK: string) => `Fit range ${minK}-${maxK} K`,
+      limitedRange: (quantity: string, minK: string, maxK: string) =>
+        `Interpolated ${quantity} only over ${minK}-${maxK} K, where its data end`,
       degeneracies: (n1: string, n2: string) =>
         `Band degeneracies N1 = ${n1}, N2 = ${n2}`,
       fit: (status: string, iterations: number | null) =>
