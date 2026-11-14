@@ -3206,7 +3206,8 @@
                           ],
                           "points": 3,
                           "min_temperature_k": 100.0,
-                          "max_temperature_k": 300.0
+                          "max_temperature_k": 300.0,
+                          "loaded_as": "seebeck"
                         }
                       },
                       "errors": [],
@@ -3221,7 +3222,8 @@
                       ],
                       "warnings_omitted": 0,
                       "interpolated": {},
-                      "interpolation_failed": []
+                      "interpolation_failed": [],
+                      "interpolation_failure_reasons": {}
                     }
                   },
                   "with_errors": {
@@ -3265,7 +3267,8 @@
                       "warnings": [],
                       "warnings_omitted": 0,
                       "interpolated": {},
-                      "interpolation_failed": []
+                      "interpolation_failed": [],
+                      "interpolation_failure_reasons": {}
                     }
                   },
                   "interpolated": {
@@ -3330,7 +3333,8 @@
                           ],
                           "points": 3,
                           "min_temperature_k": 100.0,
-                          "max_temperature_k": 160.0
+                          "max_temperature_k": 160.0,
+                          "loaded_as": "seebeck"
                         }
                       },
                       "errors": [],
@@ -3353,11 +3357,13 @@
                             3e-06
                           ],
                           "extrapolated": false,
+                          "range_limited": false,
                           "measured_points_in_range": 3,
                           "underdetermined": true
                         }
                       },
-                      "interpolation_failed": []
+                      "interpolation_failed": [],
+                      "interpolation_failure_reasons": {}
                     }
                   }
                 }
@@ -3942,10 +3948,10 @@
               "text/event-stream": {
                 "examples": {
                   "single_pass": {
-                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"done\",\"result\":{\"parameters\":{\"m_eff\":0.57,\"band_gap\":910.0,\"fermi_energy\":-35.0},\"status\":\"converged\",\"parameter_errors\":{\"m_eff\":0.02,\"band_gap\":12.0,\"fermi_energy\":4.0},\"at_bounds\":[],\"known_issues\":[]}}\n\n"
+                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"done\",\"result\":{\"parameters\":{\"m_eff\":0.57,\"band_gap\":910.0,\"fermi_energy\":-35.0},\"core_version\":\"0.1.1\",\"status\":\"converged\",\"parameter_errors\":{\"m_eff\":0.02,\"band_gap\":12.0,\"fermi_energy\":4.0},\"at_bounds\":[],\"known_issues\":[],\"held\":[]}}\n\n"
                   },
                   "iterative": {
-                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"iteration\",\"iteration\":1,\"parameters\":{\"m_eff\":0.8,\"band_gap\":950.0,\"fermi_energy\":-60.0}}\n\ndata: {\"type\":\"iteration\",\"iteration\":2,\"parameters\":{\"m_eff\":0.6,\"band_gap\":915.0,\"fermi_energy\":-38.0}}\n\ndata: {\"type\":\"done\",\"result\":{\"parameters\":{\"m_eff\":0.57,\"band_gap\":910.0,\"fermi_energy\":-35.0},\"status\":\"converged\",\"iterations\":2,\"parameter_errors\":{\"m_eff\":0.02,\"band_gap\":12.0,\"fermi_energy\":4.0},\"at_bounds\":[],\"known_issues\":[]}}\n\n"
+                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"iteration\",\"iteration\":1,\"parameters\":{\"m_eff\":0.8,\"band_gap\":950.0,\"fermi_energy\":-60.0}}\n\ndata: {\"type\":\"iteration\",\"iteration\":2,\"parameters\":{\"m_eff\":0.6,\"band_gap\":915.0,\"fermi_energy\":-38.0}}\n\ndata: {\"type\":\"done\",\"result\":{\"parameters\":{\"m_eff\":0.57,\"band_gap\":910.0,\"fermi_energy\":-35.0},\"core_version\":\"0.1.1\",\"status\":\"converged\",\"iterations\":2,\"parameter_errors\":{\"m_eff\":0.02,\"band_gap\":12.0,\"fermi_energy\":4.0},\"at_bounds\":[],\"known_issues\":[],\"held\":[]}}\n\n"
                   },
                   "fit_timeout": {
                     "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"error\",\"error\":{\"code\":\"fit_timeout\",\"message\":\"The fit took too long\",\"details\":[]}}\n\n"
@@ -4475,7 +4481,8 @@
                           ],
                           "points": 31,
                           "min_temperature_k": 50.0,
-                          "max_temperature_k": 800.0
+                          "max_temperature_k": 800.0,
+                          "loaded_as": "seebeck"
                         },
                         "resistivity": {
                           "temperature_k": [
@@ -4546,7 +4553,8 @@
                           ],
                           "points": 31,
                           "min_temperature_k": 50.0,
-                          "max_temperature_k": 800.0
+                          "max_temperature_k": 800.0,
+                          "loaded_as": "resistivity"
                         },
                         "hall": {
                           "temperature_k": [
@@ -4617,7 +4625,8 @@
                           ],
                           "points": 31,
                           "min_temperature_k": 50.0,
-                          "max_temperature_k": 800.0
+                          "max_temperature_k": 800.0,
+                          "loaded_as": "hall"
                         }
                       },
                       "errors": [],
@@ -4625,6 +4634,7 @@
                       "warnings_omitted": 0,
                       "interpolated": {},
                       "interpolation_failed": [],
+                      "interpolation_failure_reasons": {},
                       "synthetic": true,
                       "message_key": "demo_dataset.synthetic",
                       "known_issues": [],
@@ -5150,6 +5160,12 @@
             "type": "array",
             "title": "Temperature K"
           },
+          "core_version": {
+            "type": "string",
+            "title": "Core Version",
+            "description": "Core software version for provenance, not certification.",
+            "default": "0.1.1"
+          },
           "curves": {
             "additionalProperties": {
               "items": {
@@ -5207,6 +5223,7 @@
         "description": "Curves by name, where each name ends in its unit, and null marks a value that is not finite.\n\n`known_issues` names known errors that apply to this result, as in `GET /api/models`. `rmse` is\nempty without measurements. `measured_points` holds points made from the measurements sent,\nby name with its unit: `electrical_conductivity_s_per_m` is 1/rho, with null for a rho of 0 or\nbelow. They use no model, so they go with the data the request sent, interpolated or not.",
         "examples": [
           {
+            "core_version": "0.1.1",
             "curves": {
               "resistivity_ohm_m": [
                 3.6627e-05,
@@ -5265,6 +5282,7 @@
               "temperature",
               "seebeck",
               "resistivity",
+              "conductivity",
               "hall"
             ],
             "title": "Role"
@@ -5281,6 +5299,8 @@
                   "Ohm*m",
                   "mOhm*cm",
                   "uOhm*m",
+                  "S/m",
+                  "S/cm",
                   "m^3/C",
                   "cm^3/C"
                 ]
@@ -5508,6 +5528,25 @@
             "type": "array",
             "title": "Interpolation Failed"
           },
+          "interpolation_failure_reasons": {
+            "additionalProperties": {
+              "type": "string",
+              "enum": [
+                "no_overlap",
+                "overlap_too_short",
+                "fit_failed"
+              ]
+            },
+            "propertyNames": {
+              "enum": [
+                "seebeck",
+                "resistivity",
+                "hall"
+              ]
+            },
+            "type": "object",
+            "title": "Interpolation Failure Reasons"
+          },
           "synthetic": {
             "type": "boolean",
             "const": true,
@@ -5560,6 +5599,7 @@
           "warnings_omitted",
           "interpolated",
           "interpolation_failed",
+          "interpolation_failure_reasons",
           "synthetic",
           "message_key",
           "known_issues",
@@ -5714,6 +5754,14 @@
             "title": "Extrapolated",
             "default": false
           },
+          "held": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Held"
+          },
           "measurements": {
             "additionalProperties": {
               "$ref": "#/components/schemas/MeasurementInput"
@@ -5739,7 +5787,7 @@
           "measurements"
         ],
         "title": "FitApiRequest",
-        "description": "What to fit.\n\n`start` holds every parameter of the mode in core units, including those of other scattering\ntypes. `bounds` overrides the description's bounds for fitted parameters, in core units.\n`measurements` holds each quantity of the mode, and only points from `min_temperature_k` to\n`max_temperature_k`, inclusive, enter the fit. `extrapolated` says that interpolation made up\nsome of these points, so that the result says so too.",
+        "description": "What to fit.\n\n`start` holds every parameter of the mode in core units, including those of other scattering\ntypes. `bounds` overrides the description's bounds for fitted parameters, in core units.\n`measurements` holds each quantity of the mode, and only points from `min_temperature_k` to\n`max_temperature_k`, inclusive, enter the fit. `extrapolated` says that interpolation made up\nsome of these points, so that the result says so too.\n\n`held` names fitted parameters to keep at their start values: the fit finds only the others.\nA name the mode does not fit, for the scattering type, or every fitted parameter, is refused.",
         "examples": [
           {
             "bounds": {
@@ -6013,6 +6061,12 @@
             "type": "object",
             "title": "Parameters"
           },
+          "core_version": {
+            "type": "string",
+            "title": "Core Version",
+            "description": "Core software version for provenance, not certification.",
+            "default": "0.1.1"
+          },
           "status": {
             "type": "string",
             "enum": [
@@ -6065,6 +6119,13 @@
             },
             "type": "array",
             "title": "Known Issues"
+          },
+          "held": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Held"
           }
         },
         "type": "object",
@@ -6073,13 +6134,16 @@
           "status",
           "parameter_errors",
           "at_bounds",
-          "known_issues"
+          "known_issues",
+          "held"
         ],
         "title": "FitResponse",
-        "description": "The outcome of a fit, in core units.\n\n`converged` means that the fit ended normally, not that the result is sound. `iteration_limit`\nis not a converged result. `failed` returns the start values, with fixed text in `message`.\n`iterations` is left out for a single-pass mode. A value that is not finite is null.\n\n`parameter_errors` holds standard errors from the last solver run of each stage, holding other\nstages fixed, so in a staged fit they can be far too small, and are not plain uncertainties.\n`at_bounds` names fitted parameters that ended at a bound, which may be what set them.\n`known_issues` names known errors that apply, as in `GET /api/models`.",
+        "description": "The outcome of a fit, in core units.\n\n`converged` means that the fit ended normally, not that the result is sound. `iteration_limit`\nis not a converged result. `failed` returns the start values, with fixed text in `message`.\n`iterations` is left out for a single-pass mode. A value that is not finite is null.\n\n`parameter_errors` holds standard errors from the last solver run of each stage, holding other\nstages fixed, so in a staged fit they can be far too small, and are not plain uncertainties.\n`at_bounds` names fitted parameters that ended at a bound, which may be what set them.\n`known_issues` names known errors that apply, as in `GET /api/models`. `held` names the\nparameters the request held, which come back as sent, with no error and no at-bound mark; the\nerrors of the others hold the held values exact. A held value outside its bounds fails as a\nstart would. Holding m1, or the SPB Hall mass, skips the R_H stage.",
         "examples": [
           {
             "at_bounds": [],
+            "core_version": "0.1.1",
+            "held": [],
             "known_issues": [],
             "parameter_errors": {
               "band_gap": 12.0,
@@ -6389,6 +6453,12 @@
           "version": {
             "type": "string",
             "title": "Version"
+          },
+          "core_version": {
+            "type": "string",
+            "title": "Core Version",
+            "description": "Core software version for provenance, not certification.",
+            "default": "0.1.1"
           }
         },
         "type": "object",
@@ -6399,6 +6469,7 @@
         "title": "HealthResponse",
         "examples": [
           {
+            "core_version": "0.1.1",
             "status": "ok",
             "version": "1.0.0"
           }
@@ -6431,6 +6502,10 @@
             "type": "boolean",
             "title": "Extrapolated"
           },
+          "range_limited": {
+            "type": "boolean",
+            "title": "Range Limited"
+          },
           "measured_points_in_range": {
             "type": "integer",
             "title": "Measured Points In Range"
@@ -6445,11 +6520,12 @@
           "temperature_k",
           "values",
           "extrapolated",
+          "range_limited",
           "measured_points_in_range",
           "underdetermined"
         ],
         "title": "InterpolatedResponse",
-        "description": "A quantity on the interpolation grid. `null` marks a value that is not finite.\n\n`extrapolated` means that some of the grid lies outside the data, so those values are made up,\nand a fit from them should say so through `extrapolated` in its request.\n`measured_points_in_range` of 0 means that all the values are made up. `underdetermined` means\nthat the data do not set the polynomial."
+        "description": "A quantity on the interpolation grid. `null` marks a value that is not finite.\n\n`range_limited` means the requested range extends beyond this quantity's measured range.\n`extrapolated` is retained for compatibility and is false for new server results.\n`measured_points_in_range` counts source points in the requested range; zero can occur between\nsparse measurements. `underdetermined` means that the data do not set the polynomial."
       },
       "InterpolationRange": {
         "properties": {
@@ -6490,6 +6566,8 @@
               "missing_temperature",
               "non_positive_temperature",
               "negative_resistivity",
+              "non_positive_conductivity",
+              "resistivity_and_conductivity",
               "repeated_role",
               "unit_not_allowed",
               "preamble_skipped",
@@ -6715,6 +6793,16 @@
           "max_temperature_k": {
             "type": "number",
             "title": "Max Temperature K"
+          },
+          "loaded_as": {
+            "type": "string",
+            "enum": [
+              "seebeck",
+              "resistivity",
+              "conductivity",
+              "hall"
+            ],
+            "title": "Loaded As"
           }
         },
         "type": "object",
@@ -6723,10 +6811,11 @@
           "values",
           "points",
           "min_temperature_k",
-          "max_temperature_k"
+          "max_temperature_k",
+          "loaded_as"
         ],
         "title": "MeasurementResponse",
-        "description": "Measured data sorted by temperature, in V/K, ohm m or m^3/C, and its size and range."
+        "description": "Measured data sorted by temperature, in V/K, ohm m or m^3/C, and its size and range.\n\n`loaded_as` is what the text held: the quantity itself, or `conductivity` for a resistivity\nthat the core computed as 1/sigma from a column of sigma. Its interpolation, fits and RMSE all\nuse that resistivity."
       },
       "ModelResponse": {
         "properties": {
@@ -6970,6 +7059,7 @@
                 "enum": [
                   "seebeck",
                   "resistivity",
+                  "conductivity",
                   "hall"
                 ]
               },
@@ -7009,7 +7099,7 @@
           "text"
         ],
         "title": "ParseRequest",
-        "description": "A text to read, as the client read it from a file or table.\n\n`expected` names the quantity of a file meant to hold one. `mapping` replaces the suggested\ncolumns with a user's choice, and the text is sent again each time, as the API keeps nothing.\n`interpolate` asks for each quantity on a grid over this fit range."
+        "description": "A text to read, as the client read it from a file or table.\n\n`expected` names the quantity of a file meant to hold one, and `conductivity` reads its values\nas sigma, which comes back as the resistivity 1/sigma. `mapping` replaces the suggested columns\nwith a user's choice, and the text is sent again each time, as the API keeps nothing.\n`interpolate` asks for each quantity on a grid within this range and its measured range."
       },
       "ParseResponse": {
         "properties": {
@@ -7126,6 +7216,25 @@
             },
             "type": "array",
             "title": "Interpolation Failed"
+          },
+          "interpolation_failure_reasons": {
+            "additionalProperties": {
+              "type": "string",
+              "enum": [
+                "no_overlap",
+                "overlap_too_short",
+                "fit_failed"
+              ]
+            },
+            "propertyNames": {
+              "enum": [
+                "seebeck",
+                "resistivity",
+                "hall"
+              ]
+            },
+            "type": "object",
+            "title": "Interpolation Failure Reasons"
           }
         },
         "type": "object",
@@ -7140,10 +7249,11 @@
           "warnings",
           "warnings_omitted",
           "interpolated",
-          "interpolation_failed"
+          "interpolation_failed",
+          "interpolation_failure_reasons"
         ],
         "title": "ParseResponse",
-        "description": "What the text holds. A file with problems is still a 200, with a preview and its `errors`.\n\n`measurements` is empty with any `errors`. `headers` is left out when no header matches the\ncolumns. `column_count` is 0 when neither a row nor a header sets it. `preview` holds the first\nrows that could be read, in the order of the text and as written, and `row_count` all of them.\n`preview_si` holds the same rows in SI, with `null` for a column with no role or no unit:\nwith `errors`, only a unit the request chose is kept. `mapping` is the\nsuggestion or the user's choice, and with no readable rows, always the suggestion. `warnings`\nholds every kind, with at most 100 `preamble_skipped`, and `warnings_omitted` counts the rest.\n`interpolation_failed` names quantities that could not be interpolated."
+        "description": "What the text holds. A file with problems is still a 200, with a preview and its `errors`.\n\n`measurements` is empty with any `errors`. `headers` is left out when no header matches the\ncolumns. `column_count` is 0 when neither a row nor a header sets it. `preview` holds the first\nrows that could be read, in the order of the text and as written, and `row_count` all of them.\n`preview_si` holds the same rows in SI, with `null` for a column with no role or no unit:\nwith `errors`, only a unit the request chose is kept. `mapping` is the\nsuggestion or the user's choice, and with no readable rows, always the suggestion. `warnings`\nholds every kind, with at most 100 `preamble_skipped`, and `warnings_omitted` counts the rest.\n`interpolation_failed` names quantities that could not be interpolated, and\n`interpolation_failure_reasons` says why for each: `no_overlap` (the fit range and the measured\nrange do not overlap), `overlap_too_short` (under 20 K, or under 40 K where the data narrow the\nrange, which would give one grid point) or `fit_failed` (the polynomial could not be fitted)."
       },
       "Prediction": {
         "properties": {

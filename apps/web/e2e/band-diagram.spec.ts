@@ -305,6 +305,7 @@ test("a failure of the curves does not show on it", async ({ page }) => {
         warnings_omitted: 0,
         interpolated: {},
         interpolation_failed: [],
+        interpolation_failure_reasons: {},
       },
     }),
   );

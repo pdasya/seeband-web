@@ -237,6 +237,8 @@ function quantityView(
   }
   const interpolated = state.interpolation.values[quantity];
   const inMode = mode?.quantities.includes(quantity) === true;
+  // ρ from a σ file is 1/σ, which the chart names, as its points are not what was loaded.
+  const fromSigma = entry.loaded_as === "conductivity";
   return {
     ...NO_CHART,
     ...base,
@@ -247,7 +249,9 @@ function quantityView(
       label:
         data?.source.kind === "demo"
           ? text.measurementsDemo
-          : text.measurements,
+          : fromSigma
+            ? text.measurementsFromSigma
+            : text.measurements,
       temperatureK: entry.temperature_k,
       values: scaled(entry.values, factor),
     },
@@ -259,7 +263,11 @@ function quantityView(
             temperatureK: interpolated.temperature_k,
             values: scaled(interpolated.values, factor),
           },
-    note: inMode ? null : words.notInMode,
+    note: !inMode
+      ? words.notInMode
+      : fromSigma
+        ? text.resistivityFromSigmaNote
+        : null,
   };
 }
 
@@ -337,6 +345,9 @@ function conductivityView(
   const from =
     answer === undefined ? null : pointsSource(answer.temperature_k, state);
   const points = from === null ? undefined : answer;
+  // From σ data, the points are 1/ρ of ρ = 1/σ: σ as loaded, to the last digit or so.
+  const fromSigma =
+    state.data.resistivity?.measurement.loaded_as === "conductivity";
   return {
     ...NO_CHART,
     ...base,
@@ -349,14 +360,18 @@ function conductivityView(
             label:
               from === "interpolated"
                 ? text.conductivityPointsInterpolated
-                : text.conductivityPoints,
+                : fromSigma
+                  ? text.conductivityPointsFromSigma
+                  : text.conductivityPoints,
             temperatureK: points.temperature_k,
             values: points.values,
           },
     note:
       points === undefined
         ? text.conductivityNote
-        : text.conductivityPointsNote,
+        : fromSigma && from === "measured"
+          ? text.conductivityPointsFromSigmaNote
+          : text.conductivityPointsNote,
   };
 }
 

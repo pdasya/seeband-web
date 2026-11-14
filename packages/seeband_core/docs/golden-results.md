@@ -182,8 +182,9 @@ PYTHONPATH=packages/seeband_core/src uv run python packages/seeband_core/scripts
 
 `tests/fixtures/physics/p8.json` records the checked solver's results and
 failures for every historical call. Original desktop, P2, P3, P4 and P5
-evidence remains unchanged; the latest regression replay uses P8 results
-for these same inputs. These generated expectations are regression evidence,
+evidence remains unchanged. Independent desktop replays retain the earlier
+P2–P5 corrections, and a separate replay checks the P8 expectations for the
+same inputs. These generated expectations are regression evidence,
 not independent proof of physics. The dedicated conservation, domain and
 order-independence tests check the solver separately. See
 [the signed-balance contract and limitations](chemical-potential.md).

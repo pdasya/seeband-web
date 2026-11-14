@@ -16,6 +16,7 @@ export const UNITS_OF: Readonly<Record<Role, readonly [Unit, ...Unit[]]>> = {
   temperature: ["K", "C"],
   seebeck: ["V/K", "uV/K"],
   resistivity: ["Ohm*m", "mOhm*cm", "uOhm*m"],
+  conductivity: ["S/m", "S/cm"],
   hall: ["m^3/C", "cm^3/C"],
 };
 

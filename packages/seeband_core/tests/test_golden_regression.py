@@ -1,4 +1,4 @@
-"""Replay historical desktop inputs against the current P8 physics expectations.
+"""Replay historical desktop inputs against independent desktop and generated P8 expectations.
 
 Golden results were captured on one Mac with Python 3.11, numpy 1.26 and scipy 1.17. The project
 uses newer versions, and CI runs on Linux, so this is the check across versions and machines.
@@ -356,6 +356,84 @@ def bounds_received(function: str, args: list[Any]) -> list[tuple[float, float]]
 
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize(("example", "mode", "scattering", "source", "call"), CALLS, ids=CALL_IDS)
+def test_replay_matches_the_desktop(
+    example: str, mode: str, scattering: str | None, source: str, call: dict[str, Any]
+) -> None:
+    if "error" in call:
+        kind, _, message = call["error"].partition(": ")
+        assert kind == "ValueError"
+        assert ERROR_FRAGMENTS[kind] in message
+        failed = replay_fit(mode, call)
+        assert failed.status == "failed"
+        assert failed.message is not None
+        assert ERROR_FRAGMENTS.get(kind, message) in failed.message
+        return
+
+    identifier = f"{example}-{mode}-{scattering}-{source}-{call['function']}"
+    expected_p2 = p2_results()
+    if identifier in expected_p2:
+        # P2 changes only the last field: Hall on curves, m1 on fits.
+        call = dict(call, result=[*call["result"][:-1], expected_p2[identifier][-1]])
+    expected_p3 = p3_results()
+    if identifier in expected_p3:
+        call = dict(call, result=[call["result"][0], *expected_p3[identifier][1:]])
+    expected_p5 = p5_results()
+    if identifier in expected_p5:
+        call = dict(call, result=expected_p5[identifier]["result"])
+    expected_p4 = json.loads((GOLDEN.parent / "physics" / "p4.json").read_text())
+    if identifier in expected_p4["corrected_hall_curves"]:
+        call = dict(
+            call, result=[*call["result"][:-1], expected_p4["corrected_hall_curves"][identifier]]
+        )
+    result = replay(mode, scattering, call)
+    if not call["function"].endswith("_fit"):
+        assert_close(result, call["result"], CURVE_TOLERANCE)
+    elif example == "02_SiP" and (mode, scattering) in UNSTABLE_02:
+        values, recorded = list(flat(result)), list(flat(call["result"]))
+        assert len(values) == len(recorded)
+        assert abs(values[0]) < COLLAPSED_M_EFF
+        assert_close(values[1:3], recorded[1:3], FIT_TOLERANCE)
+        bounds = bounds_received(call["function"], call["args"])
+        fitted = [(v, b) for v, b in zip(values, bounds, strict=False)]
+        for value, (lower, upper) in fitted[:3]:
+            assert lower <= value <= upper
+    elif example == "01_Fe2VAl09Si01" and mode == "d1":
+        assert_close(result, call["result"], D1_01_TOLERANCE)
+    elif example == "02_SiP" and mode == "spb_s":
+        assert_close(result, call["result"], SPB_S_02_TOLERANCE)
+    else:
+        assert_close(result, call["result"], FIT_TOLERANCE)
+
+
+def recorded_iterative_runs() -> Iterator[tuple[str, str | None, int, dict[str, Any]]]:
+    # 02_SiP is left out, because its DPB fits differ between versions and machines (D19).
+    for example in ("01_Fe2VAl09Si01", "03_AWI32_SI"):
+        document = json.loads((GOLDEN / f"{example}.json").read_text(encoding="utf-8"))
+        for run in document["runs"]:
+            if run["iterations"] is not None and "error" not in run["calls"][0]:
+                call = run["calls"][0]
+                identifier = (
+                    f"{example}-{run['mode']}-{run['scattering']}-thread-{call['function']}"
+                )
+                corrected = p5_results().get(identifier)
+                iterations = corrected["iterations"] if corrected else run["iterations"]
+                yield run["mode"], run["scattering"], iterations, call
+
+
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize(
+    ("mode", "scattering", "iterations", "call"), list(recorded_iterative_runs())
+)
+def test_iterations_match_the_desktop(
+    mode: str, scattering: str | None, iterations: int, call: dict[str, Any]
+) -> None:
+    result = replay_fit(mode, call)
+    assert result.status == "converged"
+    assert result.iterations == iterations
+
+
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize(("example", "mode", "scattering", "source", "call"), CALLS, ids=CALL_IDS)
 def test_replay_matches_p8_expectations(
     example: str, mode: str, scattering: str | None, source: str, call: dict[str, Any]
 ) -> None:
@@ -363,16 +441,18 @@ def test_replay_matches_p8_expectations(
     assert_p8_replay(identifier, mode, scattering, call)
 
 
-def recorded_iterative_runs() -> Iterator[tuple[str, str, dict[str, Any]]]:
+def p8_iterative_runs() -> Iterator[tuple[str, str, dict[str, Any]]]:
     for identifier, (_, mode, _, source, call) in zip(CALL_IDS, CALLS, strict=True):
         if source == "thread" and call["function"] in {"dpb_see_res_fit", "dpb_see_res_hall_fit"}:
             yield identifier, mode, call
 
 
 @pytest.mark.filterwarnings("ignore")
-@pytest.mark.parametrize(("identifier", "mode", "call"), list(recorded_iterative_runs()))
+@pytest.mark.parametrize(("identifier", "mode", "call"), list(p8_iterative_runs()))
 def test_iterations_match_p8_expectations(identifier: str, mode: str, call: dict[str, Any]) -> None:
     result = replay_fit(mode, call)
+    if "error" not in call:
+        assert result.status == "converged"
     assert result.status == p8_results()[p8_key(identifier, call)]["status"]
     assert result.iterations == p8_results()[p8_key(identifier, call)]["iterations"]
 

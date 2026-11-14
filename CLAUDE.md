@@ -38,6 +38,9 @@ limitations plainly. Distinguish parameter convergence from physical validity.
 
 - `architecture`: boundaries, data handling and when numbers may change.
 - `documentation`: what to update alongside a change.
+- `scientific-computing` in `.agents/skills/scientific-computing/SKILL.md`:
+  symbolic checks, numerical reliability and fit identifiability. Read the
+  relevant reference branch when working on solvers, tolerances or fit methods.
 - `fastapi`, `vercel-composition-patterns`: framework guidance. Project rules win over them.
 - Third-party skills are recorded in `.claude/skills/THIRD_PARTY.md`.
 

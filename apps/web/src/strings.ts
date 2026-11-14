@@ -17,6 +17,8 @@ export const STRINGS = {
   parameters: {
     title: "Parameters",
     fixed: "not fitted",
+    held: "held",
+    hold: (symbol: string) => `Hold ${symbol} at its value in a fit`,
     about: (symbol: string) => `About ${symbol}`,
     // How a parameter is written. Any other shows its name, so a new one needs no change here.
     symbols: {
@@ -76,9 +78,9 @@ export const STRINGS = {
     title: "Data",
     subtitle: {
       separate:
-        "Each file: T and the value, in the units its header names or the ones you choose. With neither: T in K, S in V/K, ρ in Ω·m, R_H in m³/C.",
+        "Each file: T and the value, in the units its header names or the ones you choose. With neither: T in K, S in V/K, ρ in Ω·m or σ in S/m, R_H in m³/C.",
       single:
-        "One table: a column for T, and for each quantity, in the units its header names or the ones you choose. With neither: T in K, S in V/K, ρ in Ω·m, R_H in m³/C.",
+        "One table: a column for T, and for each quantity, in the units its header names or the ones you choose. With neither: T in K, S in V/K, ρ in Ω·m or σ in S/m, R_H in m³/C.",
     },
     dropHint: "Drop a file or browse",
     source: {
@@ -96,9 +98,20 @@ export const STRINGS = {
         "This fit range cannot be interpolated. It must start above 0 K, and span 20 to 200000 K.",
       flags: {
         failed: "could not be interpolated, so a fit cannot use it.",
+        // Why the server refused, by its reason code.
+        failedBecause: {
+          no_overlap:
+            "its measured range does not overlap the fit range, so a fit cannot use it.",
+          overlap_too_short:
+            "its measured range overlaps the fit range too little to interpolate, so a fit cannot use it.",
+          fit_failed:
+            "the polynomial could not be fitted to its data, so a fit cannot use it.",
+        },
         notFinite: "the polynomial overflowed, so a fit cannot use it.",
         noMeasuredPoints:
-          "no measured point lies in the fit range, so every value is made up.",
+          "no measured point lies in the fit range, so every value comes from the polynomial alone, which can be far off between measurements.",
+        rangeLimited: (minK: string, maxK: string) =>
+          `the measured range limits interpolation to ${minK}–${maxK} K, and a fit uses only that.`,
         extrapolated:
           "the grid goes beyond the data, so some values are made up.",
         underdetermined: "too few points set the polynomial.",
@@ -153,6 +166,12 @@ export const STRINGS = {
       "The column names of this file do not match its columns. Choose what its columns hold.",
     belowZeroForRho:
       "Some values are below 0, which a resistivity cannot have.",
+    readAsLabel: "Load ρ, or σ in its place",
+    readAsInverse: "read as ρ = 1/σ",
+    /** The symbol of ρ where it is 1/σ of a σ file, as an RMSE of it compares with 1/σ. */
+    inverseSigma: "ρ = 1/σ",
+    belowZeroForSigma:
+      "Some values are 0 or below, which a conductivity cannot have.",
     chooseColumns: (symbol: string) =>
       `Choose the column that holds ${symbol}, or another quantity. The file loads once T and one quantity are chosen.`,
     slotBusy: (title: string) =>
@@ -182,6 +201,8 @@ export const STRINGS = {
       "Ohm*m": "Ω·m",
       "mOhm*cm": "mΩ·cm",
       "uOhm*m": "µΩ·m",
+      "S/m": "S/m",
+      "S/cm": "S/cm",
       "m^3/C": "m³/C",
       "cm^3/C": "cm³/C",
     },
@@ -192,6 +213,7 @@ export const STRINGS = {
     quantities: {
       seebeck: { symbol: "S", title: "Seebeck coefficient", unit: "V/K" },
       resistivity: { symbol: "ρ", title: "Resistivity", unit: "Ω·m" },
+      conductivity: { symbol: "σ", title: "Conductivity", unit: "S/m" },
       hall: { symbol: "R_H", title: "Hall coefficient", unit: "m³/C" },
     },
     issues: {
@@ -211,6 +233,10 @@ export const STRINGS = {
         "A temperature of 0 K or below. If this column is in °C, choose °C for it.",
       negative_resistivity:
         "A resistivity below 0, which no measurement gives.",
+      non_positive_conductivity:
+        "A conductivity of 0 or below, which has no resistivity.",
+      resistivity_and_conductivity:
+        "A file can hold ρ or σ, not both. Choose one of them.",
       repeated_role: "A quantity is assigned twice.",
       preamble_skipped: "A line of text before the header was left out.",
       header_mismatch: "The header has a different number of columns.",
@@ -250,6 +276,9 @@ export const STRINGS = {
     bandGapMetric: (gap: string, unit: string) => `E_g = ${gap} ${unit}`,
     conductivityDescription: "Chart of σ against temperature",
     conductivityPoints: "1/ρ of the data",
+    conductivityPointsFromSigma: "σ data",
+    conductivityPointsFromSigmaNote:
+      "Points are the loaded σ data in the fit range, as 1/ρ of the ρ = 1/σ a fit uses. The line is the model's σ.",
     conductivityPointsInterpolated: "1/ρ of the interpolated data",
     conductivityPointsNote:
       "Points are 1/ρ of the ρ data in the fit range, which the server calculates. The line is the model's σ.",
@@ -337,6 +366,9 @@ export const STRINGS = {
     model: "Model",
     measurements: "Measurements",
     measurementsDemo: "Measurements (demo)",
+    measurementsFromSigma: "1/σ of the σ data",
+    resistivityFromSigmaNote:
+      "Points are 1/σ of the loaded σ data, which the server calculates. The fit and its RMSE use them as ρ.",
     interpolated: "Interpolated",
     updating: "Updating…",
     lastCurveStays: "The last curve stays on the chart.",
@@ -438,6 +470,7 @@ export const STRINGS = {
       notInterpolated: "No usable interpolated values for",
       noPointsInRange: "No points in the fit range for",
       startOutsideBounds: "A fit cannot start outside its bounds:",
+      allHeld: "Every fitted parameter is held. Release one to fit.",
     },
     rmse: "RMSE",
     degeneracySymbol: "N₁, N₂",
@@ -484,6 +517,8 @@ export const STRINGS = {
     noIterations: "—",
     iterationLimit: (limit: number) => `limit ${String(limit)}`,
     rangeSummary: (minK: string, maxK: string) => `range ${minK}–${maxK} K`,
+    limitedRangeSummary: (symbol: string, minK: string, maxK: string) =>
+      `${symbol} only ${minK}–${maxK} K`,
     endNotes: {
       iterationLimit: (limit: number | null) =>
         limit === null
@@ -517,6 +552,10 @@ export const STRINGS = {
     parametersFile: "seeband-parameters.txt",
     graphFile: (graph: string) => `seeband-${graph}.txt`,
     header: {
+      unknownVersion: "unknown",
+      serverCore: (version: string) => `Export server core ${version}`,
+      fitCore: (version: string) => `Fit core ${version}`,
+      curveCore: (version: string) => `Curve core ${version}`,
       app: (app: string, api: string | null) =>
         api === null ? `SeeBand Web ${app}` : `SeeBand Web ${app}, API ${api}`,
       date: (date: string) => `Exported ${date}`,
@@ -525,8 +564,12 @@ export const STRINGS = {
         `Model ${model}, fit mode ${mode}`,
       scattering: (scattering: string) => `Scattering ${scattering}`,
       range: (minK: string, maxK: string) => `Fit range ${minK}-${maxK} K`,
+      limitedRange: (quantity: string, minK: string, maxK: string) =>
+        `Interpolated ${quantity} only over ${minK}-${maxK} K, where its data end`,
       degeneracies: (n1: string, n2: string) =>
         `Band degeneracies N1 = ${n1}, N2 = ${n2}`,
+      fromConductivity:
+        "rho is 1/sigma of the loaded conductivity data, so its RMSE compares the fit with 1/sigma",
       fit: (status: string, iterations: number | null) =>
         iterations === null
           ? `Fit ${status}`
@@ -543,6 +586,8 @@ export const STRINGS = {
     columns: {
       temperature: "Temperature [K]",
       experimental: (quantity: string) => `Experimental ${quantity}`,
+      experimentalFromSigma: (quantity: string) =>
+        `Experimental ${quantity}, 1/sigma of the loaded conductivity`,
       interpolated: (quantity: string) => `Interpolated ${quantity}`,
       preFit: (quantity: string) => `Pre-fit ${quantity}`,
       fit: (quantity: string) => `Fit ${quantity}`,
@@ -590,6 +635,7 @@ export const STRINGS = {
     status: {
       fitted: "fitted",
       fixed: "fixed",
+      held: "held at its value",
       atBound: "fitted, at bound",
       free: "not fitted yet",
     },
@@ -706,6 +752,7 @@ export const STRINGS = {
     status: {
       fitted: "fitted",
       fixed: "fixed",
+      held: "held",
       needs: (symbols: string) => `needs ${symbols}`,
     },
     notes: "Notes",

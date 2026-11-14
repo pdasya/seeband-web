@@ -35,6 +35,7 @@ const STATE = {
   },
   parameters: {},
   customBounds: {},
+  held: {},
   data: { seebeck: entry([100, 900]), resistivity: entry([100]) },
   interpolation: {
     enabled: false,
@@ -91,6 +92,60 @@ describe("fitRequest", () => {
     );
 
     expect("request" in answer && answer.request.start.m_eff).toBe(2);
+  });
+
+  test("holds the parameters held for the mode, and none of another scattering type", () => {
+    const answer = fitRequest(
+      { ...STATE, held: { dpb_s_rho: ["band_gap", "F"], dpb_s: ["m_eff"] } },
+      models,
+    );
+
+    expect("request" in answer && answer.request.held).toEqual(["band_gap"]);
+  });
+
+  test("leaves held out with none held, so a fit is the desktop's", () => {
+    const answer = fitRequest(STATE, models);
+
+    expect(answer).toHaveProperty("request");
+    expect("request" in answer && answer.request).not.toHaveProperty("held");
+  });
+
+  test("with every fitted parameter held, there is nothing to fit", () => {
+    const all = ["m_eff", "band_gap", "fermi_energy", "A", "B"];
+
+    expect(blocked({ held: { dpb_s_rho: all } })).toEqual({
+      blocked: { reason: "all_held" },
+    });
+  });
+
+  test("the order of the clicks does not change the request", () => {
+    const one = fitRequest(
+      { ...STATE, held: { dpb_s_rho: ["fermi_energy", "band_gap"] } },
+      models,
+    );
+    const other = fitRequest(
+      { ...STATE, held: { dpb_s_rho: ["band_gap", "fermi_energy"] } },
+      models,
+    );
+    if (!("request" in one) || !("request" in other)) {
+      throw new Error("blocked");
+    }
+
+    expect(one.request.held).toEqual(["band_gap", "fermi_energy"]);
+    expect(fitInputsKey(one.request)).toBe(fitInputsKey(other.request));
+  });
+
+  test("a change of what is held is a change of the fit", () => {
+    const free = fitRequest(STATE, models);
+    const held = fitRequest(
+      { ...STATE, held: { dpb_s_rho: ["band_gap"] } },
+      models,
+    );
+    if (!("request" in free) || !("request" in held)) {
+      throw new Error("blocked");
+    }
+
+    expect(fitInputsKey(held.request)).not.toBe(fitInputsKey(free.request));
   });
 
   test("says that interpolated values are extrapolated", () => {

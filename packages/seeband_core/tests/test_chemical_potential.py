@@ -175,3 +175,70 @@ def test_subnormal_density_cannot_certify_a_root():
     with pytest.raises(mm.ChemicalPotentialError) as caught:
         mm.dpb_chemPot_vs_temp(np.array([1e-20]), 1.4e-17, 1.01, 0.0, 1.0)
     assert caught.value.temperature == 1e-20
+
+
+def test_representable_intrinsic_negative_tail_has_a_certified_root():
+    result = mm.dpb_chemPot_diagnostics(np.array([2.0]), 2833.6537, 0.25845, 2192.647, 7.6606)
+    assert result.chemical_potential[0] == pytest.approx(1413.7662037668432, abs=1e-9)
+    assert result.normalized_residual[0] <= 1e-12
+
+
+def test_spb_sommerfeld_limit_has_the_expected_temperature_shift():
+    energy = 10000.0
+    temperatures = np.array([1.0, 10.0, 100.0])
+    roots = mm.spb_chemPot_vs_temp(temperatures, 1.0, energy)
+    # For a 3D parabolic band, mu = EF - pi^2 T^2/(12 EF) + O(T^4/EF^3).
+    # Budget 10*T^4/EF^3 for the omitted term and the existing high-eta approximation.
+    reference = energy - np.pi**2 * temperatures**2 / (12 * energy)
+    assert np.all(abs(roots - reference) <= 10 * temperatures**4 / energy**3 + 1e-9)
+
+
+def test_spb_boltzmann_limit_matches_classical_density():
+    energy, temperature = 1.0, 1000.0
+    # n(0)/[C*T^1.5] = (2/3)*(EF/T)^1.5 and F_1/2(eta) ~ Gamma(3/2)*exp(eta).
+    fugacity = (2 / 3) * (energy / temperature) ** 1.5 / (np.sqrt(np.pi) / 2)
+    reference = temperature * np.log(fugacity)
+    root = mm.spb_chemPot_vs_temp(np.array([temperature]), 1.0, energy)[0]
+    # Classical truncation and the existing 0.27 tail correction are O(fugacity).
+    assert abs(root - reference) <= temperature * fugacity
+
+
+def test_intrinsic_unequal_bands_match_classical_mass_and_degeneracy_shift():
+    temperatures = np.array([50.0, 100.0])
+    gap, mass, degeneracy = 10000.0, 2.0, 3.0
+    # Equal classical electron/hole populations, with the model's N^(5/3) mass.
+    reference = gap / 2 - temperatures * (0.75 * np.log(mass) + 1.25 * np.log(degeneracy))
+    roots = mm.dpb_chemPot_vs_temp(temperatures, gap, mass, 0.0, degeneracy)
+    # Both fugacities < exp(-45): classical/tail error is <1e-15 K; allow roundoff.
+    np.testing.assert_allclose(roots, reference, atol=1e-9, rtol=0)
+
+
+@pytest.mark.parametrize("model", ["spb", "dpb"])
+def test_chemical_potential_does_not_mutate_temperature_input(model):
+    temperatures = np.array([300.0, 50.0, 300.0, 100.0])
+    original = temperatures.copy()
+    if model == "spb":
+        mm.spb_chemPot_diagnostics(temperatures, 1.0, 100.0)
+    else:
+        mm.dpb_chemPot_diagnostics(temperatures, 1000.0, 1.01, 0.0, 1.0)
+    np.testing.assert_array_equal(temperatures, original)
+
+
+@pytest.mark.parametrize(
+    "evaluate",
+    [
+        lambda: mm.spb_chemPot_vs_temp(np.array([300.0]), 1.0, 0.0),
+        lambda: mm.spb_chemPot_vs_temp(np.array([300.0]), 0.0, 100.0),
+        lambda: mm.dpb_chemPot_vs_temp(np.array([300.0]), 100.0, -1.0, 100.0, 1.0),
+    ],
+)
+def test_proven_domain_errors_have_a_distinct_catchable_type(evaluate):
+    with pytest.raises(mm.NoFiniteChemicalPotentialError) as caught:
+        evaluate()
+    assert isinstance(caught.value, mm.ChemicalPotentialError)
+
+
+def test_uncertifiable_density_is_not_classified_as_a_domain_error():
+    with pytest.raises(mm.ChemicalPotentialError) as caught:
+        mm.dpb_chemPot_vs_temp(np.array([0.01]), 1000.0, 1.01, 0.0, 1.0)
+    assert not isinstance(caught.value, mm.NoFiniteChemicalPotentialError)

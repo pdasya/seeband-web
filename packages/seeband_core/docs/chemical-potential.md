@@ -17,18 +17,19 @@ For SPB the equation is n(μ, m, T) = n(E_F, m, 0). A finite-temperature root
 exists only when sign(m) E_F > 0. Mass must be finite and nonzero.
 
 DPB keeps band 1 valence with edge 0, and band 2 with edge E_g and type
-s = sign(m_eff). Its density mass remains m_eff N^(5/3), where N is the
-positive degeneracy ratio. The equation is
+s = sign(r), where the low-level mass coordinate is r = R/N and the public
+`m_eff` is R = m₂/|m₁|. Here N = N₂/N₁ > 0. The signed density mass is
+r N^(5/3) = R N^(2/3), giving population weight N |R|^(3/2). The equation is
 
 ```text
 -p(μ, T) + s n₂(μ - E_g, T) = -p(E_F, 0) + s n₂(E_F - E_g, 0).
 ```
 
-For m_eff > 0 this valence/conduction balance has a unique physical root,
-including when the target is zero. For m_eff < 0 both bands are valence;
+For r > 0 the exact parabolic-band balance has a unique physical root,
+including when the target is zero. For r < 0 both bands are valence;
 a finite root exists only when E_F < max(0, E_g). Invalid domains are
 rejected. The former statement that DPB at E_F = 0 had no root was wrong:
-for m_eff = 1.01, E_g = 1000 K and N = 1, the checked solution at 50 K is
+for r = 1.01, E_g = 1000 K and N = 1, the checked solution at 50 K is
 μ = 499.626858019 K with the existing Fermi-integral approximation.
 
 ## Numerical checks
@@ -51,39 +52,70 @@ nonfinite values or an excessive residual raise an explicit error.
 
 `spb_chemPot_diagnostics` and `dpb_chemPot_diagnostics` return
 `ChemicalPotentialResult`: `chemical_potential` in kelvin,
-`normalized_residual` and per-temperature `status`. Successful statuses are
-`converged`. An invalid point aborts with an error carrying `temperature`,
+`normalized_residual` and per-temperature success `status`. Returned statuses
+are always `converged`: failure diagnostics are carried by an exception, not
+by a partial result array. An invalid point aborts with an error carrying `temperature`,
 `reason` and, when available, `normalized_residual`; no partial array is
 used for transport. The existing `*_chemPot_vs_temp` methods return only
 the checked roots.
 
-Fit wrappers translate this error to status `failed` with a fixed message
-that the chemical-potential balance could not be verified. Calculation
-workers use the existing calculation-failure response. Numeric values from
-an exception are not copied into fit messages or logs.
+No-root domains use `NoFiniteChemicalPotentialError`, a subclass of
+`ChemicalPotentialError`. A fit requires a valid initial evaluation. During
+optimization only analytically invalid trial points are rejected; numerical
+failures at admissible parameters remain fatal. The bounded two-point numerical
+Jacobian reverses or shortens a stencil crossing a no-root boundary. Held
+parameters use the same domain rules, including a fully held start. A valid
+start extremely close to both a box bound and the coupled density-domain
+boundary may be moved outside the domain by SciPy's initial inward adjustment.
+That numerical initialization failure is reported explicitly; the wrapper
+does not change coordinates, solver or bounds to force an interior point.
+
+Invalid starts and numerical failures become fit status `failed` with the
+fixed safe message. A calculation with an uncertifiable density root fails
+the whole request with HTTP 422; there are no partial density-root arrays.
+This is an intentional contract change from legacy 200/null responses.
+Numeric values from exceptions are not copied into fit messages or logs.
 
 ## Limits and evidence
 
 The 1e-12 check certifies the implemented density approximation, not the
-physical accuracy of Fermi integrals. P8 preserves their table and
-asymptotic formulas. They have small discontinuities near reduced energies
-−9.9 and 19.9; a physical root can therefore still fail the numerical
-residual check. Underflow, transport overflow and the separate DPB
-weight/degeneracy issues remain. No fit objective, weight, bound or sample
-was changed to improve an example's fit. A failed fit is a valid outcome.
+physical accuracy of Fermi integrals. The negative F₁/₂ tail is evaluated as
+A exp(x)/(1 + 0.27 exp(x)), A = 0.886226925452758, algebraically identical to
+the inherited approximation. This avoids artificial overflow of exp(−x)
+without changing the physical model. For T = 2 K, E_g = 2833.6537 K,
+r = 0.25845, E_F = 2192.647 K and N = 7.6606, the checked root is
+μ ≈ 1413.766203766843 K, consistent with an independent Boltzmann limit.
 
-Of 390 distinct historical call inputs, this capture records 354 curves,
-24 converged fits and 12 failed fits. Ten fits fail the chemical-potential
-check (including the 02_SiP starts/optimizer paths and the 01 D1 variant);
-two retain the original invalid-bounds failure. Failure is recorded, not
-replaced by a visually agreeable fit.
+The table and positive-tail approximation remain unchanged. Small downward
+jumps near reduced energies −9.9 and 19.9 mean the approximation need not be
+monotonic or have a unique root even when the exact equation does. A failed
+residual check alone does not identify a seam, and no universal floating-point
+accuracy floor or seam-induced failure is asserted. The conservation tolerance
+is not relaxed.
+
+Density underflow that prevents certification fails the whole request. This
+is distinct from subsequent transport cancellation/underflow: the unchanged
+F₀ = log(1 + exp(x)) can still round to zero after a successful density solve,
+so transport can return nonfinite points (#105). P8 does not claim to repair
+all Fermi-integral or transport issues.
+
+Previously observed new fit failures on the P8 solver-only version were optimizer
+trial-domain exits after admissible starts, not proof that the data or model
+had no solution. The domain-aware fit wrapper now distinguishes those trial
+points from numerical failures. The updated fixture below records the actual
+post-correction statuses: 354 curves, 33 converged fits and three failures
+from the original invalid-bounds inputs. It must not be used as independent validation of
+model applicability, identifiability or fit quality. Restoring the default
+SciPy residual arithmetic and Jacobian storage layout changes some recorded
+parameters and iteration counts on the already flagged collapsed-mass SiP
+fits (#107). Their sensitivity to rounding remains a model/identifiability
+limitation, not evidence of an improved fit.
 
 Original desktop captures remain unchanged. `tests/fixtures/physics/p8.json`
 records the new results and explicit failures for every historical call,
 with hashes of the desktop sources. These are implementation-generated
-regression expectations, not independent physics validation. Boundary,
-conservation and temperature-order tests check the solver contract
-separately. Regenerate from the repository root:
+regression expectations, not independent physics validation. Independent desktop compatibility checks, analytic limits, boundary,
+conservation and temperature-order tests check separate aspects of the contract. Regenerate from the repository root:
 
 ```sh
 PYTHONPATH=packages/seeband_core/src uv run python packages/seeband_core/scripts/capture_p8_results.py

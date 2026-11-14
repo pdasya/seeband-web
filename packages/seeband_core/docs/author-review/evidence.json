@@ -1,0 +1,27 @@
+{
+  "python": "3.13.18",
+  "numpy": "2.5.4",
+  "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "revision": "c208925b31b896252aa48e2a54da964e2d0f76a9",
+  "data": "synthetic; energies in K, Seebeck in microvolt/K",
+  "P11_102": {
+    "S_300_alone": 94.38190725122979,
+    "S_300_on_grid": 63.523743929420526,
+    "S_300_sum_of_bands": 94.3819072512298
+  },
+  "P14_105": {
+    "F0_minus40_actual": 0.0,
+    "F0_minus40_reference": 4.248354255291589e-18
+  },
+  "P16_107": {
+    "S_300_EF100": 0.0,
+    "S_300_EF500": 0.0
+  },
+  "P8_87": {
+    "mu_at_EF_zero": 0.0,
+    "mu_at_EF_minus_1e_minus6": 499.62685685609665
+  },
+  "warnings": [
+    "The iteration is not making good progress, as measured by the \n improvement from the last ten iterations."
+  ]
+}

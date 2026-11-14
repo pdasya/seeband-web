@@ -6,7 +6,12 @@ import { modelsQuery } from "@/api/queries";
 import { Button } from "@/components/ui/button";
 import { DataPanel } from "@/data/DataPanel";
 import { fitModeOf } from "@/model/selection";
-import { QUANTITIES, readsFiles, useSessionStore } from "@/session/store";
+import {
+  loadedAs,
+  QUANTITIES,
+  readsFiles,
+  useSessionStore,
+} from "@/session/store";
 import { STRINGS } from "@/strings";
 
 const { data: text } = STRINGS;
@@ -110,7 +115,8 @@ export function DataBar() {
           <ul className="m-0 flex flex-[1_1_auto] list-none flex-wrap gap-1.5 p-0">
             {QUANTITIES.map((quantity) => {
               const points = data[quantity]?.measurement.points;
-              const symbol = text.quantities[quantity].symbol;
+              const symbol =
+                text.quantities[loadedAs(quantity, data[quantity])].symbol;
               return (
                 <li
                   key={quantity}

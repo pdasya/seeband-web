@@ -327,6 +327,7 @@ export interface components {
          *     by name with its unit: `electrical_conductivity_s_per_m` is 1/rho, with null for a rho of 0 or
          *     below. They use no model, so they go with the data the request sent, interpolated or not.
          * @example {
+         *       "core_version": "0.1.1",
          *       "curves": {
          *         "resistivity_ohm_m": [
          *           0.000036627,
@@ -374,6 +375,12 @@ export interface components {
         CalcResponse: {
             /** Temperature K */
             temperature_k: number[];
+            /**
+             * Core Version
+             * @description Core software version for provenance, not certification.
+             * @default 0.1.1
+             */
+            core_version?: string;
             /** Curves */
             curves: {
                 [key: string]: (number | null)[];
@@ -404,9 +411,9 @@ export interface components {
              * Role
              * @enum {string}
              */
-            role: "temperature" | "seebeck" | "resistivity" | "hall";
+            role: "temperature" | "seebeck" | "resistivity" | "conductivity" | "hall";
             /** Unit */
-            unit?: ("K" | "C" | "V/K" | "uV/K" | "Ohm*m" | "mOhm*cm" | "uOhm*m" | "m^3/C" | "cm^3/C") | null;
+            unit?: ("K" | "C" | "V/K" | "uV/K" | "Ohm*m" | "mOhm*cm" | "uOhm*m" | "S/m" | "S/cm" | "m^3/C" | "cm^3/C") | null;
         };
         /**
          * CurveAvailabilityResponse
@@ -488,6 +495,10 @@ export interface components {
             };
             /** Interpolation Failed */
             interpolation_failed: ("seebeck" | "resistivity" | "hall")[];
+            /** Interpolation Failure Reasons */
+            interpolation_failure_reasons: {
+                [key: string]: "no_overlap" | "overlap_too_short" | "fit_failed";
+            };
             /**
              * Synthetic
              * @constant
@@ -553,6 +564,9 @@ export interface components {
          *     `measurements` holds each quantity of the mode, and only points from `min_temperature_k` to
          *     `max_temperature_k`, inclusive, enter the fit. `extrapolated` says that interpolation made up
          *     some of these points, so that the result says so too.
+         *
+         *     `held` names fitted parameters to keep at their start values: the fit finds only the others.
+         *     A name the mode does not fit, for the scattering type, or every fitted parameter, is refused.
          * @example {
          *       "bounds": {
          *         "band_gap": {
@@ -623,6 +637,8 @@ export interface components {
              * @default false
              */
             extrapolated?: boolean;
+            /** Held */
+            held?: string[];
             /** Measurements */
             measurements: {
                 [key: string]: components["schemas"]["MeasurementInput"];
@@ -724,9 +740,14 @@ export interface components {
          *     `parameter_errors` holds standard errors from the last solver run of each stage, holding other
          *     stages fixed, so in a staged fit they can be far too small, and are not plain uncertainties.
          *     `at_bounds` names fitted parameters that ended at a bound, which may be what set them.
-         *     `known_issues` names known errors that apply, as in `GET /api/models`.
+         *     `known_issues` names known errors that apply, as in `GET /api/models`. `held` names the
+         *     parameters the request held, which come back as sent, with no error and no at-bound mark; the
+         *     errors of the others hold the held values exact. A held value outside its bounds fails as a
+         *     start would. Holding m1, or the SPB Hall mass, skips the R_H stage.
          * @example {
          *       "at_bounds": [],
+         *       "core_version": "0.1.1",
+         *       "held": [],
          *       "known_issues": [],
          *       "parameter_errors": {
          *         "band_gap": 12,
@@ -747,6 +768,12 @@ export interface components {
                 [key: string]: number | null;
             };
             /**
+             * Core Version
+             * @description Core software version for provenance, not certification.
+             * @default 0.1.1
+             */
+            core_version?: string;
+            /**
              * Status
              * @enum {string}
              */
@@ -763,6 +790,8 @@ export interface components {
             at_bounds: string[];
             /** Known Issues */
             known_issues: string[];
+            /** Held */
+            held: string[];
         };
         /**
          * FitStageResponse
@@ -921,6 +950,7 @@ export interface components {
         /**
          * HealthResponse
          * @example {
+         *       "core_version": "0.1.1",
          *       "status": "ok",
          *       "version": "1.0.0"
          *     }
@@ -933,15 +963,21 @@ export interface components {
             status: "ok";
             /** Version */
             version: string;
+            /**
+             * Core Version
+             * @description Core software version for provenance, not certification.
+             * @default 0.1.1
+             */
+            core_version?: string;
         };
         /**
          * InterpolatedResponse
          * @description A quantity on the interpolation grid. `null` marks a value that is not finite.
          *
-         *     `extrapolated` means that some of the grid lies outside the data, so those values are made up,
-         *     and a fit from them should say so through `extrapolated` in its request.
-         *     `measured_points_in_range` of 0 means that all the values are made up. `underdetermined` means
-         *     that the data do not set the polynomial.
+         *     `range_limited` means the requested range extends beyond this quantity's measured range.
+         *     `extrapolated` is retained for compatibility and is false for new server results.
+         *     `measured_points_in_range` counts source points in the requested range; zero can occur between
+         *     sparse measurements. `underdetermined` means that the data do not set the polynomial.
          */
         InterpolatedResponse: {
             /** Temperature K */
@@ -950,6 +986,8 @@ export interface components {
             values: (number | null)[];
             /** Extrapolated */
             extrapolated: boolean;
+            /** Range Limited */
+            range_limited: boolean;
             /** Measured Points In Range */
             measured_points_in_range: number;
             /** Underdetermined */
@@ -973,7 +1011,7 @@ export interface components {
              * Code
              * @enum {string}
              */
-            code: "no_data" | "wrong_encoding" | "line_too_long" | "too_many_problems" | "too_few_columns" | "wrong_column_count" | "missing_value" | "not_numeric" | "not_finite" | "decimal_comma" | "too_few_rows" | "missing_temperature" | "non_positive_temperature" | "negative_resistivity" | "repeated_role" | "unit_not_allowed" | "preamble_skipped" | "header_mismatch" | "unit_differs" | "repeated_header" | "columns_need_assigning" | "expected_not_found" | "no_quantity" | "few_rows" | "unsorted_temperature" | "duplicate_temperature" | "unit_assumed" | "implausible_magnitude";
+            code: "no_data" | "wrong_encoding" | "line_too_long" | "too_many_problems" | "too_few_columns" | "wrong_column_count" | "missing_value" | "not_numeric" | "not_finite" | "decimal_comma" | "too_few_rows" | "missing_temperature" | "non_positive_temperature" | "negative_resistivity" | "non_positive_conductivity" | "resistivity_and_conductivity" | "repeated_role" | "unit_not_allowed" | "preamble_skipped" | "header_mismatch" | "unit_differs" | "repeated_header" | "columns_need_assigning" | "expected_not_found" | "no_quantity" | "few_rows" | "unsorted_temperature" | "duplicate_temperature" | "unit_assumed" | "implausible_magnitude";
             /** Line */
             line?: number | null;
             /** Column */
@@ -1033,6 +1071,10 @@ export interface components {
         /**
          * MeasurementResponse
          * @description Measured data sorted by temperature, in V/K, ohm m or m^3/C, and its size and range.
+         *
+         *     `loaded_as` is what the text held: the quantity itself, or `conductivity` for a resistivity
+         *     that the core computed as 1/sigma from a column of sigma. Its interpolation, fits and RMSE all
+         *     use that resistivity.
          */
         MeasurementResponse: {
             /** Temperature K */
@@ -1045,6 +1087,11 @@ export interface components {
             min_temperature_k: number;
             /** Max Temperature K */
             max_temperature_k: number;
+            /**
+             * Loaded As
+             * @enum {string}
+             */
+            loaded_as: "seebeck" | "resistivity" | "conductivity" | "hall";
         };
         /**
          * ModelResponse
@@ -1166,15 +1213,16 @@ export interface components {
          * ParseRequest
          * @description A text to read, as the client read it from a file or table.
          *
-         *     `expected` names the quantity of a file meant to hold one. `mapping` replaces the suggested
-         *     columns with a user's choice, and the text is sent again each time, as the API keeps nothing.
-         *     `interpolate` asks for each quantity on a grid over this fit range.
+         *     `expected` names the quantity of a file meant to hold one, and `conductivity` reads its values
+         *     as sigma, which comes back as the resistivity 1/sigma. `mapping` replaces the suggested columns
+         *     with a user's choice, and the text is sent again each time, as the API keeps nothing.
+         *     `interpolate` asks for each quantity on a grid within this range and its measured range.
          */
         ParseRequest: {
             /** Text */
             text: string;
             /** Expected */
-            expected?: ("seebeck" | "resistivity" | "hall") | null;
+            expected?: ("seebeck" | "resistivity" | "conductivity" | "hall") | null;
             /** Mapping */
             mapping?: components["schemas"]["ColumnRole"][] | null;
             interpolate?: components["schemas"]["InterpolationRange"] | null;
@@ -1190,7 +1238,10 @@ export interface components {
          *     with `errors`, only a unit the request chose is kept. `mapping` is the
          *     suggestion or the user's choice, and with no readable rows, always the suggestion. `warnings`
          *     holds every kind, with at most 100 `preamble_skipped`, and `warnings_omitted` counts the rest.
-         *     `interpolation_failed` names quantities that could not be interpolated.
+         *     `interpolation_failed` names quantities that could not be interpolated, and
+         *     `interpolation_failure_reasons` says why for each: `no_overlap` (the fit range and the measured
+         *     range do not overlap), `overlap_too_short` (under 20 K, or under 40 K where the data narrow the
+         *     range, which would give one grid point) or `fit_failed` (the polynomial could not be fitted).
          */
         ParseResponse: {
             /** Headers */
@@ -1221,6 +1272,10 @@ export interface components {
             };
             /** Interpolation Failed */
             interpolation_failed: ("seebeck" | "resistivity" | "hall")[];
+            /** Interpolation Failure Reasons */
+            interpolation_failure_reasons: {
+                [key: string]: "no_overlap" | "overlap_too_short" | "fit_failed";
+            };
         };
         /**
          * Prediction

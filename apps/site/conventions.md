@@ -1,12 +1,26 @@
 # Calculation conventions
 
+## Chemical potential
+
+SPB and DPB solve the signed carrier balance at each temperature with a
+bracketed method in μ/T. The target density still comes from E_F at 0 K.
+Each returned point has normalized density residual at most 1e-12, against
+the unchanged Fermi-integral approximation; an unverified point fails
+explicitly. Temperature order and repeated points do not change the solution.
+
+SPB requires sign(m) E_F > 0. DPB with one valence and one conduction band
+has a finite root even at zero net doping. Two valence bands require
+E_F < max(0, E_g). Zero mass and nonpositive degeneracies are invalid.
+These checks do not establish fit quality, repair transport limitations or
+replace human physicist confirmation and the #71 comparison.
+
 ## SPB Hall
 
 For the enabled SPB Hall mode, `x = sign(m) μ(T)/T`, where μ(T) conserves
 the carrier density set by E_F at zero temperature. The signed mass m is in
-units of mₑ: positive for electrons and negative for holes. A point with signed
-reduced potential `x > 700` is outside the supported integral range and returns
-NaN. For acoustic scattering,
+units of mₑ: positive for electrons and negative for holes. A point with signed reduced potential
+`x > 700` is outside the supported integral range and returns NaN. For
+acoustic scattering,
 
 `R_H n e = -sign(m) 3 F_{-1/2}(x) F_{1/2}(x) / (4 F_0(x)^2)`.
 
@@ -21,19 +35,25 @@ Reported band-mass errors are conditional on the Seebeck-stage `E_F`.
 See the [SPB Hall fit notes](../../packages/seeband_core/docs/spb-hall-fit.md).
 Human physicist confirmation remains pending.
 
-## Chemical potential
+## Result versions and provenance
 
-SPB and DPB solve the signed carrier balance at each temperature with a
-bracketed method in μ/T. The target density still comes from E_F at 0 K.
-Each returned point has normalized density residual at most 1e-12, against
-the unchanged Fermi-integral approximation; an unverified point fails
-explicitly. Temperature order and repeated points do not change the solution.
+[Results that changed](results-changed.md) lists the P2–P7 corrections included
+in core 0.1.0 and the remaining confirmation gates.
 
-SPB requires sign(m) E_F > 0. DPB with one valence and one conduction band
-has a finite root even at zero net doping. Two valence bands require
-E_F < max(0, E_g). Zero mass and nonpositive degeneracies are invalid.
-These checks do not establish fit quality, repair transport limitations or
-replace human physicist confirmation and the #71 comparison.
+Core `0.1.1` adds the P8 solver and domain-aware fitting described above.
+Core version `0.1.0` is the first traceable `seeband_core` version. Earlier
+results may have been produced by different corrected states while reporting
+`0.0.0`; a missing version is unknown and must not be inferred from this
+version. P10 adds version and provenance metadata only. It changes no formula
+or fit behavior. API health, calculation and fit responses expose the core
+version. Shared export headers record server, fit and curve provenance
+separately. PDF exports follow the same rule: no missing version is assigned
+retroactively.
+
+This metadata does not approve a scientific release. Human physicist
+confirmation and the desktop comparison tracked by #71 remain open; author
+review #80 was closed at the project owner’s request; author contact and
+confirmation remain pending.
 
 ## DPB mass and degeneracy
 
@@ -58,17 +78,39 @@ and scattering factors still enter the conductivity. This is not a formula
 for the entire conductivity independent of band filling. Other scattering
 mechanisms need different transport factors.
 
-For R < 0 the signed S-only transport weight N/R is the open #104. In
-this S-only expression, cancellation at R = −N requires equal band occupation
+For R < 0 the signed S-only transport weight N/R is the open #104. In this
+S-only expression, cancellation at R = −N requires equal band occupation
 integrals, as for coincident band edges (E_g = 0); it is not a general result
 for negative R or for other transport weights.
 
 The separate iterative-mode output/bounds inconsistency remains flagged
 by `dpb_loop_degeneracy` (#85). P6 repairs the S-only mismatch and does not
 establish the correctness of negative-mass transport (#104), collapsed
-bands (#107), or the band diagram (#108). P8 addresses chemical-potential
-root finding as described above.
+bands (#107) or the band diagram (#108). P8 checks chemical-potential roots
+as described above.
 Human physicist confirmation and parity (#71) remain outstanding.
+
+## Interpolation support
+
+Interpolation evaluates the existing degree-10 Chebyshev fit only on the
+intersection of the requested fit range and each quantity's measured
+temperature range. A requested 50–800 K window with measurements spanning
+25–750 K therefore produces interpolation over 50–750 K, and the interface
+notes the coverage limit. Quantities keep their independent temperature grids.
+
+There must be at least 20 K of overlap, and 40 K where the data narrow the
+range, so that the grid has two points. No overlap, a single-temperature
+intersection or a shorter overlap makes that quantity unavailable to a fit,
+and the interface says which of these it was. Results and exports name the
+range a fit used for a quantity the data narrowed.
+Source data are unchanged. The polynomial still uses all supplied points;
+this support restriction does not cure overshoot, underdetermination or
+poor physical model agreement, and interpolated points are not independent
+measurements. No sample-dependent model adjustment is made.
+
+New server interpolation does not extrapolate. Explicit legacy/external
+extrapolation provenance remains flagged. Human physicist confirmation and
+the #71 parity gate remain separate from this numerical-domain correction.
 
 ## Scattering
 

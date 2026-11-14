@@ -23,6 +23,7 @@ const parsedFor = (quantity: string, points = 2) => ({
   warnings_omitted: 0,
   interpolated: {},
   interpolation_failed: [],
+  interpolation_failure_reasons: {},
 });
 
 async function open(page: Page) {
