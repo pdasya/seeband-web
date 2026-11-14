@@ -201,7 +201,9 @@ export const STRINGS = {
       C: "°C",
       "V/K": "V/K",
       "uV/K": "µV/K",
+      "mV/K": "mV/K",
       "Ohm*m": "Ω·m",
+      "Ohm*cm": "Ω·cm",
       "mOhm*cm": "mΩ·cm",
       "uOhm*m": "µΩ·m",
       "S/m": "S/m",
@@ -225,22 +227,32 @@ export const STRINGS = {
         `T of ${lower} is about 273 K below T of ${higher} at both ends, as when T in °C is read as K. If the file of ${lowerSymbol} gives T in °C, choose °C for its T. If both give T in K, nothing needs to change.`,
     },
     // Which way a wrong unit most likely went, by quantity, when values read in SI look far off.
+    // Values far outside a quantity's usual size, by which limit they pass. Only a hint names a
+    // unit to choose, where the usual lab unit read as SI would give that side.
     implausible: {
-      // Read in SI as nothing named a unit. The size can be off either way, so no direction is
-      // claimed; a unit SeeBand cannot read must be converted, as choosing a listed one is 1000× off.
-      inSi: {
-        seebeck:
-          "These values are far from any usual Seebeck coefficient in V/K, the unit assumed. If the file is in µV/K, choose µV/K. If it is in mV/K, which SeeBand does not read, convert the column to V/K or µV/K first: choosing µV/K would make the values 1000 times too small.",
-        resistivity:
-          "These values are far from any usual resistivity in Ω·m, the unit assumed. If the file is in mΩ·cm or µΩ·m, choose it. If it is in Ω·cm, which SeeBand does not read, convert the column to Ω·m or mΩ·cm first: choosing mΩ·cm would make the values 1000 times too small.",
-        conductivity:
-          "These values are far from any usual conductivity in S/m, the unit assumed. If the file is in S/cm, choose S/cm. Otherwise, convert the column to S/m or S/cm.",
-        hall: "These values are far from any usual Hall coefficient in m³/C, the unit assumed. If the file is in cm³/C, choose cm³/C. Otherwise, convert the column to m³/C or cm³/C.",
+      size: { above: "larger", below: "smaller" },
+      names: {
+        seebeck: "Seebeck coefficient",
+        resistivity: "resistivity",
+        conductivity: "conductivity",
+        hall: "Hall coefficient",
       },
-      inChosenUnit: (unit: string) =>
-        `These values are far from any usual size in ${unit}, the unit chosen. Check that the file is in ${unit}, or choose the unit it is in.`,
-      inHeaderUnit: (unit: string) =>
-        `These values are far from any usual size in ${unit}, the unit the header names. Check the file: its header may name the wrong unit.`,
+      inSi: (size: string, name: string, unit: string) =>
+        `These values are far ${size} than any usual ${name} in ${unit}, the unit assumed.`,
+      hints: {
+        seebeck: { above: "If the file is in µV/K or mV/K, choose it." },
+        resistivity: {
+          above: "If the file is in Ω·cm, mΩ·cm or µΩ·m, choose it.",
+        },
+        conductivity: { below: "If the file is in S/cm, choose S/cm." },
+        hall: { above: "If the file is in cm³/C, choose cm³/C." },
+      } as Partial<Record<string, Partial<Record<"above" | "below", string>>>>,
+      checkColumn:
+        "Check that the column holds this quantity, and the unit its values are in.",
+      inChosenUnit: (size: string, unit: string) =>
+        `These values are far ${size} than any usual size in ${unit}, the unit chosen. Check that the file is in ${unit}, or choose the unit it is in.`,
+      inHeaderUnit: (size: string, unit: string) =>
+        `These values are far ${size} than any usual size in ${unit}, the unit the header names. Check the file: its header may name the wrong unit.`,
     },
     quantities: {
       seebeck: { symbol: "S", title: "Seebeck coefficient", unit: "V/K" },
@@ -277,7 +289,7 @@ export const STRINGS = {
         "Its header names a unit SeeBand cannot read, so the values are read in SI. Choose the unit they are in, or convert the column to one listed here.",
       unit_not_allowed: "This unit does not fit the quantity of this column.",
       implausible_magnitude:
-        "These values are far from any usual size in SI, as when µV/K is read as V/K. Check the unit of this column.",
+        "These values are far from any usual size for this quantity. Check the unit of this column.",
       repeated_header: "A second column for one quantity was not used.",
       columns_need_assigning: "More than two columns with no header.",
       expected_not_found: "This file has no column for this quantity.",

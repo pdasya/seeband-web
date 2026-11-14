@@ -39,7 +39,7 @@ import {
   loadSingleFile,
   removeSingleFile,
 } from "@/data/singleFile";
-import { formatValue, valueInUnit } from "@/data/firstValue";
+import { valueInUnit } from "@/data/firstValue";
 import { UnitSelect } from "@/data/UnitSelect";
 import {
   UNITS_OF,
@@ -56,6 +56,7 @@ import {
   type ColumnRead,
   type ColumnRole,
   type ParsedTable,
+  writtenRow,
 } from "@/session/store";
 import { STRINGS } from "@/strings";
 
@@ -95,9 +96,9 @@ function firstValue(
   item: ColumnRead | undefined,
   column: number,
 ): string {
-  const written = table.preview[0]?.[column];
+  const written = writtenRow(table, 0)?.[column];
   if (item === undefined) {
-    return formatValue(written, false);
+    return written ?? "";
   }
   return valueInUnit(
     written,
@@ -204,7 +205,11 @@ function unitWarningMessage(
   if (item === undefined || !isUnitDoubt(warning.code)) {
     return issueMessage(warning);
   }
-  return unitDoubtMessage(warning.code, item.role, item);
+  return unitDoubtMessage(
+    { code: warning.code, direction: warning.direction },
+    item.role,
+    item,
+  );
 }
 
 /** From the session, not the last answer, as this is what a fit would use. */
@@ -269,7 +274,7 @@ function Preview({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {table.preview.slice(0, PREVIEW_ROWS).map((row, index) => (
+          {table.preview.slice(0, PREVIEW_ROWS).map((_, index) => (
             <TableRow key={index}>
               {columns.map((column) => {
                 const role = roleOf(column);
@@ -281,7 +286,8 @@ function Preview({
                       role === undefined && "text-muted-foreground",
                     )}
                   >
-                    {formatValue(row[column], role === "temperature")}
+                    {/* As the file writes it, for the user to compare. */}
+                    {writtenRow(table, index)?.[column] ?? ""}
                   </TableCell>
                 );
               })}

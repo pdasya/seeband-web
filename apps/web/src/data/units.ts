@@ -16,8 +16,8 @@ export type Unit = NonNullable<ColumnRole["unit"]>;
  */
 export const UNITS_OF: Readonly<Record<Role, readonly [Unit, ...Unit[]]>> = {
   temperature: ["K", "C"],
-  seebeck: ["V/K", "uV/K"],
-  resistivity: ["Ohm*m", "mOhm*cm", "uOhm*m"],
+  seebeck: ["V/K", "uV/K", "mV/K"],
+  resistivity: ["Ohm*m", "Ohm*cm", "mOhm*cm", "uOhm*m"],
   conductivity: ["S/m", "S/cm"],
   hall: ["m^3/C", "cm^3/C"],
 };
@@ -71,6 +71,12 @@ export type UnitDoubt = Extract<
   "implausible_magnitude" | "unit_assumed"
 >;
 
+/** A doubt about a column's unit, with which limit its values pass, where the server says. */
+export interface UnitDoubtIssue {
+  code: UnitDoubt;
+  direction?: Issue["direction"];
+}
+
 export function isUnitDoubt(code: Issue["code"]): code is UnitDoubt {
   return code === "implausible_magnitude" || code === "unit_assumed";
 }
@@ -87,36 +93,45 @@ export function columnOf(
 export function unitDoubts(
   warnings: readonly Issue[],
   column: number | undefined,
-): UnitDoubt[] {
+): UnitDoubtIssue[] {
   if (column === undefined) {
     return [];
   }
-  return warnings.flatMap(({ code, column: at }) =>
-    at === column && isUnitDoubt(code) ? [code] : [],
+  return warnings.flatMap(({ code, column: at, direction }) =>
+    at === column && isUnitDoubt(code) ? [{ code, direction }] : [],
   );
 }
 
 /**
- * What a doubt about a column's unit means for its quantity, and what to do. Values read in SI as
- * nothing named a unit name the lab units the quantity is often written in, and those SeeBand
- * cannot read; a unit the header named or the user chose is what to check. The size itself is the
- * server's to judge, and it does not say whether values are too large or too small.
+ * What a doubt about a column's unit means for its quantity, and what to do. The server says which
+ * limit the values pass. Read in SI as nothing named a unit, the text names the lab units that
+ * would give that side when read as SI; a unit the header named or the user chose is what to check.
+ * With no side given, as from an older answer, it says only that the size looks wrong.
  */
 export function unitDoubtMessage(
-  doubt: UnitDoubt,
+  doubt: UnitDoubtIssue,
   role: Role,
   item: Pick<ColumnRead, "unit" | "unit_source"> | undefined,
 ): string {
   const { data: text } = STRINGS;
-  if (doubt === "unit_assumed" || role === "temperature") {
-    return text.issues[doubt];
+  const { direction } = doubt;
+  if (
+    doubt.code === "unit_assumed" ||
+    role === "temperature" ||
+    direction == null
+  ) {
+    return text.issues[doubt.code];
   }
+  const size = text.implausible.size[direction];
   const unit = item?.unit ?? UNITS_OF[role][0];
   const label = text.units[unit];
   if (item?.unit_source === "header") {
-    return text.implausible.inHeaderUnit(label);
+    return text.implausible.inHeaderUnit(size, label);
   }
-  return item?.unit_source === "chosen" || unit !== UNITS_OF[role][0]
-    ? text.implausible.inChosenUnit(label)
-    : text.implausible.inSi[role];
+  if (item?.unit_source === "chosen" || unit !== UNITS_OF[role][0]) {
+    return text.implausible.inChosenUnit(size, label);
+  }
+  const hint =
+    text.implausible.hints[role]?.[direction] ?? text.implausible.checkColumn;
+  return `${text.implausible.inSi(size, text.implausible.names[role], label)} ${hint}`;
 }

@@ -395,7 +395,7 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
             <AlertDescription>
               <ul className="m-0 list-none p-0">
                 {data.unitDoubts.map((doubt) => (
-                  <li key={doubt}>
+                  <li key={doubt.code}>
                     {unitDoubtMessage(
                       doubt,
                       loadedAs(quantity, data),

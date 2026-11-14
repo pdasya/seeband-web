@@ -50,8 +50,13 @@ describe("UNITS_OF", () => {
     expect(new Set(offered).size).toBe(offered.length);
     expect([...offered].sort()).toEqual(contractUnits().sort());
     expect(UNITS_OF.temperature).toEqual(["K", "C"]);
-    expect(UNITS_OF.seebeck[0]).toBe("V/K");
-    expect(UNITS_OF.resistivity[0]).toBe("Ohm*m");
+    expect(UNITS_OF.seebeck).toEqual(["V/K", "uV/K", "mV/K"]);
+    expect(UNITS_OF.resistivity).toEqual([
+      "Ohm*m",
+      "Ohm*cm",
+      "mOhm*cm",
+      "uOhm*m",
+    ]);
     expect(UNITS_OF.hall[0]).toBe("m^3/C");
   });
 
@@ -111,8 +116,12 @@ describe("unitDoubts", () => {
   ];
 
   test("finds the doubts about one column only", () => {
-    expect(unitDoubts(warnings, 2)).toEqual(["implausible_magnitude"]);
-    expect(unitDoubts(warnings, 1)).toEqual(["unit_assumed"]);
+    expect(unitDoubts(warnings, 2)).toEqual([
+      { code: "implausible_magnitude", direction: undefined },
+    ]);
+    expect(unitDoubts(warnings, 1)).toEqual([
+      { code: "unit_assumed", direction: undefined },
+    ]);
     expect(unitDoubts(warnings, 0)).toEqual([]);
   });
 
@@ -192,67 +201,84 @@ describe("unitIsDefault", () => {
 describe("unitDoubtMessage", () => {
   const { data: text } = STRINGS;
   const assumed = (unit: Unit) => ({ unit, unit_source: "default" as const });
+  const above = {
+    code: "implausible_magnitude" as const,
+    direction: "above" as const,
+  };
+  const below = {
+    code: "implausible_magnitude" as const,
+    direction: "below" as const,
+  };
 
-  test("names the lab units a quantity read in SI by default is often written in", () => {
-    const seebeck = unitDoubtMessage(
-      "implausible_magnitude",
-      "seebeck",
-      assumed("V/K"),
+  test("names the lab units that read as SI give values this far above", () => {
+    expect(unitDoubtMessage(above, "seebeck", assumed("V/K"))).toBe(
+      "These values are far larger than any usual Seebeck coefficient in V/K, the unit assumed. If the file is in µV/K or mV/K, choose it.",
     );
-    expect(seebeck).toBe(text.implausible.inSi.seebeck);
-    expect(seebeck).toContain("choose µV/K");
-    expect(
-      unitDoubtMessage("implausible_magnitude", "hall", assumed("m^3/C")),
-    ).toContain("cm³/C");
-    expect(
-      unitDoubtMessage("implausible_magnitude", "conductivity", assumed("S/m")),
-    ).toContain("S/cm");
-  });
-
-  test("warns that mV/K and Ω·cm must be converted, as a listed unit would be 1000× off", () => {
-    // 0.2 mV/K chosen as µV/K reads 2e-7 V/K, which passes the size check unwarned.
-    expect(text.implausible.inSi.seebeck).toMatch(
-      /mV\/K, which SeeBand does not read, convert/,
+    expect(unitDoubtMessage(above, "resistivity", assumed("Ohm*m"))).toContain(
+      "Ω·cm, mΩ·cm or µΩ·m",
     );
-    expect(text.implausible.inSi.resistivity).toMatch(
-      /Ω·cm, which SeeBand does not read, convert/,
+    expect(unitDoubtMessage(above, "hall", assumed("m^3/C"))).toContain(
+      "choose cm³/C",
     );
   });
 
-  test("claims no direction, as the size check fires on both sides", () => {
-    for (const message of Object.values(text.implausible.inSi)) {
-      expect(message).not.toMatch(/too large|too small: if/);
-    }
+  test("suggests S/cm only for a conductivity far below, as S/cm read as S/m gives", () => {
+    expect(unitDoubtMessage(below, "conductivity", assumed("S/m"))).toContain(
+      "far smaller than any usual conductivity in S/m",
+    );
+    expect(unitDoubtMessage(below, "conductivity", assumed("S/m"))).toContain(
+      "choose S/cm",
+    );
+    expect(
+      unitDoubtMessage(above, "conductivity", assumed("S/m")),
+    ).not.toContain("S/cm");
+  });
+
+  test("suggests no unit that would make values far below smaller still", () => {
+    const message = unitDoubtMessage(below, "seebeck", assumed("V/K"));
+    expect(message).toContain("far smaller");
+    expect(message).not.toMatch(/µV\/K|mV\/K/);
+    expect(message).toContain(text.implausible.checkColumn);
   });
 
   test("asks to check a unit that was chosen, rather than suggest another", () => {
     expect(
-      unitDoubtMessage("implausible_magnitude", "seebeck", {
+      unitDoubtMessage(above, "seebeck", {
         unit: "uV/K",
         unit_source: "chosen",
       }),
-    ).toBe(text.implausible.inChosenUnit("µV/K"));
-    // Choosing SI is a choice too, so it is not told to choose SI's lab unit.
+    ).toBe(text.implausible.inChosenUnit("larger", "µV/K"));
+    // Choosing SI is a choice too, so it is not told to choose a lab unit.
     expect(
-      unitDoubtMessage("implausible_magnitude", "seebeck", {
+      unitDoubtMessage(above, "seebeck", {
         unit: "V/K",
         unit_source: "chosen",
       }),
-    ).toBe(text.implausible.inChosenUnit("V/K"));
+    ).toBe(text.implausible.inChosenUnit("larger", "V/K"));
   });
 
   test("asks to check the file where its header names the unit", () => {
     expect(
-      unitDoubtMessage("implausible_magnitude", "seebeck", {
+      unitDoubtMessage(below, "seebeck", {
         unit: "V/K",
         unit_source: "header",
       }),
-    ).toBe(text.implausible.inHeaderUnit("V/K"));
+    ).toBe(text.implausible.inHeaderUnit("smaller", "V/K"));
+  });
+
+  test("claims no side where the answer gives none", () => {
+    expect(
+      unitDoubtMessage(
+        { code: "implausible_magnitude" },
+        "seebeck",
+        assumed("V/K"),
+      ),
+    ).toBe(text.issues.implausible_magnitude);
   });
 
   test("keeps the text of an unreadable header unit", () => {
-    expect(unitDoubtMessage("unit_assumed", "seebeck", assumed("V/K"))).toBe(
-      text.issues.unit_assumed,
-    );
+    expect(
+      unitDoubtMessage({ code: "unit_assumed" }, "seebeck", assumed("V/K")),
+    ).toBe(text.issues.unit_assumed);
   });
 });

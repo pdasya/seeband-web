@@ -19,17 +19,17 @@ export function formatValue(
 }
 
 /**
- * A value as written in its unit, and in SI from the server's conversion where the unit is
- * another, so that a user can check a unit against a number they know.
+ * A value exactly as the file writes it, in its unit, and in SI from the server's conversion where
+ * the unit is another, so that a user can find it in their file and check the unit against it.
  */
 export function valueInUnit(
-  written: number | undefined,
+  written: string | undefined,
   si: number | null | undefined,
   role: Role,
   unit: Unit,
 ): string {
   const isTemperature = role === "temperature";
-  const shown = formatValue(written, isTemperature);
+  const shown = written ?? "";
   if (shown === "") {
     return "";
   }

@@ -30,6 +30,7 @@ import {
   useSessionStore,
   type LoadedQuantity,
   type Quantity,
+  writtenRow,
 } from "@/session/store";
 import { STRINGS } from "@/strings";
 
@@ -40,7 +41,8 @@ export interface ColumnChoice {
   text: string;
   columns: number;
   rows: number;
-  firstRow: readonly number[];
+  /** The first row exactly as the file writes it. */
+  firstRow: readonly string[];
   roles: readonly (Role | null)[];
   /** The unit chosen for each column, or null for SI. */
   units: readonly (Unit | null)[];
@@ -163,7 +165,7 @@ export function useFileUpload(
             text,
             columns: parsed.column_count,
             rows: parsed.row_count,
-            firstRow: parsed.preview[0] ?? [],
+            firstRow: writtenRow(parsed, 0) ?? [],
             roles: initialRoles(parsed.column_count),
             units: Array.from({ length: parsed.column_count }, () => null),
             named: other,
