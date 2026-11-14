@@ -465,8 +465,6 @@ export const STRINGS = {
     knownIssueTexts: {
       "known_issue.acphdis_band_weight":
         "With acPhDis, the band weight of the last temperature applies to all of S.",
-      "known_issue.dpb_s_degeneracy":
-        "With N₂/N₁ other than 1, a fitted m₂/m₁ does not match its curves.",
       "known_issue.dpb_loop_degeneracy":
         "With N₂/N₁ other than 1, the fit returns m₂/m₁ times N₂/N₁, so the value shown can leave its bounds. The bounds and the at-bound mark apply to the value before that factor.",
       "known_issue.negative_m_eff_weight":

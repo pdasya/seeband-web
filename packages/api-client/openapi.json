@@ -1257,22 +1257,6 @@
                               "disabled_by": [],
                               "known_issues": [
                                 {
-                                  "id": "dpb_s_degeneracy",
-                                  "severity": "unreliable",
-                                  "message_key": "known_issue.dpb_s_degeneracy",
-                                  "fixed_by": "#85",
-                                  "scattering": [],
-                                  "curve_kinds": [
-                                    "measured",
-                                    "seebeck_by_band",
-                                    "chemical_potential",
-                                    "carrier_concentration_by_band"
-                                  ],
-                                  "columns": [],
-                                  "affects_fit": true,
-                                  "condition": "degeneracy_not_one"
-                                },
-                                {
                                   "id": "negative_m_eff_weight",
                                   "severity": "caution",
                                   "message_key": "known_issue.negative_m_eff_weight",
@@ -2465,7 +2449,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "example": "\"cdab5d86fb63cf81381ab63a717227e2\""
+                "example": "\"a4b52d092d5223d4c684b06f796d2afd\""
               }
             }
           },
