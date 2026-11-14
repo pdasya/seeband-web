@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { limitedRanges } from "@/model/interpolatedRanges";
 
 import { apiClient, type CalcResponse } from "@/api/client";
 import { modelsQuery } from "@/api/queries";
@@ -118,6 +119,7 @@ export function useExport() {
         (quantity) => state.data[quantity]?.source.kind === "demo",
       ),
       issues,
+      limitedRanges: limitedRanges(state.interpolation, mode.quantities),
     };
     return { state, mode, header: exportHeader(info) };
   };

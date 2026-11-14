@@ -46,11 +46,16 @@ export type InterpolatedQuantities = Partial<
 >;
 
 /** Interpolated values sit beside the measured data, so that turning it off restores those. */
+export type InterpolationFailureReason =
+  Schemas["ParseResponse"]["interpolation_failure_reasons"][string];
+
 export interface InterpolationState {
   enabled: boolean;
   loading: boolean;
   values: InterpolatedQuantities;
   failed: readonly Quantity[];
+  /** Why the server could not interpolate a quantity in `failed`. None for a lost request. */
+  failureReasons?: Partial<Record<Quantity, InterpolationFailureReason>>;
   failure: string | null;
 }
 
@@ -247,6 +252,7 @@ export interface SessionState {
     values: InterpolatedQuantities,
     failed: readonly Quantity[],
     failure?: string | null,
+    failureReasons?: Partial<Record<Quantity, InterpolationFailureReason>>,
   ) => void;
   /** What the other way loaded stays for coming back, and does not count until then. */
   setDataMode: (mode: DataMode) => void;
@@ -527,13 +533,19 @@ export const createSessionStore = () =>
         );
       },
       // What leads here has already cleared a fit's result: new data, a range or the switch.
-      finishInterpolation: (values, failed, failure = null) => {
+      finishInterpolation: (
+        values,
+        failed,
+        failure = null,
+        failureReasons = {},
+      ) => {
         set((state) => ({
           interpolation: {
             ...state.interpolation,
             loading: false,
             values,
             failed,
+            failureReasons,
             failure,
           },
         }));

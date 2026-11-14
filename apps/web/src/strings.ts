@@ -95,15 +95,21 @@ export const STRINGS = {
       invalidRange:
         "This fit range cannot be interpolated. It must start above 0 K, and span 20 to 200000 K.",
       flags: {
-        failed:
-          "could not be interpolated within measured coverage (at least 20 K overlap is needed), so a fit cannot use it.",
+        failed: "could not be interpolated, so a fit cannot use it.",
+        // Why the server refused, by its reason code.
+        failedBecause: {
+          no_overlap:
+            "its measured range does not overlap the fit range, so a fit cannot use it.",
+          overlap_too_short:
+            "its measured range overlaps the fit range too little to interpolate, so a fit cannot use it.",
+          fit_failed:
+            "the polynomial could not be fitted to its data, so a fit cannot use it.",
+        },
         notFinite: "the polynomial overflowed, so a fit cannot use it.",
         noMeasuredPoints:
-          "no measured point lies in the fit range, so every value is made up.",
-        interiorWindow:
-          "no measured point lies inside the fit range; these values interpolate between measurements.",
-        rangeLimited:
-          "interpolation is limited to the overlap of the fit range and measured range.",
+          "no measured point lies in the fit range, so every value comes from the polynomial alone, which can be far off between measurements.",
+        rangeLimited: (minK: string, maxK: string) =>
+          `the measured range limits interpolation to ${minK}–${maxK} K, and a fit uses only that.`,
         extrapolated:
           "the grid goes beyond the data, so some values are made up.",
         underdetermined: "too few points set the polynomial.",
@@ -489,6 +495,8 @@ export const STRINGS = {
     noIterations: "—",
     iterationLimit: (limit: number) => `limit ${String(limit)}`,
     rangeSummary: (minK: string, maxK: string) => `range ${minK}–${maxK} K`,
+    limitedRangeSummary: (symbol: string, minK: string, maxK: string) =>
+      `${symbol} only ${minK}–${maxK} K`,
     endNotes: {
       iterationLimit: (limit: number | null) =>
         limit === null
@@ -530,6 +538,8 @@ export const STRINGS = {
         `Model ${model}, fit mode ${mode}`,
       scattering: (scattering: string) => `Scattering ${scattering}`,
       range: (minK: string, maxK: string) => `Fit range ${minK}-${maxK} K`,
+      limitedRange: (quantity: string, minK: string, maxK: string) =>
+        `Interpolated ${quantity} only over ${minK}-${maxK} K, where its data end`,
       degeneracies: (n1: string, n2: string) =>
         `Band degeneracies N1 = ${n1}, N2 = ${n2}`,
       fit: (status: string, iterations: number | null) =>

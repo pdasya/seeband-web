@@ -15,6 +15,7 @@ import type {
   SessionState,
 } from "@/session/store";
 import { STRINGS } from "@/strings";
+import type { LimitedRange } from "@/model/interpolatedRanges";
 
 const { export: text, fit: fitText } = STRINGS;
 
@@ -69,6 +70,8 @@ export interface ExportContext {
   fit: FitState;
   demo: boolean;
   issues: readonly ResultIssue[];
+  /** Quantities whose data narrowed their interpolation, and the range a fit used. */
+  limitedRanges?: readonly LimitedRange[];
 }
 
 function fitLine(fit: FitState): string {
@@ -107,6 +110,13 @@ export function exportHeader(context: ExportContext): string[] {
             numberText(selection.maxTemperatureK),
           ),
         ]),
+    ...(context.limitedRanges ?? []).map(({ quantity, minK, maxK }) =>
+      text.header.limitedRange(
+        STRINGS.data.quantities[quantity].symbol,
+        numberText(minK),
+        numberText(maxK),
+      ),
+    ),
     ...(context.degeneracy
       ? [
           text.header.degeneracies(

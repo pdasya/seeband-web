@@ -35,6 +35,7 @@ const PARSED = {
   warnings_omitted: 0,
   interpolated: {},
   interpolation_failed: [],
+  interpolation_failure_reasons: {},
 };
 
 const withRmse = (value: number | null) => ({
@@ -505,7 +506,11 @@ test("a failed interpolation says why there is no RMSE, and the curve still goes
   await expect.poll(() => bodies.length).toBe(1);
   await page.route("**/api/parse", (route) =>
     route.fulfill({
-      json: { ...PARSED, interpolation_failed: ["seebeck"] },
+      json: {
+        ...PARSED,
+        interpolation_failed: ["seebeck"],
+        interpolation_failure_reasons: { seebeck: "no_overlap" },
+      },
     }),
   );
 
@@ -727,7 +732,11 @@ test("a failed interpolation leaves the measured points only", async ({
   await expect(page.locator(".scatterlayer .trace path.point")).toHaveCount(3);
   await page.route("**/api/parse", (route) =>
     route.fulfill({
-      json: { ...PARSED, interpolation_failed: ["seebeck"] },
+      json: {
+        ...PARSED,
+        interpolation_failed: ["seebeck"],
+        interpolation_failure_reasons: { seebeck: "no_overlap" },
+      },
     }),
   );
 
