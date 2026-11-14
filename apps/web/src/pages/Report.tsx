@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
 import { apiClient } from "@/api/client";
+import { coreVersionLines } from "@/model/exportFiles";
 import { modelsQuery } from "@/api/queries";
 import { chartImage } from "@/charts/chartImage";
 import {
@@ -66,6 +67,12 @@ export function useReport({
   const energy = models?.energy_display ?? ENERGY_IN_K;
   const [charts, setCharts] = useState<readonly ReportChart[] | null>(null);
   const [apiVersion, setApiVersion] = useState<string | null>(null);
+  const [serverCoreVersion, setServerCoreVersion] = useState<string | null>(
+    null,
+  );
+  const [curveCoreVersions, setCurveCoreVersions] = useState<
+    readonly (string | undefined)[]
+  >([]);
   const [preparing, setPreparing] = useState(false);
   const [failed, setFailed] = useState(false);
   const [printing, setPrinting] = useState(0);
@@ -152,11 +159,13 @@ export function useReport({
         }),
       );
       setCharts(made);
-      setApiVersion(
-        await apiClient.getHealth().then(
-          ({ version }) => version,
-          () => null,
-        ),
+      const server = await apiClient.getHealth().catch(() => null);
+      setApiVersion(server?.version ?? null);
+      setServerCoreVersion(server?.core_version ?? null);
+      setCurveCoreVersions(
+        [measured.result, ...Object.values(derived).map(({ result }) => result)]
+          .filter((result) => result !== null)
+          .map((result) => result.core_version),
       );
       setPrinting((count) => count + 1);
     } catch {
@@ -176,11 +185,29 @@ export function useReport({
         derived[kind].result !== null,
     );
 
-  return { charts, apiVersion, preparing, failed, ready, prepare };
+  return {
+    charts,
+    apiVersion,
+    serverCoreVersion,
+    curveCoreVersions,
+    preparing,
+    failed,
+    ready,
+    prepare,
+  };
 }
 
 /** What a printed report opens with, which the screen does not show. */
-export function ReportHeader({ apiVersion }: { apiVersion: string | null }) {
+export function ReportHeader({
+  apiVersion,
+  serverCoreVersion,
+  curveCoreVersions,
+}: {
+  apiVersion: string | null;
+  serverCoreVersion?: string | null;
+  curveCoreVersions?: readonly (string | undefined)[];
+}) {
+  const fit = useSessionStore((state) => state.fit);
   const data = useSessionStore((state) => state.data);
   return (
     <div className="hidden print:block">
@@ -193,6 +220,13 @@ export function ReportHeader({ apiVersion }: { apiVersion: string | null }) {
           apiVersion,
         )}
       </p>
+      {coreVersionLines(serverCoreVersion, fit, curveCoreVersions).map(
+        (line) => (
+          <p key={line} className="m-0 text-xs text-muted-foreground">
+            {line}
+          </p>
+        ),
+      )}
       <h2 className="m-0 mt-3 text-sm font-semibold">{text.data}</h2>
       <ul className="m-0 mt-1 list-none p-0 text-xs">
         {QUANTITIES.flatMap((quantity) => {

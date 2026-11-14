@@ -5,6 +5,7 @@ from typing import Annotated, Self
 
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from seeband_core import __version__ as CORE_VERSION
 from seeband_core.measured_points import CONDUCTIVITY_COLUMN, conductivity_points
 from seeband_core.model_interface import (
     CurveKind,
@@ -138,6 +139,7 @@ class CalcResponse(BaseModel):
             "examples": [
                 {
                     "temperature_k": [100.0, 200.0, 300.0, 400.0, 500.0],
+                    "core_version": CORE_VERSION,
                     "curves": {
                         "seebeck_v_per_k": [2.0573e-4, 2.2818e-4, 8.8928e-5, 3.7589e-5, 2.0745e-5],
                         "resistivity_ohm_m": [
@@ -162,6 +164,9 @@ class CalcResponse(BaseModel):
     )
 
     temperature_k: list[float]
+    core_version: str = Field(
+        default=CORE_VERSION, description="Core software version for provenance, not certification."
+    )
     curves: dict[str, list[float | None]]
     known_issues: list[str]
     rmse: dict[Quantity, RmseResponse]

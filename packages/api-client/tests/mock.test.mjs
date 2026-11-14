@@ -97,7 +97,11 @@ describe("the mock of the real contract", async () => {
 
     assert.equal(response.status, 200);
     assert.match(response.headers.get("content-type"), /application\/json/);
-    assert.deepEqual(await response.json(), { status: "ok", version: "1.0.0" });
+    assert.deepEqual(await response.json(), {
+      status: "ok",
+      version: "1.0.0",
+      core_version: "0.1.0",
+    });
   });
 
   test("serves the demo dataset, labelled synthetic", async () => {

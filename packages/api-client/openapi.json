@@ -3946,10 +3946,10 @@
               "text/event-stream": {
                 "examples": {
                   "single_pass": {
-                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"done\",\"result\":{\"parameters\":{\"m_eff\":0.57,\"band_gap\":910.0,\"fermi_energy\":-35.0},\"status\":\"converged\",\"parameter_errors\":{\"m_eff\":0.02,\"band_gap\":12.0,\"fermi_energy\":4.0},\"at_bounds\":[],\"known_issues\":[]}}\n\n"
+                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"done\",\"result\":{\"parameters\":{\"m_eff\":0.57,\"band_gap\":910.0,\"fermi_energy\":-35.0},\"core_version\":\"0.1.0\",\"status\":\"converged\",\"parameter_errors\":{\"m_eff\":0.02,\"band_gap\":12.0,\"fermi_energy\":4.0},\"at_bounds\":[],\"known_issues\":[]}}\n\n"
                   },
                   "iterative": {
-                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"iteration\",\"iteration\":1,\"parameters\":{\"m_eff\":0.8,\"band_gap\":950.0,\"fermi_energy\":-60.0}}\n\ndata: {\"type\":\"iteration\",\"iteration\":2,\"parameters\":{\"m_eff\":0.6,\"band_gap\":915.0,\"fermi_energy\":-38.0}}\n\ndata: {\"type\":\"done\",\"result\":{\"parameters\":{\"m_eff\":0.57,\"band_gap\":910.0,\"fermi_energy\":-35.0},\"status\":\"converged\",\"iterations\":2,\"parameter_errors\":{\"m_eff\":0.02,\"band_gap\":12.0,\"fermi_energy\":4.0},\"at_bounds\":[],\"known_issues\":[]}}\n\n"
+                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"iteration\",\"iteration\":1,\"parameters\":{\"m_eff\":0.8,\"band_gap\":950.0,\"fermi_energy\":-60.0}}\n\ndata: {\"type\":\"iteration\",\"iteration\":2,\"parameters\":{\"m_eff\":0.6,\"band_gap\":915.0,\"fermi_energy\":-38.0}}\n\ndata: {\"type\":\"done\",\"result\":{\"parameters\":{\"m_eff\":0.57,\"band_gap\":910.0,\"fermi_energy\":-35.0},\"core_version\":\"0.1.0\",\"status\":\"converged\",\"iterations\":2,\"parameter_errors\":{\"m_eff\":0.02,\"band_gap\":12.0,\"fermi_energy\":4.0},\"at_bounds\":[],\"known_issues\":[]}}\n\n"
                   },
                   "fit_timeout": {
                     "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"error\",\"error\":{\"code\":\"fit_timeout\",\"message\":\"The fit took too long\",\"details\":[]}}\n\n"
@@ -5155,6 +5155,12 @@
             "type": "array",
             "title": "Temperature K"
           },
+          "core_version": {
+            "type": "string",
+            "title": "Core Version",
+            "description": "Core software version for provenance, not certification.",
+            "default": "0.1.0"
+          },
           "curves": {
             "additionalProperties": {
               "items": {
@@ -5212,6 +5218,7 @@
         "description": "Curves by name, where each name ends in its unit, and null marks a value that is not finite.\n\n`known_issues` names known errors that apply to this result, as in `GET /api/models`. `rmse` is\nempty without measurements. `measured_points` holds points made from the measurements sent,\nby name with its unit: `electrical_conductivity_s_per_m` is 1/rho, with null for a rho of 0 or\nbelow. They use no model, so they go with the data the request sent, interpolated or not.",
         "examples": [
           {
+            "core_version": "0.1.0",
             "curves": {
               "resistivity_ohm_m": [
                 3.6627e-05,
@@ -6038,6 +6045,12 @@
             "type": "object",
             "title": "Parameters"
           },
+          "core_version": {
+            "type": "string",
+            "title": "Core Version",
+            "description": "Core software version for provenance, not certification.",
+            "default": "0.1.0"
+          },
           "status": {
             "type": "string",
             "enum": [
@@ -6105,6 +6118,7 @@
         "examples": [
           {
             "at_bounds": [],
+            "core_version": "0.1.0",
             "known_issues": [],
             "parameter_errors": {
               "band_gap": 12.0,
@@ -6414,6 +6428,12 @@
           "version": {
             "type": "string",
             "title": "Version"
+          },
+          "core_version": {
+            "type": "string",
+            "title": "Core Version",
+            "description": "Core software version for provenance, not certification.",
+            "default": "0.1.0"
           }
         },
         "type": "object",
@@ -6424,6 +6444,7 @@
         "title": "HealthResponse",
         "examples": [
           {
+            "core_version": "0.1.0",
             "status": "ok",
             "version": "1.0.0"
           }

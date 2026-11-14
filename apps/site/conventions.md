@@ -1,5 +1,23 @@
 # Model conventions
 
+## Result versions and provenance
+
+[Results that changed](results-changed.md) lists the P2–P7 corrections included
+in core 0.1.0 and the remaining confirmation gates.
+
+Core version `0.1.0` is the first traceable `seeband_core` version. Earlier
+results may have been produced by different corrected states while reporting
+`0.0.0`; a missing version is unknown and must not be inferred from this
+version. P10 adds version and provenance metadata only. It changes no formula
+or fit behavior. API health, calculation and fit responses expose the core
+version. Shared export headers record server, fit and curve provenance
+separately. PDF exports follow the same rule: no missing version is assigned
+retroactively.
+
+This metadata does not approve a scientific release. Human physicist
+confirmation and the desktop comparison tracked by #71 remain open; author
+review #80 also remains open.
+
 ## DPB mass and degeneracy
 
 Let N = N₂/N₁. The public parameter `m_eff`, displayed as m₂/m₁, is the

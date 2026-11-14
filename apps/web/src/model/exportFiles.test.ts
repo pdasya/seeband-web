@@ -86,6 +86,8 @@ describe("the header", () => {
   test("says what the file is of", () => {
     expect(exportHeader(CONTEXT)).toEqual([
       "SeeBand Web 1.2.3, API 0.4.0",
+      "Export server core unknown",
+      "Fit core unknown",
       "Exported 2026-11-08T12:00:00.000Z",
       "Model DPB, fit mode S + ρ",
       "Scattering acPh",
@@ -93,6 +95,24 @@ describe("the header", () => {
       "Band degeneracies N1 = 1, N2 = 2",
       "Fit converged, 2 iterations",
     ]);
+  });
+
+  test("keeps fit provenance distinct from the current export server", () => {
+    const lines = exportHeader({
+      ...CONTEXT,
+      serverCoreVersion: "0.1.0",
+      curveCoreVersions: ["0.1.0"],
+      fit: { status: "done", result: { ...RESULT, core_version: "0.0.0" } },
+    });
+    expect(lines).toContain("Export server core 0.1.0");
+    expect(lines).toContain("Fit core 0.0.0");
+    expect(lines).toContain("Curve core 0.1.0");
+  });
+
+  test("does not attribute legacy results to the current core", () => {
+    const lines = exportHeader({ ...CONTEXT, serverCoreVersion: "0.1.0" });
+    expect(lines).toContain("Fit core unknown");
+    expect(lines).not.toContain("Fit core 0.1.0");
   });
 
   test("names the range a fit used where the data narrowed the interpolation", () => {

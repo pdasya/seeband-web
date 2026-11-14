@@ -14,6 +14,7 @@ import numpy as np
 from fastapi import Depends, Request
 from fastapi.sse import EventSourceResponse
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from seeband_core import __version__ as CORE_VERSION
 from seeband_core.interpolation import in_fit_range
 from seeband_core.model_interface import (
     Bounds,
@@ -137,6 +138,7 @@ class FitResponse(BaseModel):
             "examples": [
                 {
                     "parameters": {"m_eff": 0.57, "band_gap": 910.0, "fermi_energy": -35.0},
+                    "core_version": CORE_VERSION,
                     "status": "converged",
                     "parameter_errors": {"m_eff": 0.02, "band_gap": 12.0, "fermi_energy": 4.0},
                     "at_bounds": [],
@@ -147,6 +149,9 @@ class FitResponse(BaseModel):
     )
 
     parameters: dict[str, float | None]
+    core_version: str = Field(
+        default=CORE_VERSION, description="Core software version for provenance, not certification."
+    )
     status: FitStatus
     iterations: int | None = None
     message: str | None = None

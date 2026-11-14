@@ -60,6 +60,8 @@ export function commented(lines: readonly string[]): string {
 export interface ExportContext {
   appVersion: string;
   apiVersion: string | null;
+  serverCoreVersion?: string | null;
+  curveCoreVersions?: readonly (string | undefined)[];
   /** When the file was made, as ISO 8601. */
   date: string;
   modelId: string;
@@ -91,11 +93,41 @@ function fitLine(fit: FitState): string {
   }
 }
 
+/** Source versions stay distinct: a newly deployed server does not relabel an old fit. */
+export function coreVersionLines(
+  serverVersion: string | null | undefined,
+  fit: FitState,
+  curveVersions: readonly (string | undefined)[] = [],
+): string[] {
+  return [
+    text.header.serverCore(serverVersion ?? text.header.unknownVersion),
+    ...(fit.status === "done"
+      ? [
+          text.header.fitCore(
+            fit.result.core_version ?? text.header.unknownVersion,
+          ),
+        ]
+      : fit.status === "stopped"
+        ? [text.header.fitCore(text.header.unknownVersion)]
+        : []),
+    ...[
+      ...new Set(
+        curveVersions.map((version) => version ?? text.header.unknownVersion),
+      ),
+    ].map(text.header.curveCore),
+  ];
+}
+
 /** What a file is of: the app, the model and fit, and what is known to be wrong with it. */
 export function exportHeader(context: ExportContext): string[] {
   const { selection } = context;
   return [
     text.header.app(context.appVersion, context.apiVersion),
+    ...coreVersionLines(
+      context.serverCoreVersion,
+      context.fit,
+      context.curveCoreVersions,
+    ),
     text.header.date(context.date),
     ...(context.demo ? [text.header.demo] : []),
     text.header.model(context.modelId.toUpperCase(), context.modeLabel),

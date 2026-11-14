@@ -530,6 +530,10 @@ export const STRINGS = {
     parametersFile: "seeband-parameters.txt",
     graphFile: (graph: string) => `seeband-${graph}.txt`,
     header: {
+      unknownVersion: "unknown",
+      serverCore: (version: string) => `Export server core ${version}`,
+      fitCore: (version: string) => `Fit core ${version}`,
+      curveCore: (version: string) => `Curve core ${version}`,
       app: (app: string, api: string | null) =>
         api === null ? `SeeBand Web ${app}` : `SeeBand Web ${app}, API ${api}`,
       date: (date: string) => `Exported ${date}`,
