@@ -9,7 +9,11 @@ from typing import Annotated, Any, Self
 
 from pydantic import BaseModel, Field, model_validator
 from seeband_core.data_parser import IssueCode, ParsedTable, ParseIssue, Role, Unit, si_column
-from seeband_core.interpolation import InterpolatedData, interpolation_grid_k
+from seeband_core.interpolation import (
+    InterpolatedData,
+    InterpolationFailure,
+    interpolation_grid_k,
+)
 from seeband_core.model_interface import Measurement, Quantity
 
 from seeband_api.calc_pool import CalcPoolDep
@@ -125,7 +129,10 @@ class ParseResponse(BaseModel):
     with `errors`, only a unit the request chose is kept. `mapping` is the
     suggestion or the user's choice, and with no readable rows, always the suggestion. `warnings`
     holds every kind, with at most 100 `preamble_skipped`, and `warnings_omitted` counts the rest.
-    `interpolation_failed` names quantities that could not be interpolated.
+    `interpolation_failed` names quantities that could not be interpolated, and
+    `interpolation_failure_reasons` says why for each: `no_overlap` (the fit range and the measured
+    range do not overlap), `overlap_too_short` (under 20 K, or under 40 K where the data narrow the
+    range, which would give one grid point) or `fit_failed` (the polynomial could not be fitted).
     """
 
     headers: list[str] | None = None
@@ -140,6 +147,7 @@ class ParseResponse(BaseModel):
     warnings_omitted: int
     interpolated: dict[Quantity, InterpolatedResponse]
     interpolation_failed: list[Quantity]
+    interpolation_failure_reasons: dict[Quantity, InterpolationFailure]
 
 
 def _refuse(code: str, message: str, location: list[str | int]) -> ApiError:
@@ -214,6 +222,7 @@ def to_parse_response(outcome: ParseOutcome) -> ParseResponse:
             quantity: _interpolated(data) for quantity, data in outcome.interpolated.items()
         },
         interpolation_failed=list(outcome.interpolation_failed),
+        interpolation_failure_reasons=dict(outcome.failure_reasons),
     )
 
 
@@ -234,7 +243,11 @@ PARSE_EXAMPLE_REQUESTS: dict[str, dict[str, Any]] = {
         "interpolate": {"min_temperature_k": 100.0, "max_temperature_k": 160.0},
     },
 }
-_NO_INTERPOLATION: dict[str, Any] = {"interpolated": {}, "interpolation_failed": []}
+_NO_INTERPOLATION: dict[str, Any] = {
+    "interpolated": {},
+    "interpolation_failed": [],
+    "interpolation_failure_reasons": {},
+}
 _T_S_MAPPING = [
     {"column": 0, "role": "temperature", "unit": "K"},
     {"column": 1, "role": "seebeck", "unit": "V/K"},
@@ -304,6 +317,7 @@ PARSE_EXAMPLE_RESPONSES: dict[str, dict[str, Any]] = {
             }
         },
         "interpolation_failed": [],
+        "interpolation_failure_reasons": {},
     },
 }
 

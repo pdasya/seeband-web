@@ -2,6 +2,7 @@
 
 import math
 from dataclasses import dataclass
+from typing import Literal
 
 import numpy as np
 from numpy.polynomial import Chebyshev
@@ -13,6 +14,20 @@ INTERPOLATION_DEGREE = 10
 GRID_STEP_K = 20.0
 # A limit on what one request can cost: this many points is a range of 200000 K.
 MAX_GRID_POINTS = 10_000
+# An overlap the data narrow must give at least this many grid points, so that a fit gets more
+# than one value; the desktop rule gives one point from 20 K and two from 40 K.
+MIN_LIMITED_GRID_POINTS = 2
+
+# Why a quantity could not be interpolated, as a client shows it.
+InterpolationFailure = Literal["no_overlap", "overlap_too_short", "fit_failed"]
+
+
+class InterpolationRefused(ValueError):
+    """A quantity that cannot be interpolated over the range, and why."""
+
+    def __init__(self, reason: InterpolationFailure, message: str) -> None:
+        super().__init__(message)
+        self.reason: InterpolationFailure = reason
 
 
 @dataclass(frozen=True, eq=False)
@@ -61,9 +76,15 @@ def interpolate(
     low_k = max(min_temperature_k, measured_min_k)
     high_k = min(max_temperature_k, measured_max_k)
     if low_k >= high_k:
-        raise ValueError("The fit range has no usable overlap with the measured temperature range")
-    if high_k - low_k < GRID_STEP_K:
-        raise ValueError(f"The measured overlap must span at least {GRID_STEP_K} K to interpolate")
+        raise InterpolationRefused(
+            "no_overlap", "The fit range has no usable overlap with the measured temperature range"
+        )
+    limited = low_k > min_temperature_k or high_k < max_temperature_k
+    shortest_k = GRID_STEP_K * (MIN_LIMITED_GRID_POINTS if limited else 1)
+    if high_k - low_k < shortest_k:
+        raise InterpolationRefused(
+            "overlap_too_short", f"The measured overlap must span at least {shortest_k} K"
+        )
     grid_k = interpolation_grid_k(low_k, high_k)
     try:
         # With full=True, numpy gives the rank here, and does not warn about it.
@@ -71,7 +92,7 @@ def interpolate(
             temperature_k, measurement.values, INTERPOLATION_DEGREE, full=True
         )
     except np.linalg.LinAlgError as error:
-        raise ValueError("The data could not be fitted") from error
+        raise InterpolationRefused("fit_failed", "The data could not be fitted") from error
     interpolated = data_processing.interpolate_data(fit, grid_k)
     inside = (temperature_k >= min_temperature_k) & (temperature_k <= max_temperature_k)
     return InterpolatedData(

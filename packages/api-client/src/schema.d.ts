@@ -488,6 +488,10 @@ export interface components {
             };
             /** Interpolation Failed */
             interpolation_failed: ("seebeck" | "resistivity" | "hall")[];
+            /** Interpolation Failure Reasons */
+            interpolation_failure_reasons: {
+                [key: string]: "no_overlap" | "overlap_too_short" | "fit_failed";
+            };
             /**
              * Synthetic
              * @constant
@@ -1192,7 +1196,10 @@ export interface components {
          *     with `errors`, only a unit the request chose is kept. `mapping` is the
          *     suggestion or the user's choice, and with no readable rows, always the suggestion. `warnings`
          *     holds every kind, with at most 100 `preamble_skipped`, and `warnings_omitted` counts the rest.
-         *     `interpolation_failed` names quantities that could not be interpolated.
+         *     `interpolation_failed` names quantities that could not be interpolated, and
+         *     `interpolation_failure_reasons` says why for each: `no_overlap` (the fit range and the measured
+         *     range do not overlap), `overlap_too_short` (under 20 K, or under 40 K where the data narrow the
+         *     range, which would give one grid point) or `fit_failed` (the polynomial could not be fitted).
          */
         ParseResponse: {
             /** Headers */
@@ -1223,6 +1230,10 @@ export interface components {
             };
             /** Interpolation Failed */
             interpolation_failed: ("seebeck" | "resistivity" | "hall")[];
+            /** Interpolation Failure Reasons */
+            interpolation_failure_reasons: {
+                [key: string]: "no_overlap" | "overlap_too_short" | "fit_failed";
+            };
         };
         /**
          * Prediction

@@ -8,7 +8,12 @@ import numpy as np
 import pytest
 from seeband_core import interpolation
 from seeband_core.data_parser import parse_table
-from seeband_core.interpolation import in_fit_range, interpolate, interpolation_grid_k
+from seeband_core.interpolation import (
+    InterpolationRefused,
+    in_fit_range,
+    interpolate,
+    interpolation_grid_k,
+)
 from seeband_core.model_interface import Measurement
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -91,22 +96,25 @@ def test_p7_covers_original_cases_without_replacing_desktop_evidence() -> None:
 
 
 @pytest.mark.parametrize(
-    ("low", "high", "message"),
+    ("measured", "low", "high", "reason"),
     [
-        (1, 80, "no usable overlap"),
-        (200, 400, "no usable overlap"),
-        (100, 200, "no usable overlap"),
-        (180, 240, "at least 20"),
+        # Entirely below the data, above it, and touching it at one end.
+        ([200, 220, 250, 300], 1, 80, "no_overlap"),
+        ([100, 150, 200], 200, 400, "no_overlap"),
+        ([200, 220, 250, 300], 100, 200, "no_overlap"),
+        # The data narrow 180-240 K to 221-240 K, under 20 K.
+        ([221, 250, 300], 180, 240, "overlap_too_short"),
+        # The data narrow 100-235 K to 200-235 K, which would give one grid point.
+        ([200, 220, 235], 100, 235, "overlap_too_short"),
     ],
 )
-def test_unusable_measured_overlap_is_refused(low: float, high: float, message: str) -> None:
-    measurement = linear([200, 220, 250, 300])
-    if low == 180:
-        measurement = linear([221, 250, 300])
-    elif low == 200:
-        measurement = linear([100, 150, 200])
-    with pytest.raises(ValueError, match=message):
-        interpolate(measurement, low, high)
+def test_unusable_measured_overlap_is_refused_with_its_reason(
+    measured: list[float], low: float, high: float, reason: str
+) -> None:
+    with pytest.raises(InterpolationRefused) as refusal:
+        interpolate(linear(measured), low, high)
+    assert refusal.value.reason == reason
+    assert isinstance(refusal.value, ValueError)
 
 
 def test_sparse_internal_window_is_interpolated_without_source_points() -> None:
@@ -147,11 +155,17 @@ def test_invalid_original_range_is_not_rescued_by_clipping() -> None:
         interpolate(linear([100, 200]), 1, 1e11)
 
 
-def test_twenty_kelvin_overlap_keeps_the_desktop_one_point_grid() -> None:
-    result = interpolate(linear([200, 220, 250]), 100, 220)
-    assert result.measurement.temperature_k.tolist() == [200.0]
+def test_a_twenty_kelvin_request_inside_the_data_keeps_the_desktop_one_point_grid() -> None:
+    result = interpolate(linear([200, 220, 250]), 210, 230)
+    assert result.measurement.temperature_k.tolist() == [210.0]
+    assert not result.range_limited
+
+
+def test_an_overlap_the_data_narrow_needs_two_grid_points() -> None:
+    # 200-240 K gives two points; 200-235 K would give one, and is refused above.
+    result = interpolate(linear([200, 220, 240]), 100, 240)
+    assert result.measurement.temperature_k.tolist() == [200.0, 240.0]
     assert result.range_limited
-    assert not result.extrapolated
 
 
 @pytest.mark.parametrize(

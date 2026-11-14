@@ -3221,7 +3221,8 @@
                       ],
                       "warnings_omitted": 0,
                       "interpolated": {},
-                      "interpolation_failed": []
+                      "interpolation_failed": [],
+                      "interpolation_failure_reasons": {}
                     }
                   },
                   "with_errors": {
@@ -3265,7 +3266,8 @@
                       "warnings": [],
                       "warnings_omitted": 0,
                       "interpolated": {},
-                      "interpolation_failed": []
+                      "interpolation_failed": [],
+                      "interpolation_failure_reasons": {}
                     }
                   },
                   "interpolated": {
@@ -3358,7 +3360,8 @@
                           "underdetermined": true
                         }
                       },
-                      "interpolation_failed": []
+                      "interpolation_failed": [],
+                      "interpolation_failure_reasons": {}
                     }
                   }
                 }
@@ -4626,6 +4629,7 @@
                       "warnings_omitted": 0,
                       "interpolated": {},
                       "interpolation_failed": [],
+                      "interpolation_failure_reasons": {},
                       "synthetic": true,
                       "message_key": "demo_dataset.synthetic",
                       "known_issues": [],
@@ -5509,6 +5513,25 @@
             "type": "array",
             "title": "Interpolation Failed"
           },
+          "interpolation_failure_reasons": {
+            "additionalProperties": {
+              "type": "string",
+              "enum": [
+                "no_overlap",
+                "overlap_too_short",
+                "fit_failed"
+              ]
+            },
+            "propertyNames": {
+              "enum": [
+                "seebeck",
+                "resistivity",
+                "hall"
+              ]
+            },
+            "type": "object",
+            "title": "Interpolation Failure Reasons"
+          },
           "synthetic": {
             "type": "boolean",
             "const": true,
@@ -5561,6 +5584,7 @@
           "warnings_omitted",
           "interpolated",
           "interpolation_failed",
+          "interpolation_failure_reasons",
           "synthetic",
           "message_key",
           "known_issues",
@@ -7132,6 +7156,25 @@
             },
             "type": "array",
             "title": "Interpolation Failed"
+          },
+          "interpolation_failure_reasons": {
+            "additionalProperties": {
+              "type": "string",
+              "enum": [
+                "no_overlap",
+                "overlap_too_short",
+                "fit_failed"
+              ]
+            },
+            "propertyNames": {
+              "enum": [
+                "seebeck",
+                "resistivity",
+                "hall"
+              ]
+            },
+            "type": "object",
+            "title": "Interpolation Failure Reasons"
           }
         },
         "type": "object",
@@ -7146,10 +7189,11 @@
           "warnings",
           "warnings_omitted",
           "interpolated",
-          "interpolation_failed"
+          "interpolation_failed",
+          "interpolation_failure_reasons"
         ],
         "title": "ParseResponse",
-        "description": "What the text holds. A file with problems is still a 200, with a preview and its `errors`.\n\n`measurements` is empty with any `errors`. `headers` is left out when no header matches the\ncolumns. `column_count` is 0 when neither a row nor a header sets it. `preview` holds the first\nrows that could be read, in the order of the text and as written, and `row_count` all of them.\n`preview_si` holds the same rows in SI, with `null` for a column with no role or no unit:\nwith `errors`, only a unit the request chose is kept. `mapping` is the\nsuggestion or the user's choice, and with no readable rows, always the suggestion. `warnings`\nholds every kind, with at most 100 `preamble_skipped`, and `warnings_omitted` counts the rest.\n`interpolation_failed` names quantities that could not be interpolated."
+        "description": "What the text holds. A file with problems is still a 200, with a preview and its `errors`.\n\n`measurements` is empty with any `errors`. `headers` is left out when no header matches the\ncolumns. `column_count` is 0 when neither a row nor a header sets it. `preview` holds the first\nrows that could be read, in the order of the text and as written, and `row_count` all of them.\n`preview_si` holds the same rows in SI, with `null` for a column with no role or no unit:\nwith `errors`, only a unit the request chose is kept. `mapping` is the\nsuggestion or the user's choice, and with no readable rows, always the suggestion. `warnings`\nholds every kind, with at most 100 `preamble_skipped`, and `warnings_omitted` counts the rest.\n`interpolation_failed` names quantities that could not be interpolated, and\n`interpolation_failure_reasons` says why for each: `no_overlap` (the fit range and the measured\nrange do not overlap), `overlap_too_short` (under 20 K, or under 40 K where the data narrow the\nrange, which would give one grid point) or `fit_failed` (the polynomial could not be fitted)."
       },
       "Prediction": {
         "properties": {

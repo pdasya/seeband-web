@@ -458,7 +458,10 @@ def test_each_quantity_uses_its_own_overlap_and_failure_keeps_other_quantities(
     outcome = parse_worker.parse("", None, None, parse_worker.FitRange(50.0, 800.0))
     response = to_parse_response(outcome)
     assert response.interpolation_failed == ([] if hall_overlaps else ["hall"])
-    assert outcome.failure_types == (() if hall_overlaps else ("ValueError",))
+    assert outcome.failure_types == (() if hall_overlaps else ("InterpolationRefused",))
+    assert response.interpolation_failure_reasons == (
+        {} if hall_overlaps else {"hall": "no_overlap"}
+    )
     assert response.interpolated["seebeck"].temperature_k == np.linspace(50, 750, 35).tolist()
     assert response.interpolated["resistivity"].temperature_k == np.linspace(100, 800, 35).tolist()
     if hall_overlaps:
