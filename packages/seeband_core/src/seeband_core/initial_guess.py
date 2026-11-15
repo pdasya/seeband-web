@@ -31,7 +31,10 @@ class NumericalEstimate:
 
 
 def single_band_guess(
-    model_id: str, temperature_k: np.ndarray, seebeck_v_per_k: np.ndarray
+    model_id: str,
+    temperature_k: np.ndarray,
+    seebeck_v_per_k: np.ndarray,
+    scattering: str | None = None,
 ) -> NumericalEstimate:
     """Estimate E_F on up to 24 measured points using bounded log coordinates."""
     if model_id != "spb":
@@ -55,8 +58,19 @@ def single_band_guess(
     specs = {p.name: p for p in registry.get(model_id).describe().fit_modes[0].parameters}
     ef_limits = core_range(specs["fermi_energy"])
 
+    def predict(at: np.ndarray, ef: float) -> np.ndarray:
+        if scattering == "ionized":
+            from seeband_core.transport import ionized_transport
+
+            return ionized_transport(at, {"fermi_energy": ef, "band_mass": sign}, "spb_s")[
+                "seebeck"
+            ]
+        if scattering not in (None, "acPh", "dis"):
+            raise ValueError("Unknown scattering mechanism")
+        return math_module.spb_see_vs_temp(at, ef, sign)
+
     def residual(x: np.ndarray) -> np.ndarray:
-        predicted = math_module.spb_see_vs_temp(t, sign * float(np.exp(x[0])), sign)
+        predicted = predict(t, sign * float(np.exp(x[0])))
         residuals: np.ndarray = (predicted - s) * 1e6
         return residuals
 
@@ -72,9 +86,7 @@ def single_band_guess(
         seebeck_v_per_k[temperature_k >= ef_max / 700],
     )
     order = np.argsort(full_t)
-    errors = (
-        math_module.spb_see_vs_temp(full_t[order], values["fermi_energy"], sign) - full_s[order]
-    )
+    errors = predict(full_t[order], values["fermi_energy"]) - full_s[order]
     rmse = float(np.sqrt(np.mean(errors**2)))
     if np.any(result.active_mask) or abs(values["fermi_energy"]) in (1, ef_limits.maximum):
         warnings.append("estimate_at_bound")

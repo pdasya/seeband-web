@@ -1,5 +1,9 @@
 # Curve availability
 
+Core 0.3.0 offers acPh, dis and ionized in every SPB/DPB fit mode, including
+S-only. The availability matrix is unchanged; coefficients requiring a
+conductivity amplitude still need resistivity data. See [ionized transport](ionized-impurities.md).
+
 Which curves each mode offers through `POST /api/calc`, from the desktop's additional graphs windows. Availability does not depend on scattering. SPB S + ρ + R_H and its curves are enabled after the [P4/P12 correction](spb-hall-fit.md).
 
 | Kind                              | SPB S               | SPB S + ρ, S + ρ + R_H | DPB S               | DPB S + ρ     | DPB S + ρ + R_H |

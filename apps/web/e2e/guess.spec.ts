@@ -117,6 +117,7 @@ test("a new file of S applies the net's values, and shows its real range", async
   expect(bodies).toEqual([
     {
       model: "dpb",
+      scattering: "acPh",
       temperature_k: [40, 100, 900],
       seebeck_v_per_k: [1e-5, 2e-5, 3e-5],
     },

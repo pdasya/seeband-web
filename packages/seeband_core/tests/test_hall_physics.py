@@ -13,7 +13,7 @@ def integral(order: float, eta: float) -> float:
     return quad(lambda u: 2 * u ** (2 * order + 1) * expit(eta - u * u), 0, np.inf)[0]
 
 
-@pytest.mark.parametrize("scattering", ["acPh", "dis", "acPhDis"])
+@pytest.mark.parametrize("scattering", ["acPh", "dis"])
 @pytest.mark.parametrize("degeneracy", [1.0, 3.0])
 @pytest.mark.parametrize("weight", [0.0, 0.8])
 def test_hall_matches_independent_putley_sum(scattering, degeneracy, weight):

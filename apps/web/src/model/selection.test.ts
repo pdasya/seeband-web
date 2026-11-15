@@ -100,10 +100,10 @@ describe("settingsFor", () => {
     ).toBe("acPh");
   });
 
-  test("a mode with no scattering has none", () => {
+  test("S-only retains the selected scattering", () => {
     expect(
       settingsFor(dpb, { fitMode: "dpb_s", scattering: "dis" }).scattering,
-    ).toBeNull();
+    ).toBe("dis");
   });
 
   test("keeps degeneracies where they apply, and SPB has none", () => {

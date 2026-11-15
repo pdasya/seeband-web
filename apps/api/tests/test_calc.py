@@ -287,7 +287,7 @@ def test_settings_reach_the_pool() -> None:
     ("scattering", "band_1", "band_2"),
     [
         ("dis", 1.0, 1.0),
-        ("acPhDis", 1.0, 1.0),
+        ("ionized", 1.0, 1.0),
         ("acPh", 2.0, 1.0),
         ("acPh", 1.0, 3.0),
         ("dis", 2.0, 5.0),
@@ -357,7 +357,7 @@ def test_points_default_to_the_model(client: TestClient) -> None:
 
 
 def test_known_issues_reach_the_client(client: TestClient) -> None:
-    body = client.post("/api/calc", json=_body(scattering="acPhDis")).json()
+    body = client.post("/api/calc", json=_body(scattering="ionized")).json()
 
     assert "acphdis_curve_scale" not in body["known_issues"]
     assert "acphdis_band_weight" not in body["known_issues"]
@@ -541,6 +541,7 @@ def test_spb_hall_mode_returns_finite_hall_curves(client: TestClient) -> None:
         (
             {
                 "fit_mode": "dpb_s",
+                "scattering": "acPhDis",
                 "parameters": {"m_eff": 1.0, "band_gap": 1.0, "fermi_energy": 1.0},
             },
             [(["body", "scattering"], "unknown_scattering")],

@@ -111,6 +111,21 @@ def _evaluate_quantity(
     check_finite: bool = True,
     root_provider: _CheckedRootProvider | None = None,
 ) -> np.ndarray:
+    if scattering == "ionized":
+        from seeband_core.transport import ionized_transport
+
+        potentials = None
+        if root_provider is not None:
+            if fit_mode.startswith("dpb"):
+                potentials = root_provider(
+                    "dpb", t, p["m_eff"] / degen, p["fermi_energy"], p["band_gap"], degen
+                )
+            else:
+                potentials = root_provider("spb", t, p["band_mass"], p["fermi_energy"])
+        out = ionized_transport(t, p, fit_mode, degen, potentials=potentials)[q]
+        if check_finite and not np.all(np.isfinite(out)):
+            raise ValueError("The model gave values that are not finite")
+        return out
     dpb = fit_mode.startswith("dpb")
     ef = p["fermi_energy"]
     sc = scattering
@@ -523,9 +538,10 @@ class _Engine:
         # outside the optimization budget, always at the exact retained endpoint.
         def final_prediction(q: Quantity, p: Mapping[str, float]) -> np.ndarray:
             self.evaluations += 1
-            return _evaluate_quantity(
-                q, self.data[q][0], p, self.mode.id, self.request.scattering, self.n
-            )
+            with mm.independent_chemical_potential():
+                return _evaluate_quantity(
+                    q, self.data[q][0], p, self.mode.id, self.request.scattering, self.n
+                )
 
         unidentified: set[str] = set()
         for q in self.mode.quantities:

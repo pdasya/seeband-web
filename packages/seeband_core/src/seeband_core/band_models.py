@@ -100,10 +100,10 @@ _FLAT_MASS = 100000000
 
 def _values(parameters: Mapping[str, float], names: Iterable[str]) -> list[float]:
     names = list(names)
-    missing = [name for name in names if name not in parameters]
+    missing = [name for name in names if name not in parameters and name not in ("C", "D")]
     if missing:
         raise ValueError(f"Missing parameters: {missing}")
-    return [parameters[name] for name in names]
+    return [parameters.get(name, 0.0) for name in names]
 
 
 def _value(parameters: Mapping[str, float], name: str) -> float:
@@ -228,20 +228,22 @@ class _BandModel:
         self, fit_mode_id: str, scattering: str | None
     ) -> tuple[FitMode, str | None]:
         fit_mode = self._description.fit_mode(fit_mode_id)
-        if scattering is None and fit_mode.scattering:
+        if scattering is None and fit_mode.scattering and not fit_mode.id.endswith("_s"):
             raise ValueError(f"Fit mode {fit_mode_id} needs a scattering type")
         fit_mode.parameters_for(scattering)
         return fit_mode, scattering
 
     def _check_fit(self, request: FitRequest, fit_mode: FitMode) -> None:
         specs = {spec.name: spec for spec in fit_mode.parameters}
-        unknown = [name for name in request.start if name not in specs]
+        unknown = [name for name in request.start if name not in specs and name not in ("C", "D")]
         if unknown:
             raise ValueError(f"Fit mode {fit_mode.id} has no parameters {unknown}")
         for name, value in request.start.items():
             if not isinstance(value, Real) or not math.isfinite(value):
                 raise ValueError(f"Start value of {name} must be a finite number")
         for name, bounds in request.bounds.items():
+            if name in ("C", "D"):
+                continue  # Inert historical inputs retained for low-level reproductions.
             if name not in specs or specs[name].fit_bounds is None:
                 raise ValueError(f"Fit mode {fit_mode.id} does not fit a parameter {name}")
             if not bounds.lower < bounds.upper:
@@ -261,7 +263,9 @@ class _BandModel:
         specs = {spec.name: spec for spec in fit_mode.parameters}
         chosen: list[Bounds] = []
         for name in names:
-            bounds = request.bounds.get(name) or specs[name].fit_bounds
+            bounds = request.bounds.get(name) or (
+                specs[name].fit_bounds if name in specs else Bounds(0, 1e4)
+            )
             if bounds is None:
                 raise ValueError(f"Parameter {name} has no bounds")
             chosen.append(bounds)
@@ -323,6 +327,7 @@ class _BandModel:
         ratio = _degeneracy_ratio(request) if fit_mode.degeneracy is not None else 1.0
         # A held value comes back as sent, not through a solver's units, such as m1 from E^(2/3).
         parameters = dict(parameters) | {name: request.start[name] for name in request.held}
+        parameters = {name: value for name, value in parameters.items() if name in request.start}
         errors = self._stage_errors(fit_mode, request.scattering, ratio, progress)
         at_bounds = self._at_bounds(request, fit_mode, parameters, ratio, progress.stage_fits)
         return FitResult(
@@ -401,7 +406,11 @@ class _BandModel:
             def report(iteration: int, values: list[float]) -> None:
                 # A parameter fitted after the loop is not in `values`, so it keeps its start. A
                 # held one goes back as sent, not through the loop's units, such as m_eff / N * N.
-                latest.update(zip(names, values, strict=False))
+                latest.update(
+                    (name, value)
+                    for name, value in zip(names, values, strict=False)
+                    if name in request.start
+                )
                 latest.update({name: request.start[name] for name in request.held})
                 try:
                     callback(IterationUpdate(iteration, dict(latest)))
@@ -440,6 +449,39 @@ class _BandModel:
         fit_mode, scattering = self._mode_and_scattering(request.fit_mode, request.scattering)
         if request.kind not in fit_mode.curve_kinds:
             raise ValueError(f"Fit mode {fit_mode.id} has no curve {request.kind}")
+        if scattering == "ionized" and request.kind != "carrier_concentration_by_band":
+            from seeband_core.transport import ionized_transport
+
+            temperature_k = np.linspace(
+                request.min_temperature_k, request.max_temperature_k, request.points
+            )
+            ratio = _degeneracy_ratio(request) if fit_mode.degeneracy is not None else 1.0
+            predictions = ionized_transport(temperature_k, request.parameters, fit_mode.id, ratio)
+            keys: tuple[str, ...]
+            if request.kind == "measured":
+                keys = fit_mode.quantities
+                names = _MEASURED_CURVES[: len(keys)]
+            else:
+                names = _CURVE_NAMES[request.kind]
+                keys = tuple(
+                    name.removesuffix("_s_per_m")
+                    .removesuffix("_v_per_k")
+                    .removesuffix("_w_per_m_k")
+                    .removesuffix("_k")
+                    for name in names
+                )
+            return CurveResult(
+                temperature_k,
+                {name: predictions[key] for name, key in zip(names, keys, strict=True)},
+                active_issue_ids(
+                    fit_mode,
+                    scattering,
+                    request.parameters,
+                    ratio,
+                    request.kind,
+                    request.extrapolated,
+                ),
+            )
         function, arguments = self._curve_call(request, fit_mode, scattering)
         result = function(
             request.min_temperature_k, request.max_temperature_k, request.points, *arguments
@@ -553,6 +595,8 @@ class SpbModel(_BandModel):
             if fit_mode.degeneracy is not None:
                 _degeneracy_ratio(request)
             return fit_verified(request, fit_mode, on_iteration)
+        if scattering == "ionized":
+            raise ValueError("Ionized scattering requires verified-sequential-v2")
         if request.algorithm != "legacy-sequential-v1":
             raise ValueError("Unknown fitting algorithm")
         start = request.start
@@ -689,6 +733,8 @@ class DpbModel(_BandModel):
             if fit_mode.degeneracy is not None:
                 _degeneracy_ratio(request)
             return fit_verified(request, fit_mode, on_iteration)
+        if scattering == "ionized":
+            raise ValueError("Ionized scattering requires verified-sequential-v2")
         if request.algorithm != "legacy-sequential-v1":
             raise ValueError("Unknown fitting algorithm")
         start = request.start

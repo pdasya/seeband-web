@@ -8,7 +8,7 @@ from seeband_core.model_scales import default_start
 
 
 @pytest.mark.parametrize("mode_id", ["spb_s_rho", "dpb_s_rho", "dpb_s_rho_rh"])
-@pytest.mark.parametrize("scattering", ["acPh", "dis", "acPhDis"])
+@pytest.mark.parametrize("scattering", ["acPh", "dis", "ionized"])
 def test_conductivity_is_inverse_resistivity(mode_id: str, scattering: str) -> None:
     model = registry.get(mode_id.partition("_")[0])
     mode = model.describe().fit_mode(mode_id)
@@ -37,7 +37,7 @@ def test_thermal_conductivity_uses_the_same_scattering_scale(model_id: str) -> N
         parameters |= {"D": 2.0, "m_eff": 1.2, "band_gap": 800.0, "fermi_energy": -150.0}
 
     def curve(kind: str):
-        return model.calculate(CurveRequest(mode_id, parameters, 100, 800, 8, "acPhDis", kind))
+        return model.calculate(CurveRequest(mode_id, parameters, 100, 800, 8, "acPh", kind))
 
     thermal = curve("thermal_conductivity")
     t = thermal.temperature_k
@@ -65,11 +65,11 @@ def test_thermal_conductivity_uses_the_same_scattering_scale(model_id: str) -> N
         # Also cross-check individual points; P11 tests the complete-grid sum separately.
         for temperature in t:
             point = model.calculate(
-                CurveRequest(mode_id, parameters, temperature, temperature, 1, "acPhDis")
+                CurveRequest(mode_id, parameters, temperature, temperature, 1, "acPh")
             )
             bands = model.calculate(
                 CurveRequest(
-                    mode_id, parameters, temperature, temperature, 1, "acPhDis", "seebeck_by_band"
+                    mode_id, parameters, temperature, temperature, 1, "acPh", "seebeck_by_band"
                 )
             )
             np.testing.assert_allclose(

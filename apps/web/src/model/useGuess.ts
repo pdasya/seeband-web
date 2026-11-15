@@ -23,6 +23,7 @@ export function useGuess() {
   const doubted = useSessionStore((state) =>
     hasOpenUnitDoubt(state.data.seebeck),
   );
+  const scattering = useSessionStore((state) => state.selection.scattering);
   const selected = useSessionStore((state) => state.selection.model);
   const model = guessModel(models?.models, selected ?? "");
   const active = useSessionStore((state) => isFitActive(state.fit));
@@ -37,28 +38,37 @@ export function useGuess() {
     if (
       model !== undefined &&
       !doubted &&
+      !(model.id === "dpb" && scattering === "ionized") &&
       isNewLoad(measurement, model.id) &&
       measurement
     ) {
       void runGuess(model, measurement);
     }
-  }, [model, measurement, doubted]);
+  }, [model, measurement, doubted, scattering]);
 
   const offered = model !== undefined && selected === model.id;
-  const title = !offered
-    ? text.guessUnavailable
-    : measurement === undefined
-      ? text.guessNeedsData
-      : doubted
-        ? text.guessUnitInDoubt
-        : text.guessHint;
+  const unsupported = selected === "dpb" && scattering === "ionized";
+  const title = unsupported
+    ? text.guessUnsupported.scattering_not_supported
+    : !offered
+      ? text.guessUnavailable
+      : measurement === undefined
+        ? text.guessNeedsData
+        : doubted
+          ? text.guessUnitInDoubt
+          : text.guessHint;
 
   return {
     title,
     disabled:
-      !offered || measurement === undefined || doubted || active || pending,
+      !offered ||
+      unsupported ||
+      measurement === undefined ||
+      doubted ||
+      active ||
+      pending,
     run: () => {
-      if (model !== undefined && measurement !== undefined) {
+      if (!unsupported && model !== undefined && measurement !== undefined) {
         void runGuess(model, measurement);
       }
     },

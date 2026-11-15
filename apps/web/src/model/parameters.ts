@@ -18,11 +18,12 @@ export function visibleParameters(
   mode: FitModeDescription,
   scattering: string | null,
 ): ParameterDescription[] {
+  const chosen = scattering ?? mode.default_scattering;
   return mode.parameters.filter(
     (parameter) =>
       mode.scattering.length === 0 ||
       parameter.scattering.length === 0 ||
-      (scattering !== null && parameter.scattering.includes(scattering)),
+      (chosen != null && parameter.scattering.includes(chosen)),
   );
 }
 

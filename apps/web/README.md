@@ -263,3 +263,11 @@ How these differ from the desktop's files:
 The site's header, the buttons, the fit log and the live charts are left off paper. Live charts do not resize to a page, so `charts/chartImage.ts` draws each as a PNG of a fixed size from the same figure. The button waits until every curve the mode offers is in, so that no chart is left out unseen. Plotly leaves its promise open when a browser cannot make a picture, so after 10 s the report gives up and says so.
 
 Checked by hand, by saving a real fit's report as a PDF from Chrome. The e2e tests check the page as print media shows it, with `window.print` stubbed, not a PDF. Firefox has not been checked yet, for V2.
+
+## Scattering choices
+
+SPB and DPB offer acoustic phonons, alloy disorder and ionized impurities,
+including S-only modes. Ionized impurities use the approved power-law
+approximation with lambda=2 and require Verified fitting. SPB starting
+estimates follow the selected scattering; the DPB neural estimate is disabled
+for ionized impurities. acPhDis and its C/D controls are no longer offered.

@@ -93,8 +93,8 @@ test("parameters follow the scattering type and fit mode", async ({ page }) => {
   await expect(field(page, "G")).toBeVisible();
   await expect(field(page, "A")).toHaveCount(0);
 
-  await chooseScattering(page, /acPhDis/);
-  for (const name of ["A", "B", "C", "D"]) {
+  await chooseScattering(page, /Ionized impurities/);
+  for (const name of ["A", "B"]) {
     await expect(field(page, name)).toBeVisible();
   }
   await expect(field(page, "F")).toHaveCount(0);
@@ -222,20 +222,16 @@ test("a message about a number is tied to its field", async ({ page }) => {
   );
 });
 
-test("a slider's whole position reaches the session exactly", async ({
-  page,
-}) => {
+test("ionized amplitude controls retain their values", async ({ page }) => {
   await open(page);
   await choose(page, "SPB");
   await choose(page, "S + ρ");
-  await chooseScattering(page, /acPhDis/);
-  await field(page, "C").fill("2,54");
-  await field(page, "C").press("Enter");
-
-  await slider(page, "C").press("ArrowRight");
-
-  expect(await stored(page, "spb_s_rho")).toEqual({ C: 255 });
-  await expect(field(page, "C")).toHaveValue("2,55");
+  await chooseScattering(page, /Ionized impurities/);
+  await field(page, "A").fill("42000");
+  await field(page, "A").press("Enter");
+  await slider(page, "A").press("ArrowRight");
+  expect(await stored(page, "spb_s_rho")).toEqual({ A: 43000 });
+  await expect(field(page, "A")).toHaveValue("43000");
 });
 
 test("the keyboard moves by the description's step", async ({ page }) => {
@@ -305,21 +301,15 @@ test("dragging moves by whole control units, not by the step", async ({
   expect(value * 100).toBeCloseTo(Math.round(value * 100), 6);
 });
 
-test("where the two scales differ, the session holds core units", async ({
+test("ionized scattering has no mixed-scattering controls", async ({
   page,
 }) => {
   await open(page);
-  await choose(page, "SPB");
-  await choose(page, "S + ρ");
-  await chooseScattering(page, /acPhDis/);
-
-  await expect(field(page, "C")).toHaveValue("1");
-
-  await field(page, "C").fill("1.5");
-  await field(page, "C").press("Enter");
-
-  expect(await stored(page, "spb_s_rho")).toEqual({ C: 150 });
-  await expect(field(page, "C")).toHaveValue("1,5");
+  await chooseScattering(page, /Ionized impurities/);
+  await expect(field(page, "A")).toBeVisible();
+  await expect(field(page, "B")).toBeVisible();
+  await expect(field(page, "C")).toHaveCount(0);
+  await expect(field(page, "D")).toHaveCount(0);
 });
 
 test("each fit mode keeps its own values and defaults", async ({ page }) => {

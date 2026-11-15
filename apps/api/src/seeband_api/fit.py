@@ -348,6 +348,14 @@ def _to_core_request(body: FitApiRequest, max_points: int) -> tuple[str, FitRequ
         *_check_measurements(body, fit_mode),
         *check_point_counts(body.measurements, max_points),
     ]
+    if body.scattering == "ionized" and body.algorithm != "verified-sequential-v2":
+        details.append(
+            invalid(
+                "unsupported_algorithm",
+                "Ionized impurities require verified-sequential-v2",
+                ["algorithm"],
+            )
+        )
     # The bounds depend on the scattering type, so this needs a valid one.
     if not scattering_details:
         details += _check_bounds(body, fit_mode)

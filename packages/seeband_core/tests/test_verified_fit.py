@@ -8,7 +8,7 @@ from seeband_core.model_interface import Bounds, CurveRequest, FitRequest, Measu
 from seeband_core.model_scales import default_start
 
 
-@pytest.mark.parametrize("scattering", ["acPh", "dis", "acPhDis"])
+@pytest.mark.parametrize("scattering", ["acPh", "dis", "ionized"])
 @pytest.mark.parametrize("sign", [-1.0, 1.0])
 def test_verified_profiles_tiny_reciprocal_amplitude(scattering, sign):
     t = np.linspace(100.0, 800.0, 16)
@@ -18,16 +18,29 @@ def test_verified_profiles_tiny_reciprocal_amplitude(scattering, sign):
     elif scattering == "dis":
         q = mm.spb_rho_vs_temp_dis(t, f, 1.0)
     else:
-        q = mm.spb_rho_vs_temp_acPh_dis(t, f, 1.0, 600.0)
+        from seeband_core.transport import ionized_transport
+
+        q = ionized_transport(
+            t, {"band_mass": sign, "fermi_energy": sign * 165.0, "A": 1.0}, "spb_s_rho"
+        )["resistivity"]
     amplitude = np.linalg.norm(q * 1e8) / np.sqrt(len(t)) / 100.0
-    start = dict(band_mass=sign, fermi_energy=sign * 165.0, A=1e7, C=2.0, F=1e7)
+    start = dict(band_mass=sign, fermi_energy=sign * 165.0, A=1e7, F=1e7)
     name = "F" if scattering == "dis" else "A"
-    held = {"fermi_energy"} | ({"C"} if scattering == "acPhDis" else set())
+    held = {"fermi_energy"}
     result = SpbModel().fit(
         FitRequest(
             "spb_s_rho",
             {
-                "seebeck": Measurement(t, mm.spb_see_vs_temp(t, sign * 165.0, sign)),
+                "seebeck": Measurement(
+                    t,
+                    (
+                        ionized_transport(
+                            t, {"band_mass": sign, "fermi_energy": sign * 165.0}, "spb_s"
+                        )["seebeck"]
+                        if scattering == "ionized"
+                        else mm.spb_see_vs_temp(t, sign * 165.0, sign)
+                    ),
+                ),
                 "resistivity": Measurement(t, q / amplitude),
             },
             start,
@@ -44,7 +57,7 @@ def test_verified_profiles_tiny_reciprocal_amplitude(scattering, sign):
 
 @pytest.mark.parametrize("n", [1.0, 3.0])
 @pytest.mark.parametrize("r", [1.2, -1.2, 1e-10, -1e-10])
-@pytest.mark.parametrize("scattering", ["acPh", "dis", "acPhDis"])
+@pytest.mark.parametrize("scattering", ["acPh", "dis", "ionized"])
 def test_dpb_amplitude_keeps_public_mass_and_held_shapes(n, r, scattering):
     model = DpbModel()
     mode = model.describe().fit_mode("dpb_s_rho")
@@ -55,8 +68,6 @@ def test_dpb_amplitude_keeps_public_mass_and_held_shapes(n, r, scattering):
         fermi_energy=-165.0,
         A=1.0,
         B=200.0,
-        C=2.0,
-        D=0.5,
         F=1.0,
         G=200.0,
     )
@@ -98,9 +109,7 @@ def test_outer_loop_does_not_accept_stale_seebeck_optimum():
     s = mm.dpb_see_vs_temp_single_scatter(t, *truth, 1.0, 2.0)
     f1, f2 = mm.dpb_fermiInt_vs_temp(0, t, *truth, 1.0)
     rho = mm.dpb_rho_vs_temp_acPh(t, f1, f2, 1e5, 2.0, truth[0])
-    p = dict(
-        m_eff=1.0, band_gap=700.0, fermi_energy=-180.0, A=1e5, B=0.5, C=1.0, D=1.0, F=1.0, G=1.0
-    )
+    p = dict(m_eff=1.0, band_gap=700.0, fermi_energy=-180.0, A=1e5, B=0.5, F=1.0, G=1.0)
     bounds = {
         "m_eff": Bounds(0.1, 3.0),
         "band_gap": Bounds(100.0, 2000.0),
@@ -122,15 +131,20 @@ def test_outer_loop_does_not_accept_stale_seebeck_optimum():
 
 
 @pytest.mark.parametrize("model_id", ["spb", "dpb"])
-@pytest.mark.parametrize("scattering", ["acPh", "dis", "acPhDis"])
+@pytest.mark.parametrize("scattering", ["acPh", "dis", "ionized"])
 @pytest.mark.parametrize("sign", [-1.0, 1.0])
 @pytest.mark.parametrize("n", [1.0, 3.0])
 def test_hall_inverse_amplitude_matches_curves(model_id, scattering, sign, n):
     model = DpbModel() if model_id == "dpb" else SpbModel()
     mode = model.describe().fit_mode(model_id + "_s_rho_rh")
-    p = dict(default_start(mode), fermi_energy=-165.0, A=1e5, F=1e5, C=0.0)
+    p = dict(
+        default_start(mode),
+        fermi_energy=-165.0,
+        A=1e5,
+        F=1e5,
+    )
     if model_id == "dpb":
-        p.update(m_eff=sign * 1.2 * n, band_gap=-500.0, B=2.0, D=0.0, G=2.0, m1=2.3)
+        p.update(m_eff=sign * 1.2 * n, band_gap=-500.0, B=2.0, G=2.0, m1=2.3)
         name = "m1"
     else:
         p.update(band_mass=sign * 2.3, fermi_energy=sign * 165.0)
@@ -211,7 +225,7 @@ def test_inverse_amplitude_respects_active_user_bound_and_measured_residuals():
     from seeband_core.verified_fit import evaluate
 
     t = np.array([101.0, 153.0, 251.0, 589.0, 799.0])
-    p = dict(band_mass=-1.0, fermi_energy=-165.0, A=1e5, C=0.0, F=1.0)
+    p = dict(band_mass=-1.0, fermi_energy=-165.0, A=1e5, F=1.0)
     truth = evaluate("spb", "spb_s_rho", p, t, "acPh")
     request = FitRequest(
         "spb_s_rho",
@@ -293,21 +307,18 @@ def test_compensated_zero_hall_keeps_unidentified_mass_and_nullable_relative_res
         fermi_energy=0.0,
         A=1e5,
         B=1.0,
-        C=0.0,
-        D=0.0,
         m1=2.0,
     )
     t = np.array([100.0, 200.0, 500.0])
-    data = evaluate("dpb", mode.id, p, t, "acPhDis")
+    data = evaluate("dpb", mode.id, p, t, "ionized")
     assert np.all(data["hall"] == 0.0)
-    fitted = {s.name for s in mode.parameters_for("acPhDis") if s.role == "fitted"}
+    fitted = {s.name for s in mode.parameters_for("ionized") if s.role == "fitted"}
     result = model.fit(
         FitRequest(
             mode.id,
             {q: Measurement(t, v) for q, v in data.items()},
             p,
-            bounds={"C": Bounds(0.0, 10.0), "D": Bounds(0.0, 10.0)},
-            scattering="acPhDis",
+            scattering="ionized",
             held=frozenset(fitted - {"m1"}),
         )
     )
@@ -319,25 +330,24 @@ def test_compensated_zero_hall_keeps_unidentified_mass_and_nullable_relative_res
     assert result.parameter_errors == {}
 
 
-def test_zero_shape_remains_an_admissible_fit_start():
+def test_zero_amplitude_remains_an_admissible_fit_start():
     from seeband_core.verified_fit import evaluate
 
     mode = SpbModel().describe().fit_mode("spb_s_rho")
-    p = dict(default_start(mode), band_mass=-1.0, fermi_energy=-165.0, A=1e5, C=2.0)
+    p = dict(default_start(mode), band_mass=-1.0, fermi_energy=-165.0, A=1e5)
     t = np.linspace(100.0, 800.0, 8)
-    data = evaluate("spb", mode.id, p, t, "acPhDis")
+    data = evaluate("spb", mode.id, p, t, "ionized")
     result = SpbModel().fit(
         FitRequest(
             mode.id,
             {q: Measurement(t, v) for q, v in data.items()},
-            p | {"A": 1e7, "C": 0.0},
-            {"C": Bounds(0.0, 10.0)},
-            "acPhDis",
+            p | {"A": 0.0},
+            {"A": Bounds(0.0, 1e7)},
+            "ionized",
             held=frozenset({"fermi_energy"}),
         )
     )
     assert result.status == "converged"
-    assert result.parameters["C"] == pytest.approx(2.0, rel=1e-7)
     assert result.parameters["A"] == pytest.approx(1e5, rel=1e-7)
 
 
@@ -478,7 +488,7 @@ def test_held_value_outside_original_bounds_is_a_failed_start():
 def test_free_zero_amplitude_start_is_eliminated_without_a_mass_floor():
     from seeband_core.verified_fit import evaluate
 
-    p = dict(band_mass=-1.0, fermi_energy=-165.0, A=1e5, C=1.0, F=1.0)
+    p = dict(band_mass=-1.0, fermi_energy=-165.0, A=1e5, F=1.0)
     t = np.array([100.0, 200.0, 500.0])
     data = evaluate("spb", "spb_s_rho", p, t, "acPh")
     result = SpbModel().fit(
@@ -541,7 +551,7 @@ def test_budget_before_first_rho_stage_never_loses_singular_start_endpoint(monke
     from seeband_core import verified_fit
     from seeband_core.verified_fit import evaluate
 
-    p = dict(band_mass=-1.0, fermi_energy=-165.0, A=1e5, C=1.0, F=1.0)
+    p = dict(band_mass=-1.0, fermi_energy=-165.0, A=1e5, F=1.0)
     t = np.array([100.0, 200.0, 500.0])
     data = evaluate("spb", "spb_s_rho", p, t, "acPh")
     request = FitRequest(

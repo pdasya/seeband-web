@@ -71,8 +71,6 @@ class CalcRequest(BaseModel):
                         "fermi_energy": -100.0,
                         "A": 40000.0,
                         "B": 1.0,
-                        "C": 1.0,
-                        "D": 1.0,
                         "F": 1000.0,
                         "G": 1.0,
                     },

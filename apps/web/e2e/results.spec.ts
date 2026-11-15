@@ -387,7 +387,7 @@ async function serveCurves(page: Page) {
             : DERIVED[kind],
         rmse: kind === "measured" ? RMSE : {},
         known_issues:
-          body.scattering !== "acPhDis"
+          body.scattering !== "ionized"
             ? []
             : kind === "measured"
               ? [SYNTHETIC_SEEBECK_ISSUE.id]
@@ -436,7 +436,7 @@ test("a measured S warning follows its total into the band graph", async ({
 }) => {
   await openFit(page, serveCurves);
   await page.getByRole("combobox", { name: "Scattering" }).click();
-  await page.getByRole("option", { name: /acPhDis/ }).click();
+  await page.getByRole("option", { name: /Ionized impurities/ }).click();
   await finishWith(page);
   await toResults(page);
 
@@ -590,7 +590,7 @@ test("each additional graph downloads its own curves and flags", async ({
 }) => {
   await openFit(page, serveCurves);
   await page.getByRole("combobox", { name: "Scattering" }).click();
-  await page.getByRole("option", { name: /acPhDis/ }).click();
+  await page.getByRole("option", { name: /Ionized impurities/ }).click();
   await finishWith(page);
   await toResults(page);
   await expect(

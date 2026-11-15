@@ -89,21 +89,21 @@ STAGES: dict[str, tuple[FitStage, ...]] = {
     "spb_s": (FitStage("seebeck", ("fermi_energy",)),),
     "spb_s_rho": (
         FitStage("seebeck", ("fermi_energy",)),
-        FitStage("resistivity", SPB_SCATTERING),
+        FitStage("resistivity", ("A", "F")),
     ),
     "spb_s_rho_rh": (
         FitStage("seebeck", ("fermi_energy",)),
-        FitStage("resistivity", SPB_SCATTERING),
+        FitStage("resistivity", ("A", "F")),
         FitStage("hall", ("band_mass",)),
     ),
     "dpb_s": (FitStage("seebeck", DPB_BANDS),),
     "dpb_s_rho": (
         FitStage("seebeck", DPB_BANDS, repeats=True),
-        FitStage("resistivity", DPB_SCATTERING, repeats=True),
+        FitStage("resistivity", ("A", "B", "F", "G"), repeats=True),
     ),
     "dpb_s_rho_rh": (
         FitStage("seebeck", DPB_BANDS, repeats=True),
-        FitStage("resistivity", DPB_SCATTERING, repeats=True),
+        FitStage("resistivity", ("A", "B", "F", "G"), repeats=True),
         FitStage("hall", ("m1",)),
     ),
 }
@@ -128,10 +128,16 @@ def _parameter(entry: dict[str, Any]) -> ParameterSpec:
     bounds = entry.get("web_fit_bounds") or entry.get("default_fit_bounds")
     return ParameterSpec(
         name=entry["name"],
-        meaning=entry["meaning"],
-        unit=entry["unit"],
+        meaning=(
+            {
+                "A": "conductivity normalization at 300 K",
+                "B": "relative band conductivity normalization",
+            }.get(entry["name"], entry["meaning"])
+        ),
+        unit="S/m" if entry["name"] == "A" else entry["unit"],
         role=entry["role"],
-        scattering=tuple(entry["scattering"]),
+        scattering=tuple(x for x in entry["scattering"] if x != "acPhDis")
+        + (("ionized",) if "acPh" in entry["scattering"] else ()),
         value_range=ValueRange(slider["min"], slider["max"], slider["step"], slider["default"]),
         display_scale=entry["display_scale"],
         fit_scale=entry.get("web_fit_scale", entry["fit_scale"]),
@@ -149,9 +155,13 @@ def _fit_mode(entry: dict[str, Any]) -> FitMode:
     return FitMode(
         id=entry["id"],
         quantities=FIT_MODE_QUANTITIES[entry["fit_mode"]],
-        parameters=tuple(_parameter(parameter) for parameter in entry["parameters"]),
-        scattering=tuple(scattering.get("options", ())),
-        default_scattering=scattering.get("default"),
+        parameters=tuple(
+            _parameter(parameter)
+            for parameter in entry["parameters"]
+            if parameter["name"] not in ("C", "D")
+        ),
+        scattering=("acPh", "dis", "ionized"),
+        default_scattering=scattering.get("default", "acPh"),
         iterative=iteration["kind"] == "iterative",
         threshold=iteration.get("threshold"),
         max_iterations=iteration.get("max_iterations"),

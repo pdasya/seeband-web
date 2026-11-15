@@ -204,6 +204,12 @@ export type FitState =
   | { status: "done"; result: FitResult }
   | { status: "failed"; failure: FitFailure };
 
+function supportedSelection(selection: Selection): Selection {
+  return selection.scattering === "ionized"
+    ? { ...selection, algorithm: "verified-sequential-v2" }
+    : selection;
+}
+
 const INITIAL_SELECTION: Selection = {
   algorithm: "verified-sequential-v2",
   model: null,
@@ -259,7 +265,11 @@ export type NetRange = Schemas["NetRange"];
 export type GuessOutcome =
   | {
       kind: "unsupported";
-      reason: "sign_change" | "too_few_temperatures" | "zero_seebeck";
+      reason:
+        | "sign_change"
+        | "too_few_temperatures"
+        | "zero_seebeck"
+        | "scattering_not_supported";
       warnings: GuessWarnings;
     }
   | { kind: "applied"; netRange?: NetRange; warnings: GuessWarnings }
@@ -595,7 +605,7 @@ export const createSessionStore = () =>
                       band2Degeneracy: selection.band2Degeneracy,
                     },
                   },
-            selection: { ...selection, ...settings, model },
+            selection: supportedSelection({ ...selection, ...settings, model }),
             fit: withoutOldResult(state.fit),
           };
         });
@@ -724,7 +734,11 @@ export const createSessionStore = () =>
       },
       setSelection: (selection) => {
         set((state) => ({
-          selection: { ...state.selection, ...selection },
+          selection: supportedSelection({ ...state.selection, ...selection }),
+          ...(selection.scattering !== undefined &&
+          selection.scattering !== state.selection.scattering
+            ? { guess: null }
+            : {}),
           fit:
             state.fit.status === "stopped" &&
             Object.keys(selection).every((key) => key === "algorithm")

@@ -1,8 +1,8 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, expect, test } from "vitest";
 
-import { NumericalDiagnostics } from "@/model/FitControls";
-import type { FitState } from "@/session/store";
+import { FitAlgorithmControl, NumericalDiagnostics } from "@/model/FitControls";
+import { useSessionStore, type FitState } from "@/session/store";
 
 afterEach(cleanup);
 
@@ -47,4 +47,19 @@ test("diagnostics keep numerical consistency, zero-signal residuals and unknown 
       "Physical adequacy and parameter uncertainty have not been assessed.",
     ),
   ).toBeTruthy();
+});
+
+test("ionized scattering cannot select the legacy estimator", () => {
+  useSessionStore.setState({
+    selection: {
+      ...useSessionStore.getState().selection,
+      scattering: "ionized",
+      algorithm: "verified-sequential-v2",
+    },
+  });
+  render(<FitAlgorithmControl />);
+  const legacy = screen.getByRole("option", {
+    name: "Legacy sequential (reproduce earlier results)",
+  }) as HTMLOptionElement;
+  expect(legacy.disabled).toBe(true);
 });

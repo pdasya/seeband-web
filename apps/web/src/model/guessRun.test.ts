@@ -114,6 +114,14 @@ describe("runGuess", () => {
     expect(currentGuess(state())?.kind).toBe("applied");
   });
 
+  test("a pending estimate is dropped when scattering changes", async () => {
+    const answer = waiting(rows(1, 2));
+    state().setSelection({ scattering: "ionized" });
+    await answer();
+    expect(applied()).toBeUndefined();
+    expect(state().guessPending).toBe(false);
+  });
+
   test("a new mapping that reads the same S is still that data", async () => {
     const answer = waiting(rows(1, 2));
     holdS(rows(1, 2));

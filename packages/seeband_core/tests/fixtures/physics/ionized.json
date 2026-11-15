@@ -1,0 +1,10 @@
+{
+  "model": "3D isotropic parabolic band, unscreened tau(E) proportional to E^1.5",
+  "fermi_integrals": "unnormalized",
+  "lambda": 2,
+  "reference_method": "independent adaptive quadrature of F_j = integral_0^infinity x^j/(1+exp(x-eta)) dx; Hall factor = n*e*abs(R_H)",
+  "cases": [
+    {"eta": -12, "abs_seebeck_over_kb_e": 16.0000015361, "lorenz_over_kb_e_squared": 3.99999923198, "hall_factor": 1.93281403815},
+    {"eta": 80, "abs_seebeck_over_kb_e": 0.123268743446, "lorenz_over_kb_e_squared": 3.29088280146, "hall_factor": 1.00115419161}
+  ]
+}

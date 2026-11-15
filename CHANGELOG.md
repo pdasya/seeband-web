@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Core `0.3.0`: replace public acPhDis with ionized impurity scattering for
+  SPB and DPB, including S-only. Use the approved tau(E) proportional to E^(3/2)
+  approximation with lambda=2, consistent longitudinal, Hall and electronic
+  thermal moments, and explicit immutable scattering exponents. Retain acPh/dis
+  behavior and historical mixed-scattering captures. Ionized fits require
+  Verified; SPB estimates follow scattering and DPB neural estimates are
+  unavailable for this mechanism. See [the model contract](packages/seeband_core/docs/ionized-impurities.md).
+
 - Reuse certified chemical potentials for exact repeated physical inputs within
   a verified fit. Preserve prediction budgets and fresh terminal audits. Avoid
   duplicate demo/API fits in tests while retaining their assertions; run golden,

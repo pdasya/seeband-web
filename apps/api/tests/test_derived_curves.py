@@ -75,11 +75,11 @@ REFUSED: dict[str, dict[str, str]] = {
 }
 SCATTERING: dict[str, tuple[str | None, ...]] = {
     "spb_s": (None,),
-    "spb_s_rho": ("acPh", "dis", "acPhDis"),
-    "spb_s_rho_rh": ("acPh", "dis", "acPhDis"),
+    "spb_s_rho": ("acPh", "dis", "ionized"),
+    "spb_s_rho_rh": ("acPh", "dis", "ionized"),
     "dpb_s": (None,),
-    "dpb_s_rho": ("acPh", "dis", "acPhDis"),
-    "dpb_s_rho_rh": ("acPh", "dis", "acPhDis"),
+    "dpb_s_rho": ("acPh", "dis", "ionized"),
+    "dpb_s_rho_rh": ("acPh", "dis", "ionized"),
 }
 
 
@@ -264,10 +264,10 @@ def test_bad_parameters_are_reported_before_an_unavailable_curve(client: TestCli
 @pytest.mark.parametrize(
     ("fit_mode_id", "scattering", "kind", "issue"),
     [
-        ("spb_s_rho", "acPhDis", "electrical_conductivity", "acphdis_curve_scale"),
-        ("spb_s_rho", "acPhDis", "thermal_conductivity", "acphdis_curve_scale"),
-        ("dpb_s_rho", "acPhDis", "seebeck_by_band", "acphdis_curve_scale"),
-        ("dpb_s_rho", "acPhDis", "electrical_conductivity_by_band", "acphdis_curve_scale"),
+        ("spb_s_rho", "ionized", "electrical_conductivity", "acphdis_curve_scale"),
+        ("spb_s_rho", "ionized", "thermal_conductivity", "acphdis_curve_scale"),
+        ("dpb_s_rho", "ionized", "seebeck_by_band", "acphdis_curve_scale"),
+        ("dpb_s_rho", "ionized", "electrical_conductivity_by_band", "acphdis_curve_scale"),
     ],
 )
 def test_corrected_scaling_curves_have_no_obsolete_flag(
@@ -279,7 +279,7 @@ def test_corrected_scaling_curves_have_no_obsolete_flag(
 
 
 def test_acphdis_flag_is_not_on_curves_it_does_not_change(client: TestClient) -> None:
-    body = client.post("/api/calc", json=_body("dpb_s_rho", "acPhDis", "chemical_potential")).json()
+    body = client.post("/api/calc", json=_body("dpb_s_rho", "ionized", "chemical_potential")).json()
 
     assert "acphdis_curve_scale" not in body["known_issues"]
 

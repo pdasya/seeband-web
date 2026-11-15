@@ -843,3 +843,20 @@ describe("a doubt about a unit", () => {
     expect(state().data.resistivity).toBeUndefined();
   });
 });
+
+test("ionized selection moves an explicit legacy choice to verified", () => {
+  state().setSelection({ algorithm: "legacy-sequential-v1" });
+  state().setSelection({ scattering: "ionized" });
+  expect(state().selection.algorithm).toBe("verified-sequential-v2");
+});
+
+test("restoring an ionized model also restores a supported fitting method", () => {
+  state().setSelection({ algorithm: "legacy-sequential-v1" });
+  state().chooseModel("spb", {
+    fitMode: "spb_s",
+    scattering: "ionized",
+    band1Degeneracy: 1,
+    band2Degeneracy: 1,
+  });
+  expect(state().selection.algorithm).toBe("verified-sequential-v2");
+});

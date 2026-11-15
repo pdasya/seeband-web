@@ -103,23 +103,17 @@ def test_single_pass_and_iterative_modes(
 def test_fields_that_do_not_apply_are_left_out(modes: dict[str, dict[str, Any]]) -> None:
     mode = modes["spb_s"]
 
-    assert mode["scattering"] == []
-    for field in ("default_scattering", "threshold", "max_iterations", "degeneracy"):
+    assert mode["scattering"] == ["acPh", "dis", "ionized"]
+    assert mode["default_scattering"] == "acPh"
+    for field in ("threshold", "max_iterations", "degeneracy"):
         assert field not in mode
     assert modes["dpb_s_rho"]["degeneracy"] == {"band_1_default": 1, "band_2_default": 1}
 
 
-def test_ranges_of_a_parameter_shown_at_another_scale(modes: dict[str, dict[str, Any]]) -> None:
-    # From seeband.py: C in SPB S + rho shows as slider / 100, and enters a fit as the slider value.
-    spec = _parameter(modes["spb_s_rho"], "C")
-
-    assert spec["display_scale"] == 0.01
-    assert spec["fit_scale"] == 1
-    assert spec["value_range"]["default"] == 100
-    assert spec["core_range"]["default"] == 100
-    assert spec["display_range"]["default"] == 1
-    assert spec["role"] == "fitted"
-    assert spec["scattering"] == ["acPhDis"]
+def test_removed_mixed_parameters_are_absent(modes: dict[str, dict[str, Any]]) -> None:
+    for mode in modes.values():
+        assert not {"C", "D"} & {spec["name"] for spec in mode["parameters"]}
+        assert "acPhDis" not in mode["scattering"]
 
 
 def test_core_range_divides_as_the_desktop_does() -> None:
@@ -379,7 +373,7 @@ def test_stages_say_what_each_solver_run_finds(modes: dict[str, dict[str, Any]])
     assert rh[2]["parameters"] == ["m1"]
     assert modes["spb_s_rho"]["stages"][1] == {
         "quantity": "resistivity",
-        "parameters": ["A", "C", "F"],
+        "parameters": ["A", "F"],
         "repeats": False,
     }
 
