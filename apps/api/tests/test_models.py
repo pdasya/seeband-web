@@ -171,7 +171,7 @@ def test_known_issue_conditions_and_scope_reach_the_client(
 
     assert "dpb_hall_prefactor" not in issues
     assert "acphdis_early_stop" not in issues
-    assert issues["acphdis_band_weight"]["scattering"] == ["acPhDis"]
+    assert "acphdis_band_weight" not in issues
     assert issues["collapsed_m_eff"]["condition"] == "collapsed_m_eff"
 
 

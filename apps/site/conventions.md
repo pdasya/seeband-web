@@ -42,6 +42,7 @@ in core 0.1.0 and the remaining confirmation gates.
 
 Core `0.1.1` adds the P8 solver and domain-aware fitting described above.
 Core `0.1.2` adds P9 neural-net selection from the actual temperature span.
+Core `0.1.3` adds P11 pointwise mixed-scattering Seebeck weighting.
 Core version `0.1.0` is the first traceable `seeband_core` version. Earlier
 results may have been produced by different corrected states while reporting
 `0.0.0`; a missing version is unknown and must not be inferred from this
@@ -133,10 +134,13 @@ to total σ. Electronic κ includes the two Lorenz terms and the bipolar term
 T σ₁σ₂/(σ₁+σ₂) (S₁−S₂)². Here S₁ and S₂ are each band's own Seebeck coefficient;
 the plotted contributions are σᵢSᵢ/(σ₁+σ₂).
 
-The existing total-Seebeck grid-weighting error (#102) is separate: on a
-multi-point grid the total can still disagree with the sum of the corrected
-band contributions. Its warning remains visible. Other known model-domain
-and numerical limitations remain listed in the core's known-issues document.
+P11 (#102) uses q(T) = B (C_K + T) / ((D_K + T) r) at each temperature
+in total DPB acPhDis Seebeck, with C_K = 300 K × C and D_K = 300 K × D.
+The total equals the sum of the weighted band contributions on the same grid.
+P8 supplies independent checked chemical potentials. These identities use the
+existing mass coordinate r; they do not resolve the negative-weight model,
+nonunit-degeneracy iterative fits or final-stage fit consistency limitations.
+Positive-channel interpretations require positive transport weights.
 
 The P3 correction has automated identity checks. Human physicist confirmation
 and the complete #71 desktop/web comparison remain outstanding.

@@ -327,7 +327,7 @@ export interface components {
          *     by name with its unit: `electrical_conductivity_s_per_m` is 1/rho, with null for a rho of 0 or
          *     below. They use no model, so they go with the data the request sent, interpolated or not.
          * @example {
-         *       "core_version": "0.1.2",
+         *       "core_version": "0.1.3",
          *       "curves": {
          *         "resistivity_ohm_m": [
          *           0.000036627,
@@ -378,7 +378,7 @@ export interface components {
             /**
              * Core Version
              * @description Core software version for provenance, not certification.
-             * @default 0.1.2
+             * @default 0.1.3
              */
             core_version?: string;
             /** Curves */
@@ -767,7 +767,7 @@ export interface components {
          *     start would. Holding m1, or the SPB Hall mass, skips the R_H stage.
          * @example {
          *       "at_bounds": [],
-         *       "core_version": "0.1.2",
+         *       "core_version": "0.1.3",
          *       "held": [],
          *       "known_issues": [],
          *       "parameter_errors": {
@@ -791,7 +791,7 @@ export interface components {
             /**
              * Core Version
              * @description Core software version for provenance, not certification.
-             * @default 0.1.2
+             * @default 0.1.3
              */
             core_version?: string;
             /**
@@ -971,7 +971,7 @@ export interface components {
         /**
          * HealthResponse
          * @example {
-         *       "core_version": "0.1.2",
+         *       "core_version": "0.1.3",
          *       "status": "ok",
          *       "version": "1.0.0"
          *     }
@@ -987,7 +987,7 @@ export interface components {
             /**
              * Core Version
              * @description Core software version for provenance, not certification.
-             * @default 0.1.2
+             * @default 0.1.3
              */
             core_version?: string;
         };
@@ -1393,7 +1393,7 @@ export interface operations {
                 headers: {
                     /** @example no-cache */
                     "Cache-Control"?: string;
-                    /** @example "a4b52d092d5223d4c684b06f796d2afd" */
+                    /** @example "361f957aa19f272710a73f5485a46eca" */
                     ETag?: string;
                     [name: string]: unknown;
                 };

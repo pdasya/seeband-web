@@ -13,6 +13,7 @@ valid or matches the desktop.
 | P5 (#84), DPB acPhDis convergence      | Fits could stop when only one parameter group converged.                                                  | Both parameter groups must converge; zero and nonfinite changes are handled explicitly.                                                  | [DPB convergence correction](../../packages/seeband_core/docs/dpb-convergence.md)                 |
 | P6 (#85), DPB S-only degeneracy        | S-only fitting and drawing applied degeneracy differently to the public mass ratio R.                     | Both convert R to the low-level model ratio R/N once; public values and bounds remain in R.                                              | [DPB S-only degeneracy correction](../../packages/seeband_core/docs/dpb-s-degeneracy.md)          |
 | P7 (#86), interpolation support        | Requested fit ranges could generate synthetic interpolation points outside measured temperature coverage. | For measurements spanning 25–750 K and a request of 50–800 K, interpolation uses 50–750 K, or 35 points.                                 | [Interpolation support](../../packages/seeband_core/docs/interpolation.md)                        |
+| P11 (#102), DPB acPhDis Seebeck        | Every point could use the weight of the final grid temperature.                                           | Use the weight at each temperature; total S equals the sum of its weighted band contributions.                                           | [Pointwise mixed-scattering weight](../../packages/seeband_core/docs/dpb-acphdis-weight.md)       |
 
 Core `0.1.0` includes the landed P2–P7 corrections listed above. Core `0.1.1` additionally includes P8: a checked signed chemical-potential
 solve, stable negative F₁/₂ tail and rejection of analytically invalid optimizer
@@ -26,6 +27,10 @@ compared with earlier versions. Parsed web uploads are already sorted, so
 this correction leaves their initial values unchanged. Estimates remain
 starting values without a known error bar; no measurements are removed or
 averaged.
+
+Core `0.1.3` adds P11: total DPB mixed-scattering Seebeck uses its pointwise
+band weight in the fit, curve and RMSE paths. Other numerical and model
+limitations remain. The evidence linked above records changed example fits.
 
 P10 adds result-version and provenance metadata only; it does not change
 formulas or fitting. Core version `0.1.0` is the first traceable version.

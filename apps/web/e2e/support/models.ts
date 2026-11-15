@@ -3,6 +3,8 @@ import { fileURLToPath } from "node:url";
 
 import type { Page } from "@playwright/test";
 
+import type { ModelDescription } from "../../src/model/selection";
+
 const contract = JSON.parse(
   readFileSync(
     fileURLToPath(
@@ -47,6 +49,34 @@ export const MODELS = Object.values(
     .examples,
 )[0]?.value as { models: object[] };
 
+/** Synthetic S-only warning for generic UI scope tests, independent of fixed physics issues. */
+export const SYNTHETIC_SEEBECK_ISSUE = {
+  id: "synthetic_seebeck_issue",
+  severity: "unreliable",
+  message_key: "test.synthetic_seebeck_issue",
+  fixed_by: "test fixture",
+  scattering: ["acPhDis"],
+  curve_kinds: ["measured", "seebeck"],
+  columns: ["seebeck_v_per_k"],
+  affects_fit: true,
+} satisfies ModelDescription["fit_modes"][number]["known_issues"][number];
+
+export const MODELS_WITH_SEEBECK_ISSUE = {
+  ...MODELS,
+  models: (MODELS.models as ModelDescription[]).map((model) => ({
+    ...model,
+    fit_modes: model.fit_modes.map((mode) => ({
+      ...mode,
+      known_issues: [
+        ...mode.known_issues,
+        ...(["dpb_s_rho", "dpb_s_rho_rh"].includes(mode.id)
+          ? [SYNTHETIC_SEEBECK_ISSUE]
+          : []),
+      ],
+    })),
+  })),
+};
+
 /** The demo, as the contract's example holds it. */
 export const DEMO = Object.values(
   contract.paths["/api/demo"].get.responses["200"].content["application/json"]
@@ -82,8 +112,8 @@ export const NO_GUESS = {
   warnings: [],
 };
 
-export async function serveModels(page: Page) {
-  await page.route("**/api/models", (route) => route.fulfill({ json: MODELS }));
+export async function serveModels(page: Page, models = MODELS) {
+  await page.route("**/api/models", (route) => route.fulfill({ json: models }));
   await page.route("**/api/calc", (route) => route.fulfill({ json: CALC }));
   await page.route("**/api/guess", (route) =>
     route.fulfill({ json: NO_GUESS }),

@@ -202,3 +202,17 @@ must be integers from 1 through the mode's configured budget; single-pass
 fits must report no iteration count. Stable fits retain exact recorded
 iteration counts. P8 status and message comparisons, curve tolerances and
 the original desktop evidence remain unchanged.
+
+## P11 pointwise mixed-scattering weight
+
+`tests/fixtures/physics/p11.json` records the 24 affected historical calls
+on core `0.1.3` and pins the unchanged P8 fixture hash. Only total S and
+refitted parameters/iteration counts use those generated corrections;
+unchanged curve fields, unused parameters, statuses and messages remain
+checked against their earlier references. The named cross-platform rules
+above are preserved. No original desktop or P8 capture is rewritten.
+
+These snapshots are regression evidence, not independent physical proof.
+The example-03 alternate-start test instead uses an independently written
+outer iteration; it does not read P11 values as its oracle. See
+[the independent reference and example movements](dpb-acphdis-weight.md).

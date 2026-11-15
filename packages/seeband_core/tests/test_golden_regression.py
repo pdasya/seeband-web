@@ -2,7 +2,7 @@
 
 Golden results were captured on one Mac with Python 3.11, numpy 1.26 and scipy 1.17. The project
 uses newer versions, and CI runs on Linux, so this is the check across versions and machines.
-P8 expectations are recorded separately; original desktop evidence remains unchanged.
+P8 and affected P11 expectations are recorded separately; original desktop evidence stays unchanged.
 docs/golden-results.md gives the measured differences.
 
 CURVE_TOLERANCE is tight, because curves are direct calculations. FIT_TOLERANCE is looser, because
@@ -123,6 +123,53 @@ def p8_results() -> dict[str, Any]:
     return json.loads((GOLDEN.parent / "physics" / "p8.json").read_text())["results"]
 
 
+# Only these acPhDis entry points call the repaired total-Seebeck kernel.
+P11_FUNCTIONS = {
+    "dpb_see_res_fit",
+    "dpb_see_res_hall_fit",
+    "dpb_see_res_calc",
+    "dpb_see_res_hall_calc",
+    "dpb_see_with_scatter_calc",
+}
+
+P11_REFITTED_PARAMETERS = {"m_eff", "band_gap", "fermi_energy", "A", "B", "C", "D", "m1"}
+
+
+@cache
+def p11_results() -> dict[str, Any]:
+    """Implementation-generated regressions; independent desktop evidence is kept below."""
+    return json.loads((GOLDEN.parent / "physics" / "p11.json").read_text())["results"]
+
+
+def affected_by_p11(scattering: str | None, call: dict[str, Any]) -> bool:
+    return scattering == "acPhDis" and call["function"] in P11_FUNCTIONS
+
+
+def regression_expected(identifier: str, scattering: str | None, call: dict[str, Any]) -> Any:
+    expected = p8_results()[p8_key(identifier, call)]
+    if not affected_by_p11(scattering, call):
+        return expected
+    corrected = p11_results()[p8_key(identifier, call)]
+    if call["function"].endswith("_fit"):
+        # Unused scattering fields and the status/message contract remain pinned
+        # to P8; only refitted parameters and the iteration count can change.
+        return expected | {
+            "parameters": expected["parameters"]
+            | {
+                name: value
+                for name, value in corrected["parameters"].items()
+                if name in P11_REFITTED_PARAMETERS
+            },
+            "iterations": corrected["iterations"],
+        }
+    if "error_type" in corrected:
+        return expected
+    # The temperature, rho and Hall outputs retain their P8 evidence.
+    return expected | {
+        "result": [expected["result"][0], corrected["result"][1], *expected["result"][2:]]
+    }
+
+
 def p8_key(identifier: str, call: dict[str, Any]) -> str:
     # A graph can call the same function repeatedly with different band parameters.
     inputs = json.dumps([call["args"], call["kwargs"]], sort_keys=True).encode()
@@ -132,8 +179,8 @@ def p8_key(identifier: str, call: dict[str, Any]) -> str:
 def assert_p8_replay(
     identifier: str, mode: str, scattering: str | None, call: dict[str, Any]
 ) -> None:
-    """Compare every original input with separately recorded P8 results, including failures."""
-    expected = p8_results()[p8_key(identifier, call)]
+    """Compare original inputs with P8 plus affected P11 regressions, including failures."""
+    expected = regression_expected(identifier, scattering, call)
     if call["function"].endswith("_fit"):
         result = replay_fit(mode, call)
         assert result.status == expected["status"]
@@ -177,6 +224,37 @@ def test_p8_preserves_all_desktop_inputs_and_evidence() -> None:
     assert set(document["desktop_sha256"]) == {f"{name}.json" for name in EXAMPLES}
     for name, sha in document["desktop_sha256"].items():
         assert hashlib.sha256((GOLDEN / name).read_bytes()).hexdigest() == sha
+
+
+def test_p11_overrides_only_affected_calls_and_preserves_p8_evidence() -> None:
+    document = json.loads((GOLDEN.parent / "physics" / "p11.json").read_text())
+    assert set(document["affected_functions"]) == P11_FUNCTIONS
+    assert set(document["results"]) == {
+        p8_key(identifier, call)
+        for identifier, (_, _, scattering, _, call) in zip(CALL_IDS, CALLS, strict=True)
+        if affected_by_p11(scattering, call)
+    }
+    p8_path = GOLDEN.parent / "physics" / "p8.json"
+    assert hashlib.sha256(p8_path.read_bytes()).hexdigest() == document["p8_sha256"]
+    for key, corrected in document["results"].items():
+        previous = p8_results()[key]
+        if "parameters" in corrected:
+            assert corrected["status"] == previous["status"]
+            assert corrected["message"] == previous["message"]
+            assert corrected["parameters"].keys() == previous["parameters"].keys()
+            for name in corrected["parameters"].keys() - P11_REFITTED_PARAMETERS:
+                assert corrected["parameters"][name] == previous["parameters"][name]
+        elif "error_type" in corrected:
+            assert corrected == previous
+        else:
+            assert len(corrected["result"]) == len(previous["result"])
+            # The generated record must agree with the old evidence on all fields
+            # omitted from the P11 overlay, including nonfinite curve entries.
+            assert_close(
+                [corrected["result"][0], *corrected["result"][2:]],
+                [previous["result"][0], *previous["result"][2:]],
+                CURVE_TOLERANCE,
+            )
 
 
 def core_arguments(
@@ -441,6 +519,14 @@ def test_replay_matches_the_desktop(
         return
 
     identifier = f"{example}-{mode}-{scattering}-{source}-{call['function']}"
+    if affected_by_p11(scattering, call):
+        corrected = p11_results()[p8_key(identifier, call)]
+        if call["function"].endswith("_fit"):
+            assert_p8_replay(identifier, mode, scattering, call)
+            return
+        # Only S changes in these calculations; retain the independent desktop
+        # expectations for every other output, including temperature/rho/Hall.
+        call = dict(call, result=[call["result"][0], corrected["result"][1], *call["result"][2:]])
     expected_p2 = p2_results()
     if identifier in expected_p2:
         # P2 changes only the last field: Hall on curves, m1 on fits.
@@ -478,6 +564,8 @@ def recorded_iterative_runs() -> Iterator[tuple[str, str | None, int, dict[str, 
                 )
                 corrected = p5_results().get(identifier)
                 iterations = corrected["iterations"] if corrected else run["iterations"]
+                if affected_by_p11(run["scattering"], call):
+                    iterations = p11_results()[p8_key(identifier, call)]["iterations"]
                 yield run["mode"], run["scattering"], iterations, call
 
 
@@ -514,13 +602,15 @@ def test_iterations_match_p8_expectations(identifier: str, mode: str, call: dict
     result = replay_fit(mode, call)
     if "error" not in call:
         assert result.status == "converged"
-    assert result.status == p8_results()[p8_key(identifier, call)]["status"]
+    scattering = recorded_arguments(call).get("scatter_type")
+    expected = regression_expected(identifier, scattering, call)
+    assert result.status == expected["status"]
     assert_fit_iterations(
         identifier,
         mode,
         recorded_arguments(call).get("scatter_type"),
         result,
-        p8_results()[p8_key(identifier, call)]["iterations"],
+        expected["iterations"],
     )
 
 

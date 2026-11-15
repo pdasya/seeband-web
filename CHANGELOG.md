@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- P11 (#102), core `0.1.3`: retain the temperature-dependent acPhDis band
+  weight in total DPB Seebeck, consistently with the weighted band contributions.
+  Fits, curves and RMSE use the corrected pointwise expression. C/D conversion,
+  least-squares residual scales, bounds and stopping thresholds are unchanged.
+  Remove only `acphdis_band_weight`; preserve desktop/P8 evidence and record
+  affected results separately. Restore the independent example-03 outer-loop
+  check. Human scientific acceptance and desktop parity remain separate.
+
 - P9 (#88), core `0.1.2`: choose the DPB neural network from the actual minimum and
   maximum temperatures, then sort paired temperature/Seebeck rows before
   preparing its input. Reversed or shuffled distinct-temperature rows now use
