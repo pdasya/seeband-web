@@ -1,4 +1,6 @@
-from collections.abc import Callable
+import contextlib
+import contextvars
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from importlib import resources
 from typing import Any
@@ -219,7 +221,73 @@ class ChemicalPotentialResult:
     status: np.ndarray
 
 
+# Roots solved within the current `reuse_chemical_potential` scope, or None outside one.
+_REUSED_ROOTS: contextvars.ContextVar[dict[tuple[bytes, ...], ChemicalPotentialResult] | None] = (
+    contextvars.ContextVar("reused_chemical_potential", default=None)
+)
+# Within a fit each set of parameters differs, so only the last few are worth keeping.
+_REUSED_ROOTS_LIMIT = 32
+
+
+@contextlib.contextmanager
+def reuse_chemical_potential() -> Iterator[None]:
+    """Solve μ(T) once for each temperature array and parameters within this scope.
+
+    A curve of S, ρ and R_H needs the same μ(T) for each, and a solve is most of its time. The
+    roots are those of a fresh solve, to the last bit, and the scope drops them as it ends, so
+    nothing outlives one call. A nested scope uses the outer one's roots.
+    """
+    if _REUSED_ROOTS.get() is not None:
+        yield
+        return
+    token = _REUSED_ROOTS.set({})
+    try:
+        yield
+    finally:
+        _REUSED_ROOTS.reset(token)
+
+
+def _key_bytes(value: float | None) -> bytes:
+    # Bytes, not floats, so that -0.0 and 0.0 stay apart, as the solve can tell them apart.
+    return b"" if value is None else np.float64(value).tobytes()
+
+
 def _chemical_potential_diagnostics(
+    temp_array: np.ndarray,
+    mass: float,
+    fermi_energy: float,
+    gap: float | None = None,
+    degen: float = 1.0,
+) -> ChemicalPotentialResult:
+    """The solved roots, once for each temperature array and parameters within a reuse scope.
+
+    Only a solve that succeeds is kept, so one that fails raises again each time, as before.
+    """
+    reused = _REUSED_ROOTS.get()
+    if reused is None:
+        return _solve_chemical_potential(temp_array, mass, fermi_energy, gap, degen)
+    temperatures = np.asarray(temp_array, dtype=float)
+    key = (
+        str(temperatures.shape).encode(),
+        temperatures.tobytes(),
+        _key_bytes(mass),
+        _key_bytes(fermi_energy),
+        _key_bytes(gap),
+        _key_bytes(degen),
+    )
+    found = reused.get(key)
+    if found is None:
+        found = _solve_chemical_potential(temp_array, mass, fermi_energy, gap, degen)
+        if len(reused) >= _REUSED_ROOTS_LIMIT:
+            del reused[next(iter(reused))]
+        reused[key] = found
+    # Copies, so that a caller changing its array cannot change another's.
+    return ChemicalPotentialResult(
+        found.chemical_potential.copy(), found.normalized_residual.copy(), found.status.copy()
+    )
+
+
+def _solve_chemical_potential(
     temp_array: np.ndarray,
     mass: float,
     fermi_energy: float,

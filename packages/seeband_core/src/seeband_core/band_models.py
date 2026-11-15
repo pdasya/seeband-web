@@ -4,6 +4,7 @@ Everything here is in core units, so nothing here converts a scale. Results keep
 calculations they come from.
 """
 
+import functools
 import logging
 import math
 import traceback
@@ -20,7 +21,7 @@ from seeband_core.known_issues import (
     band_diagram_issue_ids,
     disabled_issue_ids,
 )
-from seeband_core.math_module import ChemicalPotentialError
+from seeband_core.math_module import ChemicalPotentialError, reuse_chemical_potential
 from seeband_core.model_descriptions import (
     DPB_BANDS as _DPB_BANDS,
 )
@@ -163,6 +164,17 @@ def _mass_error(energy: float, energy_error: float) -> float:
     """Carry an error on E = m^(3/2) over to m, so dm = (2/3) E^(-1/3) dE."""
     with np.errstate(all="ignore"):
         return float((2 / 3) * np.abs(energy) ** (-1 / 3) * energy_error)
+
+
+def _reusing_chemical_potential[**P, R](method: Callable[P, R]) -> Callable[P, R]:
+    """Solves each μ(T) once for one curve or fit, and drops the roots when it ends."""
+
+    @functools.wraps(method)
+    def within_scope(*args: P.args, **kwargs: P.kwargs) -> R:
+        with reuse_chemical_potential():
+            return method(*args, **kwargs)
+
+    return within_scope
 
 
 class _CallbackError(Exception):
@@ -423,6 +435,7 @@ class _BandModel:
         result = dict(request.start) | dict(zip(names, fitted, strict=True))
         return self._ended_fit(request, fit_mode, progress, result, status)
 
+    @_reusing_chemical_potential
     def calculate(self, request: CurveRequest) -> CurveResult:
         fit_mode, scattering = self._mode_and_scattering(request.fit_mode, request.scattering)
         if request.kind not in fit_mode.curve_kinds:
@@ -528,6 +541,7 @@ class SpbModel(_BandModel):
         }[str(request.kind)]
         return function, [*band, _values(parameters, _SPB_SCATTERING), scattering]
 
+    @_reusing_chemical_potential
     def fit(self, request: FitRequest, on_iteration: IterationCallback | None = None) -> FitResult:
         fit_mode, scattering = self._mode_and_scattering(request.fit_mode, request.scattering)
         self._check_fit(request, fit_mode)
@@ -663,6 +677,7 @@ class DpbModel(_BandModel):
         }[str(kind)]
         return function, [bands, scattering_values, degeneracy, scattering]
 
+    @_reusing_chemical_potential
     def fit(self, request: FitRequest, on_iteration: IterationCallback | None = None) -> FitResult:
         fit_mode, scattering = self._mode_and_scattering(request.fit_mode, request.scattering)
         self._check_fit(request, fit_mode)
