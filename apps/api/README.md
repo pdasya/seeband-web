@@ -17,7 +17,7 @@ uv run python -m seeband_api
 | `SEEBAND_API_CALC_TIMEOUT_S`          | `30`            | how long a calculation request waits                             |
 | `SEEBAND_API_FIT_MAX_RUNNING`         | `2`             | fits at once, in each server process                             |
 | `SEEBAND_API_FIT_MAX_WAITING`         | `4`             | fits waiting, before a 429                                       |
-| `SEEBAND_API_FIT_TIMEOUT_S`           | `60`            | how long one fit can run                                         |
+| `SEEBAND_API_FIT_TIMEOUT_S`           | `180`           | how long one fit can run                                         |
 | `SEEBAND_API_FIT_MAX_PER_CLIENT`      | `2`             | fits running or waiting for one client                           |
 | `SEEBAND_API_MAX_BODY_BYTES`          | `10000000`      | size of a request                                                |
 | `SEEBAND_API_MAX_POINTS`              | `2000`          | points of a quantity, or rows of a text                          |
@@ -56,7 +56,7 @@ Each limit answers in the usual error format. All the values are starting guesse
 These are fixed by the contract instead of a setting: 2000000 characters of `text`, 1000 for `points` and `rmse_points`, and in the core 10000 points of an interpolation grid. A wide fit range can give a grid over `max_points`, which `POST /api/fit` then refuses.
 
 - **A 413 can arrive as a network error.** The server closes the connection without reading the rest. Node's `fetch` read the 413 for bodies of 11 and 40 MB, and got an `EPIPE` error at 200 MB. So a client should check a file's size before sending it. A browser was not tried.
-- **Why 2000 points:** the time of a fit grows with its points, and about 10000 reach the time limit of 60 s. Through a test client on an Apple Silicon Mac with 10 cores, DPB S and DPB S + ρ with `acPh` on points interpolated from the demo dataset took 7 and 11 s at 1000 points, and 29 and 49 s at 5000. The example files have at most a few dozen rows.
+- **Why 2000 points:** input size remains bounded independently of the fit deadline. Historical legacy measurements on one Apple Silicon Mac took 7–11 s at 1000 points and 29–49 s at 5000 points; these are not timing estimates for the verified method. P19 adds independent derivative and final-vector audits. Its demo fit exceeded the old 60 s API deadline on a hosted Linux runner, so the default is now 180 s, configurable through `SEEBAND_API_FIT_TIMEOUT_S`. The queue wait does not count, and running/waiting/per-client concurrency limits remain in force.
 - **The rate** is a bucket that refills steadily and holds a minute's requests, so a client can spend them at once. 600 curves a minute allow 10 a second for a slider, and FS6 and FS12 should check that. A refused request takes nothing from the bucket, and one that a route refuses does.
 - **Refusals come early:** rate and size are checked before the body is read or parsed. A row count needs the text to be read first, which for 2000000 characters takes about 0.5 s, or about 1.4 s for very short rows.
 - **A client is an address**, or one /64 for IPv6, as one user usually holds a whole /64. So users behind one router share a limit. The addresses stay only in memory, and are not logged. While requests keep coming, one is dropped within about 2 minutes of its client's last request. With no requests at all, it stays until the next one.
@@ -111,12 +111,12 @@ Refusals come before the stream, as plain errors in JSON:
 
 So a 200 only means that the fit has a place. A waiting client has its 200 and no event until `started`. These come afterwards, as the code of an `error` event:
 
-| Code               | Meaning                                                                                           |
-| ------------------ | ------------------------------------------------------------------------------------------------- |
-| `fit_timeout`      | the fit ran past 60 s by default, and its process has ended. The wait in the queue does not count |
-| `fit_process_died` | the process ended without a result, and trying again is reasonable                                |
-| `fit_failed`       | the process raised something other than a fit's own failure. The API logs only its type           |
-| `internal_error`   | the API itself failed, and logs the type and code location                                        |
+| Code               | Meaning                                                                                            |
+| ------------------ | -------------------------------------------------------------------------------------------------- |
+| `fit_timeout`      | the fit ran past 180 s by default, and its process has ended. The wait in the queue does not count |
+| `fit_process_died` | the process ended without a result, and trying again is reasonable                                 |
+| `fit_failed`       | the process raised something other than a fit's own failure. The API logs only its type            |
+| `internal_error`   | the API itself failed, and logs the type and code location                                         |
 
 The log line of a fit says 200 whichever event came last, or if the client left, since the response had already started.
 

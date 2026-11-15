@@ -136,6 +136,11 @@ The owner approved the algorithm and P6 scope before implementation. Independent
 agent reviews do not replace human physicist confirmation or the desktop parity
 release gate (#71).
 
+The verified demo fit exceeded the previous 60-second API deadline on hosted
+Linux. The API now defaults to a configurable 180-second fit deadline, retaining
+concurrency and input-size limits. This is an execution budget, not a relaxation
+of numerical certification; sufficiently difficult requests can still time out.
+
 ## Sources
 
 The exact conditional amplitude solution follows directly from the stated

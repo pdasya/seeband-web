@@ -17,13 +17,14 @@ class Settings(BaseSettings):
     # The planned machine has 2 vCPUs.
     fit_max_running: int = Field(default=2, ge=1)
     fit_max_waiting: int = Field(default=4, ge=0)
-    fit_timeout_s: float = Field(default=60.0, gt=0)
+    # Verified stages include independent derivative and final-vector audits.
+    fit_timeout_s: float = Field(default=180.0, gt=0)
     fit_max_per_client: int = Field(default=2, ge=1)
     # A file's text is limited to 2000000 characters, which UTF-8 holds in at most 8 MB.
     max_body_bytes: int = Field(default=10_000_000, ge=1)
-    # A fit's time grows with its points, about 6 to 11 ms for each point on one Mac.
+    # Bound input size independently of the configurable fit deadline.
     max_points: int = Field(default=2000, ge=1)
-    # Per client. A slider sends many cheap curves, and a fit can take a minute.
+    # Per client. A slider sends many cheap curves; verified fits can take minutes.
     calc_per_minute: int = Field(default=600, ge=1)
     band_diagram_per_minute: int = Field(default=600, ge=1)
     parse_per_minute: int = Field(default=60, ge=1)

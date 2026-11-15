@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Allow 180 seconds by default for API fits, configurable as before, after
+  verified demo fitting exceeded 60 seconds on hosted Linux. Concurrency and
+  input limits remain in force; numerical certification criteria are unchanged.
+
 - P19/P6 (#176, #85), core `0.2.0`: default to `verified-sequential-v2`;
   preserve `legacy-sequential-v1` by explicit selection. Profile free inverse
   amplitudes, scale and validate remaining stage derivatives, and check
