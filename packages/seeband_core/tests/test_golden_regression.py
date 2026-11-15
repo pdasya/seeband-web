@@ -525,8 +525,13 @@ def assert_named_fit_case(
                 # Owner-approved unsupported-case contract: Mac and Linux
                 # disagree in scattering AND rho, so neither is a numeric oracle.
                 # Preserve all other comparisons and expose the unreliable state.
+                # The collapsed mass is about 1e-10, where the solver stops by
+                # rounding: 9.995e-11 on a Mac, 9.89e-11 on some Linux runners. It
+                # is checked as collapsed and at its bound below, not by value.
                 names = FIT_RESULT_NAMES[call["function"]]
-                stable = [index for index, name in enumerate(names) if name not in {"F", "G"}]
+                stable = [
+                    index for index, name in enumerate(names) if name not in {"F", "G", "m_eff"}
+                ]
                 assert_close(
                     [values[index] for index in stable],
                     [recorded[index] for index in stable],
