@@ -108,3 +108,7 @@ def loaded_modules(names: list[str], send: Callable[[IterationUpdate], None]) ->
 
 def parent_pid(send: Callable[[IterationUpdate], None]) -> int:
     return os.getppid()
+
+
+def environment(names: list[str], send: Callable[[IterationUpdate], None]) -> dict[str, str | None]:
+    return {name: os.environ.get(name) for name in names}

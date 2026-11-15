@@ -21,7 +21,7 @@ import pytest
 from seeband_api import fit_runner, processes
 from seeband_api.errors import ApiError
 from seeband_api.fit_runner import FitRunner
-from seeband_api.processes import PRELOADED, start_fork_server
+from seeband_api.processes import ONE_THREAD, PRELOADED, start_fork_server
 
 
 @pytest.fixture(autouse=True)
@@ -251,6 +251,25 @@ def test_a_stop_ends_a_process_whose_fork_server_died(tmp_path: Path) -> None:
             with contextlib.suppress(ProcessLookupError):
                 os.kill(process.pid, signal.SIGKILL)
         start_fork_server()
+
+
+def test_fit_processes_keep_linear_algebra_to_one_thread() -> None:
+    runner = FitRunner(1, 0, 30.0)
+
+    seen = _run(lambda: runner.run(fit_functions.environment, list(ONE_THREAD)))
+
+    assert seen == dict.fromkeys(ONE_THREAD, "1")
+
+
+def test_a_fork_server_that_does_not_finish_its_imports_fails_the_start(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(forkserver, "ensure_running", lambda: time.sleep(5))
+
+    started = time.monotonic()
+    with pytest.raises(TimeoutError):
+        start_fork_server(timeout_s=0.2)
+    assert time.monotonic() - started < 1
 
 
 def test_a_fit_process_does_not_import_the_web_framework() -> None:
