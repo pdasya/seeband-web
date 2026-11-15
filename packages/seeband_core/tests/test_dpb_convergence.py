@@ -149,6 +149,11 @@ def test_example03_needs_another_iteration_after_C2_Dhalf(hall):
 @pytest.mark.parametrize("hall", [False, True])
 @pytest.mark.parametrize("parameter", range(7), ids=["mass", "gap", "EF", "A", "B", "C", "D"])
 def test_each_zero_initial_must_settle_after_becoming_nonzero(monkeypatch, hall, parameter):
+    if parameter == 0:
+        # P13: zero selects no carrier branch; other zero-valued parameters remain valid.
+        with pytest.raises(ValueError, match="carrier branch"):
+            controlled_fit(monkeypatch, hall, parameter, zero_parameter=parameter)
+        return
     progress, _ = controlled_fit(monkeypatch, hall, parameter, zero_parameter=parameter)
     assert progress.iterations == 2
     assert not progress.reached_iteration_limit
@@ -192,9 +197,10 @@ def _example03_inv4_args(hall):
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("hall", [False, True])
 def test_example03_from_C2_Dhalf_reaches_the_independent_fixed_point(hall):
-    # The desktop rule stopped after 1 iteration, with m_eff +42.6 %, E_F +25.9 % and A +604 %, and
-    # S RMSE 5.04 uV/K. An outer loop written apart from the core, with no stop rule, settles at
-    # these values, with S RMSE 3.76 uV/K.
+    # Independently alternated SciPy stages, with pointwise S assembled from shared
+    # mu/sigma/Onsager kernels: scripts/check_p11_fixed_point.py. This establishes
+    # outer-loop settlement, not independent validation of the shared physics.
+    expected = [1.7647687794465694, 2063.6774369380987, -259.2252092353521, 286542.3469228836]
     function, args = _example03_inv4_args(hall)
     progress = FitProgress()
 
@@ -204,7 +210,7 @@ def test_example03_from_C2_Dhalf_reaches_the_independent_fixed_point(hall):
     assert not progress.reached_iteration_limit
     np.testing.assert_allclose(
         [result[0], result[1], result[2], result[3]],
-        [1.835226, 2004.635, -259.3119, 281937.1],
+        expected,
         rtol=1e-5,
     )
     np.testing.assert_allclose(result[4:7], [1.1, 2.0, 0.5], rtol=1e-9)

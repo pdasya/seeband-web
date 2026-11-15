@@ -2,6 +2,36 @@
 
 ## Unreleased
 
+- P13 (#104), core `0.1.4`: use positive mass-magnitude weights for
+  longitudinal DPB transport in S-only, single-scattering and mixed-scattering
+  modes, including band contributions. Keep signed mass coordinates, carrier
+  density and Hall carrier signs; Hall uses the corrected resistivity. DPB fits
+  retain the signed-start branch, exclude zero without adding a mass floor, and
+  intersect bounds with that branch. Density solving, fit objectives and
+  tolerances are unchanged. Remove `negative_m_eff_weight`; P6 iterative
+  nonunit-degeneracy bounds, P16/P19, and numerical underflow remain open.
+  P18 explicit band types and CB+CB are deferred. Focused physical-limit tests and synthetic fit recoveries cover both mass
+  signs. These checks are not measurements or validation of neural guesses. Human physicist
+  confirmation and desktop parity remain separate release gates. See
+  [positive DPB weights](packages/seeband_core/docs/dpb-positive-weights.md).
+
+- P11 (#102), core `0.1.3`: retain the temperature-dependent acPhDis band
+  weight in total DPB Seebeck, consistently with the weighted band contributions.
+  Fits, curves and RMSE use the corrected pointwise expression. C/D conversion,
+  least-squares residual scales, bounds and stopping thresholds are unchanged.
+  Remove only `acphdis_band_weight`; preserve desktop/P8 evidence and record
+  affected results separately. Restore the independent example-03 outer-loop
+  check. Human scientific acceptance and desktop parity remain separate.
+
+- P9 (#88), core `0.1.2`: choose the DPB neural network from the actual minimum and
+  maximum temperatures, then sort paired temperature/Seebeck rows before
+  preparing its input. Reversed or shuffled distinct-temperature rows now use
+  the same network and prediction as sorted data. Keep the unsorted-input provenance warning,
+  with corrected wording. Legacy no-net first/last fields now report actual
+  minimum/maximum coverage. Network weights, range priority, polynomial
+  degree and fit criteria are unchanged. Preserve original desktop captures
+  and record the corrected reversed-row expectation separately.
+
 - P8 (#87), core `0.1.1`: solve the signed carrier balance independently at
   each temperature with a checked bracketed method. Use the same negative-tail
   Fermi approximation in a stable algebraic form. Reject analytically invalid

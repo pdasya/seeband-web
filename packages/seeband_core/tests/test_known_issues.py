@@ -33,25 +33,7 @@ ALL_CURVES = (*DPB_FIT_CURVES, "chemical_potential", "carrier_concentration_by_b
 # Written here so that a change of scope, severity or fix fails.
 # id: severity, fixed by, modes, scattering, curve kinds, affects fit, condition.
 EXPECTED: dict[str, tuple[Any, ...]] = {
-    "acphdis_band_weight": (
-        "unreliable",
-        "#102",
-        LOOP,
-        ("acPhDis",),
-        ("measured", "seebeck"),
-        True,
-        None,
-    ),
     "dpb_loop_degeneracy": ("caution", "#85", LOOP, (), (), True, "degeneracy_not_one"),
-    "negative_m_eff_weight": (
-        "caution",
-        "#104",
-        DPB,
-        (),
-        DPB_FIT_CURVES,
-        True,
-        "negative_m_eff",
-    ),
     "collapsed_m_eff": ("unreliable", "#107", DPB, (), ALL_CURVES, True, "collapsed_m_eff"),
     "no_chemical_potential": (
         "unreliable",
@@ -189,17 +171,6 @@ def test_dpb_s_has_no_degeneracy_flag_at_any_ratio(ratio: float, kind: CurveKind
     [
         ({"ratio": 2.0}, "dpb_s_rho", "acPh", None, "dpb_loop_degeneracy", True),
         ({"ratio": 2.0}, "dpb_s_rho", "acPh", "measured", "dpb_loop_degeneracy", False),
-        ({"parameters": {"m_eff": 1.0}}, "dpb_s", None, None, "negative_m_eff_weight", False),
-        ({"parameters": {"m_eff": 0.0}}, "dpb_s", None, None, "negative_m_eff_weight", False),
-        ({"parameters": {"m_eff": -1.0}}, "dpb_s", None, None, "negative_m_eff_weight", True),
-        (
-            {"parameters": {"m_eff": -1.0}},
-            "dpb_s",
-            None,
-            "chemical_potential",
-            "negative_m_eff_weight",
-            False,
-        ),
         ({"parameters": {"m_eff": 1.0}}, "dpb_s", None, None, "collapsed_m_eff", False),
         (
             {"parameters": {"m_eff": COLLAPSED_M_EFF / 2}},
@@ -293,9 +264,7 @@ def curve_ids(fit_mode_id: str, scattering: str | None = None, **kw: Any) -> set
 def test_curves_carry_their_issues_through_the_model() -> None:
     assert curve_ids("dpb_s") == set()
     assert curve_ids("dpb_s", band_2_degeneracy=2.0) == set()
-    assert curve_ids("dpb_s", values={"m_eff": -1.0, "band_gap": -200.0}) == {
-        "negative_m_eff_weight"
-    }
+    assert curve_ids("dpb_s", values={"m_eff": -1.0, "band_gap": -200.0}) == set()
     assert curve_ids("dpb_s_rho", "acPhDis", kind="thermal_conductivity") == set()
     assert curve_ids("dpb_s_rho", "acPh", kind="thermal_conductivity") == set()
     assert curve_ids("dpb_s_rho_rh", "acPh") == set()
@@ -330,7 +299,7 @@ def test_a_fit_reads_conditions_from_its_result_not_its_start(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     negative = fit_ids(monkeypatch, "dpb_s", [-1.0, 500.0, 500.0], values={"m_eff": 1.0})
-    assert negative == {"negative_m_eff_weight"}
+    assert negative == set()
     positive = fit_ids(monkeypatch, "dpb_s", [1.0, 500.0, 500.0], values={"m_eff": -1.0})
     assert positive == set()
     collapsed = fit_ids(monkeypatch, "dpb_s", [1e-7, 500.0, 500.0])
@@ -344,7 +313,7 @@ def test_a_fit_passes_its_degeneracy_and_scattering_on(monkeypatch: pytest.Monke
     with_n = fit_ids(monkeypatch, "dpb_s", [1.0, 500.0, 500.0], band_2_degeneracy=2.0)
     assert with_n == set()
     acphdis = fit_ids(monkeypatch, "dpb_s_rho", loop, scattering="acPhDis")
-    assert acphdis == {"acphdis_band_weight"}
+    assert acphdis == set()
     acph = fit_ids(monkeypatch, "dpb_s_rho", loop, scattering="acPh", band_2_degeneracy=2.0)
     assert acph == {"dpb_loop_degeneracy"}
     made_up = fit_ids(monkeypatch, "spb_s", [100.0], extrapolated=True)
@@ -404,20 +373,3 @@ class TestTheErrorsAreStillThere:
                 "electrical_conductivity_s_per_m"
             ]
             assert np.allclose(sigma * rho, 1.0)
-
-    def test_acphdis_seebeck_depends_on_the_grid(self) -> None:
-        model = registry.get("dpb")
-        start = default_start(fit_mode("dpb_s_rho"))
-        values = start | {
-            "m_eff": 1.0,
-            "band_gap": 300.0,
-            "fermi_energy": -100.0,
-            "C": 0.5,
-            "D": 2.0,
-        }
-
-        def at_low_end(high_k: float) -> float:
-            request = CurveRequest("dpb_s_rho", values, 100, high_k, 3, "acPhDis")
-            return float(model.calculate(request).curves["seebeck_v_per_k"][0])
-
-        assert at_low_end(400) != pytest.approx(at_low_end(800), rel=1e-3, abs=0)

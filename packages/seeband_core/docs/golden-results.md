@@ -89,14 +89,14 @@ The files hold exact script output and are excluded from Prettier, so any change
 
 `tests/test_golden_regression.py` replays all 390 recorded calls on the code in `band_models`: 306 through the model interface, and the 84 of `get_parabolic_band` through a plain function, on the project's versions: Python 3.13, numpy 2.5 and scipy 1.18. The golden results use Python 3.11, numpy 1.26 and scipy 1.17. Only 159 of the calls have distinct inputs, and 84 are `get_parabolic_band`, which uses no physical constants.
 
-| Calls                             | Rule                                                          | Difference seen                                           |
-| --------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------- |
-| All curves and graphs             | relative difference of at most 1e-9                           | exact on one Mac, within the rule on Linux CI             |
-| Fits                              | relative difference of at most 1e-5                           | up to 1.7e-7 on one Mac, within the rule on Linux CI      |
-| SPB S on `02_SiP`                 | relative difference of at most 1e-4                           | 3.4e-6 on one Mac, 1.8e-5 and 2.8e-5 in two Linux CI runs |
-| Failing fits                      | status `failed`, and "bounds" in the text                     |                                                           |
-| Listed DPB fits on `02_SiP` (D19) | band gap and E_F within 1e-5, within bounds, m_eff below 1e-5 | not comparable                                            |
-| G minimum case on `01`            | relative difference of at most 1e-3                           | 1e-4 on one Mac                                           |
+| Calls                             | Rule                                                                         | Difference seen                                           |
+| --------------------------------- | ---------------------------------------------------------------------------- | --------------------------------------------------------- |
+| All curves and graphs             | relative difference of at most 1e-9                                          | exact on one Mac, within the rule on Linux CI             |
+| Fits                              | relative difference of at most 1e-5                                          | up to 1.7e-7 on one Mac, within the rule on Linux CI      |
+| SPB S on `02_SiP`                 | relative difference of at most 1e-4                                          | 3.4e-6 on one Mac, 1.8e-5 and 2.8e-5 in two Linux CI runs |
+| Failing fits                      | status `failed`, and "bounds" in the text                                    |                                                           |
+| Listed DPB fits on `02_SiP` (D19) | band gap and E_F within 1e-5, within bounds, m_eff below 1e-5                | not comparable                                            |
+| G minimum case on `01`            | stable parameters within 1e-3; P13 collapsed F/G are diagnostic-only (below) | F/G and resulting rho are not numeric references for P13  |
 
 SPB S on `02_SiP` differs between Linux CI runs of the same fit code, so the 1e-5 rule would make the tests flaky. E_F there falls from 100 to 3.76, with solver warnings.
 
@@ -202,3 +202,70 @@ must be integers from 1 through the mode's configured budget; single-pass
 fits must report no iteration count. Stable fits retain exact recorded
 iteration counts. P8 status and message comparisons, curve tolerances and
 the original desktop evidence remain unchanged.
+
+## P11 pointwise mixed-scattering weight
+
+`tests/fixtures/physics/p11.json` records the 24 affected historical calls
+on core `0.1.3` and pins the unchanged P8 fixture hash. Only total S and
+refitted parameters/iteration counts use those generated corrections;
+unchanged curve fields, unused parameters, statuses and messages remain
+checked against their earlier references. The named cross-platform rules
+above are preserved. No original desktop or P8 capture is rewritten.
+
+These snapshots are regression evidence, not independent physical proof.
+The example-03 alternate-start test instead uses an independently written
+outer iteration; it does not read P11 values as its oracle. See
+[the independent reference and example movements](dpb-acphdis-weight.md).
+
+## P13 branch-constrained fitting regressions
+
+Core `0.1.4` records all 24 DPB fit calls in `tests/fixtures/physics/p13.json`.
+The public signed initial mass fixes the permitted branch. The snapshot pins
+hashes of unchanged P8 and P11 evidence, and original desktop captures remain
+unchanged. Regression tests retain their existing numeric tolerances.
+
+Intersections of mass bounds with the selected branch alter optimization
+trajectories, including positive-branch fits. Examples 01 and 03 retain their
+previous successful statuses. All eight example-02 DPB calls now fail at the
+existing function-evaluation limit; seven formerly reported convergence with
+collapsed parameters and one failed its bounds check. These failures remain
+visible and are not evidence that the general fitting problem (P19) is solved.
+See [the P13 equations and independent physical limits](dpb-positive-weights.md).
+
+```sh
+PYTHONPATH=packages/seeband_core/src uv run python packages/seeband_core/scripts/capture_p13_results.py
+```
+
+The already named unreliable example-01 auxiliary `d1` disorder fit reaches a
+collapsed positive mass near 1e-10 after P13. The Mac capture takes four outer
+iterations; Linux CI takes five. Its iteration regression checks the existing
+Hall-mode budget, not exact platform-specific work counts. Both platforms
+retain `collapsed_m_eff` and `hall_dis_no_reference`.
+
+The owner approved an explicitly unsupported diagnostic contract for this
+historical case on 2026-11-15, keeping P13 separate from P19. F and G and the
+resistivity predicted from those fitted values are not numeric compatibility
+references: their differences change observables and cannot be described as
+mere parameter nonidentifiability. All other parameter comparisons retain the
+existing D1 tolerance 1e-3; exact status/message checks and prior-fixture hashes
+remain. Every fitted value must be finite and within its recorded input bounds;
+mass must be positive and collapsed, with its active-bound diagnostic and both
+known-issue flags. Stable cases and fixed-parameter curve regressions remain
+numerically compared.
+
+The complete Linux endpoint is recorded in the regression contract's test
+(CI run 43693830497). Both endpoints were evaluated at the original measured
+temperatures with NumPy 2.5.4/SciPy 1.18.1 and the existing rho-stage objective:
+
+| Endpoint        |              F |            G | Relative L2 rho residual | rho RMSE (ohm m) |
+| --------------- | -------------: | -----------: | -----------------------: | ---------------: |
+| Mac P13 capture |    4.272005272 | 199.99999998 |           0.999999999968 |   2.794591978e-6 |
+| Linux CI        | 7.991751199e-8 |  1.000550172 |           0.813693910020 |   2.273942474e-6 |
+
+For fixed bands and G, rho_i=q_i/F has the independent least-squares solution
+1/F=(q·rho_data)/(q·q). For the Mac bands this gives F=3.999968200e-10 within
+the existing bounds, improving its objective. The Mac endpoint therefore
+shows optimizer stagnation, while the Linux endpoint approximately optimizes
+that amplitude direction. Neither result establishes physical fit validity.
+The general numerical defect remains P19 (#176); this diagnostic exception
+does not repair it, change the estimator or supply a physical acceptance gate.

@@ -30,17 +30,6 @@ COLLAPSED_M_EFF = 1e-5
 
 KNOWN_ISSUES: tuple[KnownIssue, ...] = (
     KnownIssue(
-        id="acphdis_band_weight",
-        severity="unreliable",
-        fixed_by="#102",
-        fit_modes=_DPB_LOOP,
-        scattering=("acPhDis",),
-        curve_kinds=("measured", "seebeck"),
-        columns=("seebeck_v_per_k",),
-        affects_fit=True,
-        explanation="With acPhDis, the band weight of the last temperature applies to all of S",
-    ),
-    KnownIssue(
         id="dpb_loop_degeneracy",
         severity="caution",
         fixed_by="#85",
@@ -49,16 +38,6 @@ KNOWN_ISSUES: tuple[KnownIssue, ...] = (
         condition="degeneracy_not_one",
         explanation="With N2/N1 other than 1, the fit returns m_eff times N, which can leave its "
         "bounds (D12)",
-    ),
-    KnownIssue(
-        id="negative_m_eff_weight",
-        severity="caution",
-        fixed_by="#104",
-        fit_modes=_DPB_MODES,
-        curve_kinds=_DPB_FIT_CURVES,
-        affects_fit=True,
-        condition="negative_m_eff",
-        explanation="With m_eff below 0, band 2 gets a negative weight, for a physicist to check",
     ),
     KnownIssue(
         id="collapsed_m_eff",
@@ -129,8 +108,6 @@ def _condition_holds(
 ) -> bool:
     if issue.condition == "degeneracy_not_one":
         return degeneracy_ratio != 1
-    if issue.condition == "negative_m_eff":
-        return parameters.get("m_eff", 1.0) < 0
     if issue.condition == "collapsed_m_eff":
         return abs(parameters.get("m_eff", 1.0)) < COLLAPSED_M_EFF
     if issue.condition == "fermi_energy_outside_band":

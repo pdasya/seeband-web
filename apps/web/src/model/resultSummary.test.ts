@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, test } from "vitest";
 
-import { MODELS } from "../../e2e/support/models";
+import { MODELS, SYNTHETIC_SEEBECK_ISSUE } from "../../e2e/support/models";
 
 import {
   fitEndNote,
@@ -187,7 +187,11 @@ describe("parameterRows", () => {
 });
 
 describe("resultIssues", () => {
-  const mode = modeOf("dpb_s_rho_rh");
+  const original = modeOf("dpb_s_rho_rh");
+  const mode = {
+    ...original,
+    known_issues: [...original.known_issues, SYNTHETIC_SEEBECK_ISSUE],
+  };
 
   test("every known error of every mode has its own text", () => {
     const known: Record<string, string> = STRINGS.fit.knownIssueTexts;
@@ -208,9 +212,9 @@ describe("resultIssues", () => {
     expect(resultIssues(mode, NO_FLAGS)).toEqual([]);
     expect(
       resultIssues(mode, {
-        fit: ["acphdis_band_weight"],
-        measured: ["acphdis_band_weight"],
-        derived: ["acphdis_band_weight"],
+        fit: [SYNTHETIC_SEEBECK_ISSUE.id],
+        measured: [SYNTHETIC_SEEBECK_ISSUE.id],
+        derived: [SYNTHETIC_SEEBECK_ISSUE.id],
       }),
     ).toHaveLength(1);
   });
@@ -218,7 +222,7 @@ describe("resultIssues", () => {
   test("goes to the quantity its column names", () => {
     const [issue] = resultIssues(mode, {
       ...NO_FLAGS,
-      measured: ["acphdis_band_weight"],
+      measured: [SYNTHETIC_SEEBECK_ISSUE.id],
     });
     expect(issue).toMatchObject({
       quantities: ["seebeck"],
@@ -228,18 +232,26 @@ describe("resultIssues", () => {
   });
 
   test("goes to every quantity when it names no column", () => {
-    const [issue] = resultIssues(mode, {
+    const withoutColumns = {
+      ...mode,
+      known_issues: mode.known_issues.map((issue) =>
+        issue.id === SYNTHETIC_SEEBECK_ISSUE.id
+          ? { ...issue, columns: [] }
+          : issue,
+      ),
+    };
+    const [issue] = resultIssues(withoutColumns, {
       ...NO_FLAGS,
-      measured: ["negative_m_eff_weight"],
+      measured: [SYNTHETIC_SEEBECK_ISSUE.id],
     });
     expect(issue?.quantities).toEqual(["seebeck", "resistivity", "hall"]);
-    expect(issue?.severity).toBe("caution");
+    expect(issue?.severity).toBe("unreliable");
   });
 
   test("a fit's flag marks the curves drawn from its values too", () => {
     const [issue] = resultIssues(mode, {
       ...NO_FLAGS,
-      fit: ["acphdis_band_weight"],
+      fit: [SYNTHETIC_SEEBECK_ISSUE.id],
     });
     expect(issue?.quantities).toEqual(["seebeck"]);
     expect(issue?.place).toBe("curves");
@@ -257,7 +269,7 @@ describe("resultIssues", () => {
   test("the curves of the open tab mark no RMSE", () => {
     const [issue] = resultIssues(mode, {
       ...NO_FLAGS,
-      derived: ["acphdis_band_weight"],
+      derived: [SYNTHETIC_SEEBECK_ISSUE.id],
     });
     expect(issue?.quantities).toEqual([]);
     expect(issue?.place).toBe("curves");

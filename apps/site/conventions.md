@@ -41,6 +41,10 @@ Human physicist confirmation remains pending.
 in core 0.1.0 and the remaining confirmation gates.
 
 Core `0.1.1` adds the P8 solver and domain-aware fitting described above.
+Core `0.1.2` adds P9 neural-net selection from the actual temperature span.
+Core `0.1.3` adds P11 pointwise mixed-scattering Seebeck weighting.
+Core `0.1.4` adds P13 positive longitudinal DPB transport weights, retaining
+the signed public mass ratio and carrier signs. See [positive DPB weights](../../packages/seeband_core/docs/dpb-positive-weights.md).
 Core version `0.1.0` is the first traceable `seeband_core` version. Earlier
 results may have been produced by different corrected states while reporting
 `0.0.0`; a missing version is unknown and must not be inferred from this
@@ -55,6 +59,13 @@ confirmation and the desktop comparison tracked by #71 remain open; author
 review #80 was closed at the project owner’s request; author contact and
 confirmation remain pending.
 
+## Neural-net initial values
+
+P9 chooses the first supported neural-net range covered by the actual minimum
+and maximum temperatures. Paired T–S rows are sorted on a copy before
+preparing the input; no measurements are removed or averaged. A network
+estimate is only a starting value, not evidence that a model fits the sample.
+
 ## DPB mass and degeneracy
 
 Let N = N₂/N₁. The public parameter `m_eff`, displayed as m₂/m₁, is the
@@ -62,10 +73,15 @@ signed mass ratio R = m₂/|m₁|. Its magnitude is the band-mass ratio; its sig
 sets the type of band 2. The reference band 1 is hole-like. The low-level
 DPB formulas receive r = R/N, the mass ratio weighted by inverse degeneracy.
 
-In DPB S-only mode, both fitting and drawing convert R to r exactly once.
-Starts, fitted values, bounds and reported uncertainties remain in public
-R coordinates. The carrier-density weight is N |R|^(3/2) and the transport
-weight is N/R. At N = 1 the P6 conversion is the identity.
+In DPB S-only mode, fitting and drawing convert R to r = R/N exactly once;
+starts, fitted values, bounds and reported uncertainties remain in public R
+coordinates. Derived curves also convert R to r. Iterative fitting retains the
+separate mass/bounds inconsistency described below (#85). The carrier-density weight is N |R|^(3/2). Longitudinal
+transport uses the positive mass magnitude: 1/|r| for S-only, B/|r| for
+single scattering and B(C_K + T)/((D_K + T)|r|) for mixed scattering, with
+the scattering factors already defined below. These weights propagate through
+all longitudinal quantities and per-band contributions. At N = 1 the P6
+degeneracy conversion is the identity.
 
 R is the ratio of single-valley band masses, not of density-of-states
 masses: entering m_d,2/m_d,1 would count N twice. For R > 0, the transport
@@ -78,16 +94,18 @@ and scattering factors still enter the conductivity. This is not a formula
 for the entire conductivity independent of band filling. Other scattering
 mechanisms need different transport factors.
 
-For R < 0 the signed S-only transport weight N/R is the open #104. In this
-S-only expression, cancellation at R = −N requires equal band occupation
-integrals, as for coincident band edges (E_g = 0); it is not a general result
-for negative R or for other transport weights.
+P13 corrects the negative longitudinal transport-weight issue (#104) by using
+the mass magnitude. Carrier signs remain in occupations and signed density;
+the Hall coefficient retains carrier signs and uses the corrected resistivity.
+The P13 [correction note](../../packages/seeband_core/docs/dpb-positive-weights.md)
+records the limits and synthetic validation. This does not resolve P6's
+iterative-mode output/bounds inconsistency (`dpb_loop_degeneracy`, #85).
 
-The separate iterative-mode output/bounds inconsistency remains flagged
-by `dpb_loop_degeneracy` (#85). P6 repairs the S-only mismatch and does not
-establish the correctness of negative-mass transport (#104), collapsed
-bands (#107) or the band diagram (#108). P8 checks chemical-potential roots
-as described above.
+P6 repairs the S-only mismatch; P13 corrects longitudinal negative-mass
+weights, but does not resolve collapsed bands (#107) or the band diagram
+(#108). P8 checks chemical-potential roots as described above. The separate
+iterative-mode output/bounds inconsistency remains flagged by
+`dpb_loop_degeneracy` (#85).
 Human physicist confirmation and parity (#71) remain outstanding.
 
 ## Interpolation support
@@ -125,10 +143,13 @@ to total σ. Electronic κ includes the two Lorenz terms and the bipolar term
 T σ₁σ₂/(σ₁+σ₂) (S₁−S₂)². Here S₁ and S₂ are each band's own Seebeck coefficient;
 the plotted contributions are σᵢSᵢ/(σ₁+σ₂).
 
-The existing total-Seebeck grid-weighting error (#102) is separate: on a
-multi-point grid the total can still disagree with the sum of the corrected
-band contributions. Its warning remains visible. Other known model-domain
-and numerical limitations remain listed in the core's known-issues document.
+P11 (#102) uses q(T) = B (C_K + T) / ((D_K + T) |r|) at each temperature
+in total DPB acPhDis Seebeck, with C_K = 300 K × C and D_K = 300 K × D.
+The total equals the sum of the weighted band contributions on the same grid.
+P8 supplies independent checked chemical potentials. These identities use the
+existing mass coordinate r; they do not resolve nonunit-degeneracy iterative
+fits or final-stage fit consistency limitations. P13 supplies positive
+longitudinal weights across scattering modes; see its correction note.
 
 The P3 correction has automated identity checks. Human physicist confirmation
 and the complete #71 desktop/web comparison remain outstanding.

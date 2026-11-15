@@ -1633,6 +1633,10 @@ def test_a_held_parameter_in_a_dpb_loop_at_n_2_fits_as_a_loop_written_by_hand(he
         [_limits(fit_mode, name)[0] for name in band_names],
         [_limits(fit_mode, name)[1] for name in band_names],
     )
+    # P13 keeps this positive starting branch. The independent SciPy loop must
+    # use that same domain, rather than the historical bounds spanning zero.
+    assert start["m_eff"] > 0
+    see_bounds[0][0] = max(see_bounds[0][0], np.finfo(float).smallest_subnormal)
     scattering = [start["A"], start["B"]]
     scattering_bounds = (
         [_limits(fit_mode, "A")[0], _limits(fit_mode, "B")[0]],

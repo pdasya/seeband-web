@@ -419,10 +419,10 @@ test("after a ρ file with a header, the hidden switch reads the next file as ρ
   });
   await rhoSlot(page).first().dispatchEvent("drop", { dataTransfer });
   await expect(rhoSlot(page).getByText("rho2.txt")).toBeVisible();
-  expect(bodies.map(({ expected }) => expected)).toEqual([
-    "conductivity",
-    "resistivity",
-  ]);
+  // The filename is shown while reading, before the parse request is sent.
+  await expect
+    .poll(() => bodies.map(({ expected }) => expected))
+    .toEqual(["conductivity", "resistivity"]);
 
   await rhoSlot(page).getByRole("button", { name: "Remove file ρ" }).click();
   await expect(sigmaSwitch(page)).not.toBeChecked();

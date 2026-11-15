@@ -31,13 +31,25 @@ describe("guessMessages", () => {
     expect(
       guessMessages({ ...APPLIED, warnings: ["underdetermined_fit"] })[0],
     ).toContain("too few temperatures");
-    expect(
-      guessMessages({ ...APPLIED, warnings: ["unsorted_temperature"] })[0],
-    ).toContain("do not rise");
     // This one has its own outcome, so no text repeats it.
     expect(
       guessMessages({ ...APPLIED, warnings: ["m_eff_rounds_to_zero"] }),
     ).toEqual([]);
+  });
+
+  test.each<GuessOutcome>([
+    APPLIED,
+    {
+      kind: "no_net",
+      firstK: 100.25,
+      lastK: 200,
+      available: [RANGE],
+      warnings: [],
+    },
+  ])("row-order wording also works without an estimate ($kind)", (outcome) => {
+    expect(
+      guessMessages({ ...outcome, warnings: ["unsorted_temperature"] }),
+    ).toContain("The rows were not in order of T, so they were sorted first.");
   });
 
   test("no net names its span and every range, with a comma", () => {

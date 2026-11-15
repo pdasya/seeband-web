@@ -854,7 +854,7 @@ def dpb_see_vs_temp(
     see = np.zeros(shape=len(T))
 
     for i, (temp, mu) in enumerate(zip(T, potentials, strict=True)):
-        factor = 1 / meff
+        factor = 1 / abs(meff)
 
         sig1[i] = sigma_general(
             eta=mu, meff=-1, K=1, beta=-1, T=temp
@@ -935,11 +935,9 @@ def dpb_see_vs_temp_double_scatter(
     see = np.zeros(shape=len(temp_array))
 
     chemPot_array = dpb_chemPot_vs_temp(temp_array, gap, meff, fermi_energy, degen)
-    factor = para_B * (para_C + temp_array) / (para_D + temp_array) / meff
+    factor = para_B * (para_C + temp_array) / (para_D + temp_array) / abs(meff)
 
     for i, temp in enumerate(temp_array):
-        factor = para_B * (para_C + temp) / (para_D + temp) / meff
-
         sig1[i] = sigma_general(
             eta=chemPot_array[i], meff=-1, K=1, beta=-1, T=temp
         )  # beta = -1 to remove any temperature dependence that would cancel out eventually
@@ -1007,7 +1005,7 @@ def dpb_see_vs_temp_single_scatter(
     see = np.zeros(shape=len(temp_array))
 
     chemPot_array = dpb_chemPot_vs_temp(temp_array, gap, meff, fermi_energy, degen)
-    factor = para_B / meff
+    factor = para_B / abs(meff)
 
     for i, temp in enumerate(temp_array):
         sig1[i] = sigma_general(
@@ -1069,7 +1067,7 @@ def dpb_rho_vs_temp_acPh(
         Numpy array of resistivity values
     """
 
-    return scal_fac / (para_A * (f0_1 + 1 / meff * para_B * f0_2))
+    return scal_fac / (para_A * (f0_1 + 1 / abs(meff) * para_B * f0_2))
 
 
 # Calculates the electrical resistivity of two bands for alloy-disorder scattering
@@ -1112,7 +1110,7 @@ def dpb_rho_vs_temp_dis(
         Numpy array of resistivity values
     """
 
-    return scal_fac / (para_A * T * (f0_1 + 1 / meff * para_B * f0_2))
+    return scal_fac / (para_A * T * (f0_1 + 1 / abs(meff) * para_B * f0_2))
 
 
 # Calculates the electrical resistivity of two bands for acoustic-phonon and alloy-disorder
@@ -1164,7 +1162,9 @@ def dpb_rho_vs_temp_acPh_dis(
         Numpy array of resistivity values
     """
 
-    return scal_fac / (para_A * T * (f0_1 / (para_C + T) + 1 / meff * para_B * f0_2 / (para_D + T)))
+    return scal_fac / (
+        para_A * T * (f0_1 / (para_C + T) + 1 / abs(meff) * para_B * f0_2 / (para_D + T))
+    )
 
 
 # Calculates the electron thermal conductivity of two bands for acoustic-phonon scattering
@@ -1678,7 +1678,7 @@ def dpb_indCont_see_vs_temp(
     ons2 = np.zeros(shape=len(temp_array))
 
     chemPot_array = dpb_chemPot_vs_temp(temp_array, gap, meff, fermi_energy, degen)
-    factor = 1 / meff
+    factor = 1 / abs(meff)
 
     for i, temp in enumerate(temp_array):
         sig1[i] = sigma_general(
@@ -1750,7 +1750,7 @@ def dpb_indCont_see_vs_temp_double_scatter(
     ons2 = np.zeros(shape=len(temp_array))
 
     chemPot_array = dpb_chemPot_vs_temp(temp_array, gap, meff, fermi_energy, degen)
-    factor = para_B * (para_C + temp_array) / (para_D + temp_array) / meff
+    factor = para_B * (para_C + temp_array) / (para_D + temp_array) / abs(meff)
 
     for i, temp in enumerate(temp_array):
         sig1[i] = sigma_general(
@@ -1817,7 +1817,7 @@ def dpb_indCont_see_vs_temp_single_scatter(
     ons2 = np.zeros(shape=len(temp_array))
 
     chemPot_array = dpb_chemPot_vs_temp(temp_array, gap, meff, fermi_energy, degen)
-    factor = para_B / meff
+    factor = para_B / abs(meff)
 
     for i, temp in enumerate(temp_array):
         sig1[i] = sigma_general(
@@ -1879,7 +1879,7 @@ def dpb_ind_elecCond_vs_temp_acPh(
     """
 
     sig1 = scal_fac * para_A * f0_1
-    sig2 = scal_fac * para_A * 1 / meff * para_B * f0_2
+    sig2 = scal_fac * para_A * 1 / abs(meff) * para_B * f0_2
 
     return sig1, sig2
 
@@ -1923,7 +1923,7 @@ def dpb_ind_elecCond_vs_temp_dis(
     """
 
     sig1 = scal_fac * para_A * temp_array * f0_1
-    sig2 = scal_fac * para_A * temp_array * 1 / meff * para_B * f0_2
+    sig2 = scal_fac * para_A * temp_array * 1 / abs(meff) * para_B * f0_2
 
     return sig1, sig2
 
@@ -1974,7 +1974,7 @@ def dpb_ind_elecCond_vs_temp_acPh_dis(
     """
 
     sig1 = scal_fac * para_A * temp_array * f0_1 / (para_C + temp_array)
-    sig2 = scal_fac * para_A * temp_array * 1 / meff * para_B * f0_2 / (para_D + temp_array)
+    sig2 = scal_fac * para_A * temp_array * 1 / abs(meff) * para_B * f0_2 / (para_D + temp_array)
 
     return sig1, sig2
 
