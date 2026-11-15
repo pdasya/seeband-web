@@ -55,6 +55,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             max_waiting=settings.calc_max_waiting,
             max_per_client=settings.calc_max_per_client,
             wait_timeout_s=settings.calc_wait_timeout_s,
+            max_running_per_client=settings.calc_max_running_per_client,
         )
         app.state.calc_pool.warm_up()
         app.state.fit_runner = FitRunner(
