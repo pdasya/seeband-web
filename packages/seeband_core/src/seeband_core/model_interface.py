@@ -24,6 +24,10 @@ CurveKind = Literal[
 ]
 FitAlgorithm = Literal["verified-sequential-v2", "legacy-sequential-v1"]
 FitStatus = Literal["converged", "iteration_limit", "stopped", "failed", "stalled"]
+# How a fit found each parameter, see `parameter_status`. None of these says that a value is right.
+ParameterStatus = Literal[
+    "fixed", "held", "estimated", "at_bound", "not_determined", "did_not_move", "not_assessed"
+]
 IssueSeverity = Literal["disabled", "unreliable", "caution"]
 IssueCondition = Literal[
     "degeneracy_not_one",
@@ -379,6 +383,11 @@ class FitResult:
 
     `held` names the parameters the request held at their start values, which are in `parameters`
     exactly as sent, and in neither `parameter_errors` nor `at_bounds`.
+
+    `parameter_status` says, for each parameter in `parameters`, how the fit found it, from the
+    signals the fit has. See `seeband_core.parameter_status`. `estimated` means only that no signal
+    said otherwise, not that the data determine the value or that it is right. The uncertainty of
+    the values is not assessed yet (#182).
     """
 
     parameters: Mapping[str, float]
@@ -391,6 +400,7 @@ class FitResult:
     held: tuple[str, ...] = ()
     algorithm: FitAlgorithm = "legacy-sequential-v1"
     diagnostics: FitDiagnostics | None = None
+    parameter_status: Mapping[str, ParameterStatus] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

@@ -4,6 +4,7 @@ Everything here is in core units, so nothing here converts a scale. Results keep
 calculations they come from.
 """
 
+import dataclasses
 import functools
 import logging
 import math
@@ -54,6 +55,7 @@ from seeband_core.model_interface import (
     Quantity,
 )
 from seeband_core.model_scales import core_to_display
+from seeband_core.parameter_status import parameter_statuses
 
 # Any, because calls here spread lists of mixed arguments that mypy cannot match to a signature.
 _CORE: Any = fit_module.PB_fit()
@@ -148,12 +150,13 @@ def _standard_errors(covariance: np.ndarray) -> list[float]:
 
 
 def _named_errors(names: Iterable[str], errors: Iterable[float]) -> dict[str, float]:
-    """Keep usable errors. Exactly 0 means the solver saw no effect of the parameter on the data."""
-    return {
-        name: error
-        for name, error in zip(names, errors, strict=True)
-        if math.isfinite(error) and error > 0
-    }
+    """Each stage parameter's error, usable or not, see `_usable_error`."""
+    return dict(zip(names, errors, strict=True))
+
+
+def _usable_error(error: float) -> bool:
+    """Exactly 0, or not finite, means the solver saw no effect of the parameter on the data."""
+    return math.isfinite(error) and error > 0
 
 
 def _is_at_bound(value: float, bound: float) -> bool:
@@ -175,6 +178,40 @@ def _reusing_chemical_potential[**P, R](method: Callable[P, R]) -> Callable[P, R
             return method(*args, **kwargs)
 
     return within_scope
+
+
+def _with_parameter_status[**P](method: Callable[P, FitResult]) -> Callable[P, FitResult]:
+    """Gives a result the status of each parameter, if its fit has not.
+
+    The legacy fit does that itself, from its stage errors. A verified fit has its unidentified
+    parameters, and a failed fit of either kind leaves every fitted parameter not assessed.
+    """
+
+    @functools.wraps(method)
+    def with_status(*args: P.args, **kwargs: P.kwargs) -> FitResult:
+        result = method(*args, **kwargs)
+        model, request = args[0], kwargs.get("request", args[1] if len(args) > 1 else None)
+        assert isinstance(model, _BandModel) and isinstance(request, FitRequest)
+        if result.parameter_status:
+            return result
+        fit_mode = model.describe().fit_mode(request.fit_mode)
+        diagnostics = result.diagnostics
+        return dataclasses.replace(
+            result,
+            parameter_status=parameter_statuses(
+                fit_mode,
+                request.scattering,
+                request.start,
+                result.parameters,
+                status=result.status,
+                held=request.held,
+                at_bounds=result.at_bounds,
+                undetermined=diagnostics.unidentified if diagnostics is not None else (),
+                reached=None,
+            ),
+        )
+
+    return with_status
 
 
 class _CallbackError(Exception):
@@ -329,19 +366,42 @@ class _BandModel:
         parameters = dict(parameters) | {name: request.start[name] for name in request.held}
         parameters = {name: value for name, value in parameters.items() if name in request.start}
         errors = self._stage_errors(fit_mode, request.scattering, ratio, progress)
-        at_bounds = self._at_bounds(request, fit_mode, parameters, ratio, progress.stage_fits)
+        at_bounds = tuple(
+            name
+            for name in self._at_bounds(request, fit_mode, parameters, ratio, progress.stage_fits)
+            if name not in request.held
+        )
+        reached = {
+            name
+            for stage in fit_mode.stages
+            if _STAGE_KEYS[stage.quantity] in progress.stage_fits
+            for name in stage.parameters
+        }
         return FitResult(
             parameters,
             status,
             progress.iterations if fit_mode.iterative else None,
             parameter_errors={
-                name: error for name, error in errors.items() if name not in request.held
+                name: error
+                for name, error in errors.items()
+                if name not in request.held and _usable_error(error)
             },
-            at_bounds=tuple(name for name in at_bounds if name not in request.held),
+            at_bounds=at_bounds,
             known_issues=active_issue_ids(
                 fit_mode, request.scattering, parameters, ratio, extrapolated=request.extrapolated
             ),
             held=tuple(sorted(request.held)),
+            parameter_status=parameter_statuses(
+                fit_mode,
+                request.scattering,
+                request.start,
+                parameters,
+                status=status,
+                held=request.held,
+                at_bounds=at_bounds,
+                undetermined={name for name, error in errors.items() if not _usable_error(error)},
+                reached=reached,
+            ),
         )
 
     def _progress(self, request: FitRequest, fit_mode: FitMode) -> fit_module.FitProgress:
@@ -583,6 +643,7 @@ class SpbModel(_BandModel):
         }[str(request.kind)]
         return function, [*band, _values(parameters, _SPB_SCATTERING), scattering]
 
+    @_with_parameter_status
     @_reusing_chemical_potential
     def fit(self, request: FitRequest, on_iteration: IterationCallback | None = None) -> FitResult:
         fit_mode, scattering = self._mode_and_scattering(request.fit_mode, request.scattering)
@@ -721,6 +782,7 @@ class DpbModel(_BandModel):
         }[str(kind)]
         return function, [bands, scattering_values, degeneracy, scattering]
 
+    @_with_parameter_status
     @_reusing_chemical_potential
     def fit(self, request: FitRequest, on_iteration: IterationCallback | None = None) -> FitResult:
         fit_mode, scattering = self._mode_and_scattering(request.fit_mode, request.scattering)
