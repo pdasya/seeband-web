@@ -148,7 +148,11 @@ So a 200 only means that the fit has a place. A waiting client has its 200 and n
 
 The log line of a fit says 200 whichever event came last, or if the client left, since the response had already started.
 
-A process starts for each fit, which takes about 0.5 s of the time below. It ends with its request, whichever way the request ends: past the time limit, on a disconnect, or at a stop of the server. It is terminated, and killed if it stays. A process also exits if the server dies.
+A process starts for each fit. It is forked from a fork server that the app starts at startup, which has imported the core and scipy.optimize, so it starts in about 5 ms. A fresh interpreter took about 0.5 s, mostly for imports (A16). It ends with its request, whichever way the request ends: past the time limit, on a disconnect, or at a stop of the server. It is terminated, and killed if it stays, about 1 ms after a Stop. A process also exits if the server dies.
+
+An SPB S fit of the demo dataset over HTTP to `python -m seeband_api` on an Apple Silicon Mac, median of 7: legacy 509 → 103 ms, verified 779 → 351 ms, before and after A16. The fit itself takes 75 and 325 ms of that.
+
+The calc pool's workers fork from the same server, and a new pool, at startup or after a worker died, gives out no job until each worker has answered a warm-up. So a job's time limit starts on a running worker.
 
 Historical legacy timing before P19 for each fit of the 3 desktop examples, in all 11 working combinations of mode and scattering, from the default start values, 50 to 800 K, through a test client on an Apple Silicon Mac with 10 cores: median 1.0 s, at most 1.6 s, all `converged`. Set the limit after trying these on the VM, as a small VM will be slower.
 
