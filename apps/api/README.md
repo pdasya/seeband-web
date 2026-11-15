@@ -202,11 +202,18 @@ Historical response-time measurements before P19 (the RMSE evaluator has since c
 
 | Mode, with default scattering | Curves | Curves and RMSE |
 | ----------------------------- | ------ | --------------- |
-| `spb_s`                       | 9 ms   | 17 ms           |
-| `spb_s_rho`                   | 15 ms  | 29 ms           |
-| `dpb_s`                       | 16 ms  | 31 ms           |
-| `dpb_s_rho`                   | 27 ms  | 52 ms           |
-| `dpb_s_rho_rh`                | 40 ms  | 79 ms           |
+| `spb_s`                       | 7 ms   | 13 ms           |
+| `spb_s_rho`                   | 7 ms   | 14 ms           |
+| `dpb_s`                       | 11 ms  | 20 ms           |
+| `dpb_s_rho`                   | 11 ms  | 21 ms           |
+| `dpb_s_rho_rh`                | 12 ms  | 24 ms           |
+
+Before A15 (#174), the same run on the same Mac gave 13, 23, 20, 36 and 53 ms for curves, and 24, 43, 39, 69 and 105 ms with RMSE. Two changes made it faster, and neither changes a number, to the bit:
+
+- A Fermi integral of one value calls `fdint_robust` directly instead of through `np.vectorize`.
+- Within one curve or fit, μ(T) is solved once for each temperature array and set of band parameters, and S, ρ and R_H reuse that root. Only solved roots are kept, at most 32, and nothing is kept after the call returns.
+
+`packages/seeband_core/tests/test_calc_speed_equivalence.py` compares every model, mode, scattering and curve kind, and three fits, with both changes off and on.
 
 ## Derived curves
 
