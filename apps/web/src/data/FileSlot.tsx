@@ -408,6 +408,7 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
                 variant="outline"
                 size="sm"
                 className="mt-2"
+                aria-label={text.confirmUnitOf(names.symbol)}
                 onClick={() => {
                   confirmUnit(quantity);
                 }}
@@ -417,11 +418,13 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
             </AlertDescription>
           </Alert>
         )}
-        {data.unitConfirmed === true && (
-          <p className="m-0 text-xs text-muted-foreground">
-            {text.unitConfirmed}
-          </p>
-        )}
+        {/* Always there, so that a screen reader reads the confirmation when it comes. */}
+        <p
+          role="status"
+          className="m-0 text-xs text-muted-foreground empty:hidden"
+        >
+          {data.unitConfirmed === true ? text.unitConfirmed : ""}
+        </p>
         {state.status === "idle" &&
           state.failures !== undefined &&
           state.failures.length > 0 && (

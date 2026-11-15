@@ -477,6 +477,11 @@ export function SingleFilePanel() {
               variant="outline"
               size="sm"
               className="mt-2"
+              aria-label={text.confirmUnitOf(
+                doubted
+                  .map((q) => text.quantities[loadedAs(q, data[q])].symbol)
+                  .join(", "),
+              )}
               onClick={() => {
                 for (const quantity of doubted) {
                   confirmUnit(quantity);
@@ -488,11 +493,15 @@ export function SingleFilePanel() {
           </AlertDescription>
         </Alert>
       )}
-      {settled && usable && QUANTITIES.some((q) => data[q]?.unitConfirmed) && (
-        <p className="m-0 text-xs text-muted-foreground">
-          {text.unitConfirmed}
-        </p>
-      )}
+      {/* Always there, so that a screen reader reads the confirmation when it comes. */}
+      <p
+        role="status"
+        className="m-0 text-xs text-muted-foreground empty:hidden"
+      >
+        {settled && usable && QUANTITIES.some((q) => data[q]?.unitConfirmed)
+          ? text.unitConfirmed
+          : ""}
+      </p>
       {settled && usable && otherWarnings.length > 0 && (
         <ul className="m-0 list-none p-0 text-xs text-muted-foreground">
           {otherWarnings.map((warning, index) => (

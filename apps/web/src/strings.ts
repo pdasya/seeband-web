@@ -219,6 +219,8 @@ export const STRINGS = {
     inSi: (written: string, si: string) => `${written} = ${si} in SI`,
     checkUnitTitle: "Check the unit",
     confirmUnit: "Values are right",
+    /** The button's name, which starts with its text and says whose values it confirms. */
+    confirmUnitOf: (symbols: string) => `Values are right for ${symbols}`,
     unitConfirmed:
       "You confirmed these values despite the unit check, so a fit uses them as they are.",
     /** The name of a unit select whose unit is SI only because nothing named one. */
