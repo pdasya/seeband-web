@@ -1,25 +1,27 @@
 """Runs each fit in its own process, which can be killed, as a pool's worker cannot.
 
+The process is forked from a server that has the core loaded, see `processes`.
+
 A pipe carries events from the process. At most `max_running` fits run at once and `max_waiting`
 wait, and a request beyond those is refused at once with a 429. The time limit covers the running
 fit, not the wait. The process always ends with its task, however the task ends.
 """
 
 import asyncio
-import multiprocessing
 import threading
 from collections import Counter
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass, field
 from http import HTTPStatus
 from multiprocessing.connection import Connection
-from multiprocessing.context import SpawnProcess
+from multiprocessing.context import ForkServerProcess
 from typing import Annotated, Any
 
 from fastapi import Depends, Request
 
 from seeband_api.calc_worker import initialise_worker
 from seeband_api.errors import ApiError
+from seeband_api.processes import context as _context
 from seeband_api.request_logging import log_calculation_failure
 
 RETRY_AFTER_S = 5
@@ -27,9 +29,6 @@ TERMINATE_GRACE_S = 1.0
 FIT_TIMEOUT_MESSAGE = "The fit took too long"
 FIT_PROCESS_DIED_MESSAGE = "The fit stopped unexpectedly. Try again."
 FIT_FAILED_MESSAGE = "The fit ended with an internal error"
-
-_context = multiprocessing.get_context("spawn")
-
 
 def _run_in_child(job: Connection, events: Connection) -> None:
     """Runs the job from one pipe, and sends what happens through the other.
@@ -54,7 +53,7 @@ def _run_in_child(job: Connection, events: Connection) -> None:
     events.close()
 
 
-def _stop(process: SpawnProcess) -> None:
+def _stop(process: ForkServerProcess) -> None:
     """Terminates a process, then kills it if it does not end."""
     if process.is_alive():
         process.terminate()
@@ -69,7 +68,7 @@ def _stop(process: SpawnProcess) -> None:
 class _FitProcess:
     """A process with its pipes, as far as it has started."""
 
-    process: SpawnProcess
+    process: ForkServerProcess
     job_reader: Connection
     job_writer: Connection
     events_reader: Connection

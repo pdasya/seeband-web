@@ -10,6 +10,7 @@ import subprocess
 import sys
 import time
 from collections.abc import Awaitable, Callable, Iterator
+from multiprocessing.context import ForkServerProcess
 from pathlib import Path
 from typing import Any
 
@@ -17,12 +18,13 @@ import fit_functions
 import pytest
 from seeband_api.errors import ApiError
 from seeband_api.fit_runner import FitRunner
+from seeband_api.processes import PRELOADED
 
 
 @pytest.fixture(autouse=True)
 def no_fit_process_left() -> Iterator[None]:
     yield
-    left = [p for p in multiprocessing.active_children() if "SpawnProcess" in p.name]
+    left = [p for p in multiprocessing.active_children() if isinstance(p, ForkServerProcess)]
     assert left == []
 
 
@@ -199,6 +201,36 @@ def test_cancelling_a_call_ends_its_process(tmp_path: Path) -> None:
         os.kill(pid, 0)
 
 
+def test_a_fit_starts_with_the_core_loaded() -> None:
+    runner = FitRunner(1, 0, 30.0)
+
+    loaded = _run(lambda: runner.run(fit_functions.loaded_modules, list(PRELOADED)))
+
+    assert loaded == list(PRELOADED)
+
+
+def test_a_stop_ends_the_process_within_a_tenth_of_a_second(tmp_path: Path) -> None:
+    runner = FitRunner(1, 0, 60.0)
+    pid_file = tmp_path / "pid"
+
+    async def main() -> tuple[int, float]:
+        task = asyncio.create_task(runner.run(fit_functions.write_pid_and_hang, str(pid_file)))
+        while not (pid_file.exists() and pid_file.read_text()):
+            await asyncio.sleep(0.01)
+        pid = int(pid_file.read_text())
+        stopped = time.monotonic()
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+        return pid, time.monotonic() - stopped
+
+    pid, took_s = asyncio.run(main())
+
+    assert took_s < 0.1
+    with pytest.raises(ProcessLookupError):
+        os.kill(pid, 0)
+
+
 @pytest.mark.parametrize("delay_s", [0.0, 0.02, 0.1, 0.3])
 @pytest.mark.parametrize("size", [2_000, 128_000, 2_000_000])
 def test_cancelling_while_it_starts_leaves_no_process(delay_s: float, size: int) -> None:
@@ -234,7 +266,7 @@ def test_a_second_cancel_keeps_the_slot_until_the_process_has_ended() -> None:
         alive = [
             child
             for child in multiprocessing.active_children()
-            if "SpawnProcess" in child.name and child.is_alive()
+            if isinstance(child, ForkServerProcess) and child.is_alive()
         ]
         assert alive == []
 
