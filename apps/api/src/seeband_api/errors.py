@@ -31,12 +31,32 @@ class ErrorDetail(BaseModel):
     message: str
 
 
+# More would only make an answer large: a request with an error in each of many values gets the
+# first of them, and a count of the rest.
+MAX_ERROR_DETAILS = 50
+
+
 class ErrorResponse(BaseModel):
-    """The body of every error response."""
+    """The body of every error response.
+
+    `details` holds at most 50 problems, and `details_omitted` counts any more, left out.
+    """
 
     code: str
     message: str
     details: list[ErrorDetail]
+    details_omitted: int | None = None
+
+
+def capped(code: str, message: str, details: list[ErrorDetail]) -> ErrorResponse:
+    """An error with at most `MAX_ERROR_DETAILS` details, and the count of the rest."""
+    omitted = len(details) - MAX_ERROR_DETAILS
+    return ErrorResponse(
+        code=code,
+        message=message,
+        details=details[:MAX_ERROR_DETAILS],
+        details_omitted=omitted if omitted > 0 else None,
+    )
 
 
 ERROR_EXAMPLES: dict[str, dict[str, Any]] = {
@@ -177,7 +197,7 @@ def error_response(
 ) -> Response:
     # Plain `json.dumps` escapes a lone surrogate from a client's text, which UTF-8 cannot encode.
     return Response(
-        json.dumps(error.model_dump(mode="json")),
+        json.dumps(error.model_dump(mode="json", exclude_none=True)),
         status_code=status_code,
         headers=headers,
         media_type="application/json",
@@ -195,7 +215,7 @@ def _handle_api_error(_: Request, error: Exception) -> Response:
     assert isinstance(error, ApiError)
     return error_response(
         error.status_code,
-        ErrorResponse(code=error.code, message=error.message, details=error.details or []),
+        capped(error.code, error.message, error.details or []),
         headers=error.headers,
     )
 
@@ -215,14 +235,21 @@ def _handle_http_exception(_: Request, error: Exception) -> Response:
 
 def _handle_validation_error(_: Request, error: Exception) -> Response:
     assert isinstance(error, RequestValidationError)
+    items = error.errors()
     details = [
         # Pydantic's `input` and `ctx` hold submitted values, so they are left out.
         ErrorDetail(location=list(item["loc"]), code=item["type"], message=item["msg"])
-        for item in error.errors()
+        for item in items[:MAX_ERROR_DETAILS]
     ]
+    omitted = len(items) - len(details)
     return error_response(
         HTTPStatus.UNPROCESSABLE_CONTENT,
-        ErrorResponse(code="validation_error", message="Invalid request", details=details),
+        ErrorResponse(
+            code="validation_error",
+            message="Invalid request",
+            details=details,
+            details_omitted=omitted if omitted > 0 else None,
+        ),
     )
 
 

@@ -30,6 +30,7 @@ from seeband_api.errors import (
     ApiError,
     ErrorDetail,
     ErrorResponse,
+    capped,
 )
 from seeband_api.fit_runner import (
     FIT_FAILED_MESSAGE,
@@ -425,9 +426,7 @@ def _last_event(task: asyncio.Task[FitResult]) -> FitEvent:
     try:
         return FitDone(result=_to_response(task.result()))
     except ApiError as error:
-        return FitError(
-            error=ErrorResponse(code=error.code, message=error.message, details=error.details or [])
-        )
+        return FitError(error=capped(error.code, error.message, error.details or []))
     except Exception as error:
         # The response has started, so a client learns of this only from an event.
         log_unhandled_exception(error)
