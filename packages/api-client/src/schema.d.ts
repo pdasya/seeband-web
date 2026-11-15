@@ -1459,6 +1459,17 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description The server is busy; try again after Retry-After */
+            503: {
+                headers: {
+                    /** @example 2 */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Default Response */
             default: {
                 headers: {
@@ -1547,6 +1558,17 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description The server is busy; try again after Retry-After */
+            503: {
+                headers: {
+                    /** @example 2 */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Default Response */
             default: {
                 headers: {
@@ -1584,6 +1606,17 @@ export interface operations {
             429: {
                 headers: {
                     /** @example 5 */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The server is busy; try again after Retry-After */
+            503: {
+                headers: {
+                    /** @example 2 */
                     "Retry-After"?: number;
                     [name: string]: unknown;
                 };

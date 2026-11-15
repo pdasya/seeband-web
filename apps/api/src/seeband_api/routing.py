@@ -28,6 +28,20 @@ def too_many_requests(examples: Iterable[str] = ("rate_limited",)) -> dict[str, 
     }
 
 
+def service_busy(examples: Iterable[str] = ("calculation_busy", "server_busy")) -> dict[str, Any]:
+    """The 503 of a busy server, with the hint a client needs to try again."""
+    return {
+        "model": ErrorResponse,
+        "description": "The server is busy; try again after Retry-After",
+        "headers": {"Retry-After": {"schema": {"type": "integer"}, "example": 2}},
+        "content": {
+            "application/json": {
+                "examples": {name: {"value": ERROR_EXAMPLES[name]} for name in examples}
+            }
+        },
+    }
+
+
 def api_router(tag: str) -> APIRouter:
     """Creates a router under `/api`, to be included directly in the app.
 

@@ -126,6 +126,26 @@ describe("failureMessage", () => {
       data.fileProblems.file_too_large,
     ],
     ["a limit", new ApiError(429, "rate_limited", "x"), data.rateLimited],
+    [
+      "a busy queue",
+      new ApiError(503, "calculation_busy", "x", [], 2),
+      data.serverBusy,
+    ],
+    [
+      "a busy server",
+      new ApiError(503, "server_busy", "x", [], 1),
+      data.serverBusy,
+    ],
+    [
+      "a client with many reads",
+      new ApiError(429, "client_calc_limit", "x", [], 1),
+      data.serverBusy,
+    ],
+    [
+      "a slow upload",
+      new ApiError(408, "request_timeout", "x"),
+      data.uploadTooSlow,
+    ],
     ["no server", new ApiError(0, "network_error", "x"), data.networkError],
     ["another refusal", new ApiError(422, "other", "x"), data.parseFailed],
     [

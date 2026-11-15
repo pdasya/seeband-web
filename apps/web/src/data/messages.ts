@@ -126,6 +126,12 @@ export function failureMessage(error: unknown): string {
       return data.fileProblems.file_too_large;
     case "rate_limited":
       return data.rateLimited;
+    case "calculation_busy":
+    case "server_busy":
+    case "client_calc_limit":
+      return data.serverBusy;
+    case "request_timeout":
+      return data.uploadTooSlow;
     case NETWORK_ERROR:
       return data.networkError;
     default:

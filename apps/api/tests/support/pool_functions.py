@@ -11,6 +11,16 @@ def sleep_for_a_while() -> None:
     time.sleep(10)
 
 
+def sleep_seconds(seconds: float) -> float:
+    time.sleep(seconds)
+    return seconds
+
+
+def sleep_then_die(seconds: float) -> None:
+    time.sleep(seconds)
+    die()
+
+
 def die() -> None:
     os.kill(os.getpid(), signal.SIGKILL)
 

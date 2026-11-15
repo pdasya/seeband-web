@@ -193,6 +193,10 @@ export const STRINGS = {
     parseFailed: "The file could not be read. Try again.",
     serverUnavailable:
       "The server is not responding, so the file was not read. Try again shortly.",
+    serverBusy:
+      "The server is busy with other calculations, so the file was not read. Try again shortly.",
+    uploadTooSlow:
+      "The file took too long to send. Check the connection and try again.",
     fileProblems: {
       wrong_file_type: "Choose a .txt, .csv or .dat file.",
       file_too_large: "This file is too large.",
@@ -427,6 +431,7 @@ export const STRINGS = {
     rateLimited: "Too many updates in a short time. Trying again shortly.",
     rateLimitedWait:
       "Too many updates in a short time. Change a value to try again.",
+    busy: "The server is busy with other calculations. Trying again shortly.",
     networkError: "The server could not be reached.",
     serverUnavailable: "The server is not responding.",
     calcFailed: "The curve could not be calculated.",

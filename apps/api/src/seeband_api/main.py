@@ -49,7 +49,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     }
                 },
             )
-        app.state.calc_pool = CalcPool(settings.calc_workers, settings.calc_timeout_s)
+        app.state.calc_pool = CalcPool(
+            settings.calc_workers,
+            settings.calc_timeout_s,
+            max_waiting=settings.calc_max_waiting,
+            max_per_client=settings.calc_max_per_client,
+            wait_timeout_s=settings.calc_wait_timeout_s,
+            max_running_per_client=settings.calc_max_running_per_client,
+        )
         app.state.calc_pool.warm_up()
         app.state.fit_runner = FitRunner(
             settings.fit_max_running,
@@ -88,6 +95,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             ("/api/calc", "/api/fit", "/api/guess", "/api/band-diagram"),
             settings.json_body_bytes,
         ),
+        body_timeout_s=settings.body_timeout_s,
+        body_idle_timeout_s=settings.body_idle_timeout_s,
+        max_concurrent_requests=settings.max_concurrent_requests,
+        # The routes whose jobs share the calculation pool.
+        per_client_paths=frozenset({"/api/calc", "/api/parse", "/api/guess"}),
+        max_per_client=settings.calc_max_per_client,
     )
     # Added last, so that it runs first and logs the requests that the limits refuse.
     app.add_middleware(

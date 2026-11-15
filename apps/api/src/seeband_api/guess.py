@@ -24,7 +24,7 @@ from seeband_api.request_checks import (
     too_many_points,
 )
 from seeband_api.request_logging import log_calculation_failure
-from seeband_api.routing import api_router, too_many_requests
+from seeband_api.routing import api_router, service_busy, too_many_requests
 
 router = api_router("guess")
 
@@ -277,7 +277,8 @@ def _to_response(outcome: GuessOutcome) -> GuessFound | GuessNoNet | GuessNotFin
                 }
             }
         },
-        429: too_many_requests(),
+        429: too_many_requests(("rate_limited", "client_calc_limit")),
+        503: service_busy(),
     },
 )
 async def post_guess(
