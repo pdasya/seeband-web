@@ -148,11 +148,13 @@ So a 200 only means that the fit has a place. A waiting client has its 200 and n
 
 The log line of a fit says 200 whichever event came last, or if the client left, since the response had already started.
 
-A process starts for each fit. It is forked from a fork server that the app starts at startup, which has imported the core and scipy.optimize, so it starts in about 5 ms. A fresh interpreter took about 0.5 s, mostly for imports (A16). It ends with its request, whichever way the request ends: past the time limit, on a disconnect, or at a stop of the server. It is terminated, and killed if it stays, about 1 ms after a Stop. A process also exits if the server dies.
+A process starts for each fit. It is forked from a fork server that the app starts at startup, which has imported the core and scipy.optimize, so it reaches its job in about 5 ms. A fresh interpreter took about 0.44 s, mostly for imports (A16). If the fork server dies, the next fit starts it again and waits for its imports, about 0.3 s.
 
-An SPB S fit of the demo dataset over HTTP to `python -m seeband_api` on an Apple Silicon Mac, median of 7: legacy 509 → 103 ms, verified 779 → 351 ms, before and after A16. The fit itself takes 75 and 325 ms of that.
+A script that starts the app, rather than `python -m seeband_api` or `python -m uvicorn`, needs an `if __name__ == "__main__":` guard, as under `spawn` before: each child runs the script again, and without the guard it starts a server of its own. It ends with its request, whichever way the request ends: past the time limit, on a disconnect, or at a stop of the server. It is terminated, and killed if it stays, about 1 ms after a Stop. A process also exits if the server dies.
 
-The calc pool's workers fork from the same server, and a new pool, at startup or after a worker died, gives out no job until each worker has answered a warm-up. So a job's time limit starts on a running worker.
+An SPB S fit of the demo dataset from the default start, posted 7 times in a row with `urllib` to `python -m seeband_api` on an Apple Silicon Mac with 10 cores, median: legacy 509 → 103 ms, verified 779 → 351 ms, before and after A16. The same fit called in the core takes 75 and 325 ms. A Stop ended the fit's process in about 1 ms, and `tests/test_fit_runner.py` checks for less than 0.1 s.
+
+The calc pool's workers fork from the same server, and a new pool, at startup or after a worker died, gives out no job until each worker has answered a warm-up. So a job's time limit starts on a running worker. A warm-up that has not answered after 10 s gets new workers, and logs `calc_warm_up_stuck`.
 
 Historical legacy timing before P19 for each fit of the 3 desktop examples, in all 11 working combinations of mode and scattering, from the default start values, 50 to 800 K, through a test client on an Apple Silicon Mac with 10 cores: median 1.0 s, at most 1.6 s, all `converged`. Set the limit after trying these on the VM, as a small VM will be slower.
 
