@@ -19,7 +19,8 @@ uv run python -m seeband_api
 | `SEEBAND_API_FIT_MAX_WAITING`         | `4`             | fits waiting, before a 429                                       |
 | `SEEBAND_API_FIT_TIMEOUT_S`           | `60`            | how long one fit can run                                         |
 | `SEEBAND_API_FIT_MAX_PER_CLIENT`      | `2`             | fits running or waiting for one client                           |
-| `SEEBAND_API_MAX_BODY_BYTES`          | `10000000`      | size of a request                                                |
+| `SEEBAND_API_MAX_BODY_BYTES`          | `10000000`      | size of a request to `/api/parse` and any route not below        |
+| `SEEBAND_API_MAX_JSON_BODY_BYTES`     | `1000000`       | size of a request to calc, fit, guess and band-diagram           |
 | `SEEBAND_API_MAX_POINTS`              | `2000`          | points of a quantity, or rows of a text                          |
 | `SEEBAND_API_CALC_PER_MINUTE`         | `600`           | `POST /api/calc` for one client                                  |
 | `SEEBAND_API_BAND_DIAGRAM_PER_MINUTE` | `600`           | `POST /api/band-diagram` for one client                          |
@@ -45,15 +46,18 @@ uv run python -m seeband_api
 
 Each limit answers in the usual error format. All the values are starting guesses, and should be checked on the VM and with real use.
 
-| Limit                                  | Answer                                           | Applies to                                 |
-| -------------------------------------- | ------------------------------------------------ | ------------------------------------------ |
-| Request rate of one client             | 429 `rate_limited`, with `Retry-After`           | the five `POST` routes, counted separately |
-| Size of a request                      | 413 `request_too_large`                          | every route                                |
-| Points of a quantity                   | 422 `too_many_points` in `details`, at the field | `/api/calc`, `/api/fit`, `/api/guess`      |
-| Rows of a text                         | 422 `too_many_rows` in `details`                 | `/api/parse`                               |
-| Fits running or waiting for one client | 429 `client_fit_limit`, with `Retry-After`       | `/api/fit`                                 |
+| Limit                                  | Answer                                           | Applies to                                                               |
+| -------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------ |
+| Request rate of one client             | 429 `rate_limited`, with `Retry-After`           | the five `POST` routes, counted separately                               |
+| Size of a request                      | 413 `request_too_large`                          | every route: 1 MB for calc, fit, guess and band-diagram, 10 MB otherwise |
+| Points of a quantity                   | 422 `too_many_points` in `details`, at the field | `/api/calc`, `/api/fit`, `/api/guess`                                    |
+| Rows of a text                         | 422 `too_many_rows` in `details`                 | `/api/parse`                                                             |
+| Fits running or waiting for one client | 429 `client_fit_limit`, with `Retry-After`       | `/api/fit`                                                               |
 
-These are fixed by the contract instead of a setting: 2000000 characters of `text`, 1000 for `points` and `rmse_points`, and in the core 10000 points of an interpolation grid. A wide fit range can give a grid over `max_points`, which `POST /api/fit` then refuses.
+These are fixed by the contract instead of a setting: 2000000 characters of `text`, 1000 for `points` and `rmse_points`, and in the core 10000 points of an interpolation grid. A wide fit range can give a grid over `max_points`, which `POST /api/fit` then refuses. Every list and dict of a request has a `maxItems` or `maxProperties` too: 100000 values in a list of points, which `max_points` cannot exceed, 64 parameters, one entry per quantity and 1000 columns in a mapping.
+
+- **A large invalid request costs little** (A13). Before, a 9.6 MB body with a wrong value in each place took 18 s, answered 349 MB and peaked the server at 5.8 GB, holding up `/api/health` for 5.6 s. Now a body over its route's limit is refused before it is read, a list stops at its first wrong value, a list or dict over its bound is refused before its items, and an error lists at most 50 `details`. A body of 0.99 MB with a wrong value everywhere answers 422 in about 0.02 s, under 1 KB, through a test client on one Mac. `tests/test_request_bounds.py` checks this, and that `/api/health` answers within 100 ms during such requests, through a real server whose memory grows by less than 50 MB.
+- **Parse counts rows before it reads them.** A text with more lines that start like a number than `max_points` gets `too_many_rows` without reaching the worker pool, as reading 300000 rows takes about a second.
 
 - **A 413 can arrive as a network error.** The server closes the connection without reading the rest. Node's `fetch` read the 413 for bodies of 11 and 40 MB, and got an `EPIPE` error at 200 MB. So a client should check a file's size before sending it. A browser was not tried.
 - **Why 2000 points:** the time of a fit grows with its points, and about 10000 reach the time limit of 60 s. Through a test client on an Apple Silicon Mac with 10 cores, DPB S and DPB S + ρ with `acPh` on points interpolated from the demo dataset took 7 and 11 s at 1000 points, and 29 and 49 s at 5000. The example files have at most a few dozen rows.
@@ -259,7 +263,7 @@ Routes and the app answer errors with this body:
 }
 ```
 
-Clients translate by `code`, because `message` is English text for developers. `details` is an empty list unless there is something to list. Routes report errors by raising `ApiError`.
+Clients translate by `code`, because `message` is English text for developers. `details` is an empty list unless there is something to list, and holds at most 50 problems; `details_omitted` then counts the rest, and is left out otherwise. A list of values reports only its first wrong one. Routes report errors by raising `ApiError`.
 
 Two kinds of answer do not use this format: uvicorn's plain text 400 for malformed HTTP, which never reaches the app, and the plain text 500 when a `BaseException` escapes.
 
