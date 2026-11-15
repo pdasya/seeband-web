@@ -247,9 +247,23 @@ def reuse_chemical_potential() -> Iterator[None]:
         _REUSED_ROOTS.reset(token)
 
 
-def _key_bytes(value: float | None) -> bytes:
-    # Bytes, not floats, so that -0.0 and 0.0 stay apart, as the solve can tell them apart.
-    return b"" if value is None else np.float64(value).tobytes()
+def _key_bytes(value: object) -> bytes | None:
+    """The value's type and bytes, as the solve gets it, or None if it cannot be a key.
+
+    Bytes, not floats, so that -0.0 and 0.0 stay apart, as the solve can tell them apart. The type
+    is part of the key, because the solve computes with the value as given: an np.float32 gives
+    other numbers than the float64 of the same value. Anything but a number is solved each time.
+    """
+    name = type(value).__qualname__.encode() + b":"
+    if value is None:
+        return name
+    if isinstance(value, np.number):
+        return name + value.tobytes()
+    if isinstance(value, float):
+        return name + np.float64(value).tobytes()
+    if isinstance(value, int):
+        return name + str(value).encode()
+    return None
 
 
 def _chemical_potential_diagnostics(
@@ -266,15 +280,15 @@ def _chemical_potential_diagnostics(
     reused = _REUSED_ROOTS.get()
     if reused is None:
         return _solve_chemical_potential(temp_array, mass, fermi_energy, gap, degen)
+    parameters: list[bytes] = []
+    for value in (mass, fermi_energy, gap, degen):
+        part = _key_bytes(value)
+        if part is None:
+            return _solve_chemical_potential(temp_array, mass, fermi_energy, gap, degen)
+        parameters.append(part)
+    # The solve converts the temperatures the same way first, so these bytes are what it gets.
     temperatures = np.asarray(temp_array, dtype=float)
-    key = (
-        str(temperatures.shape).encode(),
-        temperatures.tobytes(),
-        _key_bytes(mass),
-        _key_bytes(fermi_energy),
-        _key_bytes(gap),
-        _key_bytes(degen),
-    )
+    key = (str(temperatures.shape).encode(), temperatures.tobytes(), *parameters)
     found = reused.get(key)
     if found is None:
         found = _solve_chemical_potential(temp_array, mass, fermi_energy, gap, degen)
