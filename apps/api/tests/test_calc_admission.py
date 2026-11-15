@@ -71,46 +71,176 @@ def jobs() -> Any:
 
 
 def test_a_flooding_client_is_refused_fast_and_another_stays_fast() -> None:
+    """A client keeps sending heavy jobs for 3 s from many loops; another's light jobs still run
+    on the worker that the flooder cannot take."""
     pool = _pool()
 
-    async def flood_and_measure() -> tuple[list[Any], list[float], list[float]]:
+    async def flood_and_measure() -> tuple[int, int, list[float], list[float]]:
         refusal_times: list[float] = []
+        done = 0
+        stop = asyncio.Event()
 
-        async def heavy() -> Any:
-            started = time.perf_counter()
-            try:
-                return await pool.run_for("flooder", None, pool_functions.sleep_seconds, HEAVY_S)
-            except ApiError as error:
-                refusal_times.append(time.perf_counter() - started)
-                return error
+        async def heavy_loop() -> None:
+            nonlocal done
+            while not stop.is_set():
+                started = time.perf_counter()
+                try:
+                    await pool.run_for("flooder", None, pool_functions.sleep_seconds, HEAVY_S)
+                    done += 1
+                except ApiError:
+                    refusal_times.append(time.perf_counter() - started)
+                    await asyncio.sleep(0.01)
 
-        # 600 heavy calcs and 60 parses of the largest size, as one address could send them.
-        flood = asyncio.gather(*(heavy() for _ in range(660)))
-        await asyncio.sleep(0)
+        loops = [asyncio.ensure_future(heavy_loop()) for _ in range(20)]
+        await asyncio.sleep(0.2)
         latencies = []
-        for value in range(20):
+        deadline = time.monotonic() + 3
+        value = 0
+        while time.monotonic() < deadline:
             started = time.perf_counter()
             assert await pool.run_for("other", None, pool_functions.double, value) == 2 * value
             latencies.append(time.perf_counter() - started)
-        return await flood, latencies, refusal_times
+            value += 1
+            await asyncio.sleep(0.05)
+        stop.set()
+        await asyncio.gather(*loops)
+        return done, len(refusal_times), latencies, refusal_times
 
     try:
-        outcomes, latencies, refusal_times = asyncio.run(flood_and_measure())
+        done, refused, latencies, refusal_times = asyncio.run(flood_and_measure())
     finally:
         pool.close()
 
-    refused = [outcome for outcome in outcomes if isinstance(outcome, ApiError)]
-    assert len(refused) >= 650
-    assert {error.status_code for error in refused} <= {429, 503}
-    assert all(error.headers and "Retry-After" in error.headers for error in refused)
+    assert done > 0 and refused > 100
     # Refused at once, not after the run's time.
-    assert max(refusal_times) < 0.5
-    assert statistics.quantiles(latencies, n=20)[-1] < 1.0
+    assert statistics.quantiles(refusal_times, n=20)[-1] < 0.2
+    assert len(latencies) > 20
+    # The flooder runs on one worker at most, so the other is free for these.
+    assert statistics.quantiles(latencies, n=20)[-1] < 0.5
+
+
+def test_a_client_runs_one_job_fewer_than_the_workers_at_once() -> None:
+    pool = _pool(workers=3)
+    running: list[int] = []
+
+    async def heavy_burst() -> None:
+        jobs = [
+            asyncio.ensure_future(pool.run_for("a", None, pool_functions.sleep_seconds, 0.3))
+            for _ in range(4)
+        ]
+        await asyncio.sleep(0.1)
+        running.append(pool._running)
+        await asyncio.gather(*jobs)
+
+    try:
+        asyncio.run(heavy_burst())
+    finally:
+        pool.close()
+
+    assert running == [2]
+
+
+def test_free_slots_go_round_the_clients_in_turn() -> None:
+    pool = _pool(workers=1, max_running_per_client=1)
+    order: list[str] = []
+
+    async def queue_up() -> None:
+        async def job(client: str) -> None:
+            await pool.run_for(client, None, pool_functions.sleep_seconds, 0.05)
+            order.append(client)
+
+        jobs = [asyncio.ensure_future(job("a")) for _ in range(3)]
+        await asyncio.sleep(0.01)
+        jobs += [asyncio.ensure_future(job("b")) for _ in range(2)]
+        await asyncio.gather(*jobs)
+
+    try:
+        asyncio.run(queue_up())
+    finally:
+        pool.close()
+
+    # The first a ran at once; then b's jobs take every other turn, though a's came first.
+    assert order == ["a", "b", "a", "b", "a"]
+
+
+def test_a_worker_that_dies_after_its_504_does_not_break_the_pool() -> None:
+    """Nobody waits for a job after its 504, so the pool must heal itself when its worker dies."""
+    pool = _pool(workers=1, timeout_s=0.2)
+
+    async def die_after_504() -> list[Any]:
+        with pytest.raises(ApiError) as raised:
+            await pool.run(pool_functions.sleep_then_die, 0.3)
+        assert raised.value.status_code == 504
+        await asyncio.sleep(0.6)
+        pool._timeout_s = 30.0
+        answers: list[Any] = []
+        for _ in range(3):
+            try:
+                answers.append(await pool.run(pool_functions.double, 2))
+            except ApiError as error:
+                answers.append(error.code)
+        return answers
+
+    try:
+        answers = asyncio.run(die_after_504())
+    finally:
+        pool.close()
+
+    # At most one 503 while new workers start, then answers.
+    assert answers[-1] == 4
+    assert answers.count("calculation_unavailable") <= 1
+    assert pool._running == 0
+
+
+def test_a_stuck_job_has_its_workers_replaced() -> None:
+    pool = _pool(workers=1, timeout_s=0.2)
+
+    async def stuck_then_ask() -> float:
+        with pytest.raises(ApiError):
+            await pool.run(pool_functions.sleep_seconds, 30.0)
+        pool._timeout_s = 30.0
+        started = time.perf_counter()
+        await pool.run(pool_functions.double, 2)
+        return time.perf_counter() - started
+
+    try:
+        waited = asyncio.run(stuck_then_ask())
+    finally:
+        pool.close()
+
+    # Not the 30 s of the stuck job: its worker ended at twice the run time, and a new one started.
+    assert waited < 10
+
+
+def test_a_cancel_at_the_front_of_the_queue_leaks_no_slot() -> None:
+    pool = _pool(workers=1)
+
+    async def cancel_while_checking() -> None:
+        checking = asyncio.Event()
+
+        async def is_disconnected() -> bool:
+            checking.set()
+            await asyncio.sleep(10)
+            return False
+
+        job = asyncio.ensure_future(pool.run_for("c", is_disconnected, pool_functions.double, 1))
+        await checking.wait()
+        job.cancel()
+        await asyncio.gather(job, return_exceptions=True)
+        assert await pool.run(pool_functions.double, 3) == 6
+
+    try:
+        asyncio.run(cancel_while_checking())
+    finally:
+        pool.close()
+
+    assert pool._running == 0
+    assert pool._per_client == {}
 
 
 def test_aborted_heavy_jobs_do_not_hold_up_the_next_light_one(jobs: _Jobs) -> None:
-    # Room for all 12 to wait, so that each is dropped for leaving, not refused for a full queue.
-    pool = _pool(max_waiting=16)
+    # The default queue of 8, which the 12 overfill.
+    pool = _pool()
 
     async def abort_then_ask() -> float:
         # 12 clients send a heavy calc each, and leave right away.
@@ -120,7 +250,8 @@ def test_aborted_heavy_jobs_do_not_hold_up_the_next_light_one(jobs: _Jobs) -> No
             )
             for index in range(12)
         ]
-        await asyncio.sleep(0.3)
+        # Right after they left, while their jobs may still fill the queue for one poll.
+        await asyncio.sleep(0.06)
         started = time.perf_counter()
         assert await pool.run_for("next", None, pool_functions.double, 4) == 8
         elapsed = time.perf_counter() - started
@@ -135,7 +266,7 @@ def test_aborted_heavy_jobs_do_not_hold_up_the_next_light_one(jobs: _Jobs) -> No
     # Only the two that a worker took at once ran; the light job waited for no more than them.
     assert elapsed < 2 * 1.0
     abandoned = [entry for entry in jobs.fields if entry["abandoned"]]
-    assert len(abandoned) == 10
+    assert len(abandoned) >= 8
     ran = [entry for entry in jobs.fields if entry["job"] == "sleep_seconds" and "run_ms" in entry]
     assert len(ran) == 2
 
@@ -144,8 +275,9 @@ def test_a_timed_out_job_keeps_its_worker_slot_until_the_worker_is_done() -> Non
     pool = _pool(workers=1, timeout_s=0.2)
 
     async def time_out_then_ask() -> float:
+        # Past its time, but not so far past that it counts as stuck.
         with pytest.raises(ApiError) as raised:
-            await pool.run(pool_functions.sleep_seconds, 0.8)
+            await pool.run(pool_functions.sleep_seconds, 0.35)
         assert raised.value.status_code == 504
         started = time.perf_counter()
         await pool.run(pool_functions.double, 1)
@@ -157,7 +289,7 @@ def test_a_timed_out_job_keeps_its_worker_slot_until_the_worker_is_done() -> Non
         pool.close()
 
     # The light job waited for the worker, rather than queueing in the executor behind it.
-    assert 0.4 < waited < 2.0
+    assert 0.1 < waited < 1.5
     assert pool._running == 0
 
 
@@ -182,7 +314,9 @@ def test_a_full_queue_answers_503_and_a_busy_client_429() -> None:
 
     assert (per_client.status_code, per_client.code) == (429, "client_calc_limit")
     assert (full.status_code, full.code) == (503, "calculation_busy")
-    assert per_client.headers == full.headers == {"Retry-After": "1"}
+    for error in (per_client, full):
+        assert error.headers is not None
+        assert int(error.headers["Retry-After"]) >= 1
     assert pool._per_client == {}
 
 
@@ -203,7 +337,7 @@ def test_a_job_that_waits_too_long_answers_503_and_leaves_the_queue() -> None:
         pool.close()
 
     assert (error.status_code, error.code) == (503, "calculation_busy")
-    assert not pool._waiters
+    assert pool._waiting == 0
     assert pool._running == 0
 
 

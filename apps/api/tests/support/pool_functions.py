@@ -16,6 +16,11 @@ def sleep_seconds(seconds: float) -> float:
     return seconds
 
 
+def sleep_then_die(seconds: float) -> None:
+    time.sleep(seconds)
+    die()
+
+
 def die() -> None:
     os.kill(os.getpid(), signal.SIGKILL)
 

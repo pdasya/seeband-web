@@ -549,7 +549,7 @@ def test_half_sent_bodies_do_not_hold_a_real_server(tmp_path: Path) -> None:
     env = {
         "SEEBAND_API_PORT": str(port),
         "SEEBAND_API_CALC_WORKERS": "1",
-        "SEEBAND_API_BODY_TIMEOUT_S": "0.5",
+        "SEEBAND_API_BODY_IDLE_TIMEOUT_S": "0.5",
     }
     with running_server(command, port, tmp_path / "server.log", env) as client:
         connections = []
@@ -573,5 +573,147 @@ def test_half_sent_bodies_do_not_hold_a_real_server(tmp_path: Path) -> None:
             for connection in connections:
                 connection.close()
 
-    # Each was answered and closed within its time, rather than held open.
-    assert all(answer.startswith(b"HTTP/1.1 408") for answer in answers)
+    # Each was answered and closed within its time, rather than held open: the client's first
+    # calcs past their body's pause, the rest at once, as one client has only so many.
+    statuses = [answer[9:12] for answer in answers]
+    assert set(statuses) == {b"408", b"429"}
+    assert statuses.count(b"408") == Settings().calc_max_per_client
+
+
+def _middleware(app: Any, **options: Any) -> RequestLimitsMiddleware:
+    return RequestLimitsMiddleware(app, RateLimiter({}), 1000, **options)
+
+
+def _call(middleware: RequestLimitsMiddleware, receive: Receive, path: str = "/x") -> list[Message]:
+    sent: list[Message] = []
+
+    async def send(message: Message) -> None:
+        sent.append(message)
+
+    scope = {
+        "type": "http",
+        "method": "POST",
+        "path": path,
+        "headers": [],
+        "client": ("1.2.3.4", 1),
+    }
+    asyncio.run(middleware(scope, receive, send))
+    return sent
+
+
+async def _echo_body(_: Scope, receive: Receive, send: Send) -> None:
+    message = await receive()
+    await Response(message["body"])({"type": "http"}, receive, send)
+
+
+def test_a_slow_but_steady_body_gets_through() -> None:
+    """A large file on a slow link arrives in pieces, none far apart, over longer than one pause."""
+    pieces = [b"a", b"b", b"c", b"d", b"e"]
+
+    async def steady() -> Message:
+        await asyncio.sleep(0.08)
+        piece = pieces.pop(0)
+        return {"type": "http.request", "body": piece, "more_body": bool(pieces)}
+
+    middleware = _middleware(_echo_body, body_timeout_s=5, body_idle_timeout_s=0.2)
+    sent = _call(middleware, steady)
+
+    assert sent[0]["status"] == 200
+    assert sent[1]["body"] == b"abcde"
+
+
+def test_a_body_still_arriving_past_its_whole_time_is_answered_408() -> None:
+    async def endless() -> Message:
+        await asyncio.sleep(0.05)
+        return {"type": "http.request", "body": b"a", "more_body": True}
+
+    middleware = _middleware(_echo_body, body_timeout_s=0.3, body_idle_timeout_s=0.2)
+    sent = _call(middleware, endless)
+
+    assert sent[0]["status"] == 408
+
+
+def test_too_many_requests_at_once_get_a_fast_json_503_but_health_does_not() -> None:
+    entered = asyncio.Event()
+    release = asyncio.Event()
+
+    async def holding(_: Scope, receive: Receive, send: Send) -> None:
+        await receive()
+        entered.set()
+        await release.wait()
+        await Response("ok")({"type": "http"}, receive, send)
+
+    middleware = _middleware(holding, max_concurrent_requests=1)
+
+    async def body() -> Message:
+        return {"type": "http.request", "body": b"{}"}
+
+    async def run() -> tuple[list[Message], list[Message], list[Message]]:
+        answers: list[list[Message]] = [[], [], []]
+
+        async def call(index: int, path: str) -> None:
+            async def send(message: Message) -> None:
+                answers[index].append(message)
+
+            scope = {"type": "http", "method": "POST", "path": path, "headers": []}
+            await middleware(scope, body, send)
+
+        first = asyncio.ensure_future(call(0, "/api/calc"))
+        await entered.wait()
+        await call(1, "/api/calc")
+        health = asyncio.ensure_future(call(2, "/api/health"))
+        await asyncio.sleep(0.05)
+        release.set()
+        await asyncio.gather(first, health)
+        return answers[0], answers[1], answers[2]
+
+    held, refused, health = asyncio.run(run())
+
+    assert held[0]["status"] == 200
+    assert refused[0]["status"] == 503
+    assert (b"retry-after", b"1") in refused[0]["headers"]
+    assert b'"code": "server_busy"' in refused[1]["body"]
+    # Health passed though the server was full.
+    assert health[0]["status"] == 200
+
+
+def test_a_client_over_its_calculations_is_refused_before_its_body_is_read() -> None:
+    reads = 0
+    gate = asyncio.Event()
+
+    async def held(_: Scope, receive: Receive, send: Send) -> None:
+        await receive()
+        await gate.wait()
+        await Response("ok")({"type": "http"}, receive, send)
+
+    async def counted_body() -> Message:
+        nonlocal reads
+        reads += 1
+        return {"type": "http.request", "body": b"{}"}
+
+    middleware = _middleware(held, per_client_paths=frozenset({"/api/calc"}), max_per_client=1)
+
+    async def run() -> list[Message]:
+        refused: list[Message] = []
+
+        async def send_to(target: list[Message]) -> Any:
+            async def send(message: Message) -> None:
+                target.append(message)
+
+            return send
+
+        scope = {"type": "http", "method": "POST", "path": "/api/calc", "headers": []}
+        scope["client"] = ("1.2.3.4", 1)
+        first = asyncio.ensure_future(middleware(scope, counted_body, await send_to([])))
+        await asyncio.sleep(0.05)
+        await middleware(dict(scope), counted_body, await send_to(refused))
+        gate.set()
+        await first
+        return refused
+
+    refused = asyncio.run(run())
+
+    assert refused[0]["status"] == 429
+    assert b"client_calc_limit" in refused[1]["body"]
+    # Only the admitted request's body was read.
+    assert reads == 1
