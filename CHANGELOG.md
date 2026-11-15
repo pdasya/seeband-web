@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Reuse certified chemical potentials for exact repeated physical inputs within
+  a verified fit. Preserve prediction budgets and fresh terminal audits. Avoid
+  duplicate demo/API fits in tests while retaining their assertions; run golden,
+  core and API CI test groups independently behind the required Python gate.
+
 - Allow 180 seconds by default for API fits, configurable as before, after
   verified demo fitting exceeded 60 seconds on hosted Linux. Concurrency and
   input limits remain in force; numerical certification criteria are unchanged.

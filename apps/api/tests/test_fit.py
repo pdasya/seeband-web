@@ -112,9 +112,20 @@ def test_fit_result_identifies_the_core_version(client: TestClient) -> None:
 def test_result_equals_the_core(
     client: TestClient, model_id: str, fit_mode_id: str, scattering: str | None
 ) -> None:
-    expected = _core_fit(model_id, fit_mode_id, scattering=scattering)
-
-    body = _result(client, _body(model_id, fit_mode_id, scattering=scattering))
+    updates: list[IterationUpdate] = []
+    mode = _mode(model_id, fit_mode_id)
+    expected = registry.get(model_id).fit(
+        FitRequest(
+            fit_mode_id,
+            {quantity: DEMO[quantity] for quantity in mode.quantities},
+            default_start(mode),
+            scattering=scattering,
+        ),
+        updates.append,
+    )
+    events = _events(client, _body(model_id, fit_mode_id, scattering=scattering))
+    assert events[-1]["type"] == "done", events[-1]
+    body = events[-1]["result"]
 
     assert body["parameters"] == expected.parameters
     assert body["status"] == expected.status
@@ -122,6 +133,18 @@ def test_result_equals_the_core(
     assert body["parameter_errors"] == expected.parameter_errors
     assert body["at_bounds"] == list(expected.at_bounds)
     assert body["known_issues"] == list(expected.known_issues)
+
+    if mode.iterative:
+        assert updates
+        assert events[0] == {"type": "started"}
+        assert events[1:-1] == [
+            {
+                "type": "iteration",
+                "iteration": update.iteration,
+                "parameters": dict(update.parameters),
+            }
+            for update in updates
+        ]
 
 
 @pytest.mark.parametrize(
@@ -140,36 +163,6 @@ def test_single_pass_fit_sends_no_iteration_counter(
     assert [event["type"] for event in events] == ["started", "done"]
     assert "iterations" not in events[-1]["result"]
     assert "message" not in events[-1]["result"]
-
-
-@pytest.mark.parametrize(
-    ("model_id", "fit_mode_id", "scattering"),
-    [mode for mode in MODES if _mode(mode[0], mode[1]).iterative],
-)
-def test_iterative_fit_sends_each_iteration_of_the_core(
-    client: TestClient, model_id: str, fit_mode_id: str, scattering: str | None
-) -> None:
-    updates: list[IterationUpdate] = []
-    mode = _mode(model_id, fit_mode_id)
-    registry.get(model_id).fit(
-        FitRequest(
-            fit_mode_id,
-            {quantity: DEMO[quantity] for quantity in mode.quantities},
-            default_start(mode),
-            scattering=scattering,
-        ),
-        updates.append,
-    )
-
-    events = _events(client, _body(model_id, fit_mode_id, scattering=scattering))
-
-    assert updates
-    assert events[0] == {"type": "started"}
-    assert events[1:-1] == [
-        {"type": "iteration", "iteration": update.iteration, "parameters": dict(update.parameters)}
-        for update in updates
-    ]
-    assert events[-1]["type"] == "done"
 
 
 def test_refused_model_uses_the_format_of_this_route(client: TestClient) -> None:

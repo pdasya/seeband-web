@@ -5,8 +5,10 @@ are scaled by the historical stage factors, never by sample-dependent weights.
 Free inverse amplitudes are eliminated by bounded linear least squares.
 """
 
+from collections import OrderedDict
 from collections.abc import Callable, Mapping
 from functools import lru_cache
+from typing import TypedDict
 
 import numpy as np
 from scipy.optimize import least_squares
@@ -52,6 +54,53 @@ class _UnattainedAmplitude(ValueError):
     """The finite user interval has no finite least-squares minimizer."""
 
 
+class _RootArguments(TypedDict, total=False):
+    potentials: np.ndarray
+
+
+class _CheckedRootProvider:
+    """Fit-local exact reuse of successful P8 roots, never of failures.
+
+    At most 32 arrays of 10000 points; keys and roots together use about 5 MB.
+    Scalar types, signed zero, temperature dtype and iteration order stay distinct.
+    """
+
+    def __init__(self) -> None:
+        self._roots: OrderedDict[tuple[object, ...], np.ndarray] = OrderedDict()
+
+    def __call__(
+        self,
+        model: str,
+        t: np.ndarray,
+        mass: float,
+        ef: float,
+        gap: float | None = None,
+        degen: float = 1.0,
+    ) -> np.ndarray:
+        def solve() -> np.ndarray:
+            if model == "spb":
+                return mm.spb_chemPot_vs_temp(t, mass, ef)
+            assert gap is not None
+            return mm.dpb_chemPot_vs_temp(t, gap, mass, ef, degen)
+
+        if t.size > 10000:
+            return solve()
+        scalars = tuple(
+            (type(value), np.asarray(value).dtype.str, np.asarray(value).tobytes())
+            for value in (mass, ef, gap, degen)
+            if value is not None
+        )
+        key = (model, t.shape, t.dtype.str, t.tobytes(), scalars)
+        if key not in self._roots:
+            roots = solve().copy()
+            roots.setflags(write=False)
+            self._roots[key] = roots
+            if len(self._roots) > 32:
+                self._roots.popitem(last=False)
+        self._roots.move_to_end(key)
+        return self._roots[key].copy()
+
+
 def _evaluate_quantity(
     q: Quantity,
     t: np.ndarray,
@@ -60,6 +109,7 @@ def _evaluate_quantity(
     scattering: str | None,
     degen: float,
     check_finite: bool = True,
+    root_provider: _CheckedRootProvider | None = None,
 ) -> np.ndarray:
     dpb = fit_mode.startswith("dpb")
     ef = p["fermi_energy"]
@@ -67,36 +117,51 @@ def _evaluate_quantity(
     a = p.get("F" if sc == "dis" else "A", 1.0)
     b = p.get("G" if sc == "dis" else "B", 1.0)
     c, d = 300.0 * p.get("C", 0.0), 300.0 * p.get("D", 0.0)
+    roots: _RootArguments
     with np.errstate(all="ignore"):
         if dpb:
             r, gap = p["m_eff"] / degen, p["band_gap"]
+            roots = (
+                {}
+                if root_provider is None
+                else {"potentials": root_provider("dpb", t, r, ef, gap, degen)}
+            )
             if q == "seebeck":
                 if fit_mode == "dpb_s":
-                    out = mm.dpb_see_vs_temp(t, r, gap, ef, degen)
+                    out = mm.dpb_see_vs_temp(t, r, gap, ef, degen, **roots)
                 elif sc == "acPhDis":
-                    out = mm.dpb_see_vs_temp_double_scatter(t, r, gap, ef, degen, b, c, d)
+                    out = mm.dpb_see_vs_temp_double_scatter(t, r, gap, ef, degen, b, c, d, **roots)
                 else:
-                    out = mm.dpb_see_vs_temp_single_scatter(t, r, gap, ef, degen, b)
+                    out = mm.dpb_see_vs_temp_single_scatter(t, r, gap, ef, degen, b, **roots)
             else:
-                f1, f2 = mm.dpb_fermiInt_vs_temp(0, t, r, gap, ef, degen)
+                f1, f2 = mm.dpb_fermiInt_vs_temp(0, t, r, gap, ef, degen, **roots)
                 suffix = {"acPh": "acPh", "dis": "dis", "acPhDis": "acPh_dis"}[str(sc)]
                 rho_args = [t, f1, f2, a, b] + ([c, d] if sc == "acPhDis" else []) + [r]
                 rho = getattr(mm, "dpb_rho_vs_temp_" + suffix)(*rho_args)
                 if q == "resistivity":
                     out = rho
                 else:
-                    fm1, fm2 = mm.dpb_fermiInt_vs_temp(-0.5, t, r, gap, ef, degen)
+                    fm1, fm2 = mm.dpb_fermiInt_vs_temp(-0.5, t, r, gap, ef, degen, **roots)
                     args = [t, rho, fm1, fm2, r, degen, a, b]
                     args += ([c, d] if sc == "acPhDis" else []) + [p["m1"] ** 1.5]
                     out = getattr(mm, "dpb_hall_vs_temp_" + suffix)(*args)
         else:
             mass = p["band_mass"]
+            root_mass = mass if q == "seebeck" else np.sign(mass)
+            root_t = np.asarray(t, dtype=float) if q == "hall" else t
+            roots = (
+                {}
+                if root_provider is None
+                else {"potentials": root_provider("spb", root_t, root_mass, ef)}
+            )
             if q == "seebeck":
-                out = mm.spb_see_vs_temp(t, ef, mass)
+                out = mm.spb_see_vs_temp(t, ef, mass, **roots)
             elif q == "hall":
-                out = mm.spb_hall_vs_temp(t, ef, np.sign(mass), -np.sign(mass) * abs(mass) ** 1.5)
+                out = mm.spb_hall_vs_temp(
+                    t, ef, np.sign(mass), -np.sign(mass) * abs(mass) ** 1.5, **roots
+                )
             else:
-                f = mm.spb_fermiInt_vs_temp(0, t, np.sign(mass), ef)
+                f = mm.spb_fermiInt_vs_temp(0, t, np.sign(mass), ef, **roots)
                 if sc == "acPhDis":
                     out = mm.spb_rho_vs_temp_acPh_dis(t, f, a, c)
                 else:
@@ -261,6 +326,7 @@ class _Engine:
         # Per-fit cache: at most 32 curves of at most 10000 points (~2.6 MB).
         # Its temperatures, scattering, branch and degeneracy are fixed by this engine.
         self._cached_prediction = lru_cache(maxsize=32)(self._uncached_prediction)
+        self._root_provider: _CheckedRootProvider | None = _CheckedRootProvider()
         if not 0 < self.n < np.inf:
             raise ValueError("Band degeneracies must be positive")
         for name in self.fitted:
@@ -303,6 +369,7 @@ class _Engine:
             self.mode.id,
             self.request.scattering,
             self.n,
+            root_provider=self._root_provider,
         ).copy()
         values.setflags(write=False)
         return values

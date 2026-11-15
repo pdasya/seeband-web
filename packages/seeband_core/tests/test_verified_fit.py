@@ -356,7 +356,7 @@ def test_invalid_density_start_fails_without_fallback():
 
 
 def test_verified_derivative_reverses_real_density_domain_stencil(monkeypatch):
-    def certified_model(t, r, gap, ef, n):
+    def certified_model(t, r, gap, ef, n, *, potentials=None):
         mm.dpb_chemPot_vs_temp(t, gap, r, ef, n)
         return np.full(t.shape, ef * 1e-6)
 
@@ -589,7 +589,9 @@ def test_budget_optimality_is_recomputed_at_returned_vector(monkeypatch):
 
     # A linear physical-model stand-in has exact normalized projected gradient 1
     # at this endpoint. The budget interrupts the first stage before any audit.
-    monkeypatch.setattr(mm, "spb_see_vs_temp", lambda t, ef, mass: np.full(t.shape, ef * 1e-6))
+    monkeypatch.setattr(
+        mm, "spb_see_vs_temp", lambda t, ef, mass, *, potentials=None: np.full(t.shape, ef * 1e-6)
+    )
     monkeypatch.setattr(verified_fit, "_MAX_EVALUATIONS", 5)
     t = np.array([100.0, 200.0, 500.0])
     result = SpbModel().fit(

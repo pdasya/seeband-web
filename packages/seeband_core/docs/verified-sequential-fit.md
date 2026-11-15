@@ -141,6 +141,36 @@ Linux. The API now defaults to a configurable 180-second fit deadline, retaining
 concurrency and input-size limits. This is an execution budget, not a relaxation
 of numerical certification; sufficiently difficult requests can still time out.
 
+## Exact work reuse and test runtime
+
+A fit-local cache reuses successful P8 chemical-potential arrays only for exact
+repeated physical inputs. Its key includes model, temperature shape/dtype/order
+and values, and the actual mass, gap, Fermi energy and degeneracy arguments,
+including their scalar representations. SPB preserves its existing full-mass
+versus mass-sign calls. Scattering and transport amplitudes do not change the
+density balance. At most 32 arrays of 10,000 points are stored; callers receive
+copies, failures are not cached, and larger grids bypass storage.
+
+This cuts inner root work without changing prediction-evaluation counts,
+objectives, bounds, derivative checks or iteration budgets. Terminal diagnostics
+independently recompute roots without this cache. Optional kernel arguments
+default to the original calculation path, preserving legacy calls.
+
+An instrumented fixed-band DPB rho-stage profile kept 106 prediction evaluations while reducing
+identical root-array solves from 106 to one: approximately 0.637 to 0.035 seconds
+on the recorded local environment. That is a stage-specific result. A complete
+SPB fit was almost unchanged (0.930 to 0.910 seconds, identical result); a heavier
+DPB core/API test decreased from about 94 to 77 seconds. These timings do not
+guarantee the same speedup on every model or machine.
+
+Demo tests share deterministic exact-case fits with deep-copy isolation.
+API result and iteration-event assertions inspect one actual core/API pair per
+case rather than executing that pair twice. No HTTP response cache bypasses
+validation. CI runs golden, remaining core and API tests on independent runners;
+the required `Python` gate succeeds only after every test group, static check and
+package build succeeds. Verbose test names, slow-test durations and diagnostic
+stack dumps expose long-running cases without relaxing their assertions.
+
 ## Sources
 
 The exact conditional amplitude solution follows directly from the stated
