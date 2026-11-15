@@ -519,6 +519,16 @@ def assert_named_fit_case(
             assert lower <= value <= upper
     elif identifier.startswith("01_Fe2VAl09Si01-") and mode == "d1":
         assert_close(values, expected, D1_01_TOLERANCE)
+        if abs(list(flat(expected))[0]) < COLLAPSED_M_EFF:
+            # P13's branch-constrained endpoint is collapsed on both Mac and
+            # Linux. Keep every numeric comparison above and require its flags.
+            assert 0 < result.parameters["m_eff"] < COLLAPSED_M_EFF
+            assert "collapsed_m_eff" in result.known_issues
+            assert "hall_dis_no_reference" in result.known_issues
+            assert "m_eff" in result.at_bounds
+            bounds = bounds_received(call["function"], call["args"])
+            for value, (lower, upper) in zip(values, bounds, strict=True):
+                assert lower <= value <= upper
     elif identifier.startswith("02_SiP-") and mode == "spb_s":
         assert_close(values, expected, SPB_S_02_TOLERANCE)
     else:
@@ -533,10 +543,16 @@ def assert_fit_iterations(
     result: FitResult,
     expected: int | None,
 ) -> None:
-    if (
-        result.status == "converged"
-        and identifier.startswith("02_SiP-")
-        and (mode, scattering) in UNSTABLE_02
+    if result.status == "converged" and (
+        (identifier.startswith("02_SiP-") and (mode, scattering) in UNSTABLE_02)
+        or (
+            identifier.startswith("01_Fe2VAl09Si01-")
+            and mode == "d1"
+            and scattering == "dis"
+            and 0 < result.parameters.get("m_eff", math.inf) < COLLAPSED_M_EFF
+            and "collapsed_m_eff" in result.known_issues
+            and "m_eff" in result.at_bounds
+        )
     ):
         fit_mode = "dpb_s_rho_rh" if mode == "d1" else mode
         description = default_registry.get("dpb").describe().fit_mode(fit_mode)
@@ -830,4 +846,50 @@ def test_stable_iterations_remain_exact_and_noniterative_d19_remains_none() -> N
             None,
             FitResult({}, "converged", iterations=1),
             None,
+        )
+
+
+@pytest.mark.parametrize("iterations", [0, 1, 4, 5, 20, 21, 1000, None, 1.5])
+def test_collapsed_d1_iterations_respect_the_existing_budget(iterations: Any) -> None:
+    result = FitResult(
+        {"m_eff": 1e-10},
+        "converged",
+        iterations=iterations,
+        at_bounds=("m_eff",),
+        known_issues=("collapsed_m_eff", "hall_dis_no_reference"),
+    )
+    budget = default_registry.get("dpb").describe().fit_mode("dpb_s_rho_rh").max_iterations
+    assert budget is not None
+    if type(iterations) is int and 1 <= iterations <= budget:
+        assert_fit_iterations("01_Fe2VAl09Si01-d1-dis-thread", "d1", "dis", result, 4)
+    else:
+        with pytest.raises(AssertionError):
+            assert_fit_iterations("01_Fe2VAl09Si01-d1-dis-thread", "d1", "dis", result, 4)
+
+
+@pytest.mark.parametrize("missing", ["collapse", "reference", "bound"])
+def test_collapsed_d1_requires_its_diagnostics(missing: str) -> None:
+    identifier = "01_Fe2VAl09Si01-d1-dis-thread-dpb_see_res_hall_fit"
+    call = CALLS[CALL_IDS.index(identifier)][-1]
+    expected = p13_results()[p8_key(identifier, call)]
+    result = FitResult(
+        expected["parameters"],
+        "converged",
+        iterations=5,
+        at_bounds=() if missing == "bound" else ("m_eff",),
+        known_issues=tuple(
+            flag
+            for flag in ("collapsed_m_eff", "hall_dis_no_reference")
+            if flag
+            != {"collapse": "collapsed_m_eff", "reference": "hall_dis_no_reference"}.get(missing)
+        ),
+    )
+    with pytest.raises(AssertionError):
+        assert_named_fit_case(
+            identifier,
+            "d1",
+            "dis",
+            call,
+            result,
+            [expected["parameters"][name] for name in FIT_RESULT_NAMES[call["function"]]],
         )

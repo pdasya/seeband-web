@@ -235,3 +235,13 @@ See [the P13 equations and independent physical limits](dpb-positive-weights.md)
 ```sh
 PYTHONPATH=packages/seeband_core/src uv run python packages/seeband_core/scripts/capture_p13_results.py
 ```
+
+The already named unreliable example-01 auxiliary `d1` disorder fit reaches a
+collapsed positive mass near 1e-10 after P13. The Mac capture takes four outer
+iterations; Linux CI takes five. Its iteration regression checks the existing
+Hall-mode budget, not exact platform-specific work counts. All existing
+parameter comparisons (including the D1 relative tolerance 1e-3), exact
+status/message checks and prior-fixture hashes remain. Additional checks
+require the collapse/missing-reference flags, the active mass bound and
+compliance with the recorded input bounds. This does not establish a physical
+fit or resolve P19.
