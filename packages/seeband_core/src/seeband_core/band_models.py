@@ -531,6 +531,16 @@ class SpbModel(_BandModel):
     def fit(self, request: FitRequest, on_iteration: IterationCallback | None = None) -> FitResult:
         fit_mode, scattering = self._mode_and_scattering(request.fit_mode, request.scattering)
         self._check_fit(request, fit_mode)
+        if request.algorithm == "verified-sequential-v2":
+            from seeband_core.verified_fit import fit_verified
+
+            _values(request.start, (spec.name for spec in fit_mode.parameters))
+            _measurement_arrays(request.measurements, fit_mode.quantities)
+            if fit_mode.degeneracy is not None:
+                _degeneracy_ratio(request)
+            return fit_verified(request, fit_mode, on_iteration)
+        if request.algorithm != "legacy-sequential-v1":
+            raise ValueError("Unknown fitting algorithm")
         start = request.start
         data = _measurement_arrays(request.measurements, fit_mode.quantities)
         fermi: list[Any] = [
@@ -656,6 +666,16 @@ class DpbModel(_BandModel):
     def fit(self, request: FitRequest, on_iteration: IterationCallback | None = None) -> FitResult:
         fit_mode, scattering = self._mode_and_scattering(request.fit_mode, request.scattering)
         self._check_fit(request, fit_mode)
+        if request.algorithm == "verified-sequential-v2":
+            from seeband_core.verified_fit import fit_verified
+
+            _values(request.start, (spec.name for spec in fit_mode.parameters))
+            _measurement_arrays(request.measurements, fit_mode.quantities)
+            if fit_mode.degeneracy is not None:
+                _degeneracy_ratio(request)
+            return fit_verified(request, fit_mode, on_iteration)
+        if request.algorithm != "legacy-sequential-v1":
+            raise ValueError("Unknown fitting algorithm")
         start = request.start
         data = _measurement_arrays(request.measurements, fit_mode.quantities)
         degeneracy = _degeneracy_ratio(request)

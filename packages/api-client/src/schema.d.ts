@@ -327,7 +327,7 @@ export interface components {
          *     by name with its unit: `electrical_conductivity_s_per_m` is 1/rho, with null for a rho of 0 or
          *     below. They use no model, so they go with the data the request sent, interpolated or not.
          * @example {
-         *       "core_version": "0.1.4",
+         *       "core_version": "0.2.0",
          *       "curves": {
          *         "resistivity_ohm_m": [
          *           0.000036627,
@@ -360,7 +360,7 @@ export interface components {
          *       "rmse": {
          *         "seebeck": {
          *           "unit": "uV/K",
-         *           "value": 3.385
+         *           "value": 3.395
          *         }
          *       },
          *       "temperature_k": [
@@ -378,7 +378,7 @@ export interface components {
             /**
              * Core Version
              * @description Core software version for provenance, not certification.
-             * @default 0.1.4
+             * @default 0.2.0
              */
             core_version?: string;
             /** Curves */
@@ -668,6 +668,56 @@ export interface components {
             measurements: {
                 [key: string]: components["schemas"]["MeasurementInput"];
             };
+            /**
+             * Algorithm
+             * @default verified-sequential-v2
+             * @enum {string}
+             */
+            algorithm?: "verified-sequential-v2" | "legacy-sequential-v1";
+        };
+        /**
+         * FitDiagnostics
+         * @description Numerical diagnostics, separate from physical adequacy and uncertainty.
+         *
+         *     `optimality` is the normalized projected gradient at the returned parameters,
+         *     in scaled stage coordinates. Conditional objective-reduction audits also have
+         *     to pass before `stage_consistent` can be true.
+         */
+        FitDiagnostics: {
+            /** Termination */
+            termination: string;
+            /** Stage Consistent */
+            stage_consistent: boolean;
+            /** Objectives */
+            objectives: {
+                [key: string]: number;
+            };
+            /** Optimality */
+            optimality: {
+                [key: string]: number;
+            };
+            /** Evaluations */
+            evaluations: number;
+            /** Recoveries */
+            recoveries: number;
+            /** Residuals */
+            residuals: {
+                [key: string]: components["schemas"]["ResidualDiagnostics"];
+            };
+            /** Unidentified */
+            unidentified: string[];
+            /**
+             * Uncertainty
+             * @default not_assessed
+             * @constant
+             */
+            uncertainty?: "not_assessed";
+            /**
+             * Residual Adequacy
+             * @default not_assessed
+             * @constant
+             */
+            residual_adequacy?: "not_assessed";
         };
         /**
          * FitDone
@@ -761,12 +811,15 @@ export interface components {
          * FitResponse
          * @description The outcome of a fit, in core units.
          *
-         *     `converged` means that the fit ended normally, not that the result is sound. `iteration_limit`
+         *     `converged` means numerical termination, not physical adequacy or identification.
+         *     `stalled` is a usable endpoint that did not converge. `iteration_limit`
          *     is not a converged result. `failed` returns the start values, with fixed text in `message`.
          *     `iterations` is left out for a single-pass mode. A value that is not finite is null.
          *
-         *     `parameter_errors` holds standard errors from the last solver run of each stage, holding other
-         *     stages fixed, so in a staged fit they can be far too small, and are not plain uncertainties.
+         *     In the legacy method, `parameter_errors` holds standard errors from the last solver run of
+         *     each stage, holding other stages fixed. They can be far too small in a staged fit. The verified
+         *     method leaves errors empty and reports uncertainty as `not_assessed`; it does not manufacture
+         *     zero errors for profiled or unidentified parameters.
          *     `at_bounds` names fitted parameters that ended at a bound, which may be what set them.
          *     `known_issues` names known errors that apply, as in `GET /api/models`. `held` names the
          *     parameters the request held, which come back as sent, with no error and no at-bound mark; the
@@ -774,7 +827,7 @@ export interface components {
          *     start would. Holding m1, or the SPB Hall mass, skips the R_H stage.
          * @example {
          *       "at_bounds": [],
-         *       "core_version": "0.1.4",
+         *       "core_version": "0.2.0",
          *       "held": [],
          *       "known_issues": [],
          *       "parameter_errors": {
@@ -798,14 +851,14 @@ export interface components {
             /**
              * Core Version
              * @description Core software version for provenance, not certification.
-             * @default 0.1.4
+             * @default 0.2.0
              */
             core_version?: string;
             /**
              * Status
              * @enum {string}
              */
-            status: "converged" | "iteration_limit" | "stopped" | "failed";
+            status: "converged" | "iteration_limit" | "stopped" | "failed" | "stalled";
             /** Iterations */
             iterations?: number | null;
             /** Message */
@@ -820,6 +873,13 @@ export interface components {
             known_issues: string[];
             /** Held */
             held: string[];
+            /**
+             * Algorithm
+             * @default legacy-sequential-v1
+             * @enum {string}
+             */
+            algorithm?: "verified-sequential-v2" | "legacy-sequential-v1";
+            diagnostics?: components["schemas"]["FitDiagnostics"] | null;
         };
         /**
          * FitStageResponse
@@ -978,7 +1038,7 @@ export interface components {
         /**
          * HealthResponse
          * @example {
-         *       "core_version": "0.1.4",
+         *       "core_version": "0.2.0",
          *       "status": "ok",
          *       "version": "1.0.0"
          *     }
@@ -994,7 +1054,7 @@ export interface components {
             /**
              * Core Version
              * @description Core software version for provenance, not certification.
-             * @default 0.1.4
+             * @default 0.2.0
              */
             core_version?: string;
         };
@@ -1324,6 +1384,15 @@ export interface components {
             band_gap_k: number;
             /** Fermi Energy K */
             fermi_energy_k: number;
+        };
+        /** ResidualDiagnostics */
+        ResidualDiagnostics: {
+            /** Rmse */
+            rmse: number;
+            /** Relative L2 */
+            relative_l2: number | null;
+            /** Unit */
+            unit: string;
         };
         /**
          * RmseResponse

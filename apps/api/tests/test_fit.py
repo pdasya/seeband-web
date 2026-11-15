@@ -112,9 +112,20 @@ def test_fit_result_identifies_the_core_version(client: TestClient) -> None:
 def test_result_equals_the_core(
     client: TestClient, model_id: str, fit_mode_id: str, scattering: str | None
 ) -> None:
-    expected = _core_fit(model_id, fit_mode_id, scattering=scattering)
-
-    body = _result(client, _body(model_id, fit_mode_id, scattering=scattering))
+    updates: list[IterationUpdate] = []
+    mode = _mode(model_id, fit_mode_id)
+    expected = registry.get(model_id).fit(
+        FitRequest(
+            fit_mode_id,
+            {quantity: DEMO[quantity] for quantity in mode.quantities},
+            default_start(mode),
+            scattering=scattering,
+        ),
+        updates.append,
+    )
+    events = _events(client, _body(model_id, fit_mode_id, scattering=scattering))
+    assert events[-1]["type"] == "done", events[-1]
+    body = events[-1]["result"]
 
     assert body["parameters"] == expected.parameters
     assert body["status"] == expected.status
@@ -122,6 +133,18 @@ def test_result_equals_the_core(
     assert body["parameter_errors"] == expected.parameter_errors
     assert body["at_bounds"] == list(expected.at_bounds)
     assert body["known_issues"] == list(expected.known_issues)
+
+    if mode.iterative:
+        assert updates
+        assert events[0] == {"type": "started"}
+        assert events[1:-1] == [
+            {
+                "type": "iteration",
+                "iteration": update.iteration,
+                "parameters": dict(update.parameters),
+            }
+            for update in updates
+        ]
 
 
 @pytest.mark.parametrize(
@@ -140,36 +163,6 @@ def test_single_pass_fit_sends_no_iteration_counter(
     assert [event["type"] for event in events] == ["started", "done"]
     assert "iterations" not in events[-1]["result"]
     assert "message" not in events[-1]["result"]
-
-
-@pytest.mark.parametrize(
-    ("model_id", "fit_mode_id", "scattering"),
-    [mode for mode in MODES if _mode(mode[0], mode[1]).iterative],
-)
-def test_iterative_fit_sends_each_iteration_of_the_core(
-    client: TestClient, model_id: str, fit_mode_id: str, scattering: str | None
-) -> None:
-    updates: list[IterationUpdate] = []
-    mode = _mode(model_id, fit_mode_id)
-    registry.get(model_id).fit(
-        FitRequest(
-            fit_mode_id,
-            {quantity: DEMO[quantity] for quantity in mode.quantities},
-            default_start(mode),
-            scattering=scattering,
-        ),
-        updates.append,
-    )
-
-    events = _events(client, _body(model_id, fit_mode_id, scattering=scattering))
-
-    assert updates
-    assert events[0] == {"type": "started"}
-    assert events[1:-1] == [
-        {"type": "iteration", "iteration": update.iteration, "parameters": dict(update.parameters)}
-        for update in updates
-    ]
-    assert events[-1]["type"] == "done"
 
 
 def test_refused_model_uses_the_format_of_this_route(client: TestClient) -> None:
@@ -261,7 +254,8 @@ def test_degeneracies_reach_the_fit(client: TestClient) -> None:
     )
 
     assert body["parameters"] == expected.parameters
-    assert "dpb_loop_degeneracy" in body["known_issues"]
+    assert body["algorithm"] == "verified-sequential-v2"
+    assert "dpb_loop_degeneracy" not in body["known_issues"]
 
 
 def test_fractional_degeneracies_reach_the_fit(client: TestClient) -> None:
@@ -582,9 +576,93 @@ def test_example_request_is_a_fit_the_api_accepts(client: TestClient) -> None:
     assert set(_result(client, request)["parameters"]) == set(request["start"])
 
 
-def test_a_fit_error_event_gives_at_most_50_details() -> None:
-    import asyncio
+def test_algorithm_defaults_to_verified_and_rejects_unknown() -> None:
+    body = _body("spb", "spb_s")
+    assert FitApiRequest.model_validate(body).algorithm == "verified-sequential-v2"
+    assert (
+        FitApiRequest.model_validate(body | {"algorithm": "legacy-sequential-v1"}).algorithm
+        == "legacy-sequential-v1"
+    )
+    with pytest.raises(ValueError):
+        FitApiRequest.model_validate(body | {"algorithm": "unknown"})
 
+
+def test_algorithm_reaches_core_request() -> None:
+    from seeband_api.fit import _to_core_request
+
+    for algorithm in ("verified-sequential-v2", "legacy-sequential-v1"):
+        _, request = _to_core_request(
+            FitApiRequest.model_validate(_body("spb", "spb_s", algorithm=algorithm)), 10000
+        )
+        assert request.algorithm == algorithm
+
+
+def test_verified_metadata_survives_the_done_event() -> None:
+    from seeband_core.model_interface import FitDiagnostics, ResidualDiagnostics
+
+    diagnostics = FitDiagnostics(
+        termination="cycle",
+        stage_consistent=False,
+        objectives={"seebeck": 0.25},
+        optimality={"seebeck": 0.1},
+        evaluations=12,
+        recoveries=1,
+        residuals={"seebeck": ResidualDiagnostics(0.5, None, "V/K")},
+        unidentified=("m_eff",),
+    )
+    result = FitResult({}, "stalled", algorithm="verified-sequential-v2", diagnostics=diagnostics)
+
+    async def main() -> Any:
+        async def completed() -> FitResult:
+            return result
+
+        task = asyncio.create_task(completed())
+        await task
+        return _last_event(task)
+
+    event = asyncio.run(main())
+    payload = json.loads(event.model_dump_json())
+    assert payload["type"] == "done"
+    assert payload["result"]["algorithm"] == "verified-sequential-v2"
+    assert payload["result"]["status"] == "stalled"
+    assert payload["result"]["diagnostics"]["residuals"]["seebeck"] == {
+        "rmse": 0.5,
+        "relative_l2": None,
+        "unit": "V/K",
+    }
+    assert payload["result"]["diagnostics"]["uncertainty"] == "not_assessed"
+    assert payload["result"]["diagnostics"]["residual_adequacy"] == "not_assessed"
+
+
+def test_unknown_algorithm_is_refused_before_the_stream(client: TestClient) -> None:
+    response = client.post("/api/fit", json=_body("spb", "spb_s", algorithm="unknown"))
+    assert response.status_code == 422
+    assert response.headers["content-type"].startswith("application/json")
+
+
+@pytest.mark.parametrize("algorithm", ["verified-sequential-v2", "legacy-sequential-v1"])
+def test_stream_reports_selected_algorithm(client: TestClient, algorithm: str) -> None:
+    result = _result(client, _body("spb", "spb_s", algorithm=algorithm))
+    assert result["algorithm"] == algorithm
+    if algorithm == "verified-sequential-v2":
+        assert result["diagnostics"]["uncertainty"] == "not_assessed"
+    else:
+        assert "diagnostics" not in result
+
+
+def test_legacy_response_retains_the_historical_degeneracy_flag() -> None:
+    result = FitResult(
+        {"m_eff": 3.0},
+        "converged",
+        known_issues=("dpb_loop_degeneracy",),
+        algorithm="legacy-sequential-v1",
+    )
+    response = _to_response(result)
+    assert response.algorithm == "legacy-sequential-v1"
+    assert "dpb_loop_degeneracy" in response.known_issues
+
+
+def test_a_fit_error_event_gives_at_most_50_details() -> None:
     from seeband_api.errors import ApiError, ErrorDetail
 
     details = [ErrorDetail(location=["body", index], code="x", message="x") for index in range(60)]

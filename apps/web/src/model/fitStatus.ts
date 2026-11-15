@@ -38,6 +38,9 @@ export function fitBadge(fit: FitState, iterative: boolean): FitBadge | null {
       return { status: "failed" };
     case "done": {
       const { status, iterations } = fit.result;
+      if (status === "stalled") {
+        return { status: "stalled" };
+      }
       if (status === "iteration_limit") {
         return { status: "iterationLimit" };
       }
@@ -46,6 +49,9 @@ export function fitBadge(fit: FitState, iterative: boolean): FitBadge | null {
       }
       if (status === "stopped") {
         return { status: "stopped" };
+      }
+      if (fit.result.algorithm === "verified-sequential-v2") {
+        return { status: "settled" };
       }
       const count = atIteration(iterative, iterations ?? null);
       return count === null

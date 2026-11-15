@@ -4192,10 +4192,10 @@
               "text/event-stream": {
                 "examples": {
                   "single_pass": {
-                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"done\",\"result\":{\"parameters\":{\"m_eff\":0.57,\"band_gap\":910.0,\"fermi_energy\":-35.0},\"core_version\":\"0.1.4\",\"status\":\"converged\",\"parameter_errors\":{\"m_eff\":0.02,\"band_gap\":12.0,\"fermi_energy\":4.0},\"at_bounds\":[],\"known_issues\":[],\"held\":[]}}\n\n"
+                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"done\",\"result\":{\"parameters\":{\"m_eff\":0.57,\"band_gap\":910.0,\"fermi_energy\":-35.0},\"core_version\":\"0.2.0\",\"status\":\"converged\",\"parameter_errors\":{\"m_eff\":0.02,\"band_gap\":12.0,\"fermi_energy\":4.0},\"at_bounds\":[],\"known_issues\":[],\"held\":[],\"algorithm\":\"legacy-sequential-v1\"}}\n\n"
                   },
                   "iterative": {
-                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"iteration\",\"iteration\":1,\"parameters\":{\"m_eff\":0.8,\"band_gap\":950.0,\"fermi_energy\":-60.0}}\n\ndata: {\"type\":\"iteration\",\"iteration\":2,\"parameters\":{\"m_eff\":0.6,\"band_gap\":915.0,\"fermi_energy\":-38.0}}\n\ndata: {\"type\":\"done\",\"result\":{\"parameters\":{\"m_eff\":0.57,\"band_gap\":910.0,\"fermi_energy\":-35.0},\"core_version\":\"0.1.4\",\"status\":\"converged\",\"iterations\":2,\"parameter_errors\":{\"m_eff\":0.02,\"band_gap\":12.0,\"fermi_energy\":4.0},\"at_bounds\":[],\"known_issues\":[],\"held\":[]}}\n\n"
+                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"iteration\",\"iteration\":1,\"parameters\":{\"m_eff\":0.8,\"band_gap\":950.0,\"fermi_energy\":-60.0}}\n\ndata: {\"type\":\"iteration\",\"iteration\":2,\"parameters\":{\"m_eff\":0.6,\"band_gap\":915.0,\"fermi_energy\":-38.0}}\n\ndata: {\"type\":\"done\",\"result\":{\"parameters\":{\"m_eff\":0.57,\"band_gap\":910.0,\"fermi_energy\":-35.0},\"core_version\":\"0.2.0\",\"status\":\"converged\",\"iterations\":2,\"parameter_errors\":{\"m_eff\":0.02,\"band_gap\":12.0,\"fermi_energy\":4.0},\"at_bounds\":[],\"known_issues\":[],\"held\":[],\"algorithm\":\"legacy-sequential-v1\"}}\n\n"
                   },
                   "fit_timeout": {
                     "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"error\",\"error\":{\"code\":\"fit_timeout\",\"message\":\"The fit took too long\",\"details\":[]}}\n\n"
@@ -5536,7 +5536,7 @@
             "type": "string",
             "title": "Core Version",
             "description": "Core software version for provenance, not certification.",
-            "default": "0.1.4"
+            "default": "0.2.0"
           },
           "curves": {
             "additionalProperties": {
@@ -5595,7 +5595,7 @@
         "description": "Curves by name, where each name ends in its unit, and null marks a value that is not finite.\n\n`known_issues` names known errors that apply to this result, as in `GET /api/models`. `rmse` is\nempty without measurements. `measured_points` holds points made from the measurements sent,\nby name with its unit: `electrical_conductivity_s_per_m` is 1/rho, with null for a rho of 0 or\nbelow. They use no model, so they go with the data the request sent, interpolated or not.",
         "examples": [
           {
-            "core_version": "0.1.4",
+            "core_version": "0.2.0",
             "curves": {
               "resistivity_ohm_m": [
                 3.6627e-05,
@@ -5628,7 +5628,7 @@
             "rmse": {
               "seebeck": {
                 "unit": "uV/K",
-                "value": 3.385
+                "value": 3.395
               }
             },
             "temperature_k": [
@@ -6248,6 +6248,15 @@
             "maxProperties": 3,
             "minProperties": 0,
             "title": "Measurements"
+          },
+          "algorithm": {
+            "type": "string",
+            "enum": [
+              "verified-sequential-v2",
+              "legacy-sequential-v1"
+            ],
+            "title": "Algorithm",
+            "default": "verified-sequential-v2"
           }
         },
         "type": "object",
@@ -6298,6 +6307,86 @@
             }
           }
         ]
+      },
+      "FitDiagnostics": {
+        "properties": {
+          "termination": {
+            "type": "string",
+            "title": "Termination"
+          },
+          "stage_consistent": {
+            "type": "boolean",
+            "title": "Stage Consistent"
+          },
+          "objectives": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Objectives"
+          },
+          "optimality": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Optimality"
+          },
+          "evaluations": {
+            "type": "integer",
+            "title": "Evaluations"
+          },
+          "recoveries": {
+            "type": "integer",
+            "title": "Recoveries"
+          },
+          "residuals": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ResidualDiagnostics"
+            },
+            "propertyNames": {
+              "enum": [
+                "seebeck",
+                "resistivity",
+                "hall"
+              ]
+            },
+            "type": "object",
+            "title": "Residuals"
+          },
+          "unidentified": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Unidentified"
+          },
+          "uncertainty": {
+            "type": "string",
+            "const": "not_assessed",
+            "title": "Uncertainty",
+            "default": "not_assessed"
+          },
+          "residual_adequacy": {
+            "type": "string",
+            "const": "not_assessed",
+            "title": "Residual Adequacy",
+            "default": "not_assessed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "termination",
+          "stage_consistent",
+          "objectives",
+          "optimality",
+          "evaluations",
+          "recoveries",
+          "residuals",
+          "unidentified"
+        ],
+        "title": "FitDiagnostics",
+        "description": "Numerical diagnostics, separate from physical adequacy and uncertainty.\n\n`optimality` is the normalized projected gradient at the returned parameters,\nin scaled stage coordinates. Conditional objective-reduction audits also have\nto pass before `stage_consistent` can be true."
       },
       "FitDone": {
         "properties": {
@@ -6549,7 +6638,7 @@
             "type": "string",
             "title": "Core Version",
             "description": "Core software version for provenance, not certification.",
-            "default": "0.1.4"
+            "default": "0.2.0"
           },
           "status": {
             "type": "string",
@@ -6557,7 +6646,8 @@
               "converged",
               "iteration_limit",
               "stopped",
-              "failed"
+              "failed",
+              "stalled"
             ],
             "title": "Status"
           },
@@ -6610,6 +6700,25 @@
             },
             "type": "array",
             "title": "Held"
+          },
+          "algorithm": {
+            "type": "string",
+            "enum": [
+              "verified-sequential-v2",
+              "legacy-sequential-v1"
+            ],
+            "title": "Algorithm",
+            "default": "legacy-sequential-v1"
+          },
+          "diagnostics": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FitDiagnostics"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -6622,11 +6731,11 @@
           "held"
         ],
         "title": "FitResponse",
-        "description": "The outcome of a fit, in core units.\n\n`converged` means that the fit ended normally, not that the result is sound. `iteration_limit`\nis not a converged result. `failed` returns the start values, with fixed text in `message`.\n`iterations` is left out for a single-pass mode. A value that is not finite is null.\n\n`parameter_errors` holds standard errors from the last solver run of each stage, holding other\nstages fixed, so in a staged fit they can be far too small, and are not plain uncertainties.\n`at_bounds` names fitted parameters that ended at a bound, which may be what set them.\n`known_issues` names known errors that apply, as in `GET /api/models`. `held` names the\nparameters the request held, which come back as sent, with no error and no at-bound mark; the\nerrors of the others hold the held values exact. A held value outside its bounds fails as a\nstart would. Holding m1, or the SPB Hall mass, skips the R_H stage.",
+        "description": "The outcome of a fit, in core units.\n\n`converged` means numerical termination, not physical adequacy or identification.\n`stalled` is a usable endpoint that did not converge. `iteration_limit`\nis not a converged result. `failed` returns the start values, with fixed text in `message`.\n`iterations` is left out for a single-pass mode. A value that is not finite is null.\n\nIn the legacy method, `parameter_errors` holds standard errors from the last solver run of\neach stage, holding other stages fixed. They can be far too small in a staged fit. The verified\nmethod leaves errors empty and reports uncertainty as `not_assessed`; it does not manufacture\nzero errors for profiled or unidentified parameters.\n`at_bounds` names fitted parameters that ended at a bound, which may be what set them.\n`known_issues` names known errors that apply, as in `GET /api/models`. `held` names the\nparameters the request held, which come back as sent, with no error and no at-bound mark; the\nerrors of the others hold the held values exact. A held value outside its bounds fails as a\nstart would. Holding m1, or the SPB Hall mass, skips the R_H stage.",
         "examples": [
           {
             "at_bounds": [],
-            "core_version": "0.1.4",
+            "core_version": "0.2.0",
             "held": [],
             "known_issues": [],
             "parameter_errors": {
@@ -6944,7 +7053,7 @@
             "type": "string",
             "title": "Core Version",
             "description": "Core software version for provenance, not certification.",
-            "default": "0.1.4"
+            "default": "0.2.0"
           }
         },
         "type": "object",
@@ -6955,7 +7064,7 @@
         "title": "HealthResponse",
         "examples": [
           {
-            "core_version": "0.1.4",
+            "core_version": "0.2.0",
             "status": "ok",
             "version": "1.0.0"
           }
@@ -7793,6 +7902,36 @@
         ],
         "title": "Prediction",
         "description": "The net's prediction as it is, in core units, before any rounding or limits."
+      },
+      "ResidualDiagnostics": {
+        "properties": {
+          "rmse": {
+            "type": "number",
+            "title": "Rmse"
+          },
+          "relative_l2": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relative L2"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rmse",
+          "relative_l2",
+          "unit"
+        ],
+        "title": "ResidualDiagnostics"
       },
       "RmseResponse": {
         "properties": {

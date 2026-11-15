@@ -44,13 +44,32 @@ function endOf(
       text: log.limitText(mode.max_iterations ?? iterations ?? 0),
     };
   }
+  if (status === "stalled") {
+    return {
+      title: STRINGS.status.stalled,
+      text: STRINGS.fit.diagnostics.stalled,
+    };
+  }
+  if (
+    fit.status === "done" &&
+    fit.result.algorithm === "verified-sequential-v2" &&
+    status === "converged"
+  ) {
+    return {
+      title: STRINGS.status.settled,
+      text: STRINGS.fit.diagnostics.settled,
+    };
+  }
   if (!mode.iterative) {
     return { title: log.done, text: log.singlePass };
   }
   return {
     title: log.converged,
     text:
-      mode.threshold === null || mode.threshold === undefined
+      fit.status !== "done" ||
+      fit.result.algorithm !== "legacy-sequential-v1" ||
+      mode.threshold === null ||
+      mode.threshold === undefined
         ? log.convergedText
         : log.convergedBelow(
             // As a percent, without the rounding error of the product.

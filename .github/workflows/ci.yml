@@ -13,11 +13,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  python:
-    name: Python
+  python-checks:
+    name: Python checks and package
     runs-on: ubuntu-latest
-    # Allow the expanded numerical/API suite to finish on slower hosted runners.
-    timeout-minutes: 30
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
@@ -30,10 +29,6 @@ jobs:
         run: uv run ruff format --check .
       - name: Mypy
         run: uv run mypy
-      - name: Pytest, including that the OpenAPI contract is up to date
-        run: |
-          uv run pytest packages/seeband_core/tests/test_golden_regression.py -x --tb=short
-          uv run pytest --ignore=packages/seeband_core/tests/test_golden_regression.py -x --tb=short
       - name: Built package
         run: |
           uv build --wheel --package seeband-core --out-dir dist
@@ -54,6 +49,50 @@ jobs:
           from seeband_core.demo_dataset import load_demo_dataset
           assert load_demo_dataset().synthetic is True
           "
+
+  python-tests:
+    name: Python tests (${{ matrix.suite }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - suite: golden
+            path: packages/seeband_core/tests/test_golden_regression.py
+            exclude: ""
+          - suite: core
+            path: packages/seeband_core/tests
+            exclude: --ignore=packages/seeband_core/tests/test_golden_regression.py
+          - suite: api
+            path: apps/api/tests
+            exclude: ""
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+      - run: uv sync --locked
+      - name: Pytest with test names and long-running stacks
+        run: >-
+          uv run pytest ${{ matrix.path }} ${{ matrix.exclude }} -vv -x --tb=short --durations=20
+          -o faulthandler_timeout=120
+
+  # Keep the protected check name, and require every independent Python job.
+  python:
+    name: Python
+    if: ${{ always() }}
+    needs: [python-checks, python-tests]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require checks, package and all test groups
+        env:
+          PYTHON_CHECKS_RESULT: ${{ needs.python-checks.result }}
+          PYTHON_TESTS_RESULT: ${{ needs.python-tests.result }}
+        run: |
+          test "$PYTHON_CHECKS_RESULT" = success
+          test "$PYTHON_TESTS_RESULT" = success
 
   typescript:
     name: TypeScript

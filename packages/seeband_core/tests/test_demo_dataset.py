@@ -1,5 +1,7 @@
 import hashlib
 import json
+from copy import deepcopy
+from functools import cache
 from importlib import resources
 from typing import Any
 
@@ -47,6 +49,12 @@ def stored_document() -> dict[str, Any]:
 
 
 def fit(model_id: str, fit_mode: FitMode, scattering: str | None) -> Any:
+    return deepcopy(_demo_fit(model_id, fit_mode, scattering))
+
+
+@cache
+def _demo_fit(model_id: str, fit_mode: FitMode, scattering: str | None) -> Any:
+    # Several assertions inspect the same deterministic fit; keep their results isolated.
     measurements = load_demo_dataset().measurements
     data = {quantity: measurements[quantity] for quantity in fit_mode.quantities}
     start = default_start(fit_mode)
@@ -55,6 +63,33 @@ def fit(model_id: str, fit_mode: FitMode, scattering: str | None) -> Any:
         # as the app's automatic SPB sign does (D28). The default electron mass is refused.
         start |= {"band_mass": -1.0, "fermi_energy": -100.0}
     return registry.get(model_id).fit(FitRequest(fit_mode.id, data, start, scattering=scattering))
+
+
+def test_repeated_fit_cases_reuse_work_without_sharing_results(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    model = registry.get("dpb")
+    fit_mode = model.describe().fit_mode("dpb_s_rho")
+    requests: list[FitRequest] = []
+
+    def record_fit(self: Any, request: FitRequest) -> Any:
+        requests.append(request)
+        return {"parameters": {"m_eff": 1.2}, "values": np.array([1.0])}
+
+    monkeypatch.setattr(type(model), "fit", record_fit)
+    _demo_fit.cache_clear()
+    try:
+        first = fit("dpb", fit_mode, "acPh")
+        first["parameters"]["m_eff"] = 9.0
+        first["values"][0] = 9.0
+        second = fit("dpb", fit_mode, "acPh")
+        fit("dpb", fit_mode, "dis")
+
+        assert [request.scattering for request in requests] == ["acPh", "dis"]
+        assert second["parameters"]["m_eff"] == 1.2
+        assert second["values"].tolist() == [1.0]
+    finally:
+        _demo_fit.cache_clear()
 
 
 def test_the_same_data_come_on_every_load() -> None:

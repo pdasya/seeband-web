@@ -178,14 +178,18 @@ test("a fit sums up: status, KPIs and each parameter with its status", async ({
 
 test("known issues and bounds reached are named", async ({ page }) => {
   await openFit(page);
+  await page
+    .getByRole("combobox", { name: "Fitting method" })
+    .selectOption("legacy-sequential-v1");
   await finishWith(page, {
+    algorithm: "legacy-sequential-v1",
     known_issues: ["dpb_loop_degeneracy"],
     at_bounds: ["band_gap"],
   });
   await toResults(page);
 
   await expect(
-    page.getByText(/^Caution: With N₂\/N₁ other than 1/),
+    page.getByText(/^Caution: In the legacy method with N₂\/N₁ other than 1/),
   ).toBeVisible();
   await expect(row(page, "E_g")).toContainText("at bound");
   await expect(row(page, "E_F")).not.toContainText("at bound");
@@ -291,14 +295,17 @@ test("the fit log follows the stages of the mode and how the fit ended", async (
   page,
 }) => {
   await openFit(page);
-  await finishWith(page, { iterations: 3 });
+  await page
+    .getByRole("combobox", { name: "Fitting method" })
+    .selectOption("legacy-sequential-v1");
+  await finishWith(page, { iterations: 3, algorithm: "legacy-sequential-v1" });
   await toResults(page);
 
   await expect(logSteps(page)).toHaveText([
     /^\dStart values\s*The values on the fit screen$/,
     /^\dFit to S\s*Finds m₂\/m₁, E_g, E_F, in each of 3 iterations$/,
     /^\dFit to ρ\s*Finds A, B, in each of 3 iterations$/,
-    /^\dConverged\s*The fit met its stop rule, a change of at most 10 %, in iteration 3\.$/,
+    /^\dConverged\s*The legacy fit met its stop rule, a change of at most 10 %, in iteration 3\.$/,
   ]);
 });
 
@@ -650,7 +657,10 @@ test("a failed export says so, and downloads nothing", async ({ page }) => {
   });
 
   await page.getByRole("button", { name: "Data to file" }).click();
-  await page.getByRole("button", { name: "Download", exact: true }).click();
+  await page
+    .getByRole("dialog", { name: "Data to file", exact: true })
+    .getByRole("button", { name: "Download", exact: true })
+    .click();
 
   await expect(
     page.getByText(
@@ -670,7 +680,10 @@ async function inFormat(
   await page.getByRole("radio", { name: new RegExp(`^${format}`) }).click();
   const [file] = await Promise.all([
     page.waitForEvent("download"),
-    page.getByRole("button", { name: "Download", exact: true }).click(),
+    page
+      .getByRole("dialog", { name: button, exact: true })
+      .getByRole("button", { name: "Download", exact: true })
+      .click(),
   ]);
   return readFileSync(await file.path());
 }
@@ -791,7 +804,10 @@ test("a fit that ends while the server answers does not change the file's header
   await page.getByRole("button", { name: "Data to file" }).click();
   await page.getByRole("radio", { name: /^Text/ }).click();
   const download = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Download", exact: true }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Download", exact: true })
+    .click();
   await expect.poll(() => held.length).toBeGreaterThan(0);
   await send(page, { type: "done", result: RESULT });
   await expect(page.getByRole("button", { name: "Run fit" })).toBeVisible();

@@ -422,11 +422,11 @@ test("known errors of a tab's curves are named while it is open", async ({
 
   await show(page, "Band contributions");
   await expect(
-    page.getByText(/the other band has no weight left/),
+    page.getByText(/the fit can be poorly conditioned/),
   ).toBeVisible();
 
   await show(page, "Seebeck S(T)");
-  await expect(page.getByText(/the other band has no weight left/)).toHaveCount(
+  await expect(page.getByText(/the fit can be poorly conditioned/)).toHaveCount(
     0,
   );
 });
@@ -461,7 +461,7 @@ test("known errors of a tab go with it at once, also if the next curve fails", a
   });
   await show(page, "Band contributions");
   await expect(
-    page.getByText(/the other band has no weight left/),
+    page.getByText(/the fit can be poorly conditioned/),
   ).toBeVisible();
   const gate = hold();
   await page.route("**/api/calc", async (route) => {
@@ -473,13 +473,13 @@ test("known errors of a tab go with it at once, also if the next curve fails", a
   });
 
   await show(page, "Chemical potential μ(T)");
-  await expect(page.getByText(/the other band has no weight left/)).toHaveCount(
+  await expect(page.getByText(/the fit can be poorly conditioned/)).toHaveCount(
     0,
   );
 
   gate.release();
   await expect(page.getByRole("alert")).toContainText("no result");
-  await expect(page.getByText(/the other band has no weight left/)).toHaveCount(
+  await expect(page.getByText(/the fit can be poorly conditioned/)).toHaveCount(
     0,
   );
   await expect(page.getByRole("alert")).not.toContainText("last curve");

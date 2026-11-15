@@ -398,3 +398,19 @@ describe("fitInputsKey", () => {
     ).not.toBe(key(STATE));
   });
 });
+
+test("algorithm defaults for older state and separates request identities", () => {
+  const verified = fitRequest(STATE, models);
+  const legacy = fitRequest(
+    {
+      ...STATE,
+      selection: { ...STATE.selection, algorithm: "legacy-sequential-v1" },
+    },
+    models,
+  );
+  if (!("request" in verified) || !("request" in legacy))
+    throw new Error("blocked");
+  expect(verified.request.algorithm).toBe("verified-sequential-v2");
+  expect(legacy.request.algorithm).toBe("legacy-sequential-v1");
+  expect(fitInputsKey(verified.request)).not.toBe(fitInputsKey(legacy.request));
+});

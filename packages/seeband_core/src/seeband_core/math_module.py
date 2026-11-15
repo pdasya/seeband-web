@@ -76,9 +76,15 @@ fdint_vec: Callable[..., Any] = np.vectorize(fdint_robust)
 
 # Calculates Fermi integrals for a single band
 def spb_fermiInt_vs_temp(
-    s: float, T: np.ndarray, mass_sign: float, fermi_energy: float
+    s: float,
+    T: np.ndarray,
+    mass_sign: float,
+    fermi_energy: float,
+    *,
+    potentials: np.ndarray | None = None,
 ) -> np.ndarray:
-    potentials = spb_chemPot_vs_temp(T, mass_sign, fermi_energy)
+    if potentials is None:
+        potentials = spb_chemPot_vs_temp(T, mass_sign, fermi_energy)
     fermiInt = np.zeros(shape=len(T))
 
     for i, (temp, mu) in enumerate(zip(T, potentials, strict=True)):
@@ -89,9 +95,17 @@ def spb_fermiInt_vs_temp(
 
 # Calculates Fermi integrals for two bands
 def dpb_fermiInt_vs_temp(
-    s: float, T: np.ndarray, mass: float, gap: float, fermi_energy: float, degen: float
+    s: float,
+    T: np.ndarray,
+    mass: float,
+    gap: float,
+    fermi_energy: float,
+    degen: float,
+    *,
+    potentials: np.ndarray | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
-    potentials = dpb_chemPot_vs_temp(T, gap, mass, fermi_energy, degen)
+    if potentials is None:
+        potentials = dpb_chemPot_vs_temp(T, gap, mass, fermi_energy, degen)
     fermiInt_1 = np.zeros(shape=len(T))
     fermiInt_2 = np.zeros(shape=len(T))
 
@@ -398,7 +412,12 @@ SPB
 
 # Calculates the Seebeck coefficient of a single band
 def spb_see_vs_temp(
-    temp_array: np.ndarray, fermi_energy: float, band_mass: float, scal_fac: float = 1.0
+    temp_array: np.ndarray,
+    fermi_energy: float,
+    band_mass: float,
+    scal_fac: float = 1.0,
+    *,
+    potentials: np.ndarray | None = None,
 ) -> np.ndarray:
     """Calculates the Seebeck coefficient of a single bands at various temperatures for the
     only-Seebeck mode
@@ -421,7 +440,8 @@ def spb_see_vs_temp(
         Numpy array of Seebeck coefficient values
     """
 
-    potentials = spb_chemPot_vs_temp(temp_array, band_mass, fermi_energy)
+    if potentials is None:
+        potentials = spb_chemPot_vs_temp(temp_array, band_mass, fermi_energy)
     sig = np.zeros(shape=len(temp_array))
     ons = np.zeros(shape=len(temp_array))
     see = np.zeros(shape=len(temp_array))
@@ -768,6 +788,8 @@ def spb_hall_vs_temp(
     mass_sign: float,
     para_E: float | list[float],
     scal_fac: float = 1.0,
+    *,
+    potentials: np.ndarray | None = None,
 ) -> np.ndarray:
     """Calculates the Hall coefficient of a single band at various temperatures
 
@@ -792,7 +814,9 @@ def spb_hall_vs_temp(
         3 * hbar**3 * np.pi**2 / (e * (2 * kB * me) ** (3 / 2)) * (0.5 + 2 * lamb) / (1 + lamb) ** 2
     )
     temperatures = np.asarray(T, dtype=float)
-    chemical_potential = spb_chemPot_vs_temp(temperatures, mass_sign, fermi_energy)
+    if potentials is None:
+        potentials = spb_chemPot_vs_temp(temperatures, mass_sign, fermi_energy)
+    chemical_potential = potentials
     reduced = mass_sign * chemical_potential / temperatures
     usable = _conserves_density(chemical_potential, temperatures, mass_sign, fermi_energy)
     # The Fermi integrals overflow above a reduced potential of about 709, so those points are NaN,
@@ -820,7 +844,14 @@ DPB
 
 # Calculates the Seebeck coefficient of two bands for the Seebeck-only mode
 def dpb_see_vs_temp(
-    T: np.ndarray, meff: float, gap: float, fermi_energy: float, degen: float, scal_fac: float = 1.0
+    T: np.ndarray,
+    meff: float,
+    gap: float,
+    fermi_energy: float,
+    degen: float,
+    scal_fac: float = 1.0,
+    *,
+    potentials: np.ndarray | None = None,
 ) -> np.ndarray:
     """Calculates the Seebeck coefficient of two bands at various temperatures for the Seebeck-only
     mode
@@ -846,7 +877,8 @@ def dpb_see_vs_temp(
         Numpy array of Seebeck coefficient values
     """
 
-    potentials = dpb_chemPot_vs_temp(T, gap, meff, fermi_energy, degen)
+    if potentials is None:
+        potentials = dpb_chemPot_vs_temp(T, gap, meff, fermi_energy, degen)
     sig1 = np.zeros(shape=len(T))
     sig2 = np.zeros(shape=len(T))
     ons1 = np.zeros(shape=len(T))
@@ -887,6 +919,8 @@ def dpb_see_vs_temp_double_scatter(
     para_C: float,
     para_D: float,
     scal_fac: float = 1.0,
+    *,
+    potentials: np.ndarray | None = None,
 ) -> np.ndarray:
     """Calculates the Seebeck coefficient of two bands at various temperatures for a given set of
     band-structure and scattering parameters.
@@ -934,7 +968,9 @@ def dpb_see_vs_temp_double_scatter(
     ons2 = np.zeros(shape=len(temp_array))
     see = np.zeros(shape=len(temp_array))
 
-    chemPot_array = dpb_chemPot_vs_temp(temp_array, gap, meff, fermi_energy, degen)
+    if potentials is None:
+        potentials = dpb_chemPot_vs_temp(temp_array, gap, meff, fermi_energy, degen)
+    chemPot_array = potentials
     factor = para_B * (para_C + temp_array) / (para_D + temp_array) / abs(meff)
 
     for i, temp in enumerate(temp_array):
@@ -967,6 +1003,8 @@ def dpb_see_vs_temp_single_scatter(
     degen: float,
     para_B: float,
     scal_fac: float = 1.0,
+    *,
+    potentials: np.ndarray | None = None,
 ) -> np.ndarray:
     """Calculates the Seebeck coefficient of two bands at various temperatures for a given set of
     band-structure scattering parameters.
@@ -1004,7 +1042,9 @@ def dpb_see_vs_temp_single_scatter(
     ons2 = np.zeros(shape=len(temp_array))
     see = np.zeros(shape=len(temp_array))
 
-    chemPot_array = dpb_chemPot_vs_temp(temp_array, gap, meff, fermi_energy, degen)
+    if potentials is None:
+        potentials = dpb_chemPot_vs_temp(temp_array, gap, meff, fermi_energy, degen)
+    chemPot_array = potentials
     factor = para_B / abs(meff)
 
     for i, temp in enumerate(temp_array):

@@ -151,7 +151,7 @@ class CalcResponse(BaseModel):
                         ],
                     },
                     "known_issues": [],
-                    "rmse": {"seebeck": {"value": 3.385, "unit": "uV/K"}},
+                    "rmse": {"seebeck": {"value": 3.395, "unit": "uV/K"}},
                     "measured_points": {
                         "electrical_conductivity_s_per_m": {
                             "temperature_k": [150.0, 300.0],

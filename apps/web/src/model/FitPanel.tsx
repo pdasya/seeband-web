@@ -1,7 +1,12 @@
 import { ActivityIcon } from "lucide-react";
 import { useId } from "react";
 
-import { FitActions, FitMessages, FitStatusBadge } from "@/model/FitControls";
+import {
+  FitActions,
+  FitMessages,
+  FitStatusBadge,
+  FitAlgorithmControl,
+} from "@/model/FitControls";
 import type { useFitControl } from "@/model/useFitControl";
 import type { useGuess } from "@/model/useGuess";
 import { STRINGS } from "@/strings";
@@ -34,6 +39,7 @@ export function FitPanel({
       </div>
       {/* What the buttons say, under them; nothing at all while they say nothing. */}
       <div className="flex basis-full flex-col gap-2 empty:hidden">
+        <FitAlgorithmControl />
         <FitMessages control={control} guess={guess} />
       </div>
     </section>

@@ -14,7 +14,7 @@ To remove a flag once its error is fixed, delete its entry and its row here, and
 
 | Id                           | Severity   | Where                                                                                              | Fixed by |
 | ---------------------------- | ---------- | -------------------------------------------------------------------------------------------------- | -------- |
-| `dpb_loop_degeneracy`        | caution    | fits in the other DPB modes, when N2/N1 is not 1                                                   | #85      |
+| `dpb_loop_degeneracy`        | caution    | explicit legacy iterative DPB fits, when N2/N1 is not 1                                            | #85      |
 | `collapsed_m_eff`            | unreliable | DPB, when m_eff is near 0, as on `02_SiP` (D19)                                                    | #107     |
 | `no_chemical_potential`      | unreliable | SPB, when the Fermi energy is outside the band                                                     | #106     |
 | `hall_dis_no_reference`      | caution    | DPB S + ρ + R_H with `dis`. This is a missing reference, not an error: the desktop fails here (D1) | #71      |
@@ -34,11 +34,11 @@ The DPB Hall-prefactor flag was removed by [P2](dpb-hall-prefactor.md), which co
 
 P3 (#82) removes the acPhDis curve-scale flag: derived curves now convert the dimensionless 300 K ratios C and D to temperature scales consistently with resistivity. P11 separately repairs the grid-dependent total-Seebeck weight (#102).
 
-P6 fixes the S-only part of #85: fitting and drawing now pass the same internal mass R/N to the numerical model. The S-only mismatch flag is removed. The separate iterative-mode mass/bounds caution (`dpb_loop_degeneracy`, also tracked by #85) remains unresolved. See [the mass convention and validation](dpb-s-degeneracy.md).
+P6 fixes the S-only part of #85: fitting and drawing now pass the same internal mass R/N to the numerical model. The S-only mismatch flag is removed. P19 completes the iterative-mode coordinate correction for `verified-sequential-v2`; `dpb_loop_degeneracy` remains a caution for explicit legacy fits. See [the mass convention and validation](dpb-s-degeneracy.md).
 
 P13 removes `negative_m_eff_weight` and corrects the longitudinal DPB mass
 weights to use |r| in every scattering mode. Signed carrier density and Hall
-signs remain. This does not fix iterative nonunit-degeneracy fits, collapsed
+signs remain. P13 alone did not fix iterative nonunit-degeneracy fits, collapsed
 bands or Fermi-integral underflow; see [positive DPB weights](dpb-positive-weights.md).
 
 P5 (#84) removes the early-stop flag: DPB mixed-scattering fits now require both parameter groups to converge and handle zero/nonfinite changes explicitly. See [the convergence correction](dpb-convergence.md). P11 separately fixes #102; neither correction supplies human physicist confirmation.
@@ -69,3 +69,11 @@ P8 supplies grid-independent checked roots. Iterative nonunit degeneracy,
 final-stage fit consistency and physical acceptance remain separate. See
 [the correction and evidence](dpb-acphdis-weight.md) and the later
 [P13 positive-weight correction](dpb-positive-weights.md).
+
+Core0.2.0's verified-sequential-v2 completes the P6 public-coordinate correction
+and omits dpb_loop_degeneracy on its fit results. The registry entry remains
+for explicit legacy-sequential-v1 reproduction. Small-mass warnings remain
+heuristic inference cautions, not a mass floor or proof that a channel vanished.
+Verified diagnostics separately report numerical checks and detected structural
+nonidentifiability; absence of a structural warning is not a full P23 analysis.
+See [verified sequential fitting](verified-sequential-fit.md).

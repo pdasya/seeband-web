@@ -22,7 +22,8 @@ CurveKind = Literal[
     "thermal_conductivity",
     "carrier_concentration_by_band",
 ]
-FitStatus = Literal["converged", "iteration_limit", "stopped", "failed"]
+FitAlgorithm = Literal["verified-sequential-v2", "legacy-sequential-v1"]
+FitStatus = Literal["converged", "iteration_limit", "stopped", "failed", "stalled"]
 IssueSeverity = Literal["disabled", "unreliable", "caution"]
 IssueCondition = Literal[
     "degeneracy_not_one",
@@ -307,7 +308,8 @@ class FitRequest:
 
     `held` names fitted parameters that keep their start values: each solver run fits only the
     others, and a run with none left is skipped. Naming a parameter the mode does not fit, or every
-    one it fits, is an error. With none held, a fit is the desktop's (D30).
+    one it fits, is an error. The default algorithm verifies conditional stage optima;
+    legacy-sequential-v1 explicitly selects the historical desktop estimator.
     """
 
     fit_mode: str
@@ -319,6 +321,35 @@ class FitRequest:
     band_2_degeneracy: float = 1.0
     extrapolated: bool = False
     held: frozenset[str] = frozenset()
+    algorithm: FitAlgorithm = "verified-sequential-v2"
+
+
+@dataclass(frozen=True)
+class ResidualDiagnostics:
+    rmse: float
+    relative_l2: float | None
+    unit: str
+
+
+@dataclass(frozen=True)
+class FitDiagnostics:
+    """Numerical diagnostics, separate from physical adequacy and uncertainty.
+
+    `optimality` is the normalized projected gradient at the returned parameters,
+    in scaled stage coordinates. Conditional objective-reduction audits also have
+    to pass before `stage_consistent` can be true.
+    """
+
+    termination: str
+    stage_consistent: bool
+    objectives: Mapping[str, float]
+    optimality: Mapping[str, float]
+    evaluations: int
+    recoveries: int
+    residuals: Mapping[Quantity, ResidualDiagnostics]
+    unidentified: tuple[str, ...]
+    uncertainty: Literal["not_assessed"] = "not_assessed"
+    residual_adequacy: Literal["not_assessed"] = "not_assessed"
 
 
 @dataclass(frozen=True)
@@ -330,8 +361,10 @@ class FitResult:
     the last iteration, with m1 still at its start, and `iteration_limit` holds what the fit ended
     with, which is not a converged result.
 
-    `converged` means that the fit ended normally: for an iterative fit, its stop rule was met, and
-    for a single-pass fit, the solver returned. It does not mean the result is sound.
+    For legacy-sequential-v1, `converged` means that the historical stop rule was met.
+    For verified-sequential-v2 it requires conditional stage optimality at the same returned
+    vector. `stalled` retains a usable endpoint without that certificate. Neither status is
+    evidence of physical adequacy or identifiability; consult typed diagnostics.
 
     `iterations` counts completed iterations, and is None for a single-pass mode. A fitted value can
     lie outside the range of its control. `message` holds fixed text with no measured values.
@@ -356,6 +389,8 @@ class FitResult:
     at_bounds: tuple[str, ...] = ()
     known_issues: tuple[str, ...] = ()
     held: tuple[str, ...] = ()
+    algorithm: FitAlgorithm = "legacy-sequential-v1"
+    diagnostics: FitDiagnostics | None = None
 
 
 @dataclass(frozen=True)

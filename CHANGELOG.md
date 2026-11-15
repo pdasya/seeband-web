@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+- Reuse certified chemical potentials for exact repeated physical inputs within
+  a verified fit. Preserve prediction budgets and fresh terminal audits. Avoid
+  duplicate demo/API fits in tests while retaining their assertions; run golden,
+  core and API CI test groups independently behind the required Python gate.
+
+- Allow 180 seconds by default for API fits, configurable as before, after
+  verified demo fitting exceeded 60 seconds on hosted Linux. Concurrency and
+  input limits remain in force; numerical certification criteria are unchanged.
+
+- P19/P6 (#176, #85), core `0.2.0`: default to `verified-sequential-v2`;
+  preserve `legacy-sequential-v1` by explicit selection. Profile free inverse
+  amplitudes, scale and validate remaining stage derivatives, and check
+  conditional optimality at the same final vector. Verified DPB fitting uses
+  public R coordinates and converts R/N once at evaluation. Preserve staged
+  absolute objectives, physical kernels, input data, user bounds and held values.
+  Add algorithm provenance and numerical/consistency/residual/identifiability
+  diagnostics across API, session and exports. Numerical settlement does not
+  establish physical adequacy or uncertainty. Built-in preview RMSE evaluates
+  directly at measured temperatures; pointwise percentages are unavailable at
+  measured rho/Hall zeros. See [verified sequential fitting](packages/seeband_core/docs/verified-sequential-fit.md).
+
 - P13 (#104), core `0.1.4`: use positive mass-magnitude weights for
   longitudinal DPB transport in S-only, single-scattering and mixed-scattering
   modes, including band contributions. Keep signed mass coordinates, carrier

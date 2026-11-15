@@ -19,7 +19,12 @@ import {
   type ExportContext,
 } from "@/model/exportFiles";
 import type { FitModeDescription, ModelDescription } from "@/model/selection";
-import type { FitResult, FitState, SessionState } from "@/session/store";
+import {
+  createSessionStore,
+  type FitResult,
+  type FitState,
+  type SessionState,
+} from "@/session/store";
 
 const modes = (MODELS.models as ModelDescription[]).flatMap(
   ({ fit_modes: fitModes }) => fitModes,
@@ -95,6 +100,7 @@ describe("the header", () => {
       "Fit range 50-800 K",
       "Band degeneracies N1 = 1, N2 = 2",
       "Fit converged, 2 iterations",
+      "Fitting method: Unknown",
     ]);
   });
 
@@ -584,4 +590,62 @@ describe("the parameters as CSV", () => {
       "band_2_degeneracy,N2,band degeneracies,,2,fixed",
     ]);
   });
+});
+
+test("export retains the result algorithm independently of current settings", () => {
+  const lines = exportHeader({
+    ...CONTEXT,
+    selection: { ...SELECTION, algorithm: "verified-sequential-v2" },
+    fit: {
+      status: "done",
+      result: { ...RESULT, algorithm: "legacy-sequential-v1" },
+    },
+  });
+  expect(lines).toContain("Fitting method: legacy-sequential-v1");
+  expect(exportHeader(CONTEXT)).toContain("Fitting method: Unknown");
+});
+
+test.each(["legacy-sequential-v1", "verified-sequential-v2"] as const)(
+  "stopped %s endpoint keeps submitted provenance when the method selector changes",
+  (algorithm) => {
+    const store = createSessionStore();
+    const run = store.getState().fitRequested("dpb_s", { m_eff: 1 }, algorithm);
+    expect(exportHeader({ ...CONTEXT, fit: store.getState().fit })).toContain(
+      `Fitting method: ${algorithm}`,
+    );
+    store.getState().fitEvent(run, { type: "started" });
+    store.getState().fitEvent(run, {
+      type: "iteration",
+      iteration: 1,
+      parameters: { m_eff: 0.5 },
+    });
+    expect(exportHeader({ ...CONTEXT, fit: store.getState().fit })).toContain(
+      `Fitting method: ${algorithm}`,
+    );
+    store.getState().fitStopped(run);
+    store.getState().setSelection({
+      algorithm:
+        algorithm === "legacy-sequential-v1"
+          ? "verified-sequential-v2"
+          : "legacy-sequential-v1",
+    });
+    expect(store.getState().fit.status).toBe("stopped");
+    expect(
+      exportHeader({
+        ...CONTEXT,
+        selection: store.getState().selection,
+        fit: store.getState().fit,
+      }),
+    ).toContain(`Fitting method: ${algorithm}`);
+  },
+);
+
+test("historical stopped state without provenance remains unknown", () => {
+  expect(
+    exportHeader({
+      ...CONTEXT,
+      selection: { ...SELECTION, algorithm: "verified-sequential-v2" },
+      fit: { status: "stopped", iteration: 1, lastParameters: { m_eff: 0.5 } },
+    }),
+  ).toContain("Fitting method: Unknown");
 });

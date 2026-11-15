@@ -168,6 +168,7 @@ def _fit(resistivity: Any) -> dict[str, float]:
             {"seebeck": seebeck.measurements["seebeck"], "resistivity": resistivity},
             default_start(mode),
             scattering="acPh",
+            algorithm="legacy-sequential-v1",
         ),
         lambda *_: None,
     )
@@ -176,7 +177,7 @@ def _fit(resistivity: Any) -> dict[str, float]:
 
 
 def test_a_fit_from_sigma_is_the_fit_from_one_over_sigma_given_as_rho() -> None:
-    """The conductivity is what a lab measured as 1/rho of the example, in S/cm."""
+    """Historical fit parity after loading 1/rho in S/cm uses the legacy estimator."""
     rows = [line.split() for line in Path(f"{EXAMPLE}_rho.txt").read_text().strip().splitlines()]
     sigma_s_per_cm = [f"{1 / float(rho) / 100:.6e}" for _, rho in rows]
     by_hand = "".join(

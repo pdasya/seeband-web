@@ -47,7 +47,8 @@ class Settings(BaseSettings):
     # The planned machine has 2 vCPUs.
     fit_max_running: int = Field(default=2, ge=1)
     fit_max_waiting: int = Field(default=4, ge=0)
-    fit_timeout_s: float = Field(default=60.0, gt=0)
+    # Verified stages include independent derivative and final-vector audits.
+    fit_timeout_s: float = Field(default=180.0, gt=0)
     fit_max_per_client: int = Field(default=2, ge=1)
     # A file's text is limited to 2000000 characters, which UTF-8 holds in at most 8 MB. This is
     # the limit of `POST /api/parse` and of any route not in `max_json_body_bytes`.
@@ -56,10 +57,10 @@ class Settings(BaseSettings):
     # value in up to 24 characters, take about 300 KB. A larger body is refused before it is read.
     # Unset, it is 1 MB, or what `max_points` needs if more. Set lower, the server warns at start.
     max_json_body_bytes: int | None = Field(default=None, ge=1)
-    # A fit's time grows with its points, about 6 to 11 ms for each point on one Mac. It cannot pass
-    # `request_checks.MAX_LISTED_POINTS`, the most a request's list can hold.
+    # Bound input size independently of the configurable fit deadline. It cannot pass the most
+    # values a request's list can hold.
     max_points: int = Field(default=2000, ge=1, le=MAX_LISTED_POINTS)
-    # Per client. A slider sends many cheap curves, and a fit can take a minute.
+    # Per client. A slider sends many cheap curves; verified fits can take minutes.
     calc_per_minute: int = Field(default=600, ge=1)
     band_diagram_per_minute: int = Field(default=600, ge=1)
     parse_per_minute: int = Field(default=60, ge=1)

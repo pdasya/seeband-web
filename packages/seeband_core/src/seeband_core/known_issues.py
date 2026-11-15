@@ -25,7 +25,7 @@ _ALL_CURVES: tuple[CurveKind, ...] = (
 _SPB_MODES = ("spb_s", "spb_s_rho", "spb_s_rho_rh")
 _DPB_MODES = ("dpb_s", "dpb_s_rho", "dpb_s_rho_rh")
 _DPB_LOOP = ("dpb_s_rho", "dpb_s_rho_rh")
-# Below this, the second band has no weight left in a fit (D19).
+# Heuristic warning for a small mass ratio, not a physical mass floor or proof of band removal.
 COLLAPSED_M_EFF = 1e-5
 
 KNOWN_ISSUES: tuple[KnownIssue, ...] = (
@@ -36,8 +36,8 @@ KNOWN_ISSUES: tuple[KnownIssue, ...] = (
         fit_modes=_DPB_LOOP,
         affects_fit=True,
         condition="degeneracy_not_one",
-        explanation="With N2/N1 other than 1, the fit returns m_eff times N, which can leave its "
-        "bounds (D12)",
+        explanation="The legacy-sequential-v1 iterative fit returns m_eff times N at nonunit "
+        "degeneracy, which can leave its bounds (D12). Verified fitting uses public R.",
     ),
     KnownIssue(
         id="collapsed_m_eff",
@@ -47,8 +47,8 @@ KNOWN_ISSUES: tuple[KnownIssue, ...] = (
         curve_kinds=_ALL_CURVES,
         affects_fit=True,
         condition="collapsed_m_eff",
-        explanation="m_eff near 0 removes the weight of the other band, so the data do not settle "
-        "the fit, and it differs between machines (D19)",
+        explanation="A small mass ratio can make band parameters poorly determined and sensitive "
+        "to numerical details (D19); channel contributions and identifiability require assessment.",
     ),
     KnownIssue(
         id="no_chemical_potential",

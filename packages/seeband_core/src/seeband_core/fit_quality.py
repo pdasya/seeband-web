@@ -12,7 +12,7 @@ CURVE_NAMES: Mapping[Quantity, str] = {
     "resistivity": "resistivity_ohm_m",
     "hall": "hall_m3_per_c",
 }
-# Curves come on an even grid, and are interpolated to measured temperatures from this many points.
+# Custom-model fallback interpolates a curve grid to the submitted temperatures.
 RMSE_GRID_POINTS = 200
 
 
@@ -58,14 +58,49 @@ def curve_rmse(
 ) -> dict[Quantity, Rmse]:
     """Return the RMSE of a model against each measured quantity, for any parameters.
 
-    This calculates one curve over the range of all the data, and interpolates it to the measured
-    temperatures. Pass only the points inside the fit range to get an RMSE over that range. With
-    fewer points it is faster and less accurate.
+    Built-in SPB/DPB kernels evaluate at each quantity's measured temperatures.
+    Other registered models retain interpolation from a curve grid; `points`
+    controls that fallback only. Pass only the data inside the intended fit range.
     """
     if not measurements:
         raise ValueError("RMSE needs at least one measurement")
     for quantity, measurement in measurements.items():
         measurement.check(quantity)
+    from seeband_core.band_models import DpbModel, SpbModel
+    from seeband_core.verified_fit import evaluate
+
+    if isinstance(model, SpbModel | DpbModel):
+        mode = model.describe().fit_mode(fit_mode)
+        if scattering is None and mode.scattering:
+            raise ValueError(f"Fit mode {fit_mode} needs a scattering type")
+        mode.parameters_for(scattering)
+        ratio = 1.0
+        if isinstance(model, DpbModel):
+            if band_1_degeneracy <= 0 or band_2_degeneracy <= 0:
+                raise ValueError("Band degeneracies must be positive")
+            ratio = band_2_degeneracy / band_1_degeneracy
+        results: dict[Quantity, Rmse] = {}
+        for quantity, measurement in measurements.items():
+            if quantity not in mode.quantities:
+                raise ValueError(f"Fit mode {fit_mode} has no curve for {quantity}")
+            values = evaluate(
+                model.describe().id,
+                fit_mode,
+                parameters,
+                measurement.temperature_k,
+                scattering,
+                ratio,
+                quantities=(quantity,),
+                check_finite=False,
+            )[quantity]
+            # Percentage residuals are undefined at a measured zero. Verified
+            # fit diagnostics supply absolute RMSE and safe relative L2 instead.
+            results[quantity] = (
+                Rmse(None, "%")
+                if quantity != "seebeck" and np.any(measurement.values == 0)
+                else rmse(quantity, values, measurement.values)
+            )
+        return results
     temperatures = [measurement.temperature_k for measurement in measurements.values()]
     curve = model.calculate(
         CurveRequest(
@@ -80,7 +115,7 @@ def curve_rmse(
             band_2_degeneracy,
         )
     )
-    results: dict[Quantity, Rmse] = {}
+    results = {}
     for quantity, measurement in measurements.items():
         if CURVE_NAMES[quantity] not in curve.curves:
             raise ValueError(f"Fit mode {fit_mode} has no curve for {quantity}")

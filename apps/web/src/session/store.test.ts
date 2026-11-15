@@ -803,6 +803,15 @@ test("a fit keeps the values it started from", () => {
   expect(state().fitStartValues).toBeNull();
 });
 
+test("method choice stays in the memory session and invalidates an old result", () => {
+  const store = createSessionStore();
+  expect(store.getState().selection.algorithm).toBe("verified-sequential-v2");
+  store.setState({ fit: { status: "done", result: RESULT } });
+  store.getState().setSelection({ algorithm: "legacy-sequential-v1" });
+  expect(store.getState().selection.algorithm).toBe("legacy-sequential-v1");
+  expect(store.getState().fit.status).toBe("idle");
+});
+
 describe("a doubt about a unit", () => {
   const doubted: SessionData = {
     ...DATA,

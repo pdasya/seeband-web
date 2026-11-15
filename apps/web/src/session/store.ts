@@ -169,6 +169,8 @@ export interface SingleFile {
 }
 
 export interface Selection {
+  /** Absent in older in-memory state; new requests use the verified method. */
+  algorithm?: Schemas["FitApiRequest"]["algorithm"];
   model: string | null;
   fitMode: string | null;
   scattering: string | null;
@@ -186,14 +188,16 @@ export type IterationParameters = Record<string, number | null>;
  */
 export type FitState =
   | { status: "idle" }
-  | { status: "waiting" }
+  | { status: "waiting"; algorithm?: Selection["algorithm"] }
   | {
       status: "running";
+      algorithm?: Selection["algorithm"];
       iteration: number | null;
       lastParameters: IterationParameters | null;
     }
   | {
       status: "stopped";
+      algorithm?: Selection["algorithm"];
       iteration: number | null;
       lastParameters: IterationParameters | null;
     }
@@ -201,6 +205,7 @@ export type FitState =
   | { status: "failed"; failure: FitFailure };
 
 const INITIAL_SELECTION: Selection = {
+  algorithm: "verified-sequential-v2",
   model: null,
   fitMode: null,
   scattering: null,
@@ -366,7 +371,11 @@ export interface SessionState {
     measurement: Measurement,
   ) => void;
   /** Starts a new run, which replaces any other, and returns its id for the calls below. */
-  fitRequested: (fitMode?: string, start?: Record<string, number>) => number;
+  fitRequested: (
+    fitMode?: string,
+    start?: Record<string, number>,
+    algorithm?: Selection["algorithm"],
+  ) => number;
   fitEvent: (run: number, event: FitEvent) => void;
   fitStopped: (run: number) => void;
   fitFailed: (run: number, failure: FitFailure) => void;
@@ -415,12 +424,20 @@ function withFitValues(
 }
 
 function afterEvent(fit: FitState, event: FitEvent): FitState {
+  const algorithm = fitAlgorithm(fit);
+  const provenance = algorithm === undefined ? {} : { algorithm };
   switch (event.type) {
     case "started":
-      return { status: "running", iteration: null, lastParameters: null };
+      return {
+        status: "running",
+        ...provenance,
+        iteration: null,
+        lastParameters: null,
+      };
     case "iteration":
       return {
         status: "running",
+        ...provenance,
         iteration: event.iteration,
         lastParameters: event.parameters,
       };
@@ -708,7 +725,11 @@ export const createSessionStore = () =>
       setSelection: (selection) => {
         set((state) => ({
           selection: { ...state.selection, ...selection },
-          fit: withoutOldResult(state.fit),
+          fit:
+            state.fit.status === "stopped" &&
+            Object.keys(selection).every((key) => key === "algorithm")
+              ? state.fit
+              : withoutOldResult(state.fit),
         }));
       },
       setParameters: (fitMode, values) => {
@@ -778,14 +799,17 @@ export const createSessionStore = () =>
           fit: withoutOldResult(state.fit),
         }));
       },
-      fitRequested: (fitMode, start) => {
+      fitRequested: (fitMode, start, algorithm) => {
         currentRun += 1;
         currentFitMode = fitMode ?? null;
         // A guess wrote the values of its own model only, so a fit of another did not start from it.
         set((state) => {
           const guess = currentGuess(state);
           return {
-            fit: { status: "waiting" },
+            fit: {
+              status: "waiting",
+              ...(algorithm === undefined ? {} : { algorithm }),
+            },
             fitStartValues: start ?? null,
             fitStartNumerical:
               guess?.kind === "applied" &&
@@ -822,7 +846,12 @@ export const createSessionStore = () =>
           }
           if (state.fit.status === "waiting") {
             return {
-              fit: { status: "stopped", iteration: null, lastParameters: null },
+              fit: {
+                ...state.fit,
+                status: "stopped",
+                iteration: null,
+                lastParameters: null,
+              },
             };
           }
           if (state.fit.status === "running") {
@@ -874,3 +903,15 @@ export function fitData(
 }
 
 export const useSessionStore = createSessionStore();
+
+/** Provenance belongs to the submitted run; old snapshots without it remain unknown. */
+export function fitAlgorithm(fit: FitState): Selection["algorithm"] {
+  if (fit.status === "done") return fit.result.algorithm;
+  if (
+    fit.status === "waiting" ||
+    fit.status === "running" ||
+    fit.status === "stopped"
+  )
+    return fit.algorithm;
+  return undefined;
+}

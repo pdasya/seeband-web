@@ -409,6 +409,7 @@ def fit_request(fit_mode: str, call: dict[str, Any]) -> FitRequest:
         bounds,
         a.get("scatter_type"),
         band_2_degeneracy=a.get("degen", 1.0),
+        algorithm="legacy-sequential-v1",
     )
 
 

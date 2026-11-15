@@ -291,7 +291,9 @@ def fit_ids(
     monkeypatch.setattr(band_models, "_CORE", FixedFit(returned))
     model = registry.get(fit_mode_id.partition("_")[0])
     values = default_start(fit_mode(fit_mode_id)) | kw.pop("values", {})
-    request = FitRequest(fit_mode_id, synthetic(fit_mode_id), values, **kw)
+    request = FitRequest(
+        fit_mode_id, synthetic(fit_mode_id), values, **kw, algorithm="legacy-sequential-v1"
+    )
     return set(model.fit(request).known_issues)
 
 
@@ -337,6 +339,7 @@ def test_a_failed_fit_lists_only_a_disabled_mode(monkeypatch: pytest.MonkeyPatch
             synthetic("dpb_s_rho"),
             default_start(fit_mode("dpb_s_rho")),
             scattering="acPhDis",
+            algorithm="legacy-sequential-v1",
         )
     )
     assert (dpb.status, dpb.known_issues) == ("failed", ())
@@ -346,6 +349,7 @@ def test_a_failed_fit_lists_only_a_disabled_mode(monkeypatch: pytest.MonkeyPatch
             synthetic("spb_s_rho_rh"),
             default_start(fit_mode("spb_s_rho_rh")),
             scattering="acPh",
+            algorithm="legacy-sequential-v1",
         )
     )
     assert (spb.status, spb.known_issues) == ("failed", ())

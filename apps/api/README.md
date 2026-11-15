@@ -25,7 +25,7 @@ uv run python -m seeband_api
 | `SEEBAND_API_LIMIT_CONCURRENCY`           | `1000`                           | uvicorn's own cap, a backstop: its 503 is plain text and refuses health too; `python -m seeband_api` only            |
 | `SEEBAND_API_FIT_MAX_RUNNING`             | `2`                              | fits at once, in each server process                                                                                 |
 | `SEEBAND_API_FIT_MAX_WAITING`             | `4`                              | fits waiting, before a 429                                                                                           |
-| `SEEBAND_API_FIT_TIMEOUT_S`               | `60`                             | how long one fit can run                                                                                             |
+| `SEEBAND_API_FIT_TIMEOUT_S`               | `180`                            | how long one fit can run                                                                                             |
 | `SEEBAND_API_FIT_MAX_PER_CLIENT`          | `2`                              | fits running or waiting for one client                                                                               |
 | `SEEBAND_API_MAX_BODY_BYTES`              | `10000000`                       | size of a request to `/api/parse` and any route not below                                                            |
 | `SEEBAND_API_MAX_JSON_BODY_BYTES`         | 1 MB, or what `max_points` needs | size of a request to calc, fit, guess and band-diagram; set below what `max_points` needs, the server warns at start |
@@ -84,7 +84,7 @@ These are fixed by the contract instead of a setting: 2000000 characters of `tex
 - **A trailing slash changes no limit.** `/api/calc/` has the limits of `/api/calc`, which it redirects to.
 
 - **A 413 can arrive as a network error.** The server closes the connection without reading the rest. Node's `fetch` read the 413 for bodies of 11 and 40 MB, and got an `EPIPE` error at 200 MB. So a client should check a file's size before sending it. A browser was not tried.
-- **Why 2000 points:** the time of a fit grows with its points, and about 10000 reach the time limit of 60 s. Through a test client on an Apple Silicon Mac with 10 cores, DPB S and DPB S + ρ with `acPh` on points interpolated from the demo dataset took 7 and 11 s at 1000 points, and 29 and 49 s at 5000. The example files have at most a few dozen rows.
+- **Why 2000 points:** input size remains bounded independently of the fit deadline. Historical legacy measurements on one Apple Silicon Mac took 7–11 s at 1000 points and 29–49 s at 5000 points; these are not timing estimates for the verified method. P19 adds independent derivative and final-vector audits. Its demo fit exceeded the old 60 s API deadline on a hosted Linux runner, so the default is now 180 s, configurable through `SEEBAND_API_FIT_TIMEOUT_S`. The queue wait does not count, and running/waiting/per-client concurrency limits remain in force.
 - **The rate** is a bucket that refills steadily and holds a minute's requests, so a client can spend them at once. 600 curves a minute allow 10 a second for a slider, and FS6 and FS12 should check that. A refused request takes nothing from the bucket, and one that a route refuses does.
 - **Refusals come early:** rate and size are checked before the body is read or parsed. A row count needs the text to be read first, which for 2000000 characters takes about 0.5 s, or about 1.4 s for very short rows.
 - **A client is an address**, or one /64 for IPv6, as one user usually holds a whole /64. So users behind one router share a limit. The addresses stay only in memory, and are not logged. While requests keep coming, one is dropped within about 2 minutes of its client's last request. With no requests at all, it stays until the next one.
@@ -107,7 +107,8 @@ The contract holds the real response as its example, so `pnpm mock` serves real 
 
 `POST /api/fit` runs a fit in a new process, and answers with a stream of Server-Sent Events.
 
-- **Status:** `converged` means that the fit ended normally, not that the result is sound, and the response flags what it can in `at_bounds` and `known_issues`. `failed` is a 200, as when a start value lies outside its bounds, and returns the start values with fixed text in `message`. `parameter_errors` hold other stages fixed, so in a staged fit they can be far too small.
+- **Algorithm:** `algorithm` defaults to `verified-sequential-v2`. Select `legacy-sequential-v1` explicitly for the historical fitting path. The response records the method that ran; no implicit fallback occurs.
+- **Status:** verified `converged` requires final-vector conditional-stage checks; it does not establish physical adequacy or identifiability. `stalled` retains an endpoint without a convergence certificate; `iteration_limit` reports a budget limit. `failed` is a 200, including invalid starts or unresolved numerical failures. Check `message`, `diagnostics`, `at_bounds` and `known_issues`. Diagnostics include per-quantity input-grid residuals, numerical consistency and detected unidentified parameters; residual adequacy and uncertainty remain `not_assessed`. Verified fits do not supply parameter error bars. Legacy `converged` retains its historical solver semantics, and legacy `parameter_errors` hold other stages fixed, so they can be far too small. See [the numerical contract](../../packages/seeband_core/docs/verified-sequential-fit.md).
 - **Data:** send each quantity of the mode. Only points inside the fit range enter the fit, and a quantity with none gets a 422 `no_points_in_range`.
 - **Bounds** are in core units, and override the description's. A parameter with `bounds_editable: false` refuses them, as on the desktop, as does one that this scattering type does not use.
 - **Held parameters:** `held` names fitted parameters to keep at their start values, and the fit finds only the others (D30). The response names them in `held`, with their values as sent, and no error or at-bound mark for them. A name the mode does not fit for this scattering type is `parameter_not_fitted`, and holding every fitted parameter is `nothing_to_fit`. A held value outside its bounds fails as a start outside them does. The errors of the free parameters hold the held values exact. Holding m1 in DPB, or the mass in SPB S + ρ + R_H, skips the only stage that uses R_H, so the result is the S + ρ fit with that value.
@@ -138,18 +139,18 @@ Refusals come before the stream, as plain errors in JSON:
 
 So a 200 only means that the fit has a place. A waiting client has its 200 and no event until `started`. These come afterwards, as the code of an `error` event:
 
-| Code               | Meaning                                                                                           |
-| ------------------ | ------------------------------------------------------------------------------------------------- |
-| `fit_timeout`      | the fit ran past 60 s by default, and its process has ended. The wait in the queue does not count |
-| `fit_process_died` | the process ended without a result, and trying again is reasonable                                |
-| `fit_failed`       | the process raised something other than a fit's own failure. The API logs only its type           |
-| `internal_error`   | the API itself failed, and logs the type and code location                                        |
+| Code               | Meaning                                                                                            |
+| ------------------ | -------------------------------------------------------------------------------------------------- |
+| `fit_timeout`      | the fit ran past 180 s by default, and its process has ended. The wait in the queue does not count |
+| `fit_process_died` | the process ended without a result, and trying again is reasonable                                 |
+| `fit_failed`       | the process raised something other than a fit's own failure. The API logs only its type            |
+| `internal_error`   | the API itself failed, and logs the type and code location                                         |
 
 The log line of a fit says 200 whichever event came last, or if the client left, since the response had already started.
 
 A process starts for each fit, which takes about 0.5 s of the time below. It ends with its request, whichever way the request ends: past the time limit, on a disconnect, or at a stop of the server. It is terminated, and killed if it stays. A process also exits if the server dies.
 
-Time for each fit of the 3 desktop examples, in all 11 working combinations of mode and scattering, from the default start values, 50 to 800 K, through a test client on an Apple Silicon Mac with 10 cores: median 1.0 s, at most 1.6 s, all `converged`. Set the limit after trying these on the VM, as a small VM will be slower.
+Historical legacy timing before P19 for each fit of the 3 desktop examples, in all 11 working combinations of mode and scattering, from the default start values, 50 to 800 K, through a test client on an Apple Silicon Mac with 10 cores: median 1.0 s, at most 1.6 s, all `converged`. Set the limit after trying these on the VM, as a small VM will be slower.
 
 **A client that stops reading** keeps its connection open until it closes, as the API has no limit on that. Its fit still ends by the time limit and gives back its place, and its unread events stay in memory until then, at most a few per iteration.
 
@@ -188,16 +189,16 @@ It has no rate limit and no `ETag`, as it costs almost nothing and is under 10 K
 - **Parameters:** all of a mode's parameters are needed, and values outside a control's range are allowed, because a fit can end there. Names are checked, and problems are listed in `details`. Numbers must be JSON numbers: `true` or `"1.5"` are refused.
 - **A disabled mode** gets a 409 `fit_mode_disabled`, with the ids of its known issues as the `code` in `details`. Show `known_issue.<code>` through i18n.
 - **A value that is not finite** usually comes back as `null`, with the rest of the curve, as with a band mass of 0.
-- **`calculation_failed`** is a 422 that loses the whole curve, because the core raises. This happens at `m_eff` = 0, which divides by zero, and in DPB S + ρ + R_H where a value at low temperature is not finite: at 2 to 300 K, 55 of 100 random parameter sets inside the control ranges failed, and none at 10 to 300 K or 50 to 800 K. In DPB S + ρ, the same condition gives one `null` instead. A measured point at a low temperature can cause it through the RMSE grid too. A negative m1 fails too, as it gives complex values. The API logs the exception's type.
+- **`calculation_failed`** is a 422 that loses the whole curve, because the core raises. This happens at `m_eff` = 0, which divides by zero, and in DPB S + ρ + R_H where a value at low temperature is not finite: at 2 to 300 K, 55 of 100 random parameter sets inside the control ranges failed, and none at 10 to 300 K or 50 to 800 K. In DPB S + ρ, the same condition gives one `null` instead. A submitted measurement at a low temperature can cause a density-certification failure during RMSE evaluation too. A negative m1 fails too, as it gives complex values. The API logs the exception's type.
 - **`measured_points`** holds points made from the `measurements` sent, with no model: `electrical_conductivity_s_per_m` is 1/ρ at each ρ temperature, with `null` for a ρ of 0 or below. They go with the data the request sent: points in the fit range, as a client sends for the RMSE, and of interpolated ρ when it sends interpolated values. `seeband_core.measured_points` makes them. There are no κ_e points: κ_e is not measured, and an estimate from ρ needs a Lorenz number, which was decided against in #159.
-- **RMSE** uses a grid of 50 points by default, for speed. Ask for `rmse_points: 200` for a value to report: on the demo dataset, 50 points changed an RMSE by about 0.3 % at default parameters, and up to about 4 % near a good fit.
+- **RMSE** for built-in SPB/DPB models evaluates the final parameters directly at each submitted measurement temperature. `points` and `rmse_points` do not affect this metric. Submitted points may be interpolated by the client. Custom registered models retain the grid-based fallback controlled by `rmse_points`. `/api/calc` retains its `422 zero_measured_value` rejection for submitted zero ρ/Hall measurements; the web preview excludes those points. The core metric helper itself returns an unavailable percentage for zeros. Fit diagnostics separately provide absolute RMSE and relative L2 when defined.
 - **`calculation_unavailable`** is a 503: a worker died, and the next request gets a new pool.
 - **`calculation_timeout`** is a 504. A worker cannot be interrupted, so it stays busy until the calculation ends, and its slot in the queue stays taken until then.
 - **`calculation_busy`** is a 503 with `Retry-After`, when the queue is full or a job waited `calc_wait_timeout_s` for a worker. **`client_calc_limit`** is a 429 with `Retry-After`, when the client already has `calc_max_per_client` jobs. Both come at once, rather than after a run's whole time.
 
 Requests are parsed in the event loop, up to the size in [Limits](#limits). A body of 9 MB of numbers took about 0.13 s in all, and the largest allowed grids, `points` and `rmse_points` of 1000, take about 1.3 s each.
 
-Median response time for a 50-point curve, through the app in one process with a test client, 20 calls each, on an Apple Silicon Mac with 10 cores and Python 3.13. The RMSE column uses the 31 points per quantity of the demo dataset. Network time is not included, and FS12 measures that.
+Historical response-time measurements before P19 (the RMSE evaluator has since changed): a 50-point curve, through the app in one process with a test client, 20 calls each, on an Apple Silicon Mac with 10 cores and Python 3.13. The RMSE column uses the 31 points per quantity of the demo dataset. Network time is not included, and FS12 measures that.
 
 | Mode, with default scattering | Curves | Curves and RMSE |
 | ----------------------------- | ------ | --------------- |

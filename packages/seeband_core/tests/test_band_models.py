@@ -154,7 +154,15 @@ def test_every_working_fit_returns_all_parameters_and_keeps_its_request(
     start_before = copy.deepcopy(start)
     values_before = {name: data.values.copy() for name, data in measurements.items()}
 
-    result = model.fit(FitRequest(fit_mode_id, measurements, start, scattering=scattering))
+    result = model.fit(
+        FitRequest(
+            fit_mode_id,
+            measurements,
+            start,
+            scattering=scattering,
+            algorithm="legacy-sequential-v1",
+        )
+    )
 
     assert result.status == "converged"
     assert set(result.parameters) == set(start)
@@ -190,6 +198,7 @@ def test_a_fit_runs_the_stages_of_its_description_in_their_order(
             recorded_measurements(fit_mode),
             default_start(fit_mode),
             scattering=scattering,
+            algorithm="legacy-sequential-v1",
         )
     )
 
@@ -225,6 +234,7 @@ def test_each_stage_finds_the_parameters_of_its_description(
             recorded_measurements(fit_mode),
             default_start(fit_mode),
             scattering=scattering,
+            algorithm="legacy-sequential-v1",
         )
     )
     fitted = {spec.name for spec in fit_mode.parameters_for(scattering) if spec.role == "fitted"}
@@ -258,7 +268,13 @@ def test_inactive_parameters_come_back_unchanged() -> None:
     fit_mode = model.describe().fit_mode("dpb_s_rho")
     start = default_start(fit_mode)
     result = model.fit(
-        FitRequest("dpb_s_rho", recorded_measurements(fit_mode), start, scattering="acPh")
+        FitRequest(
+            "dpb_s_rho",
+            recorded_measurements(fit_mode),
+            start,
+            scattering="acPh",
+            algorithm="legacy-sequential-v1",
+        )
     )
     for name in ("C", "D", "F", "G"):
         assert result.parameters[name] == start[name]
@@ -270,7 +286,11 @@ def test_web_bounds_of_d1_let_the_fit_run_and_desktop_bounds_fail_as_recorded() 
     fit_mode = model.describe().fit_mode("dpb_s_rho_rh")
     measurements = recorded_measurements(fit_mode)
     start = default_start(fit_mode)
-    result = model.fit(FitRequest("dpb_s_rho_rh", measurements, start, scattering="dis"))
+    result = model.fit(
+        FitRequest(
+            "dpb_s_rho_rh", measurements, start, scattering="dis", algorithm="legacy-sequential-v1"
+        )
+    )
     assert result.status == "converged"
     assert 0.5 <= result.parameters["G"] <= 2
     failed = model.fit(
@@ -280,6 +300,7 @@ def test_web_bounds_of_d1_let_the_fit_run_and_desktop_bounds_fail_as_recorded() 
             start,
             bounds={"G": Bounds(50, 200)},
             scattering="dis",
+            algorithm="legacy-sequential-v1",
         )
     )
     assert failed.status == "failed"
@@ -298,6 +319,7 @@ def test_request_bounds_override_only_what_they_name() -> None:
             recorded_measurements(fit_mode),
             start,
             bounds={"fermi_energy": Bounds(100, 110)},
+            algorithm="legacy-sequential-v1",
         )
     )
     assert 100 <= result.parameters["fermi_energy"] <= 110
@@ -349,7 +371,15 @@ def test_a_fit_needs_its_measurements() -> None:
     fit_mode = model.describe().fit_mode("dpb_s_rho")
     only_seebeck = {"seebeck": recorded_measurements(fit_mode)["seebeck"]}
     with pytest.raises(ValueError, match="Missing measurement: resistivity"):
-        model.fit(FitRequest("dpb_s_rho", only_seebeck, default_start(fit_mode), scattering="acPh"))
+        model.fit(
+            FitRequest(
+                "dpb_s_rho",
+                only_seebeck,
+                default_start(fit_mode),
+                scattering="acPh",
+                algorithm="legacy-sequential-v1",
+            )
+        )
 
 
 def _golden_runs() -> Iterator[tuple[str, dict[str, Any]]]:
@@ -766,6 +796,7 @@ def test_fits_call_the_core_as_written_here(
             scattering,
             band_1_degeneracy=2.0,
             band_2_degeneracy=3.0,
+            algorithm="legacy-sequential-v1",
         )
     )
     expected_keywords = {
@@ -799,6 +830,7 @@ def test_a_fit_returning_the_wrong_length_is_an_error(
                 data,
                 request_values(fit_mode),
                 scattering=fit_mode.default_scattering,
+                algorithm="legacy-sequential-v1",
             ),
         )
 
@@ -832,6 +864,7 @@ def test_degeneracies_must_be_positive(first: float, second: float) -> None:
                 values,
                 band_1_degeneracy=first,
                 band_2_degeneracy=second,
+                algorithm="legacy-sequential-v1",
             )
         )
 
@@ -856,6 +889,7 @@ def test_names_a_fit_cannot_use_are_errors(
                 recorded_measurements(fit_mode),
                 default_start(fit_mode) | start_extra,
                 bounds,
+                algorithm="legacy-sequential-v1",
             )
         )
 
@@ -959,6 +993,7 @@ def iterative_request(fit_mode_id: str, scattering: str, degeneracy: float = 1.0
         default_start(fit_mode),
         scattering=scattering,
         band_2_degeneracy=degeneracy,
+        algorithm="legacy-sequential-v1",
     )
 
 
@@ -1130,6 +1165,7 @@ def test_a_failed_fit_has_a_status_and_a_safe_message(
             recorded_measurements(fit_mode),
             start,
             scattering=fit_mode.default_scattering,
+            algorithm="legacy-sequential-v1",
         )
     )
     assert result.status == "failed"
@@ -1176,6 +1212,7 @@ def test_interruptions_are_not_failed_fits(
                 recorded_measurements(fit_mode),
                 default_start(fit_mode),
                 scattering=fit_mode.default_scattering,
+                algorithm="legacy-sequential-v1",
             )
         )
 
@@ -1219,7 +1256,14 @@ def test_bad_measurements_are_invalid_requests(measurement: Measurement, message
     model = registry.get("dpb")
     fit_mode = model.describe().fit_mode("dpb_s")
     with pytest.raises(ValueError, match=message):
-        model.fit(FitRequest("dpb_s", {"seebeck": measurement}, default_start(fit_mode)))
+        model.fit(
+            FitRequest(
+                "dpb_s",
+                {"seebeck": measurement},
+                default_start(fit_mode),
+                algorithm="legacy-sequential-v1",
+            )
+        )
 
 
 @pytest.mark.parametrize("value", [float("nan"), float("inf"), "abc", None])
@@ -1228,7 +1272,11 @@ def test_start_values_must_be_finite_numbers(value: Any) -> None:
     fit_mode = model.describe().fit_mode("dpb_s")
     start = default_start(fit_mode) | {"m_eff": value}
     with pytest.raises(ValueError, match="must be a finite number"):
-        model.fit(FitRequest("dpb_s", {"seebeck": real_measurement()}, start))
+        model.fit(
+            FitRequest(
+                "dpb_s", {"seebeck": real_measurement()}, start, algorithm="legacy-sequential-v1"
+            )
+        )
 
 
 @pytest.mark.parametrize("bounds", [Bounds(10, 5), Bounds(5, 5), Bounds(float("nan"), 5)], ids=str)
@@ -1242,6 +1290,7 @@ def test_inverted_bounds_are_invalid_requests(bounds: Bounds) -> None:
                 {"seebeck": real_measurement()},
                 default_start(fit_mode),
                 {"m_eff": bounds},
+                algorithm="legacy-sequential-v1",
             )
         )
 
@@ -1257,6 +1306,7 @@ def test_degeneracy_must_be_a_finite_positive_number(value: float) -> None:
                 {"seebeck": real_measurement()},
                 default_start(fit_mode),
                 band_2_degeneracy=value,
+                algorithm="legacy-sequential-v1",
             )
         )
 
@@ -1279,6 +1329,7 @@ def test_single_pass_fits_have_no_iterations(
             recorded_measurements(fit_mode),
             default_start(fit_mode),
             scattering=scattering,
+            algorithm="legacy-sequential-v1",
         ),
         updates.append,
     )
@@ -1318,6 +1369,7 @@ def fit(
         scattering=scattering,
         held=frozenset(held),
         **extra,
+        algorithm="legacy-sequential-v1",
     )
     return start, model.fit(request)
 
@@ -1363,6 +1415,7 @@ def test_a_held_parameter_keeps_its_start_in_the_spb_hall_mode(scattering: str, 
             start,
             scattering=scattering,
             held=frozenset({name}),
+            algorithm="legacy-sequential-v1",
         )
     )
 
@@ -1513,7 +1566,13 @@ def test_a_held_value_outside_its_bounds_fails_as_a_start_would(
     model = registry.get(model_id)
     fit_mode = model.describe().fit_mode(fit_mode_id)
     start = default_start(fit_mode) | {name: value}
-    request = FitRequest(fit_mode_id, recorded_measurements(fit_mode), start, scattering="acPh")
+    request = FitRequest(
+        fit_mode_id,
+        recorded_measurements(fit_mode),
+        start,
+        scattering="acPh",
+        algorithm="legacy-sequential-v1",
+    )
 
     held = model.fit(dataclasses.replace(request, held=frozenset({name})))
     free = model.fit(request)
@@ -1539,6 +1598,7 @@ def test_iteration_updates_carry_a_held_value_exactly() -> None:
             band_1_degeneracy=1.0,
             band_2_degeneracy=3.0,
             held=frozenset({"m_eff"}),
+            algorithm="legacy-sequential-v1",
         ),
         on_iteration=updates.append,
     )
@@ -1562,7 +1622,14 @@ def test_a_held_fermi_energy_in_spb_hall_fits_as_a_fit_written_by_hand() -> None
     data = recorded_measurements(fit_mode)
     start = default_start(fit_mode) | {"band_mass": -1.0, "fermi_energy": -100.0}
     result = model.fit(
-        FitRequest(fit_mode.id, data, start, scattering="acPh", held=frozenset({"fermi_energy"}))
+        FitRequest(
+            fit_mode.id,
+            data,
+            start,
+            scattering="acPh",
+            held=frozenset({"fermi_energy"}),
+            algorithm="legacy-sequential-v1",
+        )
     )
 
     temperature_rho, rho = data["resistivity"].temperature_k, data["resistivity"].values
@@ -1620,6 +1687,7 @@ def test_a_held_parameter_in_a_dpb_loop_at_n_2_fits_as_a_loop_written_by_hand(he
             band_1_degeneracy=1.0,
             band_2_degeneracy=degeneracy,
             held=frozenset({held}),
+            algorithm="legacy-sequential-v1",
         )
     )
 
