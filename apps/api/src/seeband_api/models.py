@@ -150,7 +150,8 @@ class FitModeResponse(BaseModel):
     why. `iterative` tells whether an iteration count means anything. `threshold`, a relative
     change, and `max_iterations` are what an iterative fit uses, and a request cannot change them.
     `scattering` is empty when a mode has no choice of scattering. `stages` are the solver runs of
-    a fit, in their order.
+    a fit, in their order. `band_2_edge` names the parameter whose core value is the edge of band 2
+    above that of band 1, in K, and is left out for a mode with one band.
     """
 
     id: str
@@ -168,6 +169,7 @@ class FitModeResponse(BaseModel):
     disabled_by: list[str]
     known_issues: list[KnownIssueResponse]
     stages: list[FitStageResponse]
+    band_2_edge: str | None = None
 
 
 class ModelResponse(BaseModel):
@@ -281,6 +283,7 @@ def _fit_mode(fit_mode: FitMode) -> FitModeResponse:
             )
             for stage in fit_mode.stages
         ],
+        band_2_edge=fit_mode.band_2_edge,
     )
 
 

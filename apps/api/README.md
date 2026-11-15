@@ -69,7 +69,7 @@ These are fixed by the contract instead of a setting: 2000000 characters of `tex
 
 `has_initial_guess` says that `POST /api/guess` provides estimates: numerical search for SPB and a neural network for DPB.
 
-A mode with `disabled: true` must not be offered, and `disabled_by` names the `known_issues` entries that say why. Show their `message_key` through i18n. `meaning` and `name` are English, for a client with no translation. Fields that do not apply are left out, rather than `null`.
+A mode with `disabled: true` must not be offered, and `disabled_by` names the `known_issues` entries that say why. Show their `message_key` through i18n. `meaning` and `name` are English, for a client with no translation. Fields that do not apply are left out, rather than `null`. `band_2_edge` names the parameter whose core value is the edge of band 2 above band 1, in K, so a client draws it without knowing a model's parameter names; a one-band mode leaves it out.
 
 Requests and results use core units. Each parameter gives its control as `display_range`, what a user sees, and `core_range`, core units, both calculated by `seeband_core`. Send core values from `core_range` rather than calculating them from the scales, because the desktop divides where a multiplication changes the last bit. `step` is a keyboard increment, not a grid. `calc_scale` stays out, because it only reproduces a desktop path.
 

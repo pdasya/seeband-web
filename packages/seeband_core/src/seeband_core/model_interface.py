@@ -159,6 +159,10 @@ class FitMode:
     value rather than on data, such as carrier concentrations with no Hall data to set m1.
 
     `stages` are the solver runs of a fit, in their order, as `fit_module` runs them.
+
+    `band_2_edge` names the parameter whose value in core units is the edge of band 2, in K,
+    measured from that of band 1, so that a client can draw it without knowing a model's names.
+    A mode with one band has none.
     """
 
     id: str
@@ -175,6 +179,7 @@ class FitMode:
     unavailable_curves: tuple[UnavailableCurve, ...] = ()
     relative_curve_kinds: tuple[CurveKind, ...] = ()
     stages: tuple[FitStage, ...] = ()
+    band_2_edge: str | None = None
 
     def unavailable_reason(self, kind: CurveKind) -> str | None:
         """Return why this mode does not offer a kind of curve, or None if it does."""

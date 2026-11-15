@@ -717,7 +717,8 @@ export interface components {
          *     why. `iterative` tells whether an iteration count means anything. `threshold`, a relative
          *     change, and `max_iterations` are what an iterative fit uses, and a request cannot change them.
          *     `scattering` is empty when a mode has no choice of scattering. `stages` are the solver runs of
-         *     a fit, in their order.
+         *     a fit, in their order. `band_2_edge` names the parameter whose core value is the edge of band 2
+         *     above that of band 1, in K, and is left out for a mode with one band.
          */
         FitModeResponse: {
             /** Id */
@@ -749,6 +750,8 @@ export interface components {
             known_issues: components["schemas"]["KnownIssueResponse"][];
             /** Stages */
             stages: components["schemas"]["FitStageResponse"][];
+            /** Band 2 Edge */
+            band_2_edge?: string | null;
         };
         /**
          * FitResponse
@@ -1393,7 +1396,7 @@ export interface operations {
                 headers: {
                     /** @example no-cache */
                     "Cache-Control"?: string;
-                    /** @example "76974b02f5b5e109d49561811e9ba2df" */
+                    /** @example "0877a5a7b4034a4224584ee89961193c" */
                     ETag?: string;
                     [name: string]: unknown;
                 };

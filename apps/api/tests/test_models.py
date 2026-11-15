@@ -398,3 +398,15 @@ def test_energies_are_shown_in_ev(response: Any, modes: dict[str, dict[str, Any]
     assert gap["core_range"]["maximum"] == 3000.0
     ratio = next(p for p in modes["dpb_s_rho"]["parameters"] if p["name"] == "m_eff")
     assert (ratio["display_unit"], ratio["display_factor"]) == ("dimensionless", 1.0)
+
+
+def test_band_2_edge_names_e_g_in_dpb_and_is_left_out_in_spb(
+    modes: dict[str, dict[str, Any]],
+) -> None:
+    for mode_id, mode in modes.items():
+        if mode_id.startswith("dpb_"):
+            assert mode["band_2_edge"] == "band_gap"
+            edge = next(p for p in mode["parameters"] if p["name"] == mode["band_2_edge"])
+            assert edge["unit"] == "K"
+        else:
+            assert "band_2_edge" not in mode

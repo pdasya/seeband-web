@@ -5,6 +5,7 @@ import { MODELS } from "../../e2e/support/models";
 
 import type { BandDiagramResponse, CalcResponse } from "@/api/client";
 import {
+  band2EdgeShown,
   bandGapForTab,
   chartTabView,
   derivedKind,
@@ -261,6 +262,70 @@ describe("the chemical potential", () => {
       { value: 1000, label: "band 2 bottom (E_g)" },
     ]);
     expect(at(750)[1]?.value).toBe(750);
+  });
+
+  test("a made-up two-band model draws band 2 from the parameter its description names", () => {
+    const dpb = mode("dpb_s");
+    const renamed: FitModeDescription = {
+      ...dpb,
+      parameters: dpb.parameters.map((parameter) =>
+        parameter.name === "band_gap"
+          ? { ...parameter, name: "delta" }
+          : parameter,
+      ),
+      band_2_edge: "delta",
+    };
+    const lines = (parameters: Parameters<typeof bandGapForTab>[2]) =>
+      chartTabView(
+        "chemical_potential",
+        renamed,
+        {
+          ...loaded(),
+          bandGapK: bandGapForTab("chemical_potential", renamed, parameters),
+        },
+        null,
+        derived,
+      ).referenceLines;
+
+    expect(lines({})).toEqual([
+      { value: 0, label: "band 1 top" },
+      { value: 1000, label: "band 2 bottom (E_g)" },
+    ]);
+    expect(lines({ dpb_s: { delta: 640 } })[1]?.value).toBe(640);
+  });
+
+  test("a parameter called band_gap places nothing unless the description names it", () => {
+    const unnamed: FitModeDescription = { ...mode("dpb_s"), band_2_edge: null };
+    expect(
+      bandGapForTab("chemical_potential", unnamed, {
+        dpb_s: { band_gap: 750 },
+      }),
+    ).toBeUndefined();
+  });
+
+  test("the band diagram shows E_g of the parameter the description names, in eV", () => {
+    const dpb = mode("dpb_s");
+    const renamed: FitModeDescription = {
+      ...dpb,
+      parameters: dpb.parameters.map((parameter) =>
+        parameter.name === "band_gap"
+          ? { ...parameter, name: "delta" }
+          : parameter,
+      ),
+      band_2_edge: "delta",
+    };
+    const shownForDpb = band2EdgeShown(dpb, {});
+    expect(shownForDpb).toBeDefined();
+    // The same as DPB's own, as only the name changed: 1000 K, in eV to the field's step.
+    expect(band2EdgeShown(renamed, {})).toBe(shownForDpb);
+    expect(band2EdgeShown(renamed, { dpb_s: { delta: 2000 } })).toBe(
+      band2EdgeShown(dpb, { dpb_s: { band_gap: 2000 } }),
+    );
+  });
+
+  test("a mode with one band shows no E_g", () => {
+    expect(band2EdgeShown(mode("spb_s"), {})).toBeUndefined();
+    expect(band2EdgeShown(undefined, {})).toBeUndefined();
   });
 
   test("other tabs do not follow E_g", () => {
