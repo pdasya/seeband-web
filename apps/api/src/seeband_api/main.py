@@ -1,5 +1,6 @@
 """The application factory."""
 
+import asyncio
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -18,6 +19,7 @@ from seeband_api.guess import router as guess_router
 from seeband_api.health import router as health_router
 from seeband_api.models import router as models_router
 from seeband_api.parse import router as parse_router
+from seeband_api.processes import start_fork_server
 from seeband_api.request_limits import RateLimiter, RequestLimitsMiddleware
 from seeband_api.request_logging import RequestLoggingMiddleware, configure_logging
 from seeband_api.settings import Settings
@@ -49,6 +51,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     }
                 },
             )
+        # Before the pool, whose workers fork from it too. Its imports took about 0.3 s on a Mac.
+        await asyncio.to_thread(start_fork_server)
         app.state.calc_pool = CalcPool(
             settings.calc_workers,
             settings.calc_timeout_s,

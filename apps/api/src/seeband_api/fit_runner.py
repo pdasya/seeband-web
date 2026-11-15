@@ -1,25 +1,30 @@
 """Runs each fit in its own process, which can be killed, as a pool's worker cannot.
 
+The process is forked from a server that has the core loaded, see `processes`.
+
 A pipe carries events from the process. At most `max_running` fits run at once and `max_waiting`
 wait, and a request beyond those is refused at once with a 429. The time limit covers the running
 fit, not the wait. The process always ends with its task, however the task ends.
 """
 
 import asyncio
-import multiprocessing
+import os
+import signal
 import threading
+import time
 from collections import Counter
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass, field
 from http import HTTPStatus
 from multiprocessing.connection import Connection
-from multiprocessing.context import SpawnProcess
+from multiprocessing.context import ForkServerProcess
 from typing import Annotated, Any
 
 from fastapi import Depends, Request
 
-from seeband_api.calc_worker import initialise_worker
 from seeband_api.errors import ApiError
+from seeband_api.fit_worker import run_in_child
+from seeband_api.processes import context as _context
 from seeband_api.request_logging import log_calculation_failure
 
 RETRY_AFTER_S = 5
@@ -28,33 +33,8 @@ FIT_TIMEOUT_MESSAGE = "The fit took too long"
 FIT_PROCESS_DIED_MESSAGE = "The fit stopped unexpectedly. Try again."
 FIT_FAILED_MESSAGE = "The fit ended with an internal error"
 
-_context = multiprocessing.get_context("spawn")
 
-
-def _run_in_child(job: Connection, events: Connection) -> None:
-    """Runs the job from one pipe, and sends what happens through the other.
-
-    Only an exception's type crosses, not its text. The job comes through a pipe rather than the
-    process's arguments, because passing those holds up `start` until the child reads them, and
-    until `start` returns, the process cannot be killed.
-    """
-    initialise_worker()
-    try:
-        function, args = job.recv()
-    except EOFError:
-        return
-    finally:
-        job.close()
-    try:
-        result = function(*args, lambda update: events.send(("iteration", update)))
-    except BaseException as error:
-        events.send(("error", type(error).__name__))
-    else:
-        events.send(("result", result))
-    events.close()
-
-
-def _stop(process: SpawnProcess) -> None:
+def _stop(process: ForkServerProcess) -> None:
     """Terminates a process, then kills it if it does not end."""
     if process.is_alive():
         process.terminate()
@@ -63,13 +43,43 @@ def _stop(process: SpawnProcess) -> None:
         process.kill()
     if process.pid is not None:
         process.join()
+        if process.exitcode == _FORK_SERVER_LOST:
+            _end_orphan(process.pid)
+
+
+# The exit code that multiprocessing gives a child whose fork server has gone, which is where the
+# real one would have come from. Such a child can still be running, now a child of PID 1, and
+# `is_alive`, `terminate` and `kill` all take it for ended.
+_FORK_SERVER_LOST = 255
+
+
+def _end_orphan(pid: int) -> None:
+    """Terminates, then kills, a child that multiprocessing has lost track of.
+
+    The pid is its own until something reaps it, and nothing does before the fork server has gone,
+    so the signals cannot reach another process. Only a fit that itself exits with 255 gets here
+    with its pid already free, and the run_in_child of a fit does not.
+    """
+    deadline = time.monotonic() + TERMINATE_GRACE_S
+    for sig in (signal.SIGTERM, signal.SIGKILL):
+        try:
+            os.kill(pid, sig)
+        except ProcessLookupError:
+            return
+        while time.monotonic() < deadline:
+            try:
+                os.kill(pid, 0)
+            except ProcessLookupError:
+                return
+            time.sleep(0.01)
+        deadline = time.monotonic() + TERMINATE_GRACE_S
 
 
 @dataclass(eq=False)
 class _FitProcess:
     """A process with its pipes, as far as it has started."""
 
-    process: SpawnProcess
+    process: ForkServerProcess
     job_reader: Connection
     job_writer: Connection
     events_reader: Connection
@@ -204,7 +214,7 @@ class FitRunner:
         job_reader, job_writer = _context.Pipe(duplex=False)
         events_reader, events_writer = _context.Pipe(duplex=False)
         process = _context.Process(
-            target=_run_in_child, args=(job_reader, events_writer), daemon=True
+            target=run_in_child, args=(job_reader, events_writer), daemon=True
         )
         fit = _FitProcess(process, job_reader, job_writer, events_reader, events_writer)
         self._running.add(fit)

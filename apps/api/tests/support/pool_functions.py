@@ -2,6 +2,7 @@
 
 import os
 import signal
+import sys
 import time
 
 from seeband_api.calc_worker import CalculationFailed
@@ -39,3 +40,36 @@ def die_during_a_guess(*_: object) -> None:
 
 def fail_a_guess(*_: object) -> None:
     raise CalculationFailed("ValueError")
+
+
+def slow_warm_up() -> None:
+    time.sleep(0.6)
+
+
+def loaded_modules(names: list[str]) -> list[str]:
+    """The modules among `names` that the worker holds."""
+    return [name for name in names if name in sys.modules]
+
+
+def hang_the_first_time(flag: str) -> None:
+    """Hangs if `flag` does not exist yet, after creating it, so only the first worker hangs."""
+    try:
+        with open(flag, "x", encoding="utf-8"):
+            pass
+    except FileExistsError:
+        return
+    time.sleep(30)
+
+
+def parent_pid() -> int:
+    return os.getppid()
+
+
+def die_the_first_time(flag: str) -> None:
+    """Kills its worker if `flag` does not exist yet, after creating it."""
+    try:
+        with open(flag, "x", encoding="utf-8"):
+            pass
+    except FileExistsError:
+        return
+    die()

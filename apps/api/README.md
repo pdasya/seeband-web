@@ -148,7 +148,15 @@ So a 200 only means that the fit has a place. A waiting client has its 200 and n
 
 The log line of a fit says 200 whichever event came last, or if the client left, since the response had already started.
 
-A process starts for each fit, which takes about 0.5 s of the time below. It ends with its request, whichever way the request ends: past the time limit, on a disconnect, or at a stop of the server. It is terminated, and killed if it stays. A process also exits if the server dies.
+A process starts for each fit. It is forked from a fork server that the app starts at startup, which has imported the core and scipy.optimize, so it reaches its job in about 5 ms. A fresh interpreter took about 0.44 s, mostly for imports (A16). If the fork server dies, the next fit starts it again and waits for its imports, about 0.3 s. A fit already running then has no exit code to report, which multiprocessing takes for ended, so a stop signals its pid directly. The fork server's children then belong to PID 1, so in a container PID 1 must reap them: run it with `init: true` or tini. Startup fails if the fork server has not finished its imports after 60 s.
+
+A script that starts the app, rather than `python -m seeband_api` or `python -m uvicorn`, needs an `if __name__ == "__main__":` guard, as under `spawn` before: each child runs the script again, and without the guard it starts a server of its own. It ends with its request, whichever way the request ends: past the time limit, on a disconnect, or at a stop of the server. It is terminated, and killed if it stays, about 1 ms after a Stop. A process also exits if the server dies.
+
+An SPB S fit of the demo dataset from the default start, posted 7 times in a row with `urllib` to `python -m seeband_api` on an Apple Silicon Mac with 10 cores, median: legacy 509 → 103 ms, verified 779 → 351 ms, before and after A16. The same fit called in the core takes 75 and 325 ms. A Stop ended the fit's process in about 1 ms, and `tests/test_fit_runner.py` checks for less than 0.1 s.
+
+The calc pool's workers fork from the same server, and a new pool, at startup or after a worker died, gives out no job until its warm-up jobs have answered. So a job's time limit starts on a pool that serves. The workers share one queue, so this shows that each was started, not that each has answered. A warm-up that has not answered after 10 s gets new workers and logs `calc_warm_up_stuck`, and a worker that dies in its warm-up gets new workers at once. A replacement starts the fork server again in a thread, if it has died, so the event loop goes on meanwhile.
+
+Each process keeps numpy's linear algebra to one thread, as `seeband_api.processes` sets `OMP_NUM_THREADS` and its kin to 1 unless they are set, also when the server is started other than by `python -m seeband_api`.
 
 Historical legacy timing before P19 for each fit of the 3 desktop examples, in all 11 working combinations of mode and scattering, from the default start values, 50 to 800 K, through a test client on an Apple Silicon Mac with 10 cores: median 1.0 s, at most 1.6 s, all `converged`. Set the limit after trying these on the VM, as a small VM will be slower.
 

@@ -1,8 +1,12 @@
 import asyncio
+import functools
 import json
 import logging
 import math
+import threading
+import time
 from collections.abc import Iterator
+from multiprocessing import forkserver
 from pathlib import Path
 from typing import Any
 
@@ -11,11 +15,13 @@ import pool_functions
 import pytest
 import seeband_core
 from fastapi.testclient import TestClient
+from seeband_api import calc_pool
 from seeband_api.calc import CalcRequest, CalcResponse, _to_response
 from seeband_api.calc_pool import CalcPool
 from seeband_api.calc_worker import CalcOutcome
 from seeband_api.errors import ApiError
 from seeband_api.main import create_app
+from seeband_api.processes import PRELOADED
 from seeband_api.settings import Settings
 from seeband_core.fit_quality import curve_rmse
 from seeband_core.model_catalog import registry
@@ -745,6 +751,154 @@ def test_dead_worker_answers_503_and_the_pool_recovers() -> None:
         assert raised.value.code == "calculation_unavailable"
 
         assert _run_in_pool(pool, pool_functions.double, 21) == 42
+    finally:
+        pool.close()
+
+
+def test_a_new_pool_gives_out_no_slot_until_its_workers_answer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The job's time starts once the workers are up, so a slow start is not taken as its own.
+
+    Here the warm-up answers to the loop that waits, through `call_soon_threadsafe`.
+    """
+    monkeypatch.setattr(calc_pool, "warm_up", pool_functions.slow_warm_up)
+    pool = CalcPool(1, 0.3)
+
+    async def run() -> Any:
+        pool.warm_up()
+        return await pool.run(pool_functions.double, 21)
+
+    try:
+        assert asyncio.run(run()) == 42
+    finally:
+        pool.close()
+
+
+def test_a_replaced_pool_gives_out_no_slot_until_its_workers_answer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Workers replaced after one died warm up slowly, and the next job still has its whole time.
+
+    Each call runs in its own event loop, so the warm-up answers to a loop that has closed, and the
+    waiting job sees it at its next poll.
+    """
+    pool = CalcPool(1, 0.3)
+    try:
+        assert _run_in_pool(pool, pool_functions.double, 1) == 2
+        monkeypatch.setattr(calc_pool, "warm_up", pool_functions.slow_warm_up)
+        with pytest.raises(ApiError) as raised:
+            _run_in_pool(pool, pool_functions.die)
+        assert raised.value.code == "calculation_unavailable"
+
+        assert _run_in_pool(pool, pool_functions.double, 21) == 42
+    finally:
+        pool.close()
+
+
+def test_a_warm_up_that_does_not_answer_gets_new_workers(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Otherwise no job would get a slot until each gave up with a 503 that names no cause."""
+    monkeypatch.setattr(
+        calc_pool,
+        "warm_up",
+        functools.partial(pool_functions.hang_the_first_time, str(tmp_path / "hung")),
+    )
+    monkeypatch.setattr(calc_pool, "_WARM_UP_TIMEOUT_S", 0.5)
+    pool = CalcPool(1, 30.0)
+
+    async def run() -> Any:
+        pool.warm_up()
+        return await pool.run(pool_functions.double, 21)
+
+    try:
+        with caplog.at_level(logging.WARNING, logger="seeband_api"):
+            assert asyncio.run(run()) == 42
+    finally:
+        pool.close()
+    assert "calc_warm_up_stuck" in [record.getMessage() for record in caplog.records]
+
+
+def test_a_worker_that_dies_in_its_warm_up_gets_replaced_before_a_job(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Rather than the first job finding the pool broken and getting a 503."""
+    monkeypatch.setattr(
+        calc_pool,
+        "warm_up",
+        functools.partial(pool_functions.die_the_first_time, str(tmp_path / "f")),
+    )
+    pool = CalcPool(1, 30.0)
+
+    async def run() -> Any:
+        pool.warm_up()
+        return await pool.run(pool_functions.double, 21)
+
+    try:
+        assert asyncio.run(run()) == 42
+    finally:
+        pool.close()
+
+
+def test_a_replacement_starts_the_fork_server_in_a_thread(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """After the fork server died, its imports take a while, and the loop must go on meanwhile."""
+    threads: list[str] = []
+
+    def slow_start() -> None:
+        threads.append(threading.current_thread().name)
+        time.sleep(0.5)
+
+    monkeypatch.setattr(calc_pool, "start_fork_server", slow_start)
+    pool = CalcPool(1, 0.3)
+
+    async def run() -> tuple[Any, float]:
+        await pool.run(pool_functions.double, 1)
+        with pytest.raises(ApiError):
+            await pool.run(pool_functions.die)
+        longest = 0.0
+        ticking = True
+
+        async def tick() -> None:
+            nonlocal longest
+            last = time.monotonic()
+            while ticking:
+                await asyncio.sleep(0.01)
+                now = time.monotonic()
+                longest = max(longest, now - last)
+                last = now
+
+        ticker = asyncio.create_task(tick())
+        # The job waits for the start and the warm-up, and still has its whole 0.3 s.
+        answer = await pool.run(pool_functions.double, 21)
+        ticking = False
+        await ticker
+        return answer, longest
+
+    try:
+        answer, longest_gap_s = asyncio.run(run())
+    finally:
+        pool.close()
+    assert answer == 42
+    assert threads and threads[0] != threading.main_thread().name
+    assert longest_gap_s < 0.25
+
+
+def test_pool_workers_are_forked_from_the_fork_server() -> None:
+    pool = CalcPool(1, 30.0)
+    try:
+        parent = _run_in_pool(pool, pool_functions.parent_pid)
+    finally:
+        pool.close()
+    assert parent == forkserver._forkserver._forkserver_pid
+
+
+def test_pool_workers_start_with_the_core_loaded() -> None:
+    pool = CalcPool(1, 30.0)
+    try:
+        assert _run_in_pool(pool, pool_functions.loaded_modules, list(PRELOADED)) == list(PRELOADED)
     finally:
         pool.close()
 

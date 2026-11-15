@@ -1,6 +1,7 @@
 """The runner, with functions that misbehave in their own process."""
 
 import asyncio
+import contextlib
 import gc
 import logging
 import multiprocessing
@@ -10,19 +11,23 @@ import subprocess
 import sys
 import time
 from collections.abc import Awaitable, Callable, Iterator
+from multiprocessing import forkserver
+from multiprocessing.context import ForkServerProcess
 from pathlib import Path
 from typing import Any
 
 import fit_functions
 import pytest
+from seeband_api import fit_runner, processes
 from seeband_api.errors import ApiError
 from seeband_api.fit_runner import FitRunner
+from seeband_api.processes import ONE_THREAD, PRELOADED, start_fork_server
 
 
 @pytest.fixture(autouse=True)
 def no_fit_process_left() -> Iterator[None]:
     yield
-    left = [p for p in multiprocessing.active_children() if "SpawnProcess" in p.name]
+    left = [p for p in multiprocessing.active_children() if isinstance(p, ForkServerProcess)]
     assert left == []
 
 
@@ -199,6 +204,103 @@ def test_cancelling_a_call_ends_its_process(tmp_path: Path) -> None:
         os.kill(pid, 0)
 
 
+def test_a_fit_starts_with_the_core_loaded() -> None:
+    """Under `spawn`, importing `fit_worker` loads all of these but `seeband_core.verified_fit`,
+    which the core imports lazily, so that one is what tells a fork server from a fresh start."""
+    runner = FitRunner(1, 0, 30.0)
+
+    loaded = _run(lambda: runner.run(fit_functions.loaded_modules, list(PRELOADED)))
+
+    assert loaded == list(PRELOADED)
+
+
+def test_a_fit_process_is_forked_from_the_fork_server() -> None:
+    runner = FitRunner(1, 0, 30.0)
+
+    parent = _run(lambda: runner.run(fit_functions.parent_pid))
+
+    assert parent != os.getpid()
+    assert parent == forkserver._forkserver._forkserver_pid
+
+
+def test_a_stop_ends_a_process_whose_fork_server_died(tmp_path: Path) -> None:
+    """Its exit code would come from the fork server, so multiprocessing takes it for ended.
+
+    The runner also closes the process's pipes after a stop, which makes the child's parent watch
+    end it too, but that needs the child to run Python. The stop itself must end it.
+    """
+    pid_file = tmp_path / "pid"
+    process = processes.context.Process(
+        target=fit_functions.write_pid_and_hang, args=(str(pid_file), None), daemon=True
+    )
+    process.start()
+    try:
+        while not (pid_file.exists() and pid_file.read_text()):
+            time.sleep(0.01)
+        pid = int(pid_file.read_text())
+        os.kill(forkserver._forkserver._forkserver_pid, signal.SIGKILL)
+        time.sleep(0.2)
+        assert not process.is_alive()
+
+        fit_runner._stop(process)
+
+        with pytest.raises(ProcessLookupError):
+            os.kill(pid, 0)
+    finally:
+        if process.pid is not None:
+            with contextlib.suppress(ProcessLookupError):
+                os.kill(process.pid, signal.SIGKILL)
+        start_fork_server()
+
+
+def test_fit_processes_keep_linear_algebra_to_one_thread() -> None:
+    runner = FitRunner(1, 0, 30.0)
+
+    seen = _run(lambda: runner.run(fit_functions.environment, list(ONE_THREAD)))
+
+    assert seen == dict.fromkeys(ONE_THREAD, "1")
+
+
+def test_a_fork_server_that_does_not_finish_its_imports_fails_the_start(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(forkserver, "ensure_running", lambda: time.sleep(5))
+
+    started = time.monotonic()
+    with pytest.raises(TimeoutError):
+        start_fork_server(timeout_s=0.2)
+    assert time.monotonic() - started < 1
+
+
+def test_a_fit_process_does_not_import_the_web_framework() -> None:
+    """FastAPI is not in the fork server, and importing it took about 0.1 s of every fit."""
+    runner = FitRunner(1, 0, 30.0)
+
+    assert _run(lambda: runner.run(fit_functions.loaded_modules, ["fastapi", "starlette"])) == []
+
+
+def test_a_stop_ends_the_process_within_a_tenth_of_a_second(tmp_path: Path) -> None:
+    runner = FitRunner(1, 0, 60.0)
+    pid_file = tmp_path / "pid"
+
+    async def main() -> tuple[int, float]:
+        task = asyncio.create_task(runner.run(fit_functions.write_pid_and_hang, str(pid_file)))
+        while not (pid_file.exists() and pid_file.read_text()):
+            await asyncio.sleep(0.01)
+        pid = int(pid_file.read_text())
+        stopped = time.monotonic()
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+        return pid, time.monotonic() - stopped
+
+    pid, took_s = asyncio.run(main())
+
+    assert took_s < 0.1
+    with pytest.raises(ProcessLookupError):
+        os.kill(pid, 0)
+
+
 @pytest.mark.parametrize("delay_s", [0.0, 0.02, 0.1, 0.3])
 @pytest.mark.parametrize("size", [2_000, 128_000, 2_000_000])
 def test_cancelling_while_it_starts_leaves_no_process(delay_s: float, size: int) -> None:
@@ -234,7 +336,7 @@ def test_a_second_cancel_keeps_the_slot_until_the_process_has_ended() -> None:
         alive = [
             child
             for child in multiprocessing.active_children()
-            if "SpawnProcess" in child.name and child.is_alive()
+            if isinstance(child, ForkServerProcess) and child.is_alive()
         ]
         assert alive == []
 

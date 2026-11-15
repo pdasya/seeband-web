@@ -3,6 +3,7 @@
 import math
 import os
 import signal
+import sys
 import time
 from collections.abc import Callable
 from typing import Any
@@ -98,3 +99,16 @@ def fake_raise(_: str, __: Any, send: Callable[[IterationUpdate], None]) -> None
 def fake_not_finite(_: str, __: Any, send: Callable[[IterationUpdate], None]) -> FitResult:
     send(IterationUpdate(1, {"m_eff": math.nan, "band_gap": 900.0}))
     return FitResult({"m_eff": math.inf, "band_gap": 900.0}, "converged", iterations=1)
+
+
+def loaded_modules(names: list[str], send: Callable[[IterationUpdate], None]) -> list[str]:
+    """The modules among `names` that the process holds before it imports anything for the fit."""
+    return [name for name in names if name in sys.modules]
+
+
+def parent_pid(send: Callable[[IterationUpdate], None]) -> int:
+    return os.getppid()
+
+
+def environment(names: list[str], send: Callable[[IterationUpdate], None]) -> dict[str, str | None]:
+    return {name: os.environ.get(name) for name in names}

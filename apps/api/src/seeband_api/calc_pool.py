@@ -15,13 +15,15 @@ Jobs are admitted through a queue in the API rather than straight to the executo
   is dropped before it runs. Each client can have a few jobs admitted at once.
 - A full list or a client over its count gets a fast answer with `Retry-After`.
 - A worker that dies breaks the executor, which is then replaced, also when no request is waiting
-  for that worker any more.
+  for that worker any more. The jobs it was running fail with it.
+- New workers fork from a server with the core loaded, and get no job until the warm-up jobs have
+  answered, at start and after a replacement. A replacement starts the fork server again first if
+  it has died, in a thread.
 """
 
 import asyncio
 import logging
 import math
-import multiprocessing
 import time
 from collections import deque
 from collections.abc import Awaitable, Callable
@@ -34,6 +36,8 @@ from fastapi import Depends, Request
 
 from seeband_api.calc_worker import initialise_worker, warm_up
 from seeband_api.errors import ApiError
+from seeband_api.processes import context as process_context
+from seeband_api.processes import start_fork_server
 from seeband_api.request_limits import client_key
 
 _logger = logging.getLogger("seeband_api")
@@ -48,6 +52,10 @@ _MAX_RETRY_AFTER_S = 30
 _RUN_TIME_WEIGHT = 0.2
 # A job still running after this many times its run time is stuck, and its workers are replaced.
 _STUCK_AFTER_RUN_TIMES = 2
+# A warm-up that has not answered by then is stuck, and its workers are replaced, as no job gets a
+# slot while it waits. A fork from the preloaded server answers in milliseconds, and a fork server
+# that has to start again, in well under a second.
+_WARM_UP_TIMEOUT_S = 10.0
 # What nginx calls a request whose client closed it. Nobody reads it, and it keeps such requests
 # apart from real overload in the logs.
 _CLIENT_CLOSED_REQUEST = 499
@@ -98,6 +106,13 @@ class CalcPool:
         self._clients: dict[str, _Client] = {}
         self._turns = 0
         self._mean_run_s = 1.0
+        # Warm-up jobs of new workers that have not answered yet. No slot is given out until they
+        # have, so a job does not wait in the executor for a worker to start, with its time running.
+        self._warming: list[Future[None]] = []
+        # Replacements still starting the fork server, kept so that they are not collected.
+        self._starting: set[asyncio.Task[None]] = set()
+        # A closed pool replaces nothing, though ending its workers breaks the executor.
+        self._closed = False
 
     @property
     def _per_client(self) -> dict[str, int]:
@@ -105,16 +120,38 @@ class CalcPool:
         return {name: client.admitted for name, client in self._clients.items()}
 
     def _new_executor(self) -> ProcessPoolExecutor:
-        # The server has threads, which `fork` does not copy safely.
+        # Workers fork from a server with the core loaded, so new ones start in milliseconds.
         return ProcessPoolExecutor(
             max_workers=self._workers,
-            mp_context=multiprocessing.get_context("spawn"),
+            mp_context=process_context,
             initializer=initialise_worker,
         )
 
     def warm_up(self) -> None:
-        for _ in range(self._workers):
-            self._executor.submit(warm_up)
+        """Starts every worker, and gives out no slot until the warm-up jobs have answered.
+
+        Called at start and for each replaced executor. The workers share one queue, so one of them
+        can answer several warm-ups: this shows that each was started and that the pool serves, not
+        that each worker has answered.
+        """
+        executor = self._executor
+        futures = [executor.submit(warm_up) for _ in range(self._workers)]
+        # Only the latest warm-up holds the slots, not that of an executor since replaced.
+        self._warming = futures
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return  # Nobody waits yet. The first job's dispatch checks the warm-up itself.
+        loop.call_later(_WARM_UP_TIMEOUT_S, self._replace_if_warm_up_stuck, executor, futures)
+
+        def answered_from_worker_thread(future: Future[None]) -> None:
+            try:
+                loop.call_soon_threadsafe(self._warm_up_answered, executor, future)
+            except RuntimeError:
+                pass  # That loop has closed. The next dispatch checks the warm-up itself.
+
+        for future in futures:
+            future.add_done_callback(answered_from_worker_thread)
 
     async def run[**P, T](
         self,
@@ -199,6 +236,8 @@ class CalcPool:
                 if remaining <= 0:
                     raise self._busy()
                 await asyncio.wait({waiter.turn}, timeout=min(_DISCONNECT_POLL_S, remaining))
+                # A warm-up that answered to another event loop, as a test's, is seen here.
+                self._dispatch()
                 # A turn that came while this waited counts, whatever else happened since.
                 if not waiter.turn.done() and is_disconnected is not None:
                     if await is_disconnected() and not waiter.turn.done():
@@ -216,6 +255,8 @@ class CalcPool:
 
     def _dispatch(self) -> None:
         """Gives free slots to waiting clients in turn, one job each, within each one's cap."""
+        if not all(future.done() for future in self._warming):
+            return
         while self._running < self._workers:
             eligible = [
                 state
@@ -327,11 +368,59 @@ class CalcPool:
             self._replace(executor)
             _terminate(executor)
 
+    def _warm_up_answered(self, executor: ProcessPoolExecutor, future: Future[None]) -> None:
+        # A worker that died at its start breaks the executor, so the pool gets new workers now
+        # rather than at the next job, which would get a 503.
+        if not future.cancelled() and isinstance(future.exception(), BrokenExecutor):
+            self._replace(executor)
+        self._dispatch()
+
+    def _replace_if_warm_up_stuck(
+        self, executor: ProcessPoolExecutor, futures: list[Future[None]]
+    ) -> None:
+        """Ends workers that did not start, rather than holding every slot until jobs give up."""
+        if self._executor is executor and not all(future.done() for future in futures):
+            _logger.warning(
+                "calc_warm_up_stuck", extra={"fields": {"timeout_s": _WARM_UP_TIMEOUT_S}}
+            )
+            self._replace(executor)
+            _terminate(executor)
+
     def _replace(self, executor: ProcessPoolExecutor) -> None:
-        """Gives the pool new workers in place of a broken executor, once."""
-        if self._executor is executor:
-            self._executor = self._new_executor()
+        """Gives the pool new workers in place of a broken executor, once.
+
+        The fork server may have died with the workers, and starting it again waits for its
+        imports, so that runs in a thread rather than in the event loop, which would stop every
+        other request meanwhile. No slot is given out until then.
+        """
+        if self._closed or self._executor is not executor:
+            return
+        self._executor = new = self._new_executor()
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
             self.warm_up()
+            return
+        starting: Future[None] = Future()
+        self._warming = [starting]
+
+        async def start_then_warm_up() -> None:
+            try:
+                await asyncio.to_thread(start_fork_server)
+            except Exception as error:
+                # The warm-up then fails or hangs, and that is handled as for any warm-up.
+                _logger.error(
+                    "fork_server_start_failed", extra={"fields": {"error": type(error).__name__}}
+                )
+            finally:
+                starting.set_result(None)
+                # Also when cancelled, as a closing event loop does, so the workers still start.
+                if self._executor is new:
+                    self.warm_up()
+
+        task = loop.create_task(start_then_warm_up())
+        self._starting.add(task)
+        task.add_done_callback(self._starting.discard)
 
     def _retry_after_s(self) -> int:
         """About when a slot will be free: the jobs ahead, shared by the workers, at their usual
@@ -349,6 +438,7 @@ class CalcPool:
 
     def close(self) -> None:
         """Stops the workers, also any in the middle of a job, so that none outlives the server."""
+        self._closed = True
         _terminate(self._executor)
 
 
