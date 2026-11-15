@@ -1,5 +1,6 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
 
+import { fakeFit } from "./support/fakeFit";
 import { serveModels } from "./support/models";
 
 interface ColumnRole {
@@ -306,4 +307,270 @@ test("the units of ρ come grouped by metre and centimetre, and µΩ·cm reads t
     role: "resistivity",
     unit: "uOhm*cm",
   });
+});
+
+test("a fit and a guess wait while a unit is in doubt, and run once the values are confirmed", async ({
+  page,
+}) => {
+  await serveParse(
+    page,
+    parsed({
+      rangeK: [300, 800],
+      warnings: [
+        { code: "implausible_magnitude", column: 1, direction: "above" },
+      ],
+    }),
+  );
+  const guesses: unknown[] = [];
+  await page.route("**/api/guess", (route) => {
+    guesses.push(route.request().postDataJSON());
+    return route.fulfill({ status: 503, json: {} });
+  });
+  await page.goto("/fit");
+  await page.getByRole("radio", { name: "S", exact: true }).click();
+  await load(page, "seebeck");
+
+  const run = page.getByRole("button", { name: "Run fit" });
+  const guess = page.getByRole("button", { name: "Initial guess" });
+  await expect(run).toBeDisabled();
+  await expect(
+    page.getByText(
+      "Check the unit of S first, or confirm under Data that the values are right.",
+    ),
+  ).toBeVisible();
+  await expect(guess).toBeDisabled();
+  await expect(guess).toHaveAttribute("title", /Check the unit of S first/);
+  // S in doubt does not start the guess that a new S file starts.
+  await page.waitForTimeout(300);
+  expect(guesses).toHaveLength(0);
+
+  await page.getByRole("button", { name: /^Values are right/ }).click();
+
+  await expect(page.getByText("Check the unit", { exact: true })).toHaveCount(
+    0,
+  );
+  await expect(
+    page.getByText(/You confirmed these values despite the unit check/),
+  ).toBeVisible();
+  await expect(run).toBeEnabled();
+  await expect.poll(() => guesses.length).toBe(1);
+
+  // Confirmed, the data fold like any others.
+  await page.getByRole("button", { name: "Hide" }).click();
+  await expect(
+    page
+      .getByRole("region", { name: "Data" })
+      .getByRole("listitem")
+      .filter({ hasText: /^S/ }),
+  ).toHaveText("S · 2 pts");
+});
+
+test("a confirmation ends when the unit changes", async ({ page }) => {
+  const doubt = [
+    { code: "implausible_magnitude", column: 1, direction: "above" },
+  ];
+  await serveParse(
+    page,
+    parsed({ rangeK: [300, 800], warnings: doubt }),
+    parsed({
+      rangeK: [300, 800],
+      units: ["K", "mV/K"],
+      sources: ["default", "chosen"],
+      warnings: doubt,
+    }),
+  );
+  await page.goto("/fit");
+  await page.getByRole("radio", { name: "S", exact: true }).click();
+  await load(page, "seebeck");
+  await page.getByRole("button", { name: /^Values are right/ }).click();
+  await expect(page.getByRole("button", { name: "Run fit" })).toBeEnabled();
+
+  await seebeckUnit(page).click();
+  await page.getByRole("option", { name: "mV/K", exact: true }).click();
+
+  await expect(page.getByText("Check the unit", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Run fit" })).toBeDisabled();
+});
+
+test("a single table's doubt is confirmed there too, and then a fit runs", async ({
+  page,
+}) => {
+  await serveParse(page, {
+    ...parsed({
+      rangeK: [300, 800],
+      warnings: [
+        { code: "implausible_magnitude", column: 1, direction: "above" },
+      ],
+    }),
+    headers: ["T", "S"],
+  });
+  await page.goto("/fit");
+  await page.getByRole("radio", { name: "S", exact: true }).click();
+  await page.getByRole("tab", { name: "Single file" }).click();
+  await page.locator('input[type="file"]').setInputFiles({
+    name: "all.csv",
+    mimeType: "text/plain",
+    buffer: Buffer.from("T,S\n300,200\n"),
+  });
+  const run = page.getByRole("button", { name: "Run fit" });
+  await expect(run).toBeDisabled();
+
+  await page.getByRole("button", { name: /^Values are right/ }).click();
+
+  await expect(page.getByText("Check the unit", { exact: true })).toHaveCount(
+    0,
+  );
+  await expect(run).toBeEnabled();
+});
+
+const DOUBT = [
+  { code: "implausible_magnitude", column: 1, direction: "above" },
+];
+
+test("two quantities in doubt are confirmed each by its own named button", async ({
+  page,
+}) => {
+  await page.route("**/api/parse", (route: Route) => {
+    const { expected } = route.request().postDataJSON() as ParseBody;
+    return route.fulfill({
+      json:
+        expected === "resistivity"
+          ? parsed({
+              quantity: "resistivity",
+              units: ["K", "Ohm*m"],
+              rangeK: [300, 800],
+              warnings: DOUBT,
+            })
+          : parsed({ rangeK: [300, 800], warnings: DOUBT }),
+    });
+  });
+  await page.goto("/fit");
+  await page.getByRole("radio", { name: "S + ρ", exact: true }).click();
+  await load(page, "seebeck");
+  await load(page, "resistivity", "rho.txt");
+  const run = page.getByRole("button", { name: "Run fit" });
+  await expect(run).toBeDisabled();
+  await expect(
+    page.getByText("Check the unit of S, ρ first", { exact: false }),
+  ).toBeVisible();
+  // The reason is Run fit's description, and a screen reader hears it as it changes.
+  await expect(run).toHaveAccessibleDescription(/Check the unit of S, ρ first/);
+
+  await page.getByRole("button", { name: "Values are right for S" }).click();
+
+  await expect(run).toBeDisabled();
+  await expect(run).toHaveAccessibleDescription(/Check the unit of ρ first/);
+  await expect(
+    page.getByRole("button", { name: "Values are right for S" }),
+  ).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Values are right for ρ" }).click();
+
+  await expect(run).toBeEnabled();
+  await expect(
+    page.getByRole("status").filter({ hasText: /You confirmed these values/ }),
+  ).toHaveCount(2);
+});
+
+test("a single table keeps the confirmation of a column whose values do not change", async ({
+  page,
+}) => {
+  const table = (seebeckUnit: string) => ({
+    ...parsed({ rangeK: [300, 800] }),
+    headers: ["T", "S", "rho"],
+    column_count: 3,
+    preview: [[300, 1e-4, 5]],
+    preview_text: [["300", "1e-4", "5"]],
+    preview_si: [[300, 1e-4, 5]],
+    mapping: [
+      { column: 0, role: "temperature", unit: "K", unit_source: "default" },
+      {
+        column: 1,
+        role: "seebeck",
+        unit: seebeckUnit,
+        unit_source: seebeckUnit === "V/K" ? "default" : "chosen",
+      },
+      { column: 2, role: "resistivity", unit: "Ohm*m", unit_source: "default" },
+    ],
+    measurements: {
+      seebeck: {
+        temperature_k: [300, 800],
+        values: seebeckUnit === "V/K" ? [1e-4, 2e-4] : [1e-10, 2e-10],
+        points: 2,
+        min_temperature_k: 300,
+        max_temperature_k: 800,
+        loaded_as: "seebeck",
+      },
+      resistivity: {
+        temperature_k: [300, 800],
+        values: [5, 6],
+        points: 2,
+        min_temperature_k: 300,
+        max_temperature_k: 800,
+        loaded_as: "resistivity",
+      },
+    },
+    warnings: [
+      { code: "implausible_magnitude", column: 2, direction: "above" },
+    ],
+  });
+  await serveParse(page, table("V/K"), table("uV/K"));
+  await page.goto("/fit");
+  await page.getByRole("radio", { name: "S + ρ", exact: true }).click();
+  await page.getByRole("tab", { name: "Single file" }).click();
+  await page.locator('input[type="file"]').setInputFiles({
+    name: "all.csv",
+    mimeType: "text/plain",
+    buffer: Buffer.from("T,S,rho\n300,1e-4,5\n"),
+  });
+  await page.getByRole("button", { name: "Values are right for ρ" }).click();
+  const run = page.getByRole("button", { name: "Run fit" });
+  await expect(run).toBeEnabled();
+
+  // S in another unit gives new S, but ρ reads the same, so it stays confirmed.
+  await page.getByRole("combobox", { name: /^Unit of S/ }).click();
+  await page.getByRole("option", { name: "µV/K", exact: true }).click();
+  await expect(page.getByRole("combobox", { name: /^Unit of S/ })).toHaveText(
+    "µV/K",
+  );
+
+  await expect(run).toBeEnabled();
+  await expect(page.getByText("Check the unit", { exact: true })).toHaveCount(
+    0,
+  );
+});
+
+test("a running fit stops when its data come back in doubt", async ({
+  page,
+}) => {
+  await fakeFit(page);
+  await serveParse(
+    page,
+    parsed({ rangeK: [300, 800] }),
+    parsed({
+      rangeK: [300, 800],
+      units: ["K", "uV/K"],
+      sources: ["default", "chosen"],
+      warnings: [
+        { code: "implausible_magnitude", column: 1, direction: "below" },
+      ],
+    }),
+  );
+  await page.goto("/fit");
+  await page.getByRole("radio", { name: "S", exact: true }).click();
+  await load(page, "seebeck");
+  await page.getByRole("button", { name: "Run fit" }).click();
+  await expect
+    .poll(() => page.evaluate(() => window.fitTest.bodies.length))
+    .toBe(1);
+  await page.evaluate(() => {
+    window.fitTest.send({ type: "started" });
+  });
+  await expect(page.getByRole("button", { name: "Stop" })).toBeVisible();
+
+  await seebeckUnit(page).click();
+  await page.getByRole("option", { name: "µV/K", exact: true }).click();
+
+  await expect.poll(() => page.evaluate(() => window.fitTest.aborted)).toBe(1);
+  await expect(page.getByRole("button", { name: "Run fit" })).toBeDisabled();
 });

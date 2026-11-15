@@ -50,6 +50,17 @@ export function FitStatusBadge({
   );
 }
 
+const BLOCKER_ID = "fit-blocker";
+
+/** Why Run fit cannot be pressed, in words; missing data show as a badge instead. */
+function blockerMessage(control: Control): string | null {
+  return control.blocker !== null &&
+    control.blocker.reason !== "missing_data" &&
+    !control.active
+    ? fitBlockerText(control.blocker)
+    : null;
+}
+
 function ignoreHeldKey(event: KeyboardEvent) {
   if (event.repeat) {
     event.preventDefault();
@@ -97,6 +108,9 @@ export function FitActions({
         <Button
           size="sm"
           disabled={control.blocker !== null}
+          aria-describedby={
+            blockerMessage(control) === null ? undefined : BLOCKER_ID
+          }
           onClick={control.run}
           onKeyDown={ignoreHeldKey}
         >
@@ -128,13 +142,15 @@ export function FitMessages({
           {message}
         </p>
       ))}
-      {control.blocker !== null &&
-        control.blocker.reason !== "missing_data" &&
-        !control.active && (
-          <p className="m-0 text-xs text-muted-foreground">
-            {fitBlockerText(control.blocker)}
-          </p>
-        )}
+      {/* Always there, so a screen reader reads a new reason, and Run fit names it as its
+          description. */}
+      <p
+        id={BLOCKER_ID}
+        role="status"
+        className="m-0 text-xs text-muted-foreground empty:hidden"
+      >
+        {blockerMessage(control) ?? ""}
+      </p>
       {failure !== null && (
         <Alert variant="destructive">
           <AlertCircleIcon aria-hidden="true" />

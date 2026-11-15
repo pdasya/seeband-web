@@ -9,6 +9,8 @@ import {
   useSessionStore,
   type ColumnRole,
   type ParsedTable,
+  type Quantity,
+  type SessionData,
 } from "@/session/store";
 
 // Stops the request itself, so that a cancelled or replaced read uses nothing more on the server.
@@ -30,13 +32,49 @@ function clearData() {
   }
 }
 
-function applyTable(name: string, text: string, table: ParsedTable) {
+/** The column and unit a quantity was read from, which a confirmation of its values is about. */
+function readFrom(entry: SessionData, quantity: Quantity) {
+  const role = loadedAs(quantity, entry);
+  return entry.readAs?.find((item) => item.role === role);
+}
+
+/**
+ * Whether the user confirmed these very values before a re-read of the same table, as when only
+ * another column changed. New values, or the same read from another column or unit, need a new
+ * confirmation.
+ */
+function stillConfirmed(
+  before: SessionData | undefined,
+  after: SessionData,
+  quantity: Quantity,
+): boolean {
+  if (before?.unitConfirmed !== true || before.text !== after.text) {
+    return false;
+  }
+  const [was, is] = [readFrom(before, quantity), readFrom(after, quantity)];
+  const same = (a: readonly number[], b: readonly number[]) =>
+    a.length === b.length && a.every((value, index) => value === b[index]);
+  return (
+    was?.column === is?.column &&
+    was?.unit === is?.unit &&
+    loadedAs(quantity, before) === loadedAs(quantity, after) &&
+    same(before.measurement.values, after.measurement.values) &&
+    same(before.measurement.temperature_k, after.measurement.temperature_k)
+  );
+}
+
+function applyTable(
+  name: string,
+  text: string,
+  table: ParsedTable,
+  before: Partial<Record<Quantity, SessionData>> = {},
+) {
   for (const quantity of QUANTITIES) {
     const measurement = table.measurements[quantity];
     if (measurement === undefined) {
       store().removeData(quantity);
     } else {
-      store().setData(quantity, {
+      const entry: SessionData = {
         measurement,
         source: { kind: "file", name },
         extrapolated: false,
@@ -47,6 +85,12 @@ function applyTable(name: string, text: string, table: ParsedTable) {
           columnOf(table.mapping, loadedAs(quantity, { measurement })),
         ),
         firstRow: firstRowOf(table),
+      };
+      store().setData(quantity, {
+        ...entry,
+        unitConfirmed: stillConfirmed(before[quantity], entry, quantity)
+          ? true
+          : undefined,
       });
     }
   }
@@ -70,6 +114,8 @@ async function read(
     mapping: mapping ?? [],
     table,
   });
+  // A change of one column keeps what the user confirmed about the others, if they read the same.
+  const before = mapping === null ? {} : { ...store().data };
   clearData();
   const signal = stopCurrentRequest();
   const body: ParseRequest = mapping === null ? { text } : { text, mapping };
@@ -77,7 +123,7 @@ async function read(
     const parsed = await apiClient.postParse(body, signal);
     if (store().singleFile?.request === request) {
       store().finishSingleFile(parsed);
-      applyTable(name, text, parsed);
+      applyTable(name, text, parsed, before);
     }
   } catch (error) {
     if (store().singleFile?.request === request) {

@@ -5,7 +5,12 @@ import {
   visibleParameters,
 } from "@/model/parameters";
 import { fitModeOf, type ModelDescription } from "@/model/selection";
-import { fitData, type Quantity, type SessionState } from "@/session/store";
+import {
+  fitData,
+  hasOpenUnitDoubt,
+  type Quantity,
+  type SessionState,
+} from "@/session/store";
 
 type FitInputs = Pick<
   SessionState,
@@ -21,6 +26,7 @@ type FitInputs = Pick<
 export type FitBlocker =
   | { reason: "no_mode" }
   | { reason: "missing_data"; quantities: Quantity[] }
+  | { reason: "unit_in_doubt"; quantities: Quantity[] }
   | { reason: "interpolating" }
   | { reason: "not_interpolated"; quantities: Quantity[] }
   | { reason: "no_points_in_range"; quantities: Quantity[] }
@@ -54,6 +60,11 @@ export function fitRequest(
   const missing = quantities.filter((q) => state.data[q] === undefined);
   if (missing.length > 0) {
     return { blocked: { reason: "missing_data", quantities: missing } };
+  }
+  // A wrong unit makes a fit wrong by a factor, so data in doubt wait for a fix or a confirmation.
+  const doubted = quantities.filter((q) => hasOpenUnitDoubt(state.data[q]));
+  if (doubted.length > 0) {
+    return { blocked: { reason: "unit_in_doubt", quantities: doubted } };
   }
   if (state.interpolation.enabled && state.interpolation.loading) {
     return { blocked: { reason: "interpolating" } };

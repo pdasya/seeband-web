@@ -185,6 +185,28 @@ describe("fitRequest", () => {
     });
   });
 
+  test("data whose unit is in doubt wait for a fix or a confirmation", () => {
+    const doubted = {
+      ...entry([100]),
+      unitDoubts: [{ code: "implausible_magnitude", direction: "above" }],
+    } as SessionData;
+    const data = { seebeck: entry([100, 900]), resistivity: doubted };
+
+    expect(blocked({ data } as never)).toEqual({
+      blocked: { reason: "unit_in_doubt", quantities: ["resistivity"] },
+    });
+    // Confirmed by the user, the same data fit.
+    const confirmed = {
+      ...data,
+      resistivity: { ...doubted, unitConfirmed: true },
+    };
+    expect("request" in blocked({ data: confirmed } as never)).toBe(true);
+    // A doubt about data the mode does not use stops nothing.
+    expect(
+      "request" in blocked({ data: { ...STATE.data, hall: doubted } } as never),
+    ).toBe(true);
+  });
+
   test("a disabled or unknown mode cannot run", () => {
     const withDisabledMode = models.map((model) => ({
       ...model,

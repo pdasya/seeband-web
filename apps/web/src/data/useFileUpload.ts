@@ -409,6 +409,8 @@ export function useFileUpload(
         }
         setData(quantity, {
           ...entry,
+          // Values in another unit are other data, which the user has not confirmed.
+          unitConfirmed: undefined,
           measurement,
           mapping,
           readAs: parsed.mapping,
