@@ -62,7 +62,7 @@ def test_hall_matches_independent_quadrature(mass: float, fermi_over_temperature
 
 
 @pytest.mark.parametrize("mass", [-1.5, 1.5])
-@pytest.mark.parametrize("scattering", ["acPh", "dis", "acPhDis"])
+@pytest.mark.parametrize("scattering", ["acPh", "dis"])
 @pytest.mark.parametrize("crossing_bounds", [False, True])
 def test_synthetic_hall_fit_recovers_physical_parameters(
     mass: float, scattering: str, crossing_bounds: bool

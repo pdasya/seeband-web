@@ -1,5 +1,10 @@
 # Results that changed
 
+Core `0.3.0` replaces the public mixed acPhDis option with ionized impurity
+power-law transport (lambda=2) for SPB and DPB. S, rho, Hall and electronic
+thermal conductivity use the same approximation. Historical mixed results
+are not equivalent to the new mechanism. See [the formulas and limitations](../../packages/seeband_core/docs/ionized-impurities.md).
+
 Core `0.2.0` changes the default fitting algorithm to `verified-sequential-v2`.
 It preserves staged absolute objectives and physical kernels while correcting
 numerical stage solution, consistency and iterative DPB coordinates. Explicit

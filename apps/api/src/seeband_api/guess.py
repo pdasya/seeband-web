@@ -100,6 +100,7 @@ class GuessRequest(BaseModel):
     model_config = ConfigDict(json_schema_extra={"examples": [REQUEST_EXAMPLE]})
 
     model: str
+    scattering: str | None = None
     temperature_k: PointList
     seebeck_v_per_k: ValueList
 
@@ -154,7 +155,9 @@ class NumericalGuessFound(BaseModel):
 
 class GuessUnsupported(BaseModel):
     status: Literal["unsupported"]
-    reason: Literal["sign_change", "too_few_temperatures", "zero_seebeck"]
+    reason: Literal[
+        "sign_change", "too_few_temperatures", "zero_seebeck", "scattering_not_supported"
+    ]
     warnings: list[GuessWarning]
 
 
@@ -285,12 +288,31 @@ async def post_guess(
     body: GuessRequest, pool: CalcPoolDep, max_points: MaxPointsDep
 ) -> GuessFound | NumericalGuessFound | GuessUnsupported | GuessNoNet | GuessNotFinite:
     _check_model(body.model)
+    if body.scattering is not None and not any(
+        body.scattering in mode.scattering for mode in registry.get(body.model).describe().fit_modes
+    ):
+        raise ApiError(
+            HTTPStatus.UNPROCESSABLE_CONTENT,
+            "invalid_guess",
+            "Invalid request",
+            [
+                ErrorDetail(
+                    location=["body", "scattering"],
+                    code="unknown_scattering",
+                    message="This model has no such scattering mechanism",
+                )
+            ],
+        )
     if len(body.temperature_k) > max_points:
         raise ApiError(
             HTTPStatus.UNPROCESSABLE_CONTENT,
             "invalid_guess",
             "Invalid request",
             [too_many_points(max_points, ["temperature_k"])],
+        )
+    if body.model == "dpb" and body.scattering == "ionized":
+        return GuessUnsupported(
+            status="unsupported", reason="scattering_not_supported", warnings=[]
         )
     try:
         if registry.get(body.model).describe().initial_guess_method == "numerical":
@@ -299,6 +321,7 @@ async def post_guess(
                 body.model,
                 np.array(body.temperature_k),
                 np.array(body.seebeck_v_per_k),
+                body.scattering,
             )
             if values.reason is not None:
                 return GuessUnsupported(

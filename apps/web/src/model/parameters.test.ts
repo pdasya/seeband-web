@@ -58,14 +58,12 @@ describe("visibleParameters", () => {
       "F",
       "G",
     ]);
-    expect(names("dpb_s_rho", "acPhDis")).toEqual([
+    expect(names("dpb_s_rho", "ionized")).toEqual([
       "m_eff",
       "band_gap",
       "fermi_energy",
       "A",
       "B",
-      "C",
-      "D",
     ]);
   });
 
@@ -88,10 +86,8 @@ describe("parameterValues", () => {
       "band_mass",
       "fermi_energy",
       "A",
-      "C",
       "F",
     ]);
-    expect(values.C).toBe(100);
     expect(values.band_mass).toBe(-1);
   });
 
@@ -113,7 +109,7 @@ describe("conversion", () => {
   });
 
   test("follows the scales where they differ, as for C in SPB", () => {
-    const c = parameter("spb_s_rho", "C");
+    const c = scaledParameter();
 
     expect(coreToDisplay(c, c.core_range.default)).toBe(
       c.display_range.default,
@@ -193,12 +189,12 @@ describe("displayToCore on whole control units", () => {
   });
 
   test("keeps 2.55 from becoming 254.99999999999997", () => {
-    expect(displayToCore(parameter("spb_s_rho", "C"), 2.55)).toBe(255);
-    expect(displayToCore(parameter("spb_s_rho", "C"), 1.15)).toBe(115);
+    expect(displayToCore(scaledParameter(), 2.55)).toBe(255);
+    expect(displayToCore(scaledParameter(), 1.15)).toBe(115);
   });
 
   test("a value between units stays between them", () => {
-    expect(displayToCore(parameter("spb_s_rho", "C"), 1.234)).toBe(123.4);
+    expect(displayToCore(scaledParameter(), 1.234)).toBe(123.4);
   });
 });
 
@@ -324,3 +320,16 @@ describe("withCustomRange", () => {
     expect(parameter.display_range.maximum).toBe(0.25851999786);
   });
 });
+
+// Synthetic metadata keeps generic scale-conversion coverage after C was retired.
+function scaledParameter() {
+  const base = parameter("spb_s_rho", "A");
+  return {
+    ...base,
+    name: "scaled",
+    display_scale: 0.01,
+    fit_scale: 1,
+    core_range: { minimum: 0, maximum: 300, step: 1, default: 100 },
+    display_range: { minimum: 0, maximum: 3, step: 0.01, default: 1 },
+  };
+}

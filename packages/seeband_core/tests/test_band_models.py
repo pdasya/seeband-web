@@ -115,7 +115,7 @@ def test_a_new_process_gets_the_models_from_its_imports(tmp_path: Path) -> None:
 
 
 def test_every_combination_is_covered() -> None:
-    assert len(combinations()) == 14
+    assert len(combinations()) == 18
 
 
 @pytest.mark.filterwarnings("ignore")
@@ -139,7 +139,9 @@ def test_every_curve_runs(
         assert len(curve) == 5
 
 
-WORKING_FITS = [case for case in combinations() if case[1] != "spb_s_rho_rh"]
+WORKING_FITS = [
+    case for case in combinations() if case[1] != "spb_s_rho_rh" and case[2] != "ionized"
+]
 
 
 @pytest.mark.filterwarnings("ignore")
@@ -276,7 +278,7 @@ def test_inactive_parameters_come_back_unchanged() -> None:
             algorithm="legacy-sequential-v1",
         )
     )
-    for name in ("C", "D", "F", "G"):
+    for name in ("F", "G"):
         assert result.parameters[name] == start[name]
 
 
@@ -342,7 +344,7 @@ def test_degeneracy_is_the_ratio_of_the_two_bands() -> None:
     ("model_id", "request_", "error", "message"),
     [
         ("dpb", CurveRequest("dpb_s_rho", {}, 50, 800, 5), ValueError, "needs a scattering"),
-        ("dpb", CurveRequest("dpb_s", {}, 50, 800, 5, "acPh"), ValueError, "no scattering type"),
+        ("dpb", CurveRequest("dpb_s", {}, 50, 800, 5, "acPhDis"), ValueError, "no scattering type"),
         ("dpb", CurveRequest("nothing", {}, 50, 800, 5), KeyError, "no fit mode"),
         ("dpb", CurveRequest("dpb_s", {}, 50, 800, 5), ValueError, "Missing parameters"),
         (
@@ -496,15 +498,15 @@ PARAMETERS: dict[str, float] = {
     "fermi_energy": 3.5,
     "A": 4.5,
     "B": 5.5,
-    "C": 6.5,
-    "D": 7.5,
+    "C": 0.0,
+    "D": 0.0,
     "F": 8.5,
     "G": 9.5,
     "m1": 10.5,
 }
 BANDS = [1.25, 2.5, 3.5]
-DPB_RES = [4.5, 5.5, 6.5, 7.5, 8.5, 9.5]
-SPB_RES = [4.5, 6.5, 8.5]
+DPB_RES = [4.5, 5.5, 0.0, 0.0, 8.5, 9.5]
+SPB_RES = [4.5, 0.0, 8.5]
 RATIO = 1.5  # Band 2 degeneracy of 3 over band 1 degeneracy of 2.
 GRID = [50, 800, 5]
 
@@ -620,6 +622,7 @@ for _mode, _hall in (("dpb_s_rho", False), ("dpb_s_rho_rh", True)):
 
 # Each parameter's bounds are distinct too: lower is minus its value, upper is 100 plus its value.
 BOUNDS = {name: Bounds(-value, 100 + value) for name, value in PARAMETERS.items()}
+BOUNDS.update({"C": Bounds(0, 1e4), "D": Bounds(0, 1e4)})
 
 
 def limits(*names: str) -> list[list[float]]:
@@ -738,7 +741,10 @@ def test_the_expected_tables_cover_every_mode_and_kind() -> None:
     assert {mode for _, mode, _ in combinations()} == set(EXPECTED_FIT_CALLS)
 
 
-@pytest.mark.parametrize(("model_id", "fit_mode_id", "scattering", "kind"), curve_cases())
+@pytest.mark.parametrize(
+    ("model_id", "fit_mode_id", "scattering", "kind"),
+    [case for case in curve_cases() if case[2] != "ionized"],
+)
 def test_curves_call_the_core_as_written_here(
     monkeypatch: pytest.MonkeyPatch,
     model_id: str,
@@ -767,7 +773,10 @@ def test_curves_call_the_core_as_written_here(
     assert result.curves == {name: f"curve {index}" for index, name in enumerate(names)}
 
 
-@pytest.mark.parametrize(("model_id", "fit_mode_id", "scattering"), combinations())
+@pytest.mark.parametrize(
+    ("model_id", "fit_mode_id", "scattering"),
+    [case for case in combinations() if case[2] != "ionized"],
+)
 def test_fits_call_the_core_as_written_here(
     monkeypatch: pytest.MonkeyPatch, model_id: str, fit_mode_id: str, scattering: str | None
 ) -> None:
@@ -810,7 +819,7 @@ def test_fits_call_the_core_as_written_here(
         expected_keywords,
     )
     assert len(core.calls) == 1
-    fitted = {name: 100.0 + index for index, name in enumerate(names)}
+    fitted = {name: 100.0 + index for index, name in enumerate(names) if name in start}
     assert result.parameters == start | fitted
 
 
@@ -966,6 +975,8 @@ def test_described_bounds_match_what_the_desktop_passed(mode: str, call: dict[st
         else:
             names = GROUPS[group]
         for name, lower, upper in zip(names, limits[0], limits[1], strict=True):
+            if name in ("C", "D"):
+                continue  # Retained only in the historical low-level fixture.
             bounds = specs[name].fit_bounds
             assert bounds is not None
             if mode == "dpb_s_rho_rh" and name == "G":
@@ -978,10 +989,8 @@ def test_described_bounds_match_what_the_desktop_passed(mode: str, call: dict[st
 ITERATIVE_CASES = [
     ("dpb_s_rho", "acPh"),
     ("dpb_s_rho", "dis"),
-    ("dpb_s_rho", "acPhDis"),
     ("dpb_s_rho_rh", "acPh"),
     ("dpb_s_rho_rh", "dis"),
-    ("dpb_s_rho_rh", "acPhDis"),
 ]
 
 
@@ -1068,7 +1077,7 @@ def test_reaching_the_iteration_limit_is_not_success(
         assert [update.iteration for update in updates] == [1, 2]
         # The result has a Seebeck fit from the extra iteration, and the resistivity of the last.
         last = updates[-1].parameters
-        for name in ("A", "B", "C", "D", "F", "G"):
+        for name in ("A", "B", "F", "G"):
             assert result.parameters[name] == last[name]
         assert result.parameters["band_gap"] != last["band_gap"]
 
@@ -1396,6 +1405,7 @@ def spb_hall_held_cases() -> list[tuple[str, str]]:
     return [
         (scattering, spec.name)
         for scattering in fit_mode.scattering
+        if scattering != "ionized"
         for spec in fit_mode.parameters_for(scattering)
         if spec.role == "fitted"
     ]
@@ -1469,7 +1479,7 @@ def test_a_held_parameter_fits_as_a_fit_with_it_fixed_by_hand() -> None:
 
 
 @pytest.mark.filterwarnings("ignore")
-@pytest.mark.parametrize("scattering", ["acPh", "dis", "acPhDis"])
+@pytest.mark.parametrize("scattering", ["acPh", "dis"])
 def test_a_held_m_eff_in_a_loop_with_n2_over_n1_not_1_comes_back_as_sent(
     scattering: str,
 ) -> None:

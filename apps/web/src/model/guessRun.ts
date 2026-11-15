@@ -52,12 +52,15 @@ export async function runGuess(
   controller?.abort();
   const own = new AbortController();
   controller = own;
-  const { parameters } = store();
+  const { parameters, selection } = store();
+  const scattering = selection.scattering;
   store().guessStarted();
   // The data this answer is still about, if the user has not moved on.
   const current = (): Measurement | null => {
     const now = store().data.seebeck?.measurement;
-    return store().parameters === parameters &&
+    return store().selection.scattering === scattering &&
+      store().selection.model === selection.model &&
+      store().parameters === parameters &&
       now !== undefined &&
       sameRows(now, measurement)
       ? now
@@ -67,6 +70,7 @@ export async function runGuess(
     const answer = await apiClient.postGuess(
       {
         model: model.id,
+        ...(scattering === null ? {} : { scattering }),
         temperature_k: [...measurement.temperature_k],
         seebeck_v_per_k: [...measurement.values],
       },

@@ -253,14 +253,6 @@ def run_staged(
             {"fermi_energy": 2.0, "F": 3.0},
         ),
         (
-            "spb",
-            "spb_s_rho",
-            "acPhDis",
-            {"see": ([1.0], [4.0]), "res": ([1.0, 1.0], [9.0, 90000.0])},
-            1.0,
-            {"fermi_energy": 2.0, "A": 3.0, "C": 1.0},
-        ),
-        (
             "dpb",
             "dpb_s",
             None,
@@ -283,25 +275,6 @@ def run_staged(
             {"see": ([1.0, 1.0, 1.0], [4.0, 9.0, 16.0]), "res": ([1.0, 1.0], [25.0, 36.0])},
             1.0,
             {"m_eff": 2.0, "band_gap": 3.0, "fermi_energy": 4.0, "F": 5.0, "G": 6.0},
-        ),
-        (
-            "dpb",
-            "dpb_s_rho",
-            "acPhDis",
-            {
-                "see": ([1.0, 1.0, 1.0], [4.0, 9.0, 16.0]),
-                "res": ([1.0, 1.0, 1.0, 1.0], [25.0, 36.0, 90000.0, 360000.0]),
-            },
-            1.0,
-            {
-                "m_eff": 2.0,
-                "band_gap": 3.0,
-                "fermi_energy": 4.0,
-                "A": 5.0,
-                "B": 6.0,
-                "C": 1.0,
-                "D": 2.0,
-            },
         ),
     ],
 )
@@ -337,12 +310,6 @@ def test_the_hall_stage_error_is_carried_over_to_the_mass(
     )
     # m = E^(2/3), so dm = (2/3) * 8^(-1/3) * 3 = 1.
     assert result.parameter_errors == pytest.approx({"m1": 1.0})
-
-
-def test_spb_hall_scales_c_error_to_the_returned_ratio(monkeypatch: pytest.MonkeyPatch) -> None:
-    stages = {"res": ([1.0, 1.0], [9.0, 16.0])}
-    result = run_staged(monkeypatch, "spb", "spb_s_rho_rh", "acPhDis", stages, [1.0] * 5)
-    assert result.parameter_errors == pytest.approx({"A": 3.0, "C": 4.0 / 300.0})
 
 
 @pytest.mark.parametrize("variance", [np.inf, np.nan, -1.0])
@@ -434,21 +401,6 @@ def test_bound_flags_divide_m_eff_by_n_in_the_loop_only(monkeypatch: pytest.Monk
     assert single.at_bounds == ("m_eff",)
 
 
-def test_bound_flags_follow_the_physical_c_ratio_of_spb_hall(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    # C is the dimensionless ratio at 300 K, with upper bound 1000.
-    stages = {"hall": ([1.0], [1.0])}
-    inside = run_staged(
-        monkeypatch, "spb", "spb_s_rho_rh", "acPhDis", stages, [500.0, 2.0, 5.0, 1.0, 1.0]
-    )
-    assert "C" not in inside.at_bounds
-    at_bound = run_staged(
-        monkeypatch, "spb", "spb_s_rho_rh", "acPhDis", stages, [500.0, 2.0, 1000.0, 1.0, 1.0]
-    )
-    assert "C" in at_bound.at_bounds
-
-
 def test_exactly_zero_errors_are_left_out(monkeypatch: pytest.MonkeyPatch) -> None:
     stages = {"see": ([1.0, 1.0, 1.0], [0.0, 9.0, 16.0])}
     result = run_staged(monkeypatch, "dpb", "dpb_s", None, stages, [1.0, 1.0, 1.0])
@@ -471,7 +423,13 @@ def recorded_args(example: str, mode: str, function: str) -> list[Any]:
 
 
 @pytest.mark.filterwarnings("ignore")
-@pytest.mark.parametrize("scattering", ["acPh", "dis", "acPhDis"])
+@pytest.mark.parametrize(
+    "scattering",
+    [
+        "acPh",
+        "dis",
+    ],
+)
 @pytest.mark.parametrize("fit_mode_id", ["dpb_s_rho", "dpb_s_rho_rh"])
 def test_stages_of_a_real_loop_hold_their_last_run(fit_mode_id: str, scattering: str) -> None:
     model = model_at_limit(fit_mode_id)
@@ -540,10 +498,8 @@ def model_at_limit(fit_mode_id: str) -> band_models.DpbModel:
         ("spb_s", None, {"see": 1}),
         ("spb_s_rho", "acPh", {"see": 1, "res": 1}),
         ("spb_s_rho", "dis", {"see": 1, "res": 1}),
-        ("spb_s_rho", "acPhDis", {"see": 1, "res": 2}),
         ("spb_s_rho_rh", "acPh", {"see": 1, "res": 1, "hall": 1}),
         ("spb_s_rho_rh", "dis", {"see": 1, "res": 1, "hall": 1}),
-        ("spb_s_rho_rh", "acPhDis", {"see": 1, "res": 2, "hall": 1}),
     ],
 )
 def test_stages_of_real_spb_fits_are_labelled(

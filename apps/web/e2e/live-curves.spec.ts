@@ -121,7 +121,7 @@ test("loaded data ask for a whole request, and draw the curve", async ({
   });
   // Every parameter of the mode, also those of other scattering types.
   expect(Object.keys(bodies[0]?.parameters ?? {}).sort()).toEqual(
-    ["A", "B", "C", "D", "F", "G", "band_gap", "fermi_energy", "m_eff"].sort(),
+    ["A", "B", "F", "G", "band_gap", "fermi_energy", "m_eff"].sort(),
   );
   // Only points in the fit range, in V/K.
   expect(bodies[0]?.measurements).toEqual({
@@ -137,7 +137,7 @@ test("loaded data ask for a whole request, and draw the curve", async ({
   await expect(page.getByRole("alert")).toHaveCount(0);
 });
 
-test("a mode with no scattering sends none", async ({ page }) => {
+test("S-only sends its selected scattering", async ({ page }) => {
   await open(page);
   const bodies = await collect(page);
   await load(page);
@@ -146,7 +146,7 @@ test("a mode with no scattering sends none", async ({ page }) => {
   await page.getByRole("radio", { name: "S", exact: true }).click();
 
   await expect.poll(() => bodies.at(-1)?.fit_mode).toBe("dpb_s");
-  expect(bodies.at(-1)?.scattering).toBeNull();
+  expect(bodies.at(-1)?.scattering).toBe("acPh");
 });
 
 test("rapid moves do not queue up: one request at a time, then the latest", async ({

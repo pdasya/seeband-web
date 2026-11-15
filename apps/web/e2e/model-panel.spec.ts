@@ -93,15 +93,15 @@ test("DPB's S + ρ + R_H can be chosen, with no such text", async ({ page }) => 
   await expect(page.getByText(/known error/)).toHaveCount(0);
 });
 
-test("controls follow the mode: S alone has no scattering, SPB no degeneracy", async ({
+test("S-only modes offer scattering and SPB has no degeneracy", async ({
   page,
 }) => {
   await open(page);
 
   await mode(page, "S").click();
-  await expect(page.getByRole("combobox", { name: "Scattering" })).toHaveCount(
-    0,
-  );
+  await expect(
+    page.getByRole("combobox", { name: "Scattering" }),
+  ).toBeVisible();
   await expect(page.getByLabel("N₁")).toBeVisible();
 
   await page.getByRole("radio", { name: "SPB" }).click();
@@ -112,7 +112,7 @@ test("each model keeps its own choices", async ({ page }) => {
   await open(page);
   await mode(page, "S + ρ + R_H").click();
   await page.getByRole("combobox", { name: "Scattering" }).click();
-  await page.getByRole("option", { name: /acPhDis/ }).click();
+  await page.getByRole("option", { name: /Ionized impurities/ }).click();
   await page.getByLabel("N₂").fill("3");
   await page.getByLabel("N₂").blur();
 
@@ -124,7 +124,7 @@ test("each model keeps its own choices", async ({ page }) => {
   await expect(mode(page, "S + ρ + R_H")).toBeChecked();
   await expect(
     page.getByRole("combobox", { name: "Scattering" }),
-  ).toContainText("acPhDis");
+  ).toContainText("Ionized impurities");
   await expect(page.getByLabel("N₂")).toHaveValue("3");
 
   await page.getByRole("radio", { name: "SPB" }).click();
@@ -484,4 +484,23 @@ test("the choice of bands has no visible label, and keeps its name", async ({
     page.getByRole("radiogroup", { name: "Number of bands" }),
   ).toBeVisible();
   await expect(page.getByText("Fit mode", { exact: true })).toBeVisible();
+});
+
+test("ionized impurities are available in both models and S-only modes", async ({
+  page,
+}) => {
+  await open(page);
+  for (const model of ["DPB", "SPB"]) {
+    await page.getByRole("radio", { name: model, exact: true }).click();
+    await mode(page, "S").click();
+    await page.getByRole("combobox", { name: "Scattering" }).click();
+    await expect(page.getByRole("option", { name: /acPhDis/ })).toHaveCount(0);
+    await page.getByRole("option", { name: "Ionized impurities" }).click();
+    await expect(
+      page.getByRole("combobox", { name: "Scattering" }),
+    ).toContainText("Ionized impurities");
+    await expect(
+      page.getByText("Ionized impurity fitting uses the verified method."),
+    ).toBeVisible();
+  }
 });

@@ -18,7 +18,7 @@ e = 1.602176634e-19
 h = 6.62607015e-34
 hbar = h / (2 * np.pi)
 me = 9.1093837e-31
-lamb = 0
+# Historical kernels below retain lambda=0; generic exponents live in transport.py.
 
 
 def _load_fermi_table() -> np.ndarray:
@@ -45,7 +45,7 @@ def fdint_robust(s: float, eta: float, T: float) -> float:
     if etaT > 709 and s == 1:
         return eta**2 / (2 * T**2)
     if s == 0:
-        return float(np.log(1 + np.exp(eta / T)))
+        return float(np.log(1 + np.exp(etaT)))
     if s == 0.5:
         if (etaT) < -9.9:
             exp_eta = np.exp(etaT)
@@ -88,7 +88,7 @@ def spb_fermiInt_vs_temp(
     fermiInt = np.zeros(shape=len(T))
 
     for i, (temp, mu) in enumerate(zip(T, potentials, strict=True)):
-        fermiInt[i] = fdint_vec(s + lamb, mass_sign * mu, temp)
+        fermiInt[i] = fdint_vec(s, mass_sign * mu, temp)
 
     return fermiInt
 
@@ -110,8 +110,8 @@ def dpb_fermiInt_vs_temp(
     fermiInt_2 = np.zeros(shape=len(T))
 
     for i, (temp, mu) in enumerate(zip(T, potentials, strict=True)):
-        fermiInt_1[i] = fdint_vec(s + lamb, -mu, temp)
-        fermiInt_2[i] = fdint_vec(s + lamb, np.sign(mass) * (mu - gap), temp)
+        fermiInt_1[i] = fdint_vec(s, -mu, temp)
+        fermiInt_2[i] = fdint_vec(s, np.sign(mass) * (mu - gap), temp)
 
     return fermiInt_1, fermiInt_2
 
@@ -132,8 +132,8 @@ def onsi_general(eta: float, meff: float, K: float, beta: float, T: float) -> fl
         * T ** (beta + 1)
         / abs(meff)
         * (
-            (lamb + 2) / (lamb + 1) * fdint_vec(1 + lamb, np.sign(meff) * eta, T)
-            - np.sign(meff) * fdint_vec(0 + lamb, np.sign(meff) * eta, T) * eta / T
+            2 * fdint_vec(1, np.sign(meff) * eta, T)
+            - np.sign(meff) * fdint_vec(0, np.sign(meff) * eta, T) * eta / T
         )
     )
     return result
@@ -143,7 +143,7 @@ def onsi_general(eta: float, meff: float, K: float, beta: float, T: float) -> fl
 def sigma_general(eta: float, meff: float, K: float, beta: float, T: float) -> float:
     # Temperature factor defined as beta + 1, since 1 is obtained from partial integration instead
     # of 3/2
-    result: float = K * T ** (beta + 1) / abs(meff) * fdint_vec(0 + lamb, np.sign(meff) * eta, T)
+    result: float = K * T ** (beta + 1) / abs(meff) * fdint_vec(0, np.sign(meff) * eta, T)
     return result
 
 
@@ -370,9 +370,7 @@ def spb_lorNum_vs_temp(temp_array: np.ndarray, fermi_energy: float, band_mass: f
     fermiInt_2 = spb_fermiInt_vs_temp(2, temp_array, np.sign(band_mass), fermi_energy)
 
     result: np.ndarray = (
-        (kB / e) ** 2
-        * ((1 + lamb) * (3 + lamb) * fermiInt_0 * fermiInt_2 - (2 + lamb) ** 2 * fermiInt_1**2)
-        / ((1 + lamb) ** 2 * fermiInt_0**2)
+        (kB / e) ** 2 * (3 * fermiInt_0 * fermiInt_2 - 4 * fermiInt_1**2) / fermiInt_0**2
     )
     return result
 
@@ -385,16 +383,8 @@ def dpb_lorNum_vs_temp(
     f1_1, f1_2 = dpb_fermiInt_vs_temp(1, temp_array, meff, gap, fermi_energy, degen)
     f2_1, f2_2 = dpb_fermiInt_vs_temp(2, temp_array, meff, gap, fermi_energy, degen)
 
-    lorNum_1 = (
-        (kB / e) ** 2
-        * ((1 + lamb) * (3 + lamb) * f0_1 * f2_1 - (2 + lamb) ** 2 * f1_1**2)
-        / ((1 + lamb) ** 2 * f0_1**2)
-    )
-    lorNum_2 = (
-        (kB / e) ** 2
-        * ((1 + lamb) * (3 + lamb) * f0_2 * f2_2 - (2 + lamb) ** 2 * f1_2**2)
-        / ((1 + lamb) ** 2 * f0_2**2)
-    )
+    lorNum_1 = (kB / e) ** 2 * (3 * f0_1 * f2_1 - 4 * f1_1**2) / f0_1**2
+    lorNum_2 = (kB / e) ** 2 * (3 * f0_2 * f2_2 - 4 * f1_2**2) / f0_2**2
 
     return lorNum_1, lorNum_2
 
@@ -810,9 +800,7 @@ def spb_hall_vs_temp(
         Numpy array of Hall coefficient values
     """
 
-    factor = (
-        3 * hbar**3 * np.pi**2 / (e * (2 * kB * me) ** (3 / 2)) * (0.5 + 2 * lamb) / (1 + lamb) ** 2
-    )
+    factor = 3 * hbar**3 * np.pi**2 / (e * (2 * kB * me) ** (3 / 2)) * 0.5
     temperatures = np.asarray(T, dtype=float)
     if potentials is None:
         potentials = spb_chemPot_vs_temp(temperatures, mass_sign, fermi_energy)
@@ -831,8 +819,8 @@ def spb_hall_vs_temp(
             * at ** (-1.5)
             * scal_fac
             / np.asarray(para_E, dtype=float)
-            * fdint_vec(-0.5 + lamb, mass_sign * mu, at)
-            / fdint_vec(0 + lamb, mass_sign * mu, at) ** 2
+            * fdint_vec(-0.5, mass_sign * mu, at)
+            / fdint_vec(0, mass_sign * mu, at) ** 2
         )
     return result
 
@@ -1444,9 +1432,7 @@ def dpb_hall_vs_temp_acPh(
         Numpy array of Hall coefficient values
     """
 
-    factor = (
-        3 * hbar**3 * np.pi**2 / (e * (2 * kB * me) ** (3 / 2)) * (0.5 + 2 * lamb) / (1 + lamb) ** 2
-    )
+    factor = 3 * hbar**3 * np.pi**2 / (e * (2 * kB * me) ** (3 / 2)) * 0.5
     result: np.ndarray = (
         factor
         * T ** (-1.5)
@@ -1513,9 +1499,7 @@ def dpb_hall_vs_temp_dis(
         Numpy array of Hall coefficient values
     """
 
-    factor = (
-        3 * hbar**3 * np.pi**2 / (e * (2 * kB * me) ** (3 / 2)) * (0.5 + 2 * lamb) / (1 + lamb) ** 2
-    )
+    factor = 3 * hbar**3 * np.pi**2 / (e * (2 * kB * me) ** (3 / 2)) * 0.5
     result: np.ndarray = (
         factor
         * T ** (0.5)
@@ -1590,9 +1574,7 @@ def dpb_hall_vs_temp_acPh_dis(
         Numpy array of Hall coefficient values
     """
 
-    factor = (
-        3 * hbar**3 * np.pi**2 / (e * (2 * kB * me) ** (3 / 2)) * (0.5 + 2 * lamb) / (1 + lamb) ** 2
-    )
+    factor = 3 * hbar**3 * np.pi**2 / (e * (2 * kB * me) ** (3 / 2)) * 0.5
     result: np.ndarray = (
         factor
         * T ** (0.5)

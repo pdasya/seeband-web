@@ -141,7 +141,7 @@ test("a single-pass mode has no iterations, also after a fit", async ({
 
   await choose(page, "S");
   await expect(
-    page.getByText("DPB · range 50–800 K", { exact: true }),
+    page.getByText("DPB · acPh · range 50–800 K", { exact: true }),
   ).toBeVisible();
   await expect(page.getByText("Iterations")).toHaveCount(0);
   await expect(page.getByText(/limit \d/)).toHaveCount(0);
@@ -349,7 +349,7 @@ for (const [name, change] of [
     "a change of scattering",
     async (page: Page) => {
       await page.getByRole("combobox", { name: "Scattering" }).click();
-      await page.getByRole("option", { name: /acPhDis/ }).click();
+      await page.getByRole("option", { name: /Ionized impurities/ }).click();
     },
   ],
 ] as const) {

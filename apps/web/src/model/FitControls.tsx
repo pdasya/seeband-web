@@ -167,6 +167,9 @@ export function FitMessages({
 
 /** Explicit method choice is retained with the session and request identity. */
 export function FitAlgorithmControl() {
+  const ionized = useSessionStore(
+    (state) => state.selection.scattering === "ionized",
+  );
   const algorithm = useSessionStore(
     (state) => state.selection.algorithm ?? "verified-sequential-v2",
   );
@@ -190,8 +193,11 @@ export function FitAlgorithmControl() {
         <option value="verified-sequential-v2">
           {text.algorithm.verified}
         </option>
-        <option value="legacy-sequential-v1">{text.algorithm.legacy}</option>
+        <option value="legacy-sequential-v1" disabled={ionized}>
+          {text.algorithm.legacy}
+        </option>
       </select>
+      {ionized && <span>{text.algorithm.ionizedVerified}</span>}
     </label>
   );
 }

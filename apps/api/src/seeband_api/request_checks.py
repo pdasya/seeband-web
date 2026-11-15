@@ -130,7 +130,7 @@ def find_mode(
 
 def check_scattering(scattering: str | None, fit_mode: FitMode) -> list[ErrorDetail]:
     if scattering is None:
-        if fit_mode.scattering:
+        if fit_mode.scattering and fit_mode.id not in ("spb_s", "dpb_s"):
             return [invalid("missing_scattering", "This mode needs one", ["scattering"])]
     elif scattering not in fit_mode.scattering:
         return [invalid("unknown_scattering", "This mode has no such type", ["scattering"])]

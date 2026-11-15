@@ -73,13 +73,13 @@ describe("fitLog", () => {
     expect(
       fitLog(
         modeOf("spb_s_rho"),
-        "acPhDis",
+        "ionized",
         done({ iterations: null }),
         null,
       ).slice(1),
     ).toEqual([
       { title: "Fit to S", text: "Finds E_F" },
-      { title: "Fit to ρ", text: "Finds A, C" },
+      { title: "Fit to ρ", text: "Finds A" },
       { title: "Done", text: "One pass: this fit mode does not iterate." },
     ]);
   });

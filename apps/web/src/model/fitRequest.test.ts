@@ -67,17 +67,7 @@ describe("fitRequest", () => {
       extrapolated: false,
     });
     expect(Object.keys(answer.request.start).sort()).toEqual(
-      [
-        "A",
-        "B",
-        "C",
-        "D",
-        "F",
-        "G",
-        "band_gap",
-        "fermi_energy",
-        "m_eff",
-      ].sort(),
+      ["A", "B", "F", "G", "band_gap", "fermi_energy", "m_eff"].sort(),
     );
     expect(answer.request.measurements.seebeck?.temperature_k).toEqual([
       100, 900,

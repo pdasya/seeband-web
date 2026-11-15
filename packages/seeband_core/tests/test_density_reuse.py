@@ -41,7 +41,7 @@ def test_scattering_predictions_reuse_checked_density(monkeypatch):
 
 @pytest.mark.parametrize("model", ["spb", "dpb"])
 @pytest.mark.parametrize("sign", [-1.0, 1.0])
-@pytest.mark.parametrize("scattering", ["acPh", "dis", "acPhDis"])
+@pytest.mark.parametrize("scattering", ["acPh", "dis"])
 def test_cached_predictions_are_bitwise_identical(model, sign, scattering):
     t = np.array([100.0, 250.0, 800.0])
     p = dict(

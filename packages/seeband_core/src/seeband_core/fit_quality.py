@@ -71,7 +71,7 @@ def curve_rmse(
 
     if isinstance(model, SpbModel | DpbModel):
         mode = model.describe().fit_mode(fit_mode)
-        if scattering is None and mode.scattering:
+        if scattering is None and mode.scattering and not mode.id.endswith("_s"):
             raise ValueError(f"Fit mode {fit_mode} needs a scattering type")
         mode.parameters_for(scattering)
         ratio = 1.0

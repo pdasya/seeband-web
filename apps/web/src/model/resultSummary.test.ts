@@ -140,12 +140,12 @@ describe("parameterRows", () => {
 
   test("converts values and bounds to what the user sees", () => {
     const row = parameterRows(
-      modeOf("spb_s_rho"),
-      "acPhDis",
-      { C: 150 },
+      modeOf("spb_s"),
+      "ionized",
+      { fermi_energy: 1000 },
       { status: "idle" },
-    ).find(({ name }) => name === "C");
-    expect(row).toMatchObject({ value: "1,5", bounds: "0,00001 … 10" });
+    ).find(({ name }) => name === "fermi_energy");
+    expect(row).toMatchObject({ value: "0,09 eV", bounds: "-0,26 … 0,26" });
   });
 
   test("shows bounds of the user's in place of the description's", () => {

@@ -235,14 +235,14 @@ EXPECTED_PARAMETERS: dict[str, list[tuple[Any, ...]]] = {
     "spb_s_rho": [
         ("band_mass", "m_e", "fixed", -300, 300, 1, -100, 0.01, 0.01, 0.01, None, False),
         ("fermi_energy", *K_FULL, 1, -100, 1, 1, 1, (-3000, 3000), True),
-        ("A", "unknown", "fitted", 0, 1000000, 1000, 40000, 1, 1, 1, (1, 1e7), False),
+        ("A", "S/m", "fitted", 0, 1000000, 1000, 40000, 1, 1, 1, (1, 1e7), False),
         ("C", "dimensionless", "fitted", 0, 300, 1, 100, 0.01, 1, 1, (0.001, 1000), False),
         ("F", "unknown", "fitted", 0, 100000, 100, 4000, 1, 1, 1, (1, 1e7), False),
     ],
     "spb_s_rho_rh": [
         ("band_mass", "m_e", "fitted", -300, 300, 1, 100, 0.01, 0.01, 0.01, (-3, 3), True),
         ("fermi_energy", *K_FULL, 1, 100, 1, 1, 1, (-3000, 3000), True),
-        ("A", "unknown", "fitted", 0, 1000000, 1000, 40000, 1, 1, 1, (1, 1e7), False),
+        ("A", "S/m", "fitted", 0, 1000000, 1000, 40000, 1, 1, 1, (1, 1e7), False),
         ("C", "dimensionless", "fitted", 0, 300, 1, 100, 0.01, 1, 300, (0.001, 1000), False),
         ("F", "unknown", "fitted", 0, 100000, 100, 4000, 1, 1, 1, (1, 1e7), False),
     ],
@@ -253,7 +253,7 @@ EXPECTED_PARAMETERS: dict[str, list[tuple[Any, ...]]] = {
     ],
 }
 DPB_SCATTERING = [
-    ("A", "unknown", "fitted", 0, 1000000, 1000, 40000, 1, 1, 1, (0, 1e6), True),
+    ("A", "S/m", "fitted", 0, 1000000, 1000, 40000, 1, 1, 1, (0, 1e6), True),
     ("B", "dimensionless", "fitted", 90, 110, 1, 100, 0.01, 0.01, 0.01, (0.9, 1.1), True),
     ("C", "dimensionless", "fitted", 50, 200, 1, 100, 0.01, 0.01, 0.01, (0.5, 2), True),
     ("D", "dimensionless", "fitted", 50, 200, 1, 100, 0.01, 0.01, 0.01, (0.5, 2), True),
@@ -320,7 +320,7 @@ def test_parameters_match_the_values_written_here(fit_mode_id: str) -> None:
                 spec.bounds_editable,
             )
         )
-    assert found == EXPECTED_PARAMETERS[fit_mode_id]
+    assert found == [row for row in EXPECTED_PARAMETERS[fit_mode_id] if row[0] not in ("C", "D")]
 
 
 def test_meanings_come_from_the_table() -> None:
@@ -360,24 +360,24 @@ def test_fit_modes_are_as_written_here(
 @pytest.mark.parametrize("fit_mode_id", ["spb_s_rho", "spb_s_rho_rh", "dpb_s_rho", "dpb_s_rho_rh"])
 def test_scattering_options_are_kept(fit_mode_id: str) -> None:
     fit_mode = fit_mode_named(fit_mode_id)
-    assert fit_mode.scattering == ("acPh", "dis", "acPhDis")
+    assert fit_mode.scattering == ("acPh", "dis", "ionized")
     assert fit_mode.default_scattering == "acPh"
 
 
 @pytest.mark.parametrize("fit_mode_id", ["spb_s", "dpb_s"])
-def test_modes_without_a_choice_have_no_scattering(fit_mode_id: str) -> None:
+def test_seebeck_only_modes_offer_scattering_and_keep_none_compatibility(fit_mode_id: str) -> None:
     fit_mode = fit_mode_named(fit_mode_id)
-    assert (fit_mode.scattering, fit_mode.default_scattering) == ((), None)
-    with pytest.raises(ValueError, match="no scattering type"):
-        fit_mode.parameters_for("acPh")
+    assert fit_mode.scattering == ("acPh", "dis", "ionized")
+    assert fit_mode.default_scattering == "acPh"
+    assert fit_mode.parameters_for(None) == fit_mode.parameters
 
 
 def test_parameters_are_filtered_by_scattering() -> None:
     fit_mode = fit_mode_named("dpb_s_rho")
     names = [spec.name for spec in fit_mode.parameters_for("dis")]
     assert names == ["m_eff", "band_gap", "fermi_energy", "F", "G"]
-    names = [spec.name for spec in fit_mode.parameters_for("acPhDis")]
-    assert names == ["m_eff", "band_gap", "fermi_energy", "A", "B", "C", "D"]
+    names = [spec.name for spec in fit_mode.parameters_for("ionized")]
+    assert names == ["m_eff", "band_gap", "fermi_energy", "A", "B"]
     assert fit_mode.parameters_for(None) == fit_mode.parameters
     with pytest.raises(ValueError, match="no scattering type bogus"):
         fit_mode.parameters_for("bogus")
@@ -417,7 +417,6 @@ def test_default_starts_match_the_recorded_desktop_calls() -> None:
         "band_mass": -1.0,
         "fermi_energy": -100,
         "A": 40000,
-        "C": 100,
         "F": 4000,
     }
 
@@ -429,18 +428,16 @@ def test_a_default_start_holds_fixed_and_inactive_parameters() -> None:
         "fermi_energy",
         "A",
         "B",
-        "C",
-        "D",
         "F",
         "G",
     }
 
 
 def test_display_and_core_values_convert_both_ways() -> None:
-    spb_c = parameter_named("spb_s_rho", "C")
+    spb_c = dataclasses.replace(parameter_named("spb_s_rho", "A"), display_scale=0.01)
     assert core_to_display(spb_c, 100) == 1.0
     assert display_to_core(spb_c, 1.0) == 100
-    dpb_c = parameter_named("dpb_s_rho", "C")
+    dpb_c = parameter_named("dpb_s_rho", "B")
     assert core_to_display(dpb_c, 1.5) == 1.5
     assert display_to_core(dpb_c, 1.5) == 1.5
 

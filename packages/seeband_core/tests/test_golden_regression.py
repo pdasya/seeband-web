@@ -588,7 +588,13 @@ def assert_fit_iterations(
 
 
 @pytest.mark.filterwarnings("ignore")
-@pytest.mark.parametrize(("example", "mode", "scattering", "source", "call"), CALLS, ids=CALL_IDS)
+@pytest.mark.parametrize(
+    ("example", "mode", "scattering", "source", "call"),
+    [case for case in CALLS if case[2] != "acPhDis"],
+    ids=[
+        identifier for identifier, case in zip(CALL_IDS, CALLS, strict=True) if case[2] != "acPhDis"
+    ],
+)
 def test_replay_matches_the_desktop(
     example: str, mode: str, scattering: str | None, source: str, call: dict[str, Any]
 ) -> None:
@@ -644,7 +650,11 @@ def recorded_iterative_runs() -> Iterator[tuple[str, str | None, int, dict[str, 
     for example in ("01_Fe2VAl09Si01", "03_AWI32_SI"):
         document = json.loads((GOLDEN / f"{example}.json").read_text(encoding="utf-8"))
         for run in document["runs"]:
-            if run["iterations"] is not None and "error" not in run["calls"][0]:
+            if (
+                run["iterations"] is not None
+                and "error" not in run["calls"][0]
+                and run["scattering"] != "acPhDis"
+            ):
                 call = run["calls"][0]
                 identifier = (
                     f"{example}-{run['mode']}-{run['scattering']}-thread-{call['function']}"
@@ -671,7 +681,13 @@ def test_iterations_match_the_desktop(
 
 
 @pytest.mark.filterwarnings("ignore")
-@pytest.mark.parametrize(("example", "mode", "scattering", "source", "call"), CALLS, ids=CALL_IDS)
+@pytest.mark.parametrize(
+    ("example", "mode", "scattering", "source", "call"),
+    [case for case in CALLS if case[2] != "acPhDis"],
+    ids=[
+        identifier for identifier, case in zip(CALL_IDS, CALLS, strict=True) if case[2] != "acPhDis"
+    ],
+)
 def test_replay_matches_p8_expectations(
     example: str, mode: str, scattering: str | None, source: str, call: dict[str, Any]
 ) -> None:
@@ -680,7 +696,9 @@ def test_replay_matches_p8_expectations(
 
 
 def p8_iterative_runs() -> Iterator[tuple[str, str, dict[str, Any]]]:
-    for identifier, (_, mode, _, source, call) in zip(CALL_IDS, CALLS, strict=True):
+    for identifier, (_, mode, scattering, source, call) in zip(CALL_IDS, CALLS, strict=True):
+        if scattering == "acPhDis":
+            continue  # Removed public choice; unchanged low-level golden tests retain it.
         if source == "thread" and call["function"] in {"dpb_see_res_fit", "dpb_see_res_hall_fit"}:
             yield identifier, mode, call
 

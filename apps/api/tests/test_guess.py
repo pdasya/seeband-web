@@ -663,3 +663,22 @@ def test_unsorted_no_net_reports_minimum_and_maximum(client: TestClient):
     assert body["status"] == "no_net"
     assert (body["first_temperature_k"], body["last_temperature_k"]) == (350.0, 500.0)
     assert body["warnings"] == ["unsorted_temperature"]
+
+
+def test_ionized_dpb_guess_does_not_use_an_acoustic_neural_net(client: TestClient) -> None:
+    response = client.post(
+        "/api/guess",
+        json={**REQUEST_EXAMPLE, "scattering": "ionized"},
+    )
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "unsupported",
+        "reason": "scattering_not_supported",
+        "warnings": [],
+    }
+
+
+@pytest.mark.parametrize("scattering", ["acPhDis", "unknown"])
+def test_guess_rejects_unavailable_scattering(client: TestClient, scattering: str) -> None:
+    response = client.post("/api/guess", json={**REQUEST_EXAMPLE, "scattering": scattering})
+    assert response.status_code == 422

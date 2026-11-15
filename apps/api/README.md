@@ -319,3 +319,13 @@ An unhandled `Exception` logs its type and its `file:line:function` frames. So d
 ## The contract
 
 `packages/api-client/openapi.json` is generated from this app. See [`packages/api-client`](../../packages/api-client/README.md).
+
+## Ionized impurity scattering
+
+Core 0.3.0 exposes `ionized` alongside `acPh` and `dis` for SPB and DPB,
+including S-only. `acPhDis` and C/D parameters are no longer public choices.
+Ionized fits require `verified-sequential-v2`; legacy requests are rejected.
+`POST /api/guess` accepts optional `scattering`; SPB numerical estimates use
+it, while ionized DPB requests return `unsupported` with reason
+`scattering_not_supported` without running the acoustic-trained neural net.
+See [the physical contract](../../packages/seeband_core/docs/ionized-impurities.md).

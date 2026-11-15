@@ -139,24 +139,27 @@ the #71 parity gate remain separate from this numerical-domain correction.
 
 ## Scattering
 
-For SPB and DPB acPhDis, C and D are dimensionless scattering ratios at 300 K.
-D applies only to DPB band 2. The low-level temperature-dependent transport
-functions use c = 300 K × C and d = 300 K × D. P3 (#82) applies this conversion
-once at the calculation boundary for conductivity, thermal conductivity and
-band contributions, as already done for resistivity and total Seebeck.
+Core `0.3.0` offers acoustic phonons (`acPh`), alloy disorder (`dis`) and
+ionized impurities (`ionized`) for SPB and DPB, including S-only fitting.
+The selected mechanism and its parameters apply throughout the temperature range.
+The ionized option is the power-law approximation tau(E) proportional to E^(3/2),
+without a screening or impurity-ionization model. It uses lambda=2; acPh and dis
+use lambda=0 in tau proportional to T^beta E^(lambda-1/2).
 
-At identical parameters and temperatures, σρ = 1. DPB band conductivities sum
-to total σ. Electronic κ includes the two Lorenz terms and the bipolar term
-T σ₁σ₂/(σ₁+σ₂) (S₁−S₂)². Here S₁ and S₂ are each band's own Seebeck coefficient;
-the plotted contributions are σᵢSᵢ/(σ₁+σ₂).
+For ionized impurities, sigma=A*(T/300 K)^3*F2, S uses 4 F3/(3 F2)-eta,
+and Hall uses F_(7/2)/F2^2. A has units S/m; DPB B is a free relative
+conductivity normalization, not an impurity-density ratio. See the
+[complete formulas and conventions](../../packages/seeband_core/docs/ionized-impurities.md).
 
-P11 (#102) uses q(T) = B (C_K + T) / ((D_K + T) |r|) at each temperature
-in total DPB acPhDis Seebeck, with C_K = 300 K × C and D_K = 300 K × D.
-The total equals the sum of the weighted band contributions on the same grid.
-P8 supplies independent checked chemical potentials. These identities use the
-existing mass coordinate r; they do not resolve nonunit-degeneracy iterative
-fits or final-stage fit consistency limitations. P13 supplies positive
-longitudinal weights across scattering modes; see its correction note.
+At identical parameters and temperatures, sigma*rho=1. DPB band conductivities
+sum to total sigma. Electronic kappa includes the two Lorenz terms and the
+bipolar term T*sigma1*sigma2/(sigma1+sigma2)*(S1-S2)^2. Plotted Seebeck
+contributions are conductivity weighted. Lambda is explicit and immutable;
+independent requests never change the exponent of another calculation.
 
-The P3 correction has automated identity checks. Human physicist confirmation
-and the complete #71 desktop/web comparison remain outstanding.
+The current public choices omit acPhDis and its C/D controls. Historical
+P3/P11 captures and low-level functions retain the previous model for
+reproduction; an old mixed-scattering result is not an ionized result.
+Ionized fits use Verified. SPB numerical starting estimates use the chosen
+mechanism; DPB neural estimates are unavailable for ionized impurities.
+Human scientific acceptance and the #71 desktop/web comparison remain separate.

@@ -10,6 +10,10 @@ SPB numerical initial estimates and DPB neural guesses are described in [Initial
 
 ## Calculation versions
 
+Core `0.3.0` adds [ionized impurity power-law transport](docs/ionized-impurities.md)
+and removes acPhDis from public choices. Scattering exponents are explicit and
+immutable; all four transport coefficients share the selected mechanism.
+
 Core `0.2.0` makes [verified sequential fitting](docs/verified-sequential-fit.md)
 the default and retains the previous method as explicit `legacy-sequential-v1`.
 Results identify the actual algorithm and separate numerical checks from physical

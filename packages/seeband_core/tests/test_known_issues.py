@@ -153,7 +153,7 @@ def test_a_flag_for_one_scattering_type_stays_there() -> None:
     assert "hall_dis_no_reference" in ids("dpb_s_rho_rh", "dis")
     assert "hall_dis_no_reference" not in ids("dpb_s_rho_rh", "acPh")
     assert "acphdis_curve_scale" not in ids("dpb_s_rho", "acPh", "thermal_conductivity")
-    assert "acphdis_curve_scale" not in ids("dpb_s_rho", "acPhDis", "seebeck_by_band")
+    assert "acphdis_curve_scale" not in ids("dpb_s_rho", "ionized", "seebeck_by_band")
 
 
 @pytest.mark.parametrize("ratio", [0.5, 2.0, 3.0])
@@ -265,7 +265,7 @@ def test_curves_carry_their_issues_through_the_model() -> None:
     assert curve_ids("dpb_s") == set()
     assert curve_ids("dpb_s", band_2_degeneracy=2.0) == set()
     assert curve_ids("dpb_s", values={"m_eff": -1.0, "band_gap": -200.0}) == set()
-    assert curve_ids("dpb_s_rho", "acPhDis", kind="thermal_conductivity") == set()
+    assert curve_ids("dpb_s_rho", "ionized", kind="thermal_conductivity") == set()
     assert curve_ids("dpb_s_rho", "acPh", kind="thermal_conductivity") == set()
     assert curve_ids("dpb_s_rho_rh", "acPh") == set()
     assert curve_ids("spb_s", extrapolated=True) == {"interpolation_extrapolates"}
@@ -314,8 +314,8 @@ def test_a_fit_passes_its_degeneracy_and_scattering_on(monkeypatch: pytest.Monke
     loop = [1.0, 500.0, 500.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
     with_n = fit_ids(monkeypatch, "dpb_s", [1.0, 500.0, 500.0], band_2_degeneracy=2.0)
     assert with_n == set()
-    acphdis = fit_ids(monkeypatch, "dpb_s_rho", loop, scattering="acPhDis")
-    assert acphdis == set()
+    dis = fit_ids(monkeypatch, "dpb_s_rho", loop, scattering="dis")
+    assert dis == set()
     acph = fit_ids(monkeypatch, "dpb_s_rho", loop, scattering="acPh", band_2_degeneracy=2.0)
     assert acph == {"dpb_loop_degeneracy"}
     made_up = fit_ids(monkeypatch, "spb_s", [100.0], extrapolated=True)
@@ -338,7 +338,7 @@ def test_a_failed_fit_lists_only_a_disabled_mode(monkeypatch: pytest.MonkeyPatch
             "dpb_s_rho",
             synthetic("dpb_s_rho"),
             default_start(fit_mode("dpb_s_rho")),
-            scattering="acPhDis",
+            scattering="acPh",
             algorithm="legacy-sequential-v1",
         )
     )
@@ -364,11 +364,11 @@ def curves(mode: str, scattering: str, kind: CurveKind, values: dict[str, float]
 class TestTheErrorsAreStillThere:
     """Each of these fails once its error is fixed, and that is the prompt to remove its flag."""
 
-    def test_acphdis_conductivity_is_the_inverse_of_resistivity(self) -> None:
+    def test_ionized_conductivity_is_the_inverse_of_resistivity(self) -> None:
         for mode in ("spb_s_rho", "dpb_s_rho"):
             values = default_start(fit_mode(mode))
-            rho = curves(mode, "acPhDis", "measured", values)["resistivity_ohm_m"]
-            sigma = curves(mode, "acPhDis", "electrical_conductivity", values)[
+            rho = curves(mode, "ionized", "measured", values)["resistivity_ohm_m"]
+            sigma = curves(mode, "ionized", "electrical_conductivity", values)[
                 "electrical_conductivity_s_per_m"
             ]
             assert np.allclose(sigma * rho, 1.0)

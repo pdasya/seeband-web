@@ -438,27 +438,6 @@ test.describe("real fits", () => {
     await expect(gap).not.toHaveValue("0,05");
     await expect(page.getByRole("alert")).toHaveCount(0);
     await expect(iterations).toHaveCount(0);
-
-    // acPhDis has known errors of both kinds, each beside what it is about.
-    await page.getByRole("radio", { name: "S + ρ", exact: true }).click();
-    await page.getByRole("combobox", { name: "Scattering" }).click();
-    await page.getByRole("option", { name: /acPhDis/ }).click();
-    await run.click();
-    await expect(badge(/^Converged in \d+ iter\.$/)).toBeVisible({
-      timeout: 30_000,
-    });
-    await expect(
-      page.getByText(/^Unreliable: With acPhDis, this fit stops/),
-    ).toBeVisible();
-    await expect(
-      page.getByText(/^Unreliable: With acPhDis, the band weight/),
-    ).toBeVisible();
-    await expect(
-      page
-        .locator("dl > div")
-        .filter({ hasText: "RMSE, S" })
-        .getByText("unreliable"),
-    ).toBeVisible();
   });
 
   test("the demo goes through the real API like a file: curve, interpolation and fit", async ({

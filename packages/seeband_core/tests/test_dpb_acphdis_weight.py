@@ -117,13 +117,13 @@ def test_registry_measured_seebeck_equals_derived_band_sum(mode_id, degen):
 
     def curve(kind):
         return model.calculate(
-            CurveRequest(mode_id, parameters, 100, 800, 4, "acPhDis", kind, band_2_degeneracy=degen)
+            CurveRequest(mode_id, parameters, 100, 800, 4, "acPh", kind, band_2_degeneracy=degen)
         )
 
     measured = curve("measured")
     bands = curve("seebeck_by_band")
-    expected = math_module.dpb_see_vs_temp_double_scatter(
-        measured.temperature_k, 1.0 / degen, 300.0, -100.0, degen, 1.0, 150.0, 600.0
+    expected = math_module.dpb_see_vs_temp_single_scatter(
+        measured.temperature_k, 1.0 / degen, 300.0, -100.0, degen, 1.0
     )
     np.testing.assert_allclose(
         measured.curves["seebeck_v_per_k"], expected, rtol=ROUND_OFF_RTOL, atol=0
@@ -163,13 +163,13 @@ def test_other_quantity_temperature_extent_cannot_change_seebeck_rmse():
         "C": 0.5,
         "D": 2.0,
     }
-    point = model.calculate(CurveRequest("dpb_s_rho", parameters, 300, 300, 1, "acPhDis"))
+    point = model.calculate(CurveRequest("dpb_s_rho", parameters, 300, 300, 1, "acPh"))
     for rho_temperature in [800.0, 1000.0]:
         measurements = {
             "seebeck": Measurement(np.array([300.0]), point.curves["seebeck_v_per_k"]),
             "resistivity": Measurement(np.array([rho_temperature]), np.array([1.0])),
         }
-        result = curve_rmse(model, "dpb_s_rho", parameters, measurements, "acPhDis")
+        result = curve_rmse(model, "dpb_s_rho", parameters, measurements, "acPh")
         # 300 K is an exact endpoint of both RMSE grids: no interpolation approximation is involved.
         assert result["seebeck"].value == 0.0
 
@@ -186,7 +186,7 @@ def test_repaired_acphdis_seebeck_is_independent_of_the_grid() -> None:
     }
 
     def at_low_end(high_k: float) -> float:
-        request = CurveRequest("dpb_s_rho", values, 100, high_k, 3, "acPhDis")
+        request = CurveRequest("dpb_s_rho", values, 100, high_k, 3, "acPh")
         return float(model.calculate(request).curves["seebeck_v_per_k"][0])
 
     assert at_low_end(400) == at_low_end(800)

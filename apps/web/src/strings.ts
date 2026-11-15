@@ -61,7 +61,7 @@ export const STRINGS = {
     scatteringNames: {
       acPh: "Acoustic phonons (acPh)",
       dis: "Alloy disorder (dis)",
-      acPhDis: "Both mechanisms (acPhDis)",
+      ionized: "Ionized impurities",
     },
     disabledReason: "not available until a known error is fixed.",
     disabledReasons: {},
@@ -449,6 +449,7 @@ export const STRINGS = {
   fit: {
     algorithm: {
       label: "Fitting method",
+      ionizedVerified: "Ionized impurity fitting uses the verified method.",
       verified: "Verified sequential",
       legacy: "Legacy sequential (reproduce earlier results)",
       unknown: "Unknown",
@@ -496,6 +497,8 @@ export const STRINGS = {
     guessHint:
       "Estimate band parameters from S(T); SPB mass magnitude is preserved",
     guessUnsupported: {
+      scattering_not_supported:
+        "The DPB neural estimate is unavailable for ionized impurities. Set start values manually.",
       sign_change:
         "S(T) changes sign; a single-band estimate is unavailable. Try DPB.",
       too_few_temperatures:

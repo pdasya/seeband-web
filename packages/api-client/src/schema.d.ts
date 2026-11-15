@@ -258,8 +258,6 @@ export interface components {
          *       "parameters": {
          *         "A": 40000,
          *         "B": 1,
-         *         "C": 1,
-         *         "D": 1,
          *         "F": 1000,
          *         "G": 1,
          *         "band_gap": 1000,
@@ -327,7 +325,7 @@ export interface components {
          *     by name with its unit: `electrical_conductivity_s_per_m` is 1/rho, with null for a rho of 0 or
          *     below. They use no model, so they go with the data the request sent, interpolated or not.
          * @example {
-         *       "core_version": "0.2.0",
+         *       "core_version": "0.3.0",
          *       "curves": {
          *         "resistivity_ohm_m": [
          *           0.000036627,
@@ -378,7 +376,7 @@ export interface components {
             /**
              * Core Version
              * @description Core software version for provenance, not certification.
-             * @default 0.2.0
+             * @default 0.3.0
              */
             core_version?: string;
             /** Curves */
@@ -827,7 +825,7 @@ export interface components {
          *     start would. Holding m1, or the SPB Hall mass, skips the R_H stage.
          * @example {
          *       "at_bounds": [],
-         *       "core_version": "0.2.0",
+         *       "core_version": "0.3.0",
          *       "held": [],
          *       "known_issues": [],
          *       "parameter_errors": {
@@ -851,7 +849,7 @@ export interface components {
             /**
              * Core Version
              * @description Core software version for provenance, not certification.
-             * @default 0.2.0
+             * @default 0.3.0
              */
             core_version?: string;
             /**
@@ -1015,6 +1013,8 @@ export interface components {
         GuessRequest: {
             /** Model */
             model: string;
+            /** Scattering */
+            scattering?: string | null;
             /** Temperature K */
             temperature_k: number[];
             /** Seebeck V Per K */
@@ -1031,14 +1031,14 @@ export interface components {
              * Reason
              * @enum {string}
              */
-            reason: "sign_change" | "too_few_temperatures" | "zero_seebeck";
+            reason: "sign_change" | "too_few_temperatures" | "zero_seebeck" | "scattering_not_supported";
             /** Warnings */
             warnings: ("unsorted_temperature" | "underdetermined_fit" | "m_eff_rounds_to_zero" | "estimate_at_bound" | "large_estimate_residual" | "low_temperature_omitted")[];
         };
         /**
          * HealthResponse
          * @example {
-         *       "core_version": "0.2.0",
+         *       "core_version": "0.3.0",
          *       "status": "ok",
          *       "version": "1.0.0"
          *     }
@@ -1054,7 +1054,7 @@ export interface components {
             /**
              * Core Version
              * @description Core software version for provenance, not certification.
-             * @default 0.2.0
+             * @default 0.3.0
              */
             core_version?: string;
         };
@@ -1469,7 +1469,7 @@ export interface operations {
                 headers: {
                     /** @example no-cache */
                     "Cache-Control"?: string;
-                    /** @example "0877a5a7b4034a4224584ee89961193c" */
+                    /** @example "5fdcc757f27652400bf86a90b834669b" */
                     ETag?: string;
                     [name: string]: unknown;
                 };

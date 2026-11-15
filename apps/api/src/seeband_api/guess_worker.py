@@ -48,10 +48,13 @@ def guess(model_id: str, temperature_k: np.ndarray, seebeck_v_per_k: np.ndarray)
 
 
 def numerical_guess(
-    model_id: str, temperature_k: np.ndarray, seebeck_v_per_k: np.ndarray
+    model_id: str,
+    temperature_k: np.ndarray,
+    seebeck_v_per_k: np.ndarray,
+    scattering: str | None = None,
 ) -> NumericalEstimate:
     """Keep numerical failures within the public calculation-error contract."""
     try:
-        return single_band_guess(model_id, temperature_k, seebeck_v_per_k)
+        return single_band_guess(model_id, temperature_k, seebeck_v_per_k, scattering)
     except (ArithmeticError, ValueError) as error:
         raise CalculationFailed(type(error).__name__) from error

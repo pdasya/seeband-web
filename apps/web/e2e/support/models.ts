@@ -55,7 +55,7 @@ export const SYNTHETIC_SEEBECK_ISSUE = {
   severity: "unreliable",
   message_key: "test.synthetic_seebeck_issue",
   fixed_by: "test fixture",
-  scattering: ["acPhDis"],
+  scattering: ["ionized"],
   curve_kinds: ["measured", "seebeck"],
   columns: ["seebeck_v_per_k"],
   affects_fit: true,
