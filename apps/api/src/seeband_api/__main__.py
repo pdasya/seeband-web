@@ -21,6 +21,8 @@ def main() -> None:
         timeout_graceful_shutdown=GRACEFUL_SHUTDOWN_S,
         # Uvicorn logs the path and query of WebSocket requests. The API has none.
         ws="none",
+        # Past this many connections and requests at once, a fast 503 rather than a slow server.
+        limit_concurrency=settings.limit_concurrency,
     )
 
 

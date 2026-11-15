@@ -519,6 +519,7 @@ def test_entry_point_passes_its_settings_to_the_server(
             "forwarded_allow_ips": "127.0.0.1,::1",
             "ws": "none",
             "timeout_graceful_shutdown": 5,
+            "limit_concurrency": 200,
         }
     ]
 
