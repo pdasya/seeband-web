@@ -411,6 +411,7 @@ test("leaving a field unchanged keeps a result, and changing one clears it", asy
         parameters: {},
         status: "converged",
         parameter_errors: {},
+        parameter_status: {},
         at_bounds: [],
         known_issues: [],
       },

@@ -39,7 +39,7 @@ export function FitStatusBadge({
 }) {
   const badge =
     guessBadge(guess.outcome, control.fit) ??
-    fitBadge(control.fit, control.iterative);
+    fitBadge(control.fit, control.iterative, control.threshold);
   // Before any fit there is no status to show, only what keeps one from running.
   const missing = badge === null ? missingDataText(control.blocker) : null;
   return (

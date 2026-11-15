@@ -37,11 +37,17 @@ const RESULT: FitResult = {
   status: "converged",
   iterations: 2,
   parameter_errors: {},
+  parameter_status: {},
   at_bounds: [],
   known_issues: [],
   held: [],
 };
 const DONE: FitState = { status: "done", result: RESULT };
+const AT_BOUND: FitResult = {
+  ...RESULT,
+  at_bounds: ["band_gap"],
+  parameter_status: { band_gap: "at_bound", fermi_energy: "not_determined" },
+};
 const SELECTION = {
   model: "dpb",
   fitMode: "dpb_s_rho",
@@ -349,15 +355,15 @@ describe("the parameters file", () => {
       modeOf("dpb_s_rho"),
       SELECTION,
       { band_gap: 900, fermi_energy: -50 },
-      { status: "done", result: { ...RESULT, at_bounds: ["band_gap"] } },
+      { status: "done", result: AT_BOUND },
     );
     const lines = file.split("\n").slice(0, -1);
     expect(lines[0]).toBe("Parameter\tValue\tStatus");
     expect(lines).toContain(
-      "E_g (position of band 2) [eV]\t0.077555999358\tfitted, at bound",
+      "E_g (position of band 2) [eV]\t0.077555999358\tat bound",
     );
     expect(lines.find((line) => line.startsWith("E_F"))).toMatch(
-      /\t-0.004308666631\tfitted$/,
+      /\t-0.004308666631\tnot determined by the data$/,
     );
     expect(lines.at(-1)).toBe("N1, N2 (band degeneracies)\t1, 2\tfixed");
   });
@@ -571,7 +577,7 @@ describe("the parameters as CSV", () => {
       modeOf("dpb_s_rho"),
       SELECTION,
       { band_gap: 900 },
-      { status: "done", result: { ...RESULT, at_bounds: ["band_gap"] } },
+      { status: "done", result: AT_BOUND },
     )
       .split("\n")
       .slice(0, -1);
@@ -580,7 +586,7 @@ describe("the parameters as CSV", () => {
       "parameter,symbol,meaning,unit,value,status",
     ]);
     expect(lines).toContain(
-      'band_gap,E_g,position of band 2,eV,0.077555999358,"fitted, at bound"',
+      "band_gap,E_g,position of band 2,eV,0.077555999358,at bound",
     );
     expect(lines.find((line) => line.startsWith("m_eff,"))).toMatch(
       /^m_eff,m₂\/m₁,"band mass ratio m2\/m1, the sign sets the type of band 2",,/,

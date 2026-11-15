@@ -19,6 +19,7 @@ const RESULT: FitResult = {
   status: "converged",
   iterations: 3,
   parameter_errors: {},
+  parameter_status: {},
   at_bounds: [],
   known_issues: [],
   held: [],
@@ -43,7 +44,7 @@ describe("fitLog", () => {
       { title: "Fit to ρ", text: "Finds A, B, in each of 3 iterations" },
       { title: "Fit to R_H", text: "Finds m₁" },
       {
-        title: "Converged",
+        title: "Stopped by its rule",
         text: "The legacy fit met its stop rule, a change of at most 10 %, in iteration 3.",
       },
     ]);

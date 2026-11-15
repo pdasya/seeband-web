@@ -42,6 +42,13 @@ const RESULT = {
   status: "converged",
   iterations: 5,
   parameter_errors: {},
+  parameter_status: {
+    m_eff: "estimated",
+    band_gap: "estimated",
+    fermi_energy: "estimated",
+    A: "estimated",
+    B: "estimated",
+  },
   at_bounds: [],
   known_issues: [],
 };
@@ -145,8 +152,10 @@ test("a fit sums up: status, KPIs and each parameter with its status", async ({
   await toResults(page);
 
   await expect(
-    page.locator('[data-slot="badge"]').filter({ hasText: /^Converged/ }),
-  ).toHaveText("Converged in 5 iter.");
+    page
+      .locator('[data-slot="badge"]')
+      .filter({ hasText: /^Stopped by its rule/ }),
+  ).toHaveText("Stopped by its rule (change of at most 10 %) in 5 iter.");
   await expect(
     page.getByText("DPB · acPh · S + ρ · range 50–800 K", { exact: true }),
   ).toBeVisible();
@@ -164,7 +173,7 @@ test("a fit sums up: status, KPIs and each parameter with its status", async ({
 
   await expect(row(page, "m₂/m₁")).toContainText("band mass ratio");
   await expect(row(page, "m₂/m₁")).toContainText("0,5");
-  await expect(row(page, "m₂/m₁")).toContainText("fitted");
+  await expect(row(page, "m₂/m₁")).toContainText("estimated");
   await expect(row(page, "E_g")).toContainText("0,08 eV");
   await expect(row(page, "N₁, N₂")).toContainText("1, 1");
   await expect(row(page, "N₁, N₂")).toContainText("fixed");
@@ -185,12 +194,20 @@ test("known issues and bounds reached are named", async ({ page }) => {
     algorithm: "legacy-sequential-v1",
     known_issues: ["dpb_loop_degeneracy"],
     at_bounds: ["band_gap"],
+    parameter_status: { ...RESULT.parameter_status, band_gap: "at_bound" },
   });
   await toResults(page);
 
+  // In the notes, and on each additional graph, as the issue is one of the fit's values.
+  const caution = page.getByText(
+    /^Caution: In the legacy method with N₂\/N₁ other than 1/,
+  );
+  await expect(caution).toHaveCount(6);
   await expect(
-    page.getByText(/^Caution: In the legacy method with N₂\/N₁ other than 1/),
-  ).toBeVisible();
+    page
+      .getByRole("region", { name: "Additional graphs" })
+      .getByText(/^Caution: In the legacy method with N₂\/N₁ other than 1/),
+  ).toHaveCount(5);
   await expect(row(page, "E_g")).toContainText("at bound");
   await expect(row(page, "E_F")).not.toContainText("at bound");
 });
@@ -288,6 +305,45 @@ test("while the models load or fail, it says that, not that a fit gave nothing",
   await expect(page.getByText(/gave no values/)).toHaveCount(0);
 });
 
+test("each parameter shows how the fit found it, and none in green", async ({
+  page,
+}) => {
+  await openFit(page);
+  await finishWith(page, {
+    at_bounds: ["B"],
+    parameter_status: {
+      m_eff: "did_not_move",
+      band_gap: "estimated",
+      fermi_energy: "not_determined",
+      A: "not_assessed",
+      B: "at_bound",
+    },
+  });
+  await toResults(page);
+
+  await expect(row(page, "m₂/m₁")).toContainText("did not move from its start");
+  await expect(row(page, "E_g")).toContainText("estimated");
+  await expect(row(page, "E_F")).toContainText("not determined by the data");
+  await expect(row(page, "A")).toContainText("not assessed");
+  await expect(row(page, "B")).toContainText("at bound");
+  await expect(row(page, "N₁, N₂")).toContainText("fixed");
+  const badges = table(page).locator('[data-slot="badge"]');
+  for (const badge of await badges.all()) {
+    await expect(badge).not.toHaveAttribute("data-variant", "success");
+  }
+  await expect(
+    page.getByText(/The uncertainty of the values is not assessed yet\./),
+  ).toBeVisible();
+  // The stop rule, not "Converged", and not in green.
+  const status = page
+    .locator('[data-slot="badge"]')
+    .filter({ hasText: /^Stopped by its rule/ });
+  await expect(status).toHaveText(
+    "Stopped by its rule (change of at most 10 %) in 5 iter.",
+  );
+  await expect(status).not.toHaveAttribute("data-variant", "success");
+});
+
 const logSteps = (page: Page) =>
   page.getByRole("list", { name: "Fit log" }).getByRole("listitem");
 
@@ -305,7 +361,7 @@ test("the fit log follows the stages of the mode and how the fit ended", async (
     /^\dStart values\s*The values on the fit screen$/,
     /^\dFit to S\s*Finds m₂\/m₁, E_g, E_F, in each of 3 iterations$/,
     /^\dFit to ρ\s*Finds A, B, in each of 3 iterations$/,
-    /^\dConverged\s*The legacy fit met its stop rule, a change of at most 10 %, in iteration 3\.$/,
+    /^\dStopped by its rule\s*The legacy fit met its stop rule, a change of at most 10 %, in iteration 3\.$/,
   ]);
 });
 
@@ -564,7 +620,10 @@ test("Parameters to file has each value, its unit and how it was found", async (
   page,
 }) => {
   await openFit(page);
-  await finishWith(page, { at_bounds: ["band_gap"] });
+  await finishWith(page, {
+    at_bounds: ["band_gap"],
+    parameter_status: { ...RESULT.parameter_status, band_gap: "at_bound" },
+  });
 
   // From the fit screen, as from the results.
   const file = (await inFormat(page, "Text", "Parameters to file")).toString(
@@ -573,7 +632,7 @@ test("Parameters to file has each value, its unit and how it was found", async (
   const lines = file.split("\n");
   expect(lines).toContain("Parameter\tValue\tStatus");
   expect(lines).toContain(
-    "E_g (position of band 2) [eV]\t0.077555999358\tfitted, at bound",
+    "E_g (position of band 2) [eV]\t0.077555999358\tat bound",
   );
   expect(lines).toContain("N1, N2 (band degeneracies)\t1, 1\tfixed");
 
@@ -581,7 +640,7 @@ test("Parameters to file has each value, its unit and how it was found", async (
     await inFormat(page, "CSV, one table", "Parameters to file")
   ).toString("utf8");
   expect(csv.split("\n")).toContain(
-    'band_gap,E_g,position of band 2,eV,0.077555999358,"fitted, at bound"',
+    "band_gap,E_g,position of band 2,eV,0.077555999358,at bound",
   );
 });
 

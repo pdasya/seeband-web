@@ -6,7 +6,7 @@ import {
   parameterValues,
   visibleParameters,
 } from "@/model/parameters";
-import { hasFittedValues, type ResultIssue } from "@/model/resultSummary";
+import { foundStatus, type ResultIssue } from "@/model/resultSummary";
 import type { FitModeDescription } from "@/model/selection";
 import {
   fitAlgorithm,
@@ -283,13 +283,9 @@ function parameterRecords(
   held: readonly string[],
 ): ParameterRecord[] {
   const values = parameterValues(mode, saved);
-  const atBounds =
-    fit.status === "done" && fit.result.status !== "failed"
-      ? fit.result.at_bounds
-      : [];
   const units: Record<string, string | undefined> = text.units;
-  const fitted = hasFittedValues(fit);
   return visibleParameters(mode, scattering).map((parameter) => {
+    const found = foundStatus(fit, parameter.name);
     const value = values[parameter.name] ?? parameter.core_range.default;
     return {
       name: parameter.name,
@@ -303,11 +299,9 @@ function parameterRecords(
           ? text.status.fixed
           : held.includes(parameter.name)
             ? text.status.held
-            : !fitted
+            : found.kind === "free"
               ? text.status.free
-              : atBounds.includes(parameter.name)
-                ? text.status.atBound
-                : text.status.fitted,
+              : text.status.found[found.status],
     };
   });
 }

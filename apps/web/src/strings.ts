@@ -440,7 +440,7 @@ export const STRINGS = {
     running: "Fitting…",
     settled: "Numerically settled",
     stalled: "Numerical fit stalled",
-    converged: "Converged",
+    converged: "Stopped by its rule",
     iterationLimit: "Iteration limit reached",
     stopped: "Stopped",
     failed: "Failed",
@@ -542,6 +542,7 @@ export const STRINGS = {
     atIteration: (iteration: number) => `iteration ${String(iteration)}`,
     stoppedAt: (iteration: number) => `at iteration ${String(iteration)}`,
     convergedIn: (iterations: number) => `in ${String(iterations)} iter.`,
+    stopRule: (percent: string) => `(change of at most ${percent} %)`,
     resultFailed: "The fit could not finish. Change the values, and try again.",
     // The API's fixed text for a fit that ends without a result.
     resultFailures: {
@@ -734,10 +735,17 @@ export const STRINGS = {
         ? `${symbol} (${meaning})`
         : `${symbol} (${meaning}) [${unit}]`,
     status: {
-      fitted: "fitted",
+      found: {
+        estimated: "estimated",
+        at_bound: "at bound",
+        not_determined: "not determined by the data",
+        did_not_move: "did not move from its start",
+        not_assessed: "not assessed",
+        fixed: "fixed",
+        held: "held at its value",
+      },
       fixed: "fixed",
       held: "held at its value",
-      atBound: "fitted, at bound",
       free: "not fitted yet",
     },
     // A unit as a file writes it, plain text.
@@ -851,11 +859,23 @@ export const STRINGS = {
       status: "Status",
     },
     status: {
-      fitted: "fitted",
+      // How the fit found it. None of these says that a value is right.
+      found: {
+        estimated: "estimated",
+        at_bound: "at bound",
+        not_determined: "not determined by the data",
+        did_not_move: "did not move from its start",
+        not_assessed: "not assessed",
+        fixed: "fixed",
+        held: "held",
+      },
+      free: "not fitted yet",
       fixed: "fixed",
       held: "held",
       needs: (symbols: string) => `needs ${symbols}`,
     },
+    uncertaintyNote:
+      "The uncertainty of the values is not assessed yet. “Estimated” means only that the fit gave no sign of a problem with a value, not that the data determine it.",
     notes: "Notes",
     graphs: {
       title: "Additional graphs",
@@ -873,7 +893,7 @@ export const STRINGS = {
       finds: (symbols: string) => `Finds ${symbols}`,
       findsEach: (symbols: string, iterations: number) =>
         `Finds ${symbols}, in each of ${String(iterations)} ${iterations === 1 ? "iteration" : "iterations"}`,
-      converged: "Converged",
+      converged: "Stopped by its rule",
       convergedText: "The fit met its stop rule.",
       convergedBelow: (percent: string, iterations: number | null) =>
         iterations === null

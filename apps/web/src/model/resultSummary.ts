@@ -12,6 +12,7 @@ import type { FitModeDescription, ModelDescription } from "@/model/selection";
 import {
   loadedAs,
   QUANTITIES,
+  type FitResult,
   type FitState,
   type Quantity,
   type Selection,
@@ -159,12 +160,33 @@ export function hasFittedValues(fit: FitState): boolean {
   }
 }
 
+/** How the server says a fit found a parameter, see `FitResponse.parameter_status`. */
+export type FoundStatus = FitResult["parameter_status"][string];
+
 /**
- * Fitted, fixed by the mode, held at its value by the user, or known only with data that this fit
- * mode does not use.
+ * How a fit found a parameter the mode fits, as its result says, or `not_assessed` for the values
+ * of a fit stopped here, which came with no result. `free` before any fit, or after one that
+ * failed, as the values are then the user's.
+ */
+export function foundStatus(
+  fit: FitState,
+  name: string,
+): { kind: "found"; status: FoundStatus } | { kind: "free" } {
+  if (!hasFittedValues(fit)) {
+    return { kind: "free" };
+  }
+  const status =
+    fit.status === "done" ? fit.result.parameter_status[name] : undefined;
+  return { kind: "found", status: status ?? "not_assessed" };
+}
+
+/**
+ * Found by a fit, as `foundStatus` says, fixed by the mode, held at its value by the user, or
+ * known only with data that this fit mode does not use.
  */
 export type ParameterStatus =
-  | { kind: "fitted" }
+  | { kind: "found"; status: FoundStatus }
+  | { kind: "free" }
   | { kind: "fixed" }
   | { kind: "held" }
   | { kind: "needs"; quantities: Quantity[] };
@@ -215,7 +237,11 @@ export function resultRows(
       meaning: parameter?.meaning ?? "",
       // The status says it is not fitted, so its bounds are left empty.
       bounds: fixed || kept ? "" : row.bounds,
-      status: { kind: fixed ? "fixed" : kept ? "held" : "fitted" },
+      status: fixed
+        ? { kind: "fixed" }
+        : kept
+          ? { kind: "held" }
+          : foundStatus(fit, row.name),
     };
   });
   if (mode.degeneracy !== null && mode.degeneracy !== undefined) {

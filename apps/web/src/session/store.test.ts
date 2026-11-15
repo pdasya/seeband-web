@@ -16,6 +16,7 @@ const RESULT: FitResult = {
   parameters: { m_eff: 1 },
   status: "converged",
   parameter_errors: {},
+  parameter_status: {},
   at_bounds: [],
   known_issues: [],
   held: [],

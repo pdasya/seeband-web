@@ -36,6 +36,7 @@ import {
   resultRows,
   rmseSymbol,
   rmseText,
+  type FoundStatus,
   type ParameterStatus,
 } from "@/model/resultSummary";
 import { fitModeOf, type FitModeDescription } from "@/model/selection";
@@ -96,10 +97,27 @@ function Kpi({
   );
 }
 
+/** No status is green: none of them says that a value is right. */
+const FOUND_VARIANTS = {
+  estimated: "neutral",
+  at_bound: "warning",
+  not_determined: "warning",
+  did_not_move: "warning",
+  not_assessed: "neutral",
+  fixed: "neutral",
+  held: "neutral",
+} as const satisfies Record<FoundStatus, string>;
+
 function StatusCell({ status }: { status: ParameterStatus }) {
   switch (status.kind) {
-    case "fitted":
-      return <Badge variant="success">{text.status.fitted}</Badge>;
+    case "found":
+      return (
+        <Badge variant={FOUND_VARIANTS[status.status]}>
+          {text.status.found[status.status]}
+        </Badge>
+      );
+    case "free":
+      return <Badge variant="neutral">{text.status.free}</Badge>;
     case "fixed":
       return <Badge variant="neutral">{text.status.fixed}</Badge>;
     case "held":
@@ -178,6 +196,7 @@ function MoreGraph({
   const data = useSessionStore((state) => state.data);
   const interpolation = useSessionStore((state) => state.interpolation);
   const parameters = useSessionStore((state) => state.parameters);
+  const fit = useSessionStore((state) => state.fit);
   const bandGapK = bandGapForTab(tab, mode, parameters);
   const { data: models } = useQuery(modelsQuery);
   const energy = models?.energy_display ?? ENERGY_IN_K;
@@ -201,13 +220,17 @@ function MoreGraph({
   // comes with the measured curves and their flags of other quantities.
   const drawn = view.empty === null;
   const own = drawn ? (derived.result?.known_issues ?? []) : [];
+  // An issue of the fit itself, with no quantity of its own, applies to every curve of its values.
+  const fitIssues =
+    drawn && fit.status === "done" ? fit.result.known_issues : [];
   const issues = resultIssues(mode, {
-    fit: [],
+    fit: fitIssues,
     measured:
       drawn && tab === "bands" ? (measured.result?.known_issues ?? []) : [],
     derived: own,
   }).filter(
-    ({ id, quantities }) => own.includes(id) || quantities.includes("seebeck"),
+    ({ id, quantities, place }) =>
+      own.includes(id) || place === "fit" || quantities.includes("seebeck"),
   );
   const failed =
     derived.error ??
@@ -330,7 +353,11 @@ export function ResultsPage() {
   const exporter = useExport();
   const report = useReport({ mode, measured, derived });
   const reportStatusId = useId();
-  const badge = fitBadge(fit, mode?.iterative === true);
+  const badge = fitBadge(
+    fit,
+    mode?.iterative === true,
+    mode?.threshold ?? null,
+  );
   const title = <title>{`${text.pageTitle} · ${STRINGS.appName}`}</title>;
 
   if (!summed || model === undefined || mode === undefined) {
@@ -420,6 +447,9 @@ export function ResultsPage() {
     })),
     ...(rows.some(({ atBound }) => atBound)
       ? [{ key: "bound", text: fitText.atBoundNote }]
+      : []),
+    ...(hasFittedValues(fit)
+      ? [{ key: "uncertainty", text: text.uncertaintyNote }]
       : []),
   ];
 

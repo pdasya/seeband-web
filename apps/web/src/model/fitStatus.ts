@@ -1,3 +1,4 @@
+import { formatNumber } from "@/lib/numbers";
 import type { FitBlocker } from "@/model/fitRequest";
 import { parameterSymbol } from "@/model/parameters";
 import type { FitState, Quantity } from "@/session/store";
@@ -15,8 +16,16 @@ function atIteration(iterative: boolean, iteration: number | null) {
   return iterative && iteration !== null ? iteration : null;
 }
 
-/** A single-pass mode has no iterations, so it never shows a counter. Before a fit there is no status. */
-export function fitBadge(fit: FitState, iterative: boolean): FitBadge | null {
+/**
+ * A single-pass mode has no iterations, so it never shows a counter. Before a fit there is no status.
+ * `threshold` is the stop rule of an iterative legacy fit, a relative change, which its badge names:
+ * a fit that met it has only stopped by its rule, which is not a sign that the result is sound.
+ */
+export function fitBadge(
+  fit: FitState,
+  iterative: boolean,
+  threshold: number | null = null,
+): FitBadge | null {
   switch (fit.status) {
     case "idle":
       return null;
@@ -54,9 +63,19 @@ export function fitBadge(fit: FitState, iterative: boolean): FitBadge | null {
         return { status: "settled" };
       }
       const count = atIteration(iterative, iterations ?? null);
-      return count === null
+      const rule =
+        iterative && threshold !== null
+          ? text.stopRule(
+              // As a percent, without the rounding error of the product.
+              formatNumber(Number((threshold * 100).toPrecision(12))),
+            )
+          : null;
+      const detail = [rule, count === null ? null : text.convergedIn(count)]
+        .filter((part) => part !== null)
+        .join(" ");
+      return detail === ""
         ? { status: "converged" }
-        : { status: "converged", detail: text.convergedIn(count) };
+        : { status: "converged", detail };
     }
     default:
       return null;

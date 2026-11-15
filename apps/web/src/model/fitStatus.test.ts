@@ -8,12 +8,14 @@ import {
   missingDataText,
 } from "@/model/fitStatus";
 import type { FitResult, FitState } from "@/session/store";
+import { STRINGS } from "@/strings";
 
 const done = (result: Partial<FitResult>): FitState => ({
   status: "done",
   result: {
     parameters: {},
     parameter_errors: {},
+    parameter_status: {},
     at_bounds: [],
     known_issues: [],
     status: "converged",
@@ -170,4 +172,15 @@ test("verified numerical settlement and stalling remain distinct", () => {
       true,
     ),
   ).toEqual({ status: "stalled" });
+});
+
+test("a legacy fit that met its stop rule names the rule, not convergence", () => {
+  expect(fitBadge(done({ iterations: 3 }), true, 0.1)).toEqual({
+    status: "converged",
+    detail: "(change of at most 10 %) in 3 iter.",
+  });
+  expect(fitBadge(done({ iterations: 1 }), false, 0.1)).toEqual({
+    status: "converged",
+  });
+  expect(STRINGS.status.converged).toBe("Stopped by its rule");
 });
