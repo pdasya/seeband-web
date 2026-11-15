@@ -39,35 +39,38 @@ import {
   loadSingleFile,
   removeSingleFile,
 } from "@/data/singleFile";
+import { valueInUnit } from "@/data/firstValue";
 import { UnitSelect } from "@/data/UnitSelect";
-import { UNITS_OF, isUnitDoubt } from "@/data/units";
-import { formatNumber, withDecimalComma } from "@/lib/numbers";
+import {
+  UNITS_OF,
+  isUnitDoubt,
+  unitDoubtMessage,
+  unitIsDefault,
+} from "@/data/units";
 import { cn } from "@/lib/utils";
 import {
+  LOADED_QUANTITIES,
+  loadedAs,
   QUANTITIES,
   useSessionStore,
+  type ColumnRead,
   type ColumnRole,
   type ParsedTable,
+  writtenRow,
 } from "@/session/store";
 import { STRINGS } from "@/strings";
 
 const IGNORE = "ignore";
 const PREVIEW_ROWS = 3;
-const ROLES: readonly ColumnRole["role"][] = ["temperature", ...QUANTITIES];
+const ROLES: readonly ColumnRole["role"][] = [
+  "temperature",
+  ...LOADED_QUANTITIES,
+];
 
 const { data: text } = STRINGS;
 
 function roleSymbol(role: ColumnRole["role"]): string {
   return role === "temperature" ? "T" : text.quantities[role].symbol;
-}
-
-function formatValue(value: number | undefined, isTemperature: boolean) {
-  if (value === undefined) {
-    return "";
-  }
-  return isTemperature
-    ? formatNumber(value)
-    : withDecimalComma(value.toExponential(3));
 }
 
 function FileIcon() {
@@ -90,24 +93,19 @@ function columnName(table: ParsedTable, column: number): string {
  */
 function firstValue(
   table: ParsedTable,
-  item: ColumnRole | undefined,
+  item: ColumnRead | undefined,
   column: number,
 ): string {
-  const isTemperature = item?.role === "temperature";
-  const written = formatValue(table.preview[0]?.[column], isTemperature);
-  if (item === undefined || written === "") {
-    return written;
+  const written = writtenRow(table, 0)?.[column];
+  if (item === undefined) {
+    return written ?? "";
   }
-  const si = UNITS_OF[item.role][0];
-  const unit = item.unit ?? si;
-  const inUnit = `${written} ${text.units[unit]}`;
-  const converted = table.preview_si[0]?.[column];
-  return unit === si || converted === null || converted === undefined
-    ? inUnit
-    : text.inSi(
-        inUnit,
-        `${formatValue(converted, isTemperature)} ${text.units[si]}`,
-      );
+  return valueInUnit(
+    written,
+    table.preview_si[0]?.[column],
+    item.role,
+    item.unit ?? UNITS_OF[item.role][0],
+  );
 }
 
 function ColumnMapping({
@@ -115,7 +113,7 @@ function ColumnMapping({
   mapping,
 }: {
   table: ParsedTable;
-  mapping: readonly ColumnRole[];
+  mapping: readonly ColumnRead[];
 }) {
   const itemOf = (column: number) =>
     mapping.find((item) => item.column === column);
@@ -177,6 +175,7 @@ function ColumnMapping({
                 role={role}
                 value={item?.unit ?? UNITS_OF[role][0]}
                 label={name}
+                assumed={unitIsDefault(item)}
                 onChange={(unit) => {
                   void chooseUnit(column, unit);
                 }}
@@ -189,6 +188,22 @@ function ColumnMapping({
   );
 }
 
+/** A doubt about a column's unit, in the words of the quantity the column holds. */
+function unitWarningMessage(
+  warning: ParsedTable["warnings"][number],
+  mapping: readonly ColumnRead[],
+): string {
+  const item = mapping.find(({ column }) => column === warning.column);
+  if (item === undefined || !isUnitDoubt(warning.code)) {
+    return issueMessage(warning);
+  }
+  return unitDoubtMessage(
+    { code: warning.code, direction: warning.direction },
+    item.role,
+    item,
+  );
+}
+
 /** From the session, not the last answer, as this is what a fit would use. */
 function ParsedChips() {
   const data = useSessionStore((state) => state.data);
@@ -196,7 +211,10 @@ function ParsedChips() {
     <div className="flex flex-wrap gap-1.5">
       {QUANTITIES.map((quantity) => {
         const measurement = data[quantity]?.measurement;
-        const { symbol } = text.quantities[quantity];
+        const loaded = loadedAs(quantity, data[quantity]);
+        const { symbol } = text.quantities[loaded];
+        // A fit takes ρ = 1/σ from a σ column, which the chip says.
+        const read = loaded === quantity ? "" : ` · ${text.readAsInverse}`;
         return (
           <Badge
             key={quantity}
@@ -204,7 +222,7 @@ function ParsedChips() {
           >
             {measurement === undefined
               ? `${symbol} · ${text.single.notFound}`
-              : `${symbol} · ${String(measurement.points)} ${text.points}`}
+              : `${symbol} · ${String(measurement.points)} ${text.points}${read}`}
           </Badge>
         );
       })}
@@ -217,7 +235,7 @@ function Preview({
   mapping,
 }: {
   table: ParsedTable;
-  mapping: readonly ColumnRole[];
+  mapping: readonly ColumnRead[];
 }) {
   const roleOf = (column: number) =>
     mapping.find((item) => item.column === column)?.role;
@@ -248,7 +266,7 @@ function Preview({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {table.preview.slice(0, PREVIEW_ROWS).map((row, index) => (
+          {table.preview.slice(0, PREVIEW_ROWS).map((_, index) => (
             <TableRow key={index}>
               {columns.map((column) => {
                 const role = roleOf(column);
@@ -260,7 +278,8 @@ function Preview({
                       role === undefined && "text-muted-foreground",
                     )}
                   >
-                    {formatValue(row[column], role === "temperature")}
+                    {/* As the file writes it, for the user to compare. */}
+                    {writtenRow(table, index)?.[column] ?? ""}
                   </TableCell>
                 );
               })}
@@ -318,7 +337,7 @@ export function SingleFilePanel() {
 
   const data = useSessionStore((state) => state.data);
   const loaded = QUANTITIES.filter((q) => data[q] !== undefined)
-    .map((q) => text.quantities[q].title)
+    .map((q) => text.quantities[loadedAs(q, data[q])].title)
     .join(", ");
   let announcement = "";
   if (file?.loading === true) {
@@ -444,7 +463,7 @@ export function SingleFilePanel() {
           <AlertDescription>
             <ul className="m-0 list-none p-0">
               {unitWarnings.map((warning, index) => (
-                <li key={index}>{issueMessage(warning)}</li>
+                <li key={index}>{unitWarningMessage(warning, file.mapping)}</li>
               ))}
             </ul>
           </AlertDescription>

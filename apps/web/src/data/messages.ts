@@ -14,6 +14,7 @@ const ABOUT_A_COLUMN: ReadonlySet<Issue["code"]> = new Set([
   "implausible_magnitude",
   "repeated_header",
   "repeated_role",
+  "resistivity_and_conductivity",
 ]);
 
 // These say something about usable data, not why a file gave none.
@@ -34,13 +35,15 @@ const QUANTITY_MISSING: ReadonlySet<Issue["code"]> = new Set([
 const ABOUT_THE_MAPPING: ReadonlySet<Issue["code"]> = new Set([
   "missing_temperature",
   "repeated_role",
+  "resistivity_and_conductivity",
   "unit_not_allowed",
 ]);
 
-// A choice can mend these: a negative ρ may be S with its sign, which is common.
+// A choice can mend these: a negative ρ or σ may be S with its sign, which is common.
 const MENDED_BY_A_CHOICE: ReadonlySet<Issue["code"]> = new Set([
   ...ABOUT_THE_MAPPING,
   "negative_resistivity",
+  "non_positive_conductivity",
 ]);
 
 // These describe the file, whatever its columns hold, so they stay after a choice.

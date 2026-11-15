@@ -16,6 +16,13 @@ describe("chosenQuantity", () => {
     expect(chosenQuantity([null, "hall", "temperature"])).toBe("hall");
   });
 
+  test("is ρ for σ, which loads as ρ = 1/σ", () => {
+    expect(chosenQuantity(["temperature", "conductivity"])).toBe("resistivity");
+    expect(
+      chosenQuantity(["temperature", "resistivity", "conductivity"]),
+    ).toBeNull();
+  });
+
   test("is null with no T, no quantity, two quantities or two T", () => {
     expect(chosenQuantity([null, "seebeck"])).toBeNull();
     expect(chosenQuantity(["temperature", null])).toBeNull();

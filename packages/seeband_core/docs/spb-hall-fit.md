@@ -33,17 +33,21 @@ Positive mass represents electrons and negative mass represents holes.
 
 ## Inputs a fit refuses, and points a curve leaves out
 
-- **Order of the points.** μ(T) is solved from one temperature to the next,
-  each from the root of the one before, and a step down to a much lower
-  temperature can miss the root: [650, 300] K at E_F = 3.76 K gave R_H at
-  300 K 3.7e4 times off. Every fit now sorts each quantity by temperature,
-  which files already were (D22), and the Hall curve solves in ascending order
-  and puts the values back. A root whose carrier density is more than 1e-6
-  from the density at 0 K is NaN, not a value. The solver itself is #87.
-- **Reduced potential above 700.** The Fermi integrals of order −½ and 0
-  overflow past about 709, so a Hall point with μ/T above 700 is NaN, as S and
-  ρ are in the other SPB modes, and the rest of the curve stays. A fit with
-  such a point fails as not finite.
+- **Order of the points.** Each fit quantity is sorted stably by temperature
+  before fitting (D22). The shared P8 chemical-potential solver instead solves
+  each unique temperature independently and returns roots in caller order, so a
+  Hall curve preserves its input order and duplicate temperatures. Each root is
+  accepted only when its normalized density residual is at most 1e-12;
+  otherwise it raises `ChemicalPotentialError` and aborts the calculation. The
+  Hall wrapper also retains a separate density guard at 1e-6 relative mismatch
+  from the 0 K density: points failing that guard are NaN. That looser guard is
+  not the solver's root certificate. The earlier P4 workaround sorted Hall
+  temperatures to manage sequential-root dependence; P8 removed that dependence.
+- **Reduced potential above 700.** The Hall wrapper masks a point as NaN when
+  `sign(m) μ(T)/T` exceeds 700, as the Fermi integrals of order −½ and 0
+  overflow near 709. A fit with a nonfinite point fails. If the solver's
+  bracketing or evaluation reaches an overflow-invalid domain before a root is
+  certified, it raises `ChemicalPotentialError` and the calculation aborts.
 - **Start mass.** A mass of 0, or a start on a branch the bounds leave empty,
   fails with "The start values do not fit the bounds.". A start whose sign
   disagrees with the median sign of the R_H data fails with "The sign of the
@@ -89,7 +93,38 @@ finite redraws. The fitted masses were positive for `01_Fe2VAl09Si01` and
 `02_SiP`, and negative for `03_AWI32_SI`. The first example reached the upper
 mass bound of 3 mₑ: convergence alone does not establish physical validity.
 
-The existing no-carrier chemical-potential issue (#106) remains flagged when
-`m E_F <= 0`. The existing solver and Fermi-integral underflow limitations
-are not resolved by this correction. The Hall expression here assumes the
-core's default scattering exponent λ = 0.
+The no-carrier issue remains flagged as #106. P8 reports invalid root domains
+as explicit `ChemicalPotentialError` failures. The Hall wrapper's separate
+1e-6 density guard can still leave individual points NaN. Repeated Hall
+evaluations inside the fit have not been benchmarked independently; the
+existing P8 Seebeck timings are not a Hall benchmark. The Hall expression here
+assumes the core's default scattering exponent λ = 0.
+
+## Reconciliation of the pre-review Hall draft
+
+The merged P4 review fixes (`62b13a0`, PR #201) take precedence over the
+initial P4 commit (`62f1477`). They already validate the mass branch and
+Hall sign, identify its zero branch bound, sort fit inputs and preserve
+usable curve points while marking transport overflow as NaN. Independent
+quadrature tests use the documented Fermi-integral error budget above.
+
+P8 supersedes the draft's separate Hall-only chemical-potential solver:
+all paths share a signed bracketed solve with a checked normalized residual
+at most 1e-12, deterministic independent temperature solves and explicit
+invalid-domain/precision failures. The residual certifies the implemented
+density approximation, not absolute physical accuracy; integral approximation
+jumps and underflow remain explicit limitations, as described in the
+[chemical-potential notes](chemical-potential.md). The draft's fsolve-first fallback and
+1e-8 residual check are therefore redundant. No separate Hall solver or
+blanket rejection based on |E_F|/T is needed. The existing per-point check
+uses the actual `sign(m) μ(T)/T` and keeps the established NaN behavior for
+transport outside its numerical range.
+
+The retained draft tests extend coverage to singleton and duplicate
+Hall-temperature batches, both carrier signs and multi-temperature
+quadrature on both sides of the −9.9 and 19.9 Fermi-integral switches.
+They reuse the existing independent 1.5e-5 approximation budget rather than
+the draft's unsupported 2e-6 threshold. No formula, model data, fit objective,
+weight, bound or approximation tolerance was changed in this reconciliation.
+The tests do not resolve the remaining physical-model limitations or supply
+human physicist confirmation.

@@ -304,3 +304,56 @@ def test_a_mass_at_the_branch_bound_of_0_is_at_a_bound() -> None:
     at_bounds = model._at_bounds(request, mode, parameters, 1.0, {"hall": ()})
 
     assert "band_mass" in at_bounds
+
+
+@pytest.mark.parametrize("sign", [-1, 1])
+def test_hall_is_independent_of_batch_order_duplicates_and_singletons(sign: int) -> None:
+    # The P4 workaround sorted each batch; P8 also makes isolated solves agree.
+    temperatures = np.array([300.0, 400.0, 650.0])
+    expected_mu = math.spb_chemPot_vs_temp(temperatures, sign, sign * 3.76)
+    expected_hall = math.spb_hall_vs_temp(temperatures, sign * 3.76, sign, -sign)
+    for order in ([2, 1, 0], [1, 2, 0], [2, 0, 0, 1], [0], [2]):
+        selected = temperatures[order]
+        mu = math.spb_chemPot_vs_temp(selected, sign, sign * 3.76)
+        hall = math.spb_hall_vs_temp(selected, sign * 3.76, sign, -sign)
+        np.testing.assert_array_equal(mu, expected_mu[order])
+        np.testing.assert_array_equal(hall, expected_hall[order])
+
+
+@pytest.mark.parametrize("mass", [-1.5, 1.5])
+@pytest.mark.parametrize("reduced_mu", [-9.901, -9.899, 19.899, 19.901])
+def test_hall_near_fermi_integral_switches_matches_quadrature(
+    mass: float, reduced_mu: float
+) -> None:
+    from scipy.integrate import quad
+    from scipy.special import expit
+
+    # Independent F_1/2 fixes the zero-T density so that mu/T straddles a switch at 300 K.
+    half_integral = quad(
+        lambda u: 2 * u**2 * expit(reduced_mu - u * u),
+        0,
+        np.inf,
+        epsabs=1e-12,
+        epsrel=1e-11,
+    )[0]
+    fermi_energy = np.sign(mass) * 300.0 * (1.5 * half_integral) ** (2 / 3)
+    temperatures = np.array([650.0, 100.0, 300.0])
+    target = math.spb_carCon(fermi_energy, mass, 0) * 1e6
+    hall = math.spb_hall_vs_temp(
+        temperatures, fermi_energy, np.sign(mass), -np.sign(mass) * abs(mass) ** 1.5
+    )
+    reference = [
+        _quadrature_hall_factor(abs(fermi_energy) / temperature) for temperature in temperatures
+    ]
+    # Keep the partner's independently justified approximation budget, not the draft's 2e-6.
+    np.testing.assert_allclose(abs(hall * target * math.e), reference, rtol=CHAIN_TOLERANCE)
+
+
+@pytest.mark.parametrize("sign", [-1, 1])
+def test_hall_domain_uses_solved_potential_not_fermi_energy_proxy(sign: int) -> None:
+    # The discarded draft rejected this EF/T > 700 input, although actual |mu|/T < 700.
+    temperatures = np.array([1.0])
+    fermi_energy = sign * 700.0001
+    mu = math.spb_chemPot_vs_temp(temperatures, sign, fermi_energy)
+    assert sign * mu[0] < math.MAX_REDUCED_POTENTIAL
+    assert np.isfinite(math.spb_hall_vs_temp(temperatures, fermi_energy, sign, -sign)[0])

@@ -29,6 +29,11 @@ function parsed(overrides: object = {}) {
       [200, 2e-4, 2e-5, 2e-7],
       [300, 3e-4, 3e-5, 3e-7],
     ],
+    preview_text: [
+      ["100", "1.0e-4", "1e-5", "1e-7"],
+      ["200", "2.0e-4", "2e-5", "2e-7"],
+      ["300", "3.0e-4", "3e-5", "3e-7"],
+    ],
     preview_si: [
       [100, 1e-4, 1e-5, 1e-7],
       [200, 2e-4, 2e-5, 2e-7],
@@ -45,6 +50,7 @@ function parsed(overrides: object = {}) {
     warnings_omitted: 0,
     interpolated: {},
     interpolation_failed: [],
+    interpolation_failure_reasons: {},
     ...overrides,
   };
 }
@@ -96,7 +102,8 @@ test("detected columns show, with chips and a preview", async ({ page }) => {
       .locator('table:not([aria-label="Parameters in use"])')
       .getByRole("row"),
   ).toHaveCount(4);
-  await expect(page.getByRole("cell", { name: "1,000e-4" })).toBeVisible();
+  // As the file writes it, so that the user can compare.
+  await expect(page.getByRole("cell", { name: "1.0e-4" })).toBeVisible();
 });
 
 test("the panel says what each source expects, with its units", async ({
@@ -114,7 +121,7 @@ test("the panel says what each source expects, with its units", async ({
   ).toBeVisible();
   await expect(
     page.getByText(
-      /or the ones you choose\. With neither: T in K, S in V\/K, ρ in Ω·m, R_H in m³\/C\./,
+      /or the ones you choose\. With neither: T in K, S in V\/K, ρ in Ω·m or σ in S\/m, R_H in m³\/C\./,
     ),
   ).toBeVisible();
   await expect(page.getByText("Each file: T and the value")).toHaveCount(0);

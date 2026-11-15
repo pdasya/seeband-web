@@ -17,6 +17,8 @@ export const STRINGS = {
   parameters: {
     title: "Parameters",
     fixed: "not fitted",
+    held: "held",
+    hold: (symbol: string) => `Hold ${symbol} at its value in a fit`,
     about: (symbol: string) => `About ${symbol}`,
     // How a parameter is written. Any other shows its name, so a new one needs no change here.
     symbols: {
@@ -76,9 +78,9 @@ export const STRINGS = {
     title: "Data",
     subtitle: {
       separate:
-        "Each file: T and the value, in the units its header names or the ones you choose. With neither: T in K, S in V/K, ρ in Ω·m, R_H in m³/C.",
+        "Each file: T and the value, in the units its header names or the ones you choose. With neither: T in K, S in V/K, ρ in Ω·m or σ in S/m, R_H in m³/C.",
       single:
-        "One table: a column for T, and for each quantity, in the units its header names or the ones you choose. With neither: T in K, S in V/K, ρ in Ω·m, R_H in m³/C.",
+        "One table: a column for T, and for each quantity, in the units its header names or the ones you choose. With neither: T in K, S in V/K, ρ in Ω·m or σ in S/m, R_H in m³/C.",
     },
     dropHint: "Drop a file or browse",
     source: {
@@ -96,9 +98,20 @@ export const STRINGS = {
         "This fit range cannot be interpolated. It must start above 0 K, and span 20 to 200000 K.",
       flags: {
         failed: "could not be interpolated, so a fit cannot use it.",
+        // Why the server refused, by its reason code.
+        failedBecause: {
+          no_overlap:
+            "its measured range does not overlap the fit range, so a fit cannot use it.",
+          overlap_too_short:
+            "its measured range overlaps the fit range too little to interpolate, so a fit cannot use it.",
+          fit_failed:
+            "the polynomial could not be fitted to its data, so a fit cannot use it.",
+        },
         notFinite: "the polynomial overflowed, so a fit cannot use it.",
         noMeasuredPoints:
-          "no measured point lies in the fit range, so every value is made up.",
+          "no measured point lies in the fit range, so every value comes from the polynomial alone, which can be far off between measurements.",
+        rangeLimited: (minK: string, maxK: string) =>
+          `the measured range limits interpolation to ${minK}–${maxK} K, and a fit uses only that.`,
         extrapolated:
           "the grid goes beyond the data, so some values are made up.",
         underdetermined: "too few points set the polynomial.",
@@ -134,6 +147,9 @@ export const STRINGS = {
       points: (symbol: string, points: number) =>
         `${symbol} · ${String(points)} pts`,
       notLoaded: (symbol: string) => `${symbol} · not loaded`,
+      checkUnit: (symbol: string, points: number) =>
+        `${symbol} · ${String(points)} pts · check the unit`,
+      checkTemperature: "T · check the unit",
     },
     demoLoading: "Loading the demo data…",
     demoFailed:
@@ -153,6 +169,14 @@ export const STRINGS = {
       "The column names of this file do not match its columns. Choose what its columns hold.",
     belowZeroForRho:
       "Some values are below 0, which a resistivity cannot have.",
+    readAsLabel: "Load σ instead",
+    readAsNote: "The fit uses ρ = 1/σ, which the server computes.",
+    unitGroups: { metre: "Per metre", centimetre: "Per centimetre" },
+    readAsInverse: "read as ρ = 1/σ",
+    /** The symbol of ρ where it is 1/σ of a σ file, as an RMSE of it compares with 1/σ. */
+    inverseSigma: "ρ = 1/σ",
+    belowZeroForSigma:
+      "Some values are 0 or below, which a conductivity cannot have.",
     chooseColumns: (symbol: string) =>
       `Choose the column that holds ${symbol}, or another quantity. The file loads once T and one quantity are chosen.`,
     slotBusy: (title: string) =>
@@ -179,9 +203,14 @@ export const STRINGS = {
       C: "°C",
       "V/K": "V/K",
       "uV/K": "µV/K",
+      "mV/K": "mV/K",
       "Ohm*m": "Ω·m",
+      "Ohm*cm": "Ω·cm",
       "mOhm*cm": "mΩ·cm",
       "uOhm*m": "µΩ·m",
+      "uOhm*cm": "µΩ·cm",
+      "S/m": "S/m",
+      "S/cm": "S/cm",
       "m^3/C": "m³/C",
       "cm^3/C": "cm³/C",
     },
@@ -189,9 +218,48 @@ export const STRINGS = {
     temperature: "Temperature",
     inSi: (written: string, si: string) => `${written} = ${si} in SI`,
     checkUnitTitle: "Check the unit",
+    /** The name of a unit select whose unit is SI only because nothing named one. */
+    unitAssumedOf: (name: string, unit: string) =>
+      `Unit of ${name}: ${unit}, assumed`,
+    firstRow: (values: string) => `First row: ${values}`,
+    temperatureRanges: {
+      title: "Check the unit of T",
+      shifted: (lower: string, higher: string, lowerSymbol: string) =>
+        `T of ${lower} is about 273 K below T of ${higher} at both ends, as when T in °C is read as K. If the file of ${lowerSymbol} gives T in °C, choose °C for its T. If both give T in K, nothing needs to change.`,
+    },
+    // Which way a wrong unit most likely went, by quantity, when values read in SI look far off.
+    // Values far outside a quantity's usual size, by which limit they pass. Only a hint names a
+    // unit to choose, where the usual lab unit read as SI would give that side.
+    implausible: {
+      size: { above: "larger", below: "smaller" },
+      names: {
+        seebeck: "Seebeck coefficient",
+        resistivity: "resistivity",
+        conductivity: "conductivity",
+        hall: "Hall coefficient",
+      },
+      inSi: (size: string, name: string, unit: string) =>
+        `These values are far ${size} than any usual ${name} in ${unit}, the unit assumed.`,
+      hints: {
+        seebeck: { above: "If the file is in µV/K or mV/K, choose it." },
+        resistivity: {
+          above:
+            "If the file is in Ω·cm, mΩ·cm, µΩ·m or µΩ·cm, choose it. If the column holds σ, remove the file and load it as σ instead. Each unit gives other values in SI, so check the first row.",
+        },
+        conductivity: { below: "If the file is in S/cm, choose S/cm." },
+        hall: { above: "If the file is in cm³/C, choose cm³/C." },
+      } as Partial<Record<string, Partial<Record<"above" | "below", string>>>>,
+      checkColumn:
+        "Check that the column holds this quantity, and the unit its values are in.",
+      inChosenUnit: (size: string, unit: string) =>
+        `These values are far ${size} than any usual size in ${unit}, the unit chosen. Check that the file is in ${unit}, or choose the unit it is in.`,
+      inHeaderUnit: (size: string, unit: string) =>
+        `These values are far ${size} than any usual size in ${unit}, the unit the header names. Check the file: its header may name the wrong unit.`,
+    },
     quantities: {
       seebeck: { symbol: "S", title: "Seebeck coefficient", unit: "V/K" },
       resistivity: { symbol: "ρ", title: "Resistivity", unit: "Ω·m" },
+      conductivity: { symbol: "σ", title: "Conductivity", unit: "S/m" },
       hall: { symbol: "R_H", title: "Hall coefficient", unit: "m³/C" },
     },
     issues: {
@@ -211,6 +279,10 @@ export const STRINGS = {
         "A temperature of 0 K or below. If this column is in °C, choose °C for it.",
       negative_resistivity:
         "A resistivity below 0, which no measurement gives.",
+      non_positive_conductivity:
+        "A conductivity of 0 or below, which has no resistivity.",
+      resistivity_and_conductivity:
+        "A file can hold ρ or σ, not both. Choose one of them.",
       repeated_role: "A quantity is assigned twice.",
       preamble_skipped: "A line of text before the header was left out.",
       header_mismatch: "The header has a different number of columns.",
@@ -219,7 +291,7 @@ export const STRINGS = {
         "Its header names a unit SeeBand cannot read, so the values are read in SI. Choose the unit they are in, or convert the column to one listed here.",
       unit_not_allowed: "This unit does not fit the quantity of this column.",
       implausible_magnitude:
-        "These values are far from any usual size in SI, as when µV/K is read as V/K. Check the unit of this column.",
+        "These values are far from any usual size for this quantity. Check the unit of this column.",
       repeated_header: "A second column for one quantity was not used.",
       columns_need_assigning: "More than two columns with no header.",
       expected_not_found: "This file has no column for this quantity.",
@@ -250,6 +322,9 @@ export const STRINGS = {
     bandGapMetric: (gap: string, unit: string) => `E_g = ${gap} ${unit}`,
     conductivityDescription: "Chart of σ against temperature",
     conductivityPoints: "1/ρ of the data",
+    conductivityPointsFromSigma: "σ data",
+    conductivityPointsFromSigmaNote:
+      "Points are the loaded σ data in the fit range, as 1/ρ of the ρ = 1/σ a fit uses. The line is the model's σ.",
     conductivityPointsInterpolated: "1/ρ of the interpolated data",
     conductivityPointsNote:
       "Points are 1/ρ of the ρ data in the fit range, which the server calculates. The line is the model's σ.",
@@ -337,6 +412,9 @@ export const STRINGS = {
     model: "Model",
     measurements: "Measurements",
     measurementsDemo: "Measurements (demo)",
+    measurementsFromSigma: "1/σ of the σ data",
+    resistivityFromSigmaNote:
+      "Points are 1/σ of the loaded σ data, which the server calculates. The fit and its RMSE use them as ρ.",
     interpolated: "Interpolated",
     updating: "Updating…",
     lastCurveStays: "The last curve stays on the chart.",
@@ -396,7 +474,7 @@ export const STRINGS = {
       low_temperature_omitted:
         "Very low-temperature rows were omitted to avoid overflow in the existing SPB formula.",
       unsorted_temperature:
-        "The temperatures in these data do not rise, so the net may not suit them.",
+        "The rows were not in order of T, so they were sorted first.",
       underdetermined_fit:
         "These data have too few temperatures to set the net's input, so its values mean little.",
     },
@@ -438,6 +516,7 @@ export const STRINGS = {
       notInterpolated: "No usable interpolated values for",
       noPointsInRange: "No points in the fit range for",
       startOutsideBounds: "A fit cannot start outside its bounds:",
+      allHeld: "Every fitted parameter is held. Release one to fit.",
     },
     rmse: "RMSE",
     degeneracySymbol: "N₁, N₂",
@@ -482,6 +561,8 @@ export const STRINGS = {
     noIterations: "—",
     iterationLimit: (limit: number) => `limit ${String(limit)}`,
     rangeSummary: (minK: string, maxK: string) => `range ${minK}–${maxK} K`,
+    limitedRangeSummary: (symbol: string, minK: string, maxK: string) =>
+      `${symbol} only ${minK}–${maxK} K`,
     endNotes: {
       iterationLimit: (limit: number | null) =>
         limit === null
@@ -515,6 +596,10 @@ export const STRINGS = {
     parametersFile: "seeband-parameters.txt",
     graphFile: (graph: string) => `seeband-${graph}.txt`,
     header: {
+      unknownVersion: "unknown",
+      serverCore: (version: string) => `Export server core ${version}`,
+      fitCore: (version: string) => `Fit core ${version}`,
+      curveCore: (version: string) => `Curve core ${version}`,
       app: (app: string, api: string | null) =>
         api === null ? `SeeBand Web ${app}` : `SeeBand Web ${app}, API ${api}`,
       date: (date: string) => `Exported ${date}`,
@@ -523,8 +608,12 @@ export const STRINGS = {
         `Model ${model}, fit mode ${mode}`,
       scattering: (scattering: string) => `Scattering ${scattering}`,
       range: (minK: string, maxK: string) => `Fit range ${minK}-${maxK} K`,
+      limitedRange: (quantity: string, minK: string, maxK: string) =>
+        `Interpolated ${quantity} only over ${minK}-${maxK} K, where its data end`,
       degeneracies: (n1: string, n2: string) =>
         `Band degeneracies N1 = ${n1}, N2 = ${n2}`,
+      fromConductivity:
+        "rho is 1/sigma of the loaded conductivity data, so its RMSE compares the fit with 1/sigma",
       fit: (status: string, iterations: number | null) =>
         iterations === null
           ? `Fit ${status}`
@@ -541,6 +630,8 @@ export const STRINGS = {
     columns: {
       temperature: "Temperature [K]",
       experimental: (quantity: string) => `Experimental ${quantity}`,
+      experimentalFromSigma: (quantity: string) =>
+        `Experimental ${quantity}, 1/sigma of the loaded conductivity`,
       interpolated: (quantity: string) => `Interpolated ${quantity}`,
       preFit: (quantity: string) => `Pre-fit ${quantity}`,
       fit: (quantity: string) => `Fit ${quantity}`,
@@ -588,6 +679,7 @@ export const STRINGS = {
     status: {
       fitted: "fitted",
       fixed: "fixed",
+      held: "held at its value",
       atBound: "fitted, at bound",
       free: "not fitted yet",
     },
@@ -704,6 +796,7 @@ export const STRINGS = {
     status: {
       fitted: "fitted",
       fixed: "fixed",
+      held: "held",
       needs: (symbols: string) => `needs ${symbols}`,
     },
     notes: "Notes",

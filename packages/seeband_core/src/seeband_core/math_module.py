@@ -48,7 +48,8 @@ def fdint_robust(s: float, eta: float, T: float) -> float:
         return float(np.log(1 + np.exp(eta / T)))
     if s == 0.5:
         if (etaT) < -9.9:
-            return float(0.886226925452758 * 1 / (np.exp(-etaT) + 0.27))
+            exp_eta = np.exp(etaT)
+            return float(0.886226925452758 * exp_eta / (1 + 0.27 * exp_eta))
         if (etaT) > 19.9:
             return float(
                 0.886226925452758
@@ -178,6 +179,10 @@ class ChemicalPotentialError(ValueError):
         super().__init__(f"Chemical potential at {temperature} K: {reason} (residual={residual})")
 
 
+class NoFiniteChemicalPotentialError(ChemicalPotentialError):
+    """The parameters lie outside the analytically admissible finite-root model domain."""
+
+
 @dataclass(frozen=True)
 class ChemicalPotentialResult:
     """Checked roots in kelvin, absolute normalized residuals and per-point status."""
@@ -207,7 +212,7 @@ def _chemical_potential_diagnostics(
         raise ChemicalPotentialError(
             float(temperatures[invalid][0]), "temperature must be finite and positive"
         )
-    if not np.isfinite(mass) or mass == 0 or not np.isfinite(fermi_energy):
+    if not np.isfinite(mass) or not np.isfinite(fermi_energy):
         raise ChemicalPotentialError(
             None, "mass must be finite and nonzero; Fermi energy must be finite"
         )
@@ -215,10 +220,14 @@ def _chemical_potential_diagnostics(
         raise ChemicalPotentialError(
             None, "gap must be finite and degeneracy must be finite and positive"
         )
+    if mass == 0:
+        raise NoFiniteChemicalPotentialError(
+            None, "zero band mass is outside the supported model domain"
+        )
     if (gap is None and fermi_energy * np.sign(mass) <= 0) or (
         gap is not None and mass < 0 and fermi_energy >= max(0.0, gap)
     ):
-        raise ChemicalPotentialError(None, "no finite root for zero carrier density")
+        raise NoFiniteChemicalPotentialError(None, "no finite root for zero carrier density")
 
     with np.errstate(over="ignore", under="ignore", invalid="ignore"):
         effective_mass = mass if gap is None else mass * np.float64(degen) ** (5 / 3)
@@ -304,6 +313,7 @@ def dpb_chemPot_diagnostics(
 
 # Calculates the signed density imbalance of a single band at a temperature T
 def spb_chemPot(eta_here: np.ndarray, temp: float, band_mass: float, fermi_energy: float) -> float:
+    """Signed SPB density residual; compatibility helper for external callers."""
     result = spb_carCon(eta_here[0], band_mass, temp) - spb_carCon(fermi_energy, band_mass, 0)
     return float(result)
 
@@ -320,6 +330,7 @@ def spb_chemPot_vs_temp(
 def dpb_chemPot(
     eta_here: np.ndarray, temp: float, gap: float, meff: float, fermi_energy: float, degen: float
 ) -> float:
+    """Signed DPB density residual; compatibility helper for external callers."""
     result = (
         (-1) * spb_carCon(eta_here[0], -1, temp)
         + np.sign(meff) * spb_carCon(eta_here[0] - gap, meff * degen ** (5 / 3), temp)

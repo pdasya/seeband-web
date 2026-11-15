@@ -191,19 +191,11 @@ def _example03_inv4_args(hall):
 
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("hall", [False, True])
-def test_example03_from_C2_Dhalf_reaches_the_p11_regression_fixed_point(hall):
-    # The independently checked P5 values describe the old S formula. Compare this
-    # alternative start with the separately recorded P11 regression, not that old fixed point.
-    import json
-    from pathlib import Path
-
-    mode = "dpb_s_rho_rh" if hall else "dpb_s_rho"
-    document = json.loads((Path(__file__).parent / "fixtures/physics/p11.json").read_text())
-    expected = next(
-        value["parameters"]
-        for key, value in document["results"].items()
-        if key.startswith(f"03_AWI32_SI-{mode}-acPhDis-thread-")
-    )
+def test_example03_from_C2_Dhalf_reaches_the_independent_fixed_point(hall):
+    # Independently alternated SciPy stages, with pointwise S assembled from shared
+    # mu/sigma/Onsager kernels: scripts/check_p11_fixed_point.py. This establishes
+    # outer-loop settlement, not independent validation of the shared physics.
+    expected = [1.7647687794465694, 2063.6774369380987, -259.2252092353521, 286542.3469228836]
     function, args = _example03_inv4_args(hall)
     progress = FitProgress()
 
@@ -213,7 +205,7 @@ def test_example03_from_C2_Dhalf_reaches_the_p11_regression_fixed_point(hall):
     assert not progress.reached_iteration_limit
     np.testing.assert_allclose(
         [result[0], result[1], result[2], result[3]],
-        [expected[name] for name in ("m_eff", "band_gap", "fermi_energy", "A")],
+        expected,
         rtol=1e-5,
     )
     np.testing.assert_allclose(result[4:7], [1.1, 2.0, 0.5], rtol=1e-9)

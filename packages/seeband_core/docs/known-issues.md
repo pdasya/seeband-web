@@ -1,6 +1,8 @@
 # Known issues
 
-The first stage ports the desktop exactly, so its errors stay until the Physics fixes stage. `known_issues.py` records them, so that users see them and do not take doubtful numbers as sound.
+`known_issues.py` records active limitations so users can interpret affected
+results. Corrections remove only the issue they resolve; other limitations
+remain listed until they are separately fixed and validated.
 
 - `FitMode.known_issues` lists what applies to a mode, in descriptions. `FitMode.disabled` says that a client must not offer it.
 - `known_issues` on a `FitResult` or `CurveResult` lists the ids that apply to that result, with their conditions checked. A failed fit lists only a disabled mode.
@@ -22,15 +24,20 @@ To remove a flag once its error is fixed, delete its entry and its row here, and
 
 `affects_band_diagram` puts an entry on the sketch of E(k) alone, through `band_diagram_issue_ids`.
 
+P7 (#86) limits new interpolation to measured support and reports a limited
+range separately. `interpolation_extrapolates` is retained for legacy or
+external data explicitly marked `extrapolated` by the caller; the repaired
+server interpolation no longer emits that provenance flag itself.
+
 The caller sets `extrapolated`, from `InterpolatedData`, since a fit does not know where its data came from.
 
 The DPB Hall-prefactor flag was removed by [P2](dpb-hall-prefactor.md), which corrects the coefficient in all three scattering modes.
 
-P3 (#82) removes the acPhDis curve-scale flag: derived curves now convert the dimensionless 300 K ratios C and D to temperature scales consistently with resistivity. P11 subsequently fixes the independent grid-dependent total-Seebeck error (#102).
+P3 (#82) removes the acPhDis curve-scale flag: derived curves now convert the dimensionless 300 K ratios C and D to temperature scales consistently with resistivity. P11 separately repairs the grid-dependent total-Seebeck weight (#102).
 
 P6 fixes the S-only part of #85: fitting and drawing now pass the same internal mass R/N to the numerical model. The S-only mismatch flag is removed. The separate iterative-mode mass/bounds caution (`dpb_loop_degeneracy`, also tracked by #85) remains unresolved. See [the mass convention and validation](dpb-s-degeneracy.md).
 
-P5 (#84) removes the early-stop flag: DPB mixed-scattering fits now require both parameter groups to converge and handle zero/nonfinite changes explicitly. See [the convergence correction](dpb-convergence.md). P11 separately fixes #102; neither correction replaces human physicist confirmation.
+P5 (#84) removes the early-stop flag: DPB mixed-scattering fits now require both parameter groups to converge and handle zero/nonfinite changes explicitly. See [the convergence correction](dpb-convergence.md). P11 separately fixes #102; neither correction supplies human physicist confirmation.
 
 P4/P12 (#83, #103) remove the SPB Hall disabled-mode and stale-Fermi-energy flags after repairing the fit scales and using μ(T) in Hall integrals. See [the correction and synthetic validation](spb-hall-fit.md). Human physicist confirmation remains pending.
 
@@ -38,12 +45,22 @@ P4/P12 (#83, #103) remove the SPB Hall disabled-mode and stale-Fermi-energy flag
 
 - **Disabled is a flag.** The API refuses any mode carrying a disabled issue with a 409. No current mode carries one after P4/P12.
 - **F₀ underflowing (#105)** gives NaN or infinity at low temperatures with large gaps, which a client can see as non-finite values. The flag would need the result, not its inputs.
-- **No chemical potential (#106):** SPB has no finite-temperature root when `sign(m) E_F <= 0`. For DPB with positive degeneracies and nonzero mass, a valence/conduction pair (`m_eff > 0`) always has a root; two valence bands (`m_eff < 0`) have one only when `E_F < max(0, E_g)`. P8 explicitly rejects no-root domains and unverified solves. The remaining #106 parameterization and physicist decisions are not resolved by changing the numerical method.
+- **No chemical potential in DPB (#106)** has no simple condition on the inputs, unlike SPB.
 - **E_F inside the gap (#107)** cannot be told from a good fit by its inputs alone, and `at_bounds` and `parameter_errors` report part of it.
 - **`underdetermined` interpolation** has no issue that fixes it, because it describes the data. `InterpolatedData` reports it.
-- **Choosing a net by the first and last rows (P9)** does not reach this path, because the parser sorts (D22). A client can send `POST /api/guess` unsorted rows, and its answer then carries the warning `unsorted_temperature`. It belongs to no mode, so it is not an entry here.
-- **The Conventions page** does not exist yet, so S3 takes its note on known issues from this list.
+- **Neural-net range selection (P9)** now uses actual Tmin/Tmax and sorts paired input rows before inference. The parser already sorts files (D22), and direct `POST /api/guess` callers now get the same range and prediction for reordered distinct-temperature rows. `unsorted_temperature` remains input provenance. It belongs to no mode, so it is not a registry entry.
+- **Missing desktop coverage (#71)** remains open, including the desktop/web
+  parity gate; corrected web results do not establish desktop parity.
 
-P8 (#87) replaces silent chemical-potential failures with checked signed-balance solves. It leaves unrelated transport, degeneracy, underflow and fit-credibility warnings in place. See [the solver contract](chemical-potential.md).
+P8 (#87) checks density roots before transport. An uncertifiable density root
+fails the calculation request (HTTP 422) or fit explicitly; no partial array
+is used. Successful density checks do not prevent the separate F₀ transport
+cancellation/underflow (#105), which can still produce nonfinite curve points.
+Invalid optimizer trial domains are rejected separately from numerical failures;
+invalid starts still fail. See [the solver contract](chemical-potential.md).
 
-P11 (#102) removes `acphdis_band_weight`: total DPB acPhDis Seebeck now uses the weight at each temperature, as the band contributions already did. Shared P8 solves make the complete path independent of temperature order. Human physicist confirmation remains pending.
+P11 (#102) removes `acphdis_band_weight`: total DPB acPhDis Seebeck now
+uses each temperature's weight, as the band contributions already did.
+P8 supplies grid-independent checked roots. Negative-weight transport,
+iterative nonunit degeneracy, final-stage fit consistency and physical
+acceptance remain separate. See [the correction and evidence](dpb-acphdis-weight.md).

@@ -182,16 +182,37 @@ PYTHONPATH=packages/seeband_core/src uv run python packages/seeband_core/scripts
 
 `tests/fixtures/physics/p8.json` records the checked solver's results and
 failures for every historical call. Original desktop, P2, P3, P4 and P5
-evidence remains unchanged; the latest regression replay uses P8 results
-for these same inputs. These generated expectations are regression evidence,
+evidence remains unchanged. Independent desktop replays retain the earlier
+P2–P5 corrections, and a separate replay checks the P8 expectations for the
+same inputs. These generated expectations are regression evidence,
 not independent proof of physics. The dedicated conservation, domain and
 order-independence tests check the solver separately. See
 [the signed-balance contract and limitations](chemical-potential.md).
 
+Both desktop and P8 fit replays use the named cross-platform rules in the
+regression table above. P8 does not impose a tighter rule on an already
+unstable fit. SPB S on `02_SiP` keeps its existing relative tolerance of
+1e-4; a Linux P8 run differed from the recorded E_F by 2.04e-5.
+
+The listed D19 fits still require convergence, finite band parameters,
+the `collapsed_m_eff` warning, a mass magnitude below 1e-5, and band gap
+and E_F within their original bounds and relative tolerance of 1e-5.
+Their scattering values remain machine dependent. Their iteration counts
+must be integers from 1 through the mode's configured budget; single-pass
+fits must report no iteration count. Stable fits retain exact recorded
+iteration counts. P8 status and message comparisons, curve tolerances and
+the original desktop evidence remain unchanged.
+
 ## P11 pointwise mixed-scattering weight
 
-`tests/fixtures/physics/p11.json` overrides only the affected mixed-scattering
-fit and total-Seebeck calls. Unaffected calls retain P8 expectations, and all
-desktop/P8 recordings remain unchanged. The fixture includes explicit failed
-fits, not replacement numbers. See [the correction, example parameter
-movements and scientific limits](dpb-acphdis-weight.md).
+`tests/fixtures/physics/p11.json` records the 24 affected historical calls
+on core `0.1.3` and pins the unchanged P8 fixture hash. Only total S and
+refitted parameters/iteration counts use those generated corrections;
+unchanged curve fields, unused parameters, statuses and messages remain
+checked against their earlier references. The named cross-platform rules
+above are preserved. No original desktop or P8 capture is rewritten.
+
+These snapshots are regression evidence, not independent physical proof.
+The example-03 alternate-start test instead uses an independently written
+outer iteration; it does not read P11 values as its oracle. See
+[the independent reference and example movements](dpb-acphdis-weight.md).

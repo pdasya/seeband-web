@@ -76,6 +76,42 @@ for (const example of ["01_Fe2VAl09Si01", "02_SiP", "03_AWI32_SI"]) {
   });
 }
 
+test("a desktop example, with no header and in SI, is marked as assumed and needs no unit check", async ({
+  page,
+}) => {
+  const name = "01_Fe2VAl09Si01_see.txt";
+  const firstLine = readFileSync(`${EXAMPLES}${name}`, "utf8").split("\n")[0];
+  const [temperature, seebeck] = (firstLine ?? "").trim().split(/\s+/);
+  await page.goto("/fit");
+  await page.getByRole("radio", { name: "S", exact: true }).click();
+  await loadExample(page, name);
+
+  const unitOfS = page.getByRole("combobox", {
+    name: /^Unit of Seebeck coefficient/,
+  });
+  await expect(unitOfS).toHaveAccessibleName(
+    "Unit of Seebeck coefficient: V/K, assumed",
+  );
+  await expect(page.getByText("Check the unit", { exact: true })).toHaveCount(
+    0,
+  );
+  // The first row as the file writes it, which the real parser returns.
+  await expect(
+    page.getByText(`First row: T ${temperature} K · S ${seebeck} V/K`, {
+      exact: true,
+    }),
+  ).toBeVisible();
+
+  await unitOfS.click();
+  await page.getByRole("option", { name: "V/K", exact: true }).click();
+  await expect(unitOfS).toHaveAccessibleName("Unit of Seebeck coefficient");
+
+  await page.getByRole("button", { name: "Hide" }).click();
+  await expect(
+    page.getByRole("region", { name: "Data" }).getByRole("listitem").first(),
+  ).toHaveText(/^S · \d+ pts$/);
+});
+
 test("a broken file shows a specific error from the real parser", async ({
   page,
 }) => {

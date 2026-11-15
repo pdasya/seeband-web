@@ -15,7 +15,7 @@ A fresh session is the only reproducible state, so cases with no net record the 
 | `01_Fe2VAl09Si01`        | example   | selects the 400 to 700 K net, with negative Seebeck                                                        |
 | `02_SiP`                 | example   | selects no net, because the data cover 308 to 650 K                                                        |
 | `03_AWI32_SI`            | example   | selects the 200 to 500 K net                                                                               |
-| `01_reversed_rows`       | derived   | selects no net, because selection reads the first and last rows. Shows the behaviour that P9 fixes         |
+| `01_reversed_rows`       | derived   | historically selects no net because the desktop reads endpoint rows; P9 now matches the sorted 01 case     |
 | `03_negated_seebeck`     | derived   | shows the transform for negative Seebeck                                                                   |
 | `synthetic_<low>_<high>` | synthetic | covers all five nets. The data are synthetic straight lines, so their predictions have no physical meaning |
 
@@ -60,9 +60,11 @@ The output matches because the port rounds as TensorFlow did on that Mac. It use
 
 Beyond the 10 cases here, an independent review recorded 2776 network outputs from the real desktop nets with TensorFlow 2.15.1, on random, extreme and example-shaped inputs. The port's forward pass gave all of them exactly, from the recorded inputs, on one Mac on Apple Silicon. TensorFlow on x86 and the original Keras 2.9 were not tested, so this shows a match with the recorded desktop results, not with TensorFlow on every machine.
 
-The port keeps the desktop's behaviour:
+The port keeps the following desktop behavior, except for the documented P9 correction:
 
-- It chooses a net from the first and last rows, which P9 fixes.
+- P9 chooses the first supported range covered by the real minimum and maximum temperatures. It sorts paired T–S rows on a copy before polynomial fitting, preserving input arrays. Reversed or shuffled distinct-temperature rows therefore match the sorted prediction. The range priority, degree-5 polynomial, network weights and inference arithmetic are unchanged. Equal-temperature rows retain their submitted order; no points are removed or averaged.
+- `NoNeuralNet` and the API retain the legacy names `first_temperature_k` and `last_temperature_k`; they now contain the actual minimum and maximum. `unsorted_temperature` records original input order, not an incorrect choice of network.
+- The original desktop fixture remains unchanged. `tests/fixtures/physics/p9.json` records the corrected reversed-row expectation by reference to the existing sorted desktop case, with the source hash pinned. Tests also permute every selected reference case and check that input arrays are unchanged.
 - It computes the inverse transform in float64, as the desktop does with numpy 1.26. With numpy 2, the desktop's expressions would stay in float32, so the port converts explicitly.
 - Non-finite values come back in a normal `NeuralNetGuess`. An output of exactly 1 gives infinity. With negative Seebeck, outputs of 1 give m_eff = 0, an infinite gap and a Fermi energy of NaN. NaN in the Seebeck data gives NaN. They are not valid JSON numbers, so `start_values` returns None for them, and the API answers `not_finite`.
 - The sign of Seebeck follows the mean of the first three interpolated values, so a mean near 0 can follow numerical noise.

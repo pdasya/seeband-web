@@ -1,10 +1,22 @@
 """What runs in a worker process for `POST /api/parse`. It holds no state between calls."""
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
-from seeband_core.data_parser import ParsedTable, Role, Unit, parse_table, with_mapping
-from seeband_core.interpolation import InterpolatedData, interpolate
+from seeband_core.data_parser import (
+    LoadedQuantity,
+    ParsedTable,
+    Role,
+    Unit,
+    parse_table,
+    with_mapping,
+)
+from seeband_core.interpolation import (
+    InterpolatedData,
+    InterpolationFailure,
+    InterpolationRefused,
+    interpolate,
+)
 from seeband_core.model_interface import Quantity
 
 
@@ -20,17 +32,19 @@ class FitRange:
 
 @dataclass(frozen=True, eq=False)
 class ParseOutcome:
-    """`failure_types` holds the exception types behind `interpolation_failed`, for the log."""
+    """`failure_types` holds the exception types behind `interpolation_failed`, for the log, and
+    `failure_reasons` why each failed, for the client."""
 
     table: ParsedTable
     interpolated: Mapping[Quantity, InterpolatedData]
     interpolation_failed: tuple[Quantity, ...]
     failure_types: tuple[str, ...] = ()
+    failure_reasons: Mapping[Quantity, InterpolationFailure] = field(default_factory=dict)
 
 
 def _read(
     text: str,
-    expected: Quantity | None,
+    expected: LoadedQuantity | None,
     mapping: Mapping[int, Role] | None,
     units: Mapping[int, Unit] | None,
 ) -> ParsedTable:
@@ -50,7 +64,7 @@ def _read(
 
 def parse(
     text: str,
-    expected: Quantity | None,
+    expected: LoadedQuantity | None,
     mapping: Mapping[int, Role] | None,
     fit_range: FitRange | None,
     units: Mapping[int, Unit] | None = None,
@@ -63,6 +77,7 @@ def parse(
     interpolated: dict[Quantity, InterpolatedData] = {}
     failed: list[Quantity] = []
     failure_types: list[str] = []
+    failure_reasons: dict[Quantity, InterpolationFailure] = {}
     if fit_range is not None:
         for quantity, measurement in table.measurements.items():
             try:
@@ -72,4 +87,7 @@ def parse(
             except (ArithmeticError, ValueError) as error:
                 failed.append(quantity)
                 failure_types.append(type(error).__name__)
-    return ParseOutcome(table, interpolated, tuple(failed), tuple(failure_types))
+                failure_reasons[quantity] = (
+                    error.reason if isinstance(error, InterpolationRefused) else "fit_failed"
+                )
+    return ParseOutcome(table, interpolated, tuple(failed), tuple(failure_types), failure_reasons)

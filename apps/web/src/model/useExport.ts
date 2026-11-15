@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { limitedRanges } from "@/model/interpolatedRanges";
 
 import { apiClient, type CalcResponse } from "@/api/client";
 import { modelsQuery } from "@/api/queries";
@@ -20,6 +21,7 @@ import { calcRequest, derivedRequest } from "@/model/liveCurves";
 import { hasFittedValues, resultIssues } from "@/model/resultSummary";
 import { fitModeOf } from "@/model/selection";
 import {
+  loadedAs,
   QUANTITIES,
   useSessionStore,
   type SessionState,
@@ -51,9 +53,9 @@ export function download(
   }, RELEASE_AFTER_MS);
 }
 
-async function apiVersion(): Promise<string | null> {
+async function serverVersions() {
   try {
-    return (await apiClient.getHealth()).version;
+    return await apiClient.getHealth();
   } catch {
     return null;
   }
@@ -98,6 +100,7 @@ export function useExport() {
     extraIssues: {
       measured?: readonly string[];
       derived?: readonly string[];
+      coreVersions?: readonly (string | undefined)[];
     } = {},
   ) => {
     const issues = resultIssues(mode, {
@@ -105,9 +108,12 @@ export function useExport() {
       measured: extraIssues.measured ?? [],
       derived: extraIssues.derived ?? [],
     });
+    const server = await serverVersions();
     const info = {
       appVersion: __APP_VERSION__,
-      apiVersion: await apiVersion(),
+      apiVersion: server?.version ?? null,
+      serverCoreVersion: server?.core_version ?? null,
+      curveCoreVersions: extraIssues.coreVersions ?? [],
       date: new Date().toISOString(),
       modelId: model.id,
       modeLabel: modeLabel(mode),
@@ -118,6 +124,10 @@ export function useExport() {
         (quantity) => state.data[quantity]?.source.kind === "demo",
       ),
       issues,
+      limitedRanges: limitedRanges(state.interpolation, mode.quantities),
+      fromConductivity:
+        mode.quantities.includes("resistivity") &&
+        loadedAs("resistivity", state.data.resistivity) === "conductivity",
     };
     return { state, mode, header: exportHeader(info) };
   };
@@ -172,6 +182,9 @@ export function useExport() {
     const made = await context(now, {
       measured: [...(preFit?.known_issues ?? []), ...(fit?.known_issues ?? [])],
       derived: graphs.flatMap(({ result }) => result.known_issues),
+      coreVersions: [preFit, fit, ...graphs.map(({ result }) => result)]
+        .filter((result): result is CalcResponse => result !== null)
+        .map((result) => result.core_version),
     });
     return { ...made, preFit, fit, graphs, missing };
   };
@@ -193,6 +206,7 @@ export function useExport() {
             state.selection,
             state.parameters[mode.id],
             state.fit,
+            state.held[mode.id],
           ),
           type,
         );
@@ -242,6 +256,7 @@ export function useExport() {
               state.selection,
               state.parameters[mode.id],
               state.fit,
+              state.held[mode.id],
             ),
             graphs,
             energy,
@@ -276,11 +291,15 @@ export function useExport() {
       temperatureK: readonly number[],
       curves: readonly { name: string; values: readonly (number | null)[] }[],
       issues: readonly string[],
+      coreVersion?: string,
     ) =>
       run(async () => {
         const now = snapshot();
         if (now !== null) {
-          const { header } = await context(now, { derived: issues });
+          const { header } = await context(now, {
+            derived: issues,
+            coreVersions: [coreVersion],
+          });
           download(
             text.graphFile(name),
             graphFile(header, temperatureK, curves, energy),

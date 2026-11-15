@@ -9,7 +9,7 @@ def test_core_version_is_the_package_version_source() -> None:
     package_root = Path(__file__).parents[1]
     config = tomllib.loads((package_root / "pyproject.toml").read_text())
 
-    assert getattr(seeband_core, "__version__", None) == "0.1.1"
+    assert getattr(seeband_core, "__version__", None) == "0.1.3"
     assert "version" not in config["project"]
     assert "version" in config["project"]["dynamic"]
     version_path = config["tool"]["hatch"]["version"]["path"]

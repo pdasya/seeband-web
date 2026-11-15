@@ -29,17 +29,31 @@ converged.
 On example 03 from C = 2, D = 0.5, the case #84 cites, the desktop rule stopped
 after one iteration in which m_eff changed by +42.6 %, E_F by +25.9 % and A by
 +604 %, with S RMSE 5.04 µV/K. At P5, the fit took two iterations and ended within 3e-6 of
-the fixed point an outer loop written apart from the core reaches, with S RMSE
-3.76 µV/K.
+the independently iterated fixed point for the former S expression, with S
+RMSE 3.76 µV/K. Those are historical P5 results, not a reference for P11's
+corrected expression.
+
+With P11, a separately written alternating outer loop from C = 2, D = 0.5
+settles at (r, gap, E_F, A) = (1.7647687794, 2063.67743694 K,
+−259.225209235 K, 286542.346923), with B = 1.1, C = 2 and D = 0.5.
+Both mixed modes pass the existing stopping rule at cycle 2 and agree with
+this settled point within the existing test tolerance of 1e-5. Twelve
+reference cycles leave a last-four relative spread below 4.7e-10; the measured
+S residual RMS is 3.766493902 µV/K. The reference assembles pointwise S from
+shared physical kernels and uses direct SciPy stages, without `PB_fit` or a
+P11-generated oracle. This independently checks outer iteration and settlement,
+not the physical kernels, Hall mass, identifiability or a global optimum.
+See [the reproducible reference](dpb-acphdis-weight.md#independent-outer-iteration-check).
 
 ## Limits and scientific interpretation
 
 The existing budgets remain 1000 completed iterations for S + ρ and 20 for
 S + ρ + R_H. Reaching a budget is reported as `iteration_limit`, not success.
-Through the API, S + ρ cannot reach its budget: 1000 iterations on 03 with
-acPhDis took 87.5 s, past the 60 s fit time limit, so a fit that does not
-settle ends as `fit_timeout`, with no values. A parameter drifting near 0, or
-flipping between two values, now runs to that limit where the desktop rule
+On the measured 03 example with acPhDis, 1000 iterations took 87.5 s, longer
+than the default 60 s fit time limit. This is one measured case, not a general
+API limit: timeout settings, data and hardware can differ. A fit exceeding its
+configured timeout ends as `fit_timeout`, with no values. A parameter drifting
+near 0, or flipping between two values, now runs to that limit where the desktop rule
 stopped after one iteration; this was not seen on real data.
 The inherited final Seebeck-only update at the limit is unchanged; #176
 tracks the broader stopping rule and consistency of the final model.

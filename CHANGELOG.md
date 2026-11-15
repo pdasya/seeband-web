@@ -2,26 +2,57 @@
 
 ## Unreleased
 
-- P11 (#102), core 0.1.1: apply the acPhDis band weight at each temperature
-  in total DPB Seebeck, consistently with the weighted band contributions.
-  Fit objectives, plotted curves and RMSE now use the same pointwise formula;
-  C/D units, scattering laws, fit weights, bounds and stop thresholds are
-  unchanged. Remove the repaired warning, preserve original desktop/P8
-  evidence and record changed mixed-scattering results separately. This
-  branch depends on P8 for checked grid-independent chemical potentials.
-  Human physicist confirmation, parity and author review remain pending.
+- P11 (#102), core `0.1.3`: retain the temperature-dependent acPhDis band
+  weight in total DPB Seebeck, consistently with the weighted band contributions.
+  Fits, curves and RMSE use the corrected pointwise expression. C/D conversion,
+  least-squares residual scales, bounds and stopping thresholds are unchanged.
+  Remove only `acphdis_band_weight`; preserve desktop/P8 evidence and record
+  affected results separately. Restore the independent example-03 outer-loop
+  check. Human scientific acceptance and desktop parity remain separate.
 
-- P8 (#87): solve the signed carrier balance with a bracketed method in
-  reduced chemical potential, check the normalized residual at every
-  temperature, and restore the input order after sorting and deduplication.
-  All SPB/DPB transport and Fermi-integral paths use the same checked solve.
-  Invalid domains and failed conservation checks now fail explicitly instead
-  of silently using an unconverged number. The DPB E_F = 0 case has a finite
-  solution; its former stuck-at-start behavior was a solver error.
-  Historical desktop captures remain unchanged, with separate P8 regression
-  expectations. Fermi-integral approximations, fit objectives, weights and
-  bounds are unchanged; physical validity and human confirmation remain
-  separate from numerical convergence.
+- P9 (#88), core `0.1.2`: choose the DPB neural network from the actual minimum and
+  maximum temperatures, then sort paired temperature/Seebeck rows before
+  preparing its input. Reversed or shuffled distinct-temperature rows now use
+  the same network and prediction as sorted data. Keep the unsorted-input provenance warning,
+  with corrected wording. Legacy no-net first/last fields now report actual
+  minimum/maximum coverage. Network weights, range priority, polynomial
+  degree and fit criteria are unchanged. Preserve original desktop captures
+  and record the corrected reversed-row expectation separately.
+
+- P8 (#87), core `0.1.1`: solve the signed carrier balance independently at
+  each temperature with a checked bracketed method. Use the same negative-tail
+  Fermi approximation in a stable algebraic form. Reject analytically invalid
+  optimizer trial points without hiding numerical failures at valid parameters;
+  invalid starts and uncertifiable density roots still fail explicitly. Keep
+  desktop compatibility tests alongside separate P8 regression expectations.
+  No bounds, fit weights or conservation tolerance are relaxed.
+
+- Documentation review: correct the signed SPB Hall cutoff and clarify DPB
+  convergence timing, interpolation coverage, degeneracy cancellation and the
+  open negative-weight interpretation. No calculation behavior changed.
+
+- P10: expose the installed `seeband_core` version (`0.1.0`) in health,
+  calculation and fit API responses, and record separate server, fit and curve
+  provenance in shared export headers. This is result metadata only; it changes
+  no formulas or fit behavior. Older results without a recorded version remain
+  unknown and are not assigned a version retroactively. This is not release
+  approval; scientific confirmation and the desktop parity work remain open.
+
+- FS18: preserve a conductivity file's source quantity when requesting
+  interpolation without an explicit column mapping. Explicit mappings and
+  chosen units remain in use. Browser regressions cover conductivity upload,
+  headerless column choice, S/cm units and the resistivity sent to a fit.
+
+- P7 (#86): evaluate interpolation only on the overlap of each quantity's
+  measured temperature range and the requested fit range. Unsupported or
+  too-short overlaps fail explicitly instead of extrapolating synthetic
+  points into the fit. Show when measured coverage limits the range; retain
+  legacy extrapolation provenance warnings. The polynomial degree and fit
+  criteria are unchanged, with separate corrected regression expectations.
+  An overlap the data narrow needs 40 K, so that the grid has two points;
+  each refusal says why (`interpolation_failure_reasons`); a window with no
+  measured point says that the polynomial alone sets it; and results and
+  exports name the range a fit used.
 
 - P6 (#85, S-only scope): use the same degeneracy-weighted mass in DPB S
   fitting and drawing. Public mass coordinates, bounds and uncertainties
@@ -35,9 +66,8 @@
   leaving zero requires another iteration. Preserve historical desktop
   captures and record corrected fit expectations separately. The independent
   acPhDis Seebeck grid-dependence issue (#102) remains flagged. A parameter
-  that is not finite now fails the fit at once. At P5, NUM-2 of #84
-  remained; P8 subsequently repairs the chemical-potential solver behind the
-  E_F = 0 stuck-stage symptom. The broader fit checks of #176 remain separate.
+  that is not finite now fails the fit at once. NUM-2 of #84 is not fixed: a
+  fit from E_F = 0 still converges at its start values (#106, #176).
 
 - P4/P12 (#83, #103): enable SPB S + ρ + R_H after correcting signed
   mass initialization, bounds and recovery, the mass control scale, and the
@@ -46,9 +76,9 @@
   Hall factors recover the degenerate limit 1 and nondegenerate limit 3π/8.
   Synthetic regression results replace no historical desktop captures.
   Every fit now sorts its points by temperature, so an API client's order
-  gives the result a sorted file does; a Hall point beyond the reach of the
-  Fermi integrals (μ/T above 700) is NaN rather than a failed curve; and a
-  start mass of 0, on an empty branch, or of the wrong sign for R_H fails with
+  gives the result a sorted file does; a Hall point with signed reduced
+  potential x = sign(m) μ(T)/T above 700 is NaN rather than a failed curve;
+  a start mass of 0, on an empty branch, or of the wrong sign for R_H fails with
   its reason. The band-mass error is conditional on E_F.
   Human physicist confirmation and parity/author review remain pending;
   enabling this mode is not scientific release approval.

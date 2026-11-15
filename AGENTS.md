@@ -47,6 +47,12 @@ language/general reviewers over the same diff. Add a security-specific review
 only for a concrete security-sensitive surface. Small documentation-only or
 mechanical changes need focused validation, not a review team.
 
+Use `numerics_reviewer` for changes to solvers, numerical integration or
+interpolation, tolerances, fitting objectives or uncertainty estimates. It owns
+algorithm reliability and identifiability; `physics_reviewer` owns the physical
+model and interpretation. Give each a distinct question and share evidence.
+The general reviewer owns integration correctness rather than repeating either.
+
 Honor each role's configured model and effort. For a client exposing only
 explicit spawn parameters, use the model/effort from the matching TOML. Use a
 fresh context (`fork_turns="none"` where available) with a compact handoff:
@@ -60,6 +66,22 @@ approach. State the reason before escalation. Do not use Astra, Max or Ultra by
 default. A model's availability or a UI override can differ from the repository
 configuration; report an unavailable role instead of silently substituting an
 expensive model. Existing chats may need restarting to discover custom roles.
+
+## Role skills
+
+Each role's `developer_instructions` in `.codex/agents/*.toml` defines its required
+skills and conditional triggers. Load only matching skills and referenced branches.
+Resolve installed skills from the session catalog; repository skills use explicit
+paths. Report a missing required skill before dependent work. Skills guide the
+assigned task within its file ownership, read-only and validation boundaries.
+
+`scientific-computing` lives in `.agents/skills/scientific-computing/SKILL.md`.
+The numerical reviewer loads it for its review; workers and physical reviewers
+load it for symbolic or numerical work. Read only the relevant reference branch.
+
+The parent includes required skill names and resolved paths in explicit handoffs
+when native role loading is unavailable. See `docs/codex-orchestration.md` for the
+role map and local skill/plugin prerequisites.
 
 ## Validation and completion
 

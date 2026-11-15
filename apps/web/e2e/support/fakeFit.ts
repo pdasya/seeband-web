@@ -5,6 +5,7 @@ interface FitBody {
   start: Record<string, number>;
   measurements: Record<string, unknown>;
   bounds?: object;
+  held?: string[];
 }
 
 declare global {

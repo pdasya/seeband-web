@@ -4,10 +4,13 @@ import { useEffect } from "react";
 import { apiClient, type ParseRequest } from "@/api/client";
 import { modelsQuery } from "@/api/queries";
 import { failureMessage } from "@/data/messages";
+import { requestMapping } from "@/data/units";
 import {
   QUANTITIES,
+  loadedAs,
   useSessionStore,
   type InterpolatedQuantities,
+  type InterpolationFailureReason,
   type Quantity,
 } from "@/session/store";
 
@@ -50,7 +53,7 @@ function requestsFor(range: FitRange): InterpolationRequest[] {
           {
             body: {
               text: singleFile.text,
-              mapping: [...singleFile.mapping],
+              mapping: requestMapping(singleFile.mapping),
               interpolate,
             },
             quantities: QUANTITIES,
@@ -66,7 +69,11 @@ function requestsFor(range: FitRange): InterpolationRequest[] {
             // A user's choice of columns goes again, or the server would guess anew.
             body:
               entry.mapping === undefined
-                ? { text: entry.text, expected: quantity, interpolate }
+                ? {
+                    text: entry.text,
+                    expected: loadedAs(quantity, entry),
+                    interpolate,
+                  }
                 : {
                     text: entry.text,
                     mapping: [...entry.mapping],
@@ -117,6 +124,8 @@ export function useInterpolation() {
         }
         const values: InterpolatedQuantities = {};
         const failed: Quantity[] = [];
+        const reasons: Partial<Record<Quantity, InterpolationFailureReason>> =
+          {};
         let failure: string | null = null;
         answers.forEach((answer, index) => {
           const quantities = requests[index]?.quantities ?? [];
@@ -133,10 +142,15 @@ export function useInterpolation() {
             }
             if (answer.value.interpolation_failed.includes(quantity)) {
               failed.push(quantity);
+              const reason =
+                answer.value.interpolation_failure_reasons[quantity];
+              if (reason !== undefined) {
+                reasons[quantity] = reason;
+              }
             }
           }
         });
-        finish(values, failed, failure);
+        finish(values, failed, failure, reasons);
       });
     }, DEBOUNCE_MS);
     return () => {

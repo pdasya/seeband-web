@@ -4,19 +4,28 @@ import {
   TriangleAlertIcon,
   XIcon,
 } from "lucide-react";
-import { Fragment, useEffect, useRef } from "react";
+import { Fragment, useEffect, useId, useRef, useState } from "react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import type { Role } from "@/data/columnChoice";
 import { DropArea, useFileDrop } from "@/data/DropArea";
+import { valueInUnit } from "@/data/firstValue";
 import { SlotColumns } from "@/data/SlotColumns";
 import { UnitSelect } from "@/data/UnitSelect";
-import { unitOf } from "@/data/units";
+import {
+  columnOf,
+  unitDoubtMessage,
+  unitIsDefault,
+  unitOf,
+} from "@/data/units";
 import { useFileUpload } from "@/data/useFileUpload";
 import { cn } from "@/lib/utils";
 import {
+  loadedAs,
   useSessionStore,
+  type LoadedQuantity,
   type Quantity,
   type SessionData,
 } from "@/session/store";
@@ -41,15 +50,91 @@ function Symbol({ children, filled }: { children: string; filled: boolean }) {
   );
 }
 
-function fileSummary(quantity: Quantity, { measurement }: SessionData): string {
+function fileSummary(quantity: Quantity, entry: SessionData): string {
   const { data } = STRINGS;
+  const { measurement } = entry;
+  const loaded = loadedAs(quantity, entry);
   const low = withDecimalComma(
     TEMPERATURE_FORMAT.format(measurement.min_temperature_k),
   );
   const high = withDecimalComma(
     TEMPERATURE_FORMAT.format(measurement.max_temperature_k),
   );
-  return `${String(measurement.points)} ${data.points} · ${low}–${high} K · ${data.quantities[quantity].unit}`;
+  const unit = data.quantities[loaded].unit;
+  // A fit takes ρ = 1/σ from a σ file, which the card says beside what was loaded.
+  const read = loaded === quantity ? unit : `${unit} · ${data.readAsInverse}`;
+  return `${String(measurement.points)} ${data.points} · ${low}–${high} K · ${read}`;
+}
+
+/**
+ * Whether the ρ slot reads its next file as σ, which the server turns into ρ = 1/σ. A switch inside
+ * the slot, so the tops of the three slots stay level. Turned on, a note says what the fit uses.
+ */
+function ReadAs({
+  value,
+  onChange,
+}: {
+  value: LoadedQuantity;
+  onChange: (value: LoadedQuantity) => void;
+}) {
+  const { data: text } = STRINGS;
+  const id = useId();
+  const sigma = value === "conductivity";
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center justify-between gap-2">
+        <label htmlFor={id} className="text-xs">
+          {text.readAsLabel}
+        </label>
+        <Switch
+          id={id}
+          checked={sigma}
+          aria-describedby={sigma ? `${id}-note` : undefined}
+          // The track off is pale on the slot's ground, so a border keeps its state visible.
+          className="data-[state=unchecked]:border-[var(--color-zinc-400)]"
+          onCheckedChange={(checked) => {
+            onChange(checked ? "conductivity" : "resistivity");
+          }}
+        />
+      </div>
+      {sigma && (
+        <p id={`${id}-note`} className="m-0 text-xs text-muted-foreground">
+          {text.readAsNote}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** T and what was loaded, in the order the card shows their units. */
+function cardRoles(quantity: Quantity, entry: SessionData) {
+  return ["temperature", loadedAs(quantity, entry)] as const;
+}
+
+function roleSymbol(role: Role): string {
+  return role === "temperature" ? "T" : STRINGS.data.quantities[role].symbol;
+}
+
+/** The file's first row in its units and in SI, for a user to check the units against. */
+function firstRowLine(quantity: Quantity, entry: SessionData): string | null {
+  const { firstRow, readAs } = entry;
+  if (firstRow === undefined || readAs === undefined) {
+    return null;
+  }
+  const values = cardRoles(quantity, entry).flatMap((role) => {
+    const column = columnOf(readAs, role);
+    if (column === undefined) {
+      return [];
+    }
+    const shown = valueInUnit(
+      firstRow.written[column],
+      firstRow.si[column],
+      role,
+      unitOf(readAs, role),
+    );
+    return shown === "" ? [] : [`${roleSymbol(role)} ${shown}`];
+  });
+  return values.length === 0 ? null : STRINGS.data.firstRow(values.join(" · "));
 }
 
 function FileName({ children }: { children: string }) {
@@ -71,8 +156,17 @@ function dataName({ source }: SessionData): string {
 /** One quantity's file: a place to drop or choose it, then its card. */
 export function FileSlot({ quantity }: { quantity: Quantity }) {
   const { data: text } = STRINGS;
-  const names = text.quantities[quantity];
   const data = useSessionStore((state) => state.data[quantity]);
+  // Only ρ has another quantity a file can hold in its place.
+  const [readAs, setReadAs] = useState<LoadedQuantity>(quantity);
+  // A loaded file's header can say otherwise than the switch did, so the next file is read as
+  // what the card shows, not as a switch that is hidden while a file is loaded.
+  const shown = data === undefined ? null : loadedAs(quantity, data);
+  if (shown !== null && shown !== readAs) {
+    setReadAs(shown);
+  }
+  const names =
+    text.quantities[data === undefined ? readAs : loadedAs(quantity, data)];
   const {
     state,
     upload,
@@ -82,7 +176,7 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
     changeUnit,
     remove,
     fail,
-  } = useFileUpload(quantity);
+  } = useFileUpload(quantity, readAs);
   const input = useRef<HTMLInputElement>(null);
   const removeButton = useRef<HTMLButtonElement>(null);
   const firstSelect = useRef<HTMLButtonElement>(null);
@@ -203,7 +297,7 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
             </Button>
           </div>
           <SlotColumns
-            quantity={quantity}
+            expected={readAs}
             choice={state}
             firstSelect={firstSelect}
             // A choice that reads the file may take this card away, so focus comes back.
@@ -223,6 +317,7 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
   }
 
   if (data !== undefined) {
+    const firstRow = firstRowLine(quantity, data);
     return (
       <div className="flex flex-col gap-1.5">
         {status}
@@ -254,7 +349,7 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
         {data.readAs !== undefined && (
           // T and the quantity in one row, each symbol before its unit.
           <div className="grid grid-cols-[auto_minmax(0,112px)_auto_minmax(0,112px)] items-center justify-start gap-x-2 text-xs text-muted-foreground">
-            {(["temperature", quantity] as const).map((role) => (
+            {cardRoles(quantity, data).map((role) => (
               <Fragment key={role}>
                 <span className="font-mono">
                   {role === "temperature" ? "T" : names.symbol}
@@ -265,6 +360,9 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
                   }}
                   role={role}
                   value={unitOf(data.readAs, role)}
+                  assumed={unitIsDefault(
+                    data.readAs?.find((item) => item.role === role),
+                  )}
                   disabled={rereading}
                   label={
                     role === "temperature"
@@ -280,6 +378,11 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
             ))}
           </div>
         )}
+        {firstRow !== null && (
+          <div className="font-mono text-xs break-words text-muted-foreground">
+            {firstRow}
+          </div>
+        )}
         {data.unitDoubts !== undefined && data.unitDoubts.length > 0 && (
           <Alert>
             <TriangleAlertIcon aria-hidden="true" />
@@ -287,7 +390,15 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
             <AlertDescription>
               <ul className="m-0 list-none p-0">
                 {data.unitDoubts.map((doubt) => (
-                  <li key={doubt}>{text.issues[doubt]}</li>
+                  <li key={doubt.code}>
+                    {unitDoubtMessage(
+                      doubt,
+                      loadedAs(quantity, data),
+                      data.readAs?.find(
+                        ({ role }) => role === loadedAs(quantity, data),
+                      ),
+                    )}
+                  </li>
                 ))}
               </ul>
             </AlertDescription>
@@ -326,6 +437,11 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
         icon={<Symbol filled={false}>{names.symbol}</Symbol>}
         title={names.title}
         inputRef={input}
+        footer={
+          quantity === "resistivity" ? (
+            <ReadAs value={readAs} onChange={setReadAs} />
+          ) : undefined
+        }
         {...handlers}
       />
       {state.status === "failed" && (

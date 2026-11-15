@@ -1,0 +1,429 @@
+import { expect, test, type Page, type Route } from "@playwright/test";
+
+import { serveModels } from "./support/models";
+import { fakeFit } from "./support/fakeFit";
+import { openData } from "./support/fitScreen";
+
+interface ParseBody {
+  text: string;
+  expected?: string;
+  mapping?: { column: number; role: string; unit?: string }[];
+  interpolate?: object;
+}
+
+// ρ = 1/σ of σ = 4e4 and 5e4 S/m, as the server gives it.
+const RESISTIVITY = {
+  temperature_k: [100, 200],
+  values: [2.5e-5, 2e-5],
+  points: 2,
+  min_temperature_k: 100,
+  max_temperature_k: 200,
+  loaded_as: "conductivity",
+};
+
+function parsedSigma(unit: string, overrides: object = {}) {
+  return {
+    headers: ["T", "sigma"],
+    column_count: 2,
+    row_count: 2,
+    preview: [
+      [100, 4e4],
+      [200, 5e4],
+    ],
+    preview_si: [
+      [100, 4e4],
+      [200, 5e4],
+    ],
+    mapping: [
+      { column: 0, role: "temperature", unit: "K" },
+      { column: 1, role: "conductivity", unit },
+    ],
+    measurements: { resistivity: RESISTIVITY },
+    errors: [],
+    warnings: [],
+    warnings_omitted: 0,
+    interpolated: {},
+    interpolation_failed: [],
+    interpolation_failure_reasons: {},
+    ...overrides,
+  };
+}
+
+async function serveParse(page: Page, ...answers: object[]) {
+  const bodies: ParseBody[] = [];
+  await page.route("**/api/parse", (route: Route) => {
+    bodies.push(route.request().postDataJSON() as ParseBody);
+    const answer = answers[Math.min(bodies.length, answers.length) - 1];
+    return route.fulfill({ status: 200, json: answer });
+  });
+  return bodies;
+}
+
+async function loadRhoSlot(page: Page, name = "sigma.txt") {
+  await page
+    .locator('input[type="file"]')
+    .nth(1)
+    .setInputFiles({
+      name,
+      mimeType: "text/plain",
+      buffer: Buffer.from("T sigma\n100 4e4\n200 5e4\n"),
+    });
+}
+
+const rhoSlot = (page: Page) => page.locator('[data-file-slot="resistivity"]');
+const sigmaSwitch = (page: Page) =>
+  page.getByRole("switch", { name: "Load σ instead" });
+
+test.beforeEach(async ({ page }) => {
+  await serveModels(page);
+});
+
+for (const headerless of [false, true]) {
+  test(
+    headerless
+      ? "headerless σ keeps its chosen S/cm mapping through interpolation and fitting"
+      : "unmapped σ preserves request provenance through interpolation and fitting",
+    async ({ page }) => {
+      await fakeFit(page);
+      const bodies: ParseBody[] = [];
+      // Freeze the parser contract at the HTTP boundary. A recognized σ header wins over
+      // `expected`; headerless input uses `expected` until the user supplies a mapping.
+      await page.route("**/api/parse", (route) => {
+        const body = route.request().postDataJSON() as ParseBody;
+        bodies.push(body);
+        const column = body.mapping?.find(({ column }) => column === 1);
+        const role =
+          column?.role ??
+          (body.text.startsWith("T S")
+            ? "seebeck"
+            : body.text.startsWith("T sigma")
+              ? "conductivity"
+              : body.expected);
+        const unit = column?.unit ?? (role === "conductivity" ? "S/m" : "V/K");
+        const quantity = role === "conductivity" ? "resistivity" : "seebeck";
+        const value =
+          role === "seebeck" ? 1e-4 : unit === "S/cm" ? 2.5e-7 : 2.5e-5;
+        const measurement = {
+          ...RESISTIVITY,
+          values: [value, value],
+          loaded_as: role,
+        };
+        return route.fulfill({
+          json: parsedSigma(unit, {
+            headers: body.text.startsWith("T ") ? ["T", role] : undefined,
+            mapping: [
+              { column: 0, role: "temperature", unit: "K" },
+              { column: 1, role, unit },
+            ],
+            measurements: { [quantity]: measurement },
+            interpolated:
+              body.interpolate === undefined
+                ? {}
+                : {
+                    [quantity]: {
+                      temperature_k: [100, 125, 150, 175, 200],
+                      values: [value, value, value, value, value],
+                      extrapolated: false,
+                      range_limited: true,
+                      measured_points_in_range: 2,
+                      underdetermined: true,
+                    },
+                  },
+          }),
+        });
+      });
+      await page.goto("/fit");
+      await sigmaSwitch(page).click();
+      const sigmaText = `${headerless ? "" : "T sigma\n"}100 4e4\n200 4e4\n`;
+      await rhoSlot(page)
+        .locator('input[type="file"]')
+        .setInputFiles({
+          name: "sigma.txt",
+          mimeType: "text/plain",
+          buffer: Buffer.from(sigmaText),
+        });
+      if (headerless) {
+        await page
+          .getByRole("combobox", { name: "Quantity for column Column 2" })
+          .click();
+        await page.getByRole("option", { name: "σ", exact: true }).click();
+        await page
+          .getByRole("combobox", { name: "Unit of Conductivity" })
+          .click();
+        await page.getByRole("option", { name: "S/cm", exact: true }).click();
+        await expect(
+          page.getByRole("combobox", { name: "Unit of Conductivity" }),
+        ).toHaveText("S/cm");
+      }
+      await expect(rhoSlot(page).getByText(/read as ρ = 1\/σ/)).toBeVisible();
+      await page
+        .locator('[data-file-slot="seebeck"] input[type="file"]')
+        .setInputFiles({
+          name: "s.txt",
+          mimeType: "text/plain",
+          buffer: Buffer.from("T S\n100 1e-4\n200 1e-4\n"),
+        });
+      await openData(page);
+      await page.getByRole("switch", { name: /Interpolation/ }).click();
+      await expect
+        .poll(() => bodies.filter((body) => body.interpolate !== undefined))
+        .toHaveLength(2);
+      const sigmaRequest = bodies.find(
+        (body) => body.interpolate !== undefined && body.text === sigmaText,
+      );
+      if (headerless) {
+        expect(sigmaRequest?.mapping).toEqual([
+          { column: 0, role: "temperature" },
+          { column: 1, role: "conductivity", unit: "S/cm" },
+        ]);
+        expect(sigmaRequest?.expected).toBeUndefined();
+      } else {
+        expect(sigmaRequest?.mapping).toBeUndefined();
+        expect(sigmaRequest?.expected).toBe("conductivity");
+      }
+      await page.getByRole("button", { name: "Run fit" }).click();
+      await expect
+        .poll(() => page.evaluate(() => window.fitTest.bodies.length))
+        .toBe(1);
+      const fit = await page.evaluate(() => window.fitTest.bodies[0]);
+      expect(fit?.measurements.resistivity).toEqual({
+        temperature_k: [100, 125, 150, 175, 200],
+        values: headerless
+          ? [2.5e-7, 2.5e-7, 2.5e-7, 2.5e-7, 2.5e-7]
+          : [2.5e-5, 2.5e-5, 2.5e-5, 2.5e-5, 2.5e-5],
+      });
+    },
+  );
+}
+
+test("the ρ slot reads a file as σ once σ is chosen, and the card says ρ = 1/σ", async ({
+  page,
+}) => {
+  const bodies = await serveParse(page, parsedSigma("S/m"));
+  await page.goto("/fit");
+
+  // Inside the ρ slot, which stays level with the others; off reads ρ.
+  await expect(rhoSlot(page).getByRole("switch")).toHaveAccessibleName(
+    "Load σ instead",
+  );
+  await expect(sigmaSwitch(page)).not.toBeChecked();
+  await expect(rhoSlot(page).getByText(/ρ = 1\/σ/)).toHaveCount(0);
+  await sigmaSwitch(page).click();
+  await expect(sigmaSwitch(page)).toBeChecked();
+  await expect(rhoSlot(page).getByText("Conductivity")).toBeVisible();
+  // Before a file, the slot says what the fit will use, also to a screen reader.
+  await expect(sigmaSwitch(page)).toHaveAccessibleDescription(
+    "The fit uses ρ = 1/σ, which the server computes.",
+  );
+  await loadRhoSlot(page);
+
+  await expect(
+    rhoSlot(page).getByText("2 points · 100–200 K · S/m · read as ρ = 1/σ"),
+  ).toBeVisible();
+  expect(bodies[0]?.expected).toBe("conductivity");
+  await expect(
+    page.getByRole("combobox", { name: "Unit of Conductivity" }),
+  ).toHaveText("S/m");
+  // The bar of a closed panel names σ, which the slot holds.
+  await page.getByRole("button", { name: "Hide" }).click();
+  await expect(page.getByText("σ · 2 pts")).toBeVisible();
+});
+
+test("choosing S/cm reads the σ column again in it", async ({ page }) => {
+  const bodies = await serveParse(
+    page,
+    parsedSigma("S/m"),
+    parsedSigma("S/cm"),
+  );
+  await page.goto("/fit");
+  await sigmaSwitch(page).click();
+  await loadRhoSlot(page);
+
+  await page.getByRole("combobox", { name: "Unit of Conductivity" }).click();
+  await page.getByRole("option", { name: "S/cm", exact: true }).click();
+
+  await expect(
+    page.getByRole("combobox", { name: "Unit of Conductivity" }),
+  ).toHaveText("S/cm");
+  expect(bodies[1]?.mapping).toEqual([
+    { column: 0, role: "temperature", unit: "K" },
+    { column: 1, role: "conductivity", unit: "S/cm" },
+  ]);
+});
+
+test("a σ of 0 is refused with its line, and loads nothing", async ({
+  page,
+}) => {
+  await serveParse(
+    page,
+    parsedSigma("S/m", {
+      measurements: {},
+      errors: [{ code: "non_positive_conductivity", line: 3, column: 1 }],
+    }),
+  );
+  await page.goto("/fit");
+  await loadRhoSlot(page, "sigma.txt");
+
+  await expect(
+    page.getByText(
+      "Line 3: A conductivity of 0 or below, which has no resistivity.",
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("combobox", { name: "Unit of Conductivity" }),
+  ).toHaveCount(0);
+});
+
+test("the charts name ρ from σ as 1/σ, and the RMSE compares with it", async ({
+  page,
+}) => {
+  await serveParse(page, parsedSigma("S/m"));
+  await page.goto("/fit");
+  await loadRhoSlot(page, "sigma.txt");
+  await expect(rhoSlot(page).getByText(/read as ρ = 1\/σ/)).toBeVisible();
+
+  await expect(page.getByText("1/σ of the σ data").first()).toBeVisible();
+});
+
+test("a single table can map a column to σ, and not to both ρ and σ", async ({
+  page,
+}) => {
+  const table = {
+    headers: ["T", "a", "b"],
+    column_count: 3,
+    row_count: 2,
+    preview: [
+      [100, 2.5e-5, 4e4],
+      [200, 2e-5, 5e4],
+    ],
+    preview_si: [
+      [100, null, null],
+      [200, null, null],
+    ],
+    mapping: [{ column: 0, role: "temperature", unit: "K" }],
+    measurements: {},
+    errors: [],
+    warnings: [{ code: "no_quantity" }],
+    warnings_omitted: 0,
+    interpolated: {},
+    interpolation_failed: [],
+    interpolation_failure_reasons: {},
+  };
+  const sigma = {
+    ...table,
+    preview_si: [
+      [100, null, 4e4],
+      [200, null, 5e4],
+    ],
+    mapping: [
+      { column: 0, role: "temperature", unit: "K" },
+      { column: 2, role: "conductivity", unit: "S/m" },
+    ],
+    measurements: { resistivity: RESISTIVITY },
+    warnings: [],
+  };
+  const both = {
+    ...table,
+    mapping: [
+      { column: 0, role: "temperature", unit: "K" },
+      { column: 2, role: "conductivity", unit: "S/m" },
+      { column: 1, role: "resistivity", unit: "Ohm*m" },
+    ],
+    errors: [{ code: "resistivity_and_conductivity", column: 2 }],
+    warnings: [],
+  };
+  const bodies = await serveParse(page, table, sigma, both);
+  await page.goto("/fit");
+  await page.getByRole("tab", { name: "Single file" }).click();
+  await page.locator('input[type="file"]').setInputFiles({
+    name: "table.csv",
+    mimeType: "text/plain",
+    buffer: Buffer.from("T a b\n100 2.5e-5 4e4\n200 2e-5 5e4\n"),
+  });
+
+  await page.getByRole("combobox", { name: "Quantity for column b" }).click();
+  await page.getByRole("option", { name: "σ", exact: true }).click();
+  await expect(page.getByText("σ · 2 points · read as ρ = 1/σ")).toBeVisible();
+  expect(bodies[1]?.mapping).toContainEqual({
+    column: 2,
+    role: "conductivity",
+  });
+
+  await page.getByRole("combobox", { name: "Quantity for column a" }).click();
+  await page.getByRole("option", { name: "ρ", exact: true }).click();
+  await expect(
+    page.getByText("A file can hold ρ or σ, not both. Choose one of them."),
+  ).toBeVisible();
+});
+
+test("a file with no header in the σ slot asks for its columns, naming σ", async ({
+  page,
+}) => {
+  const bodies = await serveParse(
+    page,
+    parsedSigma("S/m", { headers: undefined, measurements: {} }),
+    parsedSigma("S/m"),
+  );
+  await page.goto("/fit");
+  await sigmaSwitch(page).click();
+  await page
+    .locator('input[type="file"]')
+    .nth(1)
+    .setInputFiles({
+      name: "run.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from("100 4e4\n200 5e4\n"),
+    });
+
+  await expect(
+    page.getByText(/Choose the column that holds σ, or another quantity/),
+  ).toBeVisible();
+  await page
+    .getByRole("combobox", { name: "Quantity for column Column 2" })
+    .click();
+  await page.getByRole("option", { name: "σ", exact: true }).click();
+
+  await expect(rhoSlot(page).getByText(/read as ρ = 1\/σ/)).toBeVisible();
+  expect(bodies[0]?.expected).toBe("conductivity");
+  expect(bodies[1]?.mapping).toEqual([
+    { column: 0, role: "temperature" },
+    { column: 1, role: "conductivity" },
+  ]);
+});
+
+test("after a ρ file with a header, the hidden switch reads the next file as ρ", async ({
+  page,
+}) => {
+  const rho = {
+    ...parsedSigma("Ohm*m"),
+    headers: ["T", "rho"],
+    mapping: [
+      { column: 0, role: "temperature", unit: "K" },
+      { column: 1, role: "resistivity", unit: "Ohm*m" },
+    ],
+    measurements: { resistivity: { ...RESISTIVITY, loaded_as: "resistivity" } },
+  };
+  const bodies = await serveParse(page, rho, rho);
+  await page.goto("/fit");
+  await sigmaSwitch(page).click();
+  await loadRhoSlot(page, "rho.txt");
+  await expect(rhoSlot(page).getByText(/^2 points · .* Ω·m$/)).toBeVisible();
+
+  // A file dropped on the loaded card goes as what the card shows, not as σ.
+  const dataTransfer = await page.evaluateHandle(() => {
+    const transfer = new DataTransfer();
+    transfer.items.add(
+      new File(["100 1e-5\n200 2e-5\n"], "rho2.txt", { type: "text/plain" }),
+    );
+    return transfer;
+  });
+  await rhoSlot(page).first().dispatchEvent("drop", { dataTransfer });
+  await expect(rhoSlot(page).getByText("rho2.txt")).toBeVisible();
+  // The filename is shown while reading, before the parse request is sent.
+  await expect
+    .poll(() => bodies.map(({ expected }) => expected))
+    .toEqual(["conductivity", "resistivity"]);
+
+  await rhoSlot(page).getByRole("button", { name: "Remove file ρ" }).click();
+  await expect(sigmaSwitch(page)).not.toBeChecked();
+});

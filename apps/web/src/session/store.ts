@@ -2,18 +2,43 @@ import type { components } from "@seeband/api-client";
 import { create } from "zustand";
 
 import type { FitEvent } from "@/api/fitStream";
-import type { UnitDoubt } from "@/data/units";
+import type { UnitDoubtIssue } from "@/data/units";
 
 type Schemas = components["schemas"];
 
-export type Quantity = NonNullable<Schemas["ParseRequest"]["expected"]>;
+/** A quantity a fit uses. A conductivity loads as the resistivity 1/σ, so it is not one. */
+export type Quantity = Schemas["FitStageResponse"]["quantity"];
+/** What a file can hold for a quantity: the quantity itself, or σ in place of ρ. */
+export type LoadedQuantity = NonNullable<Schemas["ParseRequest"]["expected"]>;
 export const QUANTITIES: readonly Quantity[] = [
   "seebeck",
   "resistivity",
   "hall",
 ];
+/** What a file can hold, in the order a choice lists them: σ beside ρ, which it takes the place of. */
+export const LOADED_QUANTITIES: readonly LoadedQuantity[] = [
+  "seebeck",
+  "resistivity",
+  "conductivity",
+  "hall",
+];
+
+/** The quantity a fit takes from what a file held: ρ = 1/σ for a conductivity. */
+export function quantityOf(loaded: LoadedQuantity): Quantity {
+  return loaded === "conductivity" ? "resistivity" : loaded;
+}
+
+/** What the data of a quantity were loaded as, which is the quantity itself unless ρ came from σ. */
+export function loadedAs(
+  quantity: Quantity,
+  data: Pick<SessionData, "measurement"> | undefined,
+): LoadedQuantity {
+  return data?.measurement.loaded_as ?? quantity;
+}
 export type ParsedTable = Schemas["ParseResponse"];
 export type ColumnRole = Schemas["ColumnRole"];
+/** A column as the server read it, with where its unit came from. */
+export type ColumnRead = Schemas["ColumnRead"];
 export type ModelSettings = Pick<
   Selection,
   "fitMode" | "scattering" | "band1Degeneracy" | "band2Degeneracy"
@@ -36,9 +61,38 @@ export interface SessionData {
   /** The columns and units a user chose, sent again with the text. */
   mapping?: readonly ColumnRole[] | undefined;
   /** The columns as the server read them, with the unit of each, so that a unit can change. */
-  readAs?: readonly ColumnRole[] | undefined;
+  readAs?: readonly ColumnRead[] | undefined;
   /** Why the unit of the quantity's column may be wrong, which a user must see before a fit. */
-  unitDoubts?: readonly UnitDoubt[] | undefined;
+  unitDoubts?: readonly UnitDoubtIssue[] | undefined;
+  /** The file's first row, as written and in SI, so that a user can check the units against it. */
+  firstRow?: FirstRow | undefined;
+}
+
+/** One row of a file by column: exactly as written, and in SI, with null for a column not read. */
+export interface FirstRow {
+  written: readonly string[];
+  si: readonly (number | null)[];
+}
+
+/**
+ * A row of an answer's preview exactly as the text writes it. An answer from before the server
+ * sent the text gives the values as read instead.
+ */
+export function writtenRow(
+  table: ParsedTable,
+  row: number,
+): readonly string[] | undefined {
+  const texts: ParsedTable["preview_text"] | undefined = table.preview_text;
+  return texts?.[row] ?? table.preview[row]?.map(String);
+}
+
+/** The first row of an answer, if it has one. */
+export function firstRowOf(table: ParsedTable): FirstRow | undefined {
+  const written = writtenRow(table, 0);
+  const si = table.preview_si[0];
+  return written === undefined || si === undefined
+    ? undefined
+    : { written, si };
 }
 
 export type InterpolatedQuantities = Partial<
@@ -46,11 +100,16 @@ export type InterpolatedQuantities = Partial<
 >;
 
 /** Interpolated values sit beside the measured data, so that turning it off restores those. */
+export type InterpolationFailureReason =
+  Schemas["ParseResponse"]["interpolation_failure_reasons"][string];
+
 export interface InterpolationState {
   enabled: boolean;
   loading: boolean;
   values: InterpolatedQuantities;
   failed: readonly Quantity[];
+  /** Why the server could not interpolate a quantity in `failed`. None for a lost request. */
+  failureReasons?: Partial<Record<Quantity, InterpolationFailureReason>>;
   failure: string | null;
 }
 
@@ -89,7 +148,8 @@ export const INITIAL_CHART_PANELS: readonly ChartTab[] = [
 export interface SingleFile {
   name: string;
   text: string;
-  mapping: readonly ColumnRole[];
+  /** The user's mapping while it is read, then the server's, with where each unit came from. */
+  mapping: readonly ColumnRead[];
   table: ParsedTable | null;
   loading: boolean;
   failure: string | null;
@@ -232,6 +292,8 @@ export interface SessionState {
   parameterResets: number;
   /** Bounds a fit of each mode uses in place of the description's, in core units. */
   customBounds: Record<string, Record<string, FitBounds>>;
+  /** Fitted parameters a fit of each mode keeps at their values, as the design's fix toggle. */
+  held: Record<string, readonly string[]>;
   /** Slots with a file on its way or waiting for a choice, which is the user's though not in `data`. */
   slotsReading: readonly Quantity[];
   /** What each model had when another was chosen, as the design keeps them apart. */
@@ -247,6 +309,7 @@ export interface SessionState {
     values: InterpolatedQuantities,
     failed: readonly Quantity[],
     failure?: string | null,
+    failureReasons?: Partial<Record<Quantity, InterpolationFailureReason>>,
   ) => void;
   /** What the other way loaded stays for coming back, and does not count until then. */
   setDataMode: (mode: DataMode) => void;
@@ -271,6 +334,7 @@ export interface SessionState {
     bounds: FitBounds | null,
   ) => void;
   clearCustomBounds: (fitMode: string) => void;
+  setHeld: (fitMode: string, parameter: string, held: boolean) => void;
   fileReadStarted: (quantity: Quantity) => void;
   fileReadEnded: (quantity: Quantity) => void;
   guessStarted: () => void;
@@ -426,6 +490,7 @@ export const createSessionStore = () =>
       fitStartValues: null,
       parameterResets: 0,
       customBounds: {},
+      held: {},
       slotsReading: [],
       savedModelSettings: {},
 
@@ -527,13 +592,19 @@ export const createSessionStore = () =>
         );
       },
       // What leads here has already cleared a fit's result: new data, a range or the switch.
-      finishInterpolation: (values, failed, failure = null) => {
+      finishInterpolation: (
+        values,
+        failed,
+        failure = null,
+        failureReasons = {},
+      ) => {
         set((state) => ({
           interpolation: {
             ...state.interpolation,
             loading: false,
             values,
             failed,
+            failureReasons,
             failure,
           },
         }));
@@ -644,6 +715,21 @@ export const createSessionStore = () =>
           };
         });
       },
+      setHeld: (fitMode, parameter, held) => {
+        set((state) => {
+          const kept = (state.held[fitMode] ?? []).filter(
+            (name) => name !== parameter,
+          );
+          return {
+            held: {
+              ...state.held,
+              [fitMode]: held ? [...kept, parameter] : kept,
+            },
+            // A result of a fit that held other parameters is not one of this.
+            fit: withoutOldResult(state.fit),
+          };
+        });
+      },
       clearCustomBounds: (fitMode) => {
         set((state) => ({
           customBounds: withoutMode(state.customBounds, fitMode),
@@ -653,6 +739,9 @@ export const createSessionStore = () =>
       resetParameters: (fitMode) => {
         set((state) => ({
           customBounds: withoutMode(state.customBounds, fitMode),
+          held: Object.fromEntries(
+            Object.entries(state.held).filter(([name]) => name !== fitMode),
+          ),
           parameters: Object.fromEntries(
             Object.entries(state.parameters).filter(
               ([name]) => name !== fitMode,

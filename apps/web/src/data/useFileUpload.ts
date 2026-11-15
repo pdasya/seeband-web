@@ -13,6 +13,7 @@ import { readFileText } from "@/data/readFile";
 import {
   columnOf,
   isUnitDoubt,
+  requestMapping,
   unitDoubts,
   withUnit,
   type Unit,
@@ -23,7 +24,14 @@ import {
   mappingOf,
   type Role,
 } from "@/data/columnChoice";
-import { useSessionStore, type Quantity } from "@/session/store";
+import {
+  firstRowOf,
+  loadedAs,
+  useSessionStore,
+  type LoadedQuantity,
+  type Quantity,
+  writtenRow,
+} from "@/session/store";
 import { STRINGS } from "@/strings";
 
 /** A file with no header, which waits for the user to say what its columns hold. */
@@ -33,14 +41,15 @@ export interface ColumnChoice {
   text: string;
   columns: number;
   rows: number;
-  firstRow: readonly number[];
+  /** The first row exactly as the file writes it. */
+  firstRow: readonly string[];
   roles: readonly (Role | null)[];
   /** The unit chosen for each column, or null for SI. */
   units: readonly (Unit | null)[];
   /** Another quantity the file's name names, if any. */
-  named: Quantity | null;
-  /** Values below 0 in a ρ slot, which a resistivity cannot have. */
-  negative: boolean;
+  named: LoadedQuantity | null;
+  /** Values below 0 for ρ, or 0 and below for σ, which the slot's quantity cannot have. */
+  belowZero: "resistivity" | "conductivity" | null;
   /** A header that does not fit the columns, so the parser named none. */
   mismatch: boolean;
   /** What stays true of the file whatever its columns hold. */
@@ -79,9 +88,13 @@ function listedWarnings(warnings: readonly Issue[]): string[] {
  * old data, as a fit from them would look like a fit from the new file.
  *
  * A file with no header waits for the user to choose what its columns hold, as values alone cannot
- * tell ρ from S. A choice of another quantity puts the file in that quantity's slot.
+ * tell ρ from S. A choice of another quantity puts the file in that quantity's slot. `expected` is
+ * what the slot reads a file with no header as: σ in place of ρ, which the server turns into 1/σ.
  */
-export function useFileUpload(quantity: Quantity) {
+export function useFileUpload(
+  quantity: Quantity,
+  expected: LoadedQuantity = quantity,
+) {
   const setData = useSessionStore((state) => state.setData);
   const removeData = useSessionStore((state) => state.removeData);
   const readStarted = useSessionStore((state) => state.fileReadStarted);
@@ -131,20 +144,20 @@ export function useFileUpload(quantity: Quantity) {
         if (signal.aborted) {
           return;
         }
-        const parsed = await apiClient.postParse(
-          { text, expected: quantity },
-          signal,
-        );
+        const parsed = await apiClient.postParse({ text, expected }, signal);
         if (signal.aborted) {
           return;
         }
         // The API leaves `headers` out where no header matches, as its contract says.
         if (parsed.headers == null && errorsAChoiceCanMend(parsed.errors)) {
           const named = quantityFromName(file.name);
-          const other = named === quantity ? null : named;
-          const negative = parsed.errors.some(
-            ({ code }) => code === "negative_resistivity",
-          );
+          const other = named === expected ? null : named;
+          const codes = new Set(parsed.errors.map(({ code }) => code));
+          const belowZero = codes.has("negative_resistivity")
+            ? "resistivity"
+            : codes.has("non_positive_conductivity")
+              ? "conductivity"
+              : null;
           choosing = true;
           setState({
             status: "choose",
@@ -152,11 +165,11 @@ export function useFileUpload(quantity: Quantity) {
             text,
             columns: parsed.column_count,
             rows: parsed.row_count,
-            firstRow: parsed.preview[0] ?? [],
+            firstRow: writtenRow(parsed, 0) ?? [],
             roles: initialRoles(parsed.column_count),
             units: Array.from({ length: parsed.column_count }, () => null),
             named: other,
-            negative,
+            belowZero,
             mismatch: parsed.warnings.some(
               ({ code }) => code === "header_mismatch",
             ),
@@ -183,8 +196,9 @@ export function useFileUpload(quantity: Quantity) {
           readAs: parsed.mapping,
           unitDoubts: unitDoubts(
             parsed.warnings,
-            columnOf(parsed.mapping, quantity),
+            columnOf(parsed.mapping, loadedAs(quantity, { measurement })),
           ),
+          firstRow: firstRowOf(parsed),
         });
         setState({
           status: "idle",
@@ -205,7 +219,7 @@ export function useFileUpload(quantity: Quantity) {
         }
       }
     },
-    [endRead, quantity, removeData, setData, startRead],
+    [endRead, expected, quantity, removeData, setData, startRead],
   );
 
   /** Reads the file again with the user's choice, into the slot of the quantity chosen. */
@@ -216,6 +230,7 @@ export function useFileUpload(quantity: Quantity) {
         return;
       }
       const { data: text } = STRINGS;
+      // The slot's name, which a σ file takes as ρ = 1/σ.
       const title = text.quantities[target].title;
       const session = useSessionStore.getState();
       // Another slot with a file of its own on the way would write over this one later.
@@ -260,8 +275,9 @@ export function useFileUpload(quantity: Quantity) {
           readAs: parsed.mapping,
           unitDoubts: unitDoubts(
             parsed.warnings,
-            columnOf(parsed.mapping, target),
+            columnOf(parsed.mapping, loadedAs(target, { measurement })),
           ),
+          firstRow: firstRowOf(parsed),
         });
         setState(
           target === quantity
@@ -355,7 +371,13 @@ export function useFileUpload(quantity: Quantity) {
       if (entry?.readAs === undefined || reading.current) {
         return;
       }
-      const mapping = withUnit(entry.mapping ?? entry.readAs, role, unit);
+      // Only units a user chose go again, so that one read in SI by default stays marked so: the
+      // choices kept from before, or else those the answer says were chosen.
+      const mapping = withUnit(
+        entry.mapping ?? requestMapping(entry.readAs),
+        role,
+        unit,
+      );
       const signal = newRequest();
       // Counted as on its way, and the selects wait, so that a second change cannot start from
       // the old units, and the demo leaves the slot alone.
@@ -392,8 +414,9 @@ export function useFileUpload(quantity: Quantity) {
           readAs: parsed.mapping,
           unitDoubts: unitDoubts(
             parsed.warnings,
-            columnOf(parsed.mapping, quantity),
+            columnOf(parsed.mapping, loadedAs(quantity, { measurement })),
           ),
+          firstRow: firstRowOf(parsed),
         });
         setState({ status: "idle", warnings: listedWarnings(parsed.warnings) });
       } catch (error) {

@@ -15,6 +15,7 @@ import type {
   SessionState,
 } from "@/session/store";
 import { STRINGS } from "@/strings";
+import type { LimitedRange } from "@/model/interpolatedRanges";
 
 const { export: text, fit: fitText } = STRINGS;
 
@@ -59,6 +60,8 @@ export function commented(lines: readonly string[]): string {
 export interface ExportContext {
   appVersion: string;
   apiVersion: string | null;
+  serverCoreVersion?: string | null;
+  curveCoreVersions?: readonly (string | undefined)[];
   /** When the file was made, as ISO 8601. */
   date: string;
   modelId: string;
@@ -69,6 +72,10 @@ export interface ExportContext {
   fit: FitState;
   demo: boolean;
   issues: readonly ResultIssue[];
+  /** Quantities whose data narrowed their interpolation, and the range a fit used. */
+  limitedRanges?: readonly LimitedRange[];
+  /** Whether ρ is 1/σ of a σ file, as its points and RMSE are then not what was loaded. */
+  fromConductivity?: boolean;
 }
 
 function fitLine(fit: FitState): string {
@@ -88,11 +95,41 @@ function fitLine(fit: FitState): string {
   }
 }
 
+/** Source versions stay distinct: a newly deployed server does not relabel an old fit. */
+export function coreVersionLines(
+  serverVersion: string | null | undefined,
+  fit: FitState,
+  curveVersions: readonly (string | undefined)[] = [],
+): string[] {
+  return [
+    text.header.serverCore(serverVersion ?? text.header.unknownVersion),
+    ...(fit.status === "done"
+      ? [
+          text.header.fitCore(
+            fit.result.core_version ?? text.header.unknownVersion,
+          ),
+        ]
+      : fit.status === "stopped"
+        ? [text.header.fitCore(text.header.unknownVersion)]
+        : []),
+    ...[
+      ...new Set(
+        curveVersions.map((version) => version ?? text.header.unknownVersion),
+      ),
+    ].map(text.header.curveCore),
+  ];
+}
+
 /** What a file is of: the app, the model and fit, and what is known to be wrong with it. */
 export function exportHeader(context: ExportContext): string[] {
   const { selection } = context;
   return [
     text.header.app(context.appVersion, context.apiVersion),
+    ...coreVersionLines(
+      context.serverCoreVersion,
+      context.fit,
+      context.curveCoreVersions,
+    ),
     text.header.date(context.date),
     ...(context.demo ? [text.header.demo] : []),
     text.header.model(context.modelId.toUpperCase(), context.modeLabel),
@@ -107,6 +144,16 @@ export function exportHeader(context: ExportContext): string[] {
             numberText(selection.maxTemperatureK),
           ),
         ]),
+    ...(context.limitedRanges ?? []).map(({ quantity, minK, maxK }) =>
+      text.header.limitedRange(
+        STRINGS.data.quantities[quantity].symbol,
+        numberText(minK),
+        numberText(maxK),
+      ),
+    ),
+    ...(context.fromConductivity === true
+      ? [text.header.fromConductivity]
+      : []),
     ...(context.degeneracy
       ? [
           text.header.degeneracies(
@@ -172,7 +219,9 @@ export function dataFile(
       ...(measured === undefined
         ? []
         : pair(
-            text.columns.experimental(name),
+            measured.loaded_as === "conductivity"
+              ? text.columns.experimentalFromSigma(name)
+              : text.columns.experimental(name),
             measured.temperature_k,
             measured.values,
           )),
@@ -218,6 +267,7 @@ function parameterRecords(
   scattering: string | null,
   saved: Readonly<Record<string, number>> | undefined,
   fit: FitState,
+  held: readonly string[],
 ): ParameterRecord[] {
   const values = parameterValues(mode, saved);
   const atBounds =
@@ -238,11 +288,13 @@ function parameterRecords(
       status:
         parameter.role === "fixed"
           ? text.status.fixed
-          : !fitted
-            ? text.status.free
-            : atBounds.includes(parameter.name)
-              ? text.status.atBound
-              : text.status.fitted,
+          : held.includes(parameter.name)
+            ? text.status.held
+            : !fitted
+              ? text.status.free
+              : atBounds.includes(parameter.name)
+                ? text.status.atBound
+                : text.status.fitted,
     };
   });
 }
@@ -263,12 +315,18 @@ export function parametersFile(
   selection: DegeneracySelection,
   saved: Readonly<Record<string, number>> | undefined,
   fit: FitState,
+  held: readonly string[] = [],
 ): string {
-  const lines = parameterRecords(mode, selection.scattering, saved, fit).map(
-    ({ symbol, meaning, unit, value, status }) =>
-      [text.parameter(symbol, meaning, unit), numberText(value), status].join(
-        "\t",
-      ),
+  const lines = parameterRecords(
+    mode,
+    selection.scattering,
+    saved,
+    fit,
+    held,
+  ).map(({ symbol, meaning, unit, value, status }) =>
+    [text.parameter(symbol, meaning, unit), numberText(value), status].join(
+      "\t",
+    ),
   );
   const degeneracy = hasDegeneracy(mode)
     ? [
@@ -298,9 +356,10 @@ export function parametersCsv(
   selection: DegeneracySelection,
   saved: Readonly<Record<string, number>> | undefined,
   fit: FitState,
+  held: readonly string[] = [],
 ): string {
   const records = [
-    ...parameterRecords(mode, selection.scattering, saved, fit),
+    ...parameterRecords(mode, selection.scattering, saved, fit, held),
     ...(hasDegeneracy(mode)
       ? [
           {

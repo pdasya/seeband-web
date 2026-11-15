@@ -17,9 +17,13 @@ from typing import Literal, get_args
 
 import numpy as np
 
+from seeband_core.measured_points import resistivity_from_conductivity
 from seeband_core.model_interface import Measurement, Quantity
 
-Role = Literal["temperature", "seebeck", "resistivity", "hall"]
+# What a file can hold besides T. A conductivity is read as the resistivity 1/sigma, so it gives the
+# quantity `resistivity` and never a quantity of its own.
+LoadedQuantity = Literal["seebeck", "resistivity", "conductivity", "hall"]
+Role = Literal["temperature", "seebeck", "resistivity", "conductivity", "hall"]
 IssueCode = Literal[
     # Errors
     "no_data",
@@ -36,6 +40,8 @@ IssueCode = Literal[
     "missing_temperature",
     "non_positive_temperature",
     "negative_resistivity",
+    "non_positive_conductivity",
+    "resistivity_and_conductivity",
     "repeated_role",
     "unit_not_allowed",
     # Warnings
@@ -52,7 +58,26 @@ IssueCode = Literal[
     "unit_assumed",
     "implausible_magnitude",
 ]
-Unit = Literal["K", "C", "V/K", "uV/K", "Ohm*m", "mOhm*cm", "uOhm*m", "m^3/C", "cm^3/C"]
+Unit = Literal[
+    "K",
+    "C",
+    "V/K",
+    "uV/K",
+    "mV/K",
+    "Ohm*m",
+    "Ohm*cm",
+    "mOhm*cm",
+    "uOhm*m",
+    "uOhm*cm",
+    "S/m",
+    "S/cm",
+    "m^3/C",
+    "cm^3/C",
+]
+# Which limit of `PLAUSIBLE_MAGNITUDE` a quantity's largest |value| is beyond.
+Direction = Literal["above", "below"]
+# Where a column's unit came from: a user's choice, its header, or SI as nothing named one.
+UnitSource = Literal["chosen", "header", "default"]
 
 MIN_ROWS = 2
 # Below this, the degree 5 fit that chooses DPB start values is not determined.
@@ -69,6 +94,9 @@ _NAMES: Mapping[str, Role] = {
     "rho": "resistivity",
     "ρ": "resistivity",
     "resistivity": "resistivity",
+    "sigma": "conductivity",
+    "σ": "conductivity",
+    "conductivity": "conductivity",
     "rh": "hall",
     "r_h": "hall",
     "hall": "hall",
@@ -94,27 +122,58 @@ class Conversion:
 # The units a column can be read in. The first of each is SI and the default.
 UNITS: Mapping[Role, Mapping[Unit, Conversion]] = {
     "temperature": {"K": Conversion(), "C": Conversion(offset=Decimal("273.15"))},
-    "seebeck": {"V/K": Conversion(), "uV/K": Conversion(-6)},
-    "resistivity": {"Ohm*m": Conversion(), "mOhm*cm": Conversion(-5), "uOhm*m": Conversion(-6)},
+    "seebeck": {"V/K": Conversion(), "uV/K": Conversion(-6), "mV/K": Conversion(-3)},
+    "resistivity": {
+        "Ohm*m": Conversion(),
+        "Ohm*cm": Conversion(-2),
+        "mOhm*cm": Conversion(-5),
+        "uOhm*m": Conversion(-6),
+        "uOhm*cm": Conversion(-8),
+    },
+    "conductivity": {"S/m": Conversion(), "S/cm": Conversion(2)},
     "hall": {"m^3/C": Conversion(), "cm^3/C": Conversion(-6)},
 }
 # How a header writes each unit, after `_unit_key`.
 _HEADER_UNITS: Mapping[Role, Mapping[str, Unit]] = {
     "temperature": {"k": "K", "kelvin": "K", "c": "C", "°c": "C", "degc": "C", "celsius": "C"},
-    "seebeck": {"v/k": "V/K", "uv/k": "uV/K"},
-    "resistivity": {"ohmm": "Ohm*m", "mohmcm": "mOhm*cm", "uohmm": "uOhm*m"},
+    "seebeck": {"v/k": "V/K", "uv/k": "uV/K", "mv/k": "mV/K"},
+    "resistivity": {
+        "ohmm": "Ohm*m",
+        "ohmcm": "Ohm*cm",
+        "mohmcm": "mOhm*cm",
+        "uohmm": "uOhm*m",
+        "uohmcm": "uOhm*cm",
+    },
+    "conductivity": {
+        "s/m": "S/m",
+        "s/cm": "S/cm",
+        "1/ohmm": "S/m",
+        "1/ohmcm": "S/cm",
+        "ohm-1m-1": "S/m",
+        "ohm-1cm-1": "S/cm",
+    },
     "hall": {"m3/c": "m^3/C", "cm3/c": "cm^3/C"},
 }
 # A largest |value| in SI outside these is more likely a wrong unit than a measurement, as for µV/K
 # read as V/K, 1e6 too large. Only a warning, and only for gross errors: the SiP example reaches
 # ρ = 0.16 Ω·m and |R_H| = 0.013 m³/C, so mΩ·cm or cm³/C read as SI often look possible, and
 # only the unit chosen for a column protects them.
-PLAUSIBLE_MAGNITUDE: Mapping[Quantity, tuple[float, float]] = {
+PLAUSIBLE_MAGNITUDE: Mapping[LoadedQuantity, tuple[float, float]] = {
     "seebeck": (1e-7, 1e-2),
     "resistivity": (1e-10, 1.0),
+    # 1/rho over the same range, as sigma is checked as it was loaded.
+    "conductivity": (1.0, 1e10),
     "hall": (1e-13, 1e-1),
 }
+# The quantity each column gives a fit.
+QUANTITY_OF: Mapping[LoadedQuantity, Quantity] = {
+    "seebeck": "seebeck",
+    "resistivity": "resistivity",
+    "conductivity": "resistivity",
+    "hall": "hall",
+}
 _MEASURING_ROLES: tuple[Role, ...] = get_args(Role)
+_LOADED_QUANTITIES: tuple[LoadedQuantity, ...] = get_args(LoadedQuantity)
 _NUMBER = re.compile(r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?")
 _STARTS_LIKE_A_NUMBER = re.compile(r"[+-]?\.?\d")
 _ANY_SEPARATOR = re.compile(r"\s*,\s*|\s+")
@@ -128,11 +187,17 @@ _NAME_AND_UNIT = re.compile(r"([^(\[]*)(?:[(\[]([^)\]]*)[)\]])?\s*")
 
 @dataclass(frozen=True)
 class ParseIssue:
-    """A problem in the data. `line` counts every line of the text from 1, and `column` from 0."""
+    """A problem in the data. `line` counts every line of the text from 1, and `column` from 0.
+
+    `direction` says, for `implausible_magnitude`, whether the largest |value| is `above` the
+    quantity's upper limit or `below` its lower one, so that a client can say which way a unit is
+    likely wrong. It carries no measured value.
+    """
 
     code: IssueCode
     line: int | None = None
     column: int | None = None
+    direction: Direction | None = None
 
 
 @dataclass(frozen=True, eq=False)
@@ -144,8 +209,11 @@ class ParsedTable:
     `column_count` is that of the first row of numbers, and 0 if no row set one. `mapping` goes
     from column to role, as a suggestion or as a user chose it, and `units` gives the unit each
     mapped column is read in. `measurements` is in SI, sorted by temperature, and is empty with any
-    `errors`. `header_units` holds the unit text of each header that has one, so that a column
-    assigned by hand is read in it.
+    `errors`. `loaded_as` names what the text held for each measurement: `conductivity` for a
+    resistivity that is 1/sigma of a conductivity column. `header_units` holds the unit text of each
+    header that has one, so that a column assigned by hand is read in it. `unit_sources` says where
+    the unit of each column in `units` came from: `default` is SI taken as nothing named a unit, or
+    as the header named one this cannot read, which `unit_assumed` then says.
     """
 
     headers: tuple[str, ...] | None
@@ -159,6 +227,8 @@ class ParsedTable:
     units: Mapping[int, Unit] = dataclasses.field(default_factory=dict)
     header_units: Mapping[int, str] = dataclasses.field(default_factory=dict)
     texts: tuple[tuple[str, ...], ...] = ()
+    loaded_as: Mapping[Quantity, LoadedQuantity] = dataclasses.field(default_factory=dict)
+    unit_sources: Mapping[int, UnitSource] = dataclasses.field(default_factory=dict)
 
 
 def _content_lines(text: str) -> list[tuple[int, str]]:
@@ -218,6 +288,10 @@ def _unit_key(unit: str) -> str | None:
     return re.sub(r"[*·⋅^]", "", key).lower()
 
 
+def _quantity(role: Role) -> Quantity | Literal["temperature"]:
+    return "temperature" if role == "temperature" else QUANTITY_OF[role]
+
+
 def header_unit(role: Role, unit: str) -> Unit | None:
     """The unit a header's text names for a role, or None for one this cannot read."""
     key = _unit_key(unit)
@@ -239,7 +313,8 @@ def _mapping_from_headers(
         if unit is not None and header_unit(role, unit) is None:
             # A value in a unit this cannot read would be wrong by a factor such as 1e6.
             warnings.append(ParseIssue("unit_differs", column=index))
-        elif role in mapping.values():
+        elif _quantity(role) in {_quantity(other) for other in mapping.values()}:
+            # A file with both rho and sigma keeps the first, as a fit takes one of them.
             warnings.append(ParseIssue("repeated_header", column=index))
         else:
             mapping[index] = role
@@ -296,23 +371,26 @@ def si_column(table: ParsedTable, index: int, rows: int | None = None) -> np.nda
 
 def _units_for(
     mapping: Mapping[int, Role], chosen: Mapping[int, Unit], header_units: Mapping[int, str]
-) -> tuple[dict[int, Unit], list[ParseIssue]]:
-    """The unit of each mapped column: the user's, then its header's, then SI.
+) -> tuple[dict[int, Unit], dict[int, UnitSource], list[ParseIssue]]:
+    """The unit of each mapped column, and where it came from: the user's, its header's, or SI.
 
     A header unit that cannot be read leaves SI, with a warning that says so.
     """
     units: dict[int, Unit] = {}
+    sources: dict[int, UnitSource] = {}
     warnings: list[ParseIssue] = []
     for index, role in mapping.items():
         if index in chosen:
             units[index] = chosen[index]
+            sources[index] = "chosen"
             continue
         written = header_units.get(index)
         read = None if written is None else header_unit(role, written)
         if written is not None and read is None:
             warnings.append(ParseIssue("unit_assumed", column=index))
         units[index] = next(iter(UNITS[role])) if read is None else read
-    return units, warnings
+        sources[index] = "default" if read is None else "header"
+    return units, sources, warnings
 
 
 def _measure(
@@ -321,15 +399,24 @@ def _measure(
     lines: tuple[int, ...],
     mapping: Mapping[int, Role],
     units: Mapping[int, Unit],
-) -> tuple[dict[Quantity, Measurement], list[ParseIssue], list[ParseIssue]]:
-    """Return sorted measurements in SI for a mapping, with errors and warnings."""
+) -> tuple[
+    dict[Quantity, Measurement], dict[Quantity, LoadedQuantity], list[ParseIssue], list[ParseIssue]
+]:
+    """Return sorted measurements in SI for a mapping, what each was loaded as, errors and warnings.
+
+    A conductivity column becomes the resistivity 1/sigma here, and nowhere else.
+    """
     temperature_columns = [index for index, role in mapping.items() if role == "temperature"]
     if not temperature_columns:
-        return {}, [ParseIssue("missing_temperature")], []
+        return {}, {}, [ParseIssue("missing_temperature")], []
     roles = list(mapping.values())
     repeated = [index for index, role in mapping.items() if roles.count(role) > 1]
     if repeated:
-        return {}, [ParseIssue("repeated_role", column=index) for index in repeated], []
+        return {}, {}, [ParseIssue("repeated_role", column=index) for index in repeated], []
+    if "resistivity" in roles and "conductivity" in roles:
+        # A fit takes one resistivity, and two would disagree wherever 1/sigma is not rho.
+        both = [index for index, role in mapping.items() if role == "conductivity"]
+        return {}, {}, [ParseIssue("resistivity_and_conductivity", column=both[0])], []
     temperature_column = temperature_columns[0]
     # In K, so that 0 °C is not below zero and rows sort the same in any unit.
     temperature_k = to_si(
@@ -343,7 +430,7 @@ def _measure(
         for row in np.flatnonzero(temperature_k <= 0)[:MAX_ERRORS]
     ]
     if errors:
-        return {}, errors, []
+        return {}, {}, errors, []
     warnings: list[ParseIssue] = []
     if len(np.unique(temperature_k)) < FEW_DISTINCT_TEMPERATURES:
         warnings.append(ParseIssue("few_rows"))
@@ -364,18 +451,45 @@ def _measure(
         for row in np.flatnonzero(columns[index] < 0)[:MAX_ERRORS]
     ]
     if negative:
-        return {}, negative, warnings
+        return {}, {}, negative, warnings
+    loaded: dict[int, np.ndarray] = {
+        index: to_si(role, units[index], texts[index], columns[index])
+        for index, role in mapping.items()
+        if role != "temperature"
+    }
+    # A conductivity of 0 has no resistivity, and one below 0 is no measurement. One so small that
+    # 1/sigma overflows, under about 6e-309 S/m, has none a float can hold either.
+    with np.errstate(divide="ignore", over="ignore"):
+        no_resistivity = [
+            ParseIssue("non_positive_conductivity", lines[row], index)
+            for index, role in mapping.items()
+            if role == "conductivity"
+            for row in np.flatnonzero(~np.isfinite(1.0 / loaded[index]) | (loaded[index] <= 0))[
+                :MAX_ERRORS
+            ]
+        ]
+    if no_resistivity:
+        return {}, {}, no_resistivity, warnings
     measurements: dict[Quantity, Measurement] = {}
+    loaded_as: dict[Quantity, LoadedQuantity] = {}
     for index, role in mapping.items():
         if role != "temperature":
-            values = to_si(role, units[index], texts[index], columns[index])[order]
-            measurements[role] = Measurement(sorted_k.copy(), values)
+            values = loaded[index][order]
             low, high = PLAUSIBLE_MAGNITUDE[role]
-            if not low <= float(np.max(np.abs(values))) <= high:
-                warnings.append(ParseIssue("implausible_magnitude", column=index))
+            largest = float(np.max(np.abs(values)))
+            if not low <= largest <= high:
+                direction: Direction = "above" if largest > high else "below"
+                warnings.append(
+                    ParseIssue("implausible_magnitude", column=index, direction=direction)
+                )
+            quantity = QUANTITY_OF[role]
+            if role == "conductivity":
+                values = resistivity_from_conductivity(values)
+            measurements[quantity] = Measurement(sorted_k.copy(), values)
+            loaded_as[quantity] = role
     if not measurements:
         warnings.append(ParseIssue("no_quantity"))
-    return measurements, [], warnings
+    return measurements, loaded_as, [], warnings
 
 
 _FROM_MAPPING: frozenset[str] = frozenset(
@@ -383,6 +497,8 @@ _FROM_MAPPING: frozenset[str] = frozenset(
         "missing_temperature",
         "non_positive_temperature",
         "negative_resistivity",
+        "non_positive_conductivity",
+        "resistivity_and_conductivity",
         "repeated_role",
         "few_rows",
         "unsorted_temperature",
@@ -422,23 +538,29 @@ def with_mapping(
     if wrong:
         kept_errors += tuple(ParseIssue("unit_not_allowed", column=index) for index in wrong)
     if kept_errors:
+        kept_units = {index: unit for index, unit in chosen.items() if index not in wrong}
+        kept_sources: dict[int, UnitSource] = dict.fromkeys(kept_units, "chosen")
         return replace(
             table,
             mapping=dict(mapping),
-            units={index: unit for index, unit in chosen.items() if index not in wrong},
+            units=kept_units,
+            unit_sources=kept_sources,
             measurements={},
+            loaded_as={},
             errors=kept_errors,
             warnings=kept_warnings,
         )
-    column_units, unit_warnings = _units_for(mapping, chosen, table.header_units)
-    measurements, errors, warnings = _measure(
+    column_units, unit_sources, unit_warnings = _units_for(mapping, chosen, table.header_units)
+    measurements, loaded_as, errors, warnings = _measure(
         table.columns, table.texts, table.lines, mapping, column_units
     )
     return replace(
         table,
         mapping=dict(mapping),
         units=column_units,
+        unit_sources=unit_sources,
         measurements=measurements,
+        loaded_as=loaded_as,
         errors=tuple(errors),
         warnings=kept_warnings + tuple(unit_warnings) + tuple(warnings),
     )
@@ -490,19 +612,20 @@ def _read_rows(
 
 def parse_table(
     text: str,
-    expected: Quantity | None = None,
+    expected: LoadedQuantity | None = None,
     mapping: Mapping[int, Role] | None = None,
     units: Mapping[int, Unit] | None = None,
 ) -> ParsedTable:
     """Read a text of measured data.
 
     `expected` names the quantity of a file meant to hold one. It gives the second column of a file
-    with two columns and no header. `mapping` replaces the suggested mapping with a user's choice,
-    and `units` the unit of a column, which is otherwise its header's, or SI.
+    with two columns and no header. A file of rho meets an `expected` conductivity, and the other
+    way, as both give a fit its resistivity. `mapping` replaces the suggested mapping with a user's
+    choice, and `units` the unit of a column, which is otherwise its header's, or SI.
     Text before a table is skipped with a warning, its last line is the header, and `#` starts a
     comment.
     """
-    if expected is not None and expected not in _MEASURING_ROLES:
+    if expected is not None and expected not in _LOADED_QUANTITIES:
         raise ValueError(f"Unknown quantity: {expected}")
     lines = _content_lines(text)
     leading = 0
@@ -549,7 +672,11 @@ def parse_table(
             suggestion[1] = expected
         elif column_count > 2:
             warnings.append(ParseIssue("columns_need_assigning"))
-    if expected is not None and column_count is not None and expected not in suggestion.values():
+    if (
+        expected is not None
+        and column_count is not None
+        and QUANTITY_OF[expected] not in {_quantity(role) for role in suggestion.values()}
+    ):
         warnings.append(ParseIssue("expected_not_found"))
 
     parsed = ParsedTable(

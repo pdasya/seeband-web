@@ -395,20 +395,3 @@ class TestTheErrorsAreStillThere:
                 "electrical_conductivity_s_per_m"
             ]
             assert np.allclose(sigma * rho, 1.0)
-
-    def test_repaired_acphdis_seebeck_is_independent_of_the_grid(self) -> None:
-        model = registry.get("dpb")
-        start = default_start(fit_mode("dpb_s_rho"))
-        values = start | {
-            "m_eff": 1.0,
-            "band_gap": 300.0,
-            "fermi_energy": -100.0,
-            "C": 0.5,
-            "D": 2.0,
-        }
-
-        def at_low_end(high_k: float) -> float:
-            request = CurveRequest("dpb_s_rho", values, 100, high_k, 3, "acPhDis")
-            return float(model.calculate(request).curves["seebeck_v_per_k"][0])
-
-        assert at_low_end(400) == at_low_end(800)

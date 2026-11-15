@@ -35,6 +35,7 @@ const PARSED = {
   warnings_omitted: 0,
   interpolated: {},
   interpolation_failed: [],
+  interpolation_failure_reasons: {},
 };
 
 const withRmse = (value: number | null) => ({
@@ -471,6 +472,7 @@ test("a slider moved during interpolation waits, and then the latest goes", asyn
             temperature_k: [100, 120],
             values: [1e-4, 2e-4],
             extrapolated: false,
+            range_limited: false,
             measured_points_in_range: 1,
             underdetermined: false,
           },
@@ -504,7 +506,11 @@ test("a failed interpolation says why there is no RMSE, and the curve still goes
   await expect.poll(() => bodies.length).toBe(1);
   await page.route("**/api/parse", (route) =>
     route.fulfill({
-      json: { ...PARSED, interpolation_failed: ["seebeck"] },
+      json: {
+        ...PARSED,
+        interpolation_failed: ["seebeck"],
+        interpolation_failure_reasons: { seebeck: "no_overlap" },
+      },
     }),
   );
 
@@ -646,6 +652,7 @@ test("the range holds the request back while interpolated values are on their wa
                   temperature_k: [100, 120],
                   values: [1e-4, 2e-4],
                   extrapolated: true,
+                  range_limited: false,
                   measured_points_in_range: 1,
                   underdetermined: false,
                 },
@@ -688,6 +695,7 @@ test("with interpolation, measured and interpolated points are apart", async ({
                   temperature_k: [100, 120, 140, 160],
                   values: [1e-4, 2e-4, 2e-4, 1e-4],
                   extrapolated: false,
+                  range_limited: false,
                   measured_points_in_range: 1,
                   underdetermined: false,
                 },
@@ -724,7 +732,11 @@ test("a failed interpolation leaves the measured points only", async ({
   await expect(page.locator(".scatterlayer .trace path.point")).toHaveCount(3);
   await page.route("**/api/parse", (route) =>
     route.fulfill({
-      json: { ...PARSED, interpolation_failed: ["seebeck"] },
+      json: {
+        ...PARSED,
+        interpolation_failed: ["seebeck"],
+        interpolation_failure_reasons: { seebeck: "no_overlap" },
+      },
     }),
   );
 

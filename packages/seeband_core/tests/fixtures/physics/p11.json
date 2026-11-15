@@ -1,7 +1,7 @@
 {
  "description": "P11 implementation-generated regressions, not independent physics evidence.",
- "core_version": "0.1.1",
- "p8_sha256": "9161981cf7758c0324788a4465d2eed1a7c537642540dfb48d7112a218317c05",
+ "core_version": "0.1.3",
+ "p8_sha256": "e4656e05f7876889c44f86c9e0eeea9d2b1071db5f5fcd428e6cb0c767616db0",
  "affected_functions": [
   "dpb_see_res_calc",
   "dpb_see_res_fit",
@@ -1010,20 +1010,20 @@
    ]
   },
   "02_SiP-dpb_s_rho-acPhDis-thread-dpb_see_res_fit-5ccafba70d1e97c6": {
-   "status": "failed",
+   "status": "converged",
    "parameters": {
-    "m_eff": 1.01,
-    "band_gap": 1000,
-    "fermi_energy": -100,
-    "A": 40000,
+    "m_eff": 2.723030201794167e-07,
+    "band_gap": 1002.2399235318329,
+    "fermi_energy": -113.92663394026863,
+    "A": 40000.0,
     "B": 1.0,
     "C": 1.0,
     "D": 1.0,
     "F": 1000,
     "G": 1.0
    },
-   "iterations": 0,
-   "message": "The chemical-potential balance could not be verified during the fit."
+   "iterations": 2,
+   "message": null
   },
   "02_SiP-dpb_s_rho-acPhDis-thread-dpb_see_res_calc-35b19f0ef829ae20": {
    "result": [
@@ -1454,21 +1454,21 @@
    ]
   },
   "02_SiP-dpb_s_rho_rh-acPhDis-thread-dpb_see_res_hall_fit-638c2bfc952955b0": {
-   "status": "failed",
+   "status": "converged",
    "parameters": {
-    "m_eff": 1.01,
-    "band_gap": 1000,
-    "fermi_energy": -100,
-    "A": 40000,
+    "m_eff": 2.723030201794167e-07,
+    "band_gap": 1002.2399235318329,
+    "fermi_energy": -113.92663394026863,
+    "A": 40000.0,
     "B": 1.0,
     "C": 1.0,
     "D": 1.0,
     "F": 1000,
     "G": 1.0,
-    "m1": 1.0
+    "m1": 9.999999999999998
    },
-   "iterations": 0,
-   "message": "The chemical-potential balance could not be verified during the fit."
+   "iterations": 2,
+   "message": null
   },
   "02_SiP-dpb_s_rho_rh-acPhDis-thread-dpb_see_res_hall_calc-57aa8f0655bfa505": {
    "result": [

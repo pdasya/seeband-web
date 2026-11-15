@@ -34,6 +34,7 @@ async function serveParse(page: Page, bodies: object[]) {
         warnings_omitted: 0,
         interpolated: {},
         interpolation_failed: [],
+        interpolation_failure_reasons: {},
       },
     });
   });
@@ -166,6 +167,7 @@ test("missing data are named for the mode, and go as data load", async ({
         warnings_omitted: 0,
         interpolated: {},
         interpolation_failed: [],
+        interpolation_failure_reasons: {},
       },
     }),
   );
@@ -309,6 +311,7 @@ test("the data panel shows numbers with a comma too", async ({ page }) => {
         warnings_omitted: 0,
         interpolated: {},
         interpolation_failed: [],
+        interpolation_failure_reasons: {},
       },
     }),
   );
