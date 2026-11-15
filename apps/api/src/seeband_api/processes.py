@@ -19,8 +19,10 @@ from multiprocessing.context import ForkServerContext
 #
 # Not `__main__`, the fork server's default: it would run a main script without a `__name__` guard
 # inside the fork server, and so start a second server. Each child sets up `__main__` as under
-# `spawn` instead. That costs nothing for `python -m seeband_api` or uvicorn's command, whose main
-# module is a package's `__main__`, which a child does not import again.
+# `spawn` instead. That costs nothing for `python -m seeband_api` or `python -m uvicorn`, whose main
+# module is a package's `__main__`, which a child does not import again. A script, such as the
+# `uvicorn` command, is run again in each child as `__mp_main__`, so it needs its guard, as it did
+# under `spawn`.
 PRELOADED = (
     "seeband_api.calc_worker",
     "seeband_api.fit_worker",

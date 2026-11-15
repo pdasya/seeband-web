@@ -51,7 +51,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     }
                 },
             )
-        # Before the pool, whose workers fork from it too. It imports the core, in about 0.5 s.
+        # Before the pool, whose workers fork from it too. Its imports took about 0.3 s on a Mac.
         await asyncio.to_thread(start_fork_server)
         app.state.calc_pool = CalcPool(
             settings.calc_workers,
