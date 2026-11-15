@@ -9,10 +9,13 @@ export const STUCK_AFTER_MS = 60_000;
 // If a limit asks for longer, the next change tries again anyway.
 const MAX_RETRY_AFTER_S = 30;
 
-/** Whether a failure sends the latest values again by itself. */
+/**
+ * Whether a failure sends the latest values again by itself: a 429 of the rate, or of one client's
+ * calculations, and a 503 of a busy server, each when it says when to try again.
+ */
 export function retriesByItself(error: ApiError): boolean {
   return (
-    error.status === 429 &&
+    (error.status === 429 || error.status === 503) &&
     error.retryAfterS !== null &&
     error.retryAfterS <= MAX_RETRY_AFTER_S
   );

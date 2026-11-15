@@ -111,6 +111,34 @@
                       "details": []
                     }
                   },
+                  "calculation_busy": {
+                    "value": {
+                      "code": "calculation_busy",
+                      "message": "Too many calculations are waiting. Try again shortly.",
+                      "details": []
+                    }
+                  },
+                  "client_calc_limit": {
+                    "value": {
+                      "code": "client_calc_limit",
+                      "message": "At most 4 calculations of one client at once",
+                      "details": []
+                    }
+                  },
+                  "server_busy": {
+                    "value": {
+                      "code": "server_busy",
+                      "message": "Too many requests at once. Try again shortly.",
+                      "details": []
+                    }
+                  },
+                  "request_timeout": {
+                    "value": {
+                      "code": "request_timeout",
+                      "message": "A request's body must arrive within 60.0 s, with no pause over 10.0 s",
+                      "details": []
+                    }
+                  },
                   "client_fit_limit": {
                     "value": {
                       "code": "client_fit_limit",
@@ -2452,6 +2480,34 @@
                       "details": []
                     }
                   },
+                  "calculation_busy": {
+                    "value": {
+                      "code": "calculation_busy",
+                      "message": "Too many calculations are waiting. Try again shortly.",
+                      "details": []
+                    }
+                  },
+                  "client_calc_limit": {
+                    "value": {
+                      "code": "client_calc_limit",
+                      "message": "At most 4 calculations of one client at once",
+                      "details": []
+                    }
+                  },
+                  "server_busy": {
+                    "value": {
+                      "code": "server_busy",
+                      "message": "Too many requests at once. Try again shortly.",
+                      "details": []
+                    }
+                  },
+                  "request_timeout": {
+                    "value": {
+                      "code": "request_timeout",
+                      "message": "A request's body must arrive within 60.0 s, with no pause over 10.0 s",
+                      "details": []
+                    }
+                  },
                   "client_fit_limit": {
                     "value": {
                       "code": "client_fit_limit",
@@ -2671,6 +2727,34 @@
                       "details": []
                     }
                   },
+                  "calculation_busy": {
+                    "value": {
+                      "code": "calculation_busy",
+                      "message": "Too many calculations are waiting. Try again shortly.",
+                      "details": []
+                    }
+                  },
+                  "client_calc_limit": {
+                    "value": {
+                      "code": "client_calc_limit",
+                      "message": "At most 4 calculations of one client at once",
+                      "details": []
+                    }
+                  },
+                  "server_busy": {
+                    "value": {
+                      "code": "server_busy",
+                      "message": "Too many requests at once. Try again shortly.",
+                      "details": []
+                    }
+                  },
+                  "request_timeout": {
+                    "value": {
+                      "code": "request_timeout",
+                      "message": "A request's body must arrive within 60.0 s, with no pause over 10.0 s",
+                      "details": []
+                    }
+                  },
                   "client_fit_limit": {
                     "value": {
                       "code": "client_fit_limit",
@@ -2784,6 +2868,47 @@
                     "value": {
                       "code": "rate_limited",
                       "message": "Too many requests",
+                      "details": []
+                    }
+                  },
+                  "client_calc_limit": {
+                    "value": {
+                      "code": "client_calc_limit",
+                      "message": "At most 4 calculations of one client at once",
+                      "details": []
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The server is busy; try again after Retry-After",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer"
+                },
+                "example": 2
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "calculation_busy": {
+                    "value": {
+                      "code": "calculation_busy",
+                      "message": "Too many calculations are waiting. Try again shortly.",
+                      "details": []
+                    }
+                  },
+                  "server_busy": {
+                    "value": {
+                      "code": "server_busy",
+                      "message": "Too many requests at once. Try again shortly.",
                       "details": []
                     }
                   }
@@ -2907,6 +3032,34 @@
                     "value": {
                       "code": "request_too_large",
                       "message": "A request can hold at most 10000000 bytes",
+                      "details": []
+                    }
+                  },
+                  "calculation_busy": {
+                    "value": {
+                      "code": "calculation_busy",
+                      "message": "Too many calculations are waiting. Try again shortly.",
+                      "details": []
+                    }
+                  },
+                  "client_calc_limit": {
+                    "value": {
+                      "code": "client_calc_limit",
+                      "message": "At most 4 calculations of one client at once",
+                      "details": []
+                    }
+                  },
+                  "server_busy": {
+                    "value": {
+                      "code": "server_busy",
+                      "message": "Too many requests at once. Try again shortly.",
+                      "details": []
+                    }
+                  },
+                  "request_timeout": {
+                    "value": {
+                      "code": "request_timeout",
+                      "message": "A request's body must arrive within 60.0 s, with no pause over 10.0 s",
                       "details": []
                     }
                   },
@@ -3411,6 +3564,34 @@
                       "details": []
                     }
                   },
+                  "calculation_busy": {
+                    "value": {
+                      "code": "calculation_busy",
+                      "message": "Too many calculations are waiting. Try again shortly.",
+                      "details": []
+                    }
+                  },
+                  "client_calc_limit": {
+                    "value": {
+                      "code": "client_calc_limit",
+                      "message": "At most 4 calculations of one client at once",
+                      "details": []
+                    }
+                  },
+                  "server_busy": {
+                    "value": {
+                      "code": "server_busy",
+                      "message": "Too many requests at once. Try again shortly.",
+                      "details": []
+                    }
+                  },
+                  "request_timeout": {
+                    "value": {
+                      "code": "request_timeout",
+                      "message": "A request's body must arrive within 60.0 s, with no pause over 10.0 s",
+                      "details": []
+                    }
+                  },
                   "client_fit_limit": {
                     "value": {
                       "code": "client_fit_limit",
@@ -3524,6 +3705,47 @@
                     "value": {
                       "code": "rate_limited",
                       "message": "Too many requests",
+                      "details": []
+                    }
+                  },
+                  "client_calc_limit": {
+                    "value": {
+                      "code": "client_calc_limit",
+                      "message": "At most 4 calculations of one client at once",
+                      "details": []
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The server is busy; try again after Retry-After",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer"
+                },
+                "example": 2
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "calculation_busy": {
+                    "value": {
+                      "code": "calculation_busy",
+                      "message": "Too many calculations are waiting. Try again shortly.",
+                      "details": []
+                    }
+                  },
+                  "server_busy": {
+                    "value": {
+                      "code": "server_busy",
+                      "message": "Too many requests at once. Try again shortly.",
                       "details": []
                     }
                   }
@@ -3754,6 +3976,34 @@
                       "details": []
                     }
                   },
+                  "calculation_busy": {
+                    "value": {
+                      "code": "calculation_busy",
+                      "message": "Too many calculations are waiting. Try again shortly.",
+                      "details": []
+                    }
+                  },
+                  "client_calc_limit": {
+                    "value": {
+                      "code": "client_calc_limit",
+                      "message": "At most 4 calculations of one client at once",
+                      "details": []
+                    }
+                  },
+                  "server_busy": {
+                    "value": {
+                      "code": "server_busy",
+                      "message": "Too many requests at once. Try again shortly.",
+                      "details": []
+                    }
+                  },
+                  "request_timeout": {
+                    "value": {
+                      "code": "request_timeout",
+                      "message": "A request's body must arrive within 60.0 s, with no pause over 10.0 s",
+                      "details": []
+                    }
+                  },
                   "client_fit_limit": {
                     "value": {
                       "code": "client_fit_limit",
@@ -3867,6 +4117,47 @@
                     "value": {
                       "code": "rate_limited",
                       "message": "Too many requests",
+                      "details": []
+                    }
+                  },
+                  "client_calc_limit": {
+                    "value": {
+                      "code": "client_calc_limit",
+                      "message": "At most 4 calculations of one client at once",
+                      "details": []
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The server is busy; try again after Retry-After",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer"
+                },
+                "example": 2
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "calculation_busy": {
+                    "value": {
+                      "code": "calculation_busy",
+                      "message": "Too many calculations are waiting. Try again shortly.",
+                      "details": []
+                    }
+                  },
+                  "server_busy": {
+                    "value": {
+                      "code": "server_busy",
+                      "message": "Too many requests at once. Try again shortly.",
                       "details": []
                     }
                   }
@@ -4052,6 +4343,34 @@
                     "value": {
                       "code": "request_too_large",
                       "message": "A request can hold at most 10000000 bytes",
+                      "details": []
+                    }
+                  },
+                  "calculation_busy": {
+                    "value": {
+                      "code": "calculation_busy",
+                      "message": "Too many calculations are waiting. Try again shortly.",
+                      "details": []
+                    }
+                  },
+                  "client_calc_limit": {
+                    "value": {
+                      "code": "client_calc_limit",
+                      "message": "At most 4 calculations of one client at once",
+                      "details": []
+                    }
+                  },
+                  "server_busy": {
+                    "value": {
+                      "code": "server_busy",
+                      "message": "Too many requests at once. Try again shortly.",
+                      "details": []
+                    }
+                  },
+                  "request_timeout": {
+                    "value": {
+                      "code": "request_timeout",
+                      "message": "A request's body must arrive within 60.0 s, with no pause over 10.0 s",
                       "details": []
                     }
                   },
@@ -4765,6 +5084,34 @@
                     "value": {
                       "code": "request_too_large",
                       "message": "A request can hold at most 10000000 bytes",
+                      "details": []
+                    }
+                  },
+                  "calculation_busy": {
+                    "value": {
+                      "code": "calculation_busy",
+                      "message": "Too many calculations are waiting. Try again shortly.",
+                      "details": []
+                    }
+                  },
+                  "client_calc_limit": {
+                    "value": {
+                      "code": "client_calc_limit",
+                      "message": "At most 4 calculations of one client at once",
+                      "details": []
+                    }
+                  },
+                  "server_busy": {
+                    "value": {
+                      "code": "server_busy",
+                      "message": "Too many requests at once. Try again shortly.",
+                      "details": []
+                    }
+                  },
+                  "request_timeout": {
+                    "value": {
+                      "code": "request_timeout",
+                      "message": "A request's body must arrive within 60.0 s, with no pause over 10.0 s",
                       "details": []
                     }
                   },

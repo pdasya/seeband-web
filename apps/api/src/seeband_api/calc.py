@@ -32,7 +32,7 @@ from seeband_api.request_checks import (
     to_measurements,
 )
 from seeband_api.request_logging import log_calculation_failure
-from seeband_api.routing import api_router, too_many_requests
+from seeband_api.routing import api_router, service_busy, too_many_requests
 
 router = api_router("calc")
 
@@ -230,7 +230,13 @@ def _to_response(
     )
 
 
-@router.post("/calc", responses={429: too_many_requests()})
+@router.post(
+    "/calc",
+    responses={
+        429: too_many_requests(("rate_limited", "client_calc_limit")),
+        503: service_busy(),
+    },
+)
 async def post_calc(body: CalcRequest, pool: CalcPoolDep, max_points: MaxPointsDep) -> CalcResponse:
     description, fit_mode = find_mode(
         body.model, body.fit_mode, "invalid_calculation", "Invalid calculation"

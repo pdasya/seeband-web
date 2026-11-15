@@ -44,6 +44,11 @@ export function failureText(error: ApiError): string {
       return text.noResult;
     case "rate_limited":
       return retriesByItself(error) ? text.rateLimited : text.rateLimitedWait;
+    // The server is busy, with the calculations of others or of this page, and says when to retry.
+    case "calculation_busy":
+    case "server_busy":
+    case "client_calc_limit":
+      return retriesByItself(error) ? text.busy : text.serverUnavailable;
     case NETWORK_ERROR:
       return text.networkError;
     default:

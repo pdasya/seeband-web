@@ -33,7 +33,7 @@ from seeband_api.json_values import finite_or_none
 from seeband_api.parse_worker import FitRange, ParseOutcome, UnknownColumn, parse
 from seeband_api.request_checks import MaxPointsDep, bounded
 from seeband_api.request_logging import log_calculation_failure
-from seeband_api.routing import api_router, too_many_requests
+from seeband_api.routing import api_router, service_busy, too_many_requests
 
 router = api_router("parse")
 
@@ -401,7 +401,8 @@ PARSE_EXAMPLE_RESPONSES: dict[str, dict[str, Any]] = {
                 }
             }
         },
-        429: too_many_requests(),
+        429: too_many_requests(("rate_limited", "client_calc_limit")),
+        503: service_busy(),
     },
 )
 async def post_parse(

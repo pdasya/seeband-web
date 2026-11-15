@@ -108,6 +108,26 @@ ERROR_EXAMPLES: dict[str, dict[str, Any]] = {
         "message": "A request can hold at most 10000000 bytes",
         "details": [],
     },
+    "calculation_busy": {
+        "code": "calculation_busy",
+        "message": "Too many calculations are waiting. Try again shortly.",
+        "details": [],
+    },
+    "client_calc_limit": {
+        "code": "client_calc_limit",
+        "message": "At most 4 calculations of one client at once",
+        "details": [],
+    },
+    "server_busy": {
+        "code": "server_busy",
+        "message": "Too many requests at once. Try again shortly.",
+        "details": [],
+    },
+    "request_timeout": {
+        "code": "request_timeout",
+        "message": "A request's body must arrive within 60.0 s, with no pause over 10.0 s",
+        "details": [],
+    },
     "client_fit_limit": {
         "code": "client_fit_limit",
         "message": "This client has too many fits running or waiting",
