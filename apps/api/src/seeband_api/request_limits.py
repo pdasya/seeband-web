@@ -111,10 +111,18 @@ class RequestLimitsMiddleware:
     with streaming responses.
     """
 
-    def __init__(self, app: ASGIApp, limiter: RateLimiter, max_body_bytes: int) -> None:
+    def __init__(
+        self,
+        app: ASGIApp,
+        limiter: RateLimiter,
+        max_body_bytes: int,
+        max_body_bytes_by_path: Mapping[str, int] | None = None,
+    ) -> None:
         self._app = app
         self._limiter = limiter
         self._max_body_bytes = max_body_bytes
+        # Routes that take numbers rather than a file have a smaller limit of their own.
+        self._max_body_bytes_by_path = max_body_bytes_by_path or {}
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
@@ -123,9 +131,10 @@ class RequestLimitsMiddleware:
         if await self._refused_by_rate(scope, receive, send):
             return
 
+        limit = self._max_body_bytes_by_path.get(_route_path(scope), self._max_body_bytes)
         length = _content_length(scope)
-        if length is not None and length > self._max_body_bytes:
-            await self._refuse_size(scope, receive, send)
+        if length is not None and length > limit:
+            await self._refuse_size(scope, receive, send, limit)
             return
         chunks: list[bytes] = []
         size = 0
@@ -135,8 +144,8 @@ class RequestLimitsMiddleware:
                 return  # The client has gone, so there is nobody to answer.
             chunk = message.get("body", b"")
             size += len(chunk)
-            if size > self._max_body_bytes:
-                await self._refuse_size(scope, receive, send)
+            if size > limit:
+                await self._refuse_size(scope, receive, send, limit)
                 return
             chunks.append(chunk)
             if not message.get("more_body", False):
@@ -170,12 +179,12 @@ class RequestLimitsMiddleware:
         await response(scope, receive, send)
         return True
 
-    async def _refuse_size(self, scope: Scope, receive: Receive, send: Send) -> None:
+    async def _refuse_size(self, scope: Scope, receive: Receive, send: Send, limit: int) -> None:
         response = error_response(
             HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
             ErrorResponse(
                 code="request_too_large",
-                message=f"A request can hold at most {self._max_body_bytes} bytes",
+                message=f"A request can hold at most {limit} bytes",
                 details=[],
             ),
             headers={"Connection": "close"},

@@ -19,10 +19,16 @@ class Settings(BaseSettings):
     fit_max_waiting: int = Field(default=4, ge=0)
     fit_timeout_s: float = Field(default=60.0, gt=0)
     fit_max_per_client: int = Field(default=2, ge=1)
-    # A file's text is limited to 2000000 characters, which UTF-8 holds in at most 8 MB.
+    # A file's text is limited to 2000000 characters, which UTF-8 holds in at most 8 MB. This is
+    # the limit of `POST /api/parse` and of any route not in `max_json_body_bytes`.
     max_body_bytes: int = Field(default=10_000_000, ge=1)
-    # A fit's time grows with its points, about 6 to 11 ms for each point on one Mac.
-    max_points: int = Field(default=2000, ge=1)
+    # Calc, fit, guess and band-diagram hold numbers, not a file: 3 quantities of 2000 points, each
+    # value in up to 24 characters, take about 300 KB. A larger body is refused before it is read.
+    # Raise it with `max_points`.
+    max_json_body_bytes: int = Field(default=1_000_000, ge=1)
+    # A fit's time grows with its points, about 6 to 11 ms for each point on one Mac. It cannot pass
+    # `request_checks.MAX_LISTED_POINTS`, the most a request's list can hold.
+    max_points: int = Field(default=2000, ge=1, le=100_000)
     # Per client. A slider sends many cheap curves, and a fit can take a minute.
     calc_per_minute: int = Field(default=600, ge=1)
     band_diagram_per_minute: int = Field(default=600, ge=1)

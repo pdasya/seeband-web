@@ -72,6 +72,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         RequestLimitsMiddleware,
         limiter=RateLimiter(per_minute),
         max_body_bytes=settings.max_body_bytes,
+        max_body_bytes_by_path=dict.fromkeys(
+            ("/api/calc", "/api/fit", "/api/guess", "/api/band-diagram"),
+            settings.max_json_body_bytes,
+        ),
     )
     # Added last, so that it runs first and logs the requests that the limits refuse.
     app.add_middleware(
