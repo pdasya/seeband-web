@@ -49,7 +49,8 @@ PositiveFloat = Annotated[float, Field(gt=0, allow_inf_nan=False, strict=True)]
 # A line that starts like a number, after spaces or tabs. The parser reads such a line as a row, so
 # counting them is a cheap upper bound on its rows that refuses a long text before the pool reads
 # it. A row after other blanks goes uncounted, and the parser's own count still applies to it.
-_ROW_START = re.compile(r"^[ \t]*[+-]?(?:\d|\.\d)", re.MULTILINE)
+# A bare carriage return ends a line too, as for the parser.
+_ROW_START = re.compile(r"(?:^|\r)[ \t]*[+-]?(?:\d|\.\d)", re.MULTILINE)
 
 
 def _more_rows_than(text: str, limit: int) -> bool:
