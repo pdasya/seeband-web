@@ -10,6 +10,7 @@ import subprocess
 import sys
 import time
 from collections.abc import Awaitable, Callable, Iterator
+from multiprocessing import forkserver
 from multiprocessing.context import ForkServerProcess
 from pathlib import Path
 from typing import Any
@@ -202,11 +203,22 @@ def test_cancelling_a_call_ends_its_process(tmp_path: Path) -> None:
 
 
 def test_a_fit_starts_with_the_core_loaded() -> None:
+    """Under `spawn`, importing `fit_worker` loads all of these but `seeband_core.verified_fit`,
+    which the core imports lazily, so that one is what tells a fork server from a fresh start."""
     runner = FitRunner(1, 0, 30.0)
 
     loaded = _run(lambda: runner.run(fit_functions.loaded_modules, list(PRELOADED)))
 
     assert loaded == list(PRELOADED)
+
+
+def test_a_fit_process_is_forked_from_the_fork_server() -> None:
+    runner = FitRunner(1, 0, 30.0)
+
+    parent = _run(lambda: runner.run(fit_functions.parent_pid))
+
+    assert parent != os.getpid()
+    assert parent == forkserver._forkserver._forkserver_pid
 
 
 def test_a_fit_process_does_not_import_the_web_framework() -> None:

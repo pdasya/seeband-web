@@ -101,6 +101,10 @@ def fake_not_finite(_: str, __: Any, send: Callable[[IterationUpdate], None]) ->
     return FitResult({"m_eff": math.inf, "band_gap": 900.0}, "converged", iterations=1)
 
 
-def loaded_modules(names: list[str], send: Callable[[int], None]) -> list[str]:
+def loaded_modules(names: list[str], send: Callable[[IterationUpdate], None]) -> list[str]:
     """The modules among `names` that the process holds before it imports anything for the fit."""
     return [name for name in names if name in sys.modules]
+
+
+def parent_pid(send: Callable[[IterationUpdate], None]) -> int:
+    return os.getppid()

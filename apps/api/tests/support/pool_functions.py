@@ -60,3 +60,6 @@ def hang_the_first_time(flag: str) -> None:
         return
     time.sleep(30)
 
+
+def parent_pid() -> int:
+    return os.getppid()

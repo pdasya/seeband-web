@@ -4,6 +4,7 @@ import json
 import logging
 import math
 from collections.abc import Iterator
+from multiprocessing import forkserver
 from pathlib import Path
 from typing import Any
 
@@ -754,7 +755,10 @@ def test_dead_worker_answers_503_and_the_pool_recovers() -> None:
 def test_a_new_pool_gives_out_no_slot_until_its_workers_answer(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The job's time starts once the workers are up, so a slow start is not taken as its own."""
+    """The job's time starts once the workers are up, so a slow start is not taken as its own.
+
+    Here the warm-up answers to the loop that waits, through `call_soon_threadsafe`.
+    """
     monkeypatch.setattr(calc_pool, "warm_up", pool_functions.slow_warm_up)
     pool = CalcPool(1, 0.3)
 
@@ -771,7 +775,11 @@ def test_a_new_pool_gives_out_no_slot_until_its_workers_answer(
 def test_a_replaced_pool_gives_out_no_slot_until_its_workers_answer(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Workers replaced after one died warm up slowly, and the next job still has its whole time."""
+    """Workers replaced after one died warm up slowly, and the next job still has its whole time.
+
+    Each call runs in its own event loop, so the warm-up answers to a loop that has closed, and the
+    waiting job sees it at its next poll.
+    """
     pool = CalcPool(1, 0.3)
     try:
         assert _run_in_pool(pool, pool_functions.double, 1) == 2
@@ -807,6 +815,15 @@ def test_a_warm_up_that_does_not_answer_gets_new_workers(
     finally:
         pool.close()
     assert "calc_warm_up_stuck" in [record.getMessage() for record in caplog.records]
+
+
+def test_pool_workers_are_forked_from_the_fork_server() -> None:
+    pool = CalcPool(1, 30.0)
+    try:
+        parent = _run_in_pool(pool, pool_functions.parent_pid)
+    finally:
+        pool.close()
+    assert parent == forkserver._forkserver._forkserver_pid
 
 
 def test_pool_workers_start_with_the_core_loaded() -> None:
