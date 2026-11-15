@@ -657,7 +657,10 @@ test("a failed export says so, and downloads nothing", async ({ page }) => {
   });
 
   await page.getByRole("button", { name: "Data to file" }).click();
-  await page.getByRole("button", { name: "Download" }).click();
+  await page
+    .getByRole("dialog", { name: "Data to file", exact: true })
+    .getByRole("button", { name: "Download", exact: true })
+    .click();
 
   await expect(
     page.getByText(
@@ -677,7 +680,10 @@ async function inFormat(
   await page.getByRole("radio", { name: new RegExp(`^${format}`) }).click();
   const [file] = await Promise.all([
     page.waitForEvent("download"),
-    page.getByRole("button", { name: "Download" }).click(),
+    page
+      .getByRole("dialog", { name: button, exact: true })
+      .getByRole("button", { name: "Download", exact: true })
+      .click(),
   ]);
   return readFileSync(await file.path());
 }
@@ -798,7 +804,10 @@ test("a fit that ends while the server answers does not change the file's header
   await page.getByRole("button", { name: "Data to file" }).click();
   await page.getByRole("radio", { name: /^Text/ }).click();
   const download = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Download" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Download", exact: true })
+    .click();
   await expect.poll(() => held.length).toBeGreaterThan(0);
   await send(page, { type: "done", result: RESULT });
   await expect(page.getByRole("button", { name: "Run fit" })).toBeVisible();
