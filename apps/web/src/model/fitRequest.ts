@@ -109,6 +109,7 @@ export function fitRequest(
 
   return {
     request: {
+      algorithm: selection.algorithm ?? "verified-sequential-v2",
       model: model.id,
       fit_mode: mode.id,
       scattering: selection.scattering,

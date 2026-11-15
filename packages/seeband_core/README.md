@@ -10,6 +10,11 @@ SPB numerical initial estimates and DPB neural guesses are described in [Initial
 
 ## Calculation versions
 
+Core `0.2.0` makes [verified sequential fitting](docs/verified-sequential-fit.md)
+the default and retains the previous method as explicit `legacy-sequential-v1`.
+Results identify the actual algorithm and separate numerical checks from physical
+adequacy. The physical curve kernels retain the P13 model.
+
 `seeband_core.__version__` is the package version source. Core `0.1.0`
 identifies the P2–P7 calculation state. Core `0.1.1` adds P8, and core `0.1.2`
 adds P9 neural-net selection from actual Tmin/Tmax with paired-row sorting

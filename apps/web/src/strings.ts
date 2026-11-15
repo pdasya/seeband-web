@@ -428,6 +428,8 @@ export const STRINGS = {
   },
   status: {
     running: "Fitting…",
+    settled: "Numerically settled",
+    stalled: "Numerical fit stalled",
     converged: "Converged",
     iterationLimit: "Iteration limit reached",
     stopped: "Stopped",
@@ -435,6 +437,46 @@ export const STRINGS = {
     suggested: "Initial guess",
   },
   fit: {
+    algorithm: {
+      label: "Fitting method",
+      verified: "Verified sequential",
+      legacy: "Legacy sequential (reproduce earlier results)",
+      unknown: "Unknown",
+      provenance: (algorithm: string) => `Fitting method: ${algorithm}`,
+    },
+    diagnostics: {
+      title: "Numerical diagnostics",
+      terminationReasons: {
+        conditional_stage_optima: "Conditional stage optima reached",
+        cycle_or_stall: "Cycle or stall detected",
+        callback: "Stopped by request",
+        sweep_budget: "Iteration budget reached",
+        evaluation_budget: "Evaluation budget reached",
+        numerical_failure: "Numerical failure",
+      },
+      otherTermination: "Other numerical stop",
+      consistent: "Stages consistent at the returned parameters",
+      inconsistent: "Stages are not consistent at the returned parameters",
+      termination: (reason: string) => `Termination: ${reason}`,
+      effort: (evaluations: number, recoveries: number) =>
+        `${String(evaluations)} evaluations; ${String(recoveries)} recoveries`,
+      residual: (
+        quantity: string,
+        rmse: string,
+        unit: string,
+        relative: string,
+      ) => `${quantity}: RMSE ${rmse} ${unit}; relative L2 ${relative}`,
+      residualInputs:
+        "Fit-input residuals (including interpolated points when used)",
+      unavailable: "not defined for a zero signal",
+      unidentified: (names: string) => `Not identified: ${names}`,
+      notAssessed:
+        "Physical adequacy and parameter uncertainty have not been assessed.",
+      stalled:
+        "The numerical fit stalled. These are usable endpoint values, not a converged result.",
+      settled:
+        "The numerical stop criteria were met; physical adequacy and uncertainty have not been assessed.",
+    },
     pageTitle: "Model fit",
     data: "Data",
     charts: "Charts",
@@ -543,9 +585,9 @@ export const STRINGS = {
     knownIssueOther: "A known error applies to this result.",
     knownIssueTexts: {
       "known_issue.dpb_loop_degeneracy":
-        "With N₂/N₁ other than 1, the fit returns m₂/m₁ times N₂/N₁, so the value shown can leave its bounds. The bounds and the at-bound mark apply to the value before that factor.",
+        "In the legacy method with N₂/N₁ other than 1, the fit returns m₂/m₁ times N₂/N₁, so the value shown can leave its bounds. The bounds and the at-bound mark apply before that factor.",
       "known_issue.collapsed_m_eff":
-        "With m₂/m₁ near 0, the other band has no weight left, so the data do not settle the fit, and it can differ between machines.",
+        "With m₂/m₁ near 0, the fit can be poorly conditioned. The data may not determine the band parameters separately, and results can differ between machines.",
       "known_issue.no_chemical_potential":
         "With the Fermi energy outside the band, there are no carriers, so the chemical potential and the curves from it mean nothing.",
       "known_issue.hall_dis_no_reference":
@@ -818,8 +860,8 @@ export const STRINGS = {
       convergedText: "The fit met its stop rule.",
       convergedBelow: (percent: string, iterations: number | null) =>
         iterations === null
-          ? `The fit met its stop rule, a change of at most ${percent} %.`
-          : `The fit met its stop rule, a change of at most ${percent} %, in iteration ${String(iterations)}.`,
+          ? `The legacy fit met its stop rule, a change of at most ${percent} %.`
+          : `The legacy fit met its stop rule, a change of at most ${percent} %, in iteration ${String(iterations)}.`,
       done: "Done",
       singlePass: "One pass: this fit mode does not iterate.",
       limit: "Iteration limit",

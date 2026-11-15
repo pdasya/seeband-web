@@ -66,8 +66,16 @@ def test_curve_rmse_works_for_manual_parameters_between_grid_points() -> None:
     assert wrong.value > 1
 
 
+@pytest.mark.parametrize("points", [2, 50, 200])
+def test_builtin_rmse_uses_measured_temperatures_without_grid_dependence(points: int) -> None:
+    model = registry.get("dpb")
+    data = {"seebeck": synthetic_seebeck()}
+    result = curve_rmse(model, "dpb_s", DPB_TRUE, data, points=points)
+    assert result["seebeck"].value == pytest.approx(0.0, abs=1e-10)
+
+
 @pytest.mark.filterwarnings("ignore")
-def test_curve_rmse_gives_each_quantity_from_one_curve(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_builtin_rmse_does_not_interpolate_a_plot_grid(monkeypatch: pytest.MonkeyPatch) -> None:
     model = registry.get("dpb")
     fit_mode = model.describe().fit_mode("dpb_s_rho")
     values = default_start(fit_mode)
@@ -85,9 +93,40 @@ def test_curve_rmse_gives_each_quantity_from_one_curve(monkeypatch: pytest.Monke
 
     monkeypatch.setattr(type(model), "calculate", counted)
     result = curve_rmse(model, "dpb_s_rho", values, data, "acPh")
-    assert len(calls) == 1
+    assert calls == []
     assert result["seebeck"] == Rmse(pytest.approx(0.0, abs=1e-9), "uV/K")  # type: ignore[arg-type]
     assert result["resistivity"] == Rmse(pytest.approx(0.0, abs=1e-9), "%")  # type: ignore[arg-type]
+
+
+def test_zero_hall_has_no_pointwise_percentage_rmse() -> None:
+    model = registry.get("dpb")
+    mode = model.describe().fit_mode("dpb_s_rho_rh")
+    parameters = default_start(mode) | {"m_eff": 1.0, "band_gap": 600.0, "fermi_energy": 300.0}
+    data = {"hall": Measurement(np.array([100.0, 200.0, 300.0]), np.zeros(3))}
+    assert curve_rmse(model, mode.id, parameters, data, "acPh")["hall"] == Rmse(None, "%")
+
+
+def test_nonfinite_preview_metric_is_unavailable_without_hiding_density_failures(monkeypatch):
+    from seeband_core import verified_fit
+
+    calls = []
+
+    def evaluation(model_id, mode, parameters, temperature, scattering, degen, **kwargs):
+        calls.append(kwargs)
+        return {"seebeck": np.full(temperature.shape, np.nan)}
+
+    monkeypatch.setattr(verified_fit, "evaluate", evaluation)
+    data = {"seebeck": synthetic_seebeck()}
+    result = curve_rmse(registry.get("dpb"), "dpb_s", DPB_TRUE, data)
+    assert result["seebeck"] == Rmse(None, "uV/K")
+    assert calls == [{"quantities": ("seebeck",), "check_finite": False}]
+
+    def failure(*args, **kwargs):
+        raise math_module.ChemicalPotentialError(100.0, "density residual exceeds tolerance", 0.1)
+
+    monkeypatch.setattr(verified_fit, "evaluate", failure)
+    with pytest.raises(math_module.ChemicalPotentialError, match="density residual"):
+        curve_rmse(registry.get("dpb"), "dpb_s", DPB_TRUE, data)
 
 
 @pytest.mark.filterwarnings("ignore")
@@ -141,7 +180,9 @@ def test_a_fit_recovers_known_parameters_with_small_errors() -> None:
         data.temperature_k, data.values + generator.normal(0, 1e-6, data.values.size)
     )
     start = {"m_eff": 1.0, "band_gap": 800.0, "fermi_energy": -100.0}
-    result = model.fit(FitRequest("dpb_s", {"seebeck": noisy}, start))
+    result = model.fit(
+        FitRequest("dpb_s", {"seebeck": noisy}, start, algorithm="legacy-sequential-v1")
+    )
     assert result.status == "converged"
     assert result.at_bounds == ()
     assert set(result.parameter_errors) == set(DPB_TRUE)
@@ -180,7 +221,14 @@ def run_staged(
     fit_mode = model.describe().fit_mode(fit_mode_id)
     data = {quantity: synthetic_seebeck() for quantity in fit_mode.quantities}
     return model.fit(
-        FitRequest(fit_mode_id, data, default_start(fit_mode), scattering=scattering, **request)
+        FitRequest(
+            fit_mode_id,
+            data,
+            default_start(fit_mode),
+            scattering=scattering,
+            **request,
+            algorithm="legacy-sequential-v1",
+        )
     )
 
 
@@ -453,6 +501,7 @@ def test_stages_of_a_real_loop_hold_their_last_run(fit_mode_id: str, scattering:
                 default_start(fit_mode),
                 scattering=scattering,
                 band_2_degeneracy=2.0,
+                algorithm="legacy-sequential-v1",
             )
         )
     assert result.status == "iteration_limit"
@@ -533,7 +582,12 @@ def test_a_stopped_hall_fit_does_not_flag_m1_it_never_fitted() -> None:
         raise FitStopped
 
     start = default_start(fit_mode) | {"m1": 10.0}
-    result = model.fit(FitRequest("dpb_s_rho_rh", data, start, scattering="acPh"), stop)
+    result = model.fit(
+        FitRequest(
+            "dpb_s_rho_rh", data, start, scattering="acPh", algorithm="legacy-sequential-v1"
+        ),
+        stop,
+    )
     assert result.status == "stopped"
     assert "m1" not in result.at_bounds
     assert "m1" not in result.parameter_errors
@@ -562,6 +616,7 @@ def test_a_stopped_fit_flags_what_it_reached(monkeypatch: pytest.MonkeyPatch) ->
             {q: synthetic_seebeck() for q in fit_mode.quantities},
             default_start(fit_mode),
             scattering="acPh",
+            algorithm="legacy-sequential-v1",
         ),
         stop,
     )
@@ -581,7 +636,12 @@ def test_a_failed_fit_has_no_errors_or_flags(monkeypatch: pytest.MonkeyPatch) ->
     model = registry.get("dpb")
     fit_mode = model.describe().fit_mode("dpb_s")
     result = model.fit(
-        FitRequest("dpb_s", {"seebeck": synthetic_seebeck()}, default_start(fit_mode))
+        FitRequest(
+            "dpb_s",
+            {"seebeck": synthetic_seebeck()},
+            default_start(fit_mode),
+            algorithm="legacy-sequential-v1",
+        )
     )
     assert (result.status, result.parameter_errors, result.at_bounds) == ("failed", {}, ())
 
@@ -611,6 +671,7 @@ def test_the_recorded_case_of_e_f_at_its_bound_is_flagged() -> None:
             recorded_seebeck(run["calls"][0], 2),
             default_start(fit_mode),
             scattering="acPh",
+            algorithm="legacy-sequential-v1",
         )
     )
     assert "fermi_energy" in result.at_bounds
@@ -628,7 +689,11 @@ def test_a_stopped_fit_keeps_its_errors() -> None:
 
     result = model.fit(
         FitRequest(
-            "dpb_s_rho", recorded_seebeck(call, 2), default_start(fit_mode), scattering="acPh"
+            "dpb_s_rho",
+            recorded_seebeck(call, 2),
+            default_start(fit_mode),
+            scattering="acPh",
+            algorithm="legacy-sequential-v1",
         ),
         stop,
     )
@@ -664,7 +729,15 @@ def test_dpb_effective_branch_boundary_is_reported(monkeypatch, mode_id, mass, t
     if tight_bounds:
         bounds = Bounds(-3, -0.5) if mass < 0 else Bounds(0.5, 3)
     result = model.fit(
-        FitRequest(mode_id, data, start, bounds={"m_eff": bounds}, scattering=scattering, held=held)
+        FitRequest(
+            mode_id,
+            data,
+            start,
+            bounds={"m_eff": bounds},
+            scattering=scattering,
+            held=held,
+            algorithm="legacy-sequential-v1",
+        )
     )
     assert result.status == "converged", result.message
     assert result.parameters["m_eff"] == pytest.approx(

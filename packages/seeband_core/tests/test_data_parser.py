@@ -363,7 +363,7 @@ def _in_lab_units(path: Path, exponent: int) -> str:
 def test_a_fit_from_lab_units_equals_the_fit_from_si(
     seebeck_unit: Any, seebeck_exponent: int, resistivity_unit: Any, resistivity_exponent: int
 ) -> None:
-    """SI data and the same data in lab units give the same parameters."""
+    """Historical estimator parity is preserved after converting lab units to SI."""
     example = FIXTURES / "examples" / "01_Fe2VAl09Si01"
     si = {
         "seebeck": parse_table(Path(f"{example}_see.txt").read_text(), "seebeck"),
@@ -390,6 +390,7 @@ def test_a_fit_from_lab_units_equals_the_fit_from_si(
                 {quantity: table.measurements[quantity] for quantity, table in tables.items()},  # type: ignore[index]
                 default_start(mode),
                 scattering="acPh",
+                algorithm="legacy-sequential-v1",
             ),
             lambda *_: None,
         )

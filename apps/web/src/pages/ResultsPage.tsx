@@ -25,6 +25,7 @@ import {
   derivedKind,
   ENERGY_IN_K,
 } from "@/model/chartTabs";
+import { NumericalDiagnostics } from "@/model/FitControls";
 import { fitLog, type LogStep } from "@/model/fitLog";
 import { fitBadge } from "@/model/fitStatus";
 import {
@@ -460,6 +461,7 @@ export function ResultsPage() {
             ? ""
             : reportText.waiting}
       </p>
+      <NumericalDiagnostics fit={fit} />
       {report.failed && (
         <p role="alert" className="m-0 text-xs text-destructive print:hidden">
           {reportText.failed}

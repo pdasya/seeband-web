@@ -37,6 +37,12 @@ Human physicist confirmation remains pending.
 
 ## Result versions and provenance
 
+Core `0.2.0` defaults to `verified-sequential-v2`, with exact conditional
+amplitude fitting, public-R DPB coordinates and final-stage consistency checks.
+Explicit `legacy-sequential-v1` retains the previous fitting path and its
+documented limitations. Algorithm provenance and diagnostics do not supply
+physical acceptance. See [verified sequential fitting](../../packages/seeband_core/docs/verified-sequential-fit.md).
+
 [Results that changed](results-changed.md) lists the P2–P7 corrections included
 in core 0.1.0 and the remaining confirmation gates.
 
@@ -75,8 +81,9 @@ DPB formulas receive r = R/N, the mass ratio weighted by inverse degeneracy.
 
 In DPB S-only mode, fitting and drawing convert R to r = R/N exactly once;
 starts, fitted values, bounds and reported uncertainties remain in public R
-coordinates. Derived curves also convert R to r. Iterative fitting retains the
-separate mass/bounds inconsistency described below (#85). The carrier-density weight is N |R|^(3/2). Longitudinal
+coordinates. Derived curves also convert R to r. The explicit legacy iterative
+route retains the mass/bounds inconsistency described below (#85); the default
+verified route uses public R consistently. The carrier-density weight is N |R|^(3/2). Longitudinal
 transport uses the positive mass magnitude: 1/|r| for S-only, B/|r| for
 single scattering and B(C_K + T)/((D_K + T)|r|) for mixed scattering, with
 the scattering factors already defined below. These weights propagate through
@@ -98,13 +105,13 @@ P13 corrects the negative longitudinal transport-weight issue (#104) by using
 the mass magnitude. Carrier signs remain in occupations and signed density;
 the Hall coefficient retains carrier signs and uses the corrected resistivity.
 The P13 [correction note](../../packages/seeband_core/docs/dpb-positive-weights.md)
-records the limits and synthetic validation. This does not resolve P6's
-iterative-mode output/bounds inconsistency (`dpb_loop_degeneracy`, #85).
+records the limits and synthetic validation. P19 separately resolves P6's
+iterative-mode output/bounds inconsistency for the default verified route.
 
 P6 repairs the S-only mismatch; P13 corrects longitudinal negative-mass
 weights, but does not resolve collapsed bands (#107) or the band diagram
 (#108). P8 checks chemical-potential roots as described above. The separate
-iterative-mode output/bounds inconsistency remains flagged by
+legacy iterative-mode output/bounds inconsistency remains flagged by
 `dpb_loop_degeneracy` (#85).
 Human physicist confirmation and parity (#71) remain outstanding.
 

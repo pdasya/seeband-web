@@ -1,5 +1,12 @@
 # Results that changed
 
+Core `0.2.0` changes the default fitting algorithm to `verified-sequential-v2`.
+It preserves staged absolute objectives and physical kernels while correcting
+numerical stage solution, consistency and iterative DPB coordinates. Explicit
+`legacy-sequential-v1` remains available for reproduction. New and historical
+parameter vectors need not agree; numerical convergence, residual adequacy and
+parameter identification remain distinct. See [P19/P6](../../packages/seeband_core/docs/verified-sequential-fit.md).
+
 The following corrections change results from earlier web versions. Core
 documentation linked below records the formulas, scope and validation evidence.
 These are targeted corrections, not claims that every result is physically

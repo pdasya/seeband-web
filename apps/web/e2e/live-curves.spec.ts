@@ -761,7 +761,7 @@ test("known errors of a result are described", async ({ page }) => {
 
   await expect(
     page.getByText(
-      "Unreliable: With m₂/m₁ near 0, the other band has no weight left, so the data do not settle the fit, and it can differ between machines.",
+      "Unreliable: With m₂/m₁ near 0, the fit can be poorly conditioned. The data may not determine the band parameters separately, and results can differ between machines.",
     ),
   ).toBeVisible();
 });

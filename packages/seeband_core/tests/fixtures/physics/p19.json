@@ -1,0 +1,162 @@
+{
+  "description": "P19 implementation-generated aggregate observations; not physical acceptance targets or portable parameter goldens.",
+  "core_version": "0.2.0",
+  "prior_sha256": {
+    "p8.json": "e4656e05f7876889c44f86c9e0eeea9d2b1071db5f5fcd428e6cb0c767616db0",
+    "p11.json": "9b867b2ed5b0459b97d34d5de066bae34cbb38b316bbeb9e7ba5bab464066700",
+    "p13.json": "47128c3a25c183558d9efe62b8701ad2af37dd3da2525f411478c6258d8e2b26"
+  },
+  "environment": {
+    "python": "3.13.18",
+    "numpy": "2.5.4",
+    "scipy": "1.18.1",
+    "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O"
+  },
+  "results": {
+    "01_Fe2VAl09Si01-d1-dis-thread-dpb_see_res_hall_fit": {
+      "parameters": {
+        "m_eff": 1.57,
+        "band_gap": 554,
+        "fermi_energy": 1170,
+        "A": 40000,
+        "B": 1.0,
+        "C": 1.0,
+        "D": 1.0,
+        "F": 1000,
+        "G": 1.0,
+        "m1": 1.0
+      },
+      "status": "failed",
+      "iterations": null,
+      "message": "The fit derivative could not be verified in the admissible domain.",
+      "parameter_errors": {},
+      "at_bounds": [],
+      "known_issues": [],
+      "held": [],
+      "algorithm": "verified-sequential-v2",
+      "diagnostics": {
+        "termination": "derivative_validation_failure",
+        "stage_consistent": false,
+        "objectives": {},
+        "optimality": {},
+        "evaluations": 1033,
+        "recoveries": 0,
+        "residuals": {},
+        "unidentified": [],
+        "uncertainty": "not_assessed",
+        "residual_adequacy": "not_assessed"
+      }
+    },
+    "02_SiP-dpb_s_rho-acPhDis-thread-dpb_see_res_fit": {
+      "parameters": {
+        "m_eff": 0.24541068754950354,
+        "band_gap": 2999.9999999731217,
+        "fermi_energy": 163.4031153526378,
+        "A": 54.50986587971458,
+        "B": 1.0999999999999999,
+        "C": 0.5000000000000001,
+        "D": 0.5000000000000001,
+        "F": 1000,
+        "G": 1.0
+      },
+      "status": "converged",
+      "iterations": 2,
+      "message": null,
+      "parameter_errors": {},
+      "at_bounds": [
+        "B",
+        "C",
+        "D",
+        "band_gap"
+      ],
+      "known_issues": [],
+      "held": [],
+      "algorithm": "verified-sequential-v2",
+      "diagnostics": {
+        "termination": "conditional_stage_optima",
+        "stage_consistent": true,
+        "objectives": {
+          "seebeck": 3556255.6324917004,
+          "resistivity": 750412095800168.4
+        },
+        "optimality": {
+          "seebeck": 1.8130798713400073e-05,
+          "resistivity": 1.2489585864113522e-16
+        },
+        "evaluations": 6790,
+        "recoveries": 0,
+        "residuals": {
+          "seebeck": {
+            "rmse": 0.0005443846397915495,
+            "relative_l2": 0.6193868979028192,
+            "unit": "V/K"
+          },
+          "resistivity": {
+            "rmse": 0.06284534466702107,
+            "relative_l2": 0.6245868020585178,
+            "unit": "ohm m"
+          }
+        },
+        "unidentified": [
+          "fermi_energy"
+        ],
+        "uncertainty": "not_assessed",
+        "residual_adequacy": "not_assessed"
+      }
+    },
+    "03_AWI32_SI-dpb_s_rho-acPhDis-thread-dpb_see_res_fit": {
+      "parameters": {
+        "m_eff": 1.764767799525162,
+        "band_gap": 2063.6778447015145,
+        "fermi_energy": -259.2253859076553,
+        "A": 286542.1797596416,
+        "B": 1.0999999999999999,
+        "C": 1.9999999999999998,
+        "D": 0.5000000000000001,
+        "F": 1000,
+        "G": 1.0
+      },
+      "status": "converged",
+      "iterations": 2,
+      "message": null,
+      "parameter_errors": {},
+      "at_bounds": [
+        "B",
+        "C",
+        "D"
+      ],
+      "known_issues": [],
+      "held": [],
+      "algorithm": "verified-sequential-v2",
+      "diagnostics": {
+        "termination": "conditional_stage_optima",
+        "stage_consistent": true,
+        "objectives": {
+          "seebeck": 638.3914342669359,
+          "resistivity": 4543693.748665016
+        },
+        "optimality": {
+          "seebeck": 4.82673985619164e-07,
+          "resistivity": 9.02415162169546e-16
+        },
+        "evaluations": 1884,
+        "recoveries": 2,
+        "residuals": {
+          "seebeck": {
+            "rmse": 3.7664939024300865e-06,
+            "relative_l2": 0.019987782142003547,
+            "unit": "V/K"
+          },
+          "resistivity": {
+            "rmse": 3.1775929914410987e-06,
+            "relative_l2": 0.17985914726445004,
+            "unit": "ohm m"
+          }
+        },
+        "unidentified": [],
+        "uncertainty": "not_assessed",
+        "residual_adequacy": "not_assessed"
+      }
+    }
+  }
+}

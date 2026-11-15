@@ -178,14 +178,18 @@ test("a fit sums up: status, KPIs and each parameter with its status", async ({
 
 test("known issues and bounds reached are named", async ({ page }) => {
   await openFit(page);
+  await page
+    .getByRole("combobox", { name: "Fitting method" })
+    .selectOption("legacy-sequential-v1");
   await finishWith(page, {
+    algorithm: "legacy-sequential-v1",
     known_issues: ["dpb_loop_degeneracy"],
     at_bounds: ["band_gap"],
   });
   await toResults(page);
 
   await expect(
-    page.getByText(/^Caution: With N₂\/N₁ other than 1/),
+    page.getByText(/^Caution: In the legacy method with N₂\/N₁ other than 1/),
   ).toBeVisible();
   await expect(row(page, "E_g")).toContainText("at bound");
   await expect(row(page, "E_F")).not.toContainText("at bound");
@@ -291,14 +295,17 @@ test("the fit log follows the stages of the mode and how the fit ended", async (
   page,
 }) => {
   await openFit(page);
-  await finishWith(page, { iterations: 3 });
+  await page
+    .getByRole("combobox", { name: "Fitting method" })
+    .selectOption("legacy-sequential-v1");
+  await finishWith(page, { iterations: 3, algorithm: "legacy-sequential-v1" });
   await toResults(page);
 
   await expect(logSteps(page)).toHaveText([
     /^\dStart values\s*The values on the fit screen$/,
     /^\dFit to S\s*Finds m₂\/m₁, E_g, E_F, in each of 3 iterations$/,
     /^\dFit to ρ\s*Finds A, B, in each of 3 iterations$/,
-    /^\dConverged\s*The fit met its stop rule, a change of at most 10 %, in iteration 3\.$/,
+    /^\dConverged\s*The legacy fit met its stop rule, a change of at most 10 %, in iteration 3\.$/,
   ]);
 });
 

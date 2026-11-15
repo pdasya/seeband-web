@@ -230,7 +230,13 @@ def test_a_start_at_fermi_energy_0_is_no_longer_a_solver_fixed_point():
     data = load_demo_dataset().measurements
 
     result = model.fit(
-        FitRequest(mode.id, {q: data[q] for q in mode.quantities}, start, scattering="acPh")
+        FitRequest(
+            mode.id,
+            {q: data[q] for q in mode.quantities},
+            start,
+            scattering="acPh",
+            algorithm="legacy-sequential-v1",
+        )
     )
 
     assert result.status == "converged"

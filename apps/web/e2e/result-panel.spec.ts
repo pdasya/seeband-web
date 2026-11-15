@@ -302,8 +302,12 @@ test("a value past its bounds from N₂/N₁ says what its mark is about", async
   page,
 }) => {
   await open(page);
+  await page
+    .getByRole("combobox", { name: "Fitting method" })
+    .selectOption("legacy-sequential-v1");
 
   await finishWith(page, {
+    algorithm: "legacy-sequential-v1",
     parameters: { ...RESULT.parameters, m_eff: 6 },
     at_bounds: ["m_eff"],
     known_issues: ["dpb_loop_degeneracy"],
@@ -314,7 +318,7 @@ test("a value past its bounds from N₂/N₁ says what its mark is about", async
   await expect(row(page, "m₂/m₁").getByText("at bound")).toBeVisible();
   await expect(
     page.getByText(
-      /^Caution: .*The bounds and the at-bound mark apply to the value before that factor\.$/,
+      /^Caution: In the legacy method .*The bounds and the at-bound mark apply before that factor\.$/,
     ),
   ).toBeVisible();
 });

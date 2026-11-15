@@ -680,3 +680,22 @@ test("a screen reader hears the status, and not each iteration", async ({
   await expect(status).toHaveCount(1);
   await expect(heading(page)).toBeVisible();
 });
+
+test("method choice is explicit in browser requests", async ({ page }) => {
+  await openWithData(page);
+  const method = page.getByRole("combobox", { name: "Fitting method" });
+  await expect(method).toHaveValue("verified-sequential-v2");
+  await run(page).click();
+  await expect.poll(async () => (await fitBodies(page)).length).toBe(1);
+  expect((await fitBodies(page))[0]).toMatchObject({
+    algorithm: "verified-sequential-v2",
+  });
+  await stop(page).click();
+  await method.selectOption("legacy-sequential-v1");
+  await run(page).click();
+  await expect.poll(async () => (await fitBodies(page)).length).toBe(2);
+  expect((await fitBodies(page))[1]).toMatchObject({
+    algorithm: "legacy-sequential-v1",
+  });
+  await stop(page).click();
+});

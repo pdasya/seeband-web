@@ -269,3 +269,14 @@ shows optimizer stagnation, while the Linux endpoint approximately optimizes
 that amplitude direction. Neither result establishes physical fit validity.
 The general numerical defect remains P19 (#176); this diagnostic exception
 does not repair it, change the estimator or supply a physical acceptance gate.
+
+## Explicit legacy and verified fitting (P19)
+
+From core0.2.0, historical estimator replays in test_golden_regression.py request
+legacy-sequential-v1 explicitly. Desktop/P8/P11/P13 fixtures and their comparison
+tolerances are unchanged. These tests establish reproduction of that route,
+not agreement of the new default with unreliable historical parameter vectors.
+New verified-sequential-v2 tests independently check profiling, final conditional
+consistency, public-R bounds/held values and physical limits. New implementation
+regressions and measured-input aggregate evidence must be recorded separately.
+See [the verified fitting contract](verified-sequential-fit.md).

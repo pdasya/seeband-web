@@ -54,6 +54,8 @@ export function fitEndNote(
     return null;
   }
   switch (fit.result.status) {
+    case "stalled":
+      return text.diagnostics.stalled;
     case "iteration_limit":
       return text.endNotes.iterationLimit(maxIterations);
     case "stopped":

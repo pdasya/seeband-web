@@ -14,6 +14,7 @@ const modeOf = (id: string) =>
   modes.find((mode) => mode.id === id) as FitModeDescription;
 
 const RESULT: FitResult = {
+  algorithm: "legacy-sequential-v1",
   parameters: {},
   status: "converged",
   iterations: 3,
@@ -43,7 +44,7 @@ describe("fitLog", () => {
       { title: "Fit to R_H", text: "Finds m₁" },
       {
         title: "Converged",
-        text: "The fit met its stop rule, a change of at most 10 %, in iteration 3.",
+        text: "The legacy fit met its stop rule, a change of at most 10 %, in iteration 3.",
       },
     ]);
   });
@@ -138,7 +139,39 @@ describe("fitLog", () => {
   test("a threshold is a percent with no rounding error", () => {
     const mode = { ...modeOf("dpb_s_rho"), threshold: 0.07 };
     expect(fitLog(mode, "acPh", done(), null).at(-1)?.text).toBe(
-      "The fit met its stop rule, a change of at most 7 %, in iteration 3.",
+      "The legacy fit met its stop rule, a change of at most 7 %, in iteration 3.",
     );
   });
+});
+
+test("verified log distinguishes numerical settlement and stalled endpoints", () => {
+  const mode = modeOf("dpb_s_rho");
+  expect(
+    fitLog(
+      mode,
+      "acPh",
+      done({ algorithm: "verified-sequential-v2" }),
+      null,
+    ).at(-1),
+  ).toEqual({
+    title: "Numerically settled",
+    text: "The numerical stop criteria were met; physical adequacy and uncertainty have not been assessed.",
+  });
+  expect(
+    fitLog(
+      mode,
+      "acPh",
+      done({ algorithm: "verified-sequential-v2", status: "stalled" }),
+      null,
+    ).at(-1)?.title,
+  ).toBe("Numerical fit stalled");
+});
+
+test("historical results without method provenance do not claim a legacy threshold", () => {
+  const result = { ...RESULT };
+  delete result.algorithm;
+  expect(
+    fitLog(modeOf("dpb_s_rho"), "acPh", { status: "done", result }, null).at(-1)
+      ?.text,
+  ).toBe("The fit met its stop rule.");
 });

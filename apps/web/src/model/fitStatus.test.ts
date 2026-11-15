@@ -159,3 +159,15 @@ describe("fitBlockerText", () => {
     ).toBe("No points in the fit range for R_H.");
   });
 });
+
+test("verified numerical settlement and stalling remain distinct", () => {
+  expect(fitBadge(done({ algorithm: "verified-sequential-v2" }), true)).toEqual(
+    { status: "settled" },
+  );
+  expect(
+    fitBadge(
+      done({ algorithm: "verified-sequential-v2", status: "stalled" }),
+      true,
+    ),
+  ).toEqual({ status: "stalled" });
+});

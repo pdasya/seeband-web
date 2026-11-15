@@ -20,6 +20,9 @@ import { guessBadge, guessMessages } from "@/model/guessStatus";
 import type { useFitControl } from "@/model/useFitControl";
 import type { useGuess } from "@/model/useGuess";
 import { StatusBadge } from "@/shell/StatusBadge";
+import { fitAlgorithm, type FitState, useSessionStore } from "@/session/store";
+import { parameterSymbol } from "@/model/parameters";
+import { formatNumber } from "@/lib/numbers";
 import { STRINGS } from "@/strings";
 
 const { fit: text } = STRINGS;
@@ -135,11 +138,111 @@ export function FitMessages({
             {fitBlockerText(control.blocker)}
           </p>
         )}
+      <NumericalDiagnostics fit={control.fit} />
       {failure !== null && (
         <Alert variant="destructive">
           <AlertCircleIcon aria-hidden="true" />
           <AlertDescription>{failure}</AlertDescription>
         </Alert>
+      )}
+    </>
+  );
+}
+
+/** Explicit method choice is retained with the session and request identity. */
+export function FitAlgorithmControl() {
+  const algorithm = useSessionStore(
+    (state) => state.selection.algorithm ?? "verified-sequential-v2",
+  );
+  const setSelection = useSessionStore((state) => state.setSelection);
+  return (
+    <label className="flex items-center gap-2 text-xs text-muted-foreground">
+      {text.algorithm.label}
+      <select
+        aria-label={text.algorithm.label}
+        value={algorithm}
+        className="rounded-md border bg-background px-2 py-1"
+        onChange={(event) =>
+          setSelection({
+            algorithm:
+              event.target.value === "legacy-sequential-v1"
+                ? "legacy-sequential-v1"
+                : "verified-sequential-v2",
+          })
+        }
+      >
+        <option value="verified-sequential-v2">
+          {text.algorithm.verified}
+        </option>
+        <option value="legacy-sequential-v1">{text.algorithm.legacy}</option>
+      </select>
+    </label>
+  );
+}
+
+export function NumericalDiagnostics({ fit }: { fit: FitState }) {
+  const diagnostics = fit.status === "done" ? fit.result.diagnostics : null;
+  const reasons: Record<string, string> = text.diagnostics.terminationReasons;
+  const algorithm = fitAlgorithm(fit);
+  return (
+    <>
+      {(fit.status === "done" ||
+        fit.status === "running" ||
+        fit.status === "stopped") && (
+        <p className="m-0 text-xs text-muted-foreground">
+          {text.algorithm.provenance(
+            algorithm === "verified-sequential-v2"
+              ? text.algorithm.verified
+              : algorithm === "legacy-sequential-v1"
+                ? text.algorithm.legacy
+                : text.algorithm.unknown,
+          )}
+        </p>
+      )}
+      {diagnostics != null && (
+        <details className="text-xs text-muted-foreground">
+          <summary>{text.diagnostics.title}</summary>
+          <p>
+            {text.diagnostics.termination(
+              reasons[diagnostics.termination] ??
+                text.diagnostics.otherTermination,
+            )}
+          </p>
+          <p>
+            {diagnostics.stage_consistent
+              ? text.diagnostics.consistent
+              : text.diagnostics.inconsistent}
+          </p>
+          <p>
+            {text.diagnostics.effort(
+              diagnostics.evaluations,
+              diagnostics.recoveries,
+            )}
+          </p>
+          <p>{text.diagnostics.residualInputs}</p>
+          {Object.entries(diagnostics.residuals).map(([quantity, residual]) => (
+            <p key={quantity}>
+              {text.diagnostics.residual(
+                STRINGS.data.quantities[
+                  quantity as keyof typeof STRINGS.data.quantities
+                ].symbol,
+                formatNumber(residual.rmse),
+                residual.unit,
+                residual.relative_l2 == null
+                  ? text.diagnostics.unavailable
+                  : formatNumber(residual.relative_l2),
+              )}
+            </p>
+          ))}
+          {diagnostics.unidentified.length > 0 && (
+            <p>
+              {text.diagnostics.unidentified(
+                diagnostics.unidentified.map(parameterSymbol).join(", "),
+              )}
+            </p>
+          )}
+          <p>{text.diagnostics.notAssessed}</p>
+        </details>
       )}
     </>
   );

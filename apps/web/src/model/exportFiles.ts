@@ -8,11 +8,12 @@ import {
 } from "@/model/parameters";
 import { hasFittedValues, type ResultIssue } from "@/model/resultSummary";
 import type { FitModeDescription } from "@/model/selection";
-import type {
-  FitState,
-  Quantity,
-  Selection,
-  SessionState,
+import {
+  fitAlgorithm,
+  type FitState,
+  type Quantity,
+  type Selection,
+  type SessionState,
 } from "@/session/store";
 import { STRINGS } from "@/strings";
 import type { LimitedRange } from "@/model/interpolatedRanges";
@@ -163,6 +164,18 @@ export function exportHeader(context: ExportContext): string[] {
         ]
       : []),
     fitLine(context.fit),
+    fitText.algorithm.provenance(
+      fitAlgorithm(context.fit) ?? fitText.algorithm.unknown,
+    ),
+    ...(context.fit.status === "done" && context.fit.result.diagnostics != null
+      ? [
+          fitText.diagnostics.termination(
+            context.fit.result.diagnostics.termination,
+          ),
+          fitText.diagnostics.notAssessed,
+          JSON.stringify(context.fit.result.diagnostics),
+        ]
+      : []),
     ...context.issues.map(({ id, severity, text: issue }) =>
       text.header.issue(fitText.issueSeverity[severity], issue, id),
     ),

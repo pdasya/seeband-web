@@ -18,6 +18,8 @@ from seeband_core import __version__ as CORE_VERSION
 from seeband_core.interpolation import in_fit_range
 from seeband_core.model_interface import (
     Bounds,
+    FitAlgorithm,
+    FitDiagnostics,
     FitMode,
     FitRequest,
     FitResult,
@@ -120,6 +122,7 @@ class FitApiRequest(BaseModel):
     extrapolated: Annotated[bool, Field(strict=True)] = False
     held: list[str] = Field(default_factory=list, max_length=MAX_HELD)
     measurements: dict[Quantity, MeasurementInput]
+    algorithm: FitAlgorithm = "verified-sequential-v2"
 
     @model_validator(mode="after")
     def _range_is_ordered(self) -> Self:
@@ -131,12 +134,15 @@ class FitApiRequest(BaseModel):
 class FitResponse(BaseModel):
     """The outcome of a fit, in core units.
 
-    `converged` means that the fit ended normally, not that the result is sound. `iteration_limit`
+    `converged` means numerical termination, not physical adequacy or identification.
+    `stalled` is a usable endpoint that did not converge. `iteration_limit`
     is not a converged result. `failed` returns the start values, with fixed text in `message`.
     `iterations` is left out for a single-pass mode. A value that is not finite is null.
 
-    `parameter_errors` holds standard errors from the last solver run of each stage, holding other
-    stages fixed, so in a staged fit they can be far too small, and are not plain uncertainties.
+    In the legacy method, `parameter_errors` holds standard errors from the last solver run of
+    each stage, holding other stages fixed. They can be far too small in a staged fit. The verified
+    method leaves errors empty and reports uncertainty as `not_assessed`; it does not manufacture
+    zero errors for profiled or unidentified parameters.
     `at_bounds` names fitted parameters that ended at a bound, which may be what set them.
     `known_issues` names known errors that apply, as in `GET /api/models`. `held` names the
     parameters the request held, which come back as sent, with no error and no at-bound mark; the
@@ -171,6 +177,8 @@ class FitResponse(BaseModel):
     at_bounds: list[str]
     known_issues: list[str]
     held: list[str]
+    algorithm: FitAlgorithm = "legacy-sequential-v1"
+    diagnostics: FitDiagnostics | None = None
 
 
 class FitStarted(BaseModel):
@@ -320,6 +328,8 @@ def _to_response(result: FitResult) -> FitResponse:
         at_bounds=list(result.at_bounds),
         known_issues=list(result.known_issues),
         held=list(result.held),
+        algorithm=result.algorithm,
+        diagnostics=result.diagnostics,
     )
 
 
@@ -365,6 +375,7 @@ def _to_core_request(body: FitApiRequest, max_points: int) -> tuple[str, FitRequ
         band_2_degeneracy=body.band_2_degeneracy,
         extrapolated=body.extrapolated,
         held=frozenset(body.held),
+        algorithm=body.algorithm,
     )
 
 

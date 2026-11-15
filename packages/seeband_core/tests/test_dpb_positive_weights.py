@@ -166,7 +166,8 @@ def test_tiny_nonzero_start_is_accepted_without_a_mass_scale_floor(monkeypatch, 
 
 @pytest.mark.parametrize("mode_id", ["dpb_s", "dpb_s_rho", "dpb_s_rho_rh"])
 @pytest.mark.parametrize("mass", [-1.7, 1.7])
-def test_physical_synthetic_fit_recovers_mass_and_curve(mode_id, mass):
+@pytest.mark.parametrize("algorithm", ["legacy-sequential-v1", "verified-sequential-v2"])
+def test_physical_synthetic_fit_recovers_mass_and_curve(mode_id, mass, algorithm):
     from seeband_core.model_catalog import registry
     from seeband_core.model_interface import Bounds, CurveRequest, FitRequest, Measurement
     from seeband_core.model_scales import default_start
@@ -204,6 +205,7 @@ def test_physical_synthetic_fit_recovers_mass_and_curve(mode_id, mass):
             bounds={"m_eff": Bounds(-3, 3)},
             scattering=scattering,
             held=held,
+            algorithm=algorithm,
         )
     )
     assert result.status == "converged", result.message
