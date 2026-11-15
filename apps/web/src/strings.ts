@@ -218,6 +218,9 @@ export const STRINGS = {
     temperature: "Temperature",
     inSi: (written: string, si: string) => `${written} = ${si} in SI`,
     checkUnitTitle: "Check the unit",
+    confirmUnit: "Values are right",
+    unitConfirmed:
+      "You confirmed these values despite the unit check, so a fit uses them as they are.",
     /** The name of a unit select whose unit is SI only because nothing named one. */
     unitAssumedOf: (name: string, unit: string) =>
       `Unit of ${name}: ${unit}, assumed`,
@@ -455,6 +458,8 @@ export const STRINGS = {
     guessNumericalBadge: "· numerical S(T) estimate",
     guessUnavailable: "Initial guess is available for SPB and DPB",
     guessNeedsData: "Load S data to estimate start values",
+    guessUnitInDoubt:
+      "Check the unit of S first, or confirm under Data that its values are right",
     guessNet: (minK: string, maxK: string) => `· net ${minK}–${maxK} K`,
     guessNoNet: (firstK: string, lastK: string, available: string) =>
       `No neural net covers ${firstK}–${lastK} K, so the values stay as they are. The nets cover ${available}.`,
@@ -517,6 +522,8 @@ export const STRINGS = {
       noPointsInRange: "No points in the fit range for",
       startOutsideBounds: "A fit cannot start outside its bounds:",
       allHeld: "Every fitted parameter is held. Release one to fit.",
+      unitInDoubt: (symbols: string) =>
+        `Check the unit of ${symbols} first, or confirm under Data that the values are right.`,
     },
     rmse: "RMSE",
     degeneracySymbol: "N₁, N₂",

@@ -9,6 +9,7 @@ import { sessionMismatches } from "@/data/temperatureRanges";
 import { cn } from "@/lib/utils";
 import { fitModeOf } from "@/model/selection";
 import {
+  hasOpenUnitDoubt,
   loadedAs,
   QUANTITIES,
   readsFiles,
@@ -40,9 +41,7 @@ export function DataBar() {
     mode !== undefined &&
     !reading &&
     mode.quantities.every((quantity) => data[quantity] !== undefined) &&
-    !QUANTITIES.some(
-      (quantity) => (data[quantity]?.unitDoubts?.length ?? 0) > 0,
-    );
+    !QUANTITIES.some((quantity) => hasOpenUnitDoubt(data[quantity]));
 
   const [open, setOpen] = useState(!complete);
   // Data a user has just entered stay in view, so the panel folds only on Hide. It opens again as
@@ -86,7 +85,7 @@ export function DataBar() {
   );
 
   const doubted = (quantity: (typeof QUANTITIES)[number]) =>
-    (data[quantity]?.unitDoubts?.length ?? 0) > 0;
+    hasOpenUnitDoubt(data[quantity]);
   const temperatureHint = sessionMismatches(data).length > 0;
   const anyDoubt = QUANTITIES.some(doubted) || temperatureHint;
   const names = [

@@ -23,6 +23,7 @@ import {
 import { useFileUpload } from "@/data/useFileUpload";
 import { cn } from "@/lib/utils";
 import {
+  hasOpenUnitDoubt,
   loadedAs,
   useSessionStore,
   type LoadedQuantity,
@@ -157,6 +158,7 @@ function dataName({ source }: SessionData): string {
 export function FileSlot({ quantity }: { quantity: Quantity }) {
   const { data: text } = STRINGS;
   const data = useSessionStore((state) => state.data[quantity]);
+  const confirmUnit = useSessionStore((state) => state.confirmUnit);
   // Only ρ has another quantity a file can hold in its place.
   const [readAs, setReadAs] = useState<LoadedQuantity>(quantity);
   // A loaded file's header can say otherwise than the switch did, so the next file is read as
@@ -383,7 +385,7 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
             {firstRow}
           </div>
         )}
-        {data.unitDoubts !== undefined && data.unitDoubts.length > 0 && (
+        {hasOpenUnitDoubt(data) && data.unitDoubts !== undefined && (
           <Alert>
             <TriangleAlertIcon aria-hidden="true" />
             <AlertTitle>{text.checkUnitTitle}</AlertTitle>
@@ -401,8 +403,24 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
                   </li>
                 ))}
               </ul>
+              {/* A size can be right, as ρ above 1 Ω·m in a lightly doped sample. */}
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-2"
+                onClick={() => {
+                  confirmUnit(quantity);
+                }}
+              >
+                {text.confirmUnit}
+              </Button>
             </AlertDescription>
           </Alert>
+        )}
+        {data.unitConfirmed === true && (
+          <p className="m-0 text-xs text-muted-foreground">
+            {text.unitConfirmed}
+          </p>
         )}
         {state.status === "idle" &&
           state.failures !== undefined &&

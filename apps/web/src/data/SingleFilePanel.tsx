@@ -49,6 +49,7 @@ import {
 } from "@/data/units";
 import { cn } from "@/lib/utils";
 import {
+  hasOpenUnitDoubt,
   LOADED_QUANTITIES,
   loadedAs,
   QUANTITIES,
@@ -336,6 +337,11 @@ export function SingleFilePanel() {
   const table = file?.table ?? null;
 
   const data = useSessionStore((state) => state.data);
+  const confirmUnit = useSessionStore((state) => state.confirmUnit);
+  // Quantities whose unit is in doubt and not confirmed, which stop a fit.
+  const doubted = QUANTITIES.filter((quantity) =>
+    hasOpenUnitDoubt(data[quantity]),
+  );
   const loaded = QUANTITIES.filter((q) => data[q] !== undefined)
     .map((q) => text.quantities[loadedAs(q, data[q])].title)
     .join(", ");
@@ -456,7 +462,7 @@ export function SingleFilePanel() {
       {table.preview.length > 0 && (
         <Preview table={table} mapping={file.mapping} />
       )}
-      {settled && usable && unitWarnings.length > 0 && (
+      {settled && usable && unitWarnings.length > 0 && doubted.length > 0 && (
         <Alert>
           <TriangleAlertIcon aria-hidden="true" />
           <AlertTitle>{text.checkUnitTitle}</AlertTitle>
@@ -466,8 +472,26 @@ export function SingleFilePanel() {
                 <li key={index}>{unitWarningMessage(warning, file.mapping)}</li>
               ))}
             </ul>
+            {/* A size can be right, as ρ above 1 Ω·m in a lightly doped sample. */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-2"
+              onClick={() => {
+                for (const quantity of doubted) {
+                  confirmUnit(quantity);
+                }
+              }}
+            >
+              {text.confirmUnit}
+            </Button>
           </AlertDescription>
         </Alert>
+      )}
+      {settled && usable && QUANTITIES.some((q) => data[q]?.unitConfirmed) && (
+        <p className="m-0 text-xs text-muted-foreground">
+          {text.unitConfirmed}
+        </p>
       )}
       {settled && usable && otherWarnings.length > 0 && (
         <ul className="m-0 list-none p-0 text-xs text-muted-foreground">
