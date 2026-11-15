@@ -5,6 +5,14 @@ from typing import Literal
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# The most values a request's list of points can hold, whatever `max_points` says.
+MAX_LISTED_POINTS = 100_000
+# What a body of numbers needs for each point a setting allows: 3 quantities, 2 lists of a point,
+# and a value in up to 24 characters with its comma. A request's other fields fit in the margin.
+_BYTES_PER_POINT = 3 * 2 * 25
+_BODY_MARGIN_BYTES = 64_000
+DEFAULT_JSON_BODY_BYTES = 1_000_000
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="SEEBAND_API_", frozen=True)
@@ -20,10 +28,16 @@ class Settings(BaseSettings):
     # Verified stages include independent derivative and final-vector audits.
     fit_timeout_s: float = Field(default=180.0, gt=0)
     fit_max_per_client: int = Field(default=2, ge=1)
-    # A file's text is limited to 2000000 characters, which UTF-8 holds in at most 8 MB.
+    # A file's text is limited to 2000000 characters, which UTF-8 holds in at most 8 MB. This is
+    # the limit of `POST /api/parse` and of any route not in `max_json_body_bytes`.
     max_body_bytes: int = Field(default=10_000_000, ge=1)
-    # Bound input size independently of the configurable fit deadline.
-    max_points: int = Field(default=2000, ge=1)
+    # Calc, fit, guess and band-diagram hold numbers, not a file: 3 quantities of 2000 points, each
+    # value in up to 24 characters, take about 300 KB. A larger body is refused before it is read.
+    # Unset, it is 1 MB, or what `max_points` needs if more. Set lower, the server warns at start.
+    max_json_body_bytes: int | None = Field(default=None, ge=1)
+    # Bound input size independently of the configurable fit deadline. It cannot pass the most
+    # values a request's list can hold.
+    max_points: int = Field(default=2000, ge=1, le=MAX_LISTED_POINTS)
     # Per client. A slider sends many cheap curves; verified fits can take minutes.
     calc_per_minute: int = Field(default=600, ge=1)
     band_diagram_per_minute: int = Field(default=600, ge=1)
@@ -32,3 +46,16 @@ class Settings(BaseSettings):
     fit_per_minute: int = Field(default=30, ge=1)
     # Addresses whose `X-Forwarded-For` the server believes. `python -m seeband_api` only.
     trusted_proxies: str = "127.0.0.1,::1"
+
+    @property
+    def json_body_bytes(self) -> int:
+        """The body limit of calc, fit, guess and band-diagram: as set, or what points need."""
+        if self.max_json_body_bytes is not None:
+            return self.max_json_body_bytes
+        return max(DEFAULT_JSON_BODY_BYTES, self.json_body_bytes_needed)
+
+    @property
+    def json_body_bytes_needed(self) -> int:
+        """What a body of `max_points` for each quantity can take. A smaller limit set by hand
+        refuses some fits within `max_points` with a 413, before their clearer `too_many_points`."""
+        return self.max_points * _BYTES_PER_POINT + _BODY_MARGIN_BYTES

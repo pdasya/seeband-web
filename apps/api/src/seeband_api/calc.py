@@ -19,9 +19,9 @@ from seeband_api.calc_worker import CalcOutcome, CalculationFailed, calculate
 from seeband_api.errors import ApiError, ErrorDetail
 from seeband_api.json_values import finite_or_none
 from seeband_api.request_checks import (
-    FiniteFloat,
     MaxPointsDep,
-    MeasurementInput,
+    Measurements,
+    ParameterValues,
     PositiveFloat,
     check_degeneracy,
     check_parameter_names,
@@ -93,7 +93,7 @@ class CalcRequest(BaseModel):
     model: str
     fit_mode: str
     scattering: str | None = None
-    parameters: dict[str, FiniteFloat]
+    parameters: ParameterValues
     min_temperature_k: PositiveFloat
     max_temperature_k: PositiveFloat
     kind: CurveKind = "measured"
@@ -101,7 +101,7 @@ class CalcRequest(BaseModel):
     band_1_degeneracy: PositiveFloat = 1.0
     band_2_degeneracy: PositiveFloat = 1.0
     extrapolated: Annotated[bool, Field(strict=True)] = False
-    measurements: dict[Quantity, MeasurementInput] = Field(default_factory=dict)
+    measurements: Measurements = Field(default_factory=dict)
     rmse_points: GridPoints = DEFAULT_RMSE_POINTS
 
     @model_validator(mode="after")

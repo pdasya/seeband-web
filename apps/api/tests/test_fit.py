@@ -667,3 +667,23 @@ def test_legacy_response_retains_the_historical_degeneracy_flag() -> None:
     response = _to_response(result)
     assert response.algorithm == "legacy-sequential-v1"
     assert "dpb_loop_degeneracy" in response.known_issues
+
+
+def test_a_fit_error_event_gives_at_most_50_details() -> None:
+    from seeband_api.errors import ApiError, ErrorDetail
+
+    details = [ErrorDetail(location=["body", index], code="x", message="x") for index in range(60)]
+
+    async def failing() -> Any:
+        raise ApiError(422, "invalid_fit", "Invalid", details)
+
+    async def last() -> Any:
+        task = asyncio.ensure_future(failing())
+        await asyncio.wait([task])
+        return _last_event(task)
+
+    event = asyncio.run(last())
+
+    assert len(event.error.details) == 50
+    assert event.error.details_omitted == 10
+    assert '"details_omitted":10' in event.model_dump_json(exclude_none=True)
