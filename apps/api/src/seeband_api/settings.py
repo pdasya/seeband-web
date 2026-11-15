@@ -21,7 +21,20 @@ class Settings(BaseSettings):
     port: int = 8000
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     calc_workers: int = Field(default=2, ge=1)
+    # How long a calculation, a parse or a guess can run once a worker has it.
     calc_timeout_s: float = Field(default=30.0, gt=0)
+    # Jobs that wait for a worker, beyond one for each, and how long one may wait. Past either, a
+    # fast 503 with Retry-After, rather than a 504 after the run's whole time.
+    calc_max_waiting: int = Field(default=8, ge=0)
+    calc_wait_timeout_s: float = Field(default=10.0, gt=0)
+    # Jobs of one client at once, waiting or running, so that one cannot take every worker. The
+    # page asks for a few curves at once.
+    calc_max_per_client: int = Field(default=4, ge=1)
+    # How long a request's body may take to arrive, so that half-sent bodies do not hold the server.
+    # It ends before a route runs, so it does not limit a fit's stream.
+    body_timeout_s: float = Field(default=10.0, gt=0)
+    # Connections and requests at once, past which uvicorn answers 503. `python -m seeband_api`.
+    limit_concurrency: int = Field(default=200, ge=1)
     # The planned machine has 2 vCPUs.
     fit_max_running: int = Field(default=2, ge=1)
     fit_max_waiting: int = Field(default=4, ge=0)
