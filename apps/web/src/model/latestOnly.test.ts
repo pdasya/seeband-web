@@ -7,6 +7,7 @@ import {
   LatestOnly,
   MAX_WAIT_MS,
   STUCK_AFTER_MS,
+  retriesByItself,
 } from "@/model/latestOnly";
 
 interface Call {
@@ -338,5 +339,25 @@ describe("stopping", () => {
     calls[0]?.resolve("A");
     await vi.advanceTimersByTimeAsync(0);
     expect(results).toEqual([["A", "a"]]);
+  });
+});
+
+describe("a busy server", () => {
+  test("is tried again after its Retry-After, as a rate limit is", () => {
+    expect(
+      retriesByItself(new ApiError(503, "calculation_busy", "x", [], 2)),
+    ).toBe(true);
+    expect(
+      retriesByItself(new ApiError(429, "client_calc_limit", "x", [], 1)),
+    ).toBe(true);
+  });
+
+  test("is not tried again with no Retry-After, as when a worker died", () => {
+    expect(
+      retriesByItself(new ApiError(503, "calculation_unavailable", "x")),
+    ).toBe(false);
+    expect(
+      retriesByItself(new ApiError(503, "calculation_busy", "x", [], 600)),
+    ).toBe(false);
   });
 });
