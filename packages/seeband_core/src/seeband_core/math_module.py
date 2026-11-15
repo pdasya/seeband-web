@@ -74,6 +74,19 @@ def fdint_robust(s: float, eta: float, T: float) -> float:
 fdint_vec: Callable[..., Any] = np.vectorize(fdint_robust)
 
 
+def fdint(s: Any, eta: Any, T: Any) -> Any:
+    """`fdint_vec`, with scalars passed straight to `fdint_robust`.
+
+    `np.vectorize` costs more than the integral for one value, and most calls here are for one.
+    The value is the same to the last bit; it comes back as a numpy float, so that a division by
+    0 or an overflow after it still gives inf with a warning, as from `fdint_vec`, rather than
+    raising.
+    """
+    if np.ndim(s) == 0 and np.ndim(eta) == 0 and np.ndim(T) == 0:
+        return np.float64(fdint_robust(s, eta, T))
+    return fdint_vec(s, eta, T)
+
+
 # Calculates Fermi integrals for a single band
 def spb_fermiInt_vs_temp(
     s: float,
@@ -88,7 +101,7 @@ def spb_fermiInt_vs_temp(
     fermiInt = np.zeros(shape=len(T))
 
     for i, (temp, mu) in enumerate(zip(T, potentials, strict=True)):
-        fermiInt[i] = fdint_vec(s + lamb, mass_sign * mu, temp)
+        fermiInt[i] = fdint(s + lamb, mass_sign * mu, temp)
 
     return fermiInt
 
@@ -110,8 +123,8 @@ def dpb_fermiInt_vs_temp(
     fermiInt_2 = np.zeros(shape=len(T))
 
     for i, (temp, mu) in enumerate(zip(T, potentials, strict=True)):
-        fermiInt_1[i] = fdint_vec(s + lamb, -mu, temp)
-        fermiInt_2[i] = fdint_vec(s + lamb, np.sign(mass) * (mu - gap), temp)
+        fermiInt_1[i] = fdint(s + lamb, -mu, temp)
+        fermiInt_2[i] = fdint(s + lamb, np.sign(mass) * (mu - gap), temp)
 
     return fermiInt_1, fermiInt_2
 
@@ -132,8 +145,8 @@ def onsi_general(eta: float, meff: float, K: float, beta: float, T: float) -> fl
         * T ** (beta + 1)
         / abs(meff)
         * (
-            (lamb + 2) / (lamb + 1) * fdint_vec(1 + lamb, np.sign(meff) * eta, T)
-            - np.sign(meff) * fdint_vec(0 + lamb, np.sign(meff) * eta, T) * eta / T
+            (lamb + 2) / (lamb + 1) * fdint(1 + lamb, np.sign(meff) * eta, T)
+            - np.sign(meff) * fdint(0 + lamb, np.sign(meff) * eta, T) * eta / T
         )
     )
     return result
@@ -143,7 +156,7 @@ def onsi_general(eta: float, meff: float, K: float, beta: float, T: float) -> fl
 def sigma_general(eta: float, meff: float, K: float, beta: float, T: float) -> float:
     # Temperature factor defined as beta + 1, since 1 is obtained from partial integration instead
     # of 3/2
-    result: float = K * T ** (beta + 1) / abs(meff) * fdint_vec(0 + lamb, np.sign(meff) * eta, T)
+    result: float = K * T ** (beta + 1) / abs(meff) * fdint(0 + lamb, np.sign(meff) * eta, T)
     return result
 
 
@@ -174,7 +187,7 @@ def spb_carCon(eta: float, meff: float, T: float) -> float:
             4
             * np.pi
             * (2 * np.abs(meff) * me * kB * T / h**2) ** 1.5
-            * fdint_vec(0.5, np.sign(meff) * eta, T)
+            * fdint(0.5, np.sign(meff) * eta, T)
             * 1e-6
         )
         return carrier_concentration
@@ -831,8 +844,8 @@ def spb_hall_vs_temp(
             * at ** (-1.5)
             * scal_fac
             / np.asarray(para_E, dtype=float)
-            * fdint_vec(-0.5 + lamb, mass_sign * mu, at)
-            / fdint_vec(0 + lamb, mass_sign * mu, at) ** 2
+            * fdint(-0.5 + lamb, mass_sign * mu, at)
+            / fdint(0 + lamb, mass_sign * mu, at) ** 2
         )
     return result
 
