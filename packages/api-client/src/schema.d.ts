@@ -823,6 +823,13 @@ export interface components {
          *     parameters the request held, which come back as sent, with no error and no at-bound mark; the
          *     errors of the others hold the held values exact. A held value outside its bounds fails as a
          *     start would. Holding m1, or the SPB Hall mass, skips the R_H stage.
+         *
+         *     `parameter_status` says how the fit found each parameter in `parameters`, the first that
+         *     applies of: `held`; `fixed`, not fitted in this mode or scattering; `not_assessed`, a failed
+         *     fit or a stage it never reached; `at_bound`; `not_determined`, the data do not depend on it;
+         *     `did_not_move`, within 1e-9 relative of its start; and `estimated`, which means only that no
+         *     signal said otherwise. None says that a value is right. `uncertainty` is `not_assessed` for
+         *     every fit until confidence intervals exist (#182).
          * @example {
          *       "at_bounds": [],
          *       "core_version": "0.3.0",
@@ -833,12 +840,18 @@ export interface components {
          *         "fermi_energy": 4,
          *         "m_eff": 0.02
          *       },
+         *       "parameter_status": {
+         *         "band_gap": "estimated",
+         *         "fermi_energy": "estimated",
+         *         "m_eff": "estimated"
+         *       },
          *       "parameters": {
          *         "band_gap": 910,
          *         "fermi_energy": -35,
          *         "m_eff": 0.57
          *       },
-         *       "status": "converged"
+         *       "status": "converged",
+         *       "uncertainty": "not_assessed"
          *     }
          */
         FitResponse: {
@@ -878,6 +891,16 @@ export interface components {
              */
             algorithm?: "verified-sequential-v2" | "legacy-sequential-v1";
             diagnostics?: components["schemas"]["FitDiagnostics"] | null;
+            /** Parameter Status */
+            parameter_status: {
+                [key: string]: "fixed" | "held" | "estimated" | "at_bound" | "not_determined" | "did_not_move" | "not_assessed";
+            };
+            /**
+             * Uncertainty
+             * @default not_assessed
+             * @constant
+             */
+            uncertainty?: "not_assessed";
         };
         /**
          * FitStageResponse
@@ -1469,7 +1492,7 @@ export interface operations {
                 headers: {
                     /** @example no-cache */
                     "Cache-Control"?: string;
-                    /** @example "5fdcc757f27652400bf86a90b834669b" */
+                    /** @example "b51ca05f2a7e479a488a51f99255b625" */
                     ETag?: string;
                     [name: string]: unknown;
                 };
