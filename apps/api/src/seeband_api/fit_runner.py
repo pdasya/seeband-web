@@ -8,7 +8,10 @@ fit, not the wait. The process always ends with its task, however the task ends.
 """
 
 import asyncio
+import os
+import signal
 import threading
+import time
 from collections import Counter
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass, field
@@ -40,6 +43,36 @@ def _stop(process: ForkServerProcess) -> None:
         process.kill()
     if process.pid is not None:
         process.join()
+        if process.exitcode == _FORK_SERVER_LOST:
+            _end_orphan(process.pid)
+
+
+# The exit code that multiprocessing gives a child whose fork server has gone, which is where the
+# real one would have come from. Such a child can still be running, now a child of PID 1, and
+# `is_alive`, `terminate` and `kill` all take it for ended.
+_FORK_SERVER_LOST = 255
+
+
+def _end_orphan(pid: int) -> None:
+    """Terminates, then kills, a child that multiprocessing has lost track of.
+
+    The pid is its own until something reaps it, and nothing does before the fork server has gone,
+    so the signals cannot reach another process. Only a fit that itself exits with 255 gets here
+    with its pid already free, and the run_in_child of a fit does not.
+    """
+    deadline = time.monotonic() + TERMINATE_GRACE_S
+    for sig in (signal.SIGTERM, signal.SIGKILL):
+        try:
+            os.kill(pid, sig)
+        except ProcessLookupError:
+            return
+        while time.monotonic() < deadline:
+            try:
+                os.kill(pid, 0)
+            except ProcessLookupError:
+                return
+            time.sleep(0.01)
+        deadline = time.monotonic() + TERMINATE_GRACE_S
 
 
 @dataclass(eq=False)

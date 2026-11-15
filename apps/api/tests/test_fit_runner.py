@@ -1,6 +1,7 @@
 """The runner, with functions that misbehave in their own process."""
 
 import asyncio
+import contextlib
 import gc
 import logging
 import multiprocessing
@@ -17,9 +18,10 @@ from typing import Any
 
 import fit_functions
 import pytest
+from seeband_api import fit_runner, processes
 from seeband_api.errors import ApiError
 from seeband_api.fit_runner import FitRunner
-from seeband_api.processes import PRELOADED
+from seeband_api.processes import PRELOADED, start_fork_server
 
 
 @pytest.fixture(autouse=True)
@@ -219,6 +221,36 @@ def test_a_fit_process_is_forked_from_the_fork_server() -> None:
 
     assert parent != os.getpid()
     assert parent == forkserver._forkserver._forkserver_pid
+
+
+def test_a_stop_ends_a_process_whose_fork_server_died(tmp_path: Path) -> None:
+    """Its exit code would come from the fork server, so multiprocessing takes it for ended.
+
+    The runner also closes the process's pipes after a stop, which makes the child's parent watch
+    end it too, but that needs the child to run Python. The stop itself must end it.
+    """
+    pid_file = tmp_path / "pid"
+    process = processes.context.Process(
+        target=fit_functions.write_pid_and_hang, args=(str(pid_file), None), daemon=True
+    )
+    process.start()
+    try:
+        while not (pid_file.exists() and pid_file.read_text()):
+            time.sleep(0.01)
+        pid = int(pid_file.read_text())
+        os.kill(forkserver._forkserver._forkserver_pid, signal.SIGKILL)
+        time.sleep(0.2)
+        assert not process.is_alive()
+
+        fit_runner._stop(process)
+
+        with pytest.raises(ProcessLookupError):
+            os.kill(pid, 0)
+    finally:
+        if process.pid is not None:
+            with contextlib.suppress(ProcessLookupError):
+                os.kill(process.pid, signal.SIGKILL)
+        start_fork_server()
 
 
 def test_a_fit_process_does_not_import_the_web_framework() -> None:
