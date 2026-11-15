@@ -27,14 +27,23 @@ class Settings(BaseSettings):
     # fast 503 with Retry-After, rather than a 504 after the run's whole time.
     calc_max_waiting: int = Field(default=8, ge=0)
     calc_wait_timeout_s: float = Field(default=10.0, gt=0)
-    # Jobs of one client at once, waiting or running, so that one cannot take every worker. The
-    # page asks for a few curves at once.
+    # Jobs of one client at once, waiting or running, counted before their body is read. The page
+    # asks for a few curves at once.
     calc_max_per_client: int = Field(default=4, ge=1)
-    # How long a request's body may take to arrive, so that half-sent bodies do not hold the server.
-    # It ends before a route runs, so it does not limit a fit's stream.
-    body_timeout_s: float = Field(default=10.0, gt=0)
-    # Connections and requests at once, past which uvicorn answers 503. `python -m seeband_api`.
-    limit_concurrency: int = Field(default=200, ge=1)
+    # Jobs of one client running at once. Unset, one fewer than the workers, so that a client
+    # sending heavy jobs without pause always leaves a worker for others.
+    calc_max_running_per_client: int | None = Field(default=None, ge=1)
+    # How long a request's body may take to arrive in all, and how long it may pause, so that
+    # half-sent bodies do not hold the server while a slow but steady upload gets through. They end
+    # before a route runs, so they do not limit a fit's stream.
+    body_timeout_s: float = Field(default=60.0, gt=0)
+    body_idle_timeout_s: float = Field(default=10.0, gt=0)
+    # Requests at once, past which a fast 503 `server_busy` with Retry-After. Health is never
+    # refused.
+    max_concurrent_requests: int = Field(default=100, ge=1)
+    # Uvicorn's own cap on connections and requests, a backstop well above the one before, as its
+    # 503 is plain text and refuses health too. `python -m seeband_api` only.
+    limit_concurrency: int = Field(default=1000, ge=1)
     # The planned machine has 2 vCPUs.
     fit_max_running: int = Field(default=2, ge=1)
     fit_max_waiting: int = Field(default=4, ge=0)

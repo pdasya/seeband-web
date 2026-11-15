@@ -18,6 +18,10 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from seeband_api.errors import ErrorResponse, error_response
 
 _SECONDS_PER_MINUTE = 60.0
+# A probe of health must get through however busy the server is.
+_NEVER_REFUSED = frozenset({"/api/health"})
+# A request refused for being one too many can come back as soon as one ends.
+_BUSY_RETRY_AFTER_S = 1
 _IPV6_NETWORK_BITS = 64
 
 
@@ -124,15 +128,29 @@ class RequestLimitsMiddleware:
         max_body_bytes: int,
         max_body_bytes_by_path: Mapping[str, int] | None = None,
         body_timeout_s: float | None = None,
+        body_idle_timeout_s: float | None = None,
+        max_concurrent_requests: int | None = None,
+        per_client_paths: frozenset[str] = frozenset(),
+        max_per_client: int | None = None,
     ) -> None:
         self._app = app
         self._limiter = limiter
         self._max_body_bytes = max_body_bytes
         # Routes that take numbers rather than a file have a smaller limit of their own.
         self._max_body_bytes_by_path = max_body_bytes_by_path or {}
-        # How long the whole body may take to arrive. A route's answer, such as a fit's stream, is
-        # not limited, as it begins only once the body is here.
+        # How long the whole body may take to arrive, and how long it may pause. A route's answer,
+        # such as a fit's stream, is not limited, as it begins only once the body is here.
         self._body_timeout_s = body_timeout_s
+        self._body_idle_timeout_s = body_idle_timeout_s
+        # Requests at once, past which a fast 503. The health route is never refused, so that a
+        # probe does not restart a server that is only busy.
+        self._max_concurrent_requests = max_concurrent_requests
+        self._in_flight = 0
+        # Routes whose requests share the calculation pool, and how many one client may have at
+        # once. Counted before the body is read, so that a client over it costs nothing to refuse.
+        self._per_client_paths = per_client_paths
+        self._max_per_client = max_per_client
+        self._client_in_flight: dict[str, int] = {}
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
@@ -141,7 +159,56 @@ class RequestLimitsMiddleware:
         if await self._refused_by_rate(scope, receive, send):
             return
 
-        limit = self._max_body_bytes_by_path.get(_route_path(scope), self._max_body_bytes)
+        path = _route_path(scope)
+        counted = path not in _NEVER_REFUSED
+        if (
+            counted
+            and self._max_concurrent_requests is not None
+            and self._in_flight >= self._max_concurrent_requests
+        ):
+            await self._refuse(
+                scope,
+                receive,
+                send,
+                HTTPStatus.SERVICE_UNAVAILABLE,
+                "server_busy",
+                "Too many requests at once. Try again shortly.",
+            )
+            return
+        client = client_key(scope) if path in self._per_client_paths else None
+        if (
+            client is not None
+            and self._max_per_client is not None
+            and self._client_in_flight.get(client, 0) >= self._max_per_client
+        ):
+            await self._refuse(
+                scope,
+                receive,
+                send,
+                HTTPStatus.TOO_MANY_REQUESTS,
+                "client_calc_limit",
+                f"At most {self._max_per_client} calculations of one client at once",
+            )
+            return
+
+        if counted:
+            self._in_flight += 1
+        if client is not None:
+            self._client_in_flight[client] = self._client_in_flight.get(client, 0) + 1
+        try:
+            await self._read_then_call(scope, receive, send, path)
+        finally:
+            if counted:
+                self._in_flight -= 1
+            if client is not None:
+                left = self._client_in_flight[client] - 1
+                if left:
+                    self._client_in_flight[client] = left
+                else:
+                    del self._client_in_flight[client]
+
+    async def _read_then_call(self, scope: Scope, receive: Receive, send: Send, path: str) -> None:
+        limit = self._max_body_bytes_by_path.get(path, self._max_body_bytes)
         length = _content_length(scope)
         if length is not None and length > limit:
             await self._refuse_size(scope, receive, send, limit)
@@ -151,10 +218,16 @@ class RequestLimitsMiddleware:
         loop = asyncio.get_running_loop()
         deadline = None if self._body_timeout_s is None else loop.time() + self._body_timeout_s
         while True:
-            try:
-                message = await asyncio.wait_for(
-                    receive(), None if deadline is None else max(deadline - loop.time(), 0)
+            waits = [
+                wait
+                for wait in (
+                    None if deadline is None else max(deadline - loop.time(), 0),
+                    self._body_idle_timeout_s,
                 )
+                if wait is not None
+            ]
+            try:
+                message = await asyncio.wait_for(receive(), min(waits) if waits else None)
             except TimeoutError:
                 await self._refuse_slow_body(scope, receive, send)
                 return
@@ -181,6 +254,23 @@ class RequestLimitsMiddleware:
 
         await self._app(scope, receive_body_then_continue, send)
 
+    async def _refuse(
+        self,
+        scope: Scope,
+        receive: Receive,
+        send: Send,
+        status: HTTPStatus,
+        code: str,
+        message: str,
+    ) -> None:
+        response = error_response(
+            status,
+            ErrorResponse(code=code, message=message, details=[]),
+            # The body stays unread, so the server cannot reuse this connection anyway.
+            headers={"Retry-After": str(_BUSY_RETRY_AFTER_S), "Connection": "close"},
+        )
+        await response(scope, receive, send)
+
     async def _refused_by_rate(self, scope: Scope, receive: Receive, send: Send) -> bool:
         path = _route_path(scope)
         if scope["method"] != "POST" or not self._limiter.limits(path):
@@ -202,7 +292,10 @@ class RequestLimitsMiddleware:
             HTTPStatus.REQUEST_TIMEOUT,
             ErrorResponse(
                 code="request_timeout",
-                message=f"A request's body must arrive within {self._body_timeout_s} s",
+                message=(
+                    f"A request's body must arrive within {self._body_timeout_s} s, "
+                    f"with no pause over {self._body_idle_timeout_s} s"
+                ),
                 details=[],
             ),
             headers={"Connection": "close"},

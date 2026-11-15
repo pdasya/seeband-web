@@ -96,6 +96,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             settings.json_body_bytes,
         ),
         body_timeout_s=settings.body_timeout_s,
+        body_idle_timeout_s=settings.body_idle_timeout_s,
+        max_concurrent_requests=settings.max_concurrent_requests,
+        # The routes whose jobs share the calculation pool.
+        per_client_paths=frozenset({"/api/calc", "/api/parse", "/api/guess"}),
+        max_per_client=settings.calc_max_per_client,
     )
     # Added last, so that it runs first and logs the requests that the limits refuse.
     app.add_middleware(
