@@ -509,7 +509,7 @@ test.describe("real fits", () => {
     await page.getByRole("radio", { name: /^ZIP, a file each/ }).click();
     const [file] = await Promise.all([
       page.waitForEvent("download"),
-      page.getByRole("button", { name: "Download" }).click(),
+      page.getByRole("button", { name: "Download", exact: true }).click(),
     ]);
     const zip = unzipSync(new Uint8Array(readFileSync(await file.path())));
 
