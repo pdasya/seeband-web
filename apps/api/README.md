@@ -227,7 +227,7 @@ For SPB, `sign_only_parameters` marks parameters whose magnitude must be preserv
 
 - **The guess is a starting point, with no known error bar.** The synthetic references show that a straight line gets a guess too. Nothing here says that the data look like what the nets were trained on.
 - **`not_finite` comes from real sizes of Seebeck.** A constant 1 mV/K from 100 to 800 K gives it, because the net's output reaches exactly 1, which the inverse transform turns into infinity.
-- **Start values carry no known issues.** A curve from them lists its own in `known_issues`, such as `negative_m_eff_weight`.
+- **Start values carry no known issues.** A curve from them lists its own in `known_issues`; a neural estimate is not evidence that the corrected valence–valence branch is universally valid.
 
 `tests/test_guess.py` runs the 10 cases of the [neural net references](../../packages/seeband_core/docs/neural-net-references.md) through the route: 9 give the expected `desktop_start_values` exactly, and 1 gives `no_net`. The reversed-row case uses the documented P9 override, equal to its sorted reference; the original desktop capture remains unchanged.
 

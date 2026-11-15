@@ -232,12 +232,20 @@ describe("resultIssues", () => {
   });
 
   test("goes to every quantity when it names no column", () => {
-    const [issue] = resultIssues(mode, {
+    const withoutColumns = {
+      ...mode,
+      known_issues: mode.known_issues.map((issue) =>
+        issue.id === SYNTHETIC_SEEBECK_ISSUE.id
+          ? { ...issue, columns: [] }
+          : issue,
+      ),
+    };
+    const [issue] = resultIssues(withoutColumns, {
       ...NO_FLAGS,
-      measured: ["negative_m_eff_weight"],
+      measured: [SYNTHETIC_SEEBECK_ISSUE.id],
     });
     expect(issue?.quantities).toEqual(["seebeck", "resistivity", "hall"]);
-    expect(issue?.severity).toBe("caution");
+    expect(issue?.severity).toBe("unreliable");
   });
 
   test("a fit's flag marks the curves drawn from its values too", () => {

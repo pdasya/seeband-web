@@ -8,20 +8,22 @@ could therefore disagree simply because they evaluated different grids.
 ## Equation and units
 
 With the existing conductivity integrals σ₁, σ₂ and Onsager integrals O₁,
-O₂, the calculation is
+O₂, the current calculation, including P13, is
 
 ```text
-q(T) = B (C_K + T) / ((D_K + T) r)
+q(T) = B (C_K + T) / ((D_K + T) |r|)
 S(T) = scale (O₁(T) + q(T) O₂(T)) / (σ₁(T) + q(T) σ₂(T)).
 ```
 
 Here r is the internal mass coordinate, not the public R used by the S-only
 conversion. C_K and D_K are kelvin temperature scales: public dimensionless
 C and D are multiplied by 300 K exactly once at the existing boundary.
-Mass/degeneracy conventions, the scattering law, least-squares residual scales,
-bounds and stopping thresholds are unchanged. The positive-channel interpretation
-requires r > 0, B ≥ 0 and positive T, C_K + T and D_K + T. The per-band implementation already
-used q(T) pointwise; P11 removes only the scalar reassignment in total S.
+P11 left mass/degeneracy conventions, scattering laws, residual scales, bounds
+and stopping thresholds unchanged. It used signed r in this equation; P13
+later replaces that longitudinal denominator with |r| and constrains each fit
+to its initial carrier branch. The positive-channel interpretation now requires
+r ≠ 0, B ≥ 0 and positive T, C_K + T and D_K + T. The per-band implementation
+already used q(T) pointwise; P11 removed only the scalar reassignment in total S.
 
 For r = 1, gap = 300 K, E_F = −100 K, N = B = 1, public C = 0.5 and D = 2
 (C_K = 150 K, D_K = 600 K), q(300 K) = 0.5 and q(800 K) = 0.678571429.
@@ -36,9 +38,9 @@ Tests cover ascending, descending, shuffled, subset and duplicate grids,
 singletons, scaling, nonunit degeneracy and an explicit pointwise formula.
 They verify that weighted band contributions sum to total S in both mixed
 modes, C = D reduces to constant-weight scattering, and B = 0 removes the
-second band's transport contribution. Negative-r cases test algebraic
-consistency only: the signed transport-weight issue (#104) is still open.
-Physical positive-weight checks do not validate that negative-weight model.
+second band's transport contribution. At the time of P11, negative-r cases
+tested algebraic consistency only, and issue #104 remained open. P13 later
+corrected longitudinal weights; see [positive DPB weights](dpb-positive-weights.md).
 
 P8 supplies independent checked chemical potentials. Without it, the old
 warm-start solver could still make a result depend on temperature order even
@@ -118,8 +120,9 @@ not establish fit quality or repair the collapsed-band problem.
 
 Convergence, active bounds and parameter movement do not prove model validity,
 identifiability or a global optimum. Existing iterative degeneracy (#85),
-negative-weight transport (#104), collapsed-band behavior (#107), Fermi-integral
-limitations and final-stage consistency (#176) remain separate.
+collapsed-band behavior (#107), Fermi-integral limitations and final-stage
+consistency (#176) remain separate. P13 supersedes the negative-weight caveat
+without changing the historical P11 captures; see [the P13 note](dpb-positive-weights.md).
 
 Core `0.1.3` identifies P11 on the landed P8/P9/P10 base; the existing version
 infrastructure is reused. Human physicist confirmation and parity (#71) remain

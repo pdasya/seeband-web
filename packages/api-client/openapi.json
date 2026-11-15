@@ -1257,24 +1257,6 @@
                               "disabled_by": [],
                               "known_issues": [
                                 {
-                                  "id": "negative_m_eff_weight",
-                                  "severity": "caution",
-                                  "message_key": "known_issue.negative_m_eff_weight",
-                                  "fixed_by": "#104",
-                                  "scattering": [],
-                                  "curve_kinds": [
-                                    "measured",
-                                    "seebeck",
-                                    "seebeck_by_band",
-                                    "electrical_conductivity",
-                                    "electrical_conductivity_by_band",
-                                    "thermal_conductivity"
-                                  ],
-                                  "columns": [],
-                                  "affects_fit": true,
-                                  "condition": "negative_m_eff"
-                                },
-                                {
                                   "id": "collapsed_m_eff",
                                   "severity": "unreliable",
                                   "message_key": "known_issue.collapsed_m_eff",
@@ -1746,24 +1728,6 @@
                                   "columns": [],
                                   "affects_fit": true,
                                   "condition": "degeneracy_not_one"
-                                },
-                                {
-                                  "id": "negative_m_eff_weight",
-                                  "severity": "caution",
-                                  "message_key": "known_issue.negative_m_eff_weight",
-                                  "fixed_by": "#104",
-                                  "scattering": [],
-                                  "curve_kinds": [
-                                    "measured",
-                                    "seebeck",
-                                    "seebeck_by_band",
-                                    "electrical_conductivity",
-                                    "electrical_conductivity_by_band",
-                                    "thermal_conductivity"
-                                  ],
-                                  "columns": [],
-                                  "affects_fit": true,
-                                  "condition": "negative_m_eff"
                                 },
                                 {
                                   "id": "collapsed_m_eff",
@@ -2290,24 +2254,6 @@
                                   "condition": "degeneracy_not_one"
                                 },
                                 {
-                                  "id": "negative_m_eff_weight",
-                                  "severity": "caution",
-                                  "message_key": "known_issue.negative_m_eff_weight",
-                                  "fixed_by": "#104",
-                                  "scattering": [],
-                                  "curve_kinds": [
-                                    "measured",
-                                    "seebeck",
-                                    "seebeck_by_band",
-                                    "electrical_conductivity",
-                                    "electrical_conductivity_by_band",
-                                    "thermal_conductivity"
-                                  ],
-                                  "columns": [],
-                                  "affects_fit": true,
-                                  "condition": "negative_m_eff"
-                                },
-                                {
                                   "id": "collapsed_m_eff",
                                   "severity": "unreliable",
                                   "message_key": "known_issue.collapsed_m_eff",
@@ -2415,7 +2361,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "example": "\"361f957aa19f272710a73f5485a46eca\""
+                "example": "\"76974b02f5b5e109d49561811e9ba2df\""
               }
             }
           },
@@ -3952,10 +3898,10 @@
               "text/event-stream": {
                 "examples": {
                   "single_pass": {
-                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"done\",\"result\":{\"parameters\":{\"m_eff\":0.57,\"band_gap\":910.0,\"fermi_energy\":-35.0},\"core_version\":\"0.1.3\",\"status\":\"converged\",\"parameter_errors\":{\"m_eff\":0.02,\"band_gap\":12.0,\"fermi_energy\":4.0},\"at_bounds\":[],\"known_issues\":[],\"held\":[]}}\n\n"
+                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"done\",\"result\":{\"parameters\":{\"m_eff\":0.57,\"band_gap\":910.0,\"fermi_energy\":-35.0},\"core_version\":\"0.1.4\",\"status\":\"converged\",\"parameter_errors\":{\"m_eff\":0.02,\"band_gap\":12.0,\"fermi_energy\":4.0},\"at_bounds\":[],\"known_issues\":[],\"held\":[]}}\n\n"
                   },
                   "iterative": {
-                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"iteration\",\"iteration\":1,\"parameters\":{\"m_eff\":0.8,\"band_gap\":950.0,\"fermi_energy\":-60.0}}\n\ndata: {\"type\":\"iteration\",\"iteration\":2,\"parameters\":{\"m_eff\":0.6,\"band_gap\":915.0,\"fermi_energy\":-38.0}}\n\ndata: {\"type\":\"done\",\"result\":{\"parameters\":{\"m_eff\":0.57,\"band_gap\":910.0,\"fermi_energy\":-35.0},\"core_version\":\"0.1.3\",\"status\":\"converged\",\"iterations\":2,\"parameter_errors\":{\"m_eff\":0.02,\"band_gap\":12.0,\"fermi_energy\":4.0},\"at_bounds\":[],\"known_issues\":[],\"held\":[]}}\n\n"
+                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"iteration\",\"iteration\":1,\"parameters\":{\"m_eff\":0.8,\"band_gap\":950.0,\"fermi_energy\":-60.0}}\n\ndata: {\"type\":\"iteration\",\"iteration\":2,\"parameters\":{\"m_eff\":0.6,\"band_gap\":915.0,\"fermi_energy\":-38.0}}\n\ndata: {\"type\":\"done\",\"result\":{\"parameters\":{\"m_eff\":0.57,\"band_gap\":910.0,\"fermi_energy\":-35.0},\"core_version\":\"0.1.4\",\"status\":\"converged\",\"iterations\":2,\"parameter_errors\":{\"m_eff\":0.02,\"band_gap\":12.0,\"fermi_energy\":4.0},\"at_bounds\":[],\"known_issues\":[],\"held\":[]}}\n\n"
                   },
                   "fit_timeout": {
                     "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"error\",\"error\":{\"code\":\"fit_timeout\",\"message\":\"The fit took too long\",\"details\":[]}}\n\n"
@@ -5234,7 +5180,7 @@
             "type": "string",
             "title": "Core Version",
             "description": "Core software version for provenance, not certification.",
-            "default": "0.1.3"
+            "default": "0.1.4"
           },
           "curves": {
             "additionalProperties": {
@@ -5293,7 +5239,7 @@
         "description": "Curves by name, where each name ends in its unit, and null marks a value that is not finite.\n\n`known_issues` names known errors that apply to this result, as in `GET /api/models`. `rmse` is\nempty without measurements. `measured_points` holds points made from the measurements sent,\nby name with its unit: `electrical_conductivity_s_per_m` is 1/rho, with null for a rho of 0 or\nbelow. They use no model, so they go with the data the request sent, interpolated or not.",
         "examples": [
           {
-            "core_version": "0.1.3",
+            "core_version": "0.1.4",
             "curves": {
               "resistivity_ohm_m": [
                 3.6627e-05,
@@ -6219,7 +6165,7 @@
             "type": "string",
             "title": "Core Version",
             "description": "Core software version for provenance, not certification.",
-            "default": "0.1.3"
+            "default": "0.1.4"
           },
           "status": {
             "type": "string",
@@ -6296,7 +6242,7 @@
         "examples": [
           {
             "at_bounds": [],
-            "core_version": "0.1.3",
+            "core_version": "0.1.4",
             "held": [],
             "known_issues": [],
             "parameter_errors": {
@@ -6612,7 +6558,7 @@
             "type": "string",
             "title": "Core Version",
             "description": "Core software version for provenance, not certification.",
-            "default": "0.1.3"
+            "default": "0.1.4"
           }
         },
         "type": "object",
@@ -6623,7 +6569,7 @@
         "title": "HealthResponse",
         "examples": [
           {
-            "core_version": "0.1.3",
+            "core_version": "0.1.4",
             "status": "ok",
             "version": "1.0.0"
           }
@@ -6848,7 +6794,6 @@
                 "type": "string",
                 "enum": [
                   "degeneracy_not_one",
-                  "negative_m_eff",
                   "collapsed_m_eff",
                   "fermi_energy_outside_band",
                   "interpolation_extrapolated"

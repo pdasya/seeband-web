@@ -14,6 +14,7 @@ valid or matches the desktop.
 | P6 (#85), DPB S-only degeneracy        | S-only fitting and drawing applied degeneracy differently to the public mass ratio R.                     | Both convert R to the low-level model ratio R/N once; public values and bounds remain in R.                                              | [DPB S-only degeneracy correction](../../packages/seeband_core/docs/dpb-s-degeneracy.md)          |
 | P7 (#86), interpolation support        | Requested fit ranges could generate synthetic interpolation points outside measured temperature coverage. | For measurements spanning 25–750 K and a request of 50–800 K, interpolation uses 50–750 K, or 35 points.                                 | [Interpolation support](../../packages/seeband_core/docs/interpolation.md)                        |
 | P11 (#102), DPB acPhDis Seebeck        | Every point could use the weight of the final grid temperature.                                           | Use the weight at each temperature; total S equals the sum of its weighted band contributions.                                           | [Pointwise mixed-scattering weight](../../packages/seeband_core/docs/dpb-acphdis-weight.md)       |
+| P13 (#104), DPB longitudinal weights   | Negative signed mass ratios could produce negative longitudinal weights or NaN.                           | Use positive mass-magnitude weights across DPB scattering modes; retain signed carrier density and Hall signs.                           | [Positive DPB weights](../../packages/seeband_core/docs/dpb-positive-weights.md)                  |
 
 Core `0.1.0` includes the landed P2–P7 corrections listed above. Core `0.1.1` additionally includes P8: a checked signed chemical-potential
 solve, stable negative F₁/₂ tail and rejection of analytically invalid optimizer
@@ -31,6 +32,10 @@ averaged.
 Core `0.1.3` adds P11: total DPB mixed-scattering Seebeck uses its pointwise
 band weight in the fit, curve and RMSE paths. Other numerical and model
 limitations remain. The evidence linked above records changed example fits.
+
+Core `0.1.4` adds P13's positive longitudinal DPB weights and branch-preserving
+fit bounds. Physical-limit tests and synthetic fit recoveries cover both mass signs. Neural guesses are not validated for every corrected
+branch.
 
 P10 adds result-version and provenance metadata only; it does not change
 formulas or fitting. Core version `0.1.0` is the first traceable version.

@@ -634,3 +634,40 @@ def test_a_stopped_fit_keeps_its_errors() -> None:
     )
     assert result.status == "stopped"
     assert "A" in result.parameter_errors or "B" in result.parameter_errors
+
+
+@pytest.mark.parametrize("mode_id", ["dpb_s", "dpb_s_rho", "dpb_s_rho_rh"])
+@pytest.mark.parametrize("mass", [-1.0, 1.0])
+@pytest.mark.parametrize("tight_bounds", [False, True])
+def test_dpb_effective_branch_boundary_is_reported(monkeypatch, mode_id, mass, tight_bounds):
+    model = registry.get("dpb")
+    mode = model.describe().fit_mode(mode_id)
+    start = default_start(mode) | {"m_eff": mass, "band_gap": 300.0, "fermi_energy": -200.0}
+    scattering = None if mode_id == "dpb_s" else "acPh"
+    held = frozenset(
+        spec.name
+        for spec in mode.parameters_for(scattering)
+        if spec.role == "fitted" and spec.name != "m_eff"
+    )
+
+    def linear_seebeck(t, value, *args, **kwargs):
+        return np.full_like(t, value * 1e-6 * kwargs.get("scal_fac", 1.0))
+
+    monkeypatch.setattr(math_module, "dpb_see_vs_temp", linear_seebeck)
+    monkeypatch.setattr(math_module, "dpb_see_vs_temp_single_scatter", linear_seebeck)
+    temperatures = np.array([100.0, 300.0, 800.0])
+    data = {
+        q: Measurement(temperatures, np.full(3, -mass * 1e-6 if q == "seebeck" else 1.0))
+        for q in mode.quantities
+    }
+    bounds = Bounds(-3, 3)
+    if tight_bounds:
+        bounds = Bounds(-3, -0.5) if mass < 0 else Bounds(0.5, 3)
+    result = model.fit(
+        FitRequest(mode_id, data, start, bounds={"m_eff": bounds}, scattering=scattering, held=held)
+    )
+    assert result.status == "converged", result.message
+    assert result.parameters["m_eff"] == pytest.approx(
+        0.5 * mass if tight_bounds else 0.0, abs=1e-6
+    )
+    assert result.at_bounds == ("m_eff",)

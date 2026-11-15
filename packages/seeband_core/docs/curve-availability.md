@@ -29,7 +29,7 @@ P2 (#81) corrects the DPB Hall prefactor. At fixed R_H and unchanged band/scatte
 
 Band 1 is a valence band, so its reported n is negative. Band 2 takes the sign of `m_eff`, so with `m_eff` below 0 both reported densities are negative. These signed outputs are distinct from nonnegative carrier populations; a physicist should confirm the reporting convention.
 
-The earlier desktop prefactor gave |R_H n e| = 0.50 in the degenerate single-band limit. P2 (#81) corrects this magnitude to 1. Away from that limit, the Hall factor is not generally 1. The separate negative-band transport-weight issue (#104) remains unresolved.
+The earlier desktop prefactor gave |R_H n e| = 0.50 in the degenerate single-band limit. P2 (#81) corrects this magnitude to 1. Away from that limit, the Hall factor is not generally 1. P13 (#104) corrects longitudinal negative-band weights; Hall keeps carrier signs and uses the corrected resistivity. See [positive DPB weights](dpb-positive-weights.md).
 
 m1 below 0 gives complex values, which the API refuses with `calculation_failed`. m1 = 0 gives an n of 0.
 

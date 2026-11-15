@@ -280,6 +280,12 @@ class _BandModel:
             # With N2/N1 other than 1, the loop fits m_eff / N, and its bounds apply to that (D12).
             if fit_mode.iterative and spec.name == "m_eff":
                 value = value / ratio
+            if spec.name == "m_eff":
+                # Report the same effective branch bounds used by every DPB solver.
+                lower, upper = fit_module._dpb_branch_bounds(
+                    request.start["m_eff"], ([bounds.lower], [bounds.upper])
+                )
+                bounds = Bounds(lower[0], upper[0])
             if value <= bounds.lower or value >= bounds.upper:
                 found.append(spec.name)
             elif _is_at_bound(value, bounds.lower) or _is_at_bound(value, bounds.upper):

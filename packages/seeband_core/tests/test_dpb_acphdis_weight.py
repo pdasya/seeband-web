@@ -58,9 +58,9 @@ def test_total_uses_explicit_pointwise_transport_weight_and_equals_band_sum(meff
         sigma2 = math_module.sigma_general(mu - gap, np.sign(meff), 1, -1, temp)
         onsager1 = math_module.onsi_general(mu, -1, 1, -1, temp)
         onsager2 = math_module.onsi_general(mu - gap, np.sign(meff), 1, -1, temp)
-        weight = b * (c_k + temp) / (d_k + temp) / meff
+        weight = b * (c_k + temp) / (d_k + temp) / abs(meff)
         conductivity = sigma1 + weight * sigma2
-        # Keep the signed-mass cases well away from a zero-conductivity pole.
+        # P13 longitudinal weights remain positive on both carrier branches.
         assert abs(conductivity) > 0.1 * (abs(sigma1) + abs(weight * sigma2))
         expected.append(scale * (onsager1 + weight * onsager2) / conductivity)
 

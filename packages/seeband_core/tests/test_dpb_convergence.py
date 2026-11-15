@@ -149,6 +149,11 @@ def test_example03_needs_another_iteration_after_C2_Dhalf(hall):
 @pytest.mark.parametrize("hall", [False, True])
 @pytest.mark.parametrize("parameter", range(7), ids=["mass", "gap", "EF", "A", "B", "C", "D"])
 def test_each_zero_initial_must_settle_after_becoming_nonzero(monkeypatch, hall, parameter):
+    if parameter == 0:
+        # P13: zero selects no carrier branch; other zero-valued parameters remain valid.
+        with pytest.raises(ValueError, match="carrier branch"):
+            controlled_fit(monkeypatch, hall, parameter, zero_parameter=parameter)
+        return
     progress, _ = controlled_fit(monkeypatch, hall, parameter, zero_parameter=parameter)
     assert progress.iterations == 2
     assert not progress.reached_iteration_limit
