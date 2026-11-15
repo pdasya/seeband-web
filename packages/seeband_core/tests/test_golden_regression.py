@@ -518,7 +518,11 @@ def assert_named_fit_case(
         for value, (lower, upper) in zip(values[:3], bounds[:3], strict=True):
             assert lower <= value <= upper
     elif identifier.startswith("01_Fe2VAl09Si01-") and mode == "d1":
-        assert_close(values, expected, D1_01_TOLERANCE)
+        try:
+            assert_close(values, expected, D1_01_TOLERANCE)
+        except AssertionError as error:
+            error.add_note(f"D1 fitted parameters: {dict(result.parameters)!r}")
+            raise
         if abs(list(flat(expected))[0]) < COLLAPSED_M_EFF:
             # P13's branch-constrained endpoint is collapsed on both Mac and
             # Linux. Keep every numeric comparison above and require its flags.
