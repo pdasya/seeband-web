@@ -222,9 +222,11 @@ class ChemicalPotentialResult:
 
 
 # Roots solved within the current `reuse_chemical_potential` scope, or None outside one.
-_REUSED_ROOTS: contextvars.ContextVar[dict[tuple[bytes, ...], ChemicalPotentialResult] | None] = (
-    contextvars.ContextVar("reused_chemical_potential", default=None)
-)
+# Only the roots and residuals are kept: a solve that is kept succeeded, so each status is
+# "converged", and a string status per point would take more room than both.
+_REUSED_ROOTS: contextvars.ContextVar[
+    dict[tuple[bytes, ...], tuple[np.ndarray, np.ndarray]] | None
+] = contextvars.ContextVar("reused_chemical_potential", default=None)
 # Within a fit each set of parameters differs, so only the last few are worth keeping.
 _REUSED_ROOTS_LIMIT = 32
 
@@ -266,6 +268,12 @@ def _key_bytes(value: object) -> bytes | None:
     return None
 
 
+def _converged(
+    roots: np.ndarray, residuals: np.ndarray, shape: tuple[int, ...]
+) -> ChemicalPotentialResult:
+    return ChemicalPotentialResult(roots, residuals, np.full(shape, "converged"))
+
+
 def _chemical_potential_diagnostics(
     temp_array: np.ndarray,
     mass: float,
@@ -291,14 +299,14 @@ def _chemical_potential_diagnostics(
     key = (str(temperatures.shape).encode(), temperatures.tobytes(), *parameters)
     found = reused.get(key)
     if found is None:
-        found = _solve_chemical_potential(temp_array, mass, fermi_energy, gap, degen)
+        solved = _solve_chemical_potential(temp_array, mass, fermi_energy, gap, degen)
         if len(reused) >= _REUSED_ROOTS_LIMIT:
             del reused[next(iter(reused))]
+        found = (solved.chemical_potential, solved.normalized_residual)
         reused[key] = found
+    roots, residuals = found
     # Copies, so that a caller changing its array cannot change another's.
-    return ChemicalPotentialResult(
-        found.chemical_potential.copy(), found.normalized_residual.copy(), found.status.copy()
-    )
+    return _converged(roots.copy(), residuals.copy(), temperatures.shape)
 
 
 def _solve_chemical_potential(
@@ -401,9 +409,7 @@ def _solve_chemical_potential(
             )
         roots[index] = eta * temp
         residuals[index] = residual
-    return ChemicalPotentialResult(
-        roots[inverse], residuals[inverse], np.full(temperatures.shape, "converged")
-    )
+    return _converged(roots[inverse], residuals[inverse], temperatures.shape)
 
 
 def spb_chemPot_diagnostics(
