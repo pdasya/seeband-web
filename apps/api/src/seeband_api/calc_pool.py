@@ -50,6 +50,10 @@ _MAX_RETRY_AFTER_S = 30
 _RUN_TIME_WEIGHT = 0.2
 # A job still running after this many times its run time is stuck, and its workers are replaced.
 _STUCK_AFTER_RUN_TIMES = 2
+# A warm-up that has not answered by then is stuck, and its workers are replaced, as no job gets a
+# slot while it waits. A fork from the preloaded server answers in milliseconds, and a fork server
+# that has to start again, in well under a second.
+_WARM_UP_TIMEOUT_S = 10.0
 # What nginx calls a request whose client closed it. Nobody reads it, and it keeps such requests
 # apart from real overload in the logs.
 _CLIENT_CLOSED_REQUEST = 499
@@ -122,13 +126,15 @@ class CalcPool:
 
         Called at start and for each replaced executor.
         """
-        futures = [self._executor.submit(warm_up) for _ in range(self._workers)]
+        executor = self._executor
+        futures = [executor.submit(warm_up) for _ in range(self._workers)]
         # Only the latest warm-up holds the slots, not that of an executor since replaced.
         self._warming = futures
         try:
             loop = asyncio.get_running_loop()
         except RuntimeError:
             return  # Nobody waits yet. The first job's dispatch checks the warm-up itself.
+        loop.call_later(_WARM_UP_TIMEOUT_S, self._replace_if_warm_up_stuck, executor, futures)
 
         def answered_from_worker_thread(_: Future[None]) -> None:
             try:
@@ -351,6 +357,17 @@ class CalcPool:
         """
         if not future.done() and self._executor is executor:
             _logger.warning("calc_job_stuck", extra={"fields": {"timeout_s": self._timeout_s}})
+            self._replace(executor)
+            _terminate(executor)
+
+    def _replace_if_warm_up_stuck(
+        self, executor: ProcessPoolExecutor, futures: list[Future[None]]
+    ) -> None:
+        """Ends workers that did not start, rather than holding every slot until jobs give up."""
+        if self._executor is executor and not all(future.done() for future in futures):
+            _logger.warning(
+                "calc_warm_up_stuck", extra={"fields": {"timeout_s": _WARM_UP_TIMEOUT_S}}
+            )
             self._replace(executor)
             _terminate(executor)
 

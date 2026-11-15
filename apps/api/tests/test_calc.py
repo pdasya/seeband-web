@@ -1,4 +1,5 @@
 import asyncio
+import functools
 import json
 import logging
 import math
@@ -782,6 +783,30 @@ def test_a_replaced_pool_gives_out_no_slot_until_its_workers_answer(
         assert _run_in_pool(pool, pool_functions.double, 21) == 42
     finally:
         pool.close()
+
+
+def test_a_warm_up_that_does_not_answer_gets_new_workers(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Otherwise no job would get a slot until each gave up with a 503 that names no cause."""
+    monkeypatch.setattr(
+        calc_pool,
+        "warm_up",
+        functools.partial(pool_functions.hang_the_first_time, str(tmp_path / "hung")),
+    )
+    monkeypatch.setattr(calc_pool, "_WARM_UP_TIMEOUT_S", 0.5)
+    pool = CalcPool(1, 30.0)
+
+    async def run() -> Any:
+        pool.warm_up()
+        return await pool.run(pool_functions.double, 21)
+
+    try:
+        with caplog.at_level(logging.WARNING, logger="seeband_api"):
+            assert asyncio.run(run()) == 42
+    finally:
+        pool.close()
+    assert "calc_warm_up_stuck" in [record.getMessage() for record in caplog.records]
 
 
 def test_pool_workers_start_with_the_core_loaded() -> None:

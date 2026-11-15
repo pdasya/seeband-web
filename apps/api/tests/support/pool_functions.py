@@ -49,3 +49,14 @@ def slow_warm_up() -> None:
 def loaded_modules(names: list[str]) -> list[str]:
     """The modules among `names` that the worker holds."""
     return [name for name in names if name in sys.modules]
+
+
+def hang_the_first_time(flag: str) -> None:
+    """Hangs if `flag` does not exist yet, after creating it, so only the first worker hangs."""
+    try:
+        with open(flag, "x", encoding="utf-8"):
+            pass
+    except FileExistsError:
+        return
+    time.sleep(30)
+
