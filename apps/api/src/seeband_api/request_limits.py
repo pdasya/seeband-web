@@ -91,9 +91,14 @@ class RateLimiter:
 
 
 def _route_path(scope: Scope) -> str:
-    """The path that routes see. `path` starts with a server's root path, and routing drops it."""
+    """The path that routes see. `path` starts with a server's root path, and routing drops it.
+
+    A trailing slash is dropped too, as a route redirects `/api/calc/` to `/api/calc`, so its
+    limits apply to both.
+    """
     path: str = scope["path"]
-    return path.removeprefix(scope.get("root_path", ""))
+    path = path.removeprefix(scope.get("root_path", ""))
+    return path.rstrip("/") or "/"
 
 
 def _content_length(scope: Scope) -> int | None:
