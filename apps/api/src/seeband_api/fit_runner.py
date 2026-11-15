@@ -19,8 +19,8 @@ from typing import Annotated, Any
 
 from fastapi import Depends, Request
 
-from seeband_api.calc_worker import initialise_worker
 from seeband_api.errors import ApiError
+from seeband_api.fit_worker import run_in_child
 from seeband_api.processes import context as _context
 from seeband_api.request_logging import log_calculation_failure
 
@@ -29,28 +29,6 @@ TERMINATE_GRACE_S = 1.0
 FIT_TIMEOUT_MESSAGE = "The fit took too long"
 FIT_PROCESS_DIED_MESSAGE = "The fit stopped unexpectedly. Try again."
 FIT_FAILED_MESSAGE = "The fit ended with an internal error"
-
-def _run_in_child(job: Connection, events: Connection) -> None:
-    """Runs the job from one pipe, and sends what happens through the other.
-
-    Only an exception's type crosses, not its text. The job comes through a pipe rather than the
-    process's arguments, because passing those holds up `start` until the child reads them, and
-    until `start` returns, the process cannot be killed.
-    """
-    initialise_worker()
-    try:
-        function, args = job.recv()
-    except EOFError:
-        return
-    finally:
-        job.close()
-    try:
-        result = function(*args, lambda update: events.send(("iteration", update)))
-    except BaseException as error:
-        events.send(("error", type(error).__name__))
-    else:
-        events.send(("result", result))
-    events.close()
 
 
 def _stop(process: ForkServerProcess) -> None:
@@ -203,7 +181,7 @@ class FitRunner:
         job_reader, job_writer = _context.Pipe(duplex=False)
         events_reader, events_writer = _context.Pipe(duplex=False)
         process = _context.Process(
-            target=_run_in_child, args=(job_reader, events_writer), daemon=True
+            target=run_in_child, args=(job_reader, events_writer), daemon=True
         )
         fit = _FitProcess(process, job_reader, job_writer, events_reader, events_writer)
         self._running.add(fit)

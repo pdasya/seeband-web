@@ -209,6 +209,13 @@ def test_a_fit_starts_with_the_core_loaded() -> None:
     assert loaded == list(PRELOADED)
 
 
+def test_a_fit_process_does_not_import_the_web_framework() -> None:
+    """FastAPI is not in the fork server, and importing it took about 0.1 s of every fit."""
+    runner = FitRunner(1, 0, 30.0)
+
+    assert _run(lambda: runner.run(fit_functions.loaded_modules, ["fastapi", "starlette"])) == []
+
+
 def test_a_stop_ends_the_process_within_a_tenth_of_a_second(tmp_path: Path) -> None:
     runner = FitRunner(1, 0, 60.0)
     pid_file = tmp_path / "pid"
