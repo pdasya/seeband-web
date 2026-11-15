@@ -5,6 +5,7 @@ import {
   createSessionStore,
   currentGuess,
   fitData,
+  hasOpenUnitDoubt,
   holdsFiles,
   type FitResult,
   type ParsedTable,
@@ -800,4 +801,36 @@ test("a fit keeps the values it started from", () => {
   expect(state().fitStartValues).toEqual({ m_eff: 1.5, band_gap: 900 });
   state().fitRequested("dpb_s");
   expect(state().fitStartValues).toBeNull();
+});
+
+describe("a doubt about a unit", () => {
+  const doubted: SessionData = {
+    ...DATA,
+    unitDoubts: [{ code: "implausible_magnitude", direction: "above" }],
+  };
+
+  test("is open until the user confirms the values", () => {
+    expect(hasOpenUnitDoubt(undefined)).toBe(false);
+    expect(hasOpenUnitDoubt(DATA)).toBe(false);
+    expect(hasOpenUnitDoubt({ ...DATA, unitDoubts: [] })).toBe(false);
+    expect(hasOpenUnitDoubt(doubted)).toBe(true);
+    expect(hasOpenUnitDoubt({ ...doubted, unitConfirmed: true })).toBe(false);
+  });
+
+  test("is confirmed for one quantity only, and new data need confirming again", () => {
+    state().setData("seebeck", doubted);
+    state().setData("hall", doubted);
+
+    state().confirmUnit("seebeck");
+
+    expect(hasOpenUnitDoubt(state().data.seebeck)).toBe(false);
+    expect(hasOpenUnitDoubt(state().data.hall)).toBe(true);
+    state().setData("seebeck", doubted);
+    expect(hasOpenUnitDoubt(state().data.seebeck)).toBe(true);
+  });
+
+  test("cannot be confirmed for data that are not there", () => {
+    state().confirmUnit("resistivity");
+    expect(state().data.resistivity).toBeUndefined();
+  });
 });
