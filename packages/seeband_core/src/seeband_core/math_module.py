@@ -250,21 +250,23 @@ def reuse_chemical_potential() -> Iterator[None]:
 
 
 def _key_bytes(value: object) -> bytes | None:
-    """The value's type and bytes, as the solve gets it, or None if it cannot be a key.
+    """The value's kind and bytes, as the solve gets it, or None if it cannot be a key.
 
-    Bytes, not floats, so that -0.0 and 0.0 stay apart, as the solve can tell them apart. The type
-    is part of the key, because the solve computes with the value as given: an np.float32 gives
+    Bytes, not floats, so that -0.0 and 0.0 stay apart, as the solve can tell them apart. A float
+    and an np.float64, its subclass, share a key: they are the same double and give the same bits
+    in each operation, and the solve divides only by numpy temperatures or a checked scale, so the
+    zero division where a float raises and an np.float64 warns cannot occur. Any other numpy type
+    keeps its own, because the solve computes with the value as given, and an np.float32 gives
     other numbers than the float64 of the same value. Anything but a number is solved each time.
     """
-    name = type(value).__qualname__.encode() + b":"
     if value is None:
-        return name
-    if isinstance(value, np.number):
-        return name + value.tobytes()
+        return b"none:"
     if isinstance(value, float):
-        return name + np.float64(value).tobytes()
+        return b"float:" + np.float64(value).tobytes()
+    if isinstance(value, np.number):
+        return value.dtype.str.encode() + b":" + value.tobytes()
     if isinstance(value, int):
-        return name + str(value).encode()
+        return type(value).__qualname__.encode() + b":" + str(value).encode()
     return None
 
 

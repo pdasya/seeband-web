@@ -323,3 +323,12 @@ def test_a_reused_root_holds_no_status_strings() -> None:
         (kept,) = reused.values()
     assert all(array.dtype == np.float64 for array in kept)
     assert list(result.status) == ["converged", "converged"]
+
+
+def test_a_float_and_its_float64_share_roots() -> None:
+    with math_module.reuse_chemical_potential():
+        math_module.spb_chemPot_diagnostics(np.array([300.0]), 1.0, 0.1)
+        reused = math_module._REUSED_ROOTS.get()
+        assert reused is not None
+        math_module.spb_chemPot_diagnostics(np.array([300.0]), np.float64(1.0), np.float64(0.1))
+        assert len(reused) == 1
