@@ -14,7 +14,12 @@ uv run python -m seeband_api
 | `SEEBAND_API_PORT`                    | `8000`                           | `python -m seeband_api` only                                                                                         |
 | `SEEBAND_API_LOG_LEVEL`               | `INFO`                           | the API's own log lines, not uvicorn's own                                                                           |
 | `SEEBAND_API_CALC_WORKERS`            | `2`                              | worker processes for calculations                                                                                    |
-| `SEEBAND_API_CALC_TIMEOUT_S`          | `30`                             | how long a calculation request waits                                                                                 |
+| `SEEBAND_API_CALC_TIMEOUT_S`          | `30`                             | how long a calculation, parse or guess can run once a worker has it                                                  |
+| `SEEBAND_API_CALC_MAX_WAITING`        | `8`                              | jobs waiting for a worker, beyond one for each                                                                       |
+| `SEEBAND_API_CALC_WAIT_TIMEOUT_S`     | `10`                             | how long a job may wait for a worker                                                                                 |
+| `SEEBAND_API_CALC_MAX_PER_CLIENT`     | `4`                              | jobs of one client at once, waiting or running                                                                       |
+| `SEEBAND_API_BODY_TIMEOUT_S`          | `10`                             | how long a request's body may take to arrive                                                                         |
+| `SEEBAND_API_LIMIT_CONCURRENCY`       | `200`                            | connections and requests at once, past which uvicorn answers 503; `python -m seeband_api` only                       |
 | `SEEBAND_API_FIT_MAX_RUNNING`         | `2`                              | fits at once, in each server process                                                                                 |
 | `SEEBAND_API_FIT_MAX_WAITING`         | `4`                              | fits waiting, before a 429                                                                                           |
 | `SEEBAND_API_FIT_TIMEOUT_S`           | `60`                             | how long one fit can run                                                                                             |
@@ -43,6 +48,10 @@ uv run python -m seeband_api
 | `GET /api/docs`          | Swagger UI over the same    |
 
 ## Limits
+
+**Calculations go through a queue** (A14). Calc, parse and guess run in a pool of worker processes, and a queue in the API admits their jobs. It has one slot for each worker, held until the worker has finished, also after a 504, so the pool never holds a backlog of abandoned jobs. Past the slots, at most `calc_max_waiting` jobs wait in turn, each for at most `calc_wait_timeout_s`, and a waiting job whose client has gone is dropped before it reaches a worker. One client can have `calc_max_per_client` jobs at once. Each job logs `calc_job` with its `job`, `queue_wait_ms`, `run_ms` and `abandoned`, never its arguments. `tests/test_calc_admission.py` checks that a client sending 660 heavy jobs gets fast 429 and 503 answers while another's light jobs keep a p95 under 1 s, that 12 aborted heavy jobs hold up the next light one by no more than the two a worker had taken, and that closing the pool ends a worker in the middle of a job.
+
+**A request's body must arrive within `body_timeout_s`**, or the answer is 408 `request_timeout` and the connection closes, so half-sent bodies do not hold the server. The limit ends before a route runs, so it does not cut a fit's stream. Timeouts for headers and idle connections belong to the proxy (#53).
 
 Each limit answers in the usual error format. All the values are starting guesses, and should be checked on the VM and with real use.
 
@@ -169,7 +178,8 @@ It has no rate limit and no `ETag`, as it costs almost nothing and is under 10 K
 - **`measured_points`** holds points made from the `measurements` sent, with no model: `electrical_conductivity_s_per_m` is 1/ρ at each ρ temperature, with `null` for a ρ of 0 or below. They go with the data the request sent: points in the fit range, as a client sends for the RMSE, and of interpolated ρ when it sends interpolated values. `seeband_core.measured_points` makes them. There are no κ_e points: κ_e is not measured, and an estimate from ρ needs a Lorenz number, which was decided against in #159.
 - **RMSE** uses a grid of 50 points by default, for speed. Ask for `rmse_points: 200` for a value to report: on the demo dataset, 50 points changed an RMSE by about 0.3 % at default parameters, and up to about 4 % near a good fit.
 - **`calculation_unavailable`** is a 503: a worker died, and the next request gets a new pool.
-- **`calculation_timeout`** is a 504. A worker cannot be interrupted, so it stays busy until the calculation ends.
+- **`calculation_timeout`** is a 504. A worker cannot be interrupted, so it stays busy until the calculation ends, and its slot in the queue stays taken until then.
+- **`calculation_busy`** is a 503 with `Retry-After`, when the queue is full or a job waited `calc_wait_timeout_s` for a worker. **`client_calc_limit`** is a 429 with `Retry-After`, when the client already has `calc_max_per_client` jobs. Both come at once, rather than after a run's whole time.
 
 Requests are parsed in the event loop, up to the size in [Limits](#limits). A body of 9 MB of numbers took about 0.13 s in all, and the largest allowed grids, `points` and `rmse_points` of 1000, take about 1.3 s each.
 
