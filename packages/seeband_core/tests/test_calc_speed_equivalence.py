@@ -140,7 +140,9 @@ def test_a_curve_is_the_same_to_the_bit(
     assert now == before
 
 
-def _fit_request(mode_id: str, scattering: str | None) -> tuple[Any, FitRequest]:
+def _fit_request(
+    mode_id: str, scattering: str | None, algorithm: str = "legacy-sequential-v1"
+) -> tuple[Any, FitRequest]:
     model = registry.get(mode_id.partition("_")[0])
     fit_mode = model.describe().fit_mode(mode_id)
     measurements = {
@@ -150,7 +152,13 @@ def _fit_request(mode_id: str, scattering: str | None) -> tuple[Any, FitRequest]
         for quantity, suffix in (("seebeck", "see"), ("resistivity", "rho"))
         if quantity in fit_mode.quantities
     }
-    return model, FitRequest(mode_id, measurements, default_start(fit_mode), scattering=scattering)
+    return model, FitRequest(
+        mode_id,
+        measurements,
+        default_start(fit_mode),
+        scattering=scattering,
+        algorithm=algorithm,  # type: ignore[arg-type]
+    )
 
 
 def _fit_outcome(model: Any, request: FitRequest) -> Any:
@@ -192,13 +200,26 @@ def _fit_outcome(model: Any, request: FitRequest) -> Any:
     )
 
 
+# Both fit algorithms: the legacy one of the desktop, and the verified one, the default. A verified
+# dpb_s_rho fit takes about 36 s, so it runs only in the test with failing solves, which ends early.
+_FITS = [
+    ("dpb_s", None, "legacy-sequential-v1"),
+    ("dpb_s_rho", "acPh", "legacy-sequential-v1"),
+    ("spb_s_rho", "acPh", "legacy-sequential-v1"),
+    ("dpb_s", None, "verified-sequential-v2"),
+    ("dpb_s_rho", "acPh", "verified-sequential-v2"),
+    ("spb_s_rho", "acPh", "verified-sequential-v2"),
+]
+
+
 @pytest.mark.parametrize(
-    ("mode_id", "scattering"), [("dpb_s", None), ("dpb_s_rho", "acPh"), ("spb_s_rho", "acPh")]
+    ("mode_id", "scattering", "algorithm"),
+    [fit for fit in _FITS if fit != ("dpb_s_rho", "acPh", "verified-sequential-v2")],
 )
 def test_a_fit_is_the_same_to_the_bit(
-    monkeypatch: pytest.MonkeyPatch, mode_id: str, scattering: str | None
+    monkeypatch: pytest.MonkeyPatch, mode_id: str, scattering: str | None, algorithm: str
 ) -> None:
-    model, request = _fit_request(mode_id, scattering)
+    model, request = _fit_request(mode_id, scattering, algorithm)
 
     with _as_before(monkeypatch):
         before = _fit_outcome(model, request)
@@ -207,16 +228,15 @@ def test_a_fit_is_the_same_to_the_bit(
     assert now == before
 
 
-@pytest.mark.parametrize(
-    ("mode_id", "scattering"), [("dpb_s", None), ("dpb_s_rho", "acPh"), ("spb_s_rho", "acPh")]
-)
+@pytest.mark.parametrize(("mode_id", "scattering", "algorithm"), _FITS)
 def test_a_fit_whose_solves_fail_on_the_way_is_the_same_to_the_bit(
-    monkeypatch: pytest.MonkeyPatch, mode_id: str, scattering: str | None
+    monkeypatch: pytest.MonkeyPatch, mode_id: str, scattering: str | None, algorithm: str
 ) -> None:
-    """Every fourth set of parameters the fit tries has no root, and the fit goes on past it.
+    """Every fourth set of parameters the fit tries has no root.
 
-    The sets are counted in the order they first come, so the same ones fail with and without
-    reuse, however often each is solved.
+    The legacy fit goes on past them and converges. The verified fit checks its derivatives and
+    fails, which is its result to compare. The sets are counted in the order they first come, so
+    the same ones fail with and without reuse, however often each is solved.
     """
     solve = math_module._solve_chemical_potential
     seen: dict[tuple[bytes, ...], int] = {}
@@ -231,7 +251,7 @@ def test_a_fit_whose_solves_fail_on_the_way_is_the_same_to_the_bit(
         return solve(temp_array, mass, fermi_energy, *rest)
 
     monkeypatch.setattr(math_module, "_solve_chemical_potential", failing)
-    model, request = _fit_request(mode_id, scattering)
+    model, request = _fit_request(mode_id, scattering, algorithm)
 
     with _as_before(monkeypatch):
         before = _fit_outcome(model, request)
@@ -241,7 +261,7 @@ def test_a_fit_whose_solves_fail_on_the_way_is_the_same_to_the_bit(
 
     assert failed_before > 0
     assert failures > 0
-    assert before[0][0] == "converged"
+    assert before[0][0] == ("converged" if algorithm == "legacy-sequential-v1" else "failed")
     assert now == before
 
 
