@@ -5,6 +5,7 @@ in memory, for each server process. A client's address is not logged. With reque
 dropped within about 2 minutes of its client's last request, and with none, stays until the next.
 """
 
+import asyncio
 import ipaddress
 import math
 from collections.abc import Callable, Mapping
@@ -122,12 +123,16 @@ class RequestLimitsMiddleware:
         limiter: RateLimiter,
         max_body_bytes: int,
         max_body_bytes_by_path: Mapping[str, int] | None = None,
+        body_timeout_s: float | None = None,
     ) -> None:
         self._app = app
         self._limiter = limiter
         self._max_body_bytes = max_body_bytes
         # Routes that take numbers rather than a file have a smaller limit of their own.
         self._max_body_bytes_by_path = max_body_bytes_by_path or {}
+        # How long the whole body may take to arrive. A route's answer, such as a fit's stream, is
+        # not limited, as it begins only once the body is here.
+        self._body_timeout_s = body_timeout_s
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
@@ -143,8 +148,16 @@ class RequestLimitsMiddleware:
             return
         chunks: list[bytes] = []
         size = 0
+        loop = asyncio.get_running_loop()
+        deadline = None if self._body_timeout_s is None else loop.time() + self._body_timeout_s
         while True:
-            message = await receive()
+            try:
+                message = await asyncio.wait_for(
+                    receive(), None if deadline is None else max(deadline - loop.time(), 0)
+                )
+            except TimeoutError:
+                await self._refuse_slow_body(scope, receive, send)
+                return
             if message["type"] != "http.request":
                 return  # The client has gone, so there is nobody to answer.
             chunk = message.get("body", b"")
@@ -183,6 +196,18 @@ class RequestLimitsMiddleware:
         )
         await response(scope, receive, send)
         return True
+
+    async def _refuse_slow_body(self, scope: Scope, receive: Receive, send: Send) -> None:
+        response = error_response(
+            HTTPStatus.REQUEST_TIMEOUT,
+            ErrorResponse(
+                code="request_timeout",
+                message=f"A request's body must arrive within {self._body_timeout_s} s",
+                details=[],
+            ),
+            headers={"Connection": "close"},
+        )
+        await response(scope, receive, send)
 
     async def _refuse_size(self, scope: Scope, receive: Receive, send: Send, limit: int) -> None:
         response = error_response(

@@ -94,6 +94,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             ("/api/calc", "/api/fit", "/api/guess", "/api/band-diagram"),
             settings.json_body_bytes,
         ),
+        body_timeout_s=settings.body_timeout_s,
     )
     # Added last, so that it runs first and logs the requests that the limits refuse.
     app.add_middleware(

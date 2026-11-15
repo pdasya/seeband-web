@@ -5,6 +5,7 @@ import json
 import logging
 import socket
 import sys
+import time
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -494,3 +495,83 @@ def test_a_large_declared_body_is_answered_before_it_is_sent(tmp_path: Path) -> 
 
     assert answer.startswith(b"HTTP/1.1 413")
     assert b"request_too_large" in answer
+
+
+def _timed_middleware(app: Any, receive: Receive, body_timeout_s: float) -> list[Message]:
+    sent: list[Message] = []
+
+    async def send(message: Message) -> None:
+        sent.append(message)
+
+    scope = {"type": "http", "method": "POST", "path": "/x", "headers": []}
+    middleware = RequestLimitsMiddleware(app, RateLimiter({}), 1000, body_timeout_s=body_timeout_s)
+    asyncio.run(middleware(scope, receive, send))
+    return sent
+
+
+def test_a_body_that_does_not_arrive_in_time_is_answered_408() -> None:
+    async def never(*_: Any) -> None:
+        raise AssertionError("the app must not run")
+
+    async def half_sent() -> Message:
+        await asyncio.sleep(10)
+        return {"type": "http.request", "body": b"x"}
+
+    started = time.monotonic()
+    sent = _timed_middleware(never, half_sent, 0.1)
+
+    assert time.monotonic() - started < 1
+    assert sent[0]["status"] == 408
+    assert (b"connection", b"close") in sent[0]["headers"]
+    assert b"request_timeout" in sent[1]["body"]
+
+
+def test_the_body_timeout_does_not_cut_a_slow_answer() -> None:
+    """A fit streams for a minute after its body, which the body's time limit must not end."""
+
+    async def slow_answer(_: Scope, receive: Receive, send: Send) -> None:
+        await receive()
+        await asyncio.sleep(0.3)
+        await Response("done")({"type": "http"}, receive, send)
+
+    async def whole_body() -> Message:
+        return {"type": "http.request", "body": b"{}"}
+
+    sent = _timed_middleware(slow_answer, whole_body, 0.1)
+
+    assert sent[0]["status"] == 200
+    assert sent[1]["body"] == b"done"
+
+
+def test_half_sent_bodies_do_not_hold_a_real_server(tmp_path: Path) -> None:
+    port = free_port()
+    command = [sys.executable, "-m", "seeband_api"]
+    env = {
+        "SEEBAND_API_PORT": str(port),
+        "SEEBAND_API_CALC_WORKERS": "1",
+        "SEEBAND_API_BODY_TIMEOUT_S": "0.5",
+    }
+    with running_server(command, port, tmp_path / "server.log", env) as client:
+        connections = []
+        for _ in range(50):
+            connection = socket.create_connection(("127.0.0.1", port))
+            connection.sendall(
+                b"POST /api/calc HTTP/1.1\r\nHost: test\r\nContent-Type: application/json\r\n"
+                b"Content-Length: 100\r\n\r\n{"
+            )
+            connections.append(connection)
+        try:
+            assert client.get("/api/health").status_code == 200
+            answers = []
+            for connection in connections:
+                connection.settimeout(5)
+                answer = b""
+                while chunk := connection.recv(4096):
+                    answer += chunk
+                answers.append(answer)
+        finally:
+            for connection in connections:
+                connection.close()
+
+    # Each was answered and closed within its time, rather than held open.
+    assert all(answer.startswith(b"HTTP/1.1 408") for answer in answers)
