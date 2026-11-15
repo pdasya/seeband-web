@@ -74,3 +74,13 @@ bounds check. The budget, objective and tolerances have not been relaxed.
 This is an explicit fit failure, not a repaired fit to Si:P; general numerical
 reliability remains P19. Physical limiting tests independently check the
 transport correction rather than treating these fit regressions as proof.
+
+The historical auxiliary D1 fit for example 01 also collapses after branch
+restriction. Mac and Linux return different scattering parameters and rho
+residuals (approximately 100% and 81.4%). On the owner's explicit decision,
+this already unreliable case has a diagnostic compatibility contract rather
+than numeric F/G or post-fit rho agreement. Stable band comparisons, finite
+values, recorded bounds, status/message, both known-issue flags and the mass
+boundary remain checked. See [platform evidence and limits](golden-results.md).
+No data, estimator, solver tolerance or production formula was changed to
+force a credible fit; the underlying optimizer reliability remains P19.

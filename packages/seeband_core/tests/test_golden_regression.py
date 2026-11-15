@@ -519,20 +519,31 @@ def assert_named_fit_case(
             assert lower <= value <= upper
     elif identifier.startswith("01_Fe2VAl09Si01-") and mode == "d1":
         try:
-            assert_close(values, expected, D1_01_TOLERANCE)
+            recorded = list(flat(expected))
+            if scattering == "dis" and abs(recorded[0]) < COLLAPSED_M_EFF:
+                # Owner-approved unsupported-case contract: Mac and Linux
+                # disagree in scattering AND rho, so neither is a numeric oracle.
+                # Preserve all other comparisons and expose the unreliable state.
+                names = FIT_RESULT_NAMES[call["function"]]
+                stable = [index for index, name in enumerate(names) if name not in {"F", "G"}]
+                assert_close(
+                    [values[index] for index in stable],
+                    [recorded[index] for index in stable],
+                    D1_01_TOLERANCE,
+                )
+                assert all(math.isfinite(value) for value in values)
+                assert 0 < result.parameters["m_eff"] < COLLAPSED_M_EFF
+                assert "collapsed_m_eff" in result.known_issues
+                assert "hall_dis_no_reference" in result.known_issues
+                assert "m_eff" in result.at_bounds
+                bounds = bounds_received(call["function"], call["args"])
+                for value, (lower, upper) in zip(values, bounds, strict=True):
+                    assert lower <= value <= upper
+            else:
+                assert_close(values, expected, D1_01_TOLERANCE)
         except AssertionError as error:
             error.add_note(f"D1 fitted parameters: {dict(result.parameters)!r}")
             raise
-        if abs(list(flat(expected))[0]) < COLLAPSED_M_EFF:
-            # P13's branch-constrained endpoint is collapsed on both Mac and
-            # Linux. Keep every numeric comparison above and require its flags.
-            assert 0 < result.parameters["m_eff"] < COLLAPSED_M_EFF
-            assert "collapsed_m_eff" in result.known_issues
-            assert "hall_dis_no_reference" in result.known_issues
-            assert "m_eff" in result.at_bounds
-            bounds = bounds_received(call["function"], call["args"])
-            for value, (lower, upper) in zip(values, bounds, strict=True):
-                assert lower <= value <= upper
     elif identifier.startswith("02_SiP-") and mode == "spb_s":
         assert_close(values, expected, SPB_S_02_TOLERANCE)
     else:
@@ -897,3 +908,63 @@ def test_collapsed_d1_requires_its_diagnostics(missing: str) -> None:
             result,
             [expected["parameters"][name] for name in FIT_RESULT_NAMES[call["function"]]],
         )
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        "allowed",
+        "mass",
+        "gap",
+        "fermi",
+        "inactive",
+        "F_nan",
+        "F_bound",
+        "G_bound",
+        "status",
+        "message",
+    ],
+)
+def test_collapsed_d1_diagnostic_contract_preserves_its_remaining_checks(
+    monkeypatch: pytest.MonkeyPatch, change: str
+) -> None:
+    identifier = "01_Fe2VAl09Si01-d1-dis-thread-dpb_see_res_hall_fit"
+    call = CALLS[CALL_IDS.index(identifier)][-1]
+    expected = p13_results()[p8_key(identifier, call)]
+    # Complete endpoint from Linux CI run 43693830497. Its rho differs from
+    # the Mac capture; the owner approved diagnostic, not numeric, compatibility.
+    parameters = expected["parameters"] | {
+        "m_eff": 9.990967570731526e-11,
+        "band_gap": -525.9005993887968,
+        "fermi_energy": -165.18934125746262,
+        "F": 7.99175119920054e-08,
+        "G": 1.0005501718892844,
+    }
+    if change == "mass":
+        parameters["m_eff"] = -parameters["m_eff"]
+    elif change == "gap":
+        parameters["band_gap"] *= 1.01
+    elif change == "fermi":
+        parameters["fermi_energy"] *= 1.01
+    elif change == "inactive":
+        parameters["A"] *= 2
+    elif change == "F_nan":
+        parameters["F"] = float("nan")
+    elif change == "F_bound":
+        parameters["F"] = -1.0
+    elif change == "G_bound":
+        parameters["G"] = 201.0
+    result = FitResult(
+        parameters,
+        "failed" if change == "status" else "converged",
+        iterations=5,
+        message="unexpected failure" if change == "message" else None,
+        at_bounds=("m_eff", "F", "m1"),
+        known_issues=("collapsed_m_eff", "hall_dis_no_reference"),
+    )
+    monkeypatch.setattr(f"{__name__}.replay_fit", lambda *args: result)
+    if change == "allowed":
+        assert_p8_replay(identifier, "d1", "dis", call)
+    else:
+        with pytest.raises(AssertionError):
+            assert_p8_replay(identifier, "d1", "dis", call)
