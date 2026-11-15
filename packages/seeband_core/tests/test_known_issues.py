@@ -34,15 +34,6 @@ ALL_CURVES = (*DPB_FIT_CURVES, "chemical_potential", "carrier_concentration_by_b
 # id: severity, fixed by, modes, scattering, curve kinds, affects fit, condition.
 EXPECTED: dict[str, tuple[Any, ...]] = {
     "dpb_loop_degeneracy": ("caution", "#85", LOOP, (), (), True, "degeneracy_not_one"),
-    "negative_m_eff_weight": (
-        "caution",
-        "#104",
-        DPB,
-        (),
-        DPB_FIT_CURVES,
-        True,
-        "negative_m_eff",
-    ),
     "collapsed_m_eff": ("unreliable", "#107", DPB, (), ALL_CURVES, True, "collapsed_m_eff"),
     "no_chemical_potential": (
         "unreliable",
@@ -180,17 +171,6 @@ def test_dpb_s_has_no_degeneracy_flag_at_any_ratio(ratio: float, kind: CurveKind
     [
         ({"ratio": 2.0}, "dpb_s_rho", "acPh", None, "dpb_loop_degeneracy", True),
         ({"ratio": 2.0}, "dpb_s_rho", "acPh", "measured", "dpb_loop_degeneracy", False),
-        ({"parameters": {"m_eff": 1.0}}, "dpb_s", None, None, "negative_m_eff_weight", False),
-        ({"parameters": {"m_eff": 0.0}}, "dpb_s", None, None, "negative_m_eff_weight", False),
-        ({"parameters": {"m_eff": -1.0}}, "dpb_s", None, None, "negative_m_eff_weight", True),
-        (
-            {"parameters": {"m_eff": -1.0}},
-            "dpb_s",
-            None,
-            "chemical_potential",
-            "negative_m_eff_weight",
-            False,
-        ),
         ({"parameters": {"m_eff": 1.0}}, "dpb_s", None, None, "collapsed_m_eff", False),
         (
             {"parameters": {"m_eff": COLLAPSED_M_EFF / 2}},
@@ -284,9 +264,7 @@ def curve_ids(fit_mode_id: str, scattering: str | None = None, **kw: Any) -> set
 def test_curves_carry_their_issues_through_the_model() -> None:
     assert curve_ids("dpb_s") == set()
     assert curve_ids("dpb_s", band_2_degeneracy=2.0) == set()
-    assert curve_ids("dpb_s", values={"m_eff": -1.0, "band_gap": -200.0}) == {
-        "negative_m_eff_weight"
-    }
+    assert curve_ids("dpb_s", values={"m_eff": -1.0, "band_gap": -200.0}) == set()
     assert curve_ids("dpb_s_rho", "acPhDis", kind="thermal_conductivity") == set()
     assert curve_ids("dpb_s_rho", "acPh", kind="thermal_conductivity") == set()
     assert curve_ids("dpb_s_rho_rh", "acPh") == set()
@@ -321,7 +299,7 @@ def test_a_fit_reads_conditions_from_its_result_not_its_start(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     negative = fit_ids(monkeypatch, "dpb_s", [-1.0, 500.0, 500.0], values={"m_eff": 1.0})
-    assert negative == {"negative_m_eff_weight"}
+    assert negative == set()
     positive = fit_ids(monkeypatch, "dpb_s", [1.0, 500.0, 500.0], values={"m_eff": -1.0})
     assert positive == set()
     collapsed = fit_ids(monkeypatch, "dpb_s", [1e-7, 500.0, 500.0])

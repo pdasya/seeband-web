@@ -164,6 +164,25 @@ def _curve_fit(progress: FitProgress | None, stage: str, *args: Any, **kwargs: A
     return result
 
 
+def _dpb_branch_bounds(
+    initial_mass: float, bounds: tuple[list[float], list[float]]
+) -> tuple[list[float], list[float]]:
+    """Intersect bounds with the starting carrier branch, without a mass-scale floor."""
+    lower, upper = list(bounds[0]), list(bounds[1])
+    if initial_mass > 0:
+        lower[0] = max(lower[0], np.finfo(float).smallest_subnormal)
+    elif initial_mass < 0:
+        upper[0] = min(upper[0], -np.finfo(float).smallest_subnormal)
+    if (
+        not np.isfinite(initial_mass)
+        or initial_mass == 0
+        or not lower[0] <= initial_mass <= upper[0]
+        or not lower[0] < upper[0]
+    ):
+        raise ValueError("The start band mass is outside the bounds of its carrier branch.")
+    return lower, upper
+
+
 def _dpb_results(
     parameters: list[float],
     scatter_type: str,
@@ -327,6 +346,8 @@ class PB_fit:
         out : list[float]
             List containing the effective mass ratio, band gap and Fermi energy
         """
+
+        limits = _dpb_branch_bounds(initial_parameter[0], limits)
 
         # Fit the Seebeck coefficient with the parameters 'mass', 'gap' and 'fermi_energy'
         parameter_see, _ = _curve_fit(
@@ -575,6 +596,8 @@ class PB_fit:
                 "Error! Parameter 'scatter_type' in function 'dpb_see_res_fit' must either be "
                 "'acPh', 'dis' or 'acPhDis'"
             )
+
+        limits_see = _dpb_branch_bounds(initial_parameter_see[0], limits_see)
 
         parameters = initial_parameter_see + initial_parameter_res
 
@@ -1067,6 +1090,8 @@ class PB_fit:
                 "Error! Parameter 'scatter_type' in function 'dpb_see_res_hall_fit' must either "
                 "be 'acPh', 'dis' or 'acPhDis'"
             )
+
+        limits_see = _dpb_branch_bounds(initial_parameter_see[0], limits_see)
 
         parameters = initial_parameter_see + initial_parameter_res + initial_para_E
 

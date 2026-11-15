@@ -216,3 +216,22 @@ These snapshots are regression evidence, not independent physical proof.
 The example-03 alternate-start test instead uses an independently written
 outer iteration; it does not read P11 values as its oracle. See
 [the independent reference and example movements](dpb-acphdis-weight.md).
+
+## P13 branch-constrained fitting regressions
+
+Core `0.1.4` records all 24 DPB fit calls in `tests/fixtures/physics/p13.json`.
+The public signed initial mass fixes the permitted branch. The snapshot pins
+hashes of unchanged P8 and P11 evidence, and original desktop captures remain
+unchanged. Regression tests retain their existing numeric tolerances.
+
+Intersections of mass bounds with the selected branch alter optimization
+trajectories, including positive-branch fits. Examples 01 and 03 retain their
+previous successful statuses. All eight example-02 DPB calls now fail at the
+existing function-evaluation limit; seven formerly reported convergence with
+collapsed parameters and one failed its bounds check. These failures remain
+visible and are not evidence that the general fitting problem (P19) is solved.
+See [the P13 equations and independent physical limits](dpb-positive-weights.md).
+
+```sh
+PYTHONPATH=packages/seeband_core/src uv run python packages/seeband_core/scripts/capture_p13_results.py
+```

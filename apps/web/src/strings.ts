@@ -544,8 +544,6 @@ export const STRINGS = {
     knownIssueTexts: {
       "known_issue.dpb_loop_degeneracy":
         "With N₂/N₁ other than 1, the fit returns m₂/m₁ times N₂/N₁, so the value shown can leave its bounds. The bounds and the at-bound mark apply to the value before that factor.",
-      "known_issue.negative_m_eff_weight":
-        "With m₂/m₁ below 0, band 2 gets a negative weight, for a physicist to check.",
       "known_issue.collapsed_m_eff":
         "With m₂/m₁ near 0, the other band has no weight left, so the data do not settle the fit, and it can differ between machines.",
       "known_issue.no_chemical_potential":

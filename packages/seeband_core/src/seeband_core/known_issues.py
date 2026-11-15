@@ -40,16 +40,6 @@ KNOWN_ISSUES: tuple[KnownIssue, ...] = (
         "bounds (D12)",
     ),
     KnownIssue(
-        id="negative_m_eff_weight",
-        severity="caution",
-        fixed_by="#104",
-        fit_modes=_DPB_MODES,
-        curve_kinds=_DPB_FIT_CURVES,
-        affects_fit=True,
-        condition="negative_m_eff",
-        explanation="With m_eff below 0, band 2 gets a negative weight, for a physicist to check",
-    ),
-    KnownIssue(
         id="collapsed_m_eff",
         severity="unreliable",
         fixed_by="#107",
@@ -118,8 +108,6 @@ def _condition_holds(
 ) -> bool:
     if issue.condition == "degeneracy_not_one":
         return degeneracy_ratio != 1
-    if issue.condition == "negative_m_eff":
-        return parameters.get("m_eff", 1.0) < 0
     if issue.condition == "collapsed_m_eff":
         return abs(parameters.get("m_eff", 1.0)) < COLLAPSED_M_EFF
     if issue.condition == "fermi_energy_outside_band":

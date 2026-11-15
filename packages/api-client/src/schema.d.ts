@@ -327,7 +327,7 @@ export interface components {
          *     by name with its unit: `electrical_conductivity_s_per_m` is 1/rho, with null for a rho of 0 or
          *     below. They use no model, so they go with the data the request sent, interpolated or not.
          * @example {
-         *       "core_version": "0.1.3",
+         *       "core_version": "0.1.4",
          *       "curves": {
          *         "resistivity_ohm_m": [
          *           0.000036627,
@@ -378,7 +378,7 @@ export interface components {
             /**
              * Core Version
              * @description Core software version for provenance, not certification.
-             * @default 0.1.3
+             * @default 0.1.4
              */
             core_version?: string;
             /** Curves */
@@ -767,7 +767,7 @@ export interface components {
          *     start would. Holding m1, or the SPB Hall mass, skips the R_H stage.
          * @example {
          *       "at_bounds": [],
-         *       "core_version": "0.1.3",
+         *       "core_version": "0.1.4",
          *       "held": [],
          *       "known_issues": [],
          *       "parameter_errors": {
@@ -791,7 +791,7 @@ export interface components {
             /**
              * Core Version
              * @description Core software version for provenance, not certification.
-             * @default 0.1.3
+             * @default 0.1.4
              */
             core_version?: string;
             /**
@@ -971,7 +971,7 @@ export interface components {
         /**
          * HealthResponse
          * @example {
-         *       "core_version": "0.1.3",
+         *       "core_version": "0.1.4",
          *       "status": "ok",
          *       "version": "1.0.0"
          *     }
@@ -987,7 +987,7 @@ export interface components {
             /**
              * Core Version
              * @description Core software version for provenance, not certification.
-             * @default 0.1.3
+             * @default 0.1.4
              */
             core_version?: string;
         };
@@ -1071,7 +1071,7 @@ export interface components {
             /** Affects Fit */
             affects_fit: boolean;
             /** Condition */
-            condition?: ("degeneracy_not_one" | "negative_m_eff" | "collapsed_m_eff" | "fermi_energy_outside_band" | "interpolation_extrapolated") | null;
+            condition?: ("degeneracy_not_one" | "collapsed_m_eff" | "fermi_energy_outside_band" | "interpolation_extrapolated") | null;
         };
         /**
          * MeasuredPointsResponse
@@ -1393,7 +1393,7 @@ export interface operations {
                 headers: {
                     /** @example no-cache */
                     "Cache-Control"?: string;
-                    /** @example "361f957aa19f272710a73f5485a46eca" */
+                    /** @example "76974b02f5b5e109d49561811e9ba2df" */
                     ETag?: string;
                     [name: string]: unknown;
                 };

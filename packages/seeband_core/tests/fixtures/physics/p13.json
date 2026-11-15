@@ -1,0 +1,399 @@
+{
+ "description": "P13 implementation-generated fit regressions, not independent physics evidence. Initial mass sign fixes the optimization branch.",
+ "core_version": "0.1.4",
+ "prior_sha256": {
+  "p8.json": "e4656e05f7876889c44f86c9e0eeea9d2b1071db5f5fcd428e6cb0c767616db0",
+  "p11.json": "9b867b2ed5b0459b97d34d5de066bae34cbb38b316bbeb9e7ba5bab464066700"
+ },
+ "affected_functions": [
+  "dpb_see_fit",
+  "dpb_see_res_fit",
+  "dpb_see_res_hall_fit"
+ ],
+ "environment": {
+  "python": "3.13.18",
+  "numpy": "2.5.4",
+  "scipy": "1.18.1",
+  "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O"
+ },
+ "results": {
+  "01_Fe2VAl09Si01-dpb_s-None-thread-dpb_see_fit-1408859ddf6da3c4": {
+   "status": "converged",
+   "parameters": {
+    "m_eff": 1.2407727487234483,
+    "band_gap": 655.3378315485608,
+    "fermi_energy": 1296.288647848775
+   },
+   "iterations": null,
+   "message": null
+  },
+  "01_Fe2VAl09Si01-dpb_s_rho-acPh-thread-dpb_see_res_fit-52013e2b11f9a38a": {
+   "status": "converged",
+   "parameters": {
+    "m_eff": 1.2564632542280523,
+    "band_gap": 651.5539165553881,
+    "fermi_energy": 1292.3003366965208,
+    "A": 292304.2494382351,
+    "B": 1.0355297013603046,
+    "C": 1.0,
+    "D": 1.0,
+    "F": 1000,
+    "G": 1.0
+   },
+   "iterations": 2,
+   "message": null
+  },
+  "01_Fe2VAl09Si01-dpb_s_rho-dis-thread-dpb_see_res_fit-c203c7adbb89f616": {
+   "status": "converged",
+   "parameters": {
+    "m_eff": 1.9686040192609162,
+    "band_gap": 528.9072334615363,
+    "fermi_energy": 1162.5597021078904,
+    "A": 40000,
+    "B": 1.0,
+    "C": 1.0,
+    "D": 1.0,
+    "F": 643.8090899247737,
+    "G": 1.9999999999999998
+   },
+   "iterations": 3,
+   "message": null
+  },
+  "01_Fe2VAl09Si01-dpb_s_rho-acPhDis-thread-dpb_see_res_fit-c00ac6afc541e226": {
+   "status": "converged",
+   "parameters": {
+    "m_eff": 1.6511931526194312,
+    "band_gap": 437.88821533906736,
+    "fermi_energy": 1071.9557458325844,
+    "A": 483393.754267997,
+    "B": 1.09999999999945,
+    "C": 1.9999999999989988,
+    "D": 0.5000000000002502,
+    "F": 1000,
+    "G": 1.0
+   },
+   "iterations": 3,
+   "message": null
+  },
+  "01_Fe2VAl09Si01-dpb_s_rho_rh-acPh-thread-dpb_see_res_hall_fit-f764176fe5743dd3": {
+   "status": "converged",
+   "parameters": {
+    "m_eff": 1.2564632542280523,
+    "band_gap": 651.5539165553881,
+    "fermi_energy": 1292.3003366965208,
+    "A": 292304.2494382351,
+    "B": 1.0355297013603046,
+    "C": 1.0,
+    "D": 1.0,
+    "F": 1000,
+    "G": 1.0,
+    "m1": 9.51947959126979
+   },
+   "iterations": 2,
+   "message": null
+  },
+  "01_Fe2VAl09Si01-dpb_s_rho_rh-dis-thread-dpb_see_res_hall_fit-a49be60119cabb35": {
+   "status": "failed",
+   "parameters": {
+    "m_eff": 1.57,
+    "band_gap": 554,
+    "fermi_energy": 1170,
+    "A": 40000,
+    "B": 1.0,
+    "C": 1.0,
+    "D": 1.0,
+    "F": 1000,
+    "G": 1.0,
+    "m1": 1.0
+   },
+   "iterations": 0,
+   "message": "The start values do not fit the bounds."
+  },
+  "01_Fe2VAl09Si01-dpb_s_rho_rh-acPhDis-thread-dpb_see_res_hall_fit-68b99ab9a06a84a2": {
+   "status": "converged",
+   "parameters": {
+    "m_eff": 1.6511931526194312,
+    "band_gap": 437.88821533906736,
+    "fermi_energy": 1071.9557458325844,
+    "A": 483393.754267997,
+    "B": 1.09999999999945,
+    "C": 1.9999999999989988,
+    "D": 0.5000000000002502,
+    "F": 1000,
+    "G": 1.0,
+    "m1": 7.198686124481871
+   },
+   "iterations": 3,
+   "message": null
+  },
+  "01_Fe2VAl09Si01-d1-dis-thread-dpb_see_res_hall_fit-75fcae2fac81bf79": {
+   "status": "converged",
+   "parameters": {
+    "m_eff": 9.995490632154642e-11,
+    "band_gap": -525.9006570431847,
+    "fermi_energy": -165.1893391838298,
+    "A": 40000,
+    "B": 1.0,
+    "C": 1.0,
+    "D": 1.0,
+    "F": 4.27200527194694,
+    "G": 199.99999998,
+    "m1": 9.999999999999998
+   },
+   "iterations": 4,
+   "message": null
+  },
+  "02_SiP-dpb_s-None-thread-dpb_see_fit-643442a70776a5c9": {
+   "status": "failed",
+   "parameters": {
+    "m_eff": 1.01,
+    "band_gap": 1000,
+    "fermi_energy": -100
+   },
+   "iterations": null,
+   "message": "The fit reached its limit of function evaluations."
+  },
+  "02_SiP-dpb_s_rho-acPh-thread-dpb_see_res_fit-ba542f9abcddaf55": {
+   "status": "failed",
+   "parameters": {
+    "m_eff": 1.01,
+    "band_gap": 1000,
+    "fermi_energy": -100,
+    "A": 40000,
+    "B": 1.0,
+    "C": 1.0,
+    "D": 1.0,
+    "F": 1000,
+    "G": 1.0
+   },
+   "iterations": 0,
+   "message": "The fit reached its limit of function evaluations."
+  },
+  "02_SiP-dpb_s_rho-dis-thread-dpb_see_res_fit-bce417e7cf2ca310": {
+   "status": "failed",
+   "parameters": {
+    "m_eff": 1.01,
+    "band_gap": 1000,
+    "fermi_energy": -100,
+    "A": 40000,
+    "B": 1.0,
+    "C": 1.0,
+    "D": 1.0,
+    "F": 1000,
+    "G": 1.0
+   },
+   "iterations": 0,
+   "message": "The fit reached its limit of function evaluations."
+  },
+  "02_SiP-dpb_s_rho-acPhDis-thread-dpb_see_res_fit-5ccafba70d1e97c6": {
+   "status": "failed",
+   "parameters": {
+    "m_eff": 1.01,
+    "band_gap": 1000,
+    "fermi_energy": -100,
+    "A": 40000,
+    "B": 1.0,
+    "C": 1.0,
+    "D": 1.0,
+    "F": 1000,
+    "G": 1.0
+   },
+   "iterations": 0,
+   "message": "The fit reached its limit of function evaluations."
+  },
+  "02_SiP-dpb_s_rho_rh-acPh-thread-dpb_see_res_hall_fit-4a487f1c36101066": {
+   "status": "failed",
+   "parameters": {
+    "m_eff": 1.01,
+    "band_gap": 1000,
+    "fermi_energy": -100,
+    "A": 40000,
+    "B": 1.0,
+    "C": 1.0,
+    "D": 1.0,
+    "F": 1000,
+    "G": 1.0,
+    "m1": 1.0
+   },
+   "iterations": 0,
+   "message": "The fit reached its limit of function evaluations."
+  },
+  "02_SiP-dpb_s_rho_rh-dis-thread-dpb_see_res_hall_fit-868c2741757585be": {
+   "status": "failed",
+   "parameters": {
+    "m_eff": 1.01,
+    "band_gap": 1000,
+    "fermi_energy": -100,
+    "A": 40000,
+    "B": 1.0,
+    "C": 1.0,
+    "D": 1.0,
+    "F": 1000,
+    "G": 1.0,
+    "m1": 1.0
+   },
+   "iterations": 0,
+   "message": "The fit reached its limit of function evaluations."
+  },
+  "02_SiP-dpb_s_rho_rh-acPhDis-thread-dpb_see_res_hall_fit-638c2bfc952955b0": {
+   "status": "failed",
+   "parameters": {
+    "m_eff": 1.01,
+    "band_gap": 1000,
+    "fermi_energy": -100,
+    "A": 40000,
+    "B": 1.0,
+    "C": 1.0,
+    "D": 1.0,
+    "F": 1000,
+    "G": 1.0,
+    "m1": 1.0
+   },
+   "iterations": 0,
+   "message": "The fit reached its limit of function evaluations."
+  },
+  "02_SiP-d1-dis-thread-dpb_see_res_hall_fit-e5342b4cd65800f4": {
+   "status": "failed",
+   "parameters": {
+    "m_eff": 1.01,
+    "band_gap": 1000,
+    "fermi_energy": -100,
+    "A": 40000,
+    "B": 1.0,
+    "C": 1.0,
+    "D": 1.0,
+    "F": 1000,
+    "G": 1.0,
+    "m1": 1.0
+   },
+   "iterations": 0,
+   "message": "The fit reached its limit of function evaluations."
+  },
+  "03_AWI32_SI-dpb_s-None-thread-dpb_see_fit-6eb96c653726e431": {
+   "status": "converged",
+   "parameters": {
+    "m_eff": 1.318738050963267,
+    "band_gap": 1878.163698239741,
+    "fermi_energy": -258.95038863668566
+   },
+   "iterations": null,
+   "message": null
+  },
+  "03_AWI32_SI-dpb_s_rho-acPh-thread-dpb_see_res_fit-c99e5d69cbbf7cc1": {
+   "status": "converged",
+   "parameters": {
+    "m_eff": 1.3923474208702882,
+    "band_gap": 1898.5217139984236,
+    "fermi_energy": -259.0111692759049,
+    "A": 111924.00968276695,
+    "B": 1.0999999999999999,
+    "C": 1.0,
+    "D": 1.0,
+    "F": 1000,
+    "G": 1.0
+   },
+   "iterations": 2,
+   "message": null
+  },
+  "03_AWI32_SI-dpb_s_rho-dis-thread-dpb_see_res_fit-eacf236445920921": {
+   "status": "converged",
+   "parameters": {
+    "m_eff": 1.420569034942144,
+    "band_gap": 1906.0610302712398,
+    "fermi_energy": -259.03285610103075,
+    "A": 40000,
+    "B": 1.0,
+    "C": 1.0,
+    "D": 1.0,
+    "F": 307.3461676020793,
+    "G": 1.2233078767079915
+   },
+   "iterations": 2,
+   "message": null
+  },
+  "03_AWI32_SI-dpb_s_rho-acPhDis-thread-dpb_see_res_fit-0b5c4375c9c8cd17": {
+   "status": "converged",
+   "parameters": {
+    "m_eff": 1.7647690267871252,
+    "band_gap": 2063.6773184382764,
+    "fermi_energy": -259.2252061323478,
+    "A": 286542.3408313873,
+    "B": 1.09999999999945,
+    "C": 1.9999999999989961,
+    "D": 0.50000000000025,
+    "F": 1000,
+    "G": 1.0
+   },
+   "iterations": 3,
+   "message": null
+  },
+  "03_AWI32_SI-dpb_s_rho_rh-acPh-thread-dpb_see_res_hall_fit-4353fd747f5bba6b": {
+   "status": "converged",
+   "parameters": {
+    "m_eff": 1.3923474208702882,
+    "band_gap": 1898.5217139984236,
+    "fermi_energy": -259.0111692759049,
+    "A": 111924.00968276695,
+    "B": 1.0999999999999999,
+    "C": 1.0,
+    "D": 1.0,
+    "F": 1000,
+    "G": 1.0,
+    "m1": 1.963247714625099
+   },
+   "iterations": 2,
+   "message": null
+  },
+  "03_AWI32_SI-dpb_s_rho_rh-dis-thread-dpb_see_res_hall_fit-319b25aba85cbe03": {
+   "status": "failed",
+   "parameters": {
+    "m_eff": 1.22,
+    "band_gap": 1947,
+    "fermi_energy": -350,
+    "A": 40000,
+    "B": 1.0,
+    "C": 1.0,
+    "D": 1.0,
+    "F": 1000,
+    "G": 1.0,
+    "m1": 1.0
+   },
+   "iterations": 0,
+   "message": "The start values do not fit the bounds."
+  },
+  "03_AWI32_SI-dpb_s_rho_rh-acPhDis-thread-dpb_see_res_hall_fit-22da89c94ca00ca1": {
+   "status": "converged",
+   "parameters": {
+    "m_eff": 1.7647690267871252,
+    "band_gap": 2063.6773184382764,
+    "fermi_energy": -259.2252061323478,
+    "A": 286542.3408313873,
+    "B": 1.09999999999945,
+    "C": 1.9999999999989961,
+    "D": 0.50000000000025,
+    "F": 1000,
+    "G": 1.0,
+    "m1": 1.9704720855334648
+   },
+   "iterations": 3,
+   "message": null
+  },
+  "03_AWI32_SI-d1-dis-thread-dpb_see_res_hall_fit-aa2250cd8d4922b9": {
+   "status": "converged",
+   "parameters": {
+    "m_eff": 1.4205789434827476,
+    "band_gap": 1906.0637229492488,
+    "fermi_energy": -259.0328647246288,
+    "A": 40000,
+    "B": 1.0,
+    "C": 1.0,
+    "D": 1.0,
+    "F": 307.3472116794769,
+    "G": 1.2231898905268335,
+    "m1": 1.9504191127252593
+   },
+   "iterations": 2,
+   "message": null
+  }
+ }
+}

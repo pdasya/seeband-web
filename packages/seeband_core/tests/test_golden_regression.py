@@ -2,7 +2,7 @@
 
 Golden results were captured on one Mac with Python 3.11, numpy 1.26 and scipy 1.17. The project
 uses newer versions, and CI runs on Linux, so this is the check across versions and machines.
-P8 and affected P11 expectations are recorded separately; original desktop evidence stays unchanged.
+P8, P11 and P13 expectations are recorded separately; original desktop evidence stays unchanged.
 docs/golden-results.md gives the measured differences.
 
 CURVE_TOLERANCE is tight, because curves are direct calculations. FIT_TOLERANCE is looser, because
@@ -145,7 +145,18 @@ def affected_by_p11(scattering: str | None, call: dict[str, Any]) -> bool:
     return scattering == "acPhDis" and call["function"] in P11_FUNCTIONS
 
 
+P13_FUNCTIONS = {"dpb_see_fit", "dpb_see_res_fit", "dpb_see_res_hall_fit"}
+
+
+@cache
+def p13_results() -> dict[str, Any]:
+    """Branch-constrained fit regressions, separate from desktop/P8/P11 evidence."""
+    return json.loads((GOLDEN.parent / "physics" / "p13.json").read_text())["results"]
+
+
 def regression_expected(identifier: str, scattering: str | None, call: dict[str, Any]) -> Any:
+    if call["function"] in P13_FUNCTIONS:
+        return p13_results()[p8_key(identifier, call)]
     expected = p8_results()[p8_key(identifier, call)]
     if not affected_by_p11(scattering, call):
         return expected
@@ -177,10 +188,16 @@ def p8_key(identifier: str, call: dict[str, Any]) -> str:
 
 
 def assert_p8_replay(
-    identifier: str, mode: str, scattering: str | None, call: dict[str, Any]
+    identifier: str,
+    mode: str,
+    scattering: str | None,
+    call: dict[str, Any],
+    *,
+    expected: Any = None,
 ) -> None:
-    """Compare original inputs with P8 plus affected P11 regressions, including failures."""
-    expected = regression_expected(identifier, scattering, call)
+    """Compare original inputs with P8/P11/P13 regressions, including failures."""
+    if expected is None:
+        expected = regression_expected(identifier, scattering, call)
     if call["function"].endswith("_fit"):
         result = replay_fit(mode, call)
         assert result.status == expected["status"]
@@ -255,6 +272,30 @@ def test_p11_overrides_only_affected_calls_and_preserves_p8_evidence() -> None:
                 [previous["result"][0], *previous["result"][2:]],
                 CURVE_TOLERANCE,
             )
+
+
+def test_p13_preserves_prior_evidence_and_records_only_branch_constrained_fits() -> None:
+    document = json.loads((GOLDEN.parent / "physics" / "p13.json").read_text())
+    assert document["core_version"] == "0.1.4"
+    assert set(document["affected_functions"]) == P13_FUNCTIONS
+    assert set(document["prior_sha256"]) == {"p8.json", "p11.json"}
+    for name, sha in document["prior_sha256"].items():
+        assert hashlib.sha256((GOLDEN.parent / "physics" / name).read_bytes()).hexdigest() == sha
+    assert set(document["results"]) == {
+        p8_key(identifier, call)
+        for identifier, (*_, call) in zip(CALL_IDS, CALLS, strict=True)
+        if call["function"] in P13_FUNCTIONS
+    }
+    for identifier, (_, mode, _, _, call) in zip(CALL_IDS, CALLS, strict=True):
+        if call["function"] not in P13_FUNCTIONS:
+            continue
+        corrected = document["results"][p8_key(identifier, call)]
+        request = fit_request("dpb_s_rho_rh" if mode == "d1" else mode, call)
+        assert corrected["parameters"].keys() == request.start.keys()
+        assert corrected["parameters"]["m_eff"] * request.start["m_eff"] > 0
+        if corrected["status"] == "failed":
+            assert corrected["parameters"] == request.start
+            assert corrected["message"]
 
 
 def core_arguments(
@@ -396,10 +437,16 @@ def curve_request(fit_mode: str, scattering: str | None, call: dict[str, Any]) -
     )
 
 
-def replay_fit(mode: str, call: dict[str, Any]) -> FitResult:
+@cache
+def _recorded_fit(mode: str, serialized_call: str) -> FitResult:
+    # Multiple assertions inspect each deterministic replay; execute that fit once.
     fit_mode = "dpb_s_rho_rh" if mode == "d1" else mode
     model = default_registry.get(fit_mode.partition("_")[0])
-    return model.fit(fit_request(fit_mode, call))
+    return model.fit(fit_request(fit_mode, json.loads(serialized_call)))
+
+
+def replay_fit(mode: str, call: dict[str, Any]) -> FitResult:
+    return copy.deepcopy(_recorded_fit(mode, json.dumps(call, sort_keys=True)))
 
 
 def replay(mode: str, scattering: str | None, call: dict[str, Any]) -> Any:
@@ -508,6 +555,10 @@ def assert_fit_iterations(
 def test_replay_matches_the_desktop(
     example: str, mode: str, scattering: str | None, source: str, call: dict[str, Any]
 ) -> None:
+    identifier = f"{example}-{mode}-{scattering}-{source}-{call['function']}"
+    if call["function"] in P13_FUNCTIONS:
+        assert_p8_replay(identifier, mode, scattering, call)
+        return
     if "error" in call:
         kind, _, message = call["error"].partition(": ")
         assert kind == "ValueError"
@@ -518,7 +569,6 @@ def test_replay_matches_the_desktop(
         assert ERROR_FRAGMENTS.get(kind, message) in failed.message
         return
 
-    identifier = f"{example}-{mode}-{scattering}-{source}-{call['function']}"
     if affected_by_p11(scattering, call):
         corrected = p11_results()[p8_key(identifier, call)]
         if call["function"].endswith("_fit"):
@@ -566,6 +616,8 @@ def recorded_iterative_runs() -> Iterator[tuple[str, str | None, int, dict[str, 
                 iterations = corrected["iterations"] if corrected else run["iterations"]
                 if affected_by_p11(run["scattering"], call):
                     iterations = p11_results()[p8_key(identifier, call)]["iterations"]
+                if call["function"] in P13_FUNCTIONS:
+                    iterations = p13_results()[p8_key(identifier, call)]["iterations"]
                 yield run["mode"], run["scattering"], iterations, call
 
 
@@ -600,8 +652,6 @@ def p8_iterative_runs() -> Iterator[tuple[str, str, dict[str, Any]]]:
 @pytest.mark.parametrize(("identifier", "mode", "call"), list(p8_iterative_runs()))
 def test_iterations_match_p8_expectations(identifier: str, mode: str, call: dict[str, Any]) -> None:
     result = replay_fit(mode, call)
-    if "error" not in call:
-        assert result.status == "converged"
     scattering = recorded_arguments(call).get("scatter_type")
     expected = regression_expected(identifier, scattering, call)
     assert result.status == expected["status"]
@@ -639,7 +689,8 @@ def test_recorded_calls_leave_their_inputs_unchanged(call: dict[str, Any]) -> No
     recorded_args, recorded_kwargs = copy.deepcopy(call["args"]), copy.deepcopy(call["kwargs"])
     args, kwargs = core_arguments(call["function"], recorded_args, recorded_kwargs)
     args_before, kwargs_before = copy.deepcopy(args), copy.deepcopy(kwargs)
-    with contextlib.suppress(ValueError):
+    # Branch-constrained fits can also exhaust their existing evaluation budget.
+    with contextlib.suppress(ValueError, RuntimeError):
         invoke_core(call["function"], args, kwargs)
     assert same_value(args, args_before)
     assert same_value(kwargs, kwargs_before)
@@ -747,10 +798,10 @@ def test_p8_d19_keeps_the_existing_physical_and_failure_checks(
     )
     monkeypatch.setattr(f"{__name__}.replay_fit", lambda *args: result)
     if change == "allowed":
-        assert_p8_replay(identifier, "dpb_s_rho", "acPh", call)
+        assert_p8_replay(identifier, "dpb_s_rho", "acPh", call, expected=expected)
     else:
         with pytest.raises(AssertionError):
-            assert_p8_replay(identifier, "dpb_s_rho", "acPh", call)
+            assert_p8_replay(identifier, "dpb_s_rho", "acPh", call, expected=expected)
 
 
 @pytest.mark.parametrize("iterations", [0, 1, 1000, 1001, None, 1.5])

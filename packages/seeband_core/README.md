@@ -15,7 +15,9 @@ identifies the P2–P7 calculation state. Core `0.1.1` adds P8, and core `0.1.2`
 adds P9 neural-net selection from actual Tmin/Tmax with paired-row sorting
 on a copy. Direct callers with unsorted rows can receive different initial
 values; already sorted inputs retain their neural estimates. Core `0.1.3`
-adds the P11 pointwise acPhDis Seebeck weight. The API reports the
+adds the P11 pointwise acPhDis Seebeck weight. Core `0.1.4` adds P13 positive
+longitudinal DPB weights and branch-preserving fit bounds, described in
+[positive DPB weights](docs/dpb-positive-weights.md). The API reports the
 installed core as `core_version` on health, curve and fit responses. The API's
 own `version` remains separate.
 Future changes that can alter calculated results need a new core version and

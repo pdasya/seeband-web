@@ -26,7 +26,6 @@ FitStatus = Literal["converged", "iteration_limit", "stopped", "failed"]
 IssueSeverity = Literal["disabled", "unreliable", "caution"]
 IssueCondition = Literal[
     "degeneracy_not_one",
-    "negative_m_eff",
     "collapsed_m_eff",
     "fermi_energy_outside_band",
     "interpolation_extrapolated",
