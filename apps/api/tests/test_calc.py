@@ -11,11 +11,13 @@ import pool_functions
 import pytest
 import seeband_core
 from fastapi.testclient import TestClient
+from seeband_api import calc_pool
 from seeband_api.calc import CalcRequest, CalcResponse, _to_response
 from seeband_api.calc_pool import CalcPool
 from seeband_api.calc_worker import CalcOutcome
 from seeband_api.errors import ApiError
 from seeband_api.main import create_app
+from seeband_api.processes import PRELOADED
 from seeband_api.settings import Settings
 from seeband_core.fit_quality import curve_rmse
 from seeband_core.model_catalog import registry
@@ -744,6 +746,48 @@ def test_dead_worker_answers_503_and_the_pool_recovers() -> None:
         assert raised.value.code == "calculation_unavailable"
 
         assert _run_in_pool(pool, pool_functions.double, 21) == 42
+    finally:
+        pool.close()
+
+
+def test_a_new_pool_gives_out_no_slot_until_its_workers_answer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The job's time starts once the workers are up, so a slow start is not taken as its own."""
+    monkeypatch.setattr(calc_pool, "warm_up", pool_functions.slow_warm_up)
+    pool = CalcPool(1, 0.3)
+
+    async def run() -> Any:
+        pool.warm_up()
+        return await pool.run(pool_functions.double, 21)
+
+    try:
+        assert asyncio.run(run()) == 42
+    finally:
+        pool.close()
+
+
+def test_a_replaced_pool_gives_out_no_slot_until_its_workers_answer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Workers replaced after one died warm up slowly, and the next job still has its whole time."""
+    pool = CalcPool(1, 0.3)
+    try:
+        assert _run_in_pool(pool, pool_functions.double, 1) == 2
+        monkeypatch.setattr(calc_pool, "warm_up", pool_functions.slow_warm_up)
+        with pytest.raises(ApiError) as raised:
+            _run_in_pool(pool, pool_functions.die)
+        assert raised.value.code == "calculation_unavailable"
+
+        assert _run_in_pool(pool, pool_functions.double, 21) == 42
+    finally:
+        pool.close()
+
+
+def test_pool_workers_start_with_the_core_loaded() -> None:
+    pool = CalcPool(1, 30.0)
+    try:
+        assert _run_in_pool(pool, pool_functions.loaded_modules, list(PRELOADED)) == list(PRELOADED)
     finally:
         pool.close()
 

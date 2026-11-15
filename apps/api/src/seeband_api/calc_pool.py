@@ -15,13 +15,14 @@ Jobs are admitted through a queue in the API rather than straight to the executo
   is dropped before it runs. Each client can have a few jobs admitted at once.
 - A full list or a client over its count gets a fast answer with `Retry-After`.
 - A worker that dies breaks the executor, which is then replaced, also when no request is waiting
-  for that worker any more.
+  for that worker any more. The jobs it was running fail with it.
+- New workers fork from a server with the core loaded, and get no job until each has answered a
+  warm-up, at start and after a replacement.
 """
 
 import asyncio
 import logging
 import math
-import multiprocessing
 import time
 from collections import deque
 from collections.abc import Awaitable, Callable
@@ -34,6 +35,7 @@ from fastapi import Depends, Request
 
 from seeband_api.calc_worker import initialise_worker, warm_up
 from seeband_api.errors import ApiError
+from seeband_api.processes import context as process_context
 from seeband_api.request_limits import client_key
 
 _logger = logging.getLogger("seeband_api")
@@ -98,6 +100,9 @@ class CalcPool:
         self._clients: dict[str, _Client] = {}
         self._turns = 0
         self._mean_run_s = 1.0
+        # Warm-up jobs of new workers that have not answered yet. No slot is given out until they
+        # have, so a job does not wait in the executor for a worker to start, with its time running.
+        self._warming: list[Future[None]] = []
 
     @property
     def _per_client(self) -> dict[str, int]:
@@ -105,16 +110,34 @@ class CalcPool:
         return {name: client.admitted for name, client in self._clients.items()}
 
     def _new_executor(self) -> ProcessPoolExecutor:
-        # The server has threads, which `fork` does not copy safely.
+        # Workers fork from a server with the core loaded, so new ones start in milliseconds.
         return ProcessPoolExecutor(
             max_workers=self._workers,
-            mp_context=multiprocessing.get_context("spawn"),
+            mp_context=process_context,
             initializer=initialise_worker,
         )
 
     def warm_up(self) -> None:
-        for _ in range(self._workers):
-            self._executor.submit(warm_up)
+        """Starts every worker, and gives out no slot until each warm-up job has answered.
+
+        Called at start and for each replaced executor.
+        """
+        futures = [self._executor.submit(warm_up) for _ in range(self._workers)]
+        # Only the latest warm-up holds the slots, not that of an executor since replaced.
+        self._warming = futures
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return  # Nobody waits yet. The first job's dispatch checks the warm-up itself.
+
+        def answered_from_worker_thread(_: Future[None]) -> None:
+            try:
+                loop.call_soon_threadsafe(self._dispatch)
+            except RuntimeError:
+                pass  # That loop has closed. The next dispatch checks the warm-up itself.
+
+        for future in futures:
+            future.add_done_callback(answered_from_worker_thread)
 
     async def run[**P, T](
         self,
@@ -199,6 +222,8 @@ class CalcPool:
                 if remaining <= 0:
                     raise self._busy()
                 await asyncio.wait({waiter.turn}, timeout=min(_DISCONNECT_POLL_S, remaining))
+                # A warm-up that answered to another event loop, as a test's, is seen here.
+                self._dispatch()
                 # A turn that came while this waited counts, whatever else happened since.
                 if not waiter.turn.done() and is_disconnected is not None:
                     if await is_disconnected() and not waiter.turn.done():
@@ -216,6 +241,8 @@ class CalcPool:
 
     def _dispatch(self) -> None:
         """Gives free slots to waiting clients in turn, one job each, within each one's cap."""
+        if not all(future.done() for future in self._warming):
+            return
         while self._running < self._workers:
             eligible = [
                 state
