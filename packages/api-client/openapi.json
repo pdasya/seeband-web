@@ -288,7 +288,7 @@
                               "parameters": [
                                 {
                                   "name": "band_mass",
-                                  "meaning": "band mass, sign sets the carrier type",
+                                  "meaning": "band mass, sign only: its size does not enter S",
                                   "unit": "m_e",
                                   "role": "fixed",
                                   "scattering": [
@@ -478,7 +478,7 @@
                               "parameters": [
                                 {
                                   "name": "band_mass",
-                                  "meaning": "band mass, sign sets the carrier type",
+                                  "meaning": "band mass, sign only: its size does not enter S or ρ",
                                   "unit": "m_e",
                                   "role": "fixed",
                                   "scattering": [
@@ -2180,7 +2180,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "example": "\"5fdcc757f27652400bf86a90b834669b\""
+                "example": "\"b51ca05f2a7e479a488a51f99255b625\""
               }
             }
           },
