@@ -12,15 +12,15 @@ from seeband_core.model_catalog import registry
 from seeband_core.model_interface import FitMode, Measurement, ModelDescription, Quantity
 
 from seeband_api.errors import ApiError, ErrorDetail
+from seeband_api.settings import MAX_LISTED_POINTS
 
 # Strict, so that `true` or "1.5" are refused here as the contract and the mock refuse them.
 FiniteFloat = Annotated[float, Field(allow_inf_nan=False, strict=True)]
 PositiveFloat = Annotated[float, Field(gt=0, allow_inf_nan=False, strict=True)]
 
 # Hard bounds on what a request can list, whatever the settings, so that a large invalid body costs
-# little: 50 times the default `max_points`, which a setting cannot raise past them. A list also
-# stops at its first wrong value, so it gives one error, not one for each value.
-MAX_LISTED_POINTS = 100_000
+# little: `MAX_LISTED_POINTS` is 50 times the default `max_points`, which no setting can pass.
+# A list also stops at its first wrong value, so it gives one error, not one for each value.
 # More than any mode has parameters.
 MAX_PARAMETERS = 64
 

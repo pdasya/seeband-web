@@ -1,5 +1,6 @@
 """The application factory."""
 
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -37,6 +38,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        if settings.json_body_bytes < settings.json_body_bytes_needed:
+            # Only settings, no request: a fit within `max_points` could get a 413 under them.
+            logging.getLogger("seeband_api").warning(
+                "json_body_limit_below_max_points",
+                extra={
+                    "fields": {
+                        "max_json_body_bytes": settings.json_body_bytes,
+                        "needed_bytes": settings.json_body_bytes_needed,
+                    }
+                },
+            )
         app.state.calc_pool = CalcPool(settings.calc_workers, settings.calc_timeout_s)
         app.state.calc_pool.warm_up()
         app.state.fit_runner = FitRunner(
@@ -74,7 +86,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         max_body_bytes=settings.max_body_bytes,
         max_body_bytes_by_path=dict.fromkeys(
             ("/api/calc", "/api/fit", "/api/guess", "/api/band-diagram"),
-            settings.max_json_body_bytes,
+            settings.json_body_bytes,
         ),
     )
     # Added last, so that it runs first and logs the requests that the limits refuse.
