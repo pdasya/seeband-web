@@ -567,6 +567,8 @@ export interface components {
         /**
          * ErrorResponse
          * @description The body of every error response.
+         *
+         *     `details` holds at most 50 problems, and `details_omitted` counts any more, left out.
          */
         ErrorResponse: {
             /** Code */
@@ -575,6 +577,8 @@ export interface components {
             message: string;
             /** Details */
             details: components["schemas"]["ErrorDetail"][];
+            /** Details Omitted */
+            details_omitted?: number | null;
         };
         /**
          * FitApiRequest

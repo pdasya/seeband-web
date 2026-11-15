@@ -9,7 +9,7 @@ from seeband_core.model_interface import BandDiagramRequest as CoreRequest
 from seeband_api.errors import ApiError
 from seeband_api.json_values import finite_or_none
 from seeband_api.request_checks import (
-    FiniteFloat,
+    ParameterValues,
     PositiveFloat,
     check_degeneracy,
     check_parameter_names,
@@ -41,7 +41,7 @@ class BandDiagramRequest(BaseModel):
 
     model: str
     fit_mode: str
-    parameters: dict[str, FiniteFloat]
+    parameters: ParameterValues
     band_1_degeneracy: PositiveFloat = 1.0
     band_2_degeneracy: PositiveFloat = 1.0
 

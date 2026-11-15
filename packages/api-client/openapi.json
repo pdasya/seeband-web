@@ -4882,6 +4882,8 @@
               "type": "number"
             },
             "type": "object",
+            "maxProperties": 64,
+            "minProperties": 0,
             "title": "Parameters"
           },
           "band_1_degeneracy": {
@@ -5045,6 +5047,8 @@
               "type": "number"
             },
             "type": "object",
+            "maxProperties": 64,
+            "minProperties": 0,
             "title": "Parameters"
           },
           "min_temperature_k": {
@@ -5114,6 +5118,8 @@
               ]
             },
             "type": "object",
+            "maxProperties": 3,
+            "minProperties": 0,
             "title": "Measurements"
           },
           "rmse_points": {
@@ -5784,6 +5790,17 @@
             },
             "type": "array",
             "title": "Details"
+          },
+          "details_omitted": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Details Omitted"
           }
         },
         "type": "object",
@@ -5793,7 +5810,7 @@
           "details"
         ],
         "title": "ErrorResponse",
-        "description": "The body of every error response."
+        "description": "The body of every error response.\n\n`details` holds at most 50 problems, and `details_omitted` counts any more, left out."
       },
       "FitApiRequest": {
         "properties": {
@@ -5821,6 +5838,8 @@
               "type": "number"
             },
             "type": "object",
+            "maxProperties": 64,
+            "minProperties": 0,
             "title": "Start"
           },
           "bounds": {
@@ -5828,6 +5847,8 @@
               "$ref": "#/components/schemas/BoundsInput"
             },
             "type": "object",
+            "maxProperties": 64,
+            "minProperties": 0,
             "title": "Bounds"
           },
           "min_temperature_k": {
@@ -5877,6 +5898,8 @@
               ]
             },
             "type": "object",
+            "maxProperties": 3,
+            "minProperties": 0,
             "title": "Measurements"
           }
         },
@@ -6467,6 +6490,7 @@
               "exclusiveMinimum": 0.0
             },
             "type": "array",
+            "maxItems": 100000,
             "minItems": 1,
             "title": "Temperature K"
           },
@@ -6475,6 +6499,7 @@
               "type": "number"
             },
             "type": "array",
+            "maxItems": 100000,
             "minItems": 1,
             "title": "Seebeck V Per K"
           }
@@ -6874,6 +6899,7 @@
               "exclusiveMinimum": 0.0
             },
             "type": "array",
+            "maxItems": 100000,
             "minItems": 1,
             "title": "Temperature K"
           },
@@ -6882,6 +6908,7 @@
               "type": "number"
             },
             "type": "array",
+            "maxItems": 100000,
             "minItems": 1,
             "title": "Values"
           }
@@ -7203,7 +7230,9 @@
                 "items": {
                   "$ref": "#/components/schemas/ColumnRole"
                 },
-                "type": "array"
+                "type": "array",
+                "maxItems": 1000,
+                "minItems": 0
               },
               {
                 "type": "null"

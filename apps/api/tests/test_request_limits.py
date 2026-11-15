@@ -228,7 +228,7 @@ def test_a_refused_request_logs_its_route_and_status() -> None:
         def emit(self, record: logging.LogRecord) -> None:
             records.append(record)
 
-    with _client(guess_per_minute=2, max_body_bytes=1000) as client:
+    with _client(guess_per_minute=2, max_json_body_bytes=1000) as client:
         recorder = Recorder()
         logging.getLogger("seeband_api").addHandler(recorder)
         try:

@@ -1,32 +1,74 @@
 """Checks that `POST /api/calc` and `POST /api/fit` share, against a model's description."""
 
+from collections.abc import Callable, Sized
 from http import HTTPStatus
-from typing import Annotated, Self
+from typing import Annotated, Any, Self, get_args
 
 import numpy as np
 from fastapi import Depends, Request
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, BeforeValidator, Field, model_validator
+from pydantic_core import PydanticCustomError
 from seeband_core.model_catalog import registry
 from seeband_core.model_interface import FitMode, Measurement, ModelDescription, Quantity
 
 from seeband_api.errors import ApiError, ErrorDetail
+from seeband_api.settings import MAX_LISTED_POINTS
 
 # Strict, so that `true` or "1.5" are refused here as the contract and the mock refuse them.
 FiniteFloat = Annotated[float, Field(allow_inf_nan=False, strict=True)]
 PositiveFloat = Annotated[float, Field(gt=0, allow_inf_nan=False, strict=True)]
 
+# Hard bounds on what a request can list, whatever the settings, so that a large invalid body costs
+# little: `MAX_LISTED_POINTS` is 50 times the default `max_points`, which no setting can pass.
+# A list also stops at its first wrong value, so it gives one error, not one for each value.
+# More than any mode has parameters.
+MAX_PARAMETERS = 64
+
+
+def _at_most(count: int) -> Callable[[Any], Any]:
+    """Refuses a list or dict longer than `count` before its items are read, which pydantic's own
+    `max_length` does only after them, giving an error for each item first."""
+
+    def check(value: Any) -> Any:
+        if isinstance(value, Sized) and not isinstance(value, str) and len(value) > count:
+            raise PydanticCustomError(
+                "too_long", "At most {max_length} items", {"max_length": count}
+            )
+        return value
+
+    return check
+
+
+def bounded(count: int, *, min_length: int = 0, fail_fast: bool = False) -> tuple[Any, ...]:
+    """Metadata for a list or dict of at most `count` items, checked before its items."""
+    return (
+        Field(min_length=min_length, max_length=count, fail_fast=fail_fast or None),
+        BeforeValidator(_at_most(count)),
+    )
+
+
+PointList = Annotated[
+    list[PositiveFloat], *bounded(MAX_LISTED_POINTS, min_length=1, fail_fast=True)
+]
+ValueList = Annotated[list[FiniteFloat], *bounded(MAX_LISTED_POINTS, min_length=1, fail_fast=True)]
+ParameterValues = Annotated[dict[str, FiniteFloat], *bounded(MAX_PARAMETERS)]
+
 
 class MeasurementInput(BaseModel):
     """Measured points, with values in V/K for S, ohm m for rho and m^3/C for R_H."""
 
-    temperature_k: Annotated[list[PositiveFloat], Field(min_length=1)]
-    values: Annotated[list[FiniteFloat], Field(min_length=1)]
+    temperature_k: PointList
+    values: ValueList
 
     @model_validator(mode="after")
     def _same_length(self) -> Self:
         if len(self.temperature_k) != len(self.values):
             raise ValueError("temperature_k and values must have the same length")
         return self
+
+
+# One entry for each quantity at most, whichever they are.
+Measurements = Annotated[dict[Quantity, MeasurementInput], *bounded(len(get_args(Quantity)))]
 
 
 def _get_max_points(request: Request) -> int:

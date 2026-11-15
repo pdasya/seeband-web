@@ -18,9 +18,9 @@ from seeband_api.calc_worker import CalculationFailed
 from seeband_api.errors import ApiError, ErrorDetail
 from seeband_api.guess_worker import GuessOutcome, guess, numerical_guess
 from seeband_api.request_checks import (
-    FiniteFloat,
     MaxPointsDep,
-    PositiveFloat,
+    PointList,
+    ValueList,
     too_many_points,
 )
 from seeband_api.request_logging import log_calculation_failure
@@ -100,8 +100,8 @@ class GuessRequest(BaseModel):
     model_config = ConfigDict(json_schema_extra={"examples": [REQUEST_EXAMPLE]})
 
     model: str
-    temperature_k: Annotated[list[PositiveFloat], Field(min_length=1)]
-    seebeck_v_per_k: Annotated[list[FiniteFloat], Field(min_length=1)]
+    temperature_k: PointList
+    seebeck_v_per_k: ValueList
 
     @model_validator(mode="after")
     def _same_length(self) -> Self:
