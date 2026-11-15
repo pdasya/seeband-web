@@ -23,7 +23,6 @@ from seeband_core.model_interface import (
     FitResult,
     FitStatus,
     IterationUpdate,
-    Quantity,
 )
 
 from seeband_api.errors import (
@@ -40,10 +39,13 @@ from seeband_api.fit_runner import (
 )
 from seeband_api.fit_worker import run_fit
 from seeband_api.request_checks import (
+    MAX_PARAMETERS,
     FiniteFloat,
     MaxPointsDep,
-    MeasurementInput,
+    Measurements,
+    ParameterValues,
     PositiveFloat,
+    bounded,
     check_degeneracy,
     check_parameter_names,
     check_point_counts,
@@ -111,15 +113,17 @@ class FitApiRequest(BaseModel):
     model: str
     fit_mode: str
     scattering: str | None = None
-    start: dict[str, FiniteFloat]
-    bounds: dict[str, BoundsInput] = Field(default_factory=dict)
+    start: ParameterValues
+    bounds: Annotated[dict[str, BoundsInput], *bounded(MAX_PARAMETERS)] = Field(
+        default_factory=dict
+    )
     min_temperature_k: PositiveFloat
     max_temperature_k: PositiveFloat
     band_1_degeneracy: PositiveFloat = 1.0
     band_2_degeneracy: PositiveFloat = 1.0
     extrapolated: Annotated[bool, Field(strict=True)] = False
     held: list[str] = Field(default_factory=list, max_length=MAX_HELD)
-    measurements: dict[Quantity, MeasurementInput]
+    measurements: Measurements
 
     @model_validator(mode="after")
     def _range_is_ordered(self) -> Self:

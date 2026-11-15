@@ -30,7 +30,7 @@ from seeband_api.calc_pool import CalcPoolDep
 from seeband_api.errors import ApiError, ErrorDetail
 from seeband_api.json_values import finite_or_none
 from seeband_api.parse_worker import FitRange, ParseOutcome, UnknownColumn, parse
-from seeband_api.request_checks import MaxPointsDep
+from seeband_api.request_checks import MaxPointsDep, bounded
 from seeband_api.request_logging import log_calculation_failure
 from seeband_api.routing import api_router, too_many_requests
 
@@ -89,7 +89,8 @@ class ParseRequest(BaseModel):
 
     text: Annotated[str, Field(max_length=MAX_TEXT_CHARACTERS)]
     expected: LoadedQuantity | None = None
-    mapping: list[ColumnRole] | None = None
+    # A line holds at most 2000 characters, so a text has at most 1000 columns.
+    mapping: Annotated[list[ColumnRole], *bounded(1000)] | None = None
     interpolate: InterpolationRange | None = None
 
     @model_validator(mode="after")
