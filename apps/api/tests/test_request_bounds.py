@@ -75,7 +75,7 @@ def test_a_body_just_under_the_limit_with_a_wrong_value_everywhere_is_cheap(
     client: TestClient, path: str
 ) -> None:
     content = _invalid_body(path, 990_000)
-    assert len(content) <= Settings().max_json_body_bytes
+    assert len(content) <= Settings().json_body_bytes
 
     response, elapsed, peak = _timed(client, path, content)
 
@@ -169,7 +169,7 @@ def test_a_few_details_are_all_given_with_no_count(client: TestClient) -> None:
 def test_routes_of_numbers_take_a_megabyte_and_parse_takes_a_file(
     client: TestClient, path: str
 ) -> None:
-    limit = Settings().max_json_body_bytes
+    limit = Settings().json_body_bytes
     over = client.post(path, content=b" " * (limit + 1))
     assert over.status_code == 413
     assert str(limit) in over.json()["message"]
@@ -202,6 +202,10 @@ def _rss_bytes(pid: int) -> int:
 def test_a_real_server_stays_small_and_answers_health_during_invalid_bodies(
     tmp_path: Path,
 ) -> None:
+    """Invalid bodies just under the limit, which the server reads and validates, from two
+    clients at once. Bodies over it are refused unread, which the tests above show."""
+    import httpx2
+
     port = free_port()
     command = [sys.executable, "-m", "seeband_api"]
     env = {
@@ -215,26 +219,28 @@ def test_a_real_server_stays_small_and_answers_health_during_invalid_bodies(
         client.get("/api/health")
         before = _rss_bytes(server_pid(port))
         bodies = [
-            (path, _invalid_body(path, size))
-            for path in ("/api/calc", "/api/fit", "/api/guess")
-            for size in (990_000, 9_600_000)
+            (path, _invalid_body(path, 990_000)) for path in ("/api/calc", "/api/fit", "/api/guess")
         ]
         answers: list[tuple[int, int]] = []
+        failures: list[str] = []
         stop = threading.Event()
 
         def send_invalid_bodies() -> None:
-            import httpx2
-
             with httpx2.Client(base_url=f"http://127.0.0.1:{port}", timeout=30) as sender:
                 while not stop.is_set():
                     for path, content in bodies:
-                        response = sender.post(
-                            path, content=content, headers={"Content-Type": "application/json"}
-                        )
+                        try:
+                            response = sender.post(
+                                path, content=content, headers={"Content-Type": "application/json"}
+                            )
+                        except httpx2.TransportError as error:
+                            failures.append(type(error).__name__)
+                            continue
                         answers.append((response.status_code, len(response.content)))
 
-        sender = threading.Thread(target=send_invalid_bodies)
-        sender.start()
+        senders = [threading.Thread(target=send_invalid_bodies) for _ in range(2)]
+        for sender in senders:
+            sender.start()
         probes: list[float] = []
         try:
             deadline = time.monotonic() + 3
@@ -245,11 +251,77 @@ def test_a_real_server_stays_small_and_answers_health_during_invalid_bodies(
                 time.sleep(0.02)
         finally:
             stop.set()
-            sender.join(timeout=60)
+            for sender in senders:
+                sender.join(timeout=60)
         after = _rss_bytes(server_pid(port))
 
-    assert answers, "no invalid body was answered"
-    assert {status for status, _ in answers} <= {413, 422}
+    assert failures == []
+    # Under load the whole time, not one request and done.
+    assert len(answers) >= 10
+    assert {status for status, _ in answers} == {422}
     assert max(size for _, size in answers) < ANSWER_LIMIT_BYTES
     assert max(probes) < 0.1
     assert after - before < 50_000_000
+
+
+def test_a_list_past_its_bound_under_the_body_limit_gives_one_error(client: TestClient) -> None:
+    bad = ["x"] * (MAX_LISTED_POINTS + 50_000)
+    content = json.dumps({"model": "dpb", "temperature_k": bad, "seebeck_v_per_k": [1e-4]}).encode()
+    assert len(content) < Settings().json_body_bytes
+
+    response, elapsed, _ = _timed(client, "/api/guess", content)
+
+    assert response.status_code == 422
+    assert [(d["location"], d["code"]) for d in response.json()["details"]] == [
+        (["body", "temperature_k"], "too_long")
+    ]
+    assert elapsed < TIME_LIMIT_S
+
+
+def test_a_trailing_slash_does_not_escape_the_limit(client: TestClient) -> None:
+    limit = Settings().json_body_bytes
+    response = client.post("/api/calc/", content=b" " * (limit + 1))
+    assert response.status_code == 413
+    assert str(limit) in response.json()["message"]
+
+
+def test_rows_ended_by_a_bare_carriage_return_count_too(client: TestClient) -> None:
+    text = "T S\r" + "300 1\r" * 300_000
+
+    started = time.perf_counter()
+    response = client.post("/api/parse", json={"text": text})
+
+    assert response.status_code == 422
+    assert [d["code"] for d in response.json()["details"]] == ["too_many_rows"]
+    assert time.perf_counter() - started < TIME_LIMIT_S
+
+
+def test_the_body_limit_grows_with_max_points_unless_set() -> None:
+    assert Settings().json_body_bytes == 1_000_000
+    # 100000 points of 3 quantities need more than 1 MB, so the limit follows.
+    raised = Settings(max_points=MAX_LISTED_POINTS)
+    assert raised.json_body_bytes == raised.json_body_bytes_needed > 1_000_000
+    assert Settings(max_json_body_bytes=5000).json_body_bytes == 5000
+
+
+def test_a_body_limit_set_below_max_points_is_warned_of_at_start() -> None:
+    import logging
+
+    records: list[logging.LogRecord] = []
+
+    class Recorder(logging.Handler):
+        def emit(self, record: logging.LogRecord) -> None:
+            records.append(record)
+
+    apps = [create_app(Settings(max_json_body_bytes=5000)), create_app(Settings())]
+    recorder = Recorder()
+    logging.getLogger("seeband_api").addHandler(recorder)
+    try:
+        for app in apps:
+            with TestClient(app):
+                pass
+    finally:
+        logging.getLogger("seeband_api").removeHandler(recorder)
+
+    warned = [r for r in records if r.getMessage() == "json_body_limit_below_max_points"]
+    assert len(warned) == 1

@@ -580,3 +580,25 @@ def test_example_request_is_a_fit_the_api_accepts(client: TestClient) -> None:
     request = FitApiRequest.model_config["json_schema_extra"]["examples"][0]  # type: ignore[index]
 
     assert set(_result(client, request)["parameters"]) == set(request["start"])
+
+
+def test_a_fit_error_event_gives_at_most_50_details() -> None:
+    import asyncio
+
+    from seeband_api.errors import ApiError, ErrorDetail
+
+    details = [ErrorDetail(location=["body", index], code="x", message="x") for index in range(60)]
+
+    async def failing() -> Any:
+        raise ApiError(422, "invalid_fit", "Invalid", details)
+
+    async def last() -> Any:
+        task = asyncio.ensure_future(failing())
+        await asyncio.wait([task])
+        return _last_event(task)
+
+    event = asyncio.run(last())
+
+    assert len(event.error.details) == 50
+    assert event.error.details_omitted == 10
+    assert '"details_omitted":10' in event.model_dump_json(exclude_none=True)
