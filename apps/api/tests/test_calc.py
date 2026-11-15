@@ -3,6 +3,8 @@ import functools
 import json
 import logging
 import math
+import threading
+import time
 from collections.abc import Iterator
 from multiprocessing import forkserver
 from pathlib import Path
@@ -815,6 +817,72 @@ def test_a_warm_up_that_does_not_answer_gets_new_workers(
     finally:
         pool.close()
     assert "calc_warm_up_stuck" in [record.getMessage() for record in caplog.records]
+
+
+def test_a_worker_that_dies_in_its_warm_up_gets_replaced_before_a_job(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Rather than the first job finding the pool broken and getting a 503."""
+    monkeypatch.setattr(
+        calc_pool,
+        "warm_up",
+        functools.partial(pool_functions.die_the_first_time, str(tmp_path / "f")),
+    )
+    pool = CalcPool(1, 30.0)
+
+    async def run() -> Any:
+        pool.warm_up()
+        return await pool.run(pool_functions.double, 21)
+
+    try:
+        assert asyncio.run(run()) == 42
+    finally:
+        pool.close()
+
+
+def test_a_replacement_starts_the_fork_server_in_a_thread(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """After the fork server died, its imports take a while, and the loop must go on meanwhile."""
+    threads: list[str] = []
+
+    def slow_start() -> None:
+        threads.append(threading.current_thread().name)
+        time.sleep(0.5)
+
+    monkeypatch.setattr(calc_pool, "start_fork_server", slow_start)
+    pool = CalcPool(1, 0.3)
+
+    async def run() -> tuple[Any, float]:
+        await pool.run(pool_functions.double, 1)
+        with pytest.raises(ApiError):
+            await pool.run(pool_functions.die)
+        longest = 0.0
+        ticking = True
+
+        async def tick() -> None:
+            nonlocal longest
+            last = time.monotonic()
+            while ticking:
+                await asyncio.sleep(0.01)
+                now = time.monotonic()
+                longest = max(longest, now - last)
+                last = now
+
+        ticker = asyncio.create_task(tick())
+        # The job waits for the start and the warm-up, and still has its whole 0.3 s.
+        answer = await pool.run(pool_functions.double, 21)
+        ticking = False
+        await ticker
+        return answer, longest
+
+    try:
+        answer, longest_gap_s = asyncio.run(run())
+    finally:
+        pool.close()
+    assert answer == 42
+    assert threads and threads[0] != threading.main_thread().name
+    assert longest_gap_s < 0.25
 
 
 def test_pool_workers_are_forked_from_the_fork_server() -> None:

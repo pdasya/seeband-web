@@ -63,3 +63,13 @@ def hang_the_first_time(flag: str) -> None:
 
 def parent_pid() -> int:
     return os.getppid()
+
+
+def die_the_first_time(flag: str) -> None:
+    """Kills its worker if `flag` does not exist yet, after creating it."""
+    try:
+        with open(flag, "x", encoding="utf-8"):
+            pass
+    except FileExistsError:
+        return
+    die()
