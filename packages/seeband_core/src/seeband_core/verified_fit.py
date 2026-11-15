@@ -538,9 +538,10 @@ class _Engine:
         # outside the optimization budget, always at the exact retained endpoint.
         def final_prediction(q: Quantity, p: Mapping[str, float]) -> np.ndarray:
             self.evaluations += 1
-            return _evaluate_quantity(
-                q, self.data[q][0], p, self.mode.id, self.request.scattering, self.n
-            )
+            with mm.independent_chemical_potential():
+                return _evaluate_quantity(
+                    q, self.data[q][0], p, self.mode.id, self.request.scattering, self.n
+                )
 
         unidentified: set[str] = set()
         for q in self.mode.quantities:

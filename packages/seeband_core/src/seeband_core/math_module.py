@@ -1,4 +1,6 @@
-from collections.abc import Callable
+import contextlib
+import contextvars
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from importlib import resources
 from typing import Any
@@ -74,6 +76,19 @@ def fdint_robust(s: float, eta: float, T: float) -> float:
 fdint_vec: Callable[..., Any] = np.vectorize(fdint_robust)
 
 
+def fdint(s: Any, eta: Any, T: Any) -> Any:
+    """`fdint_vec`, with scalars passed straight to `fdint_robust`.
+
+    `np.vectorize` costs more than the integral for one value, and most calls here are for one.
+    The value is the same to the last bit; it comes back as a numpy float, so that a division by
+    0 or an overflow after it still gives inf with a warning, as from `fdint_vec`, rather than
+    raising.
+    """
+    if np.ndim(s) == 0 and np.ndim(eta) == 0 and np.ndim(T) == 0:
+        return np.float64(fdint_robust(s, eta, T))
+    return fdint_vec(s, eta, T)
+
+
 # Calculates Fermi integrals for a single band
 def spb_fermiInt_vs_temp(
     s: float,
@@ -88,7 +103,7 @@ def spb_fermiInt_vs_temp(
     fermiInt = np.zeros(shape=len(T))
 
     for i, (temp, mu) in enumerate(zip(T, potentials, strict=True)):
-        fermiInt[i] = fdint_vec(s, mass_sign * mu, temp)
+        fermiInt[i] = fdint(s, mass_sign * mu, temp)
 
     return fermiInt
 
@@ -110,8 +125,8 @@ def dpb_fermiInt_vs_temp(
     fermiInt_2 = np.zeros(shape=len(T))
 
     for i, (temp, mu) in enumerate(zip(T, potentials, strict=True)):
-        fermiInt_1[i] = fdint_vec(s, -mu, temp)
-        fermiInt_2[i] = fdint_vec(s, np.sign(mass) * (mu - gap), temp)
+        fermiInt_1[i] = fdint(s, -mu, temp)
+        fermiInt_2[i] = fdint(s, np.sign(mass) * (mu - gap), temp)
 
     return fermiInt_1, fermiInt_2
 
@@ -132,8 +147,8 @@ def onsi_general(eta: float, meff: float, K: float, beta: float, T: float) -> fl
         * T ** (beta + 1)
         / abs(meff)
         * (
-            2 * fdint_vec(1, np.sign(meff) * eta, T)
-            - np.sign(meff) * fdint_vec(0, np.sign(meff) * eta, T) * eta / T
+            2 * fdint(1, np.sign(meff) * eta, T)
+            - np.sign(meff) * fdint(0, np.sign(meff) * eta, T) * eta / T
         )
     )
     return result
@@ -143,7 +158,7 @@ def onsi_general(eta: float, meff: float, K: float, beta: float, T: float) -> fl
 def sigma_general(eta: float, meff: float, K: float, beta: float, T: float) -> float:
     # Temperature factor defined as beta + 1, since 1 is obtained from partial integration instead
     # of 3/2
-    result: float = K * T ** (beta + 1) / abs(meff) * fdint_vec(0, np.sign(meff) * eta, T)
+    result: float = K * T ** (beta + 1) / abs(meff) * fdint(0, np.sign(meff) * eta, T)
     return result
 
 
@@ -174,7 +189,7 @@ def spb_carCon(eta: float, meff: float, T: float) -> float:
             4
             * np.pi
             * (2 * np.abs(meff) * me * kB * T / h**2) ** 1.5
-            * fdint_vec(0.5, np.sign(meff) * eta, T)
+            * fdint(0.5, np.sign(meff) * eta, T)
             * 1e-6
         )
         return carrier_concentration
@@ -206,7 +221,107 @@ class ChemicalPotentialResult:
     status: np.ndarray
 
 
+# Roots solved within the current `reuse_chemical_potential` scope, or None outside one.
+# Only the roots and residuals are kept: a solve that is kept succeeded, so each status is
+# "converged", and a string status per point would take more room than both.
+_REUSED_ROOTS: contextvars.ContextVar[
+    dict[tuple[bytes, ...], tuple[np.ndarray, np.ndarray]] | None
+] = contextvars.ContextVar("reused_chemical_potential", default=None)
+# Within a fit each set of parameters differs, so only the last few are worth keeping.
+_REUSED_ROOTS_LIMIT = 32
+
+
+@contextlib.contextmanager
+def reuse_chemical_potential() -> Iterator[None]:
+    """Solve μ(T) once for each temperature array and parameters within this scope.
+
+    A curve of S, ρ and R_H needs the same μ(T) for each, and a solve is most of its time. The
+    roots are those of a fresh solve, to the last bit, and the scope drops them as it ends, so
+    nothing outlives one call. A nested scope uses the outer one's roots.
+    """
+    if _REUSED_ROOTS.get() is not None:
+        yield
+        return
+    token = _REUSED_ROOTS.set({})
+    try:
+        yield
+    finally:
+        _REUSED_ROOTS.reset(token)
+
+
+@contextlib.contextmanager
+def independent_chemical_potential() -> Iterator[None]:
+    """Temporarily bypass root reuse for an independent terminal fit audit."""
+    token = _REUSED_ROOTS.set(None)
+    try:
+        yield
+    finally:
+        _REUSED_ROOTS.reset(token)
+
+
+def _key_bytes(value: object) -> bytes | None:
+    """The value's kind and bytes, as the solve gets it, or None if it cannot be a key.
+
+    Bytes, not floats, so that -0.0 and 0.0 stay apart, as the solve can tell them apart. A float
+    and an np.float64, its subclass, share a key: they are the same double and give the same bits
+    in each operation, and the solve divides only by numpy temperatures or a checked scale, so the
+    zero division where a float raises and an np.float64 warns cannot occur. Any other numpy type
+    keeps its own, because the solve computes with the value as given, and an np.float32 gives
+    other numbers than the float64 of the same value. Anything but a number is solved each time.
+    """
+    if value is None:
+        return b"none:"
+    if isinstance(value, float):
+        return b"float:" + np.float64(value).tobytes()
+    if isinstance(value, np.number):
+        return value.dtype.str.encode() + b":" + value.tobytes()
+    if isinstance(value, int):
+        return type(value).__qualname__.encode() + b":" + str(value).encode()
+    return None
+
+
+def _converged(
+    roots: np.ndarray, residuals: np.ndarray, shape: tuple[int, ...]
+) -> ChemicalPotentialResult:
+    return ChemicalPotentialResult(roots, residuals, np.full(shape, "converged"))
+
+
 def _chemical_potential_diagnostics(
+    temp_array: np.ndarray,
+    mass: float,
+    fermi_energy: float,
+    gap: float | None = None,
+    degen: float = 1.0,
+) -> ChemicalPotentialResult:
+    """The solved roots, once for each temperature array and parameters within a reuse scope.
+
+    Only a solve that succeeds is kept, so one that fails raises again each time, as before.
+    """
+    reused = _REUSED_ROOTS.get()
+    if reused is None:
+        return _solve_chemical_potential(temp_array, mass, fermi_energy, gap, degen)
+    parameters: list[bytes] = []
+    for value in (mass, fermi_energy, gap, degen):
+        part = _key_bytes(value)
+        if part is None:
+            return _solve_chemical_potential(temp_array, mass, fermi_energy, gap, degen)
+        parameters.append(part)
+    # The solve converts the temperatures the same way first, so these bytes are what it gets.
+    temperatures = np.asarray(temp_array, dtype=float)
+    key = (str(temperatures.shape).encode(), temperatures.tobytes(), *parameters)
+    found = reused.get(key)
+    if found is None:
+        solved = _solve_chemical_potential(temp_array, mass, fermi_energy, gap, degen)
+        if len(reused) >= _REUSED_ROOTS_LIMIT:
+            del reused[next(iter(reused))]
+        found = (solved.chemical_potential, solved.normalized_residual)
+        reused[key] = found
+    roots, residuals = found
+    # Copies, so that a caller changing its array cannot change another's.
+    return _converged(roots.copy(), residuals.copy(), temperatures.shape)
+
+
+def _solve_chemical_potential(
     temp_array: np.ndarray,
     mass: float,
     fermi_energy: float,
@@ -306,9 +421,7 @@ def _chemical_potential_diagnostics(
             )
         roots[index] = eta * temp
         residuals[index] = residual
-    return ChemicalPotentialResult(
-        roots[inverse], residuals[inverse], np.full(temperatures.shape, "converged")
-    )
+    return _converged(roots[inverse], residuals[inverse], temperatures.shape)
 
 
 def spb_chemPot_diagnostics(
@@ -819,8 +932,8 @@ def spb_hall_vs_temp(
             * at ** (-1.5)
             * scal_fac
             / np.asarray(para_E, dtype=float)
-            * fdint_vec(-0.5, mass_sign * mu, at)
-            / fdint_vec(0, mass_sign * mu, at) ** 2
+            * fdint(-0.5, mass_sign * mu, at)
+            / fdint(0, mass_sign * mu, at) ** 2
         )
     return result
 

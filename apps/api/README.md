@@ -198,15 +198,33 @@ It has no rate limit and no `ETag`, as it costs almost nothing and is under 10 K
 
 Requests are parsed in the event loop, up to the size in [Limits](#limits). A body of 9 MB of numbers took about 0.13 s in all, and the largest allowed grids, `points` and `rmse_points` of 1000, take about 1.3 s each.
 
-Historical response-time measurements before P19 (the RMSE evaluator has since changed): a 50-point curve, through the app in one process with a test client, 20 calls each, on an Apple Silicon Mac with 10 cores and Python 3.13. The RMSE column uses the 31 points per quantity of the demo dataset. Network time is not included, and FS12 measures that.
+Median response time for a 50-point curve, with P19 and A15, through the app in one process with a test client, 20 calls each, on an Apple Silicon Mac with 10 cores and Python 3.13. The RMSE column uses the 31 points per quantity of the demo dataset. Network time is not included, and FS12 measures that.
 
 | Mode, with default scattering | Curves | Curves and RMSE |
 | ----------------------------- | ------ | --------------- |
-| `spb_s`                       | 9 ms   | 17 ms           |
-| `spb_s_rho`                   | 15 ms  | 29 ms           |
-| `dpb_s`                       | 16 ms  | 31 ms           |
-| `dpb_s_rho`                   | 27 ms  | 52 ms           |
-| `dpb_s_rho_rh`                | 40 ms  | 79 ms           |
+| `spb_s`                       | 7 ms   | 11 ms           |
+| `spb_s_rho`                   | 7 ms   | 15 ms           |
+| `dpb_s`                       | 11 ms  | 17 ms           |
+| `dpb_s_rho`                   | 11 ms  | 23 ms           |
+| `dpb_s_rho_rh`                | 12 ms  | 35 ms           |
+
+Before A15 (#174), on main with P19, the same run on the same Mac gave 13, 22, 20, 35 and 53 ms for curves, and 20, 37, 32, 57 and 96 ms with RMSE. Two changes made it faster, and neither changes a number, to the bit:
+
+- A Fermi integral of one value calls `fdint_robust` directly instead of through `np.vectorize`.
+- Within one curve or fit, μ(T) is solved once for each temperature array and set of band parameters, and S, ρ and R_H reuse that root. Only solved roots are kept, at most 32, and nothing is kept after the call returns.
+
+Fits on `01_Fe2VAl09Si01` from the default start, in the core without a worker process, on the same Mac, before and after:
+
+| Mode, scattering     | Verified, the default | Legacy        |
+| -------------------- | --------------------- | ------------- |
+| `dpb_s`              | 4.8 s → 2.4 s         | 0.8 s → 0.3 s |
+| `spb_s_rho`, acPh    | 0.7 s → 0.3 s         | 0.2 s → 0.1 s |
+| `dpb_s_rho`, acPh    | 73 s → 36 s           | 1.1 s → 0.4 s |
+| `dpb_s_rho_rh`, acPh | 46 s → 23 s           | 1.1 s → 0.5 s |
+
+Each fit ends with the same status and number of iterations as before. The verified `dpb_s_rho_rh` fit ends at `iteration_limit` after 20 iterations.
+
+`packages/seeband_core/tests/test_calc_speed_equivalence.py` compares every model, mode, scattering and curve kind, and fits of both algorithms, also with solves that fail on the way, with both changes off and on.
 
 ## Derived curves
 
