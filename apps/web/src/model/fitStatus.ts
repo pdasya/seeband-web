@@ -101,6 +101,8 @@ export function fitBlockerText(blocker: FitBlocker): string {
       return text.blockers.interpolating;
     case "missing_data":
       return text.missingData(symbols(blocker.quantities));
+    case "unit_in_doubt":
+      return text.blockers.unitInDoubt(symbols(blocker.quantities));
     case "not_interpolated":
       return `${text.blockers.notInterpolated} ${symbols(blocker.quantities)}.`;
     case "no_points_in_range":

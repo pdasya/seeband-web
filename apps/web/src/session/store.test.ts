@@ -5,6 +5,7 @@ import {
   createSessionStore,
   currentGuess,
   fitData,
+  hasOpenUnitDoubt,
   holdsFiles,
   type FitResult,
   type ParsedTable,
@@ -809,4 +810,36 @@ test("method choice stays in the memory session and invalidates an old result", 
   store.getState().setSelection({ algorithm: "legacy-sequential-v1" });
   expect(store.getState().selection.algorithm).toBe("legacy-sequential-v1");
   expect(store.getState().fit.status).toBe("idle");
+});
+
+describe("a doubt about a unit", () => {
+  const doubted: SessionData = {
+    ...DATA,
+    unitDoubts: [{ code: "implausible_magnitude", direction: "above" }],
+  };
+
+  test("is open until the user confirms the values", () => {
+    expect(hasOpenUnitDoubt(undefined)).toBe(false);
+    expect(hasOpenUnitDoubt(DATA)).toBe(false);
+    expect(hasOpenUnitDoubt({ ...DATA, unitDoubts: [] })).toBe(false);
+    expect(hasOpenUnitDoubt(doubted)).toBe(true);
+    expect(hasOpenUnitDoubt({ ...doubted, unitConfirmed: true })).toBe(false);
+  });
+
+  test("is confirmed for one quantity only, and new data need confirming again", () => {
+    state().setData("seebeck", doubted);
+    state().setData("hall", doubted);
+
+    state().confirmUnit("seebeck");
+
+    expect(hasOpenUnitDoubt(state().data.seebeck)).toBe(false);
+    expect(hasOpenUnitDoubt(state().data.hall)).toBe(true);
+    state().setData("seebeck", doubted);
+    expect(hasOpenUnitDoubt(state().data.seebeck)).toBe(true);
+  });
+
+  test("cannot be confirmed for data that are not there", () => {
+    state().confirmUnit("resistivity");
+    expect(state().data.resistivity).toBeUndefined();
+  });
 });

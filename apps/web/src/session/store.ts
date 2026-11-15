@@ -66,6 +66,18 @@ export interface SessionData {
   unitDoubts?: readonly UnitDoubtIssue[] | undefined;
   /** The file's first row, as written and in SI, so that a user can check the units against it. */
   firstRow?: FirstRow | undefined;
+  /**
+   * The user said the values are right despite `unitDoubts`, so a fit may use them. It lasts until
+   * the file or its unit changes, as those give new data.
+   */
+  unitConfirmed?: boolean | undefined;
+}
+
+/** Whether data have a doubt about their unit that the user has not confirmed, which stops a fit. */
+export function hasOpenUnitDoubt(
+  entry: Pick<SessionData, "unitDoubts" | "unitConfirmed"> | undefined,
+): boolean {
+  return (entry?.unitDoubts?.length ?? 0) > 0 && entry?.unitConfirmed !== true;
 }
 
 /** One row of a file by column: exactly as written, and in SI, with null for a column not read. */
@@ -327,6 +339,8 @@ export interface SessionState {
   clearSingleFile: () => void;
   setData: (quantity: Quantity, data: SessionData) => void;
   removeData: (quantity: Quantity) => void;
+  /** The user says the values of a quantity are right despite a doubt about their unit. */
+  confirmUnit: (quantity: Quantity) => void;
   setSelection: (selection: Partial<Selection>) => void;
   setParameters: (fitMode: string, values: Record<string, number>) => void;
   setParameter: (fitMode: string, name: string, value: number) => void;
@@ -682,6 +696,19 @@ export const createSessionStore = () =>
           interpolation: withoutValues(state.interpolation),
           fit: withoutOldResult(state.fit),
         }));
+      },
+      confirmUnit: (quantity) => {
+        set((state) => {
+          const entry = state.data[quantity];
+          return entry === undefined
+            ? state
+            : {
+                data: {
+                  ...state.data,
+                  [quantity]: { ...entry, unitConfirmed: true },
+                },
+              };
+        });
       },
       removeData: (quantity) => {
         set((state) => {
