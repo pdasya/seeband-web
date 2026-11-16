@@ -37,6 +37,8 @@ uv run python -m seeband_api          # or the real API
 pnpm --filter @seeband/web dev:api    # the app, with /api going to port 8000
 ```
 
+**Session files.** Session to file saves the session as `seeband-session.json`, which the ZIP also holds: the data with their text and how each column was read, the fit screen's choices, the last finished fit with the request that made it and where its start came from, the versions, and a SHA-256 of the measurements. Open session, under the data, loads one back in place of the session. It refuses a file that is too large, not JSON, not a session, from a newer format, damaged, or whose measurements no longer match their hash. The restored fit shows as it was, and is not run again: when the server's core differs from the one the fit ran on, the data panel says so. The file holds the measurements, and stays with the user: nothing is kept on the server. Each new version of the format adds a migration in `session/sessionFile.ts`, so an older file still opens.
+
 Exports and the report name the app's version with the commit it was built from: `SEEBAND_COMMIT` if set, as CI or an image build should, or git's, with `-dirty` for local changes.
 
 The app always calls `/api` on its own origin, so there is no base URL to set, and `SEEBAND_API_TARGET` chooses where the dev server sends it. Neither the API nor the mock send CORS headers, so a browser would hide their errors from a client on another origin.
