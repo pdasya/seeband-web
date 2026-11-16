@@ -478,7 +478,7 @@
                               "parameters": [
                                 {
                                   "name": "band_mass",
-                                  "meaning": "band mass, sign only: its size does not enter S or ρ",
+                                  "meaning": "band mass, sign only: its size does not enter S, and in ρ the scattering prefactor absorbs it",
                                   "unit": "m_e",
                                   "role": "fixed",
                                   "scattering": [
@@ -2180,7 +2180,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "example": "\"b51ca05f2a7e479a488a51f99255b625\""
+                "example": "\"7237ffad5b17e43204d958fedad99211\""
               }
             }
           },
