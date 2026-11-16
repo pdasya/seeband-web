@@ -6890,6 +6890,18 @@
             "type": "string",
             "title": "Version"
           },
+          "commit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commit",
+            "description": "The commit the API was built from, with -dirty for uncommitted changes, or null if unknown. For provenance."
+          },
           "core_version": {
             "type": "string",
             "title": "Core Version",

@@ -3,10 +3,11 @@ import seeband_core
 from fastapi import APIRouter, FastAPI, HTTPException
 from fastapi.testclient import TestClient
 from pydantic import BaseModel, ValidationError
+from seeband_api import version as version_module
 from seeband_api.errors import ApiError, ErrorDetail
 from seeband_api.main import create_app
 from seeband_api.settings import Settings
-from seeband_api.version import API_VERSION
+from seeband_api.version import API_COMMIT, API_VERSION
 
 
 class Body(BaseModel):
@@ -54,8 +55,30 @@ def test_health_returns_status_and_version(client: TestClient) -> None:
     assert response.json() == {
         "status": "ok",
         "version": API_VERSION,
+        "commit": API_COMMIT,
         "core_version": seeband_core.__version__,
     }
+
+
+def test_the_commit_comes_from_the_environment_first(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("SEEBAND_COMMIT", "abc123")
+    assert version_module._commit() == "abc123"
+
+
+def test_in_a_checkout_the_commit_is_its_head(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Tests run in the repository, so git knows the commit, and -dirty marks local changes."""
+    monkeypatch.delenv("SEEBAND_COMMIT", raising=False)
+    commit = version_module._commit()
+    assert commit is not None
+    assert len(commit.removesuffix("-dirty")) == 12
+
+
+def test_with_no_git_and_no_setting_the_commit_is_unknown(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("SEEBAND_COMMIT", raising=False)
+    monkeypatch.setenv("PATH", "")
+    assert version_module._commit() is None
 
 
 def test_unknown_path_uses_the_error_format(client: TestClient) -> None:

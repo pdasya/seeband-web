@@ -1086,6 +1086,11 @@ export interface components {
             /** Version */
             version: string;
             /**
+             * Commit
+             * @description The commit the API was built from, with -dirty for uncommitted changes, or null if unknown. For provenance.
+             */
+            commit?: string | null;
+            /**
              * Core Version
              * @description Core software version for provenance, not certification.
              * @default 0.3.0
