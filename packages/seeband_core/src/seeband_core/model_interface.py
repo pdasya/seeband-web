@@ -384,6 +384,11 @@ class FitResult:
     `held` names the parameters the request held at their start values, which are in `parameters`
     exactly as sent, and in neither `parameter_errors` nor `at_bounds`.
 
+    `last_changes` holds, for an iterative legacy fit, the relative change of each parameter of
+    its loop in the last iteration, as its stop rule compared it with `FitMode.threshold`: the
+    first iteration compares with the start values, and a change that is not finite is inf. The
+    rule stops the loop only when every one is at most the threshold. It is empty otherwise.
+
     `parameter_status` says, for each parameter in `parameters`, how the fit found it, from the
     signals the fit has. See `seeband_core.parameter_status`. `estimated` means only that no signal
     said otherwise, not that the data determine the value or that it is right. The uncertainty of
@@ -401,6 +406,7 @@ class FitResult:
     algorithm: FitAlgorithm = "legacy-sequential-v1"
     diagnostics: FitDiagnostics | None = None
     parameter_status: Mapping[str, ParameterStatus] = field(default_factory=dict)
+    last_changes: Mapping[str, float] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
