@@ -74,6 +74,30 @@ export const STRINGS = {
     rangeInvalid:
       "The lower bound must be below the upper, and both above 0 K. The last valid range stays in use.",
   },
+  session: {
+    open: "Open session",
+    openHint:
+      "Load a session file saved with Session to file, in place of this session",
+    opening: "Opening the session file…",
+    problems: {
+      too_large: "This session file is too large to open.",
+      not_json: "This file is not a session file: it is not JSON.",
+      not_a_session: "This file is not a SeeBand session file.",
+      newer_version:
+        "This session file comes from a newer version of SeeBand Web. Open it there.",
+      invalid:
+        "This session file is damaged, or misses parts, so it was not opened.",
+      data_changed:
+        "The data in this session file do not match its checksum, so it was changed after it was saved, and was not opened.",
+      read_failed: "This file could not be read.",
+    },
+    restored: (saved: string, app: string) =>
+      `Opened from a session file saved ${saved} with SeeBand Web ${app}.`,
+    restoredFit: (core: string) =>
+      `Its fit is shown as it was, from core ${core}; nothing was fitted again.`,
+    otherCore: (core: string) =>
+      `This server runs core ${core}, which draws the curves. Run the fit again to compare.`,
+  },
   data: {
     title: "Data",
     subtitle: {
@@ -861,6 +885,10 @@ export const STRINGS = {
     },
     csvFile: "seeband-data.csv",
     zipFile: "seeband-export.zip",
+    sessionFile: "seeband-session.json",
+    session: "Session to file",
+    sessionHint:
+      "The data, the settings and the last fit, to load back later with Open session. Nothing is kept on the server.",
     csvColumns: "quantity,curve,temperature_k,value,unit",
     // Names the app's parser reads, so that a file of them loads again.
     readable: {

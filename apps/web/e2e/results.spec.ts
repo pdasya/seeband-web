@@ -856,6 +856,102 @@ test("a ZIP of a fit with bounds of the user's holds them, the start values and 
   expect(metadata).toMatch(/^SeeBand Web \S+ \(commit [0-9a-f]{12}(-dirty)?\)/);
 });
 
+test("a session saved to file opens in a new tab as it was, and fits again with the same inputs", async ({
+  page,
+}) => {
+  await openFit(page);
+  await page.getByRole("button", { name: "Edit bounds" }).click();
+  await page
+    .getByRole("textbox", { name: "E_g, lower bound", exact: true })
+    .fill("0,05");
+  await page
+    .getByRole("textbox", { name: "E_g, upper bound", exact: true })
+    .fill("0,12");
+  await page.getByRole("button", { name: "Done" }).click();
+  await finishWith(page);
+
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Session to file" }).first().click(),
+  ]);
+  expect(download.suggestedFilename()).toBe("seeband-session.json");
+  const saved = readFileSync(await download.path());
+  const file = JSON.parse(saved.toString("utf8")) as {
+    format: string;
+    fit: { request: Record<string, unknown> | null } | null;
+  };
+  expect(file.format).toBe("seeband-session");
+  expect(file.fit?.request).not.toBeNull();
+
+  const other = await page.context().newPage();
+  await stub(other);
+  await other.goto("/fit");
+  await expect(other.getByRole("slider", { name: "E_F" })).toBeVisible();
+  await other
+    .locator('input[type="file"][accept=".json,application/json"]')
+    .setInputFiles({
+      name: "seeband-session.json",
+      mimeType: "application/json",
+      buffer: saved,
+    });
+
+  await expect(
+    other.getByText(/^Opened from a session file saved /),
+  ).toBeVisible();
+  // The fit shows as it was, not run again.
+  await expect(
+    other
+      .locator('[data-slot="badge"]')
+      .filter({ hasText: /^Stopped by its rule/ }),
+  ).toBeVisible();
+  for (const name of ["m₂/m₁", "E_g", "E_F"]) {
+    await expect(other.getByRole("textbox", { name, exact: true })).toHaveValue(
+      await page.getByRole("textbox", { name, exact: true }).inputValue(),
+    );
+  }
+
+  await other.getByRole("button", { name: "Run fit" }).click();
+  const bodies = await other.evaluate(() => window.fitTest.bodies);
+  const again = bodies.at(-1) as unknown as Record<string, unknown>;
+  const first = file.fit?.request ?? {};
+  // The same inputs: everything but the start, which is now the fit's own values.
+  for (const key of Object.keys(first).filter((key) => key !== "start")) {
+    expect(again[key], key).toEqual(first[key]);
+  }
+  expect(again.bounds).toEqual({ band_gap: expect.anything() as unknown });
+});
+
+test("a file that is not a session says so, and changes nothing", async ({
+  page,
+}) => {
+  await openFit(page);
+  await page
+    .locator('input[type="file"][accept=".json,application/json"]')
+    .setInputFiles({
+      name: "other.json",
+      mimeType: "application/json",
+      buffer: Buffer.from('{"format":"other"}'),
+    });
+  await expect(
+    page.getByText("This file is not a SeeBand session file."),
+  ).toBeVisible();
+  await expect(page.getByText(/^2 points/)).toHaveCount(2);
+});
+
+test("the ZIP holds the session too", async ({ page }) => {
+  await openFit(page, serveCurves);
+  await finishWith(page);
+  await toResults(page);
+
+  const zip = unzipSync(
+    new Uint8Array(await inFormat(page, "ZIP, a file each")),
+  );
+  const session = JSON.parse(
+    strFromU8(zip["seeband-session.json"] ?? new Uint8Array()),
+  ) as { format: string };
+  expect(session.format).toBe("seeband-session");
+});
+
 test("the dialog of Data to file starts on text, says what each format is, and closes", async ({
   page,
 }) => {
