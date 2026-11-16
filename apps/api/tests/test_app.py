@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 import seeband_core
 from fastapi import APIRouter, FastAPI, HTTPException
@@ -63,6 +65,20 @@ def test_health_returns_status_and_version(client: TestClient) -> None:
 def test_the_commit_comes_from_the_environment_first(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("SEEBAND_COMMIT", "abc123")
     assert version_module._commit() == "abc123"
+    # A full hash reads as git's short form, as a commit found in git does.
+    monkeypatch.setenv("SEEBAND_COMMIT", "0123456789abcdef0123456789abcdef01234567")
+    assert version_module._commit() == "0123456789ab"
+
+
+def test_a_package_outside_its_own_checkout_names_no_commit(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Inside another repository git would answer with that one's commit, which is wrong."""
+    monkeypatch.delenv("SEEBAND_COMMIT", raising=False)
+    monkeypatch.setattr(version_module, "_CHECKOUT", tmp_path)
+    assert version_module._commit() is None
+    (tmp_path / ".git").mkdir()
+    assert version_module._commit() is None
 
 
 def test_in_a_checkout_the_commit_is_its_head(monkeypatch: pytest.MonkeyPatch) -> None:
