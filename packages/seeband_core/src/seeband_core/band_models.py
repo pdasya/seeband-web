@@ -154,6 +154,14 @@ def _named_errors(names: Iterable[str], errors: Iterable[float]) -> dict[str, fl
     return dict(zip(names, errors, strict=True))
 
 
+def _points(request: FitRequest) -> dict[Quantity, int]:
+    """The points of each quantity the fit was given, for the stages that fit to it."""
+    return {
+        quantity: int(np.size(measurement.values))
+        for quantity, measurement in request.measurements.items()
+    }
+
+
 def _usable_error(error: float) -> bool:
     """Exactly 0, or not finite, means the solver saw no effect of the parameter on the data."""
     return math.isfinite(error) and error > 0
@@ -208,6 +216,7 @@ def _with_parameter_status[**P](method: Callable[P, FitResult]) -> Callable[P, F
                 at_bounds=result.at_bounds,
                 undetermined=diagnostics.unidentified if diagnostics is not None else (),
                 reached=None,
+                points=_points(request),
             ),
         )
 
@@ -399,8 +408,11 @@ class _BandModel:
                 status=status,
                 held=request.held,
                 at_bounds=at_bounds,
-                undetermined={name for name, error in errors.items() if not _usable_error(error)},
+                # Exactly 0 is a Jacobian column of zeros; not finite is no covariance at all.
+                undetermined={name for name, error in errors.items() if error == 0},
+                unassessed={name for name, error in errors.items() if not math.isfinite(error)},
                 reached=reached,
+                points=_points(request),
             ),
         )
 

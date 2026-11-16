@@ -6,7 +6,13 @@ import numpy as np
 import pytest
 from seeband_core.demo_dataset import load_demo_dataset
 from seeband_core.model_catalog import registry
-from seeband_core.model_interface import Bounds, CurveRequest, FitRequest, FitStopped
+from seeband_core.model_interface import (
+    Bounds,
+    CurveRequest,
+    FitRequest,
+    FitStopped,
+    Measurement,
+)
 from seeband_core.model_scales import default_start
 from seeband_core.parameter_status import DID_NOT_MOVE_TOLERANCE, parameter_statuses
 
@@ -48,7 +54,7 @@ def test_dpb_curves_do_not_depend_on_a_fermi_energy_inside_the_gap(mode_id: str)
         )
         return {name: np.asarray(values).tobytes() for name, values in result.curves.items()}
 
-    assert curves(50.0) == curves(400.0) == curves(790.0)
+    assert curves(0.0) == curves(50.0) == curves(400.0) == curves(790.0) == curves(800.0)
     assert curves(400.0) != curves(810.0)
 
 
@@ -168,6 +174,8 @@ def _statuses(parameters: dict[str, float], **signals: object) -> dict[str, str]
             at_bounds=signals.pop("at_bounds", ()),  # type: ignore[arg-type]
             undetermined=signals.pop("undetermined", ()),  # type: ignore[arg-type]
             reached=signals.pop("reached", None),  # type: ignore[arg-type]
+            points=signals.pop("points", {"seebeck": 30}),  # type: ignore[arg-type]
+            unassessed=signals.pop("unassessed", ()),  # type: ignore[arg-type]
         )
     )
 
@@ -181,6 +189,70 @@ def test_each_signal_gives_its_status_in_order() -> None:
     assert _statuses(moved, reached={"m_eff"})["band_gap"] == "not_assessed"
     assert _statuses(moved, status="failed")["m_eff"] == "not_assessed"
     assert _statuses(moved, held={"m_eff"})["m_eff"] == "held"
+    assert _statuses(moved, unassessed={"m_eff"})["m_eff"] == "not_assessed"
+
+
+@pytest.mark.parametrize("status", ["stopped", "iteration_limit", "stalled"])
+def test_a_fit_that_did_not_converge_calls_nothing_estimated(status: str) -> None:
+    """Its values did not settle, so no sign of a problem is no sign that they are fine."""
+    moved = {"m_eff": 1.5, "band_gap": 700.0, "fermi_energy": 950.0}
+    statuses = _statuses(moved, status=status, at_bounds={"band_gap"})
+    assert statuses == {
+        "m_eff": "not_assessed",
+        "band_gap": "at_bound",
+        "fermi_energy": "not_assessed",
+    }
+
+
+def test_a_stage_with_no_spare_points_assesses_nothing() -> None:
+    moved = {"m_eff": 1.5, "band_gap": 700.0, "fermi_energy": 950.0}
+    assert set(_statuses(moved, points={"seebeck": 3}).values()) == {"not_assessed"}
+    assert set(_statuses(moved, points={"seebeck": 4}).values()) == {"estimated"}
+    # A held parameter is not one the stage fits.
+    assert _statuses(moved, points={"seebeck": 3}, held={"m_eff"})["band_gap"] == "estimated"
+
+
+@pytest.mark.parametrize("algorithm", ALGORITHMS)
+def test_a_fit_through_as_many_points_as_parameters_is_not_called_undetermined(
+    algorithm: str,
+) -> None:
+    """The review's case: three points of S from the model, which a DPB S fit passes through.
+
+    scipy gives no covariance then, which once read as "the data do not depend on it", while the
+    fit found the values exactly.
+    """
+    model = registry.get("dpb")
+    fit_mode = model.describe().fit_mode("dpb_s")
+    truth = default_start(fit_mode) | {"m_eff": 1.2, "band_gap": 1500.0, "fermi_energy": -200.0}
+    temperatures = np.array([200.0, 400.0, 600.0])
+    curve = model.calculate(CurveRequest("dpb_s", truth, 200.0, 600.0, 3, None, "measured"))
+    seebeck = np.asarray(curve.curves["seebeck_v_per_k"])
+    start = truth | {"m_eff": 1.0, "band_gap": 1400.0, "fermi_energy": -150.0}
+    result = model.fit(
+        FitRequest(
+            "dpb_s",
+            {"seebeck": Measurement(temperatures, seebeck)},
+            start,
+            algorithm=algorithm,  # type: ignore[arg-type]
+        )
+    )
+
+    fitted = {"m_eff", "band_gap", "fermi_energy"}
+    assert {
+        name: status for name, status in result.parameter_status.items() if name in fitted
+    } == dict.fromkeys(fitted, "not_assessed")
+
+
+def test_the_status_is_given_also_for_a_request_passed_by_name() -> None:
+    model = registry.get("dpb")
+    fit_mode = model.describe().fit_mode("dpb_s")
+    request = FitRequest(
+        "dpb_s",
+        {"seebeck": DEMO["seebeck"]},
+        default_start(fit_mode),
+        algorithm="legacy-sequential-v1",
+    )
+    assert model.fit(request=request).parameter_status == model.fit(request).parameter_status
 
 
 def test_a_value_that_stayed_at_its_start_did_not_move() -> None:
@@ -195,5 +267,8 @@ def test_only_a_dpb_fermi_energy_strictly_inside_the_gap_with_a_positive_mass() 
     assert _statuses(moved | {"fermi_energy": 400.0})["fermi_energy"] == "not_determined"
     assert _statuses(moved | {"fermi_energy": 810.0})["fermi_energy"] == "estimated"
     assert _statuses(moved | {"fermi_energy": -5.0})["fermi_energy"] == "estimated"
+    # Its edges too: the curves there are the same to the bit as inside.
+    assert _statuses(moved | {"fermi_energy": 0.0})["fermi_energy"] == "not_determined"
+    assert _statuses(moved | {"fermi_energy": 800.0})["fermi_energy"] == "not_determined"
     negative = {"m_eff": -1.5, "band_gap": 800.0, "fermi_energy": 400.0}
     assert _statuses(negative)["fermi_energy"] == "estimated"
