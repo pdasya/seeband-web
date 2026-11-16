@@ -157,10 +157,12 @@ class FitResponse(BaseModel):
 
     `parameter_status` says how the fit found each parameter in `parameters`, the first that
     applies of: `held`; `fixed`, not fitted in this mode or scattering; `not_assessed`, a failed
-    fit or a stage it never reached; `at_bound`; `not_determined`, the data do not depend on it;
-    `did_not_move`, within 1e-9 relative of its start; and `estimated`, which means only that no
-    signal said otherwise. None says that a value is right. `uncertainty` is `not_assessed` for
-    every fit until confidence intervals exist (#182).
+    fit or a stage it never reached; `at_bound`; `not_assessed`, a stage with no more points than
+    parameters, or a legacy error that is not finite; `not_determined`, the data do not depend on
+    it; `not_assessed`, any other of a fit that did not converge; `did_not_move`, within 1e-9
+    relative of its start; and `estimated`, which means only that no signal said otherwise. None
+    says that a value is right. `uncertainty` is `not_assessed` for every fit until confidence
+    intervals exist (#182).
     """
 
     model_config = ConfigDict(
