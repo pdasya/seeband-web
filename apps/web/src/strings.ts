@@ -78,6 +78,8 @@ export const STRINGS = {
     open: "Open session",
     openHint:
       "Load a session file saved with Session to file, in place of this session",
+    waitFirst:
+      "A fit or a file is on its way. Let it finish, or stop it, before opening a session.",
     opening: "Opening the session file…",
     problems: {
       too_large: "This session file is too large to open.",
@@ -87,8 +89,8 @@ export const STRINGS = {
         "This session file comes from a newer version of SeeBand Web. Open it there.",
       invalid:
         "This session file is damaged, or misses parts, so it was not opened.",
-      data_changed:
-        "The data in this session file do not match its checksum, so it was changed after it was saved, and was not opened.",
+      checksum:
+        "The contents of this session file do not match the checksum stored with them, so it is damaged or was edited, and was not opened.",
       read_failed: "This file could not be read.",
     },
     restored: (saved: string, app: string) =>
@@ -97,6 +99,10 @@ export const STRINGS = {
       `Its fit is shown as it was, from core ${core}; nothing was fitted again.`,
     otherCore: (core: string) =>
       `This server runs core ${core}, which draws the curves. Run the fit again to compare.`,
+    coreUnknown:
+      "The server did not say which core it runs, so whether it draws the curves with the fit's own is not known.",
+    stale:
+      "The fit in the file used other inputs than this server gives now, as it can interpolate otherwise or no longer offer the mode, so it is not shown. Run the fit again.",
   },
   data: {
     title: "Data",
@@ -880,7 +886,7 @@ export const STRINGS = {
       },
       zip: {
         label: "ZIP, a file each",
-        text: "Plain tables of the data, curves, parameters and additional graphs. The app loads the data and curves again.",
+        text: "Plain tables of the data, curves, parameters and additional graphs, and the session file, which holds the full text of each data file. The app loads the data and curves again.",
       },
     },
     csvFile: "seeband-data.csv",
@@ -888,7 +894,7 @@ export const STRINGS = {
     sessionFile: "seeband-session.json",
     session: "Session to file",
     sessionHint:
-      "The data, the settings and the last fit, to load back later with Open session. Nothing is kept on the server.",
+      "The data, with the full text of each file, the settings and the last fit, to load back later with Open session. Share it only as you would the files. Nothing is kept on the server.",
     csvColumns: "quantity,curve,temperature_k,value,unit",
     // Names the app's parser reads, so that a file of them loads again.
     readable: {

@@ -856,6 +856,18 @@ test("a ZIP of a fit with bounds of the user's holds them, the start values and 
   expect(metadata).toMatch(/^SeeBand Web \S+ \(commit [0-9a-f]{12}(-dirty)?\)/);
 });
 
+/** Opens a session file through the chooser of Open session, which leaves no input in the page. */
+async function openSession(
+  page: Page,
+  file: { name: string; mimeType: string; buffer: Buffer },
+) {
+  const [chooser] = await Promise.all([
+    page.waitForEvent("filechooser"),
+    page.getByRole("button", { name: "Open session" }).click(),
+  ]);
+  await chooser.setFiles(file);
+}
+
 test("a session saved to file opens in a new tab as it was, and fits again with the same inputs", async ({
   page,
 }) => {
@@ -887,13 +899,11 @@ test("a session saved to file opens in a new tab as it was, and fits again with 
   await stub(other);
   await other.goto("/fit");
   await expect(other.getByRole("slider", { name: "E_F" })).toBeVisible();
-  await other
-    .locator('input[type="file"][accept=".json,application/json"]')
-    .setInputFiles({
-      name: "seeband-session.json",
-      mimeType: "application/json",
-      buffer: saved,
-    });
+  await openSession(other, {
+    name: "seeband-session.json",
+    mimeType: "application/json",
+    buffer: saved,
+  });
 
   await expect(
     other.getByText(/^Opened from a session file saved /),
@@ -918,20 +928,32 @@ test("a session saved to file opens in a new tab as it was, and fits again with 
   for (const key of Object.keys(first).filter((key) => key !== "start")) {
     expect(again[key], key).toEqual(first[key]);
   }
-  expect(again.bounds).toEqual({ band_gap: expect.anything() as unknown });
+  // The bounds the user set, in core units: 0,05 to 0,12 eV.
+  const bounds = again.bounds as { band_gap: { lower: number; upper: number } };
+  expect(bounds.band_gap.lower * 8.617333262e-5).toBeCloseTo(0.05, 10);
+  expect(bounds.band_gap.upper * 8.617333262e-5).toBeCloseTo(0.12, 10);
+});
+
+test("a session cannot be opened while a fit runs", async ({ page }) => {
+  await openFit(page);
+  const open = page.getByRole("button", { name: "Open session" });
+  await expect(open).toBeEnabled();
+  await page.getByRole("button", { name: "Run fit" }).click();
+  await send(page, { type: "started" });
+  await expect(open).toBeDisabled();
+  await send(page, { type: "done", result: RESULT });
+  await expect(open).toBeEnabled();
 });
 
 test("a file that is not a session says so, and changes nothing", async ({
   page,
 }) => {
   await openFit(page);
-  await page
-    .locator('input[type="file"][accept=".json,application/json"]')
-    .setInputFiles({
-      name: "other.json",
-      mimeType: "application/json",
-      buffer: Buffer.from('{"format":"other"}'),
-    });
+  await openSession(page, {
+    name: "other.json",
+    mimeType: "application/json",
+    buffer: Buffer.from('{"format":"other"}'),
+  });
   await expect(
     page.getByText("This file is not a SeeBand session file."),
   ).toBeVisible();

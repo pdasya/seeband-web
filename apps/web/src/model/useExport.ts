@@ -290,7 +290,8 @@ export function useExport() {
         const made = await everything(true);
         if (made !== null) {
           const { header, mode, state, preFit, fit, graphs, missing } = made;
-          const session = await sessionText(state);
+          // The session is an extra of the ZIP, which goes without it if it cannot be made.
+          const session = await sessionText(state).catch(() => null);
           const entries = zipEntries(
             header,
             mode,
@@ -315,7 +316,7 @@ export function useExport() {
               Object.fromEntries(
                 Object.entries({
                   ...entries,
-                  [text.sessionFile]: session,
+                  ...(session === null ? {} : { [text.sessionFile]: session }),
                 }).map(([name, contents]) => [name, strToU8(contents)]),
               ),
             ) as Uint8Array<ArrayBuffer>,
