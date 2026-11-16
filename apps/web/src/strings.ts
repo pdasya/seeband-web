@@ -792,6 +792,8 @@ export const STRINGS = {
       rmse: (quantity: string, value: string, unit: string, fitted: boolean) =>
         `RMSE ${quantity} of the ${fitted ? "fitted curve" : "curve of the values in use"}: ${value} ${unit}`,
       notFinite: "not finite",
+      rmseFailed:
+        "RMSE not given: the server could not calculate the curve for it when this file was made",
       stopRule: (percent: string, limit: number | null) =>
         limit === null
           ? `Stop rule: each parameter of the loop changed by at most ${percent} % in an iteration`

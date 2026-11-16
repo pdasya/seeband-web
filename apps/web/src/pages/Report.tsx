@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 
 import { apiClient, type CalcResponse } from "@/api/client";
 import { APP_VERSION, withCommit } from "@/lib/version";
@@ -222,7 +223,19 @@ export function ReportHeader({
   mode?: FitModeDescription | undefined;
   curve?: CalcResponse | null;
 }) {
-  const session = useSessionStore();
+  const session = useSessionStore(
+    useShallow((state) => ({
+      data: state.data,
+      interpolation: state.interpolation,
+      fit: state.fit,
+      fitStartValues: state.fitStartValues,
+      fitStartNet: state.fitStartNet,
+      fitStartNumerical: state.fitStartNumerical,
+      selection: state.selection,
+      customBounds: state.customBounds,
+      held: state.held,
+    })),
+  );
   const { fit, data } = session;
   const run =
     mode === undefined

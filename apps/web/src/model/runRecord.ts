@@ -13,6 +13,20 @@ import { fitAlgorithm, type SessionState } from "@/session/store";
 import { STRINGS } from "@/strings";
 
 const { export: exportText, data: dataText } = STRINGS;
+
+/** The parts of a session that say what a run used. */
+export type RunState = Pick<
+  SessionState,
+  | "data"
+  | "interpolation"
+  | "fit"
+  | "fitStartValues"
+  | "fitStartNet"
+  | "fitStartNumerical"
+  | "selection"
+  | "customBounds"
+  | "held"
+>;
 const text = exportText.run;
 
 /** The roles of the columns that give a quantity: its own, or σ for ρ, and temperature. */
@@ -46,7 +60,7 @@ function valueText(
 }
 
 /** Where each quantity came from, the column and unit of each of its columns, and doubts. */
-function inputLines(state: SessionState, mode: FitModeDescription): string[] {
+function inputLines(state: RunState, mode: FitModeDescription): string[] {
   return mode.quantities.flatMap((quantity) => {
     const entry = state.data[quantity];
     if (entry === undefined) {
@@ -81,7 +95,7 @@ function inputLines(state: SessionState, mode: FitModeDescription): string[] {
   });
 }
 
-function interpolationLines(state: SessionState): string[] {
+function interpolationLines(state: RunState): string[] {
   const { interpolation } = state;
   const failed = interpolation.failed.map(
     (quantity) => dataText.quantities[quantity].symbol,
@@ -95,7 +109,7 @@ function interpolationLines(state: SessionState): string[] {
 }
 
 /** The values a fit started from, and where they came from, in the units the screen shows. */
-function startLines(state: SessionState, mode: FitModeDescription): string[] {
+function startLines(state: RunState, mode: FitModeDescription): string[] {
   const start = state.fitStartValues;
   if (state.fit.status === "idle" || start === null) {
     return [];
@@ -120,7 +134,7 @@ function startLines(state: SessionState, mode: FitModeDescription): string[] {
 }
 
 /** The bounds of each parameter a fit finds, which ones the user set, and those held. */
-function boundLines(state: SessionState, mode: FitModeDescription): string[] {
+function boundLines(state: RunState, mode: FitModeDescription): string[] {
   const custom = state.customBounds[mode.id] ?? {};
   const held = state.held[mode.id] ?? [];
   const fitted = visibleParameters(mode, state.selection.scattering).filter(
@@ -152,11 +166,14 @@ function boundLines(state: SessionState, mode: FitModeDescription): string[] {
 }
 
 function rmseLines(
-  rmse: CalcResponse["rmse"] | null,
+  rmse: CalcResponse["rmse"] | "failed" | null,
   fitted: boolean,
 ): string[] {
   if (rmse === null) {
     return [];
+  }
+  if (rmse === "failed") {
+    return [text.rmseFailed];
   }
   const units: Record<string, string> = STRINGS.fit.rmseUnits;
   return Object.entries(rmse).map(([quantity, { value, unit }]) =>
@@ -170,7 +187,7 @@ function rmseLines(
 }
 
 /** The stop rule of a legacy loop, its limit, and how much each parameter changed last. */
-function stopLines(state: SessionState, mode: FitModeDescription): string[] {
+function stopLines(state: RunState, mode: FitModeDescription): string[] {
   if (!mode.iterative || fitAlgorithm(state.fit) !== "legacy-sequential-v1") {
     return [];
   }
@@ -206,12 +223,13 @@ function stopLines(state: SessionState, mode: FitModeDescription): string[] {
 /**
  * What a run used, so that it can be made again: the data and how they were read, interpolation,
  * where the fit started, its bounds, the RMSE of the curve in the file, and its stop rule.
- * `rmse` is that of the fitted curve if `fitted`, else of the values in use, or null if none.
+ * `rmse` is that of the fitted curve if `fitted`, else of the values in use, "failed" if its
+ * curve could not be calculated, which the file then says, or null if none was asked for.
  */
 export function runLines(
-  state: SessionState,
+  state: RunState,
   mode: FitModeDescription,
-  rmse: CalcResponse["rmse"] | null,
+  rmse: CalcResponse["rmse"] | "failed" | null,
   fitted: boolean,
 ): string[] {
   return [

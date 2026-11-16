@@ -103,8 +103,11 @@ export function useExport() {
       measured?: readonly string[];
       derived?: readonly string[];
       coreVersions?: readonly (string | undefined)[];
-      /** The curve whose RMSE the file names: the fitted one, or that of the values in use. */
-      curve?: CalcResponse | null;
+      /**
+       * The curve whose RMSE the file names: the fitted one, or that of the values in use, or
+       * "failed" if asking for it failed.
+       */
+      curve?: CalcResponse | "failed" | null;
     } = {},
   ) => {
     const issues = resultIssues(mode, {
@@ -136,7 +139,9 @@ export function useExport() {
       run: runLines(
         state,
         mode,
-        extraIssues.curve?.rmse ?? null,
+        extraIssues.curve === "failed"
+          ? "failed"
+          : (extraIssues.curve?.rmse ?? null),
         hasFittedValues(state.fit),
       ),
     };
@@ -211,7 +216,7 @@ export function useExport() {
       const now = snapshot();
       if (now !== null) {
         // For the RMSE of the values in the file; a file without it still goes.
-        const curve = await calc(now.state).catch(() => null);
+        const curve = await calc(now.state).catch(() => "failed" as const);
         const { state, mode, header } = await context(now, { curve });
         download(
           name,
