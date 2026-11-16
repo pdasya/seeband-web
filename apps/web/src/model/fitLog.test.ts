@@ -217,6 +217,6 @@ test("a loop at its limit names the parameters that kept it going", () => {
     null,
   );
   expect(steps.at(-1)?.text).toMatch(
-    /The changes in its last iteration: m₂\/m₁ 42 %, E_g 1 %, E_F not finite, A 8 %, B 0,2 %\. Above 10 %: m₂\/m₁, E_F\.$/,
+    /The changes in its last iteration: m₂\/m₁ 42 %, E_g 1 %, E_F not finite, A 8 %, B 0,2 %\. Above 10 %: m₂\/m₁, E_F\. At the limit it fitted S once more after these, so m₂\/m₁, E_g and E_F are from that last stage\.$/,
   );
 });

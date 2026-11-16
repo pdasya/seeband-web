@@ -53,12 +53,14 @@ function changesText(fit: FitState, threshold: number | null): string {
     threshold === null
       ? []
       : changes.filter(([, change]) => change === null || change > threshold);
+  const limit =
+    fit.result.status === "iteration_limit" ? ` ${log.limitBands}` : "";
   return above.length === 0
-    ? ` ${log.changes(listed)}`
+    ? ` ${log.changes(listed)}${limit}`
     : ` ${log.changes(listed)} ${log.above(
         thresholdText(threshold ?? 0),
         above.map(([name]) => parameterSymbol(name)).join(", "),
-      )}`;
+      )}${limit}`;
 }
 
 function endOf(
