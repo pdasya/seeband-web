@@ -900,8 +900,13 @@ export const STRINGS = {
       convergedText: "The fit met its stop rule.",
       convergedBelow: (percent: string, iterations: number | null) =>
         iterations === null
-          ? `The legacy fit met its stop rule, a change of at most ${percent} %.`
-          : `The legacy fit met its stop rule, a change of at most ${percent} %, in iteration ${String(iterations)}.`,
+          ? `The legacy fit met its stop rule: each parameter of its loop changed by at most ${percent} %.`
+          : `The legacy fit met its stop rule: each parameter of its loop changed by at most ${percent} % in iteration ${String(iterations)}.`,
+      changes: (listed: string) =>
+        `The changes in its last iteration: ${listed}.`,
+      above: (percent: string, symbols: string) =>
+        `Above ${percent} %: ${symbols}.`,
+      notFinite: "not finite",
       done: "Done",
       singlePass: "One pass: this fit mode does not iterate.",
       limit: "Iteration limit",

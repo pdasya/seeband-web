@@ -410,7 +410,7 @@ test("the fit log follows the stages of the mode and how the fit ended", async (
     /^\dStart values\s*The values on the fit screen$/,
     /^\dFit to S\s*Finds m₂\/m₁, E_g, E_F, in each of 3 iterations$/,
     /^\dFit to ρ\s*Finds A, B, in each of 3 iterations$/,
-    /^\dStopped by its rule\s*The legacy fit met its stop rule, a change of at most 10 %, in iteration 3\.$/,
+    /^\dStopped by its rule\s*The legacy fit met its stop rule: each parameter of its loop changed by at most 10 % in iteration 3\.$/,
   ]);
 });
 

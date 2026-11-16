@@ -45,7 +45,7 @@ describe("fitLog", () => {
       { title: "Fit to R_H", text: "Finds m₁" },
       {
         title: "Stopped by its rule",
-        text: "The legacy fit met its stop rule, a change of at most 10 %, in iteration 3.",
+        text: "The legacy fit met its stop rule: each parameter of its loop changed by at most 10 % in iteration 3.",
       },
     ]);
   });
@@ -140,7 +140,7 @@ describe("fitLog", () => {
   test("a threshold is a percent with no rounding error", () => {
     const mode = { ...modeOf("dpb_s_rho"), threshold: 0.07 };
     expect(fitLog(mode, "acPh", done(), null).at(-1)?.text).toBe(
-      "The legacy fit met its stop rule, a change of at most 7 %, in iteration 3.",
+      "The legacy fit met its stop rule: each parameter of its loop changed by at most 7 % in iteration 3.",
     );
   });
 });
@@ -175,4 +175,48 @@ test("historical results without method provenance do not claim a legacy thresho
     fitLog(modeOf("dpb_s_rho"), "acPh", { status: "done", result }, null).at(-1)
       ?.text,
   ).toBe("The fit met its stop rule.");
+});
+
+test("a legacy loop logs how much each parameter really changed", () => {
+  const steps = fitLog(
+    modeOf("dpb_s_rho"),
+    "acPh",
+    done({
+      iterations: 3,
+      last_changes: {
+        m_eff: 0.0213,
+        band_gap: 0.00061,
+        fermi_energy: 0,
+        A: 0.08,
+        B: 0.002,
+      },
+    }),
+    null,
+  );
+  expect(steps.at(-1)?.text).toBe(
+    "The legacy fit met its stop rule: each parameter of its loop changed by at most 10 % in iteration 3. " +
+      "The changes in its last iteration: m₂/m₁ 2,1 %, E_g 0,061 %, E_F 0 %, A 8 %, B 0,2 %.",
+  );
+});
+
+test("a loop at its limit names the parameters that kept it going", () => {
+  const steps = fitLog(
+    modeOf("dpb_s_rho"),
+    "acPh",
+    done({
+      status: "iteration_limit",
+      iterations: 1000,
+      last_changes: {
+        m_eff: 0.42,
+        band_gap: 0.01,
+        fermi_energy: null,
+        A: 0.08,
+        B: 0.002,
+      },
+    }),
+    null,
+  );
+  expect(steps.at(-1)?.text).toMatch(
+    /The changes in its last iteration: m₂\/m₁ 42 %, E_g 1 %, E_F not finite, A 8 %, B 0,2 %\. Above 10 %: m₂\/m₁, E_F\.$/,
+  );
 });
