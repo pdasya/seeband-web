@@ -832,6 +832,11 @@ export interface components {
          *     relative of its start; and `estimated`, which means only that no signal said otherwise. None
          *     says that a value is right. `uncertainty` is `not_assessed` for every fit until confidence
          *     intervals exist (#182).
+         *
+         *     `last_changes` holds, for an iterative legacy fit, the relative change of each parameter of
+         *     its loop in the last iteration, as its stop rule compared it with the mode's `threshold`; the
+         *     first iteration compares with the start values, and null is a change that is not finite. The
+         *     loop stops by its rule only when every one is at most the threshold. Otherwise it is empty.
          * @example {
          *       "at_bounds": [],
          *       "core_version": "0.3.0",
@@ -903,6 +908,10 @@ export interface components {
              * @constant
              */
             uncertainty?: "not_assessed";
+            /** Last Changes */
+            last_changes?: {
+                [key: string]: number | null;
+            };
         };
         /**
          * FitStageResponse
