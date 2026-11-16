@@ -1,7 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 
-import { apiClient } from "@/api/client";
+import { apiClient, type CalcResponse } from "@/api/client";
+import { APP_VERSION, withCommit } from "@/lib/version";
 import { coreVersionLines } from "@/model/exportFiles";
 import { modelsQuery } from "@/api/queries";
 import { chartImage } from "@/charts/chartImage";
@@ -14,6 +16,8 @@ import {
   isQuantityTab,
   type DerivedKind,
 } from "@/model/chartTabs";
+import { hasFittedValues } from "@/model/resultSummary";
+import { runLines } from "@/model/runRecord";
 import type { FitModeDescription } from "@/model/selection";
 import type { LiveCalc } from "@/model/useLiveCurves";
 import {
@@ -165,7 +169,9 @@ export function useReport({
       );
       setCharts(made);
       const server = await apiClient.getHealth().catch(() => null);
-      setApiVersion(server?.version ?? null);
+      setApiVersion(
+        server === null ? null : withCommit(server.version, server.commit),
+      );
       setServerCoreVersion(server?.core_version ?? null);
       setCurveCoreVersions(
         [measured.result, ...Object.values(derived).map(({ result }) => result)]
@@ -207,23 +213,41 @@ export function ReportHeader({
   apiVersion,
   serverCoreVersion,
   curveCoreVersions,
+  mode,
+  curve,
 }: {
   apiVersion: string | null;
   serverCoreVersion?: string | null;
   curveCoreVersions?: readonly (string | undefined)[];
+  /** The mode in use, and the curve whose RMSE the report names. */
+  mode?: FitModeDescription | undefined;
+  curve?: CalcResponse | null;
 }) {
-  const fit = useSessionStore((state) => state.fit);
-  const data = useSessionStore((state) => state.data);
+  const session = useSessionStore(
+    useShallow((state) => ({
+      data: state.data,
+      interpolation: state.interpolation,
+      fit: state.fit,
+      fitStartValues: state.fitStartValues,
+      fitStartNet: state.fitStartNet,
+      fitStartNumerical: state.fitStartNumerical,
+      selection: state.selection,
+      customBounds: state.customBounds,
+      held: state.held,
+      parameters: state.parameters,
+    })),
+  );
+  const { fit, data } = session;
+  const run =
+    mode === undefined
+      ? []
+      : runLines(session, mode, curve?.rmse ?? null, hasFittedValues(fit));
   return (
     <div className="hidden print:block">
       {/* Not a heading, as the page's own h1 follows. */}
       <p className="m-0 text-xl font-semibold">{text.title}</p>
       <p className="m-0 mt-1 text-xs text-muted-foreground">
-        {text.made(
-          new Date().toLocaleString("en-GB"),
-          __APP_VERSION__,
-          apiVersion,
-        )}
+        {text.made(new Date().toLocaleString("en-GB"), APP_VERSION, apiVersion)}
       </p>
       {coreVersionLines(serverCoreVersion, fit, curveCoreVersions).map(
         (line) => (
@@ -253,6 +277,16 @@ export function ReportHeader({
           ];
         })}
       </ul>
+      {run.length > 0 && (
+        <>
+          <h2 className="m-0 mt-3 text-sm font-semibold">{text.run}</h2>
+          <ul className="m-0 mt-1 list-none p-0 text-xs">
+            {run.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </>
+      )}
     </div>
   );
 }

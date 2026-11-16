@@ -22,6 +22,47 @@ function iterationsOf(fit: FitState): number | null {
     : null;
 }
 
+/** A relative change as a percent, to two figures, without the noise of binary fractions. */
+function percentText(change: number | null): string {
+  return change === null
+    ? log.notFinite
+    : `${formatNumber(Number((change * 100).toPrecision(2)))} %`;
+}
+
+/** A threshold as a percent, without the rounding error of the product. */
+function thresholdText(threshold: number): string {
+  return formatNumber(Number((threshold * 100).toPrecision(12)));
+}
+
+/**
+ * How much each parameter of a legacy loop changed in its last iteration, as its stop rule
+ * compared it, and those above the threshold, which kept the loop going. Empty for other fits.
+ */
+function changesText(fit: FitState, threshold: number | null): string {
+  if (fit.status !== "done") {
+    return "";
+  }
+  const changes = Object.entries(fit.result.last_changes ?? {});
+  if (changes.length === 0) {
+    return "";
+  }
+  const listed = changes
+    .map(([name, change]) => `${parameterSymbol(name)} ${percentText(change)}`)
+    .join(", ");
+  const above =
+    threshold === null
+      ? []
+      : changes.filter(([, change]) => change === null || change > threshold);
+  const limit =
+    fit.result.status === "iteration_limit" ? ` ${log.limitBands}` : "";
+  return above.length === 0
+    ? ` ${log.changes(listed)}${limit}`
+    : ` ${log.changes(listed)} ${log.above(
+        thresholdText(threshold ?? 0),
+        above.map(([name]) => parameterSymbol(name)).join(", "),
+      )}${limit}`;
+}
+
 function endOf(
   mode: FitModeDescription,
   fit: FitState,
@@ -38,10 +79,13 @@ function endOf(
   if (status === "stopped") {
     return stopped;
   }
+  const threshold = mode.threshold ?? null;
   if (status === "iteration_limit") {
     return {
       title: log.limit,
-      text: log.limitText(mode.max_iterations ?? iterations ?? 0),
+      text:
+        log.limitText(mode.max_iterations ?? iterations ?? 0) +
+        changesText(fit, threshold),
     };
   }
   if (status === "stalled") {
@@ -71,11 +115,8 @@ function endOf(
       mode.threshold === null ||
       mode.threshold === undefined
         ? log.convergedText
-        : log.convergedBelow(
-            // As a percent, without the rounding error of the product.
-            formatNumber(Number((mode.threshold * 100).toPrecision(12))),
-            iterations,
-          ),
+        : log.convergedBelow(thresholdText(mode.threshold), iterations) +
+          changesText(fit, threshold),
   };
 }
 

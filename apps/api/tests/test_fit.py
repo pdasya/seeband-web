@@ -136,6 +136,7 @@ def test_result_equals_the_core(
     assert body["parameter_status"] == dict(expected.parameter_status)
     assert set(body["parameter_status"]) == set(body["parameters"])
     assert body["uncertainty"] == "not_assessed"
+    assert body["last_changes"] == dict(expected.last_changes)
 
     if mode.iterative:
         assert updates

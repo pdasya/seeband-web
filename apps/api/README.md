@@ -39,7 +39,7 @@ uv run python -m seeband_api
 
 | Route                    | Purpose                     |
 | ------------------------ | --------------------------- |
-| `GET /api/health`        | status and version          |
+| `GET /api/health`        | status, version and commit  |
 | `GET /api/models`        | model descriptions          |
 | `POST /api/calc`         | curves and RMSE             |
 | `POST /api/band-diagram` | the sketch of E(k)          |
@@ -49,6 +49,8 @@ uv run python -m seeband_api
 | `GET /api/demo`          | synthetic dataset           |
 | `GET /api/openapi.json`  | the contract                |
 | `GET /api/docs`          | Swagger UI over the same    |
+
+`commit` in `GET /api/health` is the commit the API runs from: `SEEBAND_COMMIT`, which an image should set as it is built, or git's in a checkout, with `-dirty` for uncommitted changes, or null when neither knows. The app's own build reads its commit the same way, and exports and the report name both.
 
 ## Limits
 

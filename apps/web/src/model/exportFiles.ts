@@ -81,6 +81,8 @@ export interface ExportContext {
   limitedRanges?: readonly LimitedRange[];
   /** Whether ρ is 1/σ of a σ file, as its points and RMSE are then not what was loaded. */
   fromConductivity?: boolean;
+  /** What the run used, so that it can be made again: see `runLines`. */
+  run?: readonly string[];
 }
 
 function fitLine(fit: FitState): string {
@@ -168,9 +170,15 @@ export function exportHeader(context: ExportContext): string[] {
         ]
       : []),
     fitLine(context.fit),
-    fitText.algorithm.provenance(
-      fitAlgorithm(context.fit) ?? fitText.algorithm.unknown,
-    ),
+    // Only with no fit is the method chosen what a fit would run with. A fit that ran without
+    // saying its method stays unknown rather than taking the one chosen since.
+    context.fit.status === "idle"
+      ? text.header.algorithmChosen(
+          context.selection.algorithm ?? fitText.algorithm.unknown,
+        )
+      : fitText.algorithm.provenance(
+          fitAlgorithm(context.fit) ?? fitText.algorithm.unknown,
+        ),
     ...(context.fit.status === "done" && context.fit.result.diagnostics != null
       ? [
           fitText.diagnostics.termination(
@@ -180,6 +188,7 @@ export function exportHeader(context: ExportContext): string[] {
           JSON.stringify(context.fit.result.diagnostics),
         ]
       : []),
+    ...(context.run ?? []),
     ...context.issues.map(({ id, severity, text: issue }) =>
       text.header.issue(fitText.issueSeverity[severity], issue, id),
     ),

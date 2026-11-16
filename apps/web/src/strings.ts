@@ -661,8 +661,13 @@ export const STRINGS = {
       serverCore: (version: string) => `Export server core ${version}`,
       fitCore: (version: string) => `Fit core ${version}`,
       curveCore: (version: string) => `Curve core ${version}`,
+      // The API's as it was when the file was made, which a server deployed since a fit changes.
       app: (app: string, api: string | null) =>
-        api === null ? `SeeBand Web ${app}` : `SeeBand Web ${app}, API ${api}`,
+        api === null
+          ? `SeeBand Web ${app}`
+          : `SeeBand Web ${app}, API ${api} when exported`,
+      algorithmChosen: (algorithm: string) =>
+        `Fitting method chosen, no fit ran with it: ${algorithm}`,
       date: (date: string) => `Exported ${date}`,
       demo: "Demo data: synthetic, made with the DPB model and noise. Not a measurement.",
       model: (model: string, mode: string) =>
@@ -752,6 +757,78 @@ export const STRINGS = {
     },
     uncertaintyNote:
       "The uncertainty of the values is not assessed. Estimated means only that the fit gave no sign of a problem with a value, not that the data determine it.",
+    // What a run used, so that it can be made again.
+    run: {
+      demo: "demo data",
+      file: (name: string) => `file "${name}"`,
+      temperature: "T",
+      conductivity: "σ",
+      column: (role: string, column: number, unit: string, from: string) =>
+        `${role} in column ${String(column)}, in ${unit} (${from})`,
+      unitNotNamed: "a unit not named",
+      sourceUnknown: "where the unit came from is not known",
+      unitSource: {
+        chosen: "chosen by the user",
+        header: "named in the file's header",
+        default: "SI, as nothing named a unit",
+      },
+      input: (quantity: string, source: string, columns: string) =>
+        columns === ""
+          ? `Input ${quantity}: ${source}`
+          : `Input ${quantity}: ${source}; ${columns}`,
+      doubt: (quantity: string, message: string, confirmed: boolean) =>
+        confirmed
+          ? `Unit in doubt for ${quantity}, and the user confirmed the values: ${message}`
+          : `Unit in doubt for ${quantity}, not confirmed: ${message}`,
+      interpolationOn: "Interpolation on",
+      interpolationOff: "Interpolation off",
+      interpolationFailed: (quantities: string) =>
+        `Interpolation failed for ${quantities}, so a fit cannot use their data until it works or is turned off`,
+      points: (quantity: string, points: number, inRange: number | null) =>
+        inRange === null
+          ? `${quantity}: ${String(points)} measured points`
+          : `${quantity}: ${String(points)} measured points, ${String(inRange)} within the fit range`,
+      values: (values: string) => `Values in use: ${values}`,
+      fromNet: (minK: string, maxK: string) =>
+        `the neural net's guess from its net for ${minK}-${maxK} K where it gave a value, else the fit screen`,
+      fromNumerical:
+        "the numerical estimate from S(T) where it gave a value, else the fit screen",
+      fromScreen: "the values on the fit screen",
+      start: (source: string, values: string) =>
+        `Start values, from ${source}: ${values}`,
+      bound: (symbol: string, lower: string, upper: string, custom: boolean) =>
+        `${symbol} ${lower} to ${upper}${custom ? " (set by the user)" : ""}`,
+      bounds: (bounds: string) => `Bounds: ${bounds}`,
+      held: (symbols: string) => `Held at their values: ${symbols}`,
+      massBranch:
+        "The legacy loop also keeps m2/m1 on the sign of its start, and with N2/N1 other than 1 its bounds apply to m2/m1 divided by N2/N1",
+      rmse: (quantity: string, value: string, unit: string, fitted: boolean) =>
+        `RMSE ${quantity} of the ${fitted ? "fitted curve" : "curve of the values in use"}: ${value} ${unit}`,
+      notFinite: "not finite",
+      rmseFailed:
+        "RMSE not given: the server could not calculate the curve for it when this file was made",
+      stopRule: (percent: string, limit: number | null) =>
+        limit === null
+          ? `Stop rule: each parameter of the loop changed by at most ${percent} % in an iteration`
+          : `Stop rule: each parameter of the loop changed by at most ${percent} % in an iteration, within ${String(limit)} iterations`,
+      lastChanges: (changes: string) =>
+        `Relative changes the stop rule compared in the last iteration: ${changes}`,
+      limitBands:
+        "At the iteration limit the loop fits S once more after these changes, so m2/m1, E_g and E_F are from that last Seebeck stage",
+      summary: (
+        symbol: string,
+        unit: string,
+        temperature: string | null,
+        doubt: "open" | "confirmed" | null,
+      ) =>
+        `${symbol} in ${unit}` +
+        (temperature === null ? "" : `, T in ${temperature}`) +
+        (doubt === null
+          ? ""
+          : doubt === "open"
+            ? ", unit in doubt"
+            : ", unit in doubt, confirmed"),
+    },
     // A unit as a file writes it, plain text.
     units: {
       m_e: "m_e",
@@ -816,6 +893,7 @@ export const STRINGS = {
         ? `Made ${date} with SeeBand Web ${app}`
         : `Made ${date} with SeeBand Web ${app}, API ${api}`,
     data: "Data",
+    run: "How the run was made",
     file: (
       symbol: string,
       name: string,
@@ -900,8 +978,15 @@ export const STRINGS = {
       convergedText: "The fit met its stop rule.",
       convergedBelow: (percent: string, iterations: number | null) =>
         iterations === null
-          ? `The legacy fit met its stop rule, a change of at most ${percent} %.`
-          : `The legacy fit met its stop rule, a change of at most ${percent} %, in iteration ${String(iterations)}.`,
+          ? `The legacy fit met its stop rule: each parameter of its loop changed by at most ${percent} %.`
+          : `The legacy fit met its stop rule: each parameter of its loop changed by at most ${percent} % in iteration ${String(iterations)}.`,
+      changes: (listed: string) =>
+        `The changes in its last iteration: ${listed}.`,
+      limitBands:
+        "At the limit it fitted S once more after these, so m₂/m₁, E_g and E_F are from that last stage.",
+      above: (percent: string, symbols: string) =>
+        `Above ${percent} %: ${symbols}.`,
+      notFinite: "not finite",
       done: "Done",
       singlePass: "One pass: this fit mode does not iterate.",
       limit: "Iteration limit",

@@ -3980,10 +3980,10 @@
               "text/event-stream": {
                 "examples": {
                   "single_pass": {
-                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"done\",\"result\":{\"parameters\":{\"m_eff\":0.57,\"band_gap\":910.0,\"fermi_energy\":-35.0},\"core_version\":\"0.3.0\",\"status\":\"converged\",\"parameter_errors\":{\"m_eff\":0.02,\"band_gap\":12.0,\"fermi_energy\":4.0},\"at_bounds\":[],\"known_issues\":[],\"held\":[],\"algorithm\":\"legacy-sequential-v1\",\"parameter_status\":{\"m_eff\":\"estimated\",\"band_gap\":\"estimated\",\"fermi_energy\":\"estimated\"},\"uncertainty\":\"not_assessed\"}}\n\n"
+                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"done\",\"result\":{\"parameters\":{\"m_eff\":0.57,\"band_gap\":910.0,\"fermi_energy\":-35.0},\"core_version\":\"0.3.0\",\"status\":\"converged\",\"parameter_errors\":{\"m_eff\":0.02,\"band_gap\":12.0,\"fermi_energy\":4.0},\"at_bounds\":[],\"known_issues\":[],\"held\":[],\"algorithm\":\"legacy-sequential-v1\",\"parameter_status\":{\"m_eff\":\"estimated\",\"band_gap\":\"estimated\",\"fermi_energy\":\"estimated\"},\"uncertainty\":\"not_assessed\",\"last_changes\":{}}}\n\n"
                   },
                   "iterative": {
-                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"iteration\",\"iteration\":1,\"parameters\":{\"m_eff\":0.8,\"band_gap\":950.0,\"fermi_energy\":-60.0}}\n\ndata: {\"type\":\"iteration\",\"iteration\":2,\"parameters\":{\"m_eff\":0.6,\"band_gap\":915.0,\"fermi_energy\":-38.0}}\n\ndata: {\"type\":\"done\",\"result\":{\"parameters\":{\"m_eff\":0.57,\"band_gap\":910.0,\"fermi_energy\":-35.0},\"core_version\":\"0.3.0\",\"status\":\"converged\",\"iterations\":2,\"parameter_errors\":{\"m_eff\":0.02,\"band_gap\":12.0,\"fermi_energy\":4.0},\"at_bounds\":[],\"known_issues\":[],\"held\":[],\"algorithm\":\"legacy-sequential-v1\",\"parameter_status\":{\"m_eff\":\"estimated\",\"band_gap\":\"estimated\",\"fermi_energy\":\"estimated\"},\"uncertainty\":\"not_assessed\"}}\n\n"
+                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"iteration\",\"iteration\":1,\"parameters\":{\"m_eff\":0.8,\"band_gap\":950.0,\"fermi_energy\":-60.0}}\n\ndata: {\"type\":\"iteration\",\"iteration\":2,\"parameters\":{\"m_eff\":0.6,\"band_gap\":915.0,\"fermi_energy\":-38.0}}\n\ndata: {\"type\":\"done\",\"result\":{\"parameters\":{\"m_eff\":0.57,\"band_gap\":910.0,\"fermi_energy\":-35.0},\"core_version\":\"0.3.0\",\"status\":\"converged\",\"iterations\":2,\"parameter_errors\":{\"m_eff\":0.02,\"band_gap\":12.0,\"fermi_energy\":4.0},\"at_bounds\":[],\"known_issues\":[],\"held\":[],\"algorithm\":\"legacy-sequential-v1\",\"parameter_status\":{\"m_eff\":\"estimated\",\"band_gap\":\"estimated\",\"fermi_energy\":\"estimated\"},\"uncertainty\":\"not_assessed\",\"last_changes\":{}}}\n\n"
                   },
                   "fit_timeout": {
                     "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"error\",\"error\":{\"code\":\"fit_timeout\",\"message\":\"The fit took too long\",\"details\":[]}}\n\n"
@@ -6527,6 +6527,20 @@
             "const": "not_assessed",
             "title": "Uncertainty",
             "default": "not_assessed"
+          },
+          "last_changes": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Last Changes"
           }
         },
         "type": "object",
@@ -6540,7 +6554,7 @@
           "parameter_status"
         ],
         "title": "FitResponse",
-        "description": "The outcome of a fit, in core units.\n\n`converged` means numerical termination, not physical adequacy or identification.\n`stalled` is a usable endpoint that did not converge. `iteration_limit`\nis not a converged result. `failed` returns the start values, with fixed text in `message`.\n`iterations` is left out for a single-pass mode. A value that is not finite is null.\n\nIn the legacy method, `parameter_errors` holds standard errors from the last solver run of\neach stage, holding other stages fixed. They can be far too small in a staged fit. The verified\nmethod leaves errors empty and reports uncertainty as `not_assessed`; it does not manufacture\nzero errors for profiled or unidentified parameters.\n`at_bounds` names fitted parameters that ended at a bound, which may be what set them.\n`known_issues` names known errors that apply, as in `GET /api/models`. `held` names the\nparameters the request held, which come back as sent, with no error and no at-bound mark; the\nerrors of the others hold the held values exact. A held value outside its bounds fails as a\nstart would. Holding m1, or the SPB Hall mass, skips the R_H stage.\n\n`parameter_status` says how the fit found each parameter in `parameters`, the first that\napplies of: `held`; `fixed`, not fitted in this mode or scattering; `not_assessed`, a failed\nfit or a stage it never reached; `at_bound`; `not_assessed`, a stage with no more points than\nparameters, or a legacy error that is not finite; `not_determined`, the data do not depend on\nit; `not_assessed`, any other of a fit that did not converge; `did_not_move`, within 1e-9\nrelative of its start; and `estimated`, which means only that no signal said otherwise. None\nsays that a value is right. `uncertainty` is `not_assessed` for every fit until confidence\nintervals exist (#182).",
+        "description": "The outcome of a fit, in core units.\n\n`converged` means numerical termination, not physical adequacy or identification.\n`stalled` is a usable endpoint that did not converge. `iteration_limit`\nis not a converged result. `failed` returns the start values, with fixed text in `message`.\n`iterations` is left out for a single-pass mode. A value that is not finite is null.\n\nIn the legacy method, `parameter_errors` holds standard errors from the last solver run of\neach stage, holding other stages fixed. They can be far too small in a staged fit. The verified\nmethod leaves errors empty and reports uncertainty as `not_assessed`; it does not manufacture\nzero errors for profiled or unidentified parameters.\n`at_bounds` names fitted parameters that ended at a bound, which may be what set them.\n`known_issues` names known errors that apply, as in `GET /api/models`. `held` names the\nparameters the request held, which come back as sent, with no error and no at-bound mark; the\nerrors of the others hold the held values exact. A held value outside its bounds fails as a\nstart would. Holding m1, or the SPB Hall mass, skips the R_H stage.\n\n`parameter_status` says how the fit found each parameter in `parameters`, the first that\napplies of: `held`; `fixed`, not fitted in this mode or scattering; `not_assessed`, a failed\nfit or a stage it never reached; `at_bound`; `not_assessed`, a stage with no more points than\nparameters, or a legacy error that is not finite; `not_determined`, the data do not depend on\nit; `not_assessed`, any other of a fit that did not converge; `did_not_move`, within 1e-9\nrelative of its start; and `estimated`, which means only that no signal said otherwise. None\nsays that a value is right. `uncertainty` is `not_assessed` for every fit until confidence\nintervals exist (#182).\n\n`last_changes` holds, for an iterative legacy fit, the relative change of each parameter of\nits loop in the last iteration, as its stop rule compared it with the mode's `threshold`; the\nfirst iteration compares with the start values, and null is a change that is not finite. The\nloop stops by its rule only when every one is at most the threshold. With N2/N1 other than 1,\nthe first change of m_eff compares with its start divided by N2/N1, so it reads too large\n(#85). At `iteration_limit` the loop fits S once more after these changes, so m_eff, E_g and\nE_F are from that stage. Otherwise it is empty.",
         "examples": [
           {
             "at_bounds": [],
@@ -6875,6 +6889,18 @@
           "version": {
             "type": "string",
             "title": "Version"
+          },
+          "commit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commit",
+            "description": "The commit the API was built from, with -dirty for uncommitted changes, or null if unknown. For provenance."
           },
           "core_version": {
             "type": "string",

@@ -154,6 +154,29 @@ def _named_errors(names: Iterable[str], errors: Iterable[float]) -> dict[str, fl
     return dict(zip(names, errors, strict=True))
 
 
+def _last_changes(
+    fit_mode: FitMode, scattering: str | None, progress: fit_module.FitProgress
+) -> dict[str, float]:
+    """Each loop parameter's change in the last iteration, as the legacy stop rule compared it.
+
+    The loop orders its changes as the Seebeck and then the resistivity stage order their
+    parameters, so they are named from those stages.
+    """
+    if not fit_mode.iterative or not progress.last_changes:
+        return {}
+    active = {spec.name for spec in fit_mode.parameters_for(scattering)}
+    names = [
+        name
+        for stage in fit_mode.stages
+        if stage.quantity in ("seebeck", "resistivity")
+        for name in stage.parameters
+        if name in active
+    ]
+    if len(names) != len(progress.last_changes):
+        return {}
+    return dict(zip(names, progress.last_changes, strict=True))
+
+
 def _points(request: FitRequest) -> dict[Quantity, int]:
     """The points of each quantity the fit was given, for the stages that fit to it."""
     return {
@@ -400,6 +423,7 @@ class _BandModel:
                 fit_mode, request.scattering, parameters, ratio, extrapolated=request.extrapolated
             ),
             held=tuple(sorted(request.held)),
+            last_changes=_last_changes(fit_mode, request.scattering, progress),
             parameter_status=parameter_statuses(
                 fit_mode,
                 request.scattering,

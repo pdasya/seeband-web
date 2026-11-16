@@ -410,7 +410,7 @@ test("the fit log follows the stages of the mode and how the fit ended", async (
     /^\dStart values\s*The values on the fit screen$/,
     /^\dFit to S\s*Finds m₂\/m₁, E_g, E_F, in each of 3 iterations$/,
     /^\dFit to ρ\s*Finds A, B, in each of 3 iterations$/,
-    /^\dStopped by its rule\s*The legacy fit met its stop rule, a change of at most 10 %, in iteration 3\.$/,
+    /^\dStopped by its rule\s*The legacy fit met its stop rule: each parameter of its loop changed by at most 10 % in iteration 3\.$/,
   ]);
 });
 
@@ -825,6 +825,35 @@ test("Data to file also gives a CSV, and a ZIP of plain tables", async ({
   expect(strFromU8(zip["data/seebeck.txt"] ?? new Uint8Array())).toMatch(
     /\nT \[K\]\tS \[V\/K\]\n/,
   );
+});
+
+test("a ZIP of a fit with bounds of the user's holds them, the start values and the RMSE", async ({
+  page,
+}) => {
+  await openFit(page, serveCurves);
+  await page.getByRole("button", { name: "Edit bounds" }).click();
+  await page
+    .getByRole("textbox", { name: "E_g, lower bound", exact: true })
+    .fill("0,05");
+  await page
+    .getByRole("textbox", { name: "E_g, upper bound", exact: true })
+    .fill("0,12");
+  await page.getByRole("button", { name: "Done" }).click();
+  await finishWith(page);
+  await toResults(page);
+
+  const zip = unzipSync(
+    new Uint8Array(await inFormat(page, "ZIP, a file each")),
+  );
+  const metadata = strFromU8(zip["metadata.txt"] ?? new Uint8Array());
+  expect(metadata).toMatch(
+    /\nBounds: [^\n]*E_g 0\.05 eV to 0\.12 eV \(set by the user\)/,
+  );
+  expect(metadata).toMatch(
+    /\nStart values, from the values on the fit screen: m₂\/m₁ = /,
+  );
+  expect(metadata).toContain("\nRMSE S of the fitted curve: 111 µV/K\n");
+  expect(metadata).toMatch(/^SeeBand Web \S+ \(commit [0-9a-f]{12}(-dirty)?\)/);
 });
 
 test("the dialog of Data to file starts on text, says what each format is, and closes", async ({

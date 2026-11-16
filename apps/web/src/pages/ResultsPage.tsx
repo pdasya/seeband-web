@@ -38,6 +38,7 @@ import {
   rmseText,
 } from "@/model/resultSummary";
 import { ParameterStatusBadge } from "@/model/ParameterStatusBadge";
+import { unitSummary } from "@/model/runRecord";
 import { fitModeOf, type FitModeDescription } from "@/model/selection";
 import { ExportButtons } from "@/model/ExportButtons";
 import { useExport } from "@/model/useExport";
@@ -365,6 +366,7 @@ export function ResultsPage() {
             formatNumber(high),
           ),
       ),
+      ...unitSummary(data, mode),
     ].filter((part) => part !== null),
   );
 
@@ -411,6 +413,8 @@ export function ResultsPage() {
         apiVersion={report.apiVersion}
         serverCoreVersion={report.serverCoreVersion}
         curveCoreVersions={report.curveCoreVersions}
+        mode={mode}
+        curve={measured.result}
       />
       <PageHeading
         title={text.title}

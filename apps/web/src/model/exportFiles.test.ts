@@ -97,7 +97,7 @@ describe("numbers and tables", () => {
 describe("the header", () => {
   test("says what the file is of", () => {
     expect(exportHeader(CONTEXT)).toEqual([
-      "SeeBand Web 1.2.3, API 0.4.0",
+      "SeeBand Web 1.2.3, API 0.4.0 when exported",
       "Export server core unknown",
       "Fit core unknown",
       "Exported 2026-11-08T12:00:00.000Z",
@@ -664,6 +664,18 @@ test.each(["legacy-sequential-v1", "verified-sequential-v2"] as const)(
     ).toContain(`Fitting method: ${algorithm}`);
   },
 );
+
+test("with no fit, the header names the method chosen, as not yet run", () => {
+  expect(
+    exportHeader({
+      ...CONTEXT,
+      selection: { ...SELECTION, algorithm: "legacy-sequential-v1" },
+      fit: { status: "idle" },
+    }),
+  ).toContain(
+    "Fitting method chosen, no fit ran with it: legacy-sequential-v1",
+  );
+});
 
 test("historical stopped state without provenance remains unknown", () => {
   expect(

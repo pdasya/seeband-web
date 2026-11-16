@@ -25,10 +25,15 @@ class FitProgress:
     `held` names, for a stage, the positions in its parameter vector that keep their start values:
     the solver sees only the others. A held value has no variance, so its row and column of the
     covariance are NaN, and a stage that holds every value is not run.
+
+    `last_changes` holds the relative changes the stop rule compared with its threshold in the
+    last iteration, in the order of the loop's errors: m_eff, E_g, E_F, then the two resistivity
+    prefactors, and C and D with acPhDis. The first iteration compares with the start values.
     """
 
     on_iteration: Callable[[int, list[float]], None] | None = None
     iterations: int = 0
+    last_changes: list[float] = field(default_factory=list)
     reached_iteration_limit: bool = False
     stage_fits: dict[str, tuple[np.ndarray, np.ndarray]] = field(default_factory=dict)
     held: dict[str, frozenset[int]] = field(default_factory=dict)
@@ -772,6 +777,8 @@ class PB_fit:
             errors = [error_meff, error_gap, error_fermi_energy, error_para_A, error_para_B]
             if scatter_type == "acPhDis":
                 errors.extend([error_para_C, error_para_D])
+            if progress is not None:
+                progress.last_changes = list(errors)
             if self.is_accuracy_reached(threshold, *errors):
                 break
 
@@ -1266,6 +1273,8 @@ class PB_fit:
             errors = [error_meff, error_gap, error_fermi_energy, error_para_A, error_para_B]
             if scatter_type == "acPhDis":
                 errors.extend([error_para_C, error_para_D])
+            if progress is not None:
+                progress.last_changes = list(errors)
             if self.is_accuracy_reached(threshold, *errors):
                 break
 
