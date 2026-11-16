@@ -325,6 +325,8 @@ export interface SessionState {
   slotsReading: readonly Quantity[];
   /** What each model had when another was chosen, as the design keeps them apart. */
   savedModelSettings: Record<string, ModelSettings>;
+  /** The session file this session came from, until a fit runs, or null. */
+  restored: RestoredFrom | null;
 
   setChartPanel: (index: number, tab: ChartTab) => void;
   /** Keeps the current model's settings, and takes up these for the new one. */
@@ -389,6 +391,36 @@ export interface SessionState {
   fitEvent: (run: number, event: FitEvent) => void;
   fitStopped: (run: number) => void;
   fitFailed: (run: number, failure: FitFailure) => void;
+  /** Takes up a session from a file in place of this one, its last fit as it was. */
+  restoreSession: (session: RestoredSession, from: RestoredFrom) => void;
+}
+
+/** What a session file gives the store. `sessionFile` checks it before. */
+export interface RestoredSession {
+  dataMode: DataMode;
+  data: Partial<Record<Quantity, SessionData>>;
+  singleFile: Pick<SingleFile, "name" | "text" | "mapping" | "table"> | null;
+  selection: Selection;
+  parameters: SessionState["parameters"];
+  customBounds: SessionState["customBounds"];
+  held: SessionState["held"];
+  interpolationEnabled: boolean;
+  fitStart: {
+    values: Record<string, number> | null;
+    net: NetRange | null;
+    numerical: boolean;
+  };
+  result: FitResult | null;
+}
+
+/** Where a restored session came from, which the fit screen names. */
+export interface RestoredFrom {
+  saved: string;
+  appVersion: string;
+  /** The core the restored fit ran on, or null with no fit. */
+  fitCoreVersion: string | null;
+  /** The core of the server when the file was loaded, or null if it did not answer. */
+  serverCoreVersion: string | null;
 }
 
 function withoutMode(
@@ -534,6 +566,49 @@ export const createSessionStore = () =>
       held: {},
       slotsReading: [],
       savedModelSettings: {},
+      restored: null,
+
+      restoreSession: (session, from) => {
+        // Events of a fit that ran before belong to no session now.
+        currentRun += 1;
+        currentFitMode = null;
+        set((state) => ({
+          data: session.data,
+          dataMode: session.dataMode,
+          singleFile:
+            session.singleFile === null
+              ? null
+              : {
+                  ...session.singleFile,
+                  loading: false,
+                  failure: null,
+                  request: 0,
+                },
+          otherSource: null,
+          selection: supportedSelection(session.selection),
+          parameters: session.parameters,
+          customBounds: session.customBounds,
+          held: session.held,
+          interpolation: {
+            ...INITIAL_INTERPOLATION,
+            enabled: session.interpolationEnabled,
+          },
+          fit:
+            session.result === null
+              ? { status: "idle" }
+              : { status: "done", result: session.result },
+          fitStartValues: session.fitStart.values,
+          fitStartNet: session.fitStart.net,
+          fitStartNumerical: session.fitStart.numerical,
+          guess: null,
+          guessPending: false,
+          slotsReading: [],
+          savedModelSettings: {},
+          // Fields being typed in start again from the restored values.
+          parameterResets: state.parameterResets + 1,
+          restored: from,
+        }));
+      },
 
       fileReadStarted: (quantity) => {
         set((state) => ({
@@ -820,6 +895,8 @@ export const createSessionStore = () =>
         set((state) => {
           const guess = currentGuess(state);
           return {
+            // The fit restored from a file is replaced, and with it what the file said of it.
+            restored: null,
             fit: {
               status: "waiting",
               ...(algorithm === undefined ? {} : { algorithm }),
