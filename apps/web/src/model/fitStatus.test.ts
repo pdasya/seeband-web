@@ -78,7 +78,7 @@ describe("fitBadge", () => {
       ),
     ).toEqual({ status: "stopped" });
     expect(fitBadge(done({ iterations: 1 }), false)).toEqual({
-      status: "converged",
+      status: "finished",
     });
   });
 });
@@ -177,10 +177,12 @@ test("verified numerical settlement and stalling remain distinct", () => {
 test("a legacy fit that met its stop rule names the rule, not convergence", () => {
   expect(fitBadge(done({ iterations: 3 }), true, 0.1)).toEqual({
     status: "converged",
-    detail: "(change of at most 10 %) in 3 iter.",
+    detail:
+      "(each parameter changed by at most 10 % in the last iteration) in 3 iter.",
   });
+  // A single-pass fit has no rule of its own: its solver returned.
   expect(fitBadge(done({ iterations: 1 }), false, 0.1)).toEqual({
-    status: "converged",
+    status: "finished",
   });
   expect(STRINGS.status.converged).toBe("Stopped by its rule");
 });

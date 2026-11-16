@@ -36,20 +36,14 @@ import {
   resultRows,
   rmseSymbol,
   rmseText,
-  type FoundStatus,
-  type ParameterStatus,
 } from "@/model/resultSummary";
+import { ParameterStatusBadge } from "@/model/ParameterStatusBadge";
 import { fitModeOf, type FitModeDescription } from "@/model/selection";
 import { ExportButtons } from "@/model/ExportButtons";
 import { useExport } from "@/model/useExport";
 import { ReportCharts, ReportHeader, useReport } from "@/pages/Report";
 import { useResultCurves, type LiveCalc } from "@/model/useLiveCurves";
-import {
-  QUANTITIES,
-  useSessionStore,
-  type ChartTab,
-  type Quantity,
-} from "@/session/store";
+import { QUANTITIES, useSessionStore, type ChartTab } from "@/session/store";
 import { PageHeading, Panel } from "@/shell/layout";
 import { StatusBadge } from "@/shell/StatusBadge";
 import { STRINGS } from "@/strings";
@@ -65,12 +59,6 @@ const {
 } = STRINGS;
 
 type ExportGraph = ReturnType<typeof useExport>["graph"];
-
-function symbols(quantities: readonly Quantity[]): string {
-  return quantities
-    .map((quantity) => dataText.quantities[quantity].symbol)
-    .join(", ");
-}
 
 function scatteringName(id: string): string {
   const known: Record<string, string> = modelText.scatteringNames;
@@ -95,40 +83,6 @@ function Kpi({
       <dd className="m-0 text-xs text-muted-foreground">{detail}</dd>
     </div>
   );
-}
-
-/** No status is green: none of them says that a value is right. */
-const FOUND_VARIANTS = {
-  estimated: "neutral",
-  at_bound: "warning",
-  not_determined: "warning",
-  did_not_move: "warning",
-  not_assessed: "neutral",
-  fixed: "neutral",
-  held: "neutral",
-} as const satisfies Record<FoundStatus, string>;
-
-function StatusCell({ status }: { status: ParameterStatus }) {
-  switch (status.kind) {
-    case "found":
-      return (
-        <Badge variant={FOUND_VARIANTS[status.status]}>
-          {text.status.found[status.status]}
-        </Badge>
-      );
-    case "free":
-      return <Badge variant="neutral">{text.status.free}</Badge>;
-    case "fixed":
-      return <Badge variant="neutral">{text.status.fixed}</Badge>;
-    case "held":
-      return <Badge variant="neutral">{text.status.held}</Badge>;
-    default:
-      return (
-        <Badge variant="warning">
-          {text.status.needs(symbols(status.quantities))}
-        </Badge>
-      );
-  }
 }
 
 /** The steps of a fit, numbered and joined by a line, as the design draws them. */
@@ -448,9 +402,6 @@ export function ResultsPage() {
     ...(rows.some(({ atBound }) => atBound)
       ? [{ key: "bound", text: fitText.atBoundNote }]
       : []),
-    ...(hasFittedValues(fit)
-      ? [{ key: "uncertainty", text: text.uncertaintyNote }]
-      : []),
   ];
 
   return (
@@ -576,9 +527,6 @@ export function ResultsPage() {
                       <TableCell className="font-medium">
                         <span className="inline-flex flex-wrap items-center gap-1.5">
                           {row.symbol}
-                          {row.atBound && (
-                            <Badge variant="outline">{fitText.atBound}</Badge>
-                          )}
                         </span>
                       </TableCell>
                       <TableCell className="whitespace-normal text-muted-foreground">
@@ -591,13 +539,19 @@ export function ResultsPage() {
                         {row.bounds === "" ? text.noValue : row.bounds}
                       </TableCell>
                       <TableCell className="text-right">
-                        <StatusCell status={row.status} />
+                        <ParameterStatusBadge status={row.status} />
                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             </div>
+            {/* Beside the statuses it qualifies, rather than after the graphs. */}
+            {hasFittedValues(fit) && (
+              <p className="m-0 mt-3 text-xs text-muted-foreground">
+                {text.uncertaintyNote}
+              </p>
+            )}
           </Panel>
         </div>
         {/* The report leaves the log out. */}

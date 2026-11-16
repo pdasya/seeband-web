@@ -97,6 +97,7 @@ export interface ParameterRow {
   value: string;
   bounds: string;
   atBound: boolean;
+  status: ParameterStatus;
 }
 
 function withUnit(value: number, unit: string): string {
@@ -144,6 +145,12 @@ export function parameterRows(
                   formatNumber(shownValue(parameter, inDisplay(bounds.upper))),
                 ),
       atBound: atBounds.includes(name),
+      status:
+        role === "fixed"
+          ? { kind: "fixed" }
+          : held.includes(name)
+            ? { kind: "held" }
+            : foundStatus(fit, name),
     };
   });
 }
@@ -171,12 +178,19 @@ export type FoundStatus = FitResult["parameter_status"][string];
 export function foundStatus(
   fit: FitState,
   name: string,
-): { kind: "found"; status: FoundStatus } | { kind: "free" } {
+):
+  | { kind: "found"; status: FoundStatus }
+  | { kind: "free"; afterFailure: boolean } {
   if (!hasFittedValues(fit)) {
-    return { kind: "free" };
+    const failed =
+      fit.status === "failed" ||
+      (fit.status === "done" && fit.result.status === "failed");
+    return { kind: "free", afterFailure: failed };
   }
-  const status =
-    fit.status === "done" ? fit.result.parameter_status[name] : undefined;
+  // An older server, or a stub, may send none: then nothing is assessed, not all estimated.
+  const statuses: Readonly<Record<string, FoundStatus>> | undefined =
+    fit.status === "done" ? fit.result.parameter_status : undefined;
+  const status = statuses?.[name];
   return { kind: "found", status: status ?? "not_assessed" };
 }
 
@@ -186,7 +200,7 @@ export function foundStatus(
  */
 export type ParameterStatus =
   | { kind: "found"; status: FoundStatus }
-  | { kind: "free" }
+  | { kind: "free"; afterFailure: boolean }
   | { kind: "fixed" }
   | { kind: "held" }
   | { kind: "needs"; quantities: Quantity[] };
@@ -230,18 +244,12 @@ export function resultRows(
     held,
   ).map((row, at) => {
     const parameter = inUse[at];
-    const fixed = parameter?.role === "fixed";
-    const kept = !fixed && held.includes(row.name);
+    const kept = row.status.kind === "fixed" || row.status.kind === "held";
     return {
       ...row,
       meaning: parameter?.meaning ?? "",
       // The status says it is not fitted, so its bounds are left empty.
-      bounds: fixed || kept ? "" : row.bounds,
-      status: fixed
-        ? { kind: "fixed" }
-        : kept
-          ? { kind: "held" }
-          : foundStatus(fit, row.name),
+      bounds: kept ? "" : row.bounds,
     };
   });
   if (mode.degeneracy !== null && mode.degeneracy !== undefined) {

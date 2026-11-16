@@ -241,7 +241,10 @@ test("an iterative fit: status, counter, moving values and Stop", async ({
 
   await stop(page).click();
 
-  await expect(page.getByText("Stopped at iteration 2")).toBeVisible();
+  // The badge, as the screen reader's line says the same.
+  await expect(
+    page.locator('[data-slot="badge"]').getByText("Stopped at iteration 2"),
+  ).toBeVisible();
   expect(await aborted(page)).toBe(1);
   // Stop keeps the last parameters, and the controls are back.
   await expect(field(page, "m₂/m₁")).toHaveValue("1,25");
@@ -326,7 +329,11 @@ test("the curves follow the fit, and end on its values", async ({ page }) => {
   await send(page, { type: "done", result: RESULT });
 
   await expect(
-    page.getByText("Stopped by its rule (change of at most 10 %) in 5 iter."),
+    page
+      .locator('[data-slot="badge"]')
+      .getByText(
+        "Stopped by its rule (each parameter changed by at most 10 % in the last iteration) in 5 iter.",
+      ),
   ).toBeVisible();
   await expect.poll(() => bodies.at(-1)?.parameters.m_eff).toBe(0.5);
   await expect(field(page, "E_F")).toHaveValue("0");
@@ -344,7 +351,7 @@ test("a single-pass mode shows no counter", async ({ page }) => {
     result: { ...RESULT, iterations: null },
   });
 
-  await expect(badge(page, "Stopped by its rule")).toBeVisible();
+  await expect(badge(page, "Solver finished")).toBeVisible();
   await expect(page.getByText(/iter/)).toHaveCount(0);
 });
 
@@ -409,7 +416,11 @@ test("a long value shows short, and stays exact", async ({ page }) => {
   await page.waitForTimeout(1000);
   expect(bodies).toHaveLength(count);
   await expect(
-    page.getByText("Stopped by its rule (change of at most 10 %) in 5 iter."),
+    page
+      .locator('[data-slot="badge"]')
+      .getByText(
+        "Stopped by its rule (each parameter changed by at most 10 % in the last iteration) in 5 iter.",
+      ),
   ).toBeVisible();
 });
 
@@ -652,7 +663,11 @@ test("a fit goes on while another screen is open", async ({ page }) => {
 
   await send(page, { type: "done", result: RESULT });
   await expect(
-    page.getByText("Stopped by its rule (change of at most 10 %) in 5 iter."),
+    page
+      .locator('[data-slot="badge"]')
+      .getByText(
+        "Stopped by its rule (each parameter changed by at most 10 % in the last iteration) in 5 iter.",
+      ),
   ).toBeVisible();
 });
 
@@ -663,7 +678,11 @@ test("a move of a slider after a result goes back to manual", async ({
   await startFit(page);
   await send(page, { type: "done", result: RESULT });
   await expect(
-    page.getByText("Stopped by its rule (change of at most 10 %) in 5 iter."),
+    page
+      .locator('[data-slot="badge"]')
+      .getByText(
+        "Stopped by its rule (each parameter changed by at most 10 % in the last iteration) in 5 iter.",
+      ),
   ).toBeVisible();
 
   await slider(page, "E_g").press("ArrowRight");

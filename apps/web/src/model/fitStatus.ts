@@ -62,6 +62,9 @@ export function fitBadge(
       if (fit.result.algorithm === "verified-sequential-v2") {
         return { status: "settled" };
       }
+      if (!iterative) {
+        return { status: "finished" };
+      }
       const count = atIteration(iterative, iterations ?? null);
       const rule =
         iterative && threshold !== null

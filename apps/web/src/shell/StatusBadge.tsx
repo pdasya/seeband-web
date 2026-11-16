@@ -6,6 +6,7 @@ export type FitStatus = keyof typeof STRINGS.status;
 const VARIANTS = {
   running: "info",
   converged: "neutral",
+  finished: "neutral",
   settled: "neutral",
   stalled: "warning",
   iterationLimit: "warning",

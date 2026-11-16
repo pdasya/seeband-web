@@ -114,6 +114,9 @@ const toResults = (page: Page) =>
 
 const table = (page: Page) =>
   page.getByRole("table", { name: "Fit parameters" });
+// The last cell of a row, which says how the fit found the parameter.
+const statusOf = (page: Page, symbol: string) =>
+  row(page, symbol).getByRole("cell").last();
 // By its first cell, which may also say that the value is at a bound.
 const row = (page: Page, symbol: string) =>
   table(page)
@@ -155,7 +158,9 @@ test("a fit sums up: status, KPIs and each parameter with its status", async ({
     page
       .locator('[data-slot="badge"]')
       .filter({ hasText: /^Stopped by its rule/ }),
-  ).toHaveText("Stopped by its rule (change of at most 10 %) in 5 iter.");
+  ).toHaveText(
+    "Stopped by its rule (each parameter changed by at most 10 % in the last iteration) in 5 iter.",
+  );
   await expect(
     page.getByText("DPB · acPh · S + ρ · range 50–800 K", { exact: true }),
   ).toBeVisible();
@@ -208,7 +213,7 @@ test("known issues and bounds reached are named", async ({ page }) => {
       .getByRole("region", { name: "Additional graphs" })
       .getByText(/^Caution: In the legacy method with N₂\/N₁ other than 1/),
   ).toHaveCount(5);
-  await expect(row(page, "E_g")).toContainText("at bound");
+  await expect(statusOf(page, "E_g")).toHaveText("at bound");
   await expect(row(page, "E_F")).not.toContainText("at bound");
 });
 
@@ -321,27 +326,71 @@ test("each parameter shows how the fit found it, and none in green", async ({
   });
   await toResults(page);
 
-  await expect(row(page, "m₂/m₁")).toContainText("did not move from its start");
-  await expect(row(page, "E_g")).toContainText("estimated");
-  await expect(row(page, "E_F")).toContainText("not determined by the data");
-  await expect(row(page, "A")).toContainText("not assessed");
-  await expect(row(page, "B")).toContainText("at bound");
-  await expect(row(page, "N₁, N₂")).toContainText("fixed");
+  await expect(statusOf(page, "m₂/m₁")).toHaveText(
+    "did not move from its start",
+  );
+  await expect(statusOf(page, "E_g")).toHaveText("estimated");
+  await expect(statusOf(page, "E_F")).toHaveText("not determined by the data");
+  await expect(statusOf(page, "A")).toHaveText("not assessed");
+  await expect(statusOf(page, "B")).toHaveText("at bound");
+  await expect(statusOf(page, "N₁, N₂")).toHaveText("fixed");
   const badges = table(page).locator('[data-slot="badge"]');
   for (const badge of await badges.all()) {
     await expect(badge).not.toHaveAttribute("data-variant", "success");
   }
   await expect(
-    page.getByText(/The uncertainty of the values is not assessed yet\./),
+    page.getByText(/The uncertainty of the values is not assessed\./),
   ).toBeVisible();
   // The stop rule, not "Converged", and not in green.
   const status = page
     .locator('[data-slot="badge"]')
     .filter({ hasText: /^Stopped by its rule/ });
   await expect(status).toHaveText(
-    "Stopped by its rule (change of at most 10 %) in 5 iter.",
+    "Stopped by its rule (each parameter changed by at most 10 % in the last iteration) in 5 iter.",
   );
   await expect(status).not.toHaveAttribute("data-variant", "success");
+});
+
+test("the fit screen shows the warnings beside the values, as the results do", async ({
+  page,
+}) => {
+  await openFit(page);
+  await finishWith(page, {
+    parameter_status: {
+      ...RESULT.parameter_status,
+      fermi_energy: "not_determined",
+    },
+  });
+
+  const panel = page.getByRole("table", { name: "Parameters in use" });
+  await expect(
+    panel
+      .getByRole("row", { name: /E_F/ })
+      .getByText("not determined by the data"),
+  ).toBeVisible();
+  // An estimated value gets no badge there, as the panel is narrow.
+  await expect(panel.getByText("estimated")).toHaveCount(0);
+  await expect(
+    page.getByText(/The uncertainty of the values is not assessed\./),
+  ).toBeVisible();
+});
+
+test("a fit stopped here assesses nothing, and a held value says so", async ({
+  page,
+}) => {
+  await openFit(page);
+  await page.getByRole("button", { name: "Run fit" }).click();
+  await send(page, { type: "started" });
+  await send(page, {
+    type: "iteration",
+    iteration: 1,
+    parameters: RESULT.parameters,
+  });
+  await page.getByRole("button", { name: "Stop" }).click();
+  await toResults(page);
+
+  await expect(statusOf(page, "m₂/m₁")).toHaveText("not assessed");
+  await expect(statusOf(page, "E_g")).toHaveText("not assessed");
 });
 
 const logSteps = (page: Page) =>

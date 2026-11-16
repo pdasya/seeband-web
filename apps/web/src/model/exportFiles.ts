@@ -6,7 +6,11 @@ import {
   parameterValues,
   visibleParameters,
 } from "@/model/parameters";
-import { foundStatus, type ResultIssue } from "@/model/resultSummary";
+import {
+  foundStatus,
+  hasFittedValues,
+  type ResultIssue,
+} from "@/model/resultSummary";
 import type { FitModeDescription } from "@/model/selection";
 import {
   fitAlgorithm,
@@ -300,8 +304,12 @@ function parameterRecords(
           : held.includes(parameter.name)
             ? text.status.held
             : found.kind === "free"
-              ? text.status.free
-              : text.status.found[found.status],
+              ? found.afterFailure
+                ? text.status.freeAfterFailure
+                : text.status.free
+              : found.status === "fixed" || found.status === "held"
+                ? text.status[found.status]
+                : text.status.found[found.status],
     };
   });
 }
@@ -345,10 +353,15 @@ export function parametersFile(
       ]
     : [];
   return (
-    commented(header) +
+    commented([...header, ...uncertaintyNotes(fit)]) +
     [text.parameterColumns, ...lines, ...degeneracy].join("\n") +
     "\n"
   );
+}
+
+/** What every status of a fit leaves open, written with the values it qualifies. */
+function uncertaintyNotes(fit: FitState): string[] {
+  return hasFittedValues(fit) ? [text.uncertaintyNote] : [];
 }
 
 /** A field of a CSV, quoted when it holds a comma, a quote or a line break, as RFC 4180 asks. */
@@ -401,7 +414,9 @@ export function parametersCsv(
       .join(","),
   );
   return (
-    commented(header) + [text.parameterCsvColumns, ...rows].join("\n") + "\n"
+    commented([...header, ...uncertaintyNotes(fit)]) +
+    [text.parameterCsvColumns, ...rows].join("\n") +
+    "\n"
   );
 }
 

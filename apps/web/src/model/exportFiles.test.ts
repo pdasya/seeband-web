@@ -358,7 +358,11 @@ describe("the parameters file", () => {
       { status: "done", result: AT_BOUND },
     );
     const lines = file.split("\n").slice(0, -1);
-    expect(lines[0]).toBe("Parameter\tValue\tStatus");
+    // What no status says, above the values it qualifies.
+    expect(lines[0]).toMatch(
+      /^# The uncertainty of the values is not assessed\./,
+    );
+    expect(lines[1]).toBe("Parameter\tValue\tStatus");
     expect(lines).toContain(
       "E_g (position of band 2) [eV]\t0.077555999358\tat bound",
     );
@@ -380,6 +384,20 @@ describe("the parameters file", () => {
       "E_g (position of band 2) [eV]\t0.077555999358\tnot fitted yet",
     );
     expect(lines.some((line) => line.endsWith("\tfitted"))).toBe(false);
+  });
+
+  test("after a failed fit, a value it fits says the fit failed, with no note", () => {
+    const lines = parametersFile(
+      [],
+      modeOf("dpb_s_rho"),
+      SELECTION,
+      { band_gap: 900 },
+      { status: "done", result: { ...RESULT, status: "failed" } },
+    ).split("\n");
+    expect(lines).toContain(
+      "E_g (position of band 2) [eV]\t0.077555999358\tnot fitted: the fit failed",
+    );
+    expect(lines[0]).toBe("Parameter\tValue\tStatus");
   });
 
   test("a value the mode holds is fixed, and SPB has no degeneracies", () => {
@@ -581,10 +599,11 @@ describe("the parameters as CSV", () => {
     )
       .split("\n")
       .slice(0, -1);
-    expect(lines.slice(0, 2)).toEqual([
-      "# head",
-      "parameter,symbol,meaning,unit,value,status",
-    ]);
+    expect(lines[0]).toBe("# head");
+    expect(lines[1]).toMatch(
+      /^# The uncertainty of the values is not assessed\./,
+    );
+    expect(lines[2]).toBe("parameter,symbol,meaning,unit,value,status");
     expect(lines).toContain(
       "band_gap,E_g,position of band 2,eV,0.077555999358,at bound",
     );

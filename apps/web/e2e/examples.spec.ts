@@ -411,7 +411,9 @@ test.describe("real fits", () => {
     // S + ρ is iterative, so its result counts them.
     await run.click();
     await expect(
-      badge(/^Stopped by its rule \(change of at most 10 %\) in \d+ iter\.$/),
+      badge(
+        /^Stopped by its rule \(each parameter changed by at most 10 % in the last iteration\) in \d+ iter\.$/,
+      ),
     ).toBeVisible({
       timeout: 30_000,
     });
@@ -434,7 +436,7 @@ test.describe("real fits", () => {
     await page.getByRole("radio", { name: "S", exact: true }).click();
     await expect(gap).toHaveValue("0,05");
     await run.click();
-    await expect(badge(/^Stopped by its rule$/)).toBeVisible({
+    await expect(badge(/^Solver finished$/)).toBeVisible({
       timeout: 30_000,
     });
     await expect(gap).not.toHaveValue("0,05");
