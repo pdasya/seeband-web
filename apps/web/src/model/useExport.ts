@@ -19,6 +19,7 @@ import {
   zipEntries,
 } from "@/model/exportFiles";
 import { calcRequest, derivedRequest } from "@/model/liveCurves";
+import { runLines } from "@/model/runRecord";
 import { hasFittedValues, resultIssues } from "@/model/resultSummary";
 import { fitModeOf } from "@/model/selection";
 import {
@@ -102,6 +103,8 @@ export function useExport() {
       measured?: readonly string[];
       derived?: readonly string[];
       coreVersions?: readonly (string | undefined)[];
+      /** The curve whose RMSE the file names: the fitted one, or that of the values in use. */
+      curve?: CalcResponse | null;
     } = {},
   ) => {
     const issues = resultIssues(mode, {
@@ -130,6 +133,12 @@ export function useExport() {
       fromConductivity:
         mode.quantities.includes("resistivity") &&
         loadedAs("resistivity", state.data.resistivity) === "conductivity",
+      run: runLines(
+        state,
+        mode,
+        extraIssues.curve?.rmse ?? null,
+        hasFittedValues(state.fit),
+      ),
     };
     return { state, mode, header: exportHeader(info) };
   };
@@ -187,6 +196,8 @@ export function useExport() {
       coreVersions: [preFit, fit, ...graphs.map(({ result }) => result)]
         .filter((result): result is CalcResponse => result !== null)
         .map((result) => result.core_version),
+      // With no fit, the curve before it is that of the values in use.
+      curve: hasFittedValues(state.fit) ? fit : preFit,
     });
     return { ...made, preFit, fit, graphs, missing };
   };
@@ -199,7 +210,9 @@ export function useExport() {
     run(async () => {
       const now = snapshot();
       if (now !== null) {
-        const { state, mode, header } = await context(now);
+        // For the RMSE of the values in the file; a file without it still goes.
+        const curve = await calc(now.state).catch(() => null);
+        const { state, mode, header } = await context(now, { curve });
         download(
           name,
           build(

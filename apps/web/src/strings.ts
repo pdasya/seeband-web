@@ -752,6 +752,66 @@ export const STRINGS = {
     },
     uncertaintyNote:
       "The uncertainty of the values is not assessed. Estimated means only that the fit gave no sign of a problem with a value, not that the data determine it.",
+    // What a run used, so that it can be made again.
+    run: {
+      demo: "demo data",
+      file: (name: string) => `file "${name}"`,
+      temperature: "T",
+      conductivity: "σ",
+      column: (role: string, column: number, unit: string, from: string) =>
+        `${role} in column ${String(column)}, in ${unit} (${from})`,
+      unitNotNamed: "a unit not named",
+      sourceUnknown: "where the unit came from is not known",
+      unitSource: {
+        chosen: "chosen by the user",
+        header: "named in the file's header",
+        default: "SI, as nothing named a unit",
+      },
+      input: (quantity: string, source: string, columns: string) =>
+        columns === ""
+          ? `Input ${quantity}: ${source}`
+          : `Input ${quantity}: ${source}; ${columns}`,
+      doubt: (quantity: string, message: string, confirmed: boolean) =>
+        confirmed
+          ? `Unit in doubt for ${quantity}, and the user confirmed the values: ${message}`
+          : `Unit in doubt for ${quantity}, not confirmed: ${message}`,
+      interpolationOn: "Interpolation on",
+      interpolationOff: "Interpolation off: the fit used the measured points",
+      interpolationFailed: (quantities: string) =>
+        `Interpolation failed for ${quantities}, so the fit used their measured points`,
+      fromNet: (minK: string, maxK: string) =>
+        `the neural net's guess, from its net for ${minK}-${maxK} K`,
+      fromNumerical: "the numerical estimate from S(T)",
+      fromScreen: "the values on the fit screen",
+      start: (source: string, values: string) =>
+        `Start values, from ${source}: ${values}`,
+      bound: (symbol: string, lower: string, upper: string, custom: boolean) =>
+        `${symbol} ${lower} to ${upper}${custom ? " (set by the user)" : ""}`,
+      bounds: (bounds: string) => `Bounds: ${bounds}`,
+      held: (symbols: string) => `Held at their values: ${symbols}`,
+      rmse: (quantity: string, value: string, unit: string, fitted: boolean) =>
+        `RMSE ${quantity} of the ${fitted ? "fitted curve" : "curve of the values in use"}: ${value} ${unit}`,
+      notFinite: "not finite",
+      stopRule: (percent: string, limit: number | null) =>
+        limit === null
+          ? `Stop rule: each parameter of the loop changed by at most ${percent} % in an iteration`
+          : `Stop rule: each parameter of the loop changed by at most ${percent} % in an iteration, within ${String(limit)} iterations`,
+      lastChanges: (changes: string) =>
+        `Relative changes in the last iteration: ${changes}`,
+      summary: (
+        symbol: string,
+        unit: string,
+        temperature: string | null,
+        doubt: "open" | "confirmed" | null,
+      ) =>
+        `${symbol} in ${unit}` +
+        (temperature === null ? "" : `, T in ${temperature}`) +
+        (doubt === null
+          ? ""
+          : doubt === "open"
+            ? ", unit in doubt"
+            : ", unit in doubt, confirmed"),
+    },
     // A unit as a file writes it, plain text.
     units: {
       m_e: "m_e",
@@ -816,6 +876,7 @@ export const STRINGS = {
         ? `Made ${date} with SeeBand Web ${app}`
         : `Made ${date} with SeeBand Web ${app}, API ${api}`,
     data: "Data",
+    run: "How the run was made",
     file: (
       symbol: string,
       name: string,

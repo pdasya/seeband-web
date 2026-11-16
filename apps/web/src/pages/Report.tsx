@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
-import { apiClient } from "@/api/client";
+import { apiClient, type CalcResponse } from "@/api/client";
 import { APP_VERSION, withCommit } from "@/lib/version";
 import { coreVersionLines } from "@/model/exportFiles";
 import { modelsQuery } from "@/api/queries";
@@ -15,6 +15,8 @@ import {
   isQuantityTab,
   type DerivedKind,
 } from "@/model/chartTabs";
+import { hasFittedValues } from "@/model/resultSummary";
+import { runLines } from "@/model/runRecord";
 import type { FitModeDescription } from "@/model/selection";
 import type { LiveCalc } from "@/model/useLiveCurves";
 import {
@@ -210,13 +212,22 @@ export function ReportHeader({
   apiVersion,
   serverCoreVersion,
   curveCoreVersions,
+  mode,
+  curve,
 }: {
   apiVersion: string | null;
   serverCoreVersion?: string | null;
   curveCoreVersions?: readonly (string | undefined)[];
+  /** The mode in use, and the curve whose RMSE the report names. */
+  mode?: FitModeDescription | undefined;
+  curve?: CalcResponse | null;
 }) {
-  const fit = useSessionStore((state) => state.fit);
-  const data = useSessionStore((state) => state.data);
+  const session = useSessionStore();
+  const { fit, data } = session;
+  const run =
+    mode === undefined
+      ? []
+      : runLines(session, mode, curve?.rmse ?? null, hasFittedValues(fit));
   return (
     <div className="hidden print:block">
       {/* Not a heading, as the page's own h1 follows. */}
@@ -252,6 +263,16 @@ export function ReportHeader({
           ];
         })}
       </ul>
+      {run.length > 0 && (
+        <>
+          <h2 className="m-0 mt-3 text-sm font-semibold">{text.run}</h2>
+          <ul className="m-0 mt-1 list-none p-0 text-xs">
+            {run.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </>
+      )}
     </div>
   );
 }

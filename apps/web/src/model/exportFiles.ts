@@ -81,6 +81,8 @@ export interface ExportContext {
   limitedRanges?: readonly LimitedRange[];
   /** Whether ρ is 1/σ of a σ file, as its points and RMSE are then not what was loaded. */
   fromConductivity?: boolean;
+  /** What the run used, so that it can be made again: see `runLines`. */
+  run?: readonly string[];
 }
 
 function fitLine(fit: FitState): string {
@@ -180,6 +182,7 @@ export function exportHeader(context: ExportContext): string[] {
           JSON.stringify(context.fit.result.diagnostics),
         ]
       : []),
+    ...(context.run ?? []),
     ...context.issues.map(({ id, severity, text: issue }) =>
       text.header.issue(fitText.issueSeverity[severity], issue, id),
     ),
