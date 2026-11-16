@@ -326,7 +326,7 @@ export interface SessionState {
   /** What each model had when another was chosen, as the design keeps them apart. */
   savedModelSettings: Record<string, ModelSettings>;
   /** The session file this session came from, until a fit runs, or null. */
-  restored: RestoredFrom | null;
+  restored: Restored | null;
 
   setChartPanel: (index: number, tab: ChartTab) => void;
   /** Keeps the current model's settings, and takes up these for the new one. */
@@ -393,6 +393,8 @@ export interface SessionState {
   fitFailed: (run: number, failure: FitFailure) => void;
   /** Takes up a session from a file in place of this one, its last fit as it was. */
   restoreSession: (session: RestoredSession, from: RestoredFrom) => void;
+  /** The restored fit used other data than the session has now, so it goes. */
+  restoredFitStale: () => void;
 }
 
 /** What a session file gives the store. `sessionFile` checks it before. */
@@ -400,6 +402,12 @@ export interface RestoredSession {
   dataMode: DataMode;
   data: Partial<Record<Quantity, SessionData>>;
   singleFile: Pick<SingleFile, "name" | "text" | "mapping" | "table"> | null;
+  otherSource: {
+    data: Partial<Record<Quantity, SessionData>>;
+    singleFile: Pick<SingleFile, "name" | "text" | "mapping" | "table"> | null;
+  } | null;
+  chartPanels: readonly ChartTab[];
+  savedModelSettings: Record<string, ModelSettings>;
   selection: Selection;
   parameters: SessionState["parameters"];
   customBounds: SessionState["customBounds"];
@@ -411,6 +419,8 @@ export interface RestoredSession {
     numerical: boolean;
   };
   result: FitResult | null;
+  /** The request that made `result`, kept as it was so that saving again keeps it too. */
+  request: Schemas["FitApiRequest"] | null;
 }
 
 /** Where a restored session came from, which the fit screen names. */
@@ -421,6 +431,18 @@ export interface RestoredFrom {
   fitCoreVersion: string | null;
   /** The core of the server when the file was loaded, or null if it did not answer. */
   serverCoreVersion: string | null;
+}
+
+/** A restored session's origin, its fit and that fit's request, as the store keeps them. */
+export interface Restored extends RestoredFrom {
+  /** The restored fit, the same object as `fit.result` while it stands. */
+  result: FitResult | null;
+  request: Schemas["FitApiRequest"] | null;
+  /**
+   * The data this server gives now differ from those the restored fit used, as a server can
+   * interpolate otherwise, so that fit was taken off the screen.
+   */
+  stale: boolean;
 }
 
 function withoutMode(
@@ -584,7 +606,22 @@ export const createSessionStore = () =>
                   failure: null,
                   request: 0,
                 },
-          otherSource: null,
+          otherSource:
+            session.otherSource === null
+              ? null
+              : {
+                  data: session.otherSource.data,
+                  singleFile:
+                    session.otherSource.singleFile === null
+                      ? null
+                      : {
+                          ...session.otherSource.singleFile,
+                          loading: false,
+                          failure: null,
+                          request: 0,
+                        },
+                },
+          chartPanels: session.chartPanels,
           selection: supportedSelection(session.selection),
           parameters: session.parameters,
           customBounds: session.customBounds,
@@ -603,11 +640,28 @@ export const createSessionStore = () =>
           guess: null,
           guessPending: false,
           slotsReading: [],
-          savedModelSettings: {},
+          savedModelSettings: session.savedModelSettings,
           // Fields being typed in start again from the restored values.
           parameterResets: state.parameterResets + 1,
-          restored: from,
+          restored: {
+            ...from,
+            result: session.result,
+            request: session.request,
+            stale: false,
+          },
         }));
+      },
+      restoredFitStale: () => {
+        set((state) =>
+          state.restored === null ||
+          state.fit.status !== "done" ||
+          state.fit.result !== state.restored.result
+            ? {}
+            : {
+                fit: { status: "idle" },
+                restored: { ...state.restored, stale: true },
+              },
+        );
       },
 
       fileReadStarted: (quantity) => {

@@ -1,13 +1,16 @@
 // @vitest-environment node
 import { expect, test } from "vitest";
 
+import type { FitRequest } from "@/api/client";
 import {
-  dataHash,
+  checksum,
   readSessionFile,
+  restoredSession,
   sessionFile,
   SESSION_VERSION,
   type SessionFile,
 } from "@/session/sessionFile";
+import { sha256, sha256Hex } from "@/session/sha256";
 import {
   createSessionStore,
   type FitResult,
@@ -51,20 +54,30 @@ const RESULT: FitResult = {
   held: [],
 };
 
-const REQUEST = {
+const REQUEST: FitRequest = {
   model: "dpb",
   fit_mode: "dpb_s",
   start: { m_eff: 1 },
   min_temperature_k: 50,
   max_temperature_k: 800,
-  measurements: {},
-} as never;
+  measurements: { seebeck: { temperature_k: [100], values: [1e-4] } },
+};
 
 /** A session with data, settings, a held parameter, custom bounds and a finished fit. */
 function session(): SessionState {
   const store = createSessionStore();
   store.setState({
     data: { seebeck: SEEBECK },
+    otherSource: { data: { seebeck: SEEBECK }, singleFile: null },
+    chartPanels: ["seebeck", "chemical_potential", "resistivity", "hall"],
+    savedModelSettings: {
+      spb: {
+        fitMode: "spb_s",
+        scattering: "acPh",
+        band1Degeneracy: 1,
+        band2Degeneracy: 1,
+      },
+    },
     selection: {
       ...store.getState().selection,
       algorithm: "legacy-sequential-v1",
@@ -92,43 +105,38 @@ const VERSIONS = {
   saved: "2026-11-16T12:00:00.000Z",
 };
 
-async function saved(): Promise<string> {
-  const file = await sessionFile(session(), VERSIONS, () => REQUEST);
-  return JSON.stringify(file);
+async function saved(state = session()): Promise<string> {
+  return JSON.stringify(await sessionFile(state, VERSIONS, () => REQUEST));
 }
 
-test("a saved session loads back into a new one as it was, its fit not run again", async () => {
-  const read = await readSessionFile(await saved());
+async function opened(text: string): Promise<SessionFile> {
+  const read = await readSessionFile(text);
   if (!("session" in read)) {
     throw new Error(read.problem);
   }
-  const { session: file } = read;
+  return read.session;
+}
+
+function restoredInto(file: SessionFile) {
   const store = createSessionStore();
-  store.getState().restoreSession(
-    {
-      dataMode: file.dataMode,
-      data: file.data,
-      singleFile: file.singleFile,
-      selection: file.selection,
-      parameters: file.parameters,
-      customBounds: file.customBounds,
-      held: file.held,
-      interpolationEnabled: file.interpolation.enabled,
-      fitStart: file.fitStart,
-      result: file.fit?.result ?? null,
-    },
-    {
-      saved: file.saved,
-      appVersion: file.appVersion,
-      fitCoreVersion: "0.3.0",
-      serverCoreVersion: "0.4.0",
-    },
-  );
+  store.getState().restoreSession(restoredSession(file.content), {
+    saved: file.saved,
+    appVersion: file.appVersion,
+    fitCoreVersion: "0.3.0",
+    serverCoreVersion: "0.4.0",
+  });
+  return store;
+}
+
+test("a saved session loads back into a new one as it was, its fit not run again", async () => {
+  const after = restoredInto(await opened(await saved())).getState();
   const before = session();
-  const after = store.getState();
 
   for (const key of [
     "data",
+    "otherSource",
+    "chartPanels",
+    "savedModelSettings",
     "selection",
     "parameters",
     "customBounds",
@@ -141,38 +149,17 @@ test("a saved session loads back into a new one as it was, its fit not run again
     expect(after[key], key).toEqual(before[key]);
   }
   expect(after.interpolation.enabled).toBe(true);
-  expect(after.restored?.fitCoreVersion).toBe("0.3.0");
-  expect(file.fit?.request).toEqual(REQUEST);
-  expect(file.version).toBe(SESSION_VERSION);
+  expect(after.restored?.request).toEqual(REQUEST);
 });
 
-test("a new fit replaces what the file said of its fit", async () => {
-  const store = createSessionStore();
-  store.getState().restoreSession(
-    {
-      dataMode: "separate",
-      data: {},
-      singleFile: null,
-      selection: store.getState().selection,
-      parameters: {},
-      customBounds: {},
-      held: {},
-      interpolationEnabled: false,
-      fitStart: { values: null, net: null, numerical: false },
-      result: RESULT,
-    },
-    {
-      saved: "x",
-      appVersion: "1",
-      fitCoreVersion: "0.3.0",
-      serverCoreVersion: null,
-    },
-  );
-  store.getState().fitRequested("dpb_s", { m_eff: 1 });
-  expect(store.getState().restored).toBeNull();
+test("saving a restored session again keeps the request of its fit as it was", async () => {
+  const store = restoredInto(await opened(await saved()));
+  // Today the request could not be built, as interpolation is on its way after a restore.
+  const again = await sessionFile(store.getState(), VERSIONS, () => null);
+  expect(again.content.fit?.request).toEqual(REQUEST);
 });
 
-test("the request of a finished fit is that of its start values", async () => {
+test("the request of a new fit is that of its start values", async () => {
   const seen: SessionState[] = [];
   await sessionFile(session(), VERSIONS, (state) => {
     seen.push(state);
@@ -183,6 +170,19 @@ test("the request of a finished fit is that of its start values", async () => {
     band_gap: 1000,
     fermi_energy: -50,
   });
+});
+
+test("a restored fit that no longer matches its inputs goes, and says so", async () => {
+  const store = restoredInto(await opened(await saved()));
+  store.getState().restoredFitStale();
+  expect(store.getState().fit.status).toBe("idle");
+  expect(store.getState().restored?.stale).toBe(true);
+});
+
+test("a new fit replaces what the file said of its fit", async () => {
+  const store = restoredInto(await opened(await saved()));
+  store.getState().fitRequested("dpb_s", { m_eff: 1 });
+  expect(store.getState().restored).toBeNull();
 });
 
 test.each([
@@ -196,45 +196,88 @@ test.each([
     "invalid",
     JSON.stringify({ format: "seeband-session", version: SESSION_VERSION }),
   ],
+  // An older version with no migration to it is not one this app wrote.
+  ["invalid", JSON.stringify({ format: "seeband-session", version: 0 })],
 ])("a file that is %s is refused", async (problem, text) => {
   expect(await readSessionFile(text)).toEqual({ problem });
 });
 
-test("a value changed in a saved file is refused, as its hash no longer matches", async () => {
-  const file = JSON.parse(await saved()) as SessionFile;
-  const changed = {
-    ...file,
-    data: {
-      seebeck: {
-        ...file.data.seebeck,
-        measurement: {
-          ...file.data.seebeck?.measurement,
-          values: [1e-4, 2e-4, 4e-4],
-        },
-      },
-    },
+/** A saved file with one change made to its content, its checksum worked out again. */
+async function edited(
+  change: (content: Record<string, unknown>) => void,
+): Promise<string> {
+  const file = JSON.parse(await saved()) as {
+    content: Record<string, unknown>;
+    checksum: string;
   };
-  expect(await readSessionFile(JSON.stringify(changed))).toEqual({
-    problem: "data_changed",
+  change(file.content);
+  file.checksum = await checksum(file.content as never);
+  return JSON.stringify(file);
+}
+
+test.each([
+  [
+    "a fit result with no known issues",
+    (content: Record<string, unknown>) => {
+      delete (content.fit as { result: Record<string, unknown> }).result
+        .known_issues;
+    },
+  ],
+  [
+    "a fit range as text",
+    (content: Record<string, unknown>) => {
+      (content.selection as Record<string, unknown>).minTemperatureK = "10";
+    },
+  ],
+  [
+    "a bound that is not a number",
+    (content: Record<string, unknown>) => {
+      content.customBounds = { dpb_s: { band_gap: { lower: "a", upper: 1 } } };
+    },
+  ],
+  [
+    "a quantity the app has not",
+    (content: Record<string, unknown>) => {
+      content.data = { thermopower: SEEBECK };
+    },
+  ],
+])("a file with %s is refused, though its checksum fits", async (_, change) => {
+  expect(await readSessionFile(await edited(change))).toEqual({
+    problem: "invalid",
+  });
+});
+
+test("a number too large for a double is refused, not read as Infinity", async () => {
+  const text = (await saved()).replace('"band_gap":900', '"band_gap":1e999');
+  expect(text).toContain("1e999");
+  expect(await readSessionFile(text)).toEqual({ problem: "invalid" });
+});
+
+test("a change to the content shows, the units' confirmation included", async () => {
+  const file = JSON.parse(await saved()) as {
+    content: { data: { seebeck: { unitConfirmed: boolean } } };
+  };
+  file.content.data.seebeck.unitConfirmed = false;
+  expect(await readSessionFile(JSON.stringify(file))).toEqual({
+    problem: "checksum",
   });
 });
 
 test("a file too large is refused before it is parsed", async () => {
-  expect(await readSessionFile(" ".repeat(30_000_001))).toEqual({
+  expect(await readSessionFile(" ".repeat(50_000_001))).toEqual({
     problem: "too_large",
   });
 });
 
-test("the hash depends on the data, not on the rest of the session", async () => {
-  const hash = await dataHash({ seebeck: SEEBECK });
-  expect(hash).toMatch(/^[0-9a-f]{64}$/);
-  expect(await dataHash({ seebeck: { ...SEEBECK, text: "other" } })).toBe(hash);
-  expect(
-    await dataHash({
-      seebeck: {
-        ...SEEBECK,
-        measurement: { ...SEEBECK.measurement, values: [1e-4, 2e-4, 3.1e-4] },
-      },
-    }),
-  ).not.toBe(hash);
+test("the plain SHA-256 gives the browser's digest, at each length its padding turns on", async () => {
+  for (const length of [0, 3, 55, 56, 63, 64, 65, 1000]) {
+    const bytes = new Uint8Array(length).map((_, i) => (i * 7 + 3) % 256);
+    const browser = new Uint8Array(
+      await crypto.subtle.digest("SHA-256", bytes),
+    );
+    expect([...sha256(bytes)], String(length)).toEqual([...browser]);
+  }
+  expect(await sha256Hex(new TextEncoder().encode("abc"))).toBe(
+    "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  );
 });
