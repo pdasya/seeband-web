@@ -387,7 +387,10 @@ class FitResult:
     `last_changes` holds, for an iterative legacy fit, the relative change of each parameter of
     its loop in the last iteration, as its stop rule compared it with `FitMode.threshold`: the
     first iteration compares with the start values, and a change that is not finite is inf. The
-    rule stops the loop only when every one is at most the threshold. It is empty otherwise.
+    rule stops the loop only when every one is at most the threshold. With N2/N1 other than 1, the
+    first change of m_eff compares with its start divided by N2/N1, so it reads too large (D12,
+    #85). At the iteration limit the loop fits S once more after these changes, so m_eff, E_g and
+    E_F are from that stage. It is empty otherwise.
 
     `parameter_status` says, for each parameter in `parameters`, how the fit found it, from the
     signals the fit has. See `seeband_core.parameter_status`. `estimated` means only that no signal

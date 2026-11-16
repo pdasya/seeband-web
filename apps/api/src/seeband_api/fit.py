@@ -167,7 +167,10 @@ class FitResponse(BaseModel):
     `last_changes` holds, for an iterative legacy fit, the relative change of each parameter of
     its loop in the last iteration, as its stop rule compared it with the mode's `threshold`; the
     first iteration compares with the start values, and null is a change that is not finite. The
-    loop stops by its rule only when every one is at most the threshold. Otherwise it is empty.
+    loop stops by its rule only when every one is at most the threshold. With N2/N1 other than 1,
+    the first change of m_eff compares with its start divided by N2/N1, so it reads too large
+    (#85). At `iteration_limit` the loop fits S once more after these changes, so m_eff, E_g and
+    E_F are from that stage. Otherwise it is empty.
     """
 
     model_config = ConfigDict(
