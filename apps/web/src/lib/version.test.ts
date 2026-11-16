@@ -11,7 +11,10 @@ test("a version names its commit, and only a known one", () => {
   expect(withCommit("1.2.0", undefined)).toBe("1.2.0");
 });
 
-test("the app's own version carries the commit it was built from", () => {
-  // Tests run in the repository, where git knows the commit.
-  expect(APP_VERSION).toMatch(/^\S+ \(commit [0-9a-f]{12}(-dirty)?\)$/);
+test("the app's own version carries the commit its build found, if any", () => {
+  expect(APP_VERSION).toBe(withCommit(__APP_VERSION__, __APP_COMMIT__));
+  // Git's short form, or a value CI set, never a placeholder.
+  if (__APP_COMMIT__ !== null) {
+    expect(__APP_COMMIT__).not.toBe("");
+  }
 });
