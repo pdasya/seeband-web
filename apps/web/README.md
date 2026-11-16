@@ -37,6 +37,8 @@ uv run python -m seeband_api          # or the real API
 pnpm --filter @seeband/web dev:api    # the app, with /api going to port 8000
 ```
 
+Exports and the report name the app's version with the commit it was built from: `SEEBAND_COMMIT` if set, as CI or an image build should, or git's, with `-dirty` for local changes.
+
 The app always calls `/api` on its own origin, so there is no base URL to set, and `SEEBAND_API_TARGET` chooses where the dev server sends it. Neither the API nor the mock send CORS headers, so a browser would hide their errors from a client on another origin.
 
 | File               | Holds                                                                   |
