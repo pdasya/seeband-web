@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
 import { apiClient } from "@/api/client";
+import { APP_VERSION, withCommit } from "@/lib/version";
 import { coreVersionLines } from "@/model/exportFiles";
 import { modelsQuery } from "@/api/queries";
 import { chartImage } from "@/charts/chartImage";
@@ -165,7 +166,9 @@ export function useReport({
       );
       setCharts(made);
       const server = await apiClient.getHealth().catch(() => null);
-      setApiVersion(server?.version ?? null);
+      setApiVersion(
+        server === null ? null : withCommit(server.version, server.commit),
+      );
       setServerCoreVersion(server?.core_version ?? null);
       setCurveCoreVersions(
         [measured.result, ...Object.values(derived).map(({ result }) => result)]
@@ -219,11 +222,7 @@ export function ReportHeader({
       {/* Not a heading, as the page's own h1 follows. */}
       <p className="m-0 text-xl font-semibold">{text.title}</p>
       <p className="m-0 mt-1 text-xs text-muted-foreground">
-        {text.made(
-          new Date().toLocaleString("en-GB"),
-          __APP_VERSION__,
-          apiVersion,
-        )}
+        {text.made(new Date().toLocaleString("en-GB"), APP_VERSION, apiVersion)}
       </p>
       {coreVersionLines(serverCoreVersion, fit, curveCoreVersions).map(
         (line) => (

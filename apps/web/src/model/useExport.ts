@@ -3,6 +3,7 @@ import { useState } from "react";
 import { limitedRanges } from "@/model/interpolatedRanges";
 
 import { apiClient, type CalcResponse } from "@/api/client";
+import { APP_VERSION, withCommit } from "@/lib/version";
 import { modelsQuery } from "@/api/queries";
 import { strToU8, zipSync } from "fflate";
 
@@ -110,8 +111,9 @@ export function useExport() {
     });
     const server = await serverVersions();
     const info = {
-      appVersion: __APP_VERSION__,
-      apiVersion: server?.version ?? null,
+      appVersion: APP_VERSION,
+      apiVersion:
+        server === null ? null : withCommit(server.version, server.commit),
       serverCoreVersion: server?.core_version ?? null,
       curveCoreVersions: extraIssues.coreVersions ?? [],
       date: new Date().toISOString(),
