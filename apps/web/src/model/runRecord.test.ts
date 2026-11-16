@@ -78,6 +78,8 @@ function session(): SessionState {
       model: "dpb",
       fitMode: "dpb_s_rho",
       scattering: "acPh",
+      minTemperatureK: 150,
+      maxTemperatureK: 800,
     },
     fit: { status: "done", result: RESULT },
     fitStartValues: { m_eff: 1, band_gap: 1000, fermi_energy: -100 },
@@ -96,6 +98,10 @@ const RMSE = {
 test("a run names its files, columns, units and where each unit came from", () => {
   const lines = runLines(session(), MODE, RMSE, true);
 
+  expect(lines).toContain("S: 2 measured points, 1 within the fit range");
+  expect(lines.find((line) => line.startsWith("Values in use: "))).toMatch(
+    /^Values in use: m₂\/m₁ = /,
+  );
   expect(lines).toContain(
     'Input S: file "s.txt"; T in column 1, in °C (named in the file\'s header); S in column 2, in µV/K (chosen by the user)',
   );
@@ -111,7 +117,7 @@ test("a run names its start and its source, its bounds, the held and the RMSE", 
   const lines = runLines(session(), MODE, RMSE, true);
 
   expect(lines.find((line) => line.startsWith("Start values"))).toMatch(
-    /^Start values, from the neural net's guess, from its net for 300-800 K: m₂\/m₁ = 1, E_g = 0\.08617\d* eV/,
+    /^Start values, from the neural net's guess from its net for 300-800 K where it gave a value, else the fit screen: m₂\/m₁ = 1, E_g = 0\.08617\d* eV/,
   );
   const bounds = lines.find((line) => line.startsWith("Bounds: ")) ?? "";
   expect(bounds).toMatch(
@@ -130,8 +136,12 @@ test("a legacy loop names its stop rule, its limit and its last changes", () => 
     "Stop rule: each parameter of the loop changed by at most 10 % in an iteration, within 1000 iterations",
   );
   expect(lines).toContain(
-    "Relative changes in the last iteration: m₂/m₁ 0.0213, E_g 0.0006, E_F 0, A 0.08, B not finite",
+    "Relative changes the stop rule compared in the last iteration: m₂/m₁ 2.13 %, E_g 0.06 %, E_F 0 %, A 8 %, B not finite",
   );
+  // The legacy loop narrows m₂/m₁ to the sign of its start, which its bounds alone do not say.
+  expect(
+    lines.some((line) => line.startsWith("The legacy loop also keeps m2/m1")),
+  ).toBe(true);
 });
 
 test("with interpolation on, a quantity it failed for is named", () => {
@@ -142,7 +152,7 @@ test("with interpolation on, a quantity it failed for is named", () => {
       interpolation: {
         ...state.interpolation,
         enabled: true,
-        failed: ["hall"],
+        failed: ["seebeck", "hall"],
       },
     },
     MODE,
@@ -150,8 +160,9 @@ test("with interpolation on, a quantity it failed for is named", () => {
     false,
   );
   expect(lines).toContain("Interpolation on");
+  // A fit cannot use data whose interpolation failed; R_H is not in this mode.
   expect(lines).toContain(
-    "Interpolation failed for R_H, so the fit used their measured points",
+    "Interpolation failed for S, so a fit cannot use their data until it works or is turned off",
   );
 });
 

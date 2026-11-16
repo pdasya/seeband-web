@@ -201,8 +201,13 @@ export function useExport() {
       coreVersions: [preFit, fit, ...graphs.map(({ result }) => result)]
         .filter((result): result is CalcResponse => result !== null)
         .map((result) => result.core_version),
-      // With no fit, the curve before it is that of the values in use.
-      curve: hasFittedValues(state.fit) ? fit : preFit,
+      // With no fit, the curve before it is that of the values in use. After a failed fit the
+      // values in use are its last iteration's, which neither curve is of, so they get their own.
+      curve: hasFittedValues(state.fit)
+        ? fit
+        : state.fit.status === "idle"
+          ? preFit
+          : await calc(state).catch(() => "failed" as const),
     });
     return { ...made, preFit, fit, graphs, missing };
   };

@@ -170,9 +170,15 @@ export function exportHeader(context: ExportContext): string[] {
         ]
       : []),
     fitLine(context.fit),
-    fitText.algorithm.provenance(
-      fitAlgorithm(context.fit) ?? fitText.algorithm.unknown,
-    ),
+    // Only with no fit is the method chosen what a fit would run with. A fit that ran without
+    // saying its method stays unknown rather than taking the one chosen since.
+    context.fit.status === "idle"
+      ? text.header.algorithmChosen(
+          context.selection.algorithm ?? fitText.algorithm.unknown,
+        )
+      : fitText.algorithm.provenance(
+          fitAlgorithm(context.fit) ?? fitText.algorithm.unknown,
+        ),
     ...(context.fit.status === "done" && context.fit.result.diagnostics != null
       ? [
           fitText.diagnostics.termination(

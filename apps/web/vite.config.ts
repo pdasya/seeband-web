@@ -23,7 +23,7 @@ const checkout = fileURLToPath(new URL("../..", import.meta.url));
 const SHORT = 12;
 
 /**
- * The commit the app is built from: `SEEBAND_COMMIT`, which CI or an image build sets, or git's,
+ * The commit the app is built from: `SEEBAND_COMMIT`, which an image build should set, or git's,
  * with -dirty for uncommitted changes, or null if neither knows, rather than a made-up value. Git
  * is asked only if this project's checkout is its top level, as an app built inside some other
  * repository would otherwise name that one's commit. Read when the config loads, so the dev

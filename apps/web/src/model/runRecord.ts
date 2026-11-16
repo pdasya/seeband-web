@@ -26,14 +26,20 @@ export type RunState = Pick<
   | "selection"
   | "customBounds"
   | "held"
+  | "parameters"
 >;
 const text = exportText.run;
 
-/** The roles of the columns that give a quantity: its own, or σ for ρ, and temperature. */
-function rolesOf(quantity: string): readonly Role[] {
-  return quantity === "resistivity"
-    ? ["temperature", "resistivity", "conductivity"]
-    : ["temperature", quantity as Role];
+/**
+ * The roles of the columns a quantity was loaded from: temperature, and its own, or σ for a ρ
+ * loaded as σ. A file with both ρ and σ columns gives ρ from one of them only.
+ */
+function rolesOf(
+  quantity: string,
+  entry: SessionState["data"][keyof SessionState["data"]],
+): readonly Role[] {
+  const loaded = entry?.measurement.loaded_as ?? quantity;
+  return ["temperature", loaded as Role];
 }
 
 function roleLabel(role: Role): string {
@@ -70,7 +76,7 @@ function inputLines(state: RunState, mode: FitModeDescription): string[] {
     const source =
       entry.source.kind === "demo" ? text.demo : text.file(entry.source.name);
     const columns = (entry.readAs ?? [])
-      .filter(({ role }) => rolesOf(quantity).includes(role))
+      .filter(({ role }) => rolesOf(quantity, entry).includes(role))
       .map(({ column, role, unit, unit_source: from }) =>
         text.column(
           roleLabel(role),
@@ -82,7 +88,7 @@ function inputLines(state: RunState, mode: FitModeDescription): string[] {
     const doubts = (entry.unitDoubts ?? []).map((doubt) => {
       const item = (entry.readAs ?? []).find(
         ({ role }) =>
-          role !== "temperature" && rolesOf(quantity).includes(role),
+          role !== "temperature" && rolesOf(quantity, entry).includes(role),
       );
       const role: Role = item?.role ?? (quantity as Role);
       return text.doubt(
@@ -91,21 +97,46 @@ function inputLines(state: RunState, mode: FitModeDescription): string[] {
         entry.unitConfirmed === true,
       );
     });
-    return [text.input(symbol, source, columns.join("; ")), ...doubts];
+    const { minTemperatureK: low, maxTemperatureK: high } = state.selection;
+    const temperatures = entry.measurement.temperature_k;
+    const inRange =
+      low === null || high === null
+        ? null
+        : temperatures.filter((t) => t >= low && t <= high).length;
+    return [
+      text.input(symbol, source, columns.join("; ")),
+      text.points(symbol, temperatures.length, inRange),
+      ...doubts,
+    ];
   });
 }
 
-function interpolationLines(state: RunState): string[] {
+function interpolationLines(
+  state: RunState,
+  mode: FitModeDescription,
+): string[] {
   const { interpolation } = state;
-  const failed = interpolation.failed.map(
-    (quantity) => dataText.quantities[quantity].symbol,
-  );
+  const failed = interpolation.failed
+    .filter((quantity) => mode.quantities.includes(quantity))
+    .map((quantity) => dataText.quantities[quantity].symbol);
   return [
     interpolation.enabled ? text.interpolationOn : text.interpolationOff,
     ...(interpolation.enabled && failed.length > 0
       ? [text.interpolationFailed(failed.join(", "))]
       : []),
   ];
+}
+
+/** The values in use, which the file's fitted curve and parameters are of. */
+function valueLines(state: RunState, mode: FitModeDescription): string[] {
+  const values = parameterValues(mode, state.parameters[mode.id]);
+  const listed = visibleParameters(mode, state.selection.scattering)
+    .map((parameter) => {
+      const value = values[parameter.name] ?? parameter.core_range.default;
+      return `${parameterSymbol(parameter.name)} = ${valueText(parameter, value)}`;
+    })
+    .join(", ");
+  return [text.values(listed)];
 }
 
 /** The values a fit started from, and where they came from, in the units the screen shows. */
@@ -157,8 +188,15 @@ function boundLines(state: RunState, mode: FitModeDescription): string[] {
         ),
       ];
     });
+  const legacyMass =
+    mode.id.startsWith("dpb") &&
+    (fitAlgorithm(state.fit) ?? state.selection.algorithm) ===
+      "legacy-sequential-v1" &&
+    fitted.some(({ name }) => name === "m_eff") &&
+    !held.includes("m_eff");
   return [
     ...(bounds.length > 0 ? [text.bounds(bounds.join("; "))] : []),
+    ...(legacyMass ? [text.massBranch] : []),
     ...(held.length > 0
       ? [text.held(held.map((name) => parameterSymbol(name)).join(", "))]
       : []),
@@ -212,10 +250,14 @@ function stopLines(state: RunState, mode: FitModeDescription): string[] {
             changes
               .map(
                 ([name, change]) =>
-                  `${parameterSymbol(name)} ${change === null ? text.notFinite : numberText(change)}`,
+                  `${parameterSymbol(name)} ${change === null ? text.notFinite : `${numberText(Number((change * 100).toPrecision(12)))} %`}`,
               )
               .join(", "),
           ),
+          ...(state.fit.status === "done" &&
+          state.fit.result.status === "iteration_limit"
+            ? [text.limitBands]
+            : []),
         ]),
   ];
 }
@@ -234,7 +276,8 @@ export function runLines(
 ): string[] {
   return [
     ...inputLines(state, mode),
-    ...interpolationLines(state),
+    ...interpolationLines(state, mode),
+    ...valueLines(state, mode),
     ...startLines(state, mode),
     ...boundLines(state, mode),
     ...rmseLines(rmse, fitted),
@@ -257,7 +300,8 @@ export function unitSummary(
     }
     const read = entry.readAs ?? [];
     const own = read.find(
-      ({ role }) => role !== "temperature" && rolesOf(quantity).includes(role),
+      ({ role }) =>
+        role !== "temperature" && rolesOf(quantity, entry).includes(role),
     );
     const temperature = read.find(({ role }) => role === "temperature");
     if (own?.unit == null) {

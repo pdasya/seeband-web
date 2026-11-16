@@ -234,6 +234,7 @@ export function ReportHeader({
       selection: state.selection,
       customBounds: state.customBounds,
       held: state.held,
+      parameters: state.parameters,
     })),
   );
   const { fit, data } = session;
