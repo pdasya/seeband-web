@@ -39,6 +39,7 @@ const RESULT = {
   status: "converged",
   iterations: 5,
   parameter_errors: {},
+  parameter_status: {},
   at_bounds: [],
   known_issues: [],
 };

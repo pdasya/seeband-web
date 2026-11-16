@@ -26,6 +26,7 @@ import {
   rmseText,
   type ResultIssue,
 } from "@/model/resultSummary";
+import { isWarning, ParameterStatusBadge } from "@/model/ParameterStatusBadge";
 import { fitModeOf } from "@/model/selection";
 import { useExport } from "@/model/useExport";
 import { ExportButtons } from "@/model/ExportButtons";
@@ -229,8 +230,15 @@ export function ResultPanel({ live }: { live: LiveCurves }) {
                   <TableCell>
                     <span className="inline-flex flex-wrap items-center gap-1.5">
                       {row.symbol}
-                      {row.atBound && (
-                        <Badge variant="outline">{fit.atBound}</Badge>
+                      {/* Only what says something is wrong with a value, as the panel is narrow. A
+                          bound is marked from the result's bounds too, for a server that sends no
+                          statuses. */}
+                      {isWarning(row.status) ? (
+                        <ParameterStatusBadge status={row.status} />
+                      ) : (
+                        row.atBound && (
+                          <Badge variant="outline">{fit.atBound}</Badge>
+                        )
                       )}
                     </span>
                   </TableCell>
@@ -247,6 +255,9 @@ export function ResultPanel({ live }: { live: LiveCurves }) {
         </div>
       )}
       {table.some(({ atBound }) => atBound) && <Note>{fit.atBoundNote}</Note>}
+      {table.some(({ status }) => status.kind === "found") && (
+        <Note>{STRINGS.results.uncertaintyNote}</Note>
+      )}
       <Issues issues={issues.filter(({ place }) => place === "fit")} />
       <div className="mt-4 flex flex-wrap gap-2">
         <Button variant="secondary" onClick={openMoreGraphs}>

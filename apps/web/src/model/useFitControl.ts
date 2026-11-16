@@ -64,6 +64,7 @@ export function useFitControl() {
     fit,
     active,
     iterative: mode?.iterative === true,
+    threshold: mode?.threshold ?? null,
     blocker,
     run: () => {
       if (request !== null) {

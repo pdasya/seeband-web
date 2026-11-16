@@ -46,6 +46,7 @@ const RESULT = {
   status: "converged",
   iterations: 5,
   parameter_errors: {},
+  parameter_status: {},
   at_bounds: [],
   known_issues: [],
 };
@@ -423,7 +424,9 @@ test("a fit whose values read past the bounds goes on, and only the next is stop
     result: { ...RESULT, parameters: { m_eff: 4 } },
   });
   await expect(
-    page.locator('[data-slot="badge"]').filter({ hasText: /^Converged/ }),
+    page
+      .locator('[data-slot="badge"]')
+      .filter({ hasText: /^Stopped by its rule/ }),
   ).toBeVisible();
   await expect(run(page)).toBeDisabled();
   await expect(

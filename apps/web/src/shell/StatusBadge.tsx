@@ -5,7 +5,8 @@ export type FitStatus = keyof typeof STRINGS.status;
 
 const VARIANTS = {
   running: "info",
-  converged: "success",
+  converged: "neutral",
+  finished: "neutral",
   settled: "neutral",
   stalled: "warning",
   iterationLimit: "warning",
@@ -15,7 +16,8 @@ const VARIANTS = {
 } as const satisfies Record<FitStatus, string>;
 
 /**
- * `converged` means that a fit ended normally, not that its result is sound.
+ * `converged` means that a fit stopped by its rule, not that its result is sound, so it is not
+ * green.
  *
  * It is not a live region: with an iteration in `detail`, a screen reader would read out each one.
  * FS8 decides what to announce.

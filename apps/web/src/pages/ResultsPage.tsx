@@ -36,19 +36,14 @@ import {
   resultRows,
   rmseSymbol,
   rmseText,
-  type ParameterStatus,
 } from "@/model/resultSummary";
+import { ParameterStatusBadge } from "@/model/ParameterStatusBadge";
 import { fitModeOf, type FitModeDescription } from "@/model/selection";
 import { ExportButtons } from "@/model/ExportButtons";
 import { useExport } from "@/model/useExport";
 import { ReportCharts, ReportHeader, useReport } from "@/pages/Report";
 import { useResultCurves, type LiveCalc } from "@/model/useLiveCurves";
-import {
-  QUANTITIES,
-  useSessionStore,
-  type ChartTab,
-  type Quantity,
-} from "@/session/store";
+import { QUANTITIES, useSessionStore, type ChartTab } from "@/session/store";
 import { PageHeading, Panel } from "@/shell/layout";
 import { StatusBadge } from "@/shell/StatusBadge";
 import { STRINGS } from "@/strings";
@@ -64,12 +59,6 @@ const {
 } = STRINGS;
 
 type ExportGraph = ReturnType<typeof useExport>["graph"];
-
-function symbols(quantities: readonly Quantity[]): string {
-  return quantities
-    .map((quantity) => dataText.quantities[quantity].symbol)
-    .join(", ");
-}
 
 function scatteringName(id: string): string {
   const known: Record<string, string> = modelText.scatteringNames;
@@ -94,23 +83,6 @@ function Kpi({
       <dd className="m-0 text-xs text-muted-foreground">{detail}</dd>
     </div>
   );
-}
-
-function StatusCell({ status }: { status: ParameterStatus }) {
-  switch (status.kind) {
-    case "fitted":
-      return <Badge variant="success">{text.status.fitted}</Badge>;
-    case "fixed":
-      return <Badge variant="neutral">{text.status.fixed}</Badge>;
-    case "held":
-      return <Badge variant="neutral">{text.status.held}</Badge>;
-    default:
-      return (
-        <Badge variant="warning">
-          {text.status.needs(symbols(status.quantities))}
-        </Badge>
-      );
-  }
 }
 
 /** The steps of a fit, numbered and joined by a line, as the design draws them. */
@@ -178,6 +150,7 @@ function MoreGraph({
   const data = useSessionStore((state) => state.data);
   const interpolation = useSessionStore((state) => state.interpolation);
   const parameters = useSessionStore((state) => state.parameters);
+  const fit = useSessionStore((state) => state.fit);
   const bandGapK = bandGapForTab(tab, mode, parameters);
   const { data: models } = useQuery(modelsQuery);
   const energy = models?.energy_display ?? ENERGY_IN_K;
@@ -201,13 +174,17 @@ function MoreGraph({
   // comes with the measured curves and their flags of other quantities.
   const drawn = view.empty === null;
   const own = drawn ? (derived.result?.known_issues ?? []) : [];
+  // An issue of the fit itself, with no quantity of its own, applies to every curve of its values.
+  const fitIssues =
+    drawn && fit.status === "done" ? fit.result.known_issues : [];
   const issues = resultIssues(mode, {
-    fit: [],
+    fit: fitIssues,
     measured:
       drawn && tab === "bands" ? (measured.result?.known_issues ?? []) : [],
     derived: own,
   }).filter(
-    ({ id, quantities }) => own.includes(id) || quantities.includes("seebeck"),
+    ({ id, quantities, place }) =>
+      own.includes(id) || place === "fit" || quantities.includes("seebeck"),
   );
   const failed =
     derived.error ??
@@ -330,7 +307,11 @@ export function ResultsPage() {
   const exporter = useExport();
   const report = useReport({ mode, measured, derived });
   const reportStatusId = useId();
-  const badge = fitBadge(fit, mode?.iterative === true);
+  const badge = fitBadge(
+    fit,
+    mode?.iterative === true,
+    mode?.threshold ?? null,
+  );
   const title = <title>{`${text.pageTitle} · ${STRINGS.appName}`}</title>;
 
   if (!summed || model === undefined || mode === undefined) {
@@ -546,9 +527,6 @@ export function ResultsPage() {
                       <TableCell className="font-medium">
                         <span className="inline-flex flex-wrap items-center gap-1.5">
                           {row.symbol}
-                          {row.atBound && (
-                            <Badge variant="outline">{fitText.atBound}</Badge>
-                          )}
                         </span>
                       </TableCell>
                       <TableCell className="whitespace-normal text-muted-foreground">
@@ -561,13 +539,19 @@ export function ResultsPage() {
                         {row.bounds === "" ? text.noValue : row.bounds}
                       </TableCell>
                       <TableCell className="text-right">
-                        <StatusCell status={row.status} />
+                        <ParameterStatusBadge status={row.status} />
                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             </div>
+            {/* Beside the statuses it qualifies, rather than after the graphs. */}
+            {hasFittedValues(fit) && (
+              <p className="m-0 mt-3 text-xs text-muted-foreground">
+                {text.uncertaintyNote}
+              </p>
+            )}
           </Panel>
         </div>
         {/* The report leaves the log out. */}

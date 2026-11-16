@@ -133,6 +133,9 @@ def test_result_equals_the_core(
     assert body["parameter_errors"] == expected.parameter_errors
     assert body["at_bounds"] == list(expected.at_bounds)
     assert body["known_issues"] == list(expected.known_issues)
+    assert body["parameter_status"] == dict(expected.parameter_status)
+    assert set(body["parameter_status"]) == set(body["parameters"])
+    assert body["uncertainty"] == "not_assessed"
 
     if mode.iterative:
         assert updates
@@ -145,6 +148,26 @@ def test_result_equals_the_core(
             }
             for update in updates
         ]
+
+
+def test_a_fermi_energy_inside_the_gap_is_not_determined(client: TestClient) -> None:
+    """R7, the review's s13 cases: E_F in the DPB gap with m_eff > 0 has no effect on S."""
+    start = default_start(_mode("dpb", "dpb_s")) | {
+        "m_eff": 1.2,
+        "band_gap": 800.0,
+        "fermi_energy": 400.0,
+    }
+    result = _result(
+        client,
+        _body(
+            start=start,
+            held=["m_eff", "band_gap"],
+            algorithm="legacy-sequential-v1",
+        ),
+    )
+
+    assert result["parameter_status"]["fermi_energy"] == "not_determined"
+    assert result["parameter_status"]["m_eff"] == "held"
 
 
 @pytest.mark.parametrize(

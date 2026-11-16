@@ -39,7 +39,7 @@ export function FitStatusBadge({
 }) {
   const badge =
     guessBadge(guess.outcome, control.fit) ??
-    fitBadge(control.fit, control.iterative);
+    fitBadge(control.fit, control.iterative, control.threshold);
   // Before any fit there is no status to show, only what keeps one from running.
   const missing = badge === null ? missingDataText(control.blocker) : null;
   return (
@@ -47,7 +47,12 @@ export function FitStatusBadge({
       {badge !== null && <StatusBadge {...badge} />}
       {missing !== null && <Badge variant="warning">{missing}</Badge>}
       <span role="status" className="sr-only">
-        {badge === null ? "" : STRINGS.status[badge.status]}
+        {/* The detail of an ended fit, as its stop rule, but no running count, read at each step. */}
+        {badge === null
+          ? ""
+          : badge.status === "running" || badge.detail === undefined
+            ? STRINGS.status[badge.status]
+            : `${STRINGS.status[badge.status]} ${badge.detail}`}
       </span>
     </>
   );

@@ -8,12 +8,14 @@ import {
   missingDataText,
 } from "@/model/fitStatus";
 import type { FitResult, FitState } from "@/session/store";
+import { STRINGS } from "@/strings";
 
 const done = (result: Partial<FitResult>): FitState => ({
   status: "done",
   result: {
     parameters: {},
     parameter_errors: {},
+    parameter_status: {},
     at_bounds: [],
     known_issues: [],
     status: "converged",
@@ -76,7 +78,7 @@ describe("fitBadge", () => {
       ),
     ).toEqual({ status: "stopped" });
     expect(fitBadge(done({ iterations: 1 }), false)).toEqual({
-      status: "converged",
+      status: "finished",
     });
   });
 });
@@ -170,4 +172,17 @@ test("verified numerical settlement and stalling remain distinct", () => {
       true,
     ),
   ).toEqual({ status: "stalled" });
+});
+
+test("a legacy fit that met its stop rule names the rule, not convergence", () => {
+  expect(fitBadge(done({ iterations: 3 }), true, 0.1)).toEqual({
+    status: "converged",
+    detail:
+      "(each parameter changed by at most 10 % in the last iteration) in 3 iter.",
+  });
+  // A single-pass fit has no rule of its own: its solver returned.
+  expect(fitBadge(done({ iterations: 1 }), false, 0.1)).toEqual({
+    status: "finished",
+  });
+  expect(STRINGS.status.converged).toBe("Stopped by its rule");
 });

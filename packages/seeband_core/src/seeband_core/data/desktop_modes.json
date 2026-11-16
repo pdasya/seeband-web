@@ -124,7 +124,7 @@
       "parameters": [
         {
           "name": "band_mass",
-          "meaning": "band mass, sign sets the carrier type",
+          "meaning": "band mass, sign only: its size does not enter S",
           "unit": "m_e",
           "role": "fixed",
           "scattering": ["acPh", "dis", "acPhDis"],
@@ -212,7 +212,7 @@
       "parameters": [
         {
           "name": "band_mass",
-          "meaning": "band mass, sign sets the carrier type",
+          "meaning": "band mass, sign only: its size does not enter S, and in ρ the scattering prefactor absorbs it",
           "unit": "m_e",
           "role": "fixed",
           "scattering": ["acPh", "dis", "acPhDis"],

@@ -14,7 +14,7 @@ import {
   rmseSymbol,
 } from "@/model/resultSummary";
 import type { FitModeDescription, ModelDescription } from "@/model/selection";
-import type { FitResult, SessionData } from "@/session/store";
+import type { FitResult, FitState, SessionData } from "@/session/store";
 import { STRINGS } from "@/strings";
 
 const models = MODELS.models as ModelDescription[];
@@ -29,6 +29,7 @@ const RESULT: FitResult = {
   status: "converged",
   iterations: 4,
   parameter_errors: {},
+  parameter_status: {},
   at_bounds: [],
   known_issues: [],
   held: [],
@@ -36,6 +37,16 @@ const RESULT: FitResult = {
 const done = (result: Partial<FitResult>) =>
   ({ status: "done", result: { ...RESULT, ...result } }) as const;
 const NO_FLAGS = { fit: [], measured: [], derived: [] };
+// What the server says of each fitted parameter of the DPB modes here.
+const ESTIMATED: FitResult["parameter_status"] = {
+  m_eff: "estimated",
+  band_gap: "estimated",
+  fermi_energy: "estimated",
+  A: "estimated",
+  B: "estimated",
+  F: "estimated",
+  G: "estimated",
+};
 
 describe("rmseSymbol", () => {
   const entry = (loadedAs: "resistivity" | "conductivity") =>
@@ -350,7 +361,7 @@ describe("resultRows", () => {
       modeOf(mode),
       selection(scattering),
       undefined,
-      done({}),
+      done({ parameter_status: ESTIMATED }),
     );
   const statuses = (rows: ReturnType<typeof rowsOf>) =>
     Object.fromEntries(
@@ -358,18 +369,20 @@ describe("resultRows", () => {
         name,
         status.kind === "needs"
           ? `needs ${status.quantities.join(",")}`
-          : status.kind,
+          : status.kind === "found"
+            ? status.status
+            : status.kind,
       ]),
     );
 
   test("DPB S + ρ: fitted values, fixed degeneracies, and m₁ needs R_H", () => {
     const rows = rowsOf("dpb", "dpb_s_rho", "acPh");
     expect(statuses(rows)).toEqual({
-      m_eff: "fitted",
-      band_gap: "fitted",
-      fermi_energy: "fitted",
-      A: "fitted",
-      B: "fitted",
+      m_eff: "estimated",
+      band_gap: "estimated",
+      fermi_energy: "estimated",
+      A: "estimated",
+      B: "estimated",
       degeneracy: "fixed",
       m1: "needs hall",
     });
@@ -392,19 +405,22 @@ describe("resultRows", () => {
       modeOf("dpb_s_rho"),
       selection("acPh"),
       undefined,
-      done({}),
+      done({ parameter_status: ESTIMATED }),
       undefined,
       ["band_gap"],
     );
-    expect(statuses(rows)).toMatchObject({ band_gap: "held", m_eff: "fitted" });
+    expect(statuses(rows)).toMatchObject({
+      band_gap: "held",
+      m_eff: "estimated",
+    });
     expect(rows.find(({ name }) => name === "band_gap")?.bounds).toBe("");
   });
 
   test("DPB S: what needs ρ or R_H, and nothing that depends on a scattering", () => {
     expect(statuses(rowsOf("dpb", "dpb_s", null))).toEqual({
-      m_eff: "fitted",
-      band_gap: "fitted",
-      fermi_energy: "fitted",
+      m_eff: "estimated",
+      band_gap: "estimated",
+      fermi_energy: "estimated",
       degeneracy: "fixed",
       m1: "needs resistivity,hall",
     });
@@ -412,7 +428,56 @@ describe("resultRows", () => {
 
   test("the scattering in use decides what another mode would add", () => {
     expect(statuses(rowsOf("dpb", "dpb_s_rho", "dis")).m1).toBe("needs hall");
-    expect(statuses(rowsOf("dpb", "dpb_s_rho", "dis")).F).toBe("fitted");
+    expect(statuses(rowsOf("dpb", "dpb_s_rho", "dis")).F).toBe("estimated");
+  });
+
+  test("each status the server gives is shown as given, and none is green", () => {
+    const rows = resultRows(
+      modelOf("dpb"),
+      modeOf("dpb_s_rho"),
+      selection("acPh"),
+      undefined,
+      done({
+        parameter_status: {
+          m_eff: "at_bound",
+          band_gap: "did_not_move",
+          fermi_energy: "not_determined",
+          A: "estimated",
+        },
+      }),
+    );
+    expect(statuses(rows)).toMatchObject({
+      m_eff: "at_bound",
+      band_gap: "did_not_move",
+      fermi_energy: "not_determined",
+      A: "estimated",
+      // One the server left out is not assessed, rather than taken for estimated.
+      B: "not_assessed",
+    });
+  });
+
+  test("a fit stopped here assesses nothing, and with no fit nothing is fitted", () => {
+    const of = (fit: FitState) =>
+      statuses(
+        resultRows(
+          modelOf("dpb"),
+          modeOf("dpb_s"),
+          selection(null),
+          undefined,
+          fit,
+        ),
+      );
+    expect(
+      of({ status: "stopped", iteration: 2, lastParameters: { m_eff: 1 } })
+        .m_eff,
+    ).toBe("not_assessed");
+    expect(of({ status: "idle" }).m_eff).toBe("free");
+    expect(
+      of({
+        status: "failed",
+        failure: { code: "x", message: "m", details: [] },
+      }).m_eff,
+    ).toBe("free");
   });
 
   test("names the fewest data that find a parameter, in any order of modes", () => {

@@ -25,6 +25,7 @@ from seeband_core.model_interface import (
     FitResult,
     FitStatus,
     IterationUpdate,
+    ParameterStatus,
 )
 
 from seeband_api.errors import (
@@ -153,6 +154,15 @@ class FitResponse(BaseModel):
     parameters the request held, which come back as sent, with no error and no at-bound mark; the
     errors of the others hold the held values exact. A held value outside its bounds fails as a
     start would. Holding m1, or the SPB Hall mass, skips the R_H stage.
+
+    `parameter_status` says how the fit found each parameter in `parameters`, the first that
+    applies of: `held`; `fixed`, not fitted in this mode or scattering; `not_assessed`, a failed
+    fit or a stage it never reached; `at_bound`; `not_assessed`, a stage with no more points than
+    parameters, or a legacy error that is not finite; `not_determined`, the data do not depend on
+    it; `not_assessed`, any other of a fit that did not converge; `did_not_move`, within 1e-9
+    relative of its start; and `estimated`, which means only that no signal said otherwise. None
+    says that a value is right. `uncertainty` is `not_assessed` for every fit until confidence
+    intervals exist (#182).
     """
 
     model_config = ConfigDict(
@@ -166,6 +176,12 @@ class FitResponse(BaseModel):
                     "at_bounds": [],
                     "known_issues": [],
                     "held": [],
+                    "parameter_status": {
+                        "m_eff": "estimated",
+                        "band_gap": "estimated",
+                        "fermi_energy": "estimated",
+                    },
+                    "uncertainty": "not_assessed",
                 }
             ]
         }
@@ -184,6 +200,8 @@ class FitResponse(BaseModel):
     held: list[str]
     algorithm: FitAlgorithm = "legacy-sequential-v1"
     diagnostics: FitDiagnostics | None = None
+    parameter_status: dict[str, ParameterStatus]
+    uncertainty: Literal["not_assessed"] = "not_assessed"
 
 
 class FitStarted(BaseModel):
@@ -237,6 +255,7 @@ _EXAMPLE_RESULT = FitResponse(
     at_bounds=[],
     known_issues=[],
     held=[],
+    parameter_status={"m_eff": "estimated", "band_gap": "estimated", "fermi_energy": "estimated"},
 )
 # The mock serves these as they stand, all at once.
 _STREAM_EXAMPLES: dict[str, dict[str, Any]] = {
@@ -335,6 +354,7 @@ def _to_response(result: FitResult) -> FitResponse:
         held=list(result.held),
         algorithm=result.algorithm,
         diagnostics=result.diagnostics,
+        parameter_status=dict(result.parameter_status),
     )
 
 

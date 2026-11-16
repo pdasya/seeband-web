@@ -410,7 +410,11 @@ test.describe("real fits", () => {
 
     // S + ρ is iterative, so its result counts them.
     await run.click();
-    await expect(badge(/^Converged in \d+ iter\.$/)).toBeVisible({
+    await expect(
+      badge(
+        /^Stopped by its rule \(each parameter changed by at most 10 % in the last iteration\) in \d+ iter\.$/,
+      ),
+    ).toBeVisible({
       timeout: 30_000,
     });
     await expect(gap).not.toHaveValue("0,09");
@@ -432,7 +436,7 @@ test.describe("real fits", () => {
     await page.getByRole("radio", { name: "S", exact: true }).click();
     await expect(gap).toHaveValue("0,05");
     await run.click();
-    await expect(badge(/^Converged$/)).toBeVisible({
+    await expect(badge(/^Solver finished$/)).toBeVisible({
       timeout: 30_000,
     });
     await expect(gap).not.toHaveValue("0,05");
@@ -465,7 +469,9 @@ test.describe("real fits", () => {
 
     await page.getByRole("button", { name: "Run fit" }).click();
     await expect(
-      page.locator('[data-slot="badge"]').filter({ hasText: /^Converged/ }),
+      page
+        .locator('[data-slot="badge"]')
+        .filter({ hasText: /^Stopped by its rule/ }),
     ).toBeVisible({ timeout: 30_000 });
     await expect(page.getByRole("alert")).toHaveCount(0);
     await expect(page.getByText(/^Unreliable:/)).toHaveCount(0);
@@ -481,7 +487,9 @@ test.describe("real fits", () => {
     await page.getByRole("radio", { name: "S + ρ", exact: true }).click();
     await page.getByRole("button", { name: "Run fit" }).click();
     await expect(
-      page.locator('[data-slot="badge"]').filter({ hasText: /^Converged/ }),
+      page
+        .locator('[data-slot="badge"]')
+        .filter({ hasText: /^Stopped by its rule/ }),
     ).toBeVisible({ timeout: 30_000 });
     await page.getByRole("link", { name: "Results", exact: true }).click();
     await page.getByRole("button", { name: "Data to file" }).click();
@@ -544,7 +552,9 @@ test.describe("real fits", () => {
     await page.getByRole("button", { name: "Done" }).click();
     await page.getByRole("button", { name: "Run fit" }).click();
     await expect(
-      page.locator('[data-slot="badge"]').filter({ hasText: /^Converged/ }),
+      page
+        .locator('[data-slot="badge"]')
+        .filter({ hasText: /^Stopped by its rule/ }),
     ).toBeVisible({ timeout: 30_000 });
 
     await expect(gap).toHaveValue("0,08");

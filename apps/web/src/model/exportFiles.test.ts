@@ -37,11 +37,17 @@ const RESULT: FitResult = {
   status: "converged",
   iterations: 2,
   parameter_errors: {},
+  parameter_status: {},
   at_bounds: [],
   known_issues: [],
   held: [],
 };
 const DONE: FitState = { status: "done", result: RESULT };
+const AT_BOUND: FitResult = {
+  ...RESULT,
+  at_bounds: ["band_gap"],
+  parameter_status: { band_gap: "at_bound", fermi_energy: "not_determined" },
+};
 const SELECTION = {
   model: "dpb",
   fitMode: "dpb_s_rho",
@@ -349,15 +355,19 @@ describe("the parameters file", () => {
       modeOf("dpb_s_rho"),
       SELECTION,
       { band_gap: 900, fermi_energy: -50 },
-      { status: "done", result: { ...RESULT, at_bounds: ["band_gap"] } },
+      { status: "done", result: AT_BOUND },
     );
     const lines = file.split("\n").slice(0, -1);
-    expect(lines[0]).toBe("Parameter\tValue\tStatus");
+    // What no status says, above the values it qualifies.
+    expect(lines[0]).toMatch(
+      /^# The uncertainty of the values is not assessed\./,
+    );
+    expect(lines[1]).toBe("Parameter\tValue\tStatus");
     expect(lines).toContain(
-      "E_g (position of band 2) [eV]\t0.077555999358\tfitted, at bound",
+      "E_g (position of band 2) [eV]\t0.077555999358\tat bound",
     );
     expect(lines.find((line) => line.startsWith("E_F"))).toMatch(
-      /\t-0.004308666631\tfitted$/,
+      /\t-0.004308666631\tnot determined by the data$/,
     );
     expect(lines.at(-1)).toBe("N1, N2 (band degeneracies)\t1, 2\tfixed");
   });
@@ -374,6 +384,20 @@ describe("the parameters file", () => {
       "E_g (position of band 2) [eV]\t0.077555999358\tnot fitted yet",
     );
     expect(lines.some((line) => line.endsWith("\tfitted"))).toBe(false);
+  });
+
+  test("after a failed fit, a value it fits says the fit failed, with no note", () => {
+    const lines = parametersFile(
+      [],
+      modeOf("dpb_s_rho"),
+      SELECTION,
+      { band_gap: 900 },
+      { status: "done", result: { ...RESULT, status: "failed" } },
+    ).split("\n");
+    expect(lines).toContain(
+      "E_g (position of band 2) [eV]\t0.077555999358\tnot fitted: the fit failed",
+    );
+    expect(lines[0]).toBe("Parameter\tValue\tStatus");
   });
 
   test("a value the mode holds is fixed, and SPB has no degeneracies", () => {
@@ -571,16 +595,17 @@ describe("the parameters as CSV", () => {
       modeOf("dpb_s_rho"),
       SELECTION,
       { band_gap: 900 },
-      { status: "done", result: { ...RESULT, at_bounds: ["band_gap"] } },
+      { status: "done", result: AT_BOUND },
     )
       .split("\n")
       .slice(0, -1);
-    expect(lines.slice(0, 2)).toEqual([
-      "# head",
-      "parameter,symbol,meaning,unit,value,status",
-    ]);
+    expect(lines[0]).toBe("# head");
+    expect(lines[1]).toMatch(
+      /^# The uncertainty of the values is not assessed\./,
+    );
+    expect(lines[2]).toBe("parameter,symbol,meaning,unit,value,status");
     expect(lines).toContain(
-      'band_gap,E_g,position of band 2,eV,0.077555999358,"fitted, at bound"',
+      "band_gap,E_g,position of band 2,eV,0.077555999358,at bound",
     );
     expect(lines.find((line) => line.startsWith("m_eff,"))).toMatch(
       /^m_eff,m₂\/m₁,"band mass ratio m2\/m1, the sign sets the type of band 2",,/,

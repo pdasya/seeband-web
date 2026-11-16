@@ -12,6 +12,7 @@ test("diagnostics keep numerical consistency, zero-signal residuals and unknown 
     result: {
       parameters: {},
       parameter_errors: {},
+      parameter_status: {},
       at_bounds: [],
       known_issues: [],
       held: [],

@@ -6,7 +6,11 @@ import {
   parameterValues,
   visibleParameters,
 } from "@/model/parameters";
-import { hasFittedValues, type ResultIssue } from "@/model/resultSummary";
+import {
+  foundStatus,
+  hasFittedValues,
+  type ResultIssue,
+} from "@/model/resultSummary";
 import type { FitModeDescription } from "@/model/selection";
 import {
   fitAlgorithm,
@@ -283,13 +287,9 @@ function parameterRecords(
   held: readonly string[],
 ): ParameterRecord[] {
   const values = parameterValues(mode, saved);
-  const atBounds =
-    fit.status === "done" && fit.result.status !== "failed"
-      ? fit.result.at_bounds
-      : [];
   const units: Record<string, string | undefined> = text.units;
-  const fitted = hasFittedValues(fit);
   return visibleParameters(mode, scattering).map((parameter) => {
+    const found = foundStatus(fit, parameter.name);
     const value = values[parameter.name] ?? parameter.core_range.default;
     return {
       name: parameter.name,
@@ -303,11 +303,13 @@ function parameterRecords(
           ? text.status.fixed
           : held.includes(parameter.name)
             ? text.status.held
-            : !fitted
-              ? text.status.free
-              : atBounds.includes(parameter.name)
-                ? text.status.atBound
-                : text.status.fitted,
+            : found.kind === "free"
+              ? found.afterFailure
+                ? text.status.freeAfterFailure
+                : text.status.free
+              : found.status === "fixed" || found.status === "held"
+                ? text.status[found.status]
+                : text.status.found[found.status],
     };
   });
 }
@@ -351,10 +353,15 @@ export function parametersFile(
       ]
     : [];
   return (
-    commented(header) +
+    commented([...header, ...uncertaintyNotes(fit)]) +
     [text.parameterColumns, ...lines, ...degeneracy].join("\n") +
     "\n"
   );
+}
+
+/** What every status of a fit leaves open, written with the values it qualifies. */
+function uncertaintyNotes(fit: FitState): string[] {
+  return hasFittedValues(fit) ? [text.uncertaintyNote] : [];
 }
 
 /** A field of a CSV, quoted when it holds a comma, a quote or a line break, as RFC 4180 asks. */
@@ -407,7 +414,9 @@ export function parametersCsv(
       .join(","),
   );
   return (
-    commented(header) + [text.parameterCsvColumns, ...rows].join("\n") + "\n"
+    commented([...header, ...uncertaintyNotes(fit)]) +
+    [text.parameterCsvColumns, ...rows].join("\n") +
+    "\n"
   );
 }
 
