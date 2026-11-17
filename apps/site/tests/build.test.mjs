@@ -64,7 +64,10 @@ test("has its pages in English, as static HTML", () => {
   for (const path of ["index.html", "404.html"]) {
     assert.match(page(path), /<html lang="en"/, path);
   }
-  assert.match(page("index.html"), /Band models for thermoelectric/);
+  assert.match(
+    page("index.html"),
+    /Band structure from transport measurements/,
+  );
   assert.match(page("index.html"), /<link rel="icon" href="\/favicon.svg"/);
   assert.ok(statSync(join(outDir, "favicon.svg")).isFile());
   assert.match(
@@ -86,6 +89,29 @@ test("links to the app and the original SeeBand", () => {
   assert.match(html, /<a href="\/results" class="sb-header__link">Results/);
   assert.match(html, /href="https:\/\/github.com\/pdasya\/seeband-web"/);
   assert.match(html, /href="https:\/\/github.com\/xAngelswordx\/SeeBand"/);
+});
+
+test("the overview says where data go, and promises only what the app does", () => {
+  const html = page("index.html");
+  // F4: the data go to the server, are used only for the calculation, and are not saved or logged.
+  assert.match(html, /<h2 id="data">Your data<\/h2>/);
+  assert.match(html, /your measurements are sent to it/);
+  assert.match(html, /does not save them/);
+  assert.match(html, /not your data/);
+  assert.doesNotMatch(html, /runs in the browser/i);
+  // Not delivered yet, or no longer offered.
+  assert.doesNotMatch(html, /\bAI\b|summary|acPhDis|\[Repository/i);
+  // F8: the E(k) sketch, inline and labelled, with no script or image file.
+  assert.match(
+    html,
+    /<svg viewBox="0 0 480 320" role="img" aria-label="Schematic of two parabolic bands/,
+  );
+  assert.match(html, /href="\/fit\?demo=1"/);
+  assert.match(html, /href="\/results-changed\/"/);
+  assert.match(
+    html,
+    /href="https:\/\/github.com\/pdasya\/seeband-web\/issues"/,
+  );
 });
 
 test("has the Conventions and results-changed pages, linked from the header", () => {
