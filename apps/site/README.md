@@ -29,7 +29,7 @@ pnpm --filter @seeband/site test      # builds the site and checks its output
 ## Decisions on the overview
 
 - **Data handling (F4, #4), 2026-11-17.** The overview says what the code supports: measurements go to the server, are used only for the calculation asked for and are not saved; the server's logs record route, status and duration, not data. It names no LLM summaries, as there are none. Revise it if that changes, and when I1 sets up the proxy's logging.
-- **Hero illustration (F8, #8), 2026-11-17.** Option A of the design's `HeroOptions`: the E(k) sketch of two parabolic bands with E_g and E_F, inline SVG in `src/components/BandFigure.astro`. A sketch, not a calculation.
+- **Hero illustration (F8, #8), 2026-11-17.** Option A of the design's `HeroOptions`: the E(k) sketch of two parabolic bands with E_g and E_F, inline SVG in `src/components/BandFigure.astro`. A sketch, not a calculation: its caption says it shows one DPB case and names the others (band 2 a valence band, overlapping bands, E_F inside a band). On a phone its labels grow and the edge labels and band kinds go.
 
 ## Lighthouse baseline
 
