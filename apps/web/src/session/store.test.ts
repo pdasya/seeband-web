@@ -887,22 +887,78 @@ describe("earlier runs", () => {
       number: 1,
       selection: { scattering: "acPh" },
       start: { m_eff: 1 },
-      data: state().data,
       result: { parameters: { m_eff: 0.5 } },
     });
+    // The session's own data object, which the store never changes in place.
+    expect(first?.data).toBe(state().data);
     expect(first?.parameters.m_eff).toBe(0.5);
   });
 
   test("a run keeps what it was asked with, though the session changed while it ran", () => {
+    state().setData("seebeck", DATA);
     state().setSelection({
       model: "dpb",
       fitMode: "dpb_s",
       scattering: "acPh",
     });
+    state().setCustomBounds("dpb_s", "band_gap", { lower: 500, upper: 1500 });
+    const asked = state().data;
     const finish = fitTo("dpb_s", { m_eff: 0.5 });
     state().setSelection({ scattering: "dis" });
+    state().setData("seebeck", { ...DATA, extrapolated: true });
+    state().setCustomBounds("dpb_s", "band_gap", null);
+    state().setHeld("dpb_s", "m_eff", true);
     finish();
-    expect(state().runs[0]?.selection.scattering).toBe("acPh");
+    const [run] = state().runs;
+    expect(run?.selection.scattering).toBe("acPh");
+    expect(run?.data).toBe(asked);
+    expect(run?.customBounds).toEqual({
+      band_gap: { lower: 500, upper: 1500 },
+    });
+    expect(run?.held).toEqual([]);
+  });
+
+  test("a fit stopped, or of an older run, adds no run", () => {
+    state().setSelection({ model: "dpb", fitMode: "dpb_s" });
+    const old = state().fitRequested("dpb_s");
+    state().fitEvent(old, { type: "started" });
+    state().fitStopped(old);
+    state().fitEvent(old, { type: "done", result: RESULT });
+    const newer = state().fitRequested("dpb_s");
+    state().fitEvent(old, { type: "done", result: RESULT });
+    expect(state().runs).toHaveLength(0);
+    state().fitEvent(newer, { type: "done", result: RESULT });
+    expect(state().runs).toHaveLength(1);
+  });
+
+  test("a restored session starts with no runs", () => {
+    state().setSelection({ model: "dpb", fitMode: "dpb_s" });
+    fitTo("dpb_s", { m_eff: 0.5 })();
+    state().restoreSession(
+      {
+        dataMode: "separate",
+        data: {},
+        singleFile: null,
+        otherSource: null,
+        chartPanels: state().chartPanels,
+        savedModelSettings: {},
+        selection: state().selection,
+        parameters: {},
+        customBounds: {},
+        held: {},
+        interpolationEnabled: false,
+        fitStart: { values: null, net: null, numerical: false },
+        result: null,
+        request: null,
+      },
+      {
+        saved: "x",
+        appVersion: "1",
+        fitCoreVersion: null,
+        serverCoreVersion: null,
+      },
+    );
+    expect(state().runs).toEqual([]);
   });
 
   test("a change of values ends the current result, not the runs", () => {
