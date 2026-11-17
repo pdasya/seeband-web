@@ -207,12 +207,12 @@ test("known issues and bounds reached are named", async ({ page }) => {
   const caution = page.getByText(
     /^Caution: In the legacy method with N₂\/N₁ other than 1/,
   );
-  await expect(caution).toHaveCount(6);
+  await expect(caution).toHaveCount(7);
   await expect(
     page
       .getByRole("region", { name: "Additional graphs" })
       .getByText(/^Caution: In the legacy method with N₂\/N₁ other than 1/),
-  ).toHaveCount(5);
+  ).toHaveCount(6);
   await expect(statusOf(page, "E_g")).toHaveText("at bound");
   await expect(row(page, "E_F")).not.toContainText("at bound");
 });
@@ -557,6 +557,11 @@ const DERIVED: Record<string, Record<string, number[]>> = {
   chemical_potential: { chemical_potential_k: [-100, 0, 100] },
   electrical_conductivity: { electrical_conductivity_s_per_m: [1e5, 8e4, 6e4] },
   thermal_conductivity: { thermal_conductivity_w_per_m_k: [0.5, 1, 1.5] },
+  lorenz_number: {
+    lorenz_number_w_ohm_per_k2: [3e-8, 5e-8, 4e-8],
+    lorenz_number_band_1_w_ohm_per_k2: [2e-8, 2.2e-8, 2.3e-8],
+    lorenz_number_band_2_w_ohm_per_k2: [1.8e-8, 2e-8, 2.1e-8],
+  },
   seebeck_by_band: {
     seebeck_band_1_v_per_k: [2e-4, 3e-4, 2e-4],
     seebeck_band_2_v_per_k: [-1e-4, -1e-4, -5e-5],
@@ -625,6 +630,9 @@ test("the additional graphs draw each curve the mode offers", async ({
   await expect(graph(page, "Thermal conductivity")).toContainText(
     "The electronic part only",
   );
+  await expect(graph(page, "Lorenz number")).toContainText(
+    "The solid line is the effective L",
+  );
   // DPB S + ρ has no R_H data to size n.
   await expect(graph(page, "Carrier concentration")).toContainText(
     "uses m₁ = 1",
@@ -641,7 +649,11 @@ test("a measured S warning follows its total into the band graph", async ({
   await finishWith(page);
   await toResults(page);
 
-  for (const name of ["Conductivity σ(T)", "Thermal conductivity"]) {
+  for (const name of [
+    "Conductivity σ(T)",
+    "Thermal conductivity",
+    "Lorenz number",
+  ]) {
     await expect(
       graph(page, name).getByText("unreliable", { exact: true }),
     ).toHaveCount(0);
@@ -672,7 +684,11 @@ test("in S mode, the graphs that need ρ say so, and nothing is asked for them",
   await finishWith(page);
   await toResults(page);
 
-  for (const name of ["Conductivity σ(T)", "Thermal conductivity"]) {
+  for (const name of [
+    "Conductivity σ(T)",
+    "Thermal conductivity",
+    "Lorenz number",
+  ]) {
     await expect(graph(page, name)).toContainText("Needs ρ(T)");
   }
   // A graph the mode does not offer has nothing to download.
@@ -690,6 +706,7 @@ test("in S mode, the graphs that need ρ say so, and nothing is asked for them",
   await page.waitForTimeout(400);
   expect(kinds).not.toContain("electrical_conductivity");
   expect(kinds).not.toContain("thermal_conductivity");
+  expect(kinds).not.toContain("lorenz_number");
 });
 
 async function downloaded(page: Page, button: string): Promise<string> {

@@ -163,6 +163,7 @@ function useDerivedCurves(
     electrical_conductivity: electrical,
     thermal_conductivity: thermal,
     carrier_concentration_by_band: carriers,
+    lorenz_number: lorenz,
   } = requests;
   return {
     chemical_potential: useLatest(CALC, chemical.body, chemical.scope, false),
@@ -174,6 +175,7 @@ function useDerivedCurves(
       false,
     ),
     thermal_conductivity: useLatest(CALC, thermal.body, thermal.scope, false),
+    lorenz_number: useLatest(CALC, lorenz.body, lorenz.scope, false),
     carrier_concentration_by_band: useLatest(
       CALC,
       carriers.body,
@@ -228,6 +230,7 @@ export function useLiveCurves(): LiveCurves {
         carrier_concentration_by_band: derivedOf(
           "carrier_concentration_by_band",
         ),
+        lorenz_number: derivedOf("lorenz_number"),
       },
       diagram: {
         body: diagramRequest && JSON.stringify(diagramRequest),
@@ -280,6 +283,7 @@ export function useResultCurves(enabled: boolean): {
       electrical_conductivity: derivedOf("electrical_conductivity"),
       thermal_conductivity: derivedOf("thermal_conductivity"),
       carrier_concentration_by_band: derivedOf("carrier_concentration_by_band"),
+      lorenz_number: derivedOf("lorenz_number"),
     };
   }, [enabled, selection, parameters, data, interpolation, models]);
   const waiting = interpolation.enabled && interpolation.loading;

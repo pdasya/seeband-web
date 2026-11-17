@@ -16,6 +16,7 @@ _DPB_FIT_CURVES: tuple[CurveKind, ...] = (
     "electrical_conductivity",
     "electrical_conductivity_by_band",
     "thermal_conductivity",
+    "lorenz_number",
 )
 _ALL_CURVES: tuple[CurveKind, ...] = (
     *_DPB_FIT_CURVES,
@@ -60,6 +61,7 @@ KNOWN_ISSUES: tuple[KnownIssue, ...] = (
             "chemical_potential",
             "electrical_conductivity",
             "thermal_conductivity",
+            "lorenz_number",
         ),
         affects_fit=True,
         condition="fermi_energy_outside_band",

@@ -36,6 +36,7 @@ _SPB_FIT_CURVES: tuple[CurveKind, ...] = (
     "chemical_potential",
     "electrical_conductivity",
     "thermal_conductivity",
+    "lorenz_number",
 )
 _DPB_FIT_CURVES: tuple[CurveKind, ...] = (
     "measured",
@@ -46,6 +47,7 @@ _DPB_FIT_CURVES: tuple[CurveKind, ...] = (
     "electrical_conductivity_by_band",
     "thermal_conductivity",
     "carrier_concentration_by_band",
+    "lorenz_number",
 )
 CURVE_KINDS: dict[str, tuple[CurveKind, ...]] = {
     "spb_s": ("measured", "chemical_potential"),
@@ -59,6 +61,8 @@ _Unavailable = tuple[tuple[CurveKind, str], ...]
 _NEEDS_RESISTIVITY: _Unavailable = (
     ("electrical_conductivity", "needs_resistivity"),
     ("thermal_conductivity", "needs_resistivity"),
+    # L = κ_e/(σT) needs both, and for two bands their weights, which only ρ gives.
+    ("lorenz_number", "needs_resistivity"),
 )
 _SPB_UNAVAILABLE: _Unavailable = (
     ("seebeck", "same_as_measured"),

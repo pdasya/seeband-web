@@ -10,6 +10,7 @@ import {
   chartTabView,
   derivedKind,
   drawsMeasuredCurves,
+  LORENZ_L0,
   needsMeasuredCurves,
 } from "@/model/chartTabs";
 import type { FitModeDescription, ModelDescription } from "@/model/selection";
@@ -526,6 +527,69 @@ describe("the additional graphs", () => {
     expect(view.yAxisTitle).toBe("κ_e, W/(m·K)");
     expect(view.curves.map(({ values }) => values)).toEqual([[0.5, 1]]);
     expect(view.note).toMatch(/lattice part is not modelled/);
+  });
+
+  describe("L(T)", () => {
+    const L0 = LORENZ_L0;
+    const at = (id: string, curves: Record<string, number[]>) =>
+      chartTabView(
+        "lorenz_number",
+        mode(id),
+        { data: {}, interpolation: NO_INTERPOLATION, energy: KELVIN },
+        null,
+        { temperature_k: [100, 200], curves, known_issues: [], rmse: {} },
+      );
+
+    test("L₀ is π²/3 (k_B/e)², 2,44 × 10⁻⁸ W·Ω/K²", () => {
+      expect(L0).toBeCloseTo(2.443e-8, 11);
+    });
+
+    test("one band draws L in units of L₀, and names its limits", () => {
+      const view = at("spb_s_rho", {
+        lorenz_number_w_ohm_per_k2: [L0, 0.5 * L0],
+      });
+      expect(view.yAxisTitle).toBe("L / L₀");
+      expect(view.curves.map(({ label }) => label)).toEqual(["L"]);
+      expect(view.curves[0]?.values[0]).toBeCloseTo(1, 12);
+      expect(view.curves[0]?.values[1]).toBeCloseTo(0.5, 12);
+      expect(view.note).toMatch(/2 \(k_B\/e\)²/);
+    });
+
+    test("two bands say which line is the effective L and which each band's", () => {
+      const view = at("dpb_s_rho", {
+        lorenz_number_w_ohm_per_k2: [3 * L0, 4 * L0],
+        lorenz_number_band_1_w_ohm_per_k2: [L0, L0],
+        lorenz_number_band_2_w_ohm_per_k2: [L0, L0],
+      });
+      expect(view.curves.map(({ label }) => label)).toEqual([
+        "Effective L = κ_e/(σT)",
+        "band 1",
+        "band 2",
+      ]);
+      expect(view.curves.map(({ dashed }) => dashed === true)).toEqual([
+        false,
+        true,
+        true,
+      ]);
+      expect(view.note).toMatch(/bipolar part/);
+    });
+
+    test("is asked for where κ_e is, and says why not where it is not", () => {
+      for (const id of [
+        "spb_s_rho",
+        "spb_s_rho_rh",
+        "dpb_s_rho",
+        "dpb_s_rho_rh",
+      ]) {
+        expect(derivedKind("lorenz_number", mode(id)), id).toBe(
+          "lorenz_number",
+        );
+      }
+      for (const id of ["spb_s", "dpb_s"]) {
+        expect(derivedKind("lorenz_number", mode(id)), id).toBeNull();
+        expect(at(id, {}).empty?.title, id).toBe("Needs ρ(T)");
+      }
+    });
   });
 
   test("n says it is relative with no R_H data, and not with them", () => {

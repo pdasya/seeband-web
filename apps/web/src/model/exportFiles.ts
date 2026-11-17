@@ -1,5 +1,9 @@
 import type { CalcResponse } from "@/api/client";
-import { quantityCurve, type EnergyDisplay } from "@/model/chartTabs";
+import {
+  LORENZ_L0,
+  quantityCurve,
+  type EnergyDisplay,
+} from "@/model/chartTabs";
 import {
   coreToDisplay,
   parameterSymbol,
@@ -443,17 +447,32 @@ export function graphFile(
     commented(header) +
     table([
       { legend: text.columns.temperature, values: temperatureK },
-      ...curves.map(({ name, values }) => {
+      ...curves.flatMap(({ name, values }) => {
         // An energy is in the unit the screen shows, as the parameters are.
         const energyLabel = energyLabels[name];
-        return energyLabel === undefined
-          ? { legend: labels[name] ?? name, values }
-          : {
+        if (energyLabel !== undefined) {
+          return [
+            {
               legend: energyLabel(energy.unit),
               values: values.map((value) =>
                 value === null ? null : value * energy.per_kelvin,
               ),
-            };
+            },
+          ];
+        }
+        const column = { legend: labels[name] ?? name, values };
+        // L also in units of L₀, as the chart shows it.
+        return name.startsWith("lorenz_number")
+          ? [
+              column,
+              {
+                legend: text.relativeToL0(labels[name] ?? name),
+                values: values.map((value) =>
+                  value === null ? null : value / LORENZ_L0,
+                ),
+              },
+            ]
+          : [column];
       }),
     ])
   );

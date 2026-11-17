@@ -132,6 +132,17 @@ def test_every_curve_runs(
     expected = (
         [MEASURED_NAMES[quantity] for quantity in fit_mode.quantities]
         if kind == "measured"
+        # L, and for two bands each band's own.
+        else ["lorenz_number_w_ohm_per_k2"]
+        + (
+            [
+                "lorenz_number_band_1_w_ohm_per_k2",
+                "lorenz_number_band_2_w_ohm_per_k2",
+            ]
+            if model_id == "dpb"
+            else []
+        )
+        if kind == "lorenz_number"
         else CURVE_NAMES[kind]
     )
     assert list(result.curves) == expected
@@ -737,13 +748,16 @@ def with_scattering(values: list[Any], scattering: str | None) -> list[Any]:
 
 
 def test_the_expected_tables_cover_every_mode_and_kind() -> None:
-    assert {(mode, kind) for _, mode, _, kind in curve_cases()} == set(EXPECTED_CURVE_CALLS)
+    # L is made of κ_e and σ, whose calls are here; `test_lorenz_number.py` checks it.
+    assert {(mode, kind) for _, mode, _, kind in curve_cases() if kind != "lorenz_number"} == set(
+        EXPECTED_CURVE_CALLS
+    )
     assert {mode for _, mode, _ in combinations()} == set(EXPECTED_FIT_CALLS)
 
 
 @pytest.mark.parametrize(
     ("model_id", "fit_mode_id", "scattering", "kind"),
-    [case for case in curve_cases() if case[2] != "ionized"],
+    [case for case in curve_cases() if case[2] != "ionized" and case[3] != "lorenz_number"],
 )
 def test_curves_call_the_core_as_written_here(
     monkeypatch: pytest.MonkeyPatch,
