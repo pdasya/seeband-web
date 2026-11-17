@@ -12,7 +12,6 @@ export const STRINGS = {
     overview: "Overview",
     fit: "Model fit",
     results: "Results",
-    conventions: "Conventions",
   },
   parameters: {
     title: "Parameters",

@@ -61,11 +61,7 @@ test("links to the public site leave the app's router", () => {
   const overview = screen.getByRole("link", {
     name: STRINGS.navigation.overview,
   });
-  const conventions = screen.getByRole("link", {
-    name: STRINGS.navigation.conventions,
-  });
   expect(overview.getAttribute("href")).toBe("/");
-  expect(conventions.getAttribute("href")).toBe("/conventions/");
 });
 
 test("an unknown path has the not-found view inside the shell", () => {
