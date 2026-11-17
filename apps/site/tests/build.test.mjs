@@ -88,6 +88,37 @@ test("links to the app and the original SeeBand", () => {
   assert.match(html, /href="https:\/\/github.com\/xAngelswordx\/SeeBand"/);
 });
 
+test("has the Conventions and results-changed pages, linked from the header", () => {
+  for (const path of ["index.html", "conventions/index.html"]) {
+    assert.match(
+      page(path),
+      /<a href="\/conventions\/"[^>]*>Conventions<\/a>/,
+      path,
+    );
+  }
+  const conventions = page("conventions/index.html");
+  assert.match(
+    conventions,
+    /<title>Calculation conventions · SeeBand<\/title>/,
+  );
+  assert.match(
+    conventions,
+    /<a href="\/conventions\/"[^>]*aria-current="page"/,
+  );
+  assert.match(conventions, /<h2[^>]*>Lorenz number<\/h2>/);
+  assert.match(conventions, /href="\/results-changed\/"/);
+  assert.match(page("results-changed/index.html"), /<table>/);
+  // Links into the repository go to GitHub, as relative paths do not exist on the site.
+  for (const path of ["conventions/index.html", "results-changed/index.html"]) {
+    assert.doesNotMatch(page(path), /href="\.\.?\//, path);
+    assert.match(
+      page(path),
+      /href="https:\/\/github.com\/pdasya\/seeband-web\/blob\/main\/packages\//,
+      path,
+    );
+  }
+});
+
 test("needs no script but the header's, and loads no heavy library", () => {
   const all = files(outDir);
   assert.deepEqual(
@@ -120,8 +151,13 @@ test("serves its fonts itself, and asks no other host", () => {
       relative(outDir, path),
     );
   }
-  // KaTeX's styles and fonts come only with pages of formulas.
-  assert.doesNotMatch(css, /KaTeX_Main|\.katex/);
+  // KaTeX's styles and fonts come only with pages of text and formulas.
+  const homeCss = [
+    ...page("index.html").matchAll(/<link rel="stylesheet" href="([^"]+)"/g),
+  ]
+    .map((match) => readFileSync(join(outDir, match[1]), "utf8"))
+    .join("");
+  assert.doesNotMatch(homeCss, /KaTeX_Main|\.katex/);
 });
 
 test("renders formulas in MDX when built, with KaTeX's styles and no script", () => {

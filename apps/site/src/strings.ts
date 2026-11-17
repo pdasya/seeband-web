@@ -13,7 +13,12 @@ export const STRINGS = {
   siteName: "SeeBand",
   stage: "web · prototype",
   navigationLabel: "Sections",
-  navigation: { overview: "Overview", fit: "Model fit", results: "Results" },
+  navigation: {
+    overview: "Overview",
+    fit: "Model fit",
+    results: "Results",
+    conventions: "Conventions",
+  },
   skipToContent: "Skip to content",
   home: {
     title: "SeeBand Web",

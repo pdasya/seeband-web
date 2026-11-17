@@ -14,7 +14,7 @@ interface Props {
   title: string;
   description: string;
   /** The header link this page is, if any. */
-  current?: "overview";
+  current?: "overview" | "conventions";
 }
 
 const { title, description, current } = Astro.props;
@@ -30,6 +30,12 @@ const links = [
     id: "results",
     label: STRINGS.navigation.results,
     href: APP_RESULTS_URL,
+  },
+  {
+    id: "conventions",
+    label: STRINGS.navigation.conventions,
+    href: "/conventions/",
+    current: current === "conventions",
   },
 ];
 ---

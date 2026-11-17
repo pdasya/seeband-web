@@ -9,18 +9,16 @@ pnpm --filter @seeband/site typecheck # astro check
 pnpm --filter @seeband/site test      # builds the site and checks its output
 ```
 
-| Path                 | Holds                                                                       |
-| -------------------- | --------------------------------------------------------------------------- |
-| `src/strings.ts`     | every string the site shows                                                 |
-| `src/layouts`        | `Base.astro`, with the shared header and footer; `Prose.astro` for formulas |
-| `src/pages`          | one file per page                                                           |
-| `markdown.mjs`       | remark-math and rehype-katex, which render formulas when the site is built  |
-| `conventions.md`     | text for the Conventions page (S3), not yet a page                          |
-| `results-changed.md` | text for a page on results that changed, not yet a page                     |
+| Path             | Holds                                                                       |
+| ---------------- | --------------------------------------------------------------------------- |
+| `src/strings.ts` | every string the site shows                                                 |
+| `src/layouts`    | `Base.astro`, with the shared header and footer; `Prose.astro` for formulas |
+| `src/pages`      | one file per page; `conventions.md` and `results-changed.md` are Markdown   |
+| `markdown.mjs`   | remark-math and rehype-katex, which render formulas when the site is built  |
 
 **English only for now**, at `/`. Another language would get its own routes, and the shared header's language switch would then need to link to the page in that language, as a static page cannot read the language cookie.
 
-**The header lists the same sections as the app's:** Overview, Model fit and Results. Conventions joins both when its page exists (S3).
+**The header lists the same sections as the app's:** Overview, Model fit, Results and Conventions. Links from Markdown pages into the repository go to GitHub, as its files are not on the site.
 
 **No script is needed.** Pages work with JavaScript turned off. The only script is the shared header's language handler, about 300 bytes, which does nothing with one language. Plotly and Pyodide are not loaded here, and the build test checks it.
 
