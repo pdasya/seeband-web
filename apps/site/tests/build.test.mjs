@@ -68,8 +68,9 @@ test("has its pages in English, as static HTML", () => {
 
 test("links to the app and the original SeeBand", () => {
   const html = page("index.html");
-  assert.match(html, /href="\/app\/"/);
-  assert.match(html, /href="\/app\/fit"/);
+  assert.match(html, /class="button" href="\/fit"/);
+  assert.match(html, /<a href="\/fit" class="sb-header__link">Model fit/);
+  assert.match(html, /<a href="\/results" class="sb-header__link">Results/);
   assert.match(html, /href="https:\/\/github.com\/pdasya\/seeband-web"/);
   assert.match(html, /href="https:\/\/github.com\/xAngelswordx\/SeeBand"/);
 });

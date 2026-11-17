@@ -2,8 +2,10 @@
 export const REPOSITORY_URL = "https://github.com/pdasya/seeband-web";
 export const ISSUES_URL = `${REPOSITORY_URL}/issues`;
 export const ORIGINAL_URL = "https://github.com/xAngelswordx/SeeBand";
-// The app is a separate build at `/app`, so links to it are plain links.
-export const APP_URL = "/app/";
+// The app is a separate build on the same origin, at /fit and /results, so links to it are plain
+// links. Its own header links back here at /.
+export const APP_FIT_URL = "/fit";
+export const APP_RESULTS_URL = "/results";
 
 export const LANGUAGE = "en";
 
