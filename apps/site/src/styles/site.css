@@ -171,13 +171,15 @@ h1 {
   font-size: 12px;
 }
 
-.figure__axis,
-.figure__edge {
+.figure__axis {
   stroke: var(--color-zinc-400);
   stroke-width: 1;
 }
 
+/* The band edges carry meaning, so they get 3:1 on the figure's ground. */
 .figure__edge {
+  stroke: var(--color-zinc-500);
+  stroke-width: 1;
   stroke-dasharray: 4 4;
 }
 
@@ -216,11 +218,32 @@ h1 {
 }
 
 .figure__label--1 {
-  fill: var(--accent-orange);
+  fill: var(--accent-orange-text);
 }
 
 .figure__label--2 {
   fill: var(--accent-blue);
+}
+
+.figure__sub {
+  font-size: 0.75em;
+}
+
+/* On a phone the sketch is about half size, so its labels grow in its units and the edge
+   labels, which the dashed lines already show, go. */
+@media (max-width: 480px) {
+  .figure {
+    padding: 12px;
+  }
+
+  .figure__label {
+    font-size: 22px;
+  }
+
+  .figure__label--edge,
+  .figure__kind {
+    display: none;
+  }
 }
 
 .steps {
@@ -289,6 +312,11 @@ h1 {
 
 .table-scroll {
   overflow-x: auto;
+}
+
+.table-scroll:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }
 
 .inputs {
