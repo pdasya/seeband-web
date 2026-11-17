@@ -327,6 +327,12 @@ export interface SessionState {
   savedModelSettings: Record<string, ModelSettings>;
   /** The session file this session came from, until a fit runs, or null. */
   restored: Restored | null;
+  /**
+   * Fits that finished in this session, oldest first, each as it was when it ended and kept so
+   * whatever changes after: a change of values ends the current result, not these. At most
+   * `MAX_RUNS`, in memory only.
+   */
+  runs: readonly FitRun[];
 
   setChartPanel: (index: number, tab: ChartTab) => void;
   /** Keeps the current model's settings, and takes up these for the new one. */
@@ -431,6 +437,30 @@ export interface RestoredFrom {
   fitCoreVersion: string | null;
   /** The core of the server when the file was loaded, or null if it did not answer. */
   serverCoreVersion: string | null;
+}
+
+/** How many finished fits a session keeps to compare, the oldest going first. */
+export const MAX_RUNS = 10;
+
+/**
+ * A fit as it was when it ended: what it was of, and what it found. The data, interpolation and
+ * values are the session's own objects of that moment, which the store never changes in place, so
+ * that a run is a snapshot that costs no copy, and `data === state.data` says the data are the same.
+ */
+export interface FitRun {
+  /** Counts from 1 in a session, so that a run keeps its name as older ones go. */
+  number: number;
+  /** When it ended, as ISO 8601. */
+  finishedAt: string;
+  selection: Selection;
+  /** Every parameter of its mode, the fitted ones at what the fit found. */
+  parameters: Record<string, number>;
+  start: Record<string, number> | null;
+  customBounds: Record<string, FitBounds>;
+  held: readonly string[];
+  data: Partial<Record<Quantity, SessionData>>;
+  interpolation: InterpolationState;
+  result: FitResult;
 }
 
 /** A restored session's origin, its fit and that fit's request, as the store keeps them. */
@@ -564,6 +594,11 @@ export const createSessionStore = () =>
     // Late events of an old run must not reach a newer one, or the wrong result would show.
     let currentRun = 0;
     let currentFitMode: string | null = null;
+    // What the current fit was asked with, as the session can change while it runs.
+    let currentInputs: Pick<
+      FitRun,
+      "selection" | "start" | "customBounds" | "held" | "data" | "interpolation"
+    > | null = null;
     let lastRequest = 0;
     const withoutOldResult = (fit: FitState): FitState =>
       isFitActive(fit) ? fit : { status: "idle" };
@@ -589,6 +624,7 @@ export const createSessionStore = () =>
       slotsReading: [],
       savedModelSettings: {},
       restored: null,
+      runs: [],
 
       restoreSession: (session, from) => {
         // Events of a fit that ran before belong to no session now.
@@ -649,6 +685,8 @@ export const createSessionStore = () =>
             request: session.request,
             stale: false,
           },
+          // The runs of the session left behind were of other data and settings.
+          runs: [],
         }));
       },
       restoredFitStale: () => {
@@ -948,6 +986,17 @@ export const createSessionStore = () =>
         // A guess wrote the values of its own model only, so a fit of another did not start from it.
         set((state) => {
           const guess = currentGuess(state);
+          currentInputs =
+            fitMode === undefined
+              ? null
+              : {
+                  selection: state.selection,
+                  start: start ?? null,
+                  customBounds: state.customBounds[fitMode] ?? {},
+                  held: state.held[fitMode] ?? [],
+                  data: state.data,
+                  interpolation: state.interpolation,
+                };
           return {
             // The fit restored from a file is replaced, and with it what the file said of it.
             restored: null,
@@ -971,18 +1020,37 @@ export const createSessionStore = () =>
       },
       // An event after a stop belongs to a fit that no longer counts.
       fitEvent: (run, event) => {
-        set((state) =>
-          run === currentRun && isFitActive(state.fit)
-            ? {
-                fit: afterEvent(state.fit, event),
-                parameters: withFitValues(
-                  state.parameters,
-                  currentFitMode,
-                  event,
-                ),
-              }
-            : state,
-        );
+        set((state) => {
+          if (run !== currentRun || !isFitActive(state.fit)) {
+            return state;
+          }
+          const parameters = withFitValues(
+            state.parameters,
+            currentFitMode,
+            event,
+          );
+          const fit = afterEvent(state.fit, event);
+          const mode = currentFitMode;
+          const inputs = currentInputs;
+          // A finished fit with values is kept, as it was asked and as it ended, to compare.
+          const kept =
+            event.type === "done" &&
+            event.result.status !== "failed" &&
+            mode !== null &&
+            inputs !== null
+              ? [
+                  ...state.runs,
+                  {
+                    ...inputs,
+                    number: (state.runs.at(-1)?.number ?? 0) + 1,
+                    finishedAt: new Date().toISOString(),
+                    parameters: parameters[mode] ?? {},
+                    result: event.result,
+                  },
+                ].slice(-MAX_RUNS)
+              : state.runs;
+          return { fit, parameters, runs: kept };
+        });
       },
       fitStopped: (run) => {
         set((state) => {
