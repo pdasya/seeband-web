@@ -74,6 +74,36 @@ export const STRINGS = {
     rangeInvalid:
       "The lower bound must be below the upper, and both above 0 K. The last valid range stays in use.",
   },
+  runs: {
+    title: "Earlier runs",
+    subtitle: (count: number) =>
+      `${String(count)} fits of this session, each as it ended. Choose two to compare.`,
+    oneRun: "One fit of this session so far. Run another to compare the two.",
+    note: "These are earlier fits, kept as they were when they ended. They are not the result of the values now on the fit screen.",
+    runName: (number: number, time: string) => `Run ${String(number)}, ${time}`,
+    runA: "Run A",
+    runB: "Run B",
+    table: "Runs compared",
+    what: "",
+    mode: "Fit mode",
+    scattering: "Scattering",
+    noScattering: "none",
+    method: "Fitting method",
+    status: "Status",
+    iterations: "Iterations",
+    rmse: (symbol: string) => `RMSE ${symbol}`,
+    none: "–",
+    notOffered: "not offered by this server",
+    otherData:
+      "These runs used different data, so their RMSE and parameters are not of the same points. The chart shows the points of run A.",
+    dataSince:
+      "The data have changed since at least one of these runs; each run is shown with its own data.",
+    pointsOf: (run: string) => `Measured, data of ${run}`,
+    chartDescription: (quantity: string, a: string, b: string) =>
+      `${quantity} against temperature: the measured points, and the curves of ${a} and ${b}.`,
+    curveFailed:
+      "The curve of a run could not be calculated, so its RMSE and curve are missing.",
+  },
   session: {
     open: "Open session",
     openHint:
