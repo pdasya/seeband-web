@@ -21,6 +21,7 @@ CurveKind = Literal[
     "electrical_conductivity_by_band",
     "thermal_conductivity",
     "carrier_concentration_by_band",
+    "lorenz_number",
 ]
 FitAlgorithm = Literal["verified-sequential-v2", "legacy-sequential-v1"]
 FitStatus = Literal["converged", "iteration_limit", "stopped", "failed", "stalled"]

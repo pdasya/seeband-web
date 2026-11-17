@@ -17,6 +17,7 @@ from typing import Any
 import numpy as np
 
 from seeband_core import fit_module
+from seeband_core import math_module as _CORE_MATH
 from seeband_core.known_issues import (
     active_issue_ids,
     band_diagram_issue_ids,
@@ -81,6 +82,12 @@ _CURVE_NAMES: dict[CurveKind, tuple[str, ...]] = {
         "carrier_concentration_band_2_per_cm3",
     ),
 }
+# L = κ_e/(σT), and for two bands each band's own L, which κ_e weighs by its σ.
+LORENZ_CURVE = "lorenz_number_w_ohm_per_k2"
+LORENZ_BAND_CURVES = (
+    "lorenz_number_band_1_w_ohm_per_k2",
+    "lorenz_number_band_2_w_ohm_per_k2",
+)
 
 
 def parabolic_band(
@@ -545,6 +552,8 @@ class _BandModel:
         fit_mode, scattering = self._mode_and_scattering(request.fit_mode, request.scattering)
         if request.kind not in fit_mode.curve_kinds:
             raise ValueError(f"Fit mode {fit_mode.id} has no curve {request.kind}")
+        if request.kind == "lorenz_number":
+            return self._lorenz_number(request, fit_mode, scattering)
         if scattering == "ionized" and request.kind != "carrier_concentration_by_band":
             from seeband_core.transport import ionized_transport
 
@@ -596,6 +605,48 @@ class _BandModel:
                 fit_mode, scattering, request.parameters, ratio, request.kind, request.extrapolated
             ),
         )
+
+    def _lorenz_number(
+        self, request: CurveRequest, fit_mode: FitMode, scattering: str | None
+    ) -> CurveResult:
+        """L(T) = κ_e/(σT) from the same κ_e and σ as their own curves, so it holds what they hold.
+
+        For two bands this is the effective L, with the bipolar part of κ_e, and each band's own L
+        goes with it, as κ_e weighs them by each band's σ. Neither depends on the prefactor of σ.
+        The known issues of κ_e and σ carry over, as L is of them.
+        """
+        kappa = self.calculate(dataclasses.replace(request, kind="thermal_conductivity"))
+        sigma = self.calculate(dataclasses.replace(request, kind="electrical_conductivity"))
+        temperature_k = kappa.temperature_k
+        with np.errstate(all="ignore"):
+            effective = np.asarray(kappa.curves["thermal_conductivity_w_per_m_k"]) / (
+                np.asarray(sigma.curves["electrical_conductivity_s_per_m"]) * temperature_k
+            )
+        curves: dict[str, np.ndarray] = {LORENZ_CURVE: effective}
+        curves |= self._band_lorenz_numbers(request, fit_mode, scattering, temperature_k)
+        issues = active_issue_ids(
+            fit_mode,
+            scattering,
+            request.parameters,
+            _degeneracy_ratio(request) if fit_mode.degeneracy is not None else 1.0,
+            request.kind,
+            request.extrapolated,
+        )
+        return CurveResult(
+            temperature_k,
+            curves,
+            tuple(dict.fromkeys((*issues, *kappa.known_issues, *sigma.known_issues))),
+        )
+
+    def _band_lorenz_numbers(
+        self,
+        request: CurveRequest,
+        fit_mode: FitMode,
+        scattering: str | None,
+        temperature_k: np.ndarray,
+    ) -> dict[str, np.ndarray]:
+        """Each band's own L, for a model with more than one band."""
+        return {}
 
     def band_diagram(self, request: BandDiagramRequest) -> BandDiagramResult:
         """Return the desktop's sketch of the bands. It enters no fit or curve."""
@@ -740,6 +791,32 @@ class SpbModel(_BandModel):
 
 
 class DpbModel(_BandModel):
+    def _band_lorenz_numbers(
+        self,
+        request: CurveRequest,
+        fit_mode: FitMode,
+        scattering: str | None,
+        temperature_k: np.ndarray,
+    ) -> dict[str, np.ndarray]:
+        """L₁ and L₂ as κ_e takes them: from `transport` for ionized impurities, else the λ = 0
+        Fermi integrals of `math_module`, with m_eff divided by N₂/N₁ as its κ_e has it."""
+        parameters = request.parameters
+        ratio = _degeneracy_ratio(request)
+        if scattering == "ionized":
+            from seeband_core.transport import ionized_transport
+
+            predictions = ionized_transport(temperature_k, parameters, fit_mode.id, ratio)
+            bands = (predictions["lorenz_band_1"], predictions["lorenz_band_2"])
+        else:
+            bands = _CORE_MATH.dpb_lorNum_vs_temp(
+                temperature_k,
+                _value(parameters, "m_eff") / ratio,
+                _value(parameters, "band_gap"),
+                _value(parameters, "fermi_energy"),
+                ratio,
+            )
+        return dict(zip(LORENZ_BAND_CURVES, (np.asarray(band) for band in bands), strict=True))
+
     def __init__(self) -> None:
         super().__init__(load_desktop_descriptions()["dpb"])
 

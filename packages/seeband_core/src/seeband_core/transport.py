@@ -163,4 +163,7 @@ def ionized_transport(
         "seebeck_band_2": w2 * s2,
         "electrical_conductivity_band_1": sigma1,
         "electrical_conductivity_band_2": sigma2,
+        # Each band's own L, which `thermal` weighs by its σ.
+        "lorenz_band_1": l1,
+        "lorenz_band_2": l2,
     }
