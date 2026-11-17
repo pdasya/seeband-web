@@ -1,0 +1,14 @@
+---
+import Base from "../layouts/Base.astro";
+import { STRINGS } from "../strings";
+
+const text = STRINGS.notFound;
+---
+
+<Base title={text.title} description={text.text}>
+  <section class="intro">
+    <h1>{text.title}</h1>
+    <p>{text.text}</p>
+    <p><a href="/">{text.back}</a></p>
+  </section>
+</Base>

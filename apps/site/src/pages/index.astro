@@ -1,0 +1,16 @@
+---
+import Base from "../layouts/Base.astro";
+import { APP_URL, STRINGS } from "../strings";
+
+const text = STRINGS.home;
+---
+
+<Base title={text.title} description={text.description} current="overview">
+  <section class="intro">
+    <h1>{text.heading}</h1>
+    <p class="lead">{text.lead}</p>
+    <p><a class="button" href={APP_URL}>{text.openApp}</a></p>
+    <p class="note">{text.serverNote}</p>
+    <p class="note">{text.status}</p>
+  </section>
+</Base>

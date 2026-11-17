@@ -1,0 +1,30 @@
+---
+// A page of text with formulas, such as an MDX page: KaTeX's styles come only with it.
+import "katex/dist/katex.min.css";
+
+import Base from "./Base.astro";
+
+interface PageProps {
+  title: string;
+  description: string;
+}
+// An MDX page that names this layout passes its frontmatter; an Astro page passes the props.
+type Props = PageProps | { frontmatter: PageProps };
+
+const { title, description } =
+  "frontmatter" in Astro.props ? Astro.props.frontmatter : Astro.props;
+---
+
+<Base title={title} description={description}>
+  <article class="prose">
+    <slot />
+  </article>
+</Base>
+
+<style is:global>
+  /* A long formula scrolls in its own box, not the page. */
+  .prose .katex-display {
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+</style>

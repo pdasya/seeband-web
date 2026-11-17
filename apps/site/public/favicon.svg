@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- The header's logo: its paths, in zinc-50 on zinc-900. -->
+  <rect width="32" height="32" rx="8" fill="#18181b" />
+  <g transform="translate(4 4)" fill="none" stroke="#fafafa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 20c3-10 6-14 9-14s6 4 9 14" />
+    <path d="M3 4c3 6 6 8 9 8s6-2 9-8" />
+  </g>
+</svg>

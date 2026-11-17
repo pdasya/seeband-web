@@ -1,0 +1,17 @@
+---
+import { ISSUES_URL, ORIGINAL_URL, REPOSITORY_URL, STRINGS } from "../strings";
+
+const text = STRINGS.footer;
+---
+
+<footer class="site-footer" aria-label={text.label}>
+  <div class="site-footer__inner">
+    <ul class="site-footer__links">
+      <li><a href={REPOSITORY_URL}>{text.repository}</a></li>
+      <li><a href={ISSUES_URL}>{text.contact}</a></li>
+    </ul>
+    <p class="site-footer__credit">
+      <a href={ORIGINAL_URL}>{text.original}</a>
+    </p>
+  </div>
+</footer>

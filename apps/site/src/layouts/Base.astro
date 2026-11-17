@@ -1,0 +1,59 @@
+---
+// Every page: the shared tokens, fonts and header, and a footer.
+import "@seeband/ui/tokens.css";
+import "@seeband/ui/fonts.css";
+import "@seeband/ui/header.css";
+import "../styles/site.css";
+
+import SiteHeader from "@seeband/ui/SiteHeader.astro";
+
+import Footer from "../components/Footer.astro";
+import { APP_URL, LANGUAGE, STRINGS } from "../strings";
+
+interface Props {
+  title: string;
+  description: string;
+  /** The header link this page is, if any. */
+  current?: "overview";
+}
+
+const { title, description, current } = Astro.props;
+const links = [
+  {
+    id: "overview",
+    label: STRINGS.navigation.overview,
+    href: "/",
+    current: current === "overview",
+  },
+  { id: "fit", label: STRINGS.navigation.fit, href: `${APP_URL}fit` },
+  {
+    id: "results",
+    label: STRINGS.navigation.results,
+    href: `${APP_URL}results`,
+  },
+];
+---
+
+<!doctype html>
+<html lang={LANGUAGE}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <a class="skip-link" href="#content">{STRINGS.skipToContent}</a>
+    <SiteHeader
+      name={STRINGS.siteName}
+      stage={STRINGS.stage}
+      navigationLabel={STRINGS.navigationLabel}
+      links={links}
+    />
+    <main id="content" class="page">
+      <slot />
+    </main>
+    <Footer />
+  </body>
+</html>
