@@ -1,3 +1,10 @@
+---
+layout: ../layouts/Prose.astro
+title: Calculation conventions · SeeBand
+description: How SeeBand Web solves the chemical potential, fits SPB and DPB models, and treats scattering, Hall data and the Lorenz number.
+current: conventions
+---
+
 # Calculation conventions
 
 ## Chemical potential
@@ -32,7 +39,7 @@ nondegenerate limits, respectively.
 The fitted Hall amplitude is `E = -sign(m) |m|^(3/2)` and its inverse is
 `m = -sign(E) |E|^(2/3)`. Mixed-scattering `C` is dimensionless at 300 K.
 Reported band-mass errors are conditional on the Seebeck-stage `E_F`.
-See the [SPB Hall fit notes](../../packages/seeband_core/docs/spb-hall-fit.md).
+See the [SPB Hall fit notes](https://github.com/pdasya/seeband-web/blob/main/packages/seeband_core/docs/spb-hall-fit.md).
 Human physicist confirmation remains pending.
 
 ## Result versions and provenance
@@ -41,16 +48,16 @@ Core `0.2.0` defaults to `verified-sequential-v2`, with exact conditional
 amplitude fitting, public-R DPB coordinates and final-stage consistency checks.
 Explicit `legacy-sequential-v1` retains the previous fitting path and its
 documented limitations. Algorithm provenance and diagnostics do not supply
-physical acceptance. See [verified sequential fitting](../../packages/seeband_core/docs/verified-sequential-fit.md).
+physical acceptance. See [verified sequential fitting](https://github.com/pdasya/seeband-web/blob/main/packages/seeband_core/docs/verified-sequential-fit.md).
 
-[Results that changed](results-changed.md) lists the P2–P7 corrections included
+[Results that changed](/results-changed/) lists the P2–P7 corrections included
 in core 0.1.0 and the remaining confirmation gates.
 
 Core `0.1.1` adds the P8 solver and domain-aware fitting described above.
 Core `0.1.2` adds P9 neural-net selection from the actual temperature span.
 Core `0.1.3` adds P11 pointwise mixed-scattering Seebeck weighting.
 Core `0.1.4` adds P13 positive longitudinal DPB transport weights, retaining
-the signed public mass ratio and carrier signs. See [positive DPB weights](../../packages/seeband_core/docs/dpb-positive-weights.md).
+the signed public mass ratio and carrier signs. See [positive DPB weights](https://github.com/pdasya/seeband-web/blob/main/packages/seeband_core/docs/dpb-positive-weights.md).
 Core version `0.1.0` is the first traceable `seeband_core` version. Earlier
 results may have been produced by different corrected states while reporting
 `0.0.0`; a missing version is unknown and must not be inferred from this
@@ -104,7 +111,7 @@ mechanisms need different transport factors.
 P13 corrects the negative longitudinal transport-weight issue (#104) by using
 the mass magnitude. Carrier signs remain in occupations and signed density;
 the Hall coefficient retains carrier signs and uses the corrected resistivity.
-The P13 [correction note](../../packages/seeband_core/docs/dpb-positive-weights.md)
+The P13 [correction note](https://github.com/pdasya/seeband-web/blob/main/packages/seeband_core/docs/dpb-positive-weights.md)
 records the limits and synthetic validation. P19 separately resolves P6's
 iterative-mode output/bounds inconsistency for the default verified route.
 
@@ -149,7 +156,7 @@ use lambda=0 in tau proportional to T^beta E^(lambda-1/2).
 For ionized impurities, sigma=A*(T/300 K)^3*F2, S uses 4 F3/(3 F2)-eta,
 and Hall uses F_(7/2)/F2^2. A has units S/m; DPB B is a free relative
 conductivity normalization, not an impurity-density ratio. See the
-[complete formulas and conventions](../../packages/seeband_core/docs/ionized-impurities.md).
+[complete formulas and conventions](https://github.com/pdasya/seeband-web/blob/main/packages/seeband_core/docs/ionized-impurities.md).
 
 At identical parameters and temperatures, sigma*rho=1. DPB band conductivities
 sum to total sigma. Electronic kappa includes the two Lorenz terms and the

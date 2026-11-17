@@ -1,6 +1,6 @@
 # packages/ui
 
-Design tokens and the shared header, used by `apps/web`, and by `apps/site` from S1.
+Design tokens and the shared header, used by `apps/web` and `apps/site`.
 
 | File         | Holds                                                                   |
 | ------------ | ----------------------------------------------------------------------- |
@@ -27,4 +27,4 @@ Links between the site and the app are plain links, as they are separate builds.
 
 **The switch does not yet change a static page.** The Astro wrapper's script writes the cookie and reloads, but a static page cannot read a cookie, so the same text comes back. [S1](https://github.com/pdasya/seeband-web/issues/52) plans separate `en` and `de` routes, so the switch there must also go to the page in that language, and mark the current language from its route.
 
-**Not tried yet:** a real Astro site, which starts with S1, so neither the path from the site to the app and back, nor the script in a browser.
+**Built in a real Astro site** in `apps/site`, with `tokens.css` imported before `header.css`. The language script has not run in a browser with a choice yet, as the site is in English only.
