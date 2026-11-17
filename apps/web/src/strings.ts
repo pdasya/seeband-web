@@ -79,28 +79,38 @@ export const STRINGS = {
     subtitle: (count: number) =>
       `${String(count)} fits of this session, each as it ended. Choose two to compare.`,
     oneRun: "One fit of this session so far. Run another to compare the two.",
-    note: "These are earlier fits, kept as they were when they ended. They are not the result of the values now on the fit screen.",
-    runName: (number: number, time: string) => `Run ${String(number)}, ${time}`,
+    note: "Fits of this session, each kept as it was when it ended. Only a run marked as the current result is the result of the values now on the fit screen; the others are earlier fits.",
+    runName: (number: number, time: string, what: string, current: boolean) =>
+      `Run ${String(number)}, ${time}` +
+      (what === "" ? "" : ` · ${what}`) +
+      (current ? " · current result" : ""),
     runA: "Run A",
     runB: "Run B",
     table: "Runs compared",
-    what: "",
+    what: "Property",
     mode: "Fit mode",
     scattering: "Scattering",
     noScattering: "none",
+    range: "Fit range",
+    rangeValue: (low: string, high: string) => `${low}–${high} K`,
+    interpolation: "Interpolation",
+    on: "on",
+    off: "off",
     method: "Fitting method",
     status: "Status",
     iterations: "Iterations",
     rmse: (symbol: string) => `RMSE ${symbol}`,
     none: "–",
+    dashNote:
+      "– : the run's mode or scattering has no such parameter, or the value is not known.",
     notOffered: "not offered by this server",
-    otherData:
-      "These runs used different data, so their RMSE and parameters are not of the same points. The chart shows the points of run A.",
-    dataSince:
-      "The data have changed since at least one of these runs; each run is shown with its own data.",
-    pointsOf: (run: string) => `Measured, data of ${run}`,
+    sameRun: "Run A and run B are the same run. Choose another to compare.",
+    otherPoints:
+      "These runs were fit to different points: other data, another fit range, or interpolation. Their RMSE and parameters are not of the same points, and each chart shows the points of each.",
+    bothRuns: "both runs",
+    pointsOf: (run: string) => `Points fitted, ${run}`,
     chartDescription: (quantity: string, a: string, b: string) =>
-      `${quantity} against temperature: the measured points, and the curves of ${a} and ${b}.`,
+      `${quantity} against temperature: the points each run was fit to, the curve of ${a} as a solid line, and that of ${b} dashed.`,
     curveFailed:
       "The curve of a run could not be calculated, so its RMSE and curve are missing.",
   },
