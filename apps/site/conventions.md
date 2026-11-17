@@ -163,3 +163,18 @@ reproduction; an old mixed-scattering result is not an ionized result.
 Ionized fits use Verified. SPB numerical starting estimates use the chosen
 mechanism; DPB neural estimates are unavailable for ionized impurities.
 Human scientific acceptance and the #71 desktop/web comparison remain separate.
+
+## Lorenz number
+
+The Lorenz number is L(T) = kappa_e/(sigma*T), from the same electronic kappa
+and sigma as their own curves, in W*Ohm/K^2. Charts show it in units of
+L0 = pi^2/3 (k_B/e)^2 = 2.443e-8 W*Ohm/K^2; exports give both columns.
+For one parabolic band, L = (k_B/e)^2 (3 F0 F2 - 4 F1^2)/F0^2 with lambda=0 for
+acPh and dis: 2 (k_B/e)^2 when nondegenerate, L0 when degenerate. Ionized
+impurities (lambda=2) have 4 (k_B/e)^2 when nondegenerate and the same L0.
+
+For DPB the curve is the effective L, which includes the bipolar term and can
+rise far above either band's L; each band's own L, which kappa_e weighs by its
+sigma, is shown beside it. L needs sigma, so S-only modes do not offer it. The
+known issues of kappa_e and sigma apply to L, and it is undefined where sigma
+is zero.

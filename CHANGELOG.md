@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- R11 (#187): add the Lorenz number L(T) = kappa_e/(sigma*T) as a derived curve
+  in modes with rho, in W*Ohm/K^2 and in units of L0 = pi^2/3 (k_B/e)^2, with
+  export. For DPB, show the effective L with its bipolar part, and each band's
+  own L. It is made from the existing kappa_e and sigma, so no other number
+  changes; their known issues carry over.
+
 - Core `0.3.0`: replace public acPhDis with ionized impurity scattering for
   SPB and DPB, including S-only. Use the approved tau(E) proportional to E^(3/2)
   approximation with lambda=2, consistent longitudinal, Hall and electronic
