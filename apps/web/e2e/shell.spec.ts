@@ -67,8 +67,10 @@ test("links to the public site leave the app", async ({ page }) => {
     "href",
     "/",
   );
-  // The site has no Conventions page yet, so neither header links to one.
-  await expect(page.getByRole("link", { name: "Conventions" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Conventions" })).toHaveAttribute(
+    "href",
+    "/conventions/",
+  );
 });
 
 test("there is no language switch while the app has one language", async ({
