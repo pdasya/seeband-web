@@ -24,6 +24,15 @@ BY_BAND_COLUMNS = {
 MU = {"chemical_potential": ["chemical_potential_k"]}
 SIGMA = {"electrical_conductivity": ["electrical_conductivity_s_per_m"]}
 KAPPA = {"thermal_conductivity": ["thermal_conductivity_w_per_m_k"]}
+# R11: L = κ_e/(σT), not a window of the desktop, and for two bands each band's own L.
+L_ONE = {"lorenz_number": ["lorenz_number_w_ohm_per_k2"]}
+L_TWO = {
+    "lorenz_number": [
+        "lorenz_number_w_ohm_per_k2",
+        "lorenz_number_band_1_w_ohm_per_k2",
+        "lorenz_number_band_2_w_ohm_per_k2",
+    ]
+}
 TOTAL_S = {"seebeck": ["seebeck_v_per_k"]}
 S = ["seebeck_v_per_k"]
 RHO = [*S, "resistivity_ohm_m"]
@@ -32,16 +41,32 @@ HALL = [*RHO, "hall_m3_per_c"]
 # Written by hand from the desktop's AddGraphsWin* windows, in docs/curve-availability.md.
 OFFERED: dict[str, dict[str, list[str]]] = {
     "spb_s": {"measured": S, **MU},
-    "spb_s_rho": {"measured": RHO, **MU, **SIGMA, **KAPPA},
-    "spb_s_rho_rh": {"measured": HALL, **MU, **SIGMA, **KAPPA},
+    "spb_s_rho": {"measured": RHO, **MU, **SIGMA, **KAPPA, **L_ONE},
+    "spb_s_rho_rh": {"measured": HALL, **MU, **SIGMA, **KAPPA, **L_ONE},
     "dpb_s": {
         "measured": S,
         "seebeck_by_band": BY_BAND_COLUMNS["seebeck_by_band"],
         **MU,
         "carrier_concentration_by_band": BY_BAND_COLUMNS["carrier_concentration_by_band"],
     },
-    "dpb_s_rho": {"measured": RHO, **TOTAL_S, **BY_BAND_COLUMNS, **MU, **SIGMA, **KAPPA},
-    "dpb_s_rho_rh": {"measured": HALL, **TOTAL_S, **BY_BAND_COLUMNS, **MU, **SIGMA, **KAPPA},
+    "dpb_s_rho": {
+        "measured": RHO,
+        **TOTAL_S,
+        **BY_BAND_COLUMNS,
+        **MU,
+        **SIGMA,
+        **KAPPA,
+        **L_TWO,
+    },
+    "dpb_s_rho_rh": {
+        "measured": HALL,
+        **TOTAL_S,
+        **BY_BAND_COLUMNS,
+        **MU,
+        **SIGMA,
+        **KAPPA,
+        **L_TWO,
+    },
 }
 REFUSED: dict[str, dict[str, str]] = {
     "spb_s": {
@@ -51,6 +76,7 @@ REFUSED: dict[str, dict[str, str]] = {
         "electrical_conductivity_by_band": "single_band",
         "thermal_conductivity": "needs_resistivity",
         "carrier_concentration_by_band": "not_on_desktop",
+        "lorenz_number": "needs_resistivity",
     },
     "spb_s_rho": {
         "seebeck": "same_as_measured",
@@ -69,6 +95,7 @@ REFUSED: dict[str, dict[str, str]] = {
         "electrical_conductivity": "needs_resistivity",
         "electrical_conductivity_by_band": "needs_resistivity",
         "thermal_conductivity": "needs_resistivity",
+        "lorenz_number": "needs_resistivity",
     },
     "dpb_s_rho": {},
     "dpb_s_rho_rh": {},

@@ -288,7 +288,7 @@ export interface components {
              * @default measured
              * @enum {string}
              */
-            kind?: "measured" | "seebeck" | "seebeck_by_band" | "chemical_potential" | "electrical_conductivity" | "electrical_conductivity_by_band" | "thermal_conductivity" | "carrier_concentration_by_band";
+            kind?: "measured" | "seebeck" | "seebeck_by_band" | "chemical_potential" | "electrical_conductivity" | "electrical_conductivity_by_band" | "thermal_conductivity" | "carrier_concentration_by_band" | "lorenz_number";
             /** Points */
             points?: number | null;
             /**
@@ -445,7 +445,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "measured" | "seebeck" | "seebeck_by_band" | "chemical_potential" | "electrical_conductivity" | "electrical_conductivity_by_band" | "thermal_conductivity" | "carrier_concentration_by_band";
+            kind: "measured" | "seebeck" | "seebeck_by_band" | "chemical_potential" | "electrical_conductivity" | "electrical_conductivity_by_band" | "thermal_conductivity" | "carrier_concentration_by_band" | "lorenz_number";
             /** Available */
             available: boolean;
             /** Reason */
@@ -791,7 +791,7 @@ export interface components {
             max_iterations?: number | null;
             degeneracy?: components["schemas"]["DegeneracyResponse"] | null;
             /** Curve Kinds */
-            curve_kinds: ("measured" | "seebeck" | "seebeck_by_band" | "chemical_potential" | "electrical_conductivity" | "electrical_conductivity_by_band" | "thermal_conductivity" | "carrier_concentration_by_band")[];
+            curve_kinds: ("measured" | "seebeck" | "seebeck_by_band" | "chemical_potential" | "electrical_conductivity" | "electrical_conductivity_by_band" | "thermal_conductivity" | "carrier_concentration_by_band" | "lorenz_number")[];
             /** Curves */
             curves: components["schemas"]["CurveAvailabilityResponse"][];
             /** Disabled */
@@ -1174,7 +1174,7 @@ export interface components {
             /** Scattering */
             scattering: string[];
             /** Curve Kinds */
-            curve_kinds: ("measured" | "seebeck" | "seebeck_by_band" | "chemical_potential" | "electrical_conductivity" | "electrical_conductivity_by_band" | "thermal_conductivity" | "carrier_concentration_by_band")[];
+            curve_kinds: ("measured" | "seebeck" | "seebeck_by_band" | "chemical_potential" | "electrical_conductivity" | "electrical_conductivity_by_band" | "thermal_conductivity" | "carrier_concentration_by_band" | "lorenz_number")[];
             /** Columns */
             columns: string[];
             /** Affects Fit */
@@ -1511,7 +1511,7 @@ export interface operations {
                 headers: {
                     /** @example no-cache */
                     "Cache-Control"?: string;
-                    /** @example "7237ffad5b17e43204d958fedad99211" */
+                    /** @example "721065269bcd2442becad75df2f99d34" */
                     ETag?: string;
                     [name: string]: unknown;
                 };
