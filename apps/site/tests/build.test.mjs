@@ -10,22 +10,35 @@ import {
   statSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, relative } from "node:path";
+import { createRequire } from "node:module";
+import { dirname, join, relative } from "node:path";
 import { after, before, test } from "node:test";
 import { fileURLToPath } from "node:url";
 
 const SITE_DIR = fileURLToPath(new URL("..", import.meta.url));
 const MATH_DIR = fileURLToPath(new URL("fixtures/math", import.meta.url));
-const ASTRO = join(SITE_DIR, "node_modules", ".bin", "astro");
+// Astro's own script, run with this Node, as the shell shim in node_modules/.bin is not on every
+// system or install layout.
+const ASTRO = join(
+  dirname(
+    createRequire(join(SITE_DIR, "package.json")).resolve("astro/package.json"),
+  ),
+  "bin",
+  "astro.mjs",
+);
 const outDir = mkdtempSync(join(tmpdir(), "seeband-site-build-"));
 const mathOutDir = mkdtempSync(join(tmpdir(), "seeband-site-math-"));
 
 function build(root, out) {
-  const built = spawnSync(ASTRO, ["build", "--root", root, "--outDir", out], {
-    cwd: SITE_DIR,
-    encoding: "utf8",
-    env: { ...process.env, ASTRO_TELEMETRY_DISABLED: "1" },
-  });
+  const built = spawnSync(
+    process.execPath,
+    [ASTRO, "build", "--root", root, "--outDir", out],
+    {
+      cwd: SITE_DIR,
+      encoding: "utf8",
+      env: { ...process.env, ASTRO_TELEMETRY_DISABLED: "1" },
+    },
+  );
   assert.equal(built.status, 0, built.stderr + built.stdout);
 }
 
@@ -61,7 +74,7 @@ test("has its pages in English, as static HTML", () => {
   // One language for now, so no switch, and no page in another.
   assert.doesNotMatch(page("index.html"), /sb-header__languages|hreflang/);
   assert.equal(
-    files(outDir).some((path) => relative(outDir, path).startsWith("de")),
+    files(outDir).some((path) => relative(outDir, path).startsWith("de/")),
     false,
   );
 });
@@ -86,9 +99,9 @@ test("needs no script but the header's, and loads no heavy library", () => {
     const html = readFileSync(path, "utf8");
     // Only the shared header's language script, which does nothing with one language.
     const scripts = html.match(/<script[\s\S]*?<\/script>/g) ?? [];
-    assert.ok(scripts.length <= 1, relative(outDir, path));
-    assert.ok(scripts.join("").length < 1000, relative(outDir, path));
-    assert.match(scripts.join(""), /seeband_language|^$/);
+    assert.equal(scripts.length, 1, relative(outDir, path));
+    assert.match(scripts[0], /seeband_language/);
+    assert.ok(scripts[0].length < 1000, relative(outDir, path));
     assert.doesNotMatch(html, /plotly|pyodide/i, relative(outDir, path));
   }
 });
