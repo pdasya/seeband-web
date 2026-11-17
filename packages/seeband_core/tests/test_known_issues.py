@@ -28,6 +28,7 @@ DPB_FIT_CURVES = (
     "electrical_conductivity",
     "electrical_conductivity_by_band",
     "thermal_conductivity",
+    "lorenz_number",
 )
 ALL_CURVES = (*DPB_FIT_CURVES, "chemical_potential", "carrier_concentration_by_band")
 # Written here so that a change of scope, severity or fix fails.
@@ -40,7 +41,13 @@ EXPECTED: dict[str, tuple[Any, ...]] = {
         "#106",
         SPB,
         (),
-        ("measured", "chemical_potential", "electrical_conductivity", "thermal_conductivity"),
+        (
+            "measured",
+            "chemical_potential",
+            "electrical_conductivity",
+            "thermal_conductivity",
+            "lorenz_number",
+        ),
         True,
         "fermi_energy_outside_band",
     ),
