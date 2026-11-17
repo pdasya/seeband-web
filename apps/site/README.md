@@ -26,6 +26,11 @@ pnpm --filter @seeband/site test      # builds the site and checks its output
 
 **Fonts** are Geist and Geist Mono from `packages/ui`, served by the site itself.
 
+## Decisions on the overview
+
+- **Data handling (F4, #4), 2026-11-17.** The overview says what the code supports: measurements go to the server, are used only for the calculation asked for and are not saved; the server's logs record route, status and duration, not data. It names no LLM summaries, as there are none. Revise it if that changes, and when I1 sets up the proxy's logging.
+- **Hero illustration (F8, #8), 2026-11-17.** Option A of the design's `HeroOptions`: the E(k) sketch of two parabolic bands with E_g and E_F, inline SVG in `src/components/BandFigure.astro`. A sketch, not a calculation.
+
 ## Lighthouse baseline
 
-Home page, `astro preview`, Lighthouse 12.8.2, mobile with simulated throttling, headless Chrome for Testing on macOS, 2026-11-17: performance 100, accessibility 100, best practices 100, SEO 100. First and largest contentful paint 1.1 s, total blocking time 0 ms, cumulative layout shift 0.015, 34 KiB transferred.
+Home page, `astro preview`, Lighthouse 12.8.2, mobile with simulated throttling, headless Chrome for Testing on macOS, 2026-11-17, with the full overview (S2): performance 100, accessibility 100, best practices 100, SEO 100. First and largest contentful paint 1.2 s, total blocking time 0 ms, cumulative layout shift 0, 59 KiB transferred.
