@@ -476,6 +476,23 @@ describe("a graph file", () => {
   });
 });
 
+test("a graph file has L in W·Ω/K² and in units of L₀ beside it", () => {
+  const L0 = (Math.PI ** 2 / 3) * (1.380649e-23 / 1.602176634e-19) ** 2;
+  const lines = graphFile(
+    [],
+    [100],
+    [{ name: "lorenz_number_w_ohm_per_k2", values: [2 * L0] }],
+    { unit: "K", per_kelvin: 1 },
+  ).split("\n");
+  expect(lines[0]).toBe(
+    "Temperature [K]\tLorenz number L = kappa_e/(sigma*T) [W*Ohm/K^2]\t" +
+      "Lorenz number L = kappa_e/(sigma*T) / L0, L0 = pi^2/3 (k_B/e)^2 = 2.44e-8 W*Ohm/K^2",
+  );
+  const [, value, relative] = (lines[1] ?? "").split("\t");
+  expect(Number(value)).toBeCloseTo(2 * L0, 20);
+  expect(Number(relative)).toBeCloseTo(2, 12);
+});
+
 describe("the other formats", () => {
   const session: Pick<SessionState, "data" | "interpolation"> = {
     data: {

@@ -141,6 +141,7 @@ export type ChartTab =
   | "conductivity"
   | "chemical_potential"
   | "thermal_conductivity"
+  | "lorenz_number"
   | "bands"
   | "carrier_concentration"
   | "band_diagram";

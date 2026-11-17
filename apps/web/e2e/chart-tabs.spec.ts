@@ -113,6 +113,7 @@ test("each chart has a choice of what it shows, by name", async ({ page }) => {
     "Hall coefficient R_H(T)",
     "Chemical potential μ(T)",
     "Thermal conductivity κ_e(T)",
+    "Lorenz number L(T)",
     "Band contributions",
     "Carrier concentration by band",
     "Band diagram E(k)",

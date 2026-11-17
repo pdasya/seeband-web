@@ -131,6 +131,7 @@ const MORE_GRAPHS: readonly ChartTab[] = [
   "chemical_potential",
   "conductivity",
   "thermal_conductivity",
+  "lorenz_number",
   "bands",
   "carrier_concentration",
 ];
