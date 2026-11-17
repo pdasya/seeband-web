@@ -1,7 +1,13 @@
 ---
 import BandFigure from "../components/BandFigure.astro";
 import Base from "../layouts/Base.astro";
-import { APP_DEMO_URL, APP_FIT_URL, STRINGS } from "../strings";
+import {
+  APP_DEMO_URL,
+  APP_FIT_URL,
+  CONVENTIONS_URL,
+  RESULTS_CHANGED_URL,
+  STRINGS,
+} from "../strings";
 
 const text = STRINGS.home;
 ---
@@ -15,7 +21,7 @@ const text = STRINGS.home;
         <p class="lead">{text.lead}</p>
         <div class="actions">
           <a class="button" href={APP_FIT_URL}>{text.startFit}</a>
-          <a class="button button--outline" href="/conventions/">
+          <a class="button button--outline" href={CONVENTIONS_URL}>
             {text.readConventions}
           </a>
         </div>
@@ -26,7 +32,7 @@ const text = STRINGS.home;
 
     <section aria-labelledby="how">
       <h2 id="how">{text.how.title}</h2>
-      <ol class="steps">
+      <ol class="steps" role="list">
         {
           text.how.steps.map((step, index) => (
             <li class="step">
@@ -42,7 +48,7 @@ const text = STRINGS.home;
     <div class="panels">
       <section class="panel panel--wide" aria-labelledby="inputs">
         <h2 id="inputs">{text.inputs.title}</h2>
-        <div class="table-scroll">
+        <div class="table-scroll" tabindex="0" role="region" aria-labelledby="inputs">
           <table class="inputs">
             <thead>
               <tr>
@@ -64,7 +70,7 @@ const text = STRINGS.home;
             </tbody>
           </table>
         </div>
-        <p class="note">{text.inputs.note}</p>
+        {text.inputs.notes.map((note) => <p class="note">{note}</p>)}
       </section>
       <section class="panel" aria-labelledby="outputs">
         <h2 id="outputs">{text.outputs.title}</h2>
@@ -82,7 +88,7 @@ const text = STRINGS.home;
       <section class="panel" aria-labelledby="status">
         <h2 id="status">{text.status.title}</h2>
         <p>{text.status.text}</p>
-        <p><a href="/results-changed/">{text.status.changed}</a></p>
+        <p><a href={RESULTS_CHANGED_URL}>{text.status.changed}</a></p>
       </section>
     </div>
 
