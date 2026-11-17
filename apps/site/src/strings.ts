@@ -18,17 +18,18 @@ export const STRINGS = {
   home: {
     title: "SeeBand Web",
     description:
-      "Fit single and two parabolic band models to Seebeck, resistivity and Hall data against temperature.",
+      "Fit single and double parabolic band models to Seebeck, resistivity and Hall data against temperature.",
     heading: "Band models for thermoelectric transport data",
-    lead: "SeeBand Web fits single parabolic band (SPB) and two parabolic band (DPB) models to measured S(T), ρ(T) and R_H(T), and shows what the fitted parameters imply.",
+    lead: "SeeBand Web fits single parabolic band (SPB) and double parabolic band (DPB) models to measured S(T), ρ(T) and R_H(T), and shows the fitted parameters, the curves calculated from them and how far those are from your data.",
     serverNote:
-      "Calculations run on the server, so your measurements are sent to it. They are not stored, and they are not written to logs.",
+      "Calculations run on our server, so your measurements are sent to it. The server uses them only for the calculation you ask for and does not save them. Its logs record the route, status and duration of each request, not your data.",
     openApp: "Open the app",
     status:
-      "This is a prototype. Results can differ from the desktop SeeBand while the port is checked against it.",
+      "This is a prototype. Some known errors of the desktop SeeBand are corrected here, so results can differ from it on purpose, and a physicist has not yet confirmed the corrections. Other known limitations are flagged next to the results they affect. A fit that converges does not show that the model suits your sample: check the residuals and any parameter at its bound.",
   },
   notFound: {
-    title: "Page not found",
+    title: "Page not found · SeeBand",
+    heading: "Page not found",
     text: "There is no page at this address.",
     back: "Go to the overview",
   },
