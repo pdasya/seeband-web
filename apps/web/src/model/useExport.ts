@@ -20,6 +20,8 @@ import {
 } from "@/model/exportFiles";
 import { calcRequest, derivedRequest } from "@/model/liveCurves";
 import { runLines } from "@/model/runRecord";
+import { fitRequest } from "@/model/fitRequest";
+import { sessionFile } from "@/session/sessionFile";
 import { hasFittedValues, resultIssues } from "@/model/resultSummary";
 import { fitModeOf } from "@/model/selection";
 import {
@@ -160,6 +162,25 @@ export function useExport() {
     }
   };
 
+  /** The session as the text of a session file. */
+  const sessionText = async (state: SessionState) => {
+    const server = await serverVersions();
+    const file = await sessionFile(
+      state,
+      {
+        appVersion: APP_VERSION,
+        apiVersion:
+          server === null ? null : withCommit(server.version, server.commit),
+        saved: new Date().toISOString(),
+      },
+      (inputs) => {
+        const built = fitRequest(inputs, models?.models);
+        return "request" in built ? built.request : null;
+      },
+    );
+    return `${JSON.stringify(file, null, 1)}\n`;
+  };
+
   const calc = async (state: SessionState): Promise<CalcResponse | null> => {
     const request = calcRequest(state, models?.models, true);
     return request === null ? null : apiClient.postCalc(request);
@@ -269,6 +290,8 @@ export function useExport() {
         const made = await everything(true);
         if (made !== null) {
           const { header, mode, state, preFit, fit, graphs, missing } = made;
+          // The session is an extra of the ZIP, which goes without it if it cannot be made.
+          const session = await sessionText(state).catch(() => null);
           const entries = zipEntries(
             header,
             mode,
@@ -291,10 +314,10 @@ export function useExport() {
             text.zipFile,
             zipSync(
               Object.fromEntries(
-                Object.entries(entries).map(([name, contents]) => [
-                  name,
-                  strToU8(contents),
-                ]),
+                Object.entries({
+                  ...entries,
+                  ...(session === null ? {} : { [text.sessionFile]: session }),
+                }).map(([name, contents]) => [name, strToU8(contents)]),
               ),
             ) as Uint8Array<ArrayBuffer>,
             "application/zip",
@@ -310,6 +333,16 @@ export function useExport() {
         text.parametersCsvFile,
         "text/csv;charset=utf-8",
       ),
+    /** The session, to load back later: data, settings and the last fit, kept by the user only. */
+    session: () =>
+      run(async () => {
+        const now = snapshot();
+        download(
+          text.sessionFile,
+          await sessionText(now?.state ?? useSessionStore.getState()),
+          "application/json;charset=utf-8",
+        );
+      }),
     /** One additional graph, from the answers it already drew. */
     graph: (
       name: string,

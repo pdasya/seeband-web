@@ -1,4 +1,4 @@
-import { DownloadIcon } from "lucide-react";
+import { DownloadIcon, SaveIcon } from "lucide-react";
 import { useId, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -132,6 +132,15 @@ export function ExportButtons({
           },
         ]}
       />
+      <Button
+        variant="outline"
+        disabled={busy}
+        title={text.sessionHint}
+        onClick={() => void exporter.session()}
+      >
+        <SaveIcon aria-hidden="true" />
+        {text.session}
+      </Button>
     </>
   );
 }

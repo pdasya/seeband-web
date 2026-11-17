@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DemoNotice } from "@/data/DemoNotice";
 import { FileSlot } from "@/data/FileSlot";
 import { InterpolationSwitch } from "@/data/InterpolationSwitch";
+import { SessionOpen } from "@/data/SessionOpen";
 import { SingleFilePanel } from "@/data/SingleFilePanel";
 import { TemperatureRangeWarning } from "@/data/TemperatureRangeWarning";
 import { useSessionStore, type DataMode } from "@/session/store";
@@ -61,6 +62,7 @@ export function DataPanel({ action }: { action?: ReactNode }) {
       </Tabs>
       <DemoNotice />
       <InterpolationSwitch />
+      <SessionOpen />
     </Panel>
   );
 }
