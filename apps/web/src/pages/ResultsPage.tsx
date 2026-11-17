@@ -43,6 +43,7 @@ import { fitModeOf, type FitModeDescription } from "@/model/selection";
 import { ExportButtons } from "@/model/ExportButtons";
 import { useExport } from "@/model/useExport";
 import { ReportCharts, ReportHeader, useReport } from "@/pages/Report";
+import { RunComparison } from "@/pages/RunComparison";
 import { useResultCurves, type LiveCalc } from "@/model/useLiveCurves";
 import { QUANTITIES, useSessionStore, type ChartTab } from "@/session/store";
 import { PageHeading, Panel } from "@/shell/layout";
@@ -334,6 +335,8 @@ export function ResultsPage() {
           {...(badge === null ? {} : { status: <StatusBadge {...badge} /> })}
         />
         <NoResult message={message} />
+        {/* Earlier fits stay to compare when the values now in use have none. */}
+        <RunComparison />
       </div>
     );
   }
@@ -576,6 +579,7 @@ export function ResultsPage() {
       </div>
       {/* On paper, pictures of fixed size take the place of live charts, which do not resize. */}
       <ReportCharts charts={report.charts} />
+      <RunComparison />
       <section
         aria-labelledby={graphsId}
         className="rounded-xl border bg-card p-5 shadow-card print:hidden"

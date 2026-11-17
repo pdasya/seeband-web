@@ -74,6 +74,46 @@ export const STRINGS = {
     rangeInvalid:
       "The lower bound must be below the upper, and both above 0 K. The last valid range stays in use.",
   },
+  runs: {
+    title: "Earlier runs",
+    subtitle: (count: number) =>
+      `${String(count)} fits of this session, each as it ended. Choose two to compare.`,
+    oneRun: "One fit of this session so far. Run another to compare the two.",
+    note: "Fits of this session, each kept as it was when it ended. Only a run marked as the current result is the result of the values now on the fit screen; the others are earlier fits.",
+    runName: (number: number, time: string, what: string, current: boolean) =>
+      `Run ${String(number)}, ${time}` +
+      (what === "" ? "" : ` · ${what}`) +
+      (current ? " · current result" : ""),
+    runA: "Run A",
+    runB: "Run B",
+    table: "Runs compared",
+    what: "Property",
+    mode: "Fit mode",
+    scattering: "Scattering",
+    noScattering: "none",
+    range: "Fit range",
+    rangeValue: (low: string, high: string) => `${low}–${high} K`,
+    interpolation: "Interpolation",
+    on: "on",
+    off: "off",
+    method: "Fitting method",
+    status: "Status",
+    iterations: "Iterations",
+    rmse: (symbol: string) => `RMSE ${symbol}`,
+    none: "–",
+    dashNote:
+      "– : the run's mode or scattering has no such parameter, or the value is not known.",
+    notOffered: "not offered by this server",
+    sameRun: "Run A and run B are the same run. Choose another to compare.",
+    otherPoints:
+      "These runs were fit to different points: other data, another fit range, or interpolation. Their RMSE and parameters are not of the same points, and each chart shows the points of each.",
+    bothRuns: "both runs",
+    pointsOf: (run: string) => `Points fitted, ${run}`,
+    chartDescription: (quantity: string, a: string, b: string) =>
+      `${quantity} against temperature: the points each run was fit to, the curve of ${a} as a solid line, and that of ${b} dashed.`,
+    curveFailed:
+      "The curve of a run could not be calculated, so its RMSE and curve are missing.",
+  },
   session: {
     open: "Open session",
     openHint:

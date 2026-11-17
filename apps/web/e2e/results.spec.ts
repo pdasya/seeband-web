@@ -393,6 +393,102 @@ test("a fit stopped here assesses nothing, and a held value says so", async ({
   await expect(statusOf(page, "E_g")).toHaveText("not assessed");
 });
 
+test("two fits with other scattering compare side by side after a value changed", async ({
+  page,
+}) => {
+  await openFit(page, serveCurves);
+  await finishWith(page, {
+    parameters: { m_eff: 0.5, band_gap: 900, fermi_energy: -50, A: 4e4, B: 1 },
+  });
+  await page.getByRole("combobox", { name: "Scattering" }).click();
+  await page.getByRole("option", { name: "Alloy disorder (dis)" }).click();
+  await finishWith(page, {
+    parameters: { m_eff: 0.7, band_gap: 800, fermi_energy: -40, F: 3e4, G: 1 },
+  });
+  // A value changed: the current result ends, and the runs stay.
+  await page.getByRole("textbox", { name: "E_F", exact: true }).fill("-0,001");
+  await page.getByRole("textbox", { name: "E_F", exact: true }).press("Enter");
+  await toResults(page);
+
+  // The page names no result for the values now in use, and the runs apart from it.
+  await expect(
+    page.getByText(
+      "No fit for the current values. Run one on the model fit page.",
+    ),
+  ).toBeVisible();
+  const runs = page.getByRole("table", { name: "Runs compared" });
+  await expect(runs).toBeVisible();
+  await expect(
+    page.getByText(
+      /Only a run marked as the current result is the result of the values now on the fit screen/,
+    ),
+  ).toBeVisible();
+  const cells = (label: string) =>
+    runs.getByRole("row").filter({
+      has: page.getByRole("cell", { name: label, exact: true }),
+    });
+  await expect(cells("Scattering")).toContainText("Acoustic phonons (acPh)");
+  await expect(cells("Scattering")).toContainText("Alloy disorder (dis)");
+  await expect(cells("m₂/m₁")).toContainText("0,5");
+  await expect(cells("m₂/m₁")).toContainText("0,7");
+  await expect(cells("RMSE S")).toContainText("111 µV/K");
+  // A parameter of one scattering only is shown for that run alone.
+  await expect(cells("F")).toContainText("–");
+});
+
+test("the run on screen is marked as the current result, and runs read in words", async ({
+  page,
+}) => {
+  await openFit(page, serveCurves);
+  await finishWith(page);
+  await page.getByRole("combobox", { name: "Scattering" }).click();
+  await page.getByRole("option", { name: "Alloy disorder (dis)" }).click();
+  await finishWith(page);
+  await toResults(page);
+
+  const runs = page.getByRole("table", { name: "Runs compared" });
+  // Run B, the last, is the result now on screen; run A is not.
+  await expect(runs.getByRole("columnheader").nth(2)).toContainText(
+    "current result",
+  );
+  await expect(runs.getByRole("columnheader").nth(1)).not.toContainText(
+    "current result",
+  );
+  await expect(runs.getByRole("columnheader").first()).toHaveText("Property");
+  const status = runs.getByRole("row").filter({
+    has: page.getByRole("cell", { name: "Status", exact: true }),
+  });
+  await expect(status).toContainText("Stopped by its rule");
+  await expect(status).not.toContainText("converged");
+  // Not on paper: the report is of the current result.
+  await page.emulateMedia({ media: "print" });
+  await expect(runs).toBeHidden();
+});
+
+test("runs fit to another range say that their points differ", async ({
+  page,
+}) => {
+  await openFit(page, serveCurves);
+  await finishWith(page);
+  // The data have points at 100 and 200 K, so a range from 150 K leaves one out.
+  await page.getByLabel("Lower bound, K").fill("150");
+  await page.getByLabel("Lower bound, K").blur();
+  await finishWith(page);
+  await toResults(page);
+
+  await expect(
+    page.getByText(/^These runs were fit to different points/),
+  ).toBeVisible();
+  const range = page
+    .getByRole("table", { name: "Runs compared" })
+    .getByRole("row")
+    .filter({
+      has: page.getByRole("cell", { name: "Fit range", exact: true }),
+    });
+  await expect(range).toContainText("50–800 K");
+  await expect(range).toContainText("150–800 K");
+});
+
 const logSteps = (page: Page) =>
   page.getByRole("list", { name: "Fit log" }).getByRole("listitem");
 

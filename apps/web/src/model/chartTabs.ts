@@ -42,6 +42,15 @@ const QUANTITY_TABS: Record<
   hall: { curve: "hall_m3_per_c", factor: 1, axis: text.axes.hall },
 };
 
+/** How a chart draws a quantity: its column in a measured result, its factor and its axis. */
+export function quantityChart(quantity: Quantity): {
+  curve: string;
+  factor: number;
+  axis: string;
+} {
+  return QUANTITY_TABS[quantity];
+}
+
 /** The column of a quantity in a measured result. */
 export function quantityCurve(quantity: Quantity): string {
   return QUANTITY_TABS[quantity].curve;

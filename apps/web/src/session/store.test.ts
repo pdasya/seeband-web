@@ -861,3 +861,128 @@ test("restoring an ionized model also restores a supported fitting method", () =
   });
   expect(state().selection.algorithm).toBe("verified-sequential-v2");
 });
+
+describe("earlier runs", () => {
+  function fitTo(mode: string, values: Record<string, number>) {
+    const run = state().fitRequested(mode, { m_eff: 1 });
+    state().fitEvent(run, { type: "started" });
+    return () => {
+      state().fitEvent(run, {
+        type: "done",
+        result: { ...RESULT, parameters: values },
+      });
+    };
+  }
+
+  test("each finished fit is kept, with what it was asked and what it found", () => {
+    state().setData("seebeck", DATA);
+    state().setSelection({
+      model: "dpb",
+      fitMode: "dpb_s",
+      scattering: "acPh",
+    });
+    fitTo("dpb_s", { m_eff: 0.5 })();
+    const [first] = state().runs;
+    expect(first).toMatchObject({
+      number: 1,
+      selection: { scattering: "acPh" },
+      start: { m_eff: 1 },
+      result: { parameters: { m_eff: 0.5 } },
+    });
+    // The session's own data object, which the store never changes in place.
+    expect(first?.data).toBe(state().data);
+    expect(first?.parameters.m_eff).toBe(0.5);
+  });
+
+  test("a run keeps what it was asked with, though the session changed while it ran", () => {
+    state().setData("seebeck", DATA);
+    state().setSelection({
+      model: "dpb",
+      fitMode: "dpb_s",
+      scattering: "acPh",
+    });
+    state().setCustomBounds("dpb_s", "band_gap", { lower: 500, upper: 1500 });
+    const asked = state().data;
+    const finish = fitTo("dpb_s", { m_eff: 0.5 });
+    state().setSelection({ scattering: "dis" });
+    state().setData("seebeck", { ...DATA, extrapolated: true });
+    state().setCustomBounds("dpb_s", "band_gap", null);
+    state().setHeld("dpb_s", "m_eff", true);
+    finish();
+    const [run] = state().runs;
+    expect(run?.selection.scattering).toBe("acPh");
+    expect(run?.data).toBe(asked);
+    expect(run?.customBounds).toEqual({
+      band_gap: { lower: 500, upper: 1500 },
+    });
+    expect(run?.held).toEqual([]);
+  });
+
+  test("a fit stopped, or of an older run, adds no run", () => {
+    state().setSelection({ model: "dpb", fitMode: "dpb_s" });
+    const old = state().fitRequested("dpb_s");
+    state().fitEvent(old, { type: "started" });
+    state().fitStopped(old);
+    state().fitEvent(old, { type: "done", result: RESULT });
+    const newer = state().fitRequested("dpb_s");
+    state().fitEvent(old, { type: "done", result: RESULT });
+    expect(state().runs).toHaveLength(0);
+    state().fitEvent(newer, { type: "done", result: RESULT });
+    expect(state().runs).toHaveLength(1);
+  });
+
+  test("a restored session starts with no runs", () => {
+    state().setSelection({ model: "dpb", fitMode: "dpb_s" });
+    fitTo("dpb_s", { m_eff: 0.5 })();
+    state().restoreSession(
+      {
+        dataMode: "separate",
+        data: {},
+        singleFile: null,
+        otherSource: null,
+        chartPanels: state().chartPanels,
+        savedModelSettings: {},
+        selection: state().selection,
+        parameters: {},
+        customBounds: {},
+        held: {},
+        interpolationEnabled: false,
+        fitStart: { values: null, net: null, numerical: false },
+        result: null,
+        request: null,
+      },
+      {
+        saved: "x",
+        appVersion: "1",
+        fitCoreVersion: null,
+        serverCoreVersion: null,
+      },
+    );
+    expect(state().runs).toEqual([]);
+  });
+
+  test("a change of values ends the current result, not the runs", () => {
+    state().setSelection({ model: "dpb", fitMode: "dpb_s" });
+    fitTo("dpb_s", { m_eff: 0.5 })();
+    state().setParameter("dpb_s", "m_eff", 2);
+    expect(state().fit.status).toBe("idle");
+    expect(state().runs).toHaveLength(1);
+    expect(state().runs[0]?.parameters.m_eff).toBe(0.5);
+  });
+
+  test("a failed fit is not a run, and only the last ten are kept", () => {
+    state().setSelection({ model: "dpb", fitMode: "dpb_s" });
+    const failed = state().fitRequested("dpb_s");
+    state().fitEvent(failed, {
+      type: "done",
+      result: { ...RESULT, status: "failed" },
+    });
+    expect(state().runs).toHaveLength(0);
+    for (let i = 0; i < 12; i += 1) {
+      fitTo("dpb_s", { m_eff: i })();
+    }
+    expect(state().runs.map(({ number }) => number)).toEqual([
+      3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+    ]);
+  });
+});
