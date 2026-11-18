@@ -240,6 +240,38 @@ test("a fit under way, or one that gave no values, has no summary", async ({
   await expect(table(page)).toHaveCount(0);
 });
 
+test("a failed Results curve explains the admissible Fermi energy", async ({
+  page,
+}) => {
+  await openFit(page);
+  await finishWith(page);
+  await page.route("**/api/calc", (route) =>
+    route.fulfill({
+      status: 422,
+      json: {
+        code: "calculation_failed",
+        message: "x",
+        details: [
+          {
+            code: "chemical_potential_dpb_fermi_energy",
+            message: "x",
+            location: ["body", "parameters"],
+          },
+        ],
+      },
+    }),
+  );
+  await toResults(page);
+
+  await expect(
+    page
+      .getByRole("region", { name: "Additional graphs" })
+      .getByRole("alert")
+      .filter({ hasText: "Set E_F below the higher band edge, max(0, E_g)." })
+      .first(),
+  ).toBeVisible();
+});
+
 test("demo data say so on the results", async ({ page }) => {
   await stub(page);
   await page.route("**/api/demo", (route) => route.fulfill({ json: DEMO }));

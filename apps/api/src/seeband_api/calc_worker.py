@@ -15,14 +15,11 @@ from seeband_core.model_interface import CurveRequest, CurveResult, Measurement,
 
 
 class CalculationFailed(Exception):
-    """The core has no result, as at m_eff = 0, or for many DPB S + rho + R_H curves at low T.
+    """Carries a safe exception type and optional finite-root domain code from the worker."""
 
-    It carries only the type of the core's exception, as the core's text can quote values.
-    """
-
-
-class CalculationWithoutChemicalPotential(CalculationFailed):
-    """The core rejected the parameters as outside the finite-root domain."""
+    def __init__(self, exception_type: str, detail_code: str | None = None) -> None:
+        super().__init__(exception_type)
+        self.detail_code = detail_code
 
 
 @dataclass(frozen=True, eq=False)
@@ -83,7 +80,7 @@ def calculate(
             else {}
         )
     except NoFiniteChemicalPotentialError as error:
-        raise CalculationWithoutChemicalPotential(type(error).__name__) from error
+        raise CalculationFailed(type(error).__name__, error.code) from error
     except (ArithmeticError, ValueError) as error:
         raise CalculationFailed(type(error).__name__) from error
     return CalcOutcome(curve, rmse)

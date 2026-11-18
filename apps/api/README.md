@@ -199,8 +199,19 @@ It has no rate limit and no `ETag`, as it costs almost nothing and is under 10 K
 
 - **Parameters:** all of a mode's parameters are needed, and values outside a control's range are allowed, because a fit can end there. Names are checked, and problems are listed in `details`. Numbers must be JSON numbers: `true` or `"1.5"` are refused.
 - **A disabled mode** gets a 409 `fit_mode_disabled`, with the ids of its known issues as the `code` in `details`. Show `known_issue.<code>` through i18n.
-- **A value that is not finite** usually comes back as `null`, with the rest of the curve, as with a band mass of 0.
-- **`calculation_failed`** is a 422 with no curve because the core raised. `no_chemical_potential` in `details` at `body.parameters` means the core found the band parameters outside the finite-root domain, for example at zero mass or for two valence bands with `E_F ≥ max(0, E_g)`. A root that cannot be certified numerically, or a complex or invalid transport result, still gives the general error without that detail. The API logs only the exception's type.
+- **A nonfinite curve point** usually comes back as `null`, with the rest of the curve.
+- **`calculation_failed`** is a 422 with no curve. If the band parameters are
+  outside the finite-root domain, the response names the reason in `details`
+  at `body.parameters`:
+  - `chemical_potential_zero_mass` for zero band mass in SPB or a zero mass ratio in DPB.
+  - `chemical_potential_spb_fermi_energy` for `sign(m) × E_F ≤ 0`.
+  - `chemical_potential_dpb_fermi_energy` for two valence bands with `E_F ≥ max(0, E_g)`.
+
+  Clients can map these calculation detail codes directly to user guidance.
+  Known-issue IDs come from the model registry. An uncertifiable root or an
+  invalid transport result gets the general error. The API logs only the
+  exception type.
+
 - **`measured_points`** holds points made from the `measurements` sent, with no model: `electrical_conductivity_s_per_m` is 1/ρ at each ρ temperature, with `null` for a ρ of 0 or below. They go with the data the request sent: points in the fit range, as a client sends for the RMSE, and of interpolated ρ when it sends interpolated values. `seeband_core.measured_points` makes them. There are no κ_e points: κ_e is not measured, and an estimate from ρ needs a Lorenz number, which was decided against in #159.
 - **RMSE** for built-in SPB/DPB models evaluates the final parameters directly at each submitted measurement temperature. `points` and `rmse_points` do not affect this metric. Submitted points may be interpolated by the client. Custom registered models retain the grid-based fallback controlled by `rmse_points`. `/api/calc` retains its `422 zero_measured_value` rejection for submitted zero ρ/Hall measurements; the web preview excludes those points. The core metric helper itself returns an unavailable percentage for zeros. Fit diagnostics separately provide absolute RMSE and relative L2 when defined.
 - **`calculation_unavailable`** is a 503: a worker died, and the next request gets a new pool.

@@ -62,9 +62,10 @@ P4/P12 (#83, #103) remove the SPB Hall disabled-mode and stale-Fermi-energy flag
 P8 (#87) checks density roots before transport. An uncertifiable density root
 fails the calculation request (HTTP 422) or fit explicitly; no partial array
 is used. In DPB with two valence bands, `E_F ≥ max(0, E_g)` gives no finite
-root. The API reports analytically invalid band parameters separately as a
-`no_chemical_potential` error detail, not as a warning on a returned curve
-(#106). Successful density checks do not prevent the separate F₀ transport
+root. The calculation API reports the corresponding `chemical_potential_*`
+error detail for each unsupported domain (#106). The SPB
+`no_chemical_potential` registry ID is retained for interpretation of flagged
+fit results and exports. Successful density checks do not prevent the separate F₀ transport
 cancellation/underflow (#105), which can still produce nonfinite curve points.
 Invalid optimizer trial domains are rejected separately from numerical failures;
 invalid starts still fail. See [the solver contract](chemical-potential.md).

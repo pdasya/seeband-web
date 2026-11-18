@@ -1559,6 +1559,15 @@ export interface operations {
                     "application/json": components["schemas"]["CalcResponse"];
                 };
             };
+            /** @description Invalid request or calculation has no result */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Too many requests from this client, or for the server */
             429: {
                 headers: {
