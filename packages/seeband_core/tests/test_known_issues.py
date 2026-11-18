@@ -118,6 +118,8 @@ def test_the_doc_and_the_list_match_both_ways() -> None:
 
 
 def test_the_conventions_page_lists_each_issue_as_the_registry_does() -> None:
+    if not CONVENTIONS.exists():
+        pytest.skip("The site is not beside the core, as in a copy of the package alone")
     rows = {}
     for line in CONVENTIONS.read_text(encoding="utf-8").splitlines():
         match = re.match(r"\| `(\w+)`\s*\| (\w+)\s*\|.*\| \[(#\d+)\]\([^)]*\)\s*\|$", line)

@@ -180,8 +180,19 @@ test("Conventions renders its formulas, lists its sections and ties issues to th
   // KaTeX at build time: math as HTML, no failures, and the page's own styles for it.
   assert.ok((conventions.match(/class="katex"/g) ?? []).length >= 40);
   assert.doesNotMatch(conventions, /katex-error/);
+  // MathML stays beside the visible formula, for screen readers.
+  assert.match(conventions, /class="katex-mathml"/);
+  // Wide tables and formulas scroll in a box a keyboard can reach, and tables stay tables.
+  const tables = (conventions.match(/<table>/g) ?? []).length;
+  assert.ok(tables >= 5);
+  assert.equal(
+    (conventions.match(/<div class="scroll-box" tabindex="0"><table>/g) ?? [])
+      .length,
+    tables,
+  );
+  assert.match(conventions, /class="katex-display" tabindex="0"/);
   // Each section is in the side list, by its anchor.
-  const anchors = [...conventions.matchAll(/<h2 id="([^"]+)"/g)].map(
+  const anchors = [...conventions.matchAll(/<h2[^>]*\sid="([^"]+)"/g)].map(
     (m) => m[1],
   );
   assert.ok(anchors.length >= 10);
@@ -199,11 +210,8 @@ test("Conventions renders its formulas, lists its sections and ties issues to th
   ]) {
     assert.match(conventions, new RegExp(`<code>${id}</code>`), id);
   }
-  // No mixed scattering is offered any more.
-  assert.match(
-    textOfPage(conventions),
-    /acPhDis, with its C and D\) is not offered/,
-  );
+  // No mixed scattering is offered any more; the page says so where it names it.
+  assert.match(textOfPage(conventions), /acPhDis[^.]*not offered/);
 });
 
 test("needs no script but the header's, and loads no heavy library", () => {
