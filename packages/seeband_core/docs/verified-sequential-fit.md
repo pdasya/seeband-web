@@ -52,6 +52,15 @@ held values remain fixed. Evaluation and sweep budgets are finite; cycles,
 stalls and budget exhaustion are distinct diagnostic reasons. Neither solver
 success nor a small change from the starting vector is enough by itself.
 
+One DPB recovery failure can be reproduced with the bundled demo Seebeck
+data, acoustic phonons, held `m_eff = 1.2` and `band_gap = 800 K`, and a free
+`fermi_energy` starting at `400 K` with default bounds. The doubled seed lands
+at `800 K`, exactly the conduction-band edge. At that point the derivative
+estimates from scaled steps `1e-5` and `5e-6` differed by about 41% relative to
+the smaller-step estimate. The fit reports `derivative_validation_failure`.
+This is separate from the in-gap identification warning (#107): the data
+cannot locate the Fermi energy within the gap, even when the fit succeeds.
+
 ## Result interpretation
 
 Algorithm and diagnostics travel with the API result and exports. Diagnostics

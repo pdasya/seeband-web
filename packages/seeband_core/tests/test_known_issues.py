@@ -38,6 +38,7 @@ ALL_CURVES = (*DPB_FIT_CURVES, "chemical_potential", "carrier_concentration_by_b
 EXPECTED: dict[str, tuple[Any, ...]] = {
     "dpb_loop_degeneracy": ("caution", "#85", LOOP, (), (), True, "degeneracy_not_one"),
     "collapsed_m_eff": ("unreliable", "#107", DPB, (), ALL_CURVES, True, "collapsed_m_eff"),
+    "fermi_energy_in_gap": ("caution", "#107", DPB, (), ALL_CURVES, True, "fermi_energy_in_gap"),
     "no_chemical_potential": (
         "unreliable",
         "#106",
@@ -193,6 +194,22 @@ def test_dpb_s_has_no_degeneracy_flag_at_any_ratio(ratio: float, kind: CurveKind
         ({"ratio": 2.0}, "dpb_s_rho", "acPh", "measured", "dpb_loop_degeneracy", False),
         ({"parameters": {"m_eff": 1.0}}, "dpb_s", None, None, "collapsed_m_eff", False),
         (
+            {"parameters": {"m_eff": 1.0, "band_gap": 0.0, "fermi_energy": 0.0}},
+            "dpb_s",
+            None,
+            None,
+            "fermi_energy_in_gap",
+            False,
+        ),
+        (
+            {"parameters": {"m_eff": -1.0, "band_gap": 500.0, "fermi_energy": 200.0}},
+            "dpb_s",
+            None,
+            None,
+            "fermi_energy_in_gap",
+            False,
+        ),
+        (
             {"parameters": {"m_eff": COLLAPSED_M_EFF / 2}},
             "dpb_s_rho",
             "acPh",
@@ -323,16 +340,16 @@ def test_a_fit_reads_conditions_from_its_result_not_its_start(
     negative = fit_ids(monkeypatch, "dpb_s", [-1.0, 500.0, 500.0], values={"m_eff": 1.0})
     assert negative == set()
     positive = fit_ids(monkeypatch, "dpb_s", [1.0, 500.0, 500.0], values={"m_eff": -1.0})
-    assert positive == set()
+    assert positive == {"fermi_energy_in_gap"}
     collapsed = fit_ids(monkeypatch, "dpb_s", [1e-7, 500.0, 500.0])
-    assert collapsed == {"collapsed_m_eff"}
+    assert collapsed == {"collapsed_m_eff", "fermi_energy_in_gap"}
     outside = fit_ids(monkeypatch, "spb_s", [-100.0], values={"band_mass": 1.0})
     assert outside == {"no_chemical_potential"}
 
 
 def test_a_fit_passes_its_degeneracy_and_scattering_on(monkeypatch: pytest.MonkeyPatch) -> None:
-    loop = [1.0, 500.0, 500.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
-    with_n = fit_ids(monkeypatch, "dpb_s", [1.0, 500.0, 500.0], band_2_degeneracy=2.0)
+    loop = [1.0, 500.0, -100.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+    with_n = fit_ids(monkeypatch, "dpb_s", [1.0, 500.0, -100.0], band_2_degeneracy=2.0)
     assert with_n == set()
     dis = fit_ids(monkeypatch, "dpb_s_rho", loop, scattering="dis")
     assert dis == set()

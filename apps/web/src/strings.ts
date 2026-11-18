@@ -703,6 +703,8 @@ export const STRINGS = {
         "In the legacy method with N₂/N₁ other than 1, the fit returns m₂/m₁ times N₂/N₁, so the value shown can leave its bounds. The bounds and the at-bound mark apply before that factor.",
       "known_issue.collapsed_m_eff":
         "With m₂/m₁ near 0, the fit can be poorly conditioned. The data may not determine the band parameters separately, and results can differ between machines.",
+      "known_issue.fermi_energy_in_gap":
+        "The 0 K Fermi energy is in the DPB gap or at one of its edges. The transport data cannot determine where E_F is within this gap: with the other parameters fixed, every value in the gap gives the same S, ρ and R_H.",
       "known_issue.no_chemical_potential":
         "When E_F is at the band edge or outside the band, SPB has zero carrier density at T = 0 and cannot calculate a curve.",
       "known_issue.hall_dis_no_reference":

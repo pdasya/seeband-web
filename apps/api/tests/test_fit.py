@@ -169,6 +169,7 @@ def test_a_fermi_energy_inside_the_gap_is_not_determined(client: TestClient) -> 
 
     assert result["parameter_status"]["fermi_energy"] == "not_determined"
     assert result["parameter_status"]["m_eff"] == "held"
+    assert "fermi_energy_in_gap" in result["known_issues"]
 
 
 @pytest.mark.parametrize(

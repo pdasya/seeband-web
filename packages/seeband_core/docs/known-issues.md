@@ -20,6 +20,7 @@ To remove a flag once its error is fixed, delete its entry and its row here, and
 | ---------------------------- | ---------- | -------------------------------------------------------------------------------------------------- | -------- |
 | `dpb_loop_degeneracy`        | caution    | explicit legacy iterative DPB fits, when N2/N1 is not 1                                            | #85      |
 | `collapsed_m_eff`            | unreliable | DPB, when m_eff is near 0, as on `02_SiP` (D19)                                                    | #107     |
+| `fermi_energy_in_gap`        | caution    | DPB with a positive valence–conduction gap, when E_F is in the gap or at either edge               | #107     |
 | `no_chemical_potential`      | unreliable | SPB, when the Fermi energy is outside the band                                                     | #106     |
 | `hall_dis_no_reference`      | caution    | DPB S + ρ + R_H with `dis`. This is a missing reference, not an error: the desktop fails here (D1) | #71      |
 | `band_diagram_formula`       | caution    | the sketch of E(k), in `band_diagram` alone, and in no fit or curve                                | #108     |
@@ -53,7 +54,6 @@ P4/P12 (#83, #103) remove the SPB Hall disabled-mode and stale-Fermi-energy flag
 
 - **Disabled is a flag.** The API refuses any mode carrying a disabled issue with a 409. No current mode carries one after P4/P12.
 - **F₀ underflowing (#105)** gives NaN or infinity at low temperatures with large gaps, which a client can see as non-finite values. The flag would need the result, not its inputs.
-- **E_F inside the gap (#107)** cannot be told from a good fit by its inputs alone, and `at_bounds` and `parameter_errors` report part of it.
 - **`underdetermined` interpolation** has no issue that fixes it, because it describes the data. `InterpolatedData` reports it.
 - **Neural-net range selection (P9)** now uses actual Tmin/Tmax and sorts paired input rows before inference. The parser already sorts files (D22), and direct `POST /api/guess` callers now get the same range and prediction for reordered distinct-temperature rows. `unsorted_temperature` remains input provenance. It belongs to no mode, so it is not a registry entry.
 - **Missing desktop coverage (#71)** remains open, including the desktop/web
@@ -84,3 +84,9 @@ heuristic inference cautions, not a mass floor or proof that a channel vanished.
 Verified diagnostics separately report numerical checks and detected structural
 nonidentifiability; absence of a structural warning is not a full P23 analysis.
 See [verified sequential fitting](verified-sequential-fit.md).
+
+P16 (#107) marks curves and fit results whose 0 K Fermi energy lies in a
+positive DPB gap between a valence and a conduction band, including either
+edge. The same zero carrier target holds across that interval. The warning
+describes what the data cannot distinguish, independently of whether the value
+was held or at a fit bound.

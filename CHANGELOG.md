@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- P16 (#107): flag a DPB Fermi energy in a positive valence–conduction gap,
+  including either edge, where transport cannot locate E_F within the gap.
+  The warning changes no calculated values or fit behavior.
+
 - P15 (#106): distinguish zero mass and the SPB and DPB Fermi-energy
   constraints in curve failures. The API returns HTTP 422 with a
   reason-specific detail. Fit failures distinguish the finite-root domain

@@ -1180,7 +1180,7 @@ export interface components {
             /** Affects Fit */
             affects_fit: boolean;
             /** Condition */
-            condition?: ("degeneracy_not_one" | "collapsed_m_eff" | "fermi_energy_outside_band" | "interpolation_extrapolated") | null;
+            condition?: ("degeneracy_not_one" | "collapsed_m_eff" | "fermi_energy_in_gap" | "fermi_energy_outside_band" | "interpolation_extrapolated") | null;
         };
         /**
          * MeasuredPointsResponse
@@ -1511,7 +1511,7 @@ export interface operations {
                 headers: {
                     /** @example no-cache */
                     "Cache-Control"?: string;
-                    /** @example "721065269bcd2442becad75df2f99d34" */
+                    /** @example "fc4597788df6c1d3eb3e1b358d52e79a" */
                     ETag?: string;
                     [name: string]: unknown;
                 };
