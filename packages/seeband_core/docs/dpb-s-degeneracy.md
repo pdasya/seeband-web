@@ -3,7 +3,7 @@
 DPB S-only fitting and drawing use the same low-level mass r = R/N, where
 N = N₂/N₁ and the public `m_eff` parameter R is the signed band-2 mass
 relative to the magnitude of the reference band-1 mass. See the
-[public model conventions](../../../apps/site/src/pages/conventions.md).
+[public model conventions](../../../apps/site/src/pages/conventions.mdx).
 
 The old fitting objective passed R directly while the drawn curve passed
 R/N. For R = 1.2, E_g = 800 K and E_F = −150 K at N = 3, the old paths
