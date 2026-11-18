@@ -397,15 +397,15 @@ def test_values_that_are_not_finite_come_back_as_null(client: TestClient) -> Non
 
 
 @pytest.mark.parametrize(
-    "parameters",
+    ("parameters", "reason"),
     [
-        {"band_mass": 0.0, "fermi_energy": 100.0},
-        {"band_mass": 1.0, "fermi_energy": 0.0},
-        {"band_mass": -1.0, "fermi_energy": 100.0},
+        ({"band_mass": 0.0, "fermi_energy": 100.0}, "chemical_potential_zero_mass"),
+        ({"band_mass": 1.0, "fermi_energy": 0.0}, "chemical_potential_spb_fermi_energy"),
+        ({"band_mass": -1.0, "fermi_energy": 100.0}, "chemical_potential_spb_fermi_energy"),
     ],
 )
 def test_spb_without_a_finite_chemical_potential_is_an_explicit_error(
-    client: TestClient, parameters: dict[str, float]
+    client: TestClient, parameters: dict[str, float], reason: str
 ) -> None:
     response = client.post(
         "/api/calc",
@@ -413,7 +413,7 @@ def test_spb_without_a_finite_chemical_potential_is_an_explicit_error(
     )
     assert response.status_code == 422
     assert response.json()["code"] == "calculation_failed"
-    assert response.json()["details"] == []
+    assert _details(response) == [(["body", "parameters"], reason)]
 
 
 @pytest.mark.parametrize(("band_gap", "fermi_energy"), [(1000.0, 1000.0), (-100.0, 0.0)])
@@ -432,7 +432,7 @@ def test_dpb_without_a_finite_chemical_potential_is_an_explicit_error(
 
     assert response.status_code == 422
     assert response.json()["code"] == "calculation_failed"
-    assert response.json()["details"] == []
+    assert _details(response) == [(["body", "parameters"], "chemical_potential_dpb_fermi_energy")]
 
 
 def test_parameters_with_no_result_answer_a_clear_error(client: TestClient) -> None:
@@ -442,7 +442,43 @@ def test_parameters_with_no_result_answer_a_clear_error(client: TestClient) -> N
 
     assert response.status_code == 422
     assert response.json()["code"] == "calculation_failed"
+    assert _details(response) == [(["body", "parameters"], "chemical_potential_zero_mass")]
+
+
+def test_uncertified_chemical_potential_keeps_the_generic_calculation_error(
+    client: TestClient,
+) -> None:
+    response = client.post(
+        "/api/calc",
+        json=_body(
+            model="dpb",
+            fit_mode="dpb_s",
+            scattering=None,
+            parameters={"m_eff": 1.01, "band_gap": 1000.0, "fermi_energy": 0.0},
+            min_temperature_k=0.01,
+            max_temperature_k=0.03,
+            points=3,
+        ),
+    )
+
+    assert response.status_code == 422
+    assert response.json()["code"] == "calculation_failed"
     assert response.json()["details"] == []
+
+
+def test_calc_openapi_adds_only_a_route_specific_chemical_potential_example() -> None:
+    responses = create_app().openapi()["paths"]["/api/calc"]["post"]["responses"]
+    defaults = responses["default"]["content"]["application/json"]["examples"]
+    errors = responses["422"]["content"]["application/json"]["examples"]
+    name = "calculation_without_chemical_potential"
+
+    unchanged = {"invalid_calculation", "calculation_failed"}
+    assert set(errors) == unchanged | {name}
+    assert {key: errors[key] for key in unchanged} == {key: defaults[key] for key in unchanged}
+    assert name not in defaults
+    example = errors[name]["value"]
+    assert example["code"] == "calculation_failed"
+    assert [detail["code"] for detail in example["details"]] == ["chemical_potential_zero_mass"]
 
 
 def test_hall_curve_with_a_value_that_is_not_finite_fails_and_is_logged(client: TestClient) -> None:
@@ -473,6 +509,7 @@ def test_hall_curve_with_a_value_that_is_not_finite_fails_and_is_logged(client: 
     assert response.status_code == 422
     assert response.json()["code"] == "calculation_failed"
     failures = [r for r in records if r.getMessage() == "calculation_failed"]
+    assert response.json()["details"] == []
     assert [r.__dict__["fields"] for r in failures] == [{"exception_type": "ValueError"}]
 
 

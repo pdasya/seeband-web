@@ -7,14 +7,15 @@ pnpm --filter @seeband/site dev       # http://localhost:4321
 pnpm --filter @seeband/site build     # static files in apps/site/dist
 pnpm --filter @seeband/site typecheck # astro check
 pnpm --filter @seeband/site test      # builds the site and checks its output
+pnpm --filter @seeband/site serve     # builds it and previews it on port 4321, for the app's dev:all
 ```
 
-| Path             | Holds                                                                       |
-| ---------------- | --------------------------------------------------------------------------- |
-| `src/strings.ts` | every string the site shows                                                 |
-| `src/layouts`    | `Base.astro`, with the shared header and footer; `Prose.astro` for formulas |
-| `src/pages`      | one file per page; `conventions.md` and `results-changed.md` are Markdown   |
-| `markdown.mjs`   | remark-math and rehype-katex, which render formulas when the site is built  |
+| Path             | Holds                                                                          |
+| ---------------- | ------------------------------------------------------------------------------ |
+| `src/strings.ts` | every string the site shows                                                    |
+| `src/layouts`    | `Base.astro`, with the shared header and footer; `Prose.astro` for formulas    |
+| `src/pages`      | one file per page; `conventions.mdx` (MDX) and `results-changed.md` (Markdown) |
+| `markdown.mjs`   | remark-math and rehype-katex, which render formulas when the site is built     |
 
 **English only for now**, at `/`. Another language would get its own routes, and the shared header's language switch would then need to link to the page in that language, as a static page cannot read the language cookie.
 

@@ -95,6 +95,21 @@ describe("fitFailureText", () => {
     expect(fitFailureText(done({ status: "iteration_limit" }))).toBeNull();
   });
 
+  test.each([
+    [
+      "The fit encountered band parameters with no finite chemical potential.",
+      "no finite chemical potential",
+    ],
+    [
+      "The chemical-potential balance could not be verified during the fit.",
+      "could not verify the chemical-potential balance",
+    ],
+  ])("explains the fit failure %s", (message, explanation) => {
+    expect(fitFailureText(done({ status: "failed", message }))).toContain(
+      explanation,
+    );
+  });
+
   test("is in our words, with a text for an unknown code", () => {
     expect(fitFailureText(failed("fit_timeout"))).toContain("time limit");
     expect(fitFailureText(failed("stream_ended"))).toContain("connection");

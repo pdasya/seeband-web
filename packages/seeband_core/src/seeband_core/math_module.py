@@ -211,6 +211,17 @@ class ChemicalPotentialError(ValueError):
 class NoFiniteChemicalPotentialError(ChemicalPotentialError):
     """The parameters lie outside the analytically admissible finite-root model domain."""
 
+    def __init__(
+        self,
+        temperature: float | None,
+        reason: str,
+        residual: float | None = None,
+        *,
+        code: str | None = None,
+    ) -> None:
+        super().__init__(temperature, reason, residual)
+        self.code = code
+
 
 @dataclass(frozen=True)
 class ChemicalPotentialResult:
@@ -351,12 +362,22 @@ def _solve_chemical_potential(
         )
     if mass == 0:
         raise NoFiniteChemicalPotentialError(
-            None, "zero band mass is outside the supported model domain"
+            None,
+            "zero band mass is outside the supported model domain",
+            code="chemical_potential_zero_mass",
         )
     if (gap is None and fermi_energy * np.sign(mass) <= 0) or (
         gap is not None and mass < 0 and fermi_energy >= max(0.0, gap)
     ):
-        raise NoFiniteChemicalPotentialError(None, "no finite root for zero carrier density")
+        raise NoFiniteChemicalPotentialError(
+            None,
+            "no finite root for zero carrier density",
+            code=(
+                "chemical_potential_spb_fermi_energy"
+                if gap is None
+                else "chemical_potential_dpb_fermi_energy"
+            ),
+        )
 
     with np.errstate(over="ignore", under="ignore", invalid="ignore"):
         effective_mass = mass if gap is None else mass * np.float64(degen) ** (5 / 3)
