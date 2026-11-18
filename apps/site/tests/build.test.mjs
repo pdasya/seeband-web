@@ -265,7 +265,7 @@ test("serves its fonts itself, and asks no other host", () => {
     assert.doesNotMatch(
       readFileSync(path, "utf8"),
       // What a browser loads: a link to another site is only followed when clicked.
-      /\ssrc="?https?:|<link[^>]*\shref="?https?:|url\(["']?https?:/,
+      /\s(?:src|srcset)=["']?https?:|<link[^>]*\shref=["']?https?:|url\(\s*["']?https?:|@import\s*["']https?:/,
       relative(outDir, path),
     );
   }
