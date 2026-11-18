@@ -11,9 +11,10 @@ current: conventions
 
 SPB and DPB solve the signed carrier balance at each temperature with a
 bracketed method in μ/T. The target density still comes from E_F at 0 K.
-Each returned point has normalized density residual at most 1e-12, against
-the unchanged Fermi-integral approximation; an unverified point fails
-explicitly. Temperature order and repeated points do not change the solution.
+Each returned point has normalized density residual at most 1e-12. An
+unverified point fails explicitly. In an intrinsic DPB gap, the solver
+normalizes the electron and hole densities before either can round to zero.
+Temperature order and repeated points do not change the solution.
 
 SPB requires sign(m) E_F > 0. DPB with one valence and one conduction band
 has a finite root even at zero net doping. Two valence bands require
@@ -21,13 +22,25 @@ E_F < max(0, E_g). Zero mass and nonpositive degeneracies are invalid.
 These checks do not establish fit quality, repair transport limitations or
 replace human physicist confirmation and the #71 comparison.
 
+## Fermi integrals and dilute bands
+
+The core evaluates unnormalised Fermi integrals with a stable order-zero formula
+and quadrature for the other transport orders. At large negative reduced
+potential, it factors out the Boltzmann exponential before taking ratios.
+Seebeck coefficients, band weights and Lorenz numbers can then stay finite even
+when a conductivity rounds to zero. DPB electronic thermal conductivity uses the
+positive parallel-channel bipolar term
+`T σ₁σ₂/(σ₁ + σ₂) (S₁ − S₂)²`. Absolute conductivities or densities below the
+floating-point range can round to zero. The independent validation and numerical
+domain are recorded in the [P14 notes](https://github.com/pdasya/seeband-web/blob/main/packages/seeband_core/docs/golden-results.md#stable-fermi-integrals-p14).
+
 ## SPB Hall
 
 For the enabled SPB Hall mode, `x = sign(m) μ(T)/T`, where μ(T) conserves
 the carrier density set by E_F at zero temperature. The signed mass m is in
-units of mₑ: positive for electrons and negative for holes. A point with signed reduced potential
-`x > 700` is outside the supported integral range and returns NaN. For
-acoustic scattering,
+units of mₑ, positive for electrons and negative for holes. Stable Fermi
+integrals allow this calculation above the former numerical cutoff at
+`x = 700`. For acoustic scattering,
 
 `R_H n e = -sign(m) 3 F_{-1/2}(x) F_{1/2}(x) / (4 F_0(x)^2)`.
 

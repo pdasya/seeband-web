@@ -618,10 +618,41 @@ class _BandModel:
         kappa = self.calculate(dataclasses.replace(request, kind="thermal_conductivity"))
         sigma = self.calculate(dataclasses.replace(request, kind="electrical_conductivity"))
         temperature_k = kappa.temperature_k
+        thermal = np.asarray(kappa.curves["thermal_conductivity_w_per_m_k"])
+        conductivity = np.asarray(sigma.curves["electrical_conductivity_s_per_m"])
         with np.errstate(all="ignore"):
-            effective = np.asarray(kappa.curves["thermal_conductivity_w_per_m_k"]) / (
-                np.asarray(sigma.curves["electrical_conductivity_s_per_m"]) * temperature_k
-            )
+            effective = thermal / (conductivity * temperature_k)
+        # The normalized ratio stays finite when the underlying curves lose
+        # precision in the subnormal range. Explicit zero amplitude is undefined.
+        amplitude = request.parameters.get("F" if scattering == "dis" else "A", 1.0)
+        tiny = np.finfo(float).tiny
+        underflowed = (
+            np.isfinite(thermal)
+            & np.isfinite(conductivity)
+            & (thermal >= 0)
+            & (conductivity >= 0)
+            & ((thermal < tiny) | (conductivity < tiny))
+            & (amplitude > 0)
+        )
+        if underflowed.any() and fit_mode.degeneracy is not None:
+            temperatures = temperature_k[underflowed]
+            parameters = request.parameters
+            ratio = _degeneracy_ratio(request)
+            if scattering == "ionized":
+                from seeband_core.transport import ionized_transport
+
+                effective[underflowed] = ionized_transport(
+                    temperatures, parameters, fit_mode.id, ratio
+                )["lorenz_number"]
+            else:
+                effective[underflowed] = _CORE_MATH.dpb_effective_lorenz(
+                    temperatures,
+                    _value(parameters, "m_eff") / ratio,
+                    _value(parameters, "band_gap"),
+                    _value(parameters, "fermi_energy"),
+                    ratio,
+                    _value(parameters, "G" if scattering == "dis" else "B"),
+                )
         curves: dict[str, np.ndarray] = {LORENZ_CURVE: effective}
         curves |= self._band_lorenz_numbers(request, fit_mode, scattering, temperature_k)
         issues = active_issue_ids(

@@ -15,6 +15,7 @@ import numpy as np
 from scipy.special import expit, roots_legendre
 
 from seeband_core import math_module as mm
+from seeband_core.fermi_integrals import fermi_integral as fermi_integral
 
 
 @dataclass(frozen=True)
@@ -46,17 +47,6 @@ _NODES.setflags(write=False)
 _WEIGHTS.setflags(write=False)
 
 
-def fermi_integral(order: float, reduced_mu: float) -> float:
-    """Unnormalized F_order without exponentiating a positive chemical potential."""
-    if order <= -1:
-        raise ValueError("Fermi integral order must exceed -1")
-    eta = reduced_mu
-    lower, upper = max(0.0, eta - 48.0), max(0.0, eta) + 48.0
-    x = lower + (upper - lower) * (_NODES + 1.0) / 2.0
-    window = expit(x - eta) * expit(eta - x)
-    return float(np.sum(_WEIGHTS * (upper - lower) / 2.0 * x ** (order + 1) * window) / (order + 1))
-
-
 def band_transport(
     temperature_k: np.ndarray,
     reduced_mu: np.ndarray,
@@ -74,14 +64,31 @@ def band_transport(
     Integrating x^(lambda+1)(-df/dx) gives (lambda+1) F_lambda;
     the Hall moment instead uses x^(2 lambda+1/2), hence F_(2 lambda-1/2).
     """
-    lam = scattering_lambda
+    reduced_mu = np.asarray(reduced_mu, dtype=float)
+    integral, seebeck, lorenz, hall_numerator = _scaled_band_transport(
+        temperature_k, reduced_mu, mass, scattering_lambda
+    )
+    scale = np.exp(np.minimum(reduced_mu, 0.0))
+    if weighted_hall:
+        hall = hall_numerator * scale
+    else:
+        with np.errstate(over="ignore", divide="ignore"):
+            hall = hall_numerator / integral**2 / scale
+    return integral * scale, seebeck, lorenz, hall
+
+
+def _scaled_band_transport(
+    temperature_k: np.ndarray,
+    reduced_mu: np.ndarray,
+    mass: float,
+    lam: float,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Return F and the weighted Hall moment with exp(min(η, 0)) factored out."""
     if lam < 0 or not np.isfinite(lam):
         raise ValueError("The transport exponent must be finite and nonnegative")
     eta = np.asarray(reduced_mu, dtype=float)[:, None]
     lower, upper = np.maximum(0.0, eta - 48.0), np.maximum(0.0, eta) + 48.0
     x = lower + (upper - lower) * (_NODES + 1.0) / 2.0
-    # Scale out the Boltzmann exponential to retain ratios at large negative eta.
-    scale = np.exp(np.minimum(eta, 0.0))
     # For positive eta, expit products avoid overflow; for negative eta this
     # equivalent expression divides out exp(eta) before underflow can occur.
     window = np.where(eta <= 0.0, np.exp(-x) * expit(x - eta) ** 2, expit(x - eta) * expit(eta - x))
@@ -94,18 +101,13 @@ def band_transport(
     mean = np.sum(longitudinal * centered, axis=1) / j0
     variance = np.sum(longitudinal * (centered - mean[:, None]) ** 2, axis=1) / j0
     energy_mean = mean - np.minimum(eta[:, 0], 0.0)
-    integral = j0 * scale[:, 0] / (lam + 1.0)
+    integral = j0 / (lam + 1.0)
     seebeck = -np.sign(mass) * mm.kB / mm.e * energy_mean
     lorenz = (mm.kB / mm.e) ** 2 * variance
     jhall = np.sum(weight * x ** (2 * lam + 0.5), axis=1)
     factor = 3 * mm.hbar**3 * np.pi**2 / (mm.e * (2 * mm.kB * mm.me) ** 1.5)
     hall_numerator = -np.sign(mass) * factor * temperature_k**-1.5 / abs(mass) ** 1.5 * jhall
-    if weighted_hall:
-        hall = hall_numerator * scale[:, 0] / (lam + 1.0) ** 2
-    else:
-        with np.errstate(over="ignore", divide="ignore"):
-            hall = hall_numerator / j0**2 / scale[:, 0]
-    return integral, seebeck, lorenz, hall
+    return integral, seebeck, lorenz, hall_numerator / (lam + 1.0) ** 2
 
 
 def ionized_transport(
@@ -133,31 +135,56 @@ def ionized_transport(
             "hall": h,
             "electrical_conductivity": sigma,
             "thermal_conductivity": lorenz * sigma * t,
+            "lorenz_number": lorenz,
             "chemical_potential": mu,
         }
     r, gap = p["m_eff"] / degen, p["band_gap"]
     mu = mm.dpb_chemPot_vs_temp(t, gap, r, ef, degen) if potentials is None else potentials
     m1 = p.get("m1", 1.0)
-    f1, s1, l1, h1 = band_transport(t, -mu / t, -m1, law.energy_lambda, weighted_hall=True)
-    f2, s2, l2, h2 = band_transport(
-        t,
-        np.sign(r) * (mu - gap) / t,
-        r * m1 * degen ** (5.0 / 3.0),
-        law.energy_lambda,
-        weighted_hall=True,
+    eta1, eta2 = -mu / t, np.sign(r) * (mu - gap) / t
+    f1, s1, l1, h1 = _scaled_band_transport(t, eta1, -m1, law.energy_lambda)
+    f2, s2, l2, h2 = _scaled_band_transport(
+        t, eta2, r * m1 * degen ** (5.0 / 3.0), law.energy_lambda
     )
-    sigma1, sigma2 = a * temperature_factor * f1, a * temperature_factor * b / abs(r) * f2
-    sigma = sigma1 + sigma2
-    hall_base = f1 + b / abs(r) * f2
-    w1, w2 = sigma1 / sigma, sigma2 / sigma
+    relative_amplitude = b / abs(r)
+    log_scale1, log_scale2 = np.minimum(eta1, 0.0), np.minimum(eta2, 0.0)
+    with np.errstate(divide="ignore"):
+        log_amplitude = np.log(abs(relative_amplitude))
+    log_ratio = (log_scale2 - log_scale1) + log_amplitude
+    log_scale = np.where(log_ratio > 0.0, log_scale2 + log_amplitude, log_scale1)
+    scale1 = np.exp(-np.maximum(log_ratio, 0.0))
+    scale2 = np.sign(relative_amplitude) * np.exp(np.minimum(log_ratio, 0.0))
+    f1, f2 = f1 * scale1, f2 * scale2
+    total_f = f1 + f2
+    # The common Boltzmann factor cancels in the band weights. A zero
+    # normalization still leaves these weights undefined.
+    normalizer = np.where(np.isfinite(a) & (a != 0.0), total_f, np.nan)
+    w1, w2 = f1 / normalizer, f2 / normalizer
     # Open-circuit thermal conductivity includes the parallel-channel bipolar term.
-    thermal = t * (l1 * sigma1 + l2 * sigma2 + sigma1 * w2 * (s1 - s2) ** 2)
+    lorenz = w1 * l1 + w2 * l2 + w1 * w2 * (s1 - s2) ** 2
+    # Apply the common factor after forming the observable's coefficient.
+    # Two half factors retain precision when the full exponential is subnormal.
+    half_scale = np.exp(log_scale / 2.0)
+    sigma_factor = a * temperature_factor
+    sigma1 = (sigma_factor * f1 * half_scale) * half_scale
+    sigma2 = (sigma_factor * f2 * half_scale) * half_scale
+    sigma = (sigma_factor * total_f * half_scale) * half_scale
+    thermal = (sigma_factor * total_f * lorenz * t * half_scale) * half_scale
+    if a == 0.0:
+        thermal = np.zeros_like(thermal)
+    hall = (h1 * scale1 / total_f + (h2 * scale2 / total_f) * relative_amplitude) / total_f
+    # An exactly compensated Hall response remains zero as carrier density drops.
+    with np.errstate(over="ignore", divide="ignore"):
+        np.divide(hall, half_scale, out=hall, where=hall != 0.0)
+        np.divide(hall, half_scale, out=hall, where=hall != 0.0)
+        resistivity = 1.0 / sigma
     return {
         "seebeck": w1 * s1 + w2 * s2,
-        "resistivity": 1.0 / sigma,
-        "hall": (h1 / hall_base + (h2 / hall_base * b / abs(r)) * b / abs(r)) / hall_base,
+        "resistivity": resistivity,
+        "hall": hall,
         "electrical_conductivity": sigma,
         "thermal_conductivity": thermal,
+        "lorenz_number": lorenz,
         "chemical_potential": mu,
         "seebeck_band_1": w1 * s1,
         "seebeck_band_2": w2 * s2,

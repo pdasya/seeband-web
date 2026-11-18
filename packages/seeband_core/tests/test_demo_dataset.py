@@ -21,7 +21,7 @@ from seeband_core.model_catalog import registry
 from seeband_core.model_interface import FitMode, FitRequest
 from seeband_core.model_scales import default_start
 
-STORED_SHA256 = "d79e602fb241711e1398668fb84f65ca64c9c7145b01b42d4cbe8f761eac61a3"
+STORED_SHA256 = "068e37e25419ca430fdb07619a5e5256e381a7ec02334a42ef5c5ae096ce5281"
 # These hold for the stored data, with this noise. Another seed can miss them: see
 # docs/demo-dataset.md.
 RECOVERY_MARGIN = {

@@ -377,7 +377,7 @@ def test_extrapolated_data_is_flagged(client: TestClient) -> None:
     assert "interpolation_extrapolates" in flagged["known_issues"]
 
 
-def test_values_that_are_not_finite_come_back_as_null(client: TestClient) -> None:
+def test_spb_large_reduced_potential_has_finite_seebeck_and_rmse(client: TestClient) -> None:
     response = client.post(
         "/api/calc",
         json={
@@ -392,8 +392,12 @@ def test_values_that_are_not_finite_come_back_as_null(client: TestClient) -> Non
     )
 
     assert response.status_code == 200
-    assert response.json()["curves"]["seebeck_v_per_k"] == [None] * 5
-    assert response.json()["rmse"]["seebeck"] == {"value": None, "unit": "uV/K"}
+    curve = response.json()["curves"]["seebeck_v_per_k"]
+    assert len(curve) == 5
+    assert all(math.isfinite(value) and value < 0.0 for value in curve)
+    rmse = response.json()["rmse"]["seebeck"]
+    assert math.isfinite(rmse["value"])
+    assert rmse["unit"] == "uV/K"
 
 
 @pytest.mark.parametrize(
@@ -445,7 +449,7 @@ def test_parameters_with_no_result_answer_a_clear_error(client: TestClient) -> N
     assert response.json()["details"] == []
 
 
-def test_hall_curve_with_a_value_that_is_not_finite_fails_and_is_logged(client: TestClient) -> None:
+def test_hall_curve_without_a_density_root_fails_and_is_logged(client: TestClient) -> None:
     fit_mode = registry.get("dpb").describe().fit_mode("dpb_s_rho_rh")
     logger = logging.getLogger("seeband_api")
     records: list[logging.LogRecord] = []
@@ -461,7 +465,7 @@ def test_hall_curve_with_a_value_that_is_not_finite_fails_and_is_logged(client: 
             "/api/calc",
             json=_body(
                 fit_mode="dpb_s_rho_rh",
-                parameters=default_start(fit_mode) | {"fermi_energy": 3000.0},
+                parameters=default_start(fit_mode) | {"m_eff": 0.0},
                 min_temperature_k=2.0,
                 max_temperature_k=300.0,
                 points=50,
@@ -473,7 +477,9 @@ def test_hall_curve_with_a_value_that_is_not_finite_fails_and_is_logged(client: 
     assert response.status_code == 422
     assert response.json()["code"] == "calculation_failed"
     failures = [r for r in records if r.getMessage() == "calculation_failed"]
-    assert [r.__dict__["fields"] for r in failures] == [{"exception_type": "ValueError"}]
+    assert [r.__dict__["fields"] for r in failures] == [
+        {"exception_type": "NoFiniteChemicalPotentialError"}
+    ]
 
 
 def test_complex_curve_is_refused_rather_than_cut_to_its_real_part(client: TestClient) -> None:
@@ -488,11 +494,27 @@ def test_complex_curve_is_refused_rather_than_cut_to_its_real_part(client: TestC
     assert response.json()["code"] == "calculation_failed"
 
 
-def test_same_condition_leaves_a_null_in_the_mode_without_hall_data(client: TestClient) -> None:
+def test_zero_conductivity_leaves_a_null_resistivity_in_the_mode_without_hall_data(
+    client: TestClient,
+) -> None:
+    response = client.post("/api/calc", json=_body(parameters=DPB_S_RHO_PARAMETERS | {"A": 0.0}))
+
+    assert response.status_code == 200
+    curves = response.json()["curves"]
+    assert all(value is None for value in curves["resistivity_ohm_m"])
+    assert all(math.isfinite(value) for value in curves["seebeck_v_per_k"])
+
+
+@pytest.mark.parametrize("mode_id", ["dpb_s_rho", "dpb_s_rho_rh"])
+def test_high_reduced_potential_returns_finite_measured_curves(
+    client: TestClient, mode_id: str
+) -> None:
+    fit_mode = registry.get("dpb").describe().fit_mode(mode_id)
     response = client.post(
         "/api/calc",
         json=_body(
-            parameters=DPB_S_RHO_PARAMETERS | {"fermi_energy": 3000.0},
+            fit_mode=mode_id,
+            parameters=default_start(fit_mode) | {"fermi_energy": 3000.0},
             min_temperature_k=2.0,
             max_temperature_k=300.0,
             points=50,
@@ -500,7 +522,9 @@ def test_same_condition_leaves_a_null_in_the_mode_without_hall_data(client: Test
     )
 
     assert response.status_code == 200
-    assert None in response.json()["curves"]["seebeck_v_per_k"]
+    for values in response.json()["curves"].values():
+        assert len(values) == 50
+        assert all(math.isfinite(value) for value in values)
 
 
 def test_lone_surrogate_in_a_name_answers_in_the_error_format(client: TestClient) -> None:

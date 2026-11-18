@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- P14 (#105): evaluate Fermi integrals stably at large reduced chemical
+  potentials, keep Seebeck and Lorenz ratios finite for dilute bands, and
+  preserve DPB electronic thermal conductivity in previously nonfinite cases.
+  The revised half-order integral changes the numerical density solutions and
+  derived curves. See [validation and regression notes](packages/seeband_core/docs/golden-results.md#stable-fermi-integrals-p14).
+
 - R11 (#187): add the Lorenz number L(T) = kappa_e/(sigma*T) as a derived curve
   in modes with rho, in W*Ohm/K^2 and in units of L0 = pi^2/3 (k_B/e)^2, with
   export. For DPB, show the effective L with its bipolar part, and each band's

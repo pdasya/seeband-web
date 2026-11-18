@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+import math
 import os
 import re
 import signal
@@ -300,7 +301,7 @@ def test_calculation_through_real_workers_logs_no_values(tmp_path: Path) -> None
     body = {
         "model": "spb",
         "fit_mode": "spb_s",
-        # F0 underflows in transport, while the chemical-potential density solve converges.
+        # The large positive reduced potential previously overflowed in transport.
         "parameters": {"band_mass": 1.0, "fermi_energy": 1e6},
         "min_temperature_k": 123.456789,
         "max_temperature_k": 765.4321,
@@ -314,8 +315,9 @@ def test_calculation_through_real_workers_logs_no_values(tmp_path: Path) -> None
         assert response.status_code == 200
         result = response.json()
         assert result["curves"]["seebeck_v_per_k"]
-        assert all(value is None for value in result["curves"]["seebeck_v_per_k"])
-        assert result["rmse"]["seebeck"] == {"value": None, "unit": "uV/K"}
+        assert all(math.isfinite(value) for value in result["curves"]["seebeck_v_per_k"])
+        assert result["rmse"]["seebeck"]["unit"] == "uV/K"
+        assert math.isfinite(result["rmse"]["seebeck"]["value"])
         # Few rows make the fit warn, and a Seebeck this large makes the prediction not finite.
         guess_seebeck = "1.123456789"
         guess = {

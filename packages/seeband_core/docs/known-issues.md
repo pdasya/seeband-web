@@ -52,7 +52,6 @@ P4/P12 (#83, #103) remove the SPB Hall disabled-mode and stale-Fermi-energy flag
 ## What is not here
 
 - **Disabled is a flag.** The API refuses any mode carrying a disabled issue with a 409. No current mode carries one after P4/P12.
-- **F₀ underflowing (#105)** gives NaN or infinity at low temperatures with large gaps, which a client can see as non-finite values. The flag would need the result, not its inputs.
 - **No chemical potential in DPB (#106)** has no simple condition on the inputs, unlike SPB.
 - **E_F inside the gap (#107)** cannot be told from a good fit by its inputs alone, and `at_bounds` and `parameter_errors` report part of it.
 - **`underdetermined` interpolation** has no issue that fixes it, because it describes the data. `InterpolatedData` reports it.
@@ -62,9 +61,9 @@ P4/P12 (#83, #103) remove the SPB Hall disabled-mode and stale-Fermi-energy flag
 
 P8 (#87) checks density roots before transport. An uncertifiable density root
 fails the calculation request (HTTP 422) or fit explicitly; no partial array
-is used. Successful density checks do not prevent the separate F₀ transport
-cancellation/underflow (#105), which can still produce nonfinite curve points.
-Invalid optimizer trial domains are rejected separately from numerical failures;
+is used. P14 (#105) stabilizes the Fermi integrals and transport ratios.
+Absolute results outside the floating-point range can still round to zero or
+overflow. Invalid optimizer trial domains are rejected separately from numerical failures;
 invalid starts still fail. See [the solver contract](chemical-potential.md).
 
 P11 (#102) removes `acphdis_band_weight`: total DPB acPhDis Seebeck now

@@ -105,7 +105,7 @@ def test_synthetic_hall_fit_recovers_physical_parameters(
     before = copy.deepcopy(request)
     result = model.fit(request)
     assert result.status == "converged", result.message
-    golden = json.loads((Path(__file__).parent / "fixtures" / "physics" / "p4.json").read_text())
+    golden = json.loads((Path(__file__).parent / "fixtures" / "physics" / "p14.json").read_text())
     reference = golden["synthetic"][f"{mass}:{scattering}"]
     assert reference["known_parameters"] == known
     assert result.parameters == pytest.approx(reference["fitted_parameters"], rel=2e-5)
@@ -197,22 +197,22 @@ def test_a_step_down_in_temperature_gives_the_same_hall_as_a_step_up() -> None:
     np.testing.assert_array_equal(down[::-1], up)
 
 
-def test_points_beyond_the_reach_of_the_fermi_integrals_are_nan_and_the_rest_stay() -> None:
+def test_high_positive_reduced_potentials_yield_finite_hall_curves() -> None:
     from seeband_core.model_catalog import registry
     from seeband_core.model_interface import CurveRequest
     from seeband_core.model_scales import default_start
 
-    # E_F / T = 1000 at 1 K overflows exp(eta); at 2 K, 500, it does not.
+    # These points straddle the old exponential-overflow cutoff.
     hall = math.spb_hall_vs_temp(np.array([1.0, 2.0, 10.0]), 1000.0, 1, -1.0)
-    assert np.isnan(hall[0])
-    assert np.all(np.isfinite(hall[1:]))
+    assert np.all(np.isfinite(hall))
+    density = math.spb_carCon(1000.0, 1.0, 0.0) * 1e6
+    assert -hall[0] * density * math.e == pytest.approx(1.0, rel=1e-6)
 
     mode = registry.get("spb").describe().fit_mode("spb_s_rho_rh")
     start = default_start(mode) | {"band_mass": 1.0, "fermi_energy": 2000.0}
     curve = registry.get("spb").calculate(CurveRequest(mode.id, start, 2, 300, 20, "acPh"))
     hall_curve = curve.curves["hall_m3_per_c"]
-    assert np.isnan(hall_curve[0])
-    assert np.all(np.isfinite(hall_curve[curve.temperature_k > 3]))
+    assert np.all(np.isfinite(hall_curve))
 
 
 def _synthetic_hole_data() -> tuple[dict[str, float], dict[str, object]]:
@@ -355,5 +355,5 @@ def test_hall_domain_uses_solved_potential_not_fermi_energy_proxy(sign: int) -> 
     temperatures = np.array([1.0])
     fermi_energy = sign * 700.0001
     mu = math.spb_chemPot_vs_temp(temperatures, sign, fermi_energy)
-    assert sign * mu[0] < math.MAX_REDUCED_POTENTIAL
+    assert sign * mu[0] < 700.0
     assert np.isfinite(math.spb_hall_vs_temp(temperatures, fermi_energy, sign, -sign)[0])

@@ -280,3 +280,36 @@ New verified-sequential-v2 tests independently check profiling, final conditiona
 consistency, public-R bounds/held values and physical limits. New implementation
 regressions and measured-input aggregate evidence must be recorded separately.
 See [the verified fitting contract](verified-sequential-fit.md).
+
+## Stable Fermi integrals (P14)
+
+P14 evaluates the same unnormalised Fermi–Dirac integrals. It uses the stable
+softplus for F₀ and quadrature of the Fermi window for the other supported
+orders. The continuous half-order integral replaces the old piecewise
+approximation in the density equation. Intrinsic DPB density balance uses
+scaled positive densities, preserving the normalized residual and its tolerance.
+
+The scalar tests compare the required orders −½, 0, ½, 1 and 2 against 60-digit
+references over a grid spanning reduced potentials from −6000 to 6000.
+They use a relative tolerance of 1e-12 for normally representable results,
+and separately check the scaled forms in the dilute limit. Raw integrals below
+the representable range round to zero. The transport tests check the analytic
+dilute limits and finite electronic thermal conductivity from 2 K to 800 K
+on representative SPB and DPB cases. At 50 K and a 2000 K DPB gap with E_F
+at −100 K, all three legacy scattering paths previously returned NaN. An
+additional deterministic sample across the public parameter ranges gave
+7425 finite, nonnegative thermal points over 2–800 K. The 315 curve requests
+in analytically excluded no-root domains were counted separately.
+
+The P14 overlay, `tests/fixtures/physics/p14.json`, records this implementation's
+outputs for the affected replays on the original inputs. The desktop capture
+and older physics fixtures remain historical evidence. Regenerate the overlay
+from the source checkout with:
+
+```sh
+PYTHONPATH=packages/seeband_core/src uv run python packages/seeband_core/scripts/capture_p14_results.py
+```
+
+Desktop/web comparison in #71 and a physicist's confirmation remain release
+requirements. The overlay measures reproducibility of the corrected numerical
+paths.
