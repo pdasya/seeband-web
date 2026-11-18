@@ -492,6 +492,10 @@ test.describe("real fits", () => {
         .filter({ hasText: /^Stopped by its rule/ }),
     ).toBeVisible({ timeout: 30_000 });
     await page.getByRole("link", { name: "Results", exact: true }).click();
+    // The fit screen has its own Data to file, so the results page must be open first.
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Results", exact: true }),
+    ).toBeVisible();
     await page.getByRole("button", { name: "Data to file" }).click();
     await page.getByRole("radio", { name: /^ZIP, a file each/ }).click();
     const [file] = await Promise.all([
