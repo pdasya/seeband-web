@@ -508,6 +508,8 @@ export const STRINGS = {
     updating: "Updating…",
     lastCurveStays: "The last curve stays on the chart.",
     noResult: "The calculation has no result for these parameters.",
+    noChemicalPotential:
+      "The model has no finite chemical potential for these band parameters. Check the Fermi energy and band masses.",
     rateLimited: "Too many updates in a short time. Trying again shortly.",
     rateLimitedWait:
       "Too many updates in a short time. Change a value to try again.",

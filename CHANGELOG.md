@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- P15 (#106): Explain when a curve cannot be calculated because the band
+  parameters have no finite chemical potential. The API still returns 422,
+  with a specific error detail. Calculations and fits are unchanged.
+
 - R11 (#187): add the Lorenz number L(T) = kappa_e/(sigma*T) as a derived curve
   in modes with rho, in W*Ohm/K^2 and in units of L0 = pi^2/3 (k_B/e)^2, with
   export. For DPB, show the effective L with its bipolar part, and each band's

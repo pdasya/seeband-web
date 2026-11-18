@@ -413,7 +413,7 @@ def test_spb_without_a_finite_chemical_potential_is_an_explicit_error(
     )
     assert response.status_code == 422
     assert response.json()["code"] == "calculation_failed"
-    assert response.json()["details"] == []
+    assert _details(response) == [(["body", "parameters"], "no_chemical_potential")]
 
 
 @pytest.mark.parametrize(("band_gap", "fermi_energy"), [(1000.0, 1000.0), (-100.0, 0.0)])
@@ -432,7 +432,7 @@ def test_dpb_without_a_finite_chemical_potential_is_an_explicit_error(
 
     assert response.status_code == 422
     assert response.json()["code"] == "calculation_failed"
-    assert response.json()["details"] == []
+    assert _details(response) == [(["body", "parameters"], "no_chemical_potential")]
 
 
 def test_parameters_with_no_result_answer_a_clear_error(client: TestClient) -> None:
@@ -442,7 +442,7 @@ def test_parameters_with_no_result_answer_a_clear_error(client: TestClient) -> N
 
     assert response.status_code == 422
     assert response.json()["code"] == "calculation_failed"
-    assert response.json()["details"] == []
+    assert _details(response) == [(["body", "parameters"], "no_chemical_potential")]
 
 
 def test_hall_curve_with_a_value_that_is_not_finite_fails_and_is_logged(client: TestClient) -> None:
@@ -473,6 +473,7 @@ def test_hall_curve_with_a_value_that_is_not_finite_fails_and_is_logged(client: 
     assert response.status_code == 422
     assert response.json()["code"] == "calculation_failed"
     failures = [r for r in records if r.getMessage() == "calculation_failed"]
+    assert response.json()["details"] == []
     assert [r.__dict__["fields"] for r in failures] == [{"exception_type": "ValueError"}]
 
 

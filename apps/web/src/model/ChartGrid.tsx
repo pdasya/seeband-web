@@ -41,7 +41,9 @@ const NOTHING: LiveCalc = { result: null, busy: false, error: null };
 export function failureText(error: ApiError): string {
   switch (error.code) {
     case "calculation_failed":
-      return text.noResult;
+      return error.details.some(({ code }) => code === "no_chemical_potential")
+        ? text.noChemicalPotential
+        : text.noResult;
     case "rate_limited":
       return retriesByItself(error) ? text.rateLimited : text.rateLimitedWait;
     // The server is busy, with the calculations of others or of this page, and says when to retry.

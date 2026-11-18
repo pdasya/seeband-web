@@ -15,7 +15,12 @@ from seeband_core.model_interface import (
 )
 
 from seeband_api.calc_pool import CalcPoolDep
-from seeband_api.calc_worker import CalcOutcome, CalculationFailed, calculate
+from seeband_api.calc_worker import (
+    CalcOutcome,
+    CalculationFailed,
+    CalculationWithoutChemicalPotential,
+    calculate,
+)
 from seeband_api.errors import ApiError, ErrorDetail
 from seeband_api.json_values import finite_or_none
 from seeband_api.request_checks import (
@@ -280,10 +285,22 @@ async def post_calc(body: CalcRequest, pool: CalcPoolDep, max_points: MaxPointsD
         )
     except CalculationFailed as error:
         log_calculation_failure(str(error))
+        failure_details = (
+            [
+                invalid(
+                    "no_chemical_potential",
+                    "The model has no finite chemical potential for these band parameters",
+                    ["parameters"],
+                )
+            ]
+            if isinstance(error, CalculationWithoutChemicalPotential)
+            else None
+        )
         raise ApiError(
             HTTPStatus.UNPROCESSABLE_CONTENT,
             "calculation_failed",
             "The calculation has no result for these parameters and temperatures",
+            failure_details,
         ) from None
     # A long list takes a moment to convert, so this leaves the event loop free too.
     return await run_in_threadpool(_to_response, outcome, _measured_points(body))

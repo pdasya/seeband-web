@@ -9,6 +9,7 @@ from dataclasses import dataclass
 
 import numpy as np
 from seeband_core.fit_quality import Rmse, curve_rmse
+from seeband_core.math_module import NoFiniteChemicalPotentialError
 from seeband_core.model_catalog import registry
 from seeband_core.model_interface import CurveRequest, CurveResult, Measurement, Quantity
 
@@ -18,6 +19,10 @@ class CalculationFailed(Exception):
 
     It carries only the type of the core's exception, as the core's text can quote values.
     """
+
+
+class CalculationWithoutChemicalPotential(CalculationFailed):
+    """The core rejected the parameters as outside the finite-root domain."""
 
 
 @dataclass(frozen=True, eq=False)
@@ -77,6 +82,8 @@ def calculate(
             if measurements
             else {}
         )
+    except NoFiniteChemicalPotentialError as error:
+        raise CalculationWithoutChemicalPotential(type(error).__name__) from error
     except (ArithmeticError, ValueError) as error:
         raise CalculationFailed(type(error).__name__) from error
     return CalcOutcome(curve, rmse)
