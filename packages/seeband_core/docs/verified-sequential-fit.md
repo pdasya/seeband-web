@@ -64,9 +64,25 @@ sides permitted by the user's bounds. On the same demo, a plateau RMSE of
 63.136 µV/K falls to 0.8084 µV/K at `fermi_energy ≈ −150.1195 K`, with the
 same fit objective, held values and certification thresholds. When the bounds
 keep the fit in the gap, the warning still applies: transport does not locate
-the Fermi energy there (#107). Other derivative columns must still pass the
-numerical check. In the same demo with only `m_eff` held and `band_gap` free,
-starting both `band_gap` and `fermi_energy` at `800 K` still fails that check.
+the Fermi energy there (#107).
+
+With a free gap, a stencil that narrows the gap across the conduction edge
+also samples the onset of carriers. Verified Fit keeps the gap stencil on
+the intrinsic side when the bounds allow it and still checks refinement at
+half the step. This changes only the derivative probes, not the allowed fit
+parameters. If fitting the gap leaves the Fermi energy on the plateau with
+a nonzero residual, the same stage tries populated-side starts from its
+improved point before the terminal audit. When no intrinsic-side stencil is
+available, the ordinary admissible derivative check still applies.
+
+On the same demo, with only `m_eff` held and both energies starting at
+`800 K`, the fit now settles at `band_gap ≈ 799.8726 K` and
+`fermi_energy ≈ −150.1328 K` with a `0.808359 µV/K` RMSE. A noiseless
+conduction-side test from the same start recovers a `650 K` gap and
+`1000 K` Fermi energy. A separate intrinsic test recovers a `900 K` gap
+while leaving the Fermi energy undetermined. On the demo, setting the gap
+upper bound to the initial edge at `800 K` still gives an explicit derivative
+validation failure: no widened-gap probe is admissible.
 
 ## Result interpretation
 

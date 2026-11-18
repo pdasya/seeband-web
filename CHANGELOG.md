@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Verified Fit: certify the free DPB gap derivative on the intrinsic side of
+  the conduction edge when feasible. If fitting the gap still leaves the
+  Fermi energy on a plateau with nonzero residual, try the populated sides
+  from the updated point before the terminal audit. Transport formulas, fit
+  bounds, objectives and certification thresholds are unchanged.
+
 - Verified Fit: recover from a flat DPB Fermi-energy interval without testing
   its exact zero derivative by crossing a band edge. Try both permitted
   populated sides and retain the better certified result. If the bounds keep

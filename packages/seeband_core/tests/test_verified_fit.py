@@ -71,6 +71,62 @@ def test_verified_can_recover_to_the_conduction_side_when_the_valence_side_is_ex
     assert result.diagnostics.residuals["seebeck"].rmse < 1e-10
 
 
+def test_verified_recovers_with_the_gap_free_at_the_conduction_edge():
+    model = DpbModel()
+    mode = model.describe().fit_mode("dpb_s")
+    start = default_start(mode) | {"m_eff": 1.2, "band_gap": 800.0, "fermi_energy": 800.0}
+    result = model.fit(
+        FitRequest(
+            mode.id,
+            {"seebeck": load_demo_dataset().measurements["seebeck"]},
+            start,
+            scattering="acPh",
+            held=frozenset({"m_eff"}),
+        )
+    )
+
+    assert result.status == "converged"
+    assert result.diagnostics.stage_consistent is True
+    assert result.diagnostics.recoveries > 0
+    assert result.parameters["m_eff"] == 1.2
+    assert result.parameters["band_gap"] == pytest.approx(799.8726, abs=0.02)
+    assert result.parameters["fermi_energy"] == pytest.approx(-150.1328, abs=0.01)
+    assert result.diagnostics.residuals["seebeck"].rmse * 1e6 < 0.81
+
+
+@pytest.mark.parametrize(
+    ("true_gap_k", "true_fermi_k", "upper_fermi_k"),
+    [(650.0, 1000.0, 1400.0), (900.0, 800.0, 800.0)],
+)
+def test_verified_can_find_a_free_gap_from_the_conduction_edge(
+    true_gap_k, true_fermi_k, upper_fermi_k
+):
+    model = DpbModel()
+    mode = model.describe().fit_mode("dpb_s")
+    start = default_start(mode) | {"m_eff": 1.2, "band_gap": 800.0, "fermi_energy": 800.0}
+    temperature_k = np.linspace(100.0, 800.0, 18)
+    values = mm.dpb_see_vs_temp(temperature_k, 1.2, true_gap_k, true_fermi_k, 1.0)
+    result = model.fit(
+        FitRequest(
+            mode.id,
+            {"seebeck": Measurement(temperature_k, values)},
+            start,
+            bounds={"band_gap": Bounds(300.0, 1200.0), "fermi_energy": Bounds(0.0, upper_fermi_k)},
+            scattering="acPh",
+            held=frozenset({"m_eff"}),
+        )
+    )
+
+    assert result.status == "converged"
+    assert result.parameters["band_gap"] == pytest.approx(true_gap_k, abs=1e-4)
+    assert result.diagnostics.residuals["seebeck"].rmse < 1e-10
+    if true_fermi_k > true_gap_k:
+        assert result.parameters["fermi_energy"] == pytest.approx(true_fermi_k, abs=1e-4)
+        assert "fermi_energy_in_gap" not in result.known_issues
+    else:
+        assert "fermi_energy_in_gap" in result.known_issues
+
+
 @pytest.mark.parametrize("scattering", ["acPh", "dis", "ionized"])
 @pytest.mark.parametrize("sign", [-1.0, 1.0])
 def test_verified_profiles_tiny_reciprocal_amplitude(scattering, sign):

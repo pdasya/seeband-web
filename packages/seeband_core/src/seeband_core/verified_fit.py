@@ -451,34 +451,45 @@ class _Engine:
         base: Mapping[str, float],
         point: np.ndarray,
     ) -> np.ndarray:
-        """Use the exact Fermi-energy derivative on the DPB plateau, including its edges.
+        """Certify DPB derivatives without crossing the carrier onset from inside the gap.
 
         Movement out of the plateau adds carriers as the distance to the edge to the power 3/2.
-        The derivative at the edge is zero, but stencils that cross it do not converge at fourth
-        order. All other columns still need the numerical certificate.
+        The Fermi-energy derivative is zero, but the gap derivative is generally nonzero. On the
+        plateau, widening the gap gives the smooth side of the same first derivative. Clip only
+        the stencil, never the optimizer's bounds, and use the ordinary half-step certificate.
+        If the gap is already at a bound that leaves no plateau stencil, keep the ordinary
+        admissible derivative check rather than moving another parameter or relaxing the test.
         """
         zero_columns: tuple[int, ...] = ()
-        if (
-            self.dpb
-            and "fermi_energy" in coordinates.names
-            and fermi_energy_in_gap(dict(base) | coordinates.decode(point))
-        ):
-            zero_columns = (coordinates.names.index("fermi_energy"),)
+        lower = coordinates.lower
+        names = coordinates.names
+        if self.dpb and ("fermi_energy" in names or "band_gap" in names):
+            parameters = dict(base) | coordinates.decode(point)
+            if fermi_energy_in_gap(parameters):
+                if "fermi_energy" in names:
+                    zero_columns = (names.index("fermi_energy"),)
+                if "band_gap" in names:
+                    index = names.index("band_gap")
+                    edge = parameters["fermi_energy"] / coordinates.scale[index]
+                    if coordinates.upper[index] > edge:
+                        lower = lower.copy()
+                        lower[index] = min(point[index], max(lower[index], edge))
         return _validated_jacobian(
             evaluate,
             point,
-            coordinates.lower,
+            lower,
             coordinates.upper,
             zero_columns=zero_columns,
         )
 
     def recovery_seeds(
-        self, coordinates: _Coordinates, parameters: Mapping[str, float]
+        self, coordinates: _Coordinates, parameters: Mapping[str, float], point: np.ndarray
     ) -> list[np.ndarray]:
-        """Try the populated sides of a DPB gap without leaving the user's bounds."""
-        names, x = coordinates.names, coordinates.point
-        seeds = [coordinates.multiply(x, factor) for factor in (0.5, 2.0)]
-        if self.dpb and "fermi_energy" in names and fermi_energy_in_gap(parameters):
+        """Try the populated sides if reachable, skipping probes that stay in the DPB gap."""
+        names = coordinates.names
+        seeds = [coordinates.multiply(point, factor) for factor in (0.5, 2.0)]
+        in_gap = self.dpb and "fermi_energy" in names and fermi_energy_in_gap(parameters)
+        if in_gap:
             if names == ["fermi_energy"]:
                 seeds = []
             gap = parameters["band_gap"]
@@ -487,15 +498,23 @@ class _Engine:
             for energy in (-min(gap, -bounds.lower) / 2, gap + min(gap, bounds.upper - gap) / 2):
                 if not (bounds.lower <= energy < 0 or gap < energy <= bounds.upper):
                     continue
-                seed = x.copy()
+                seed = point.copy()
                 seed[index] = energy / coordinates.scale[index]
                 if not fermi_energy_in_gap(dict(parameters) | coordinates.decode(seed)):
                     seeds.append(seed)
         if "m_eff" in names:
             index = names.index("m_eff")
-            seed = x.copy()
+            seed = point.copy()
             seed[index] = np.clip(0.0, coordinates.lower[index], coordinates.upper[index])
             seeds.append(seed)
+        if in_gap and "band_gap" in names:
+            populated = [
+                seed
+                for seed in seeds
+                if not fermi_energy_in_gap(dict(parameters) | coordinates.decode(seed))
+            ]
+            if populated:
+                return populated
         return seeds
 
     def stage(self, q: Quantity, base: Mapping[str, float]) -> tuple[dict[str, float], float]:
@@ -558,13 +577,22 @@ class _Engine:
         # Rank loss can conceal a useful direction even when its computed gradient is zero.
         deficient = np.linalg.matrix_rank(start_jac) < len(names)
         nonstationary = stationarity > _STATIONARITY_TOL
-        if (
+        improved_on_plateau = (
+            self.dpb
+            and "band_gap" in names
+            and "fermi_energy" in names
+            and best_cost > 1e-8
+            and fermi_energy_in_gap(p | coordinates.decode(best))
+        )
+        if improved_on_plateau or (
             np.linalg.norm(best - x) <= 1e-10
             and initial_cost > 1e-8
             and (deficient or nonstationary)
         ):
-            tried = {tuple(x)}
-            for seed in self.recovery_seeds(coordinates, p):
+            recovery_point = best if improved_on_plateau else x
+            recovery_parameters = p | coordinates.decode(recovery_point)
+            tried = {tuple(x), tuple(best)}
+            for seed in self.recovery_seeds(coordinates, recovery_parameters, recovery_point):
                 key = tuple(seed)
                 if key in tried:
                     continue
