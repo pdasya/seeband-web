@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Verified Fit: recover a free DPB gap from its upper bound when the Fermi
+  energy is held at the conduction edge. Keep the held value and bounds,
+  and check nearby admissible gaps against the original objective.
+
 - Verified Fit: when the free DPB gap starts at its upper bound on the
   conduction edge, use an in-bounds plateau reference with an identical
   residual for the derivative check and optimizer seed. Keep the original

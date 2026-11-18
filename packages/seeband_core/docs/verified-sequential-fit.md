@@ -86,14 +86,31 @@ reference strictly inside the positive gap. The zero-temperature carrier
 target and its first derivatives are the same as at the conduction edge.
 The fit checks that the residual vector is identical at the reference before
 using it to take shrinking-gap probes or seed the optimizer. The original
-endpoint remains a candidate and wins ties. If the Fermi energy is held or
-there is no admissible interior reference, the original derivative check
+endpoint remains a candidate and wins ties. If both energies are free but
+no admissible interior reference exists, the original derivative check
 still applies and can fail explicitly.
 
 With the demo's gap bounds set to `[300, 800] K`, the same start converges to
 `band_gap ≈ 799.8727 K` and `fermi_energy ≈ −150.1328 K`, with a Seebeck RMSE
 of `0.808359 µV/K`. All 1,202 transport evaluations, including derivative
 probes and the terminal audit, respected the supplied bounds.
+
+When the gap is the only free parameter of the Seebeck stage and the Fermi
+energy is held at the upper conduction edge, the zero-temperature carrier
+target has zero first derivative with respect to the gap at that point.
+The edge derivative can therefore use checked zero-target roots for its
+auxiliary probes without changing the held Fermi energy. The actual fit
+objective and terminal residuals still use the original carrier target.
+The solver checks smaller admissible gaps on the true objective before
+retaining the endpoint. This can find a better nearby fit even when the
+endpoint passes the local stationarity check.
+
+On the bundled demo with `m_eff = 1.2` and `fermi_energy = 800 K` held, and
+gap bounds `[300, 800] K`, the fit converges to `band_gap ≈ 799.8984 K`.
+Its Seebeck RMSE is `61.121734 µV/K`, matching an independent bounded
+one-variable search. The starting RMSE is `63.135757 µV/K`. All 305 checked
+transport evaluations respect the gap bounds and keep the public Fermi
+energy at `800 K`, including auxiliary derivative probes.
 
 ## Result interpretation
 
