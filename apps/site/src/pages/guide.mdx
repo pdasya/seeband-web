@@ -1,0 +1,256 @@
+---
+layout: ../layouts/Prose.astro
+title: User guide · SeeBand
+description: How to load transport data, fit single and double parabolic band models, read the results and export them in SeeBand Web, on the Fe2VAl0.9Si0.1 example.
+current: guide
+---
+
+# User guide
+
+This guide walks through SeeBand Web on the example of the full-Heusler
+compound Fe₂VAl₀.₉Si₀.₁: loading data, fitting one band to the Seebeck
+coefficient, fitting two bands to S, ρ and $R_H$, and reading and exporting
+the results. It is adapted from the
+[user guide of the desktop SeeBand](https://github.com/xAngelswordx/SeeBand/blob/803b0e7a425a0a3f4f59688df77e3ad283ca49a1/UserGuide_SeeBand.pdf)
+by Michael Parzer and Alexander Riss, published under the MIT licence. The
+method is described in the SeeBand paper,² and the formulas behind each step
+are on the [Conventions](/conventions/) page.
+
+The example files are `01_Fe2VAl09Si01_see.txt`, `_rho.txt` and `_hall.txt`
+in the [examples of the desktop SeeBand](https://github.com/xAngelswordx/SeeBand/tree/803b0e7a425a0a3f4f59688df77e3ad283ca49a1/data/Examples).
+The screenshots and numbers below come from runs of this version on them; a
+later version can give other numbers, and
+[Results that changed](/results-changed/) says why.
+
+## Load data
+
+The fit screen opens with the Data panel. Load each quantity from its own file
+under **Separate files**, or one table whose columns you assign under
+**Single file**. A file has the temperature in one column and the quantity in
+another; columns are separated by spaces, tabs or commas.
+
+<figure>
+  <img
+    src="/guide/data.png"
+    width="776"
+    height="438"
+    loading="lazy"
+    alt="The Data panel with three files loaded: S, ρ and R_H of Fe2VAl0.9Si0.1, each with its points, temperature range, units and first row."
+  />
+  <figcaption>
+    The three example files loaded. Each card gives the number of points, the
+    temperature range and the units; the first row is shown as the file writes
+    it and in SI.
+  </figcaption>
+</figure>
+
+Units do not have to be SI. Each column's unit is read from its header, such
+as `S [uV/K]`, or chosen from the list beside it; with neither, the value is
+read in SI and the unit is marked as assumed. The desktop examples have no
+header and are in SI, so their units are assumed and correct. Resistivity can
+be loaded as conductivity σ instead, which is used as ρ = 1/σ.
+
+The **Interpolation** switch replaces each quantity's points, for the fit, by
+a degree-10 Chebyshev polynomial at about one point per 20 K. This keeps a
+temperature interval with many points from weighing more than the rest. It
+stays within each quantity's measured range and never extrapolates; the
+interpolated points are not independent measurements.
+
+## One band: the Seebeck coefficient
+
+Choose **SPB** and the fit mode **S**. For a single parabolic band, S depends
+only on the Fermi energy $E_F$ and on the sign of the band mass m, which makes
+the band a conduction (m > 0) or a valence band (m < 0). The size of m does
+not change S, so it is not fitted in this mode.
+
+One band does not describe the example over the whole range: more bands take
+part at higher temperatures, as the Fermi–Dirac distribution broadens. Under
+**Fit range, K**, set 5 and 240 K, so that only the points below 240 K enter
+the fit; the grey shading on the chart shows what is left out. Then press
+**Run fit**.
+
+<figure>
+  <img
+    src="/guide/spb-seebeck-fit.png"
+    width="1440"
+    height="964"
+    loading="lazy"
+    alt="The fit screen after an SPB fit of S on 5 to 240 K: the model follows the measured S below 240 K, and the result gives m = 1.01 and E_F = 0.06 eV."
+  />
+  <figcaption>
+    SPB fit of S on 5–240 K. The line is the model at the fitted values; the
+    shaded range was left out of the fit.
+  </figcaption>
+</figure>
+
+The fit settles with a positive mass, so transport is by electrons in this
+convention, and $E_F$ = 641 K, which is 0.055 eV, inside the conduction band.
+The field shows 0,06 eV, at its step of 0.01 eV; **Parameters to file** gives
+the full value. The desktop guide gave 0.059 eV for the same 641 K, which was
+a conversion error: 641 K × $k_B$ = 0.0552 eV.
+
+**Edit bounds**, the gear beside Parameters, sets the range each parameter may
+take in a fit. To keep a parameter at its value, lock it with the padlock
+beside it instead of narrowing its bounds.
+
+## Two bands: Seebeck, resistivity and Hall
+
+Choose **DPB** and the fit mode **S + ρ + $R_H$**. The two-band model has a
+valence band 1, with its top at zero, and a band 2 at $E_g$. Its parameters
+are:
+
+- $N_1$ and $N_2$, the band degeneracies, which are not fitted;
+- $m_2/m_1$, the band mass ratio, whose sign sets the type of band 2;
+- $E_g$, the position of band 2, and $E_F$, the Fermi energy at T = 0;
+- for acoustic phonons or ionized impurities, A, the conductivity scale, and
+  B, band 2's scale relative to band 1's; for alloy disorder, F and G instead;
+- $m_1$, the absolute mass of band 1, which only $R_H$ sets.
+
+Choose the scattering mechanism under **Scattering**: acoustic phonons, alloy
+disorder or ionized impurities. One mechanism applies over the whole range.
+The desktop's combination of acoustic phonons and alloy disorder by
+Matthiessen's rule is not offered.
+
+For acoustic phonons and alloy disorder, a neural net gives the starting
+values when S is loaded, and **Initial guess** gives them again; the badge
+beside **Fit** names the net's temperature range. The fit of S is the most
+delicate step, as its parameters set the electronic structure, so a good start
+matters. Press **Run fit**.
+
+<figure>
+  <img
+    src="/guide/dpb-fit.png"
+    width="1440"
+    height="1500"
+    loading="lazy"
+    alt="The fit screen after a DPB fit of S, ρ and R_H with acoustic phonons: S is followed closely, ρ deviates at low temperatures, and the badge says the iteration limit was reached."
+  />
+  <figcaption>
+    DPB fit of S, ρ and $R_H$ with acoustic phonons, from the neural net's
+    start.
+  </figcaption>
+</figure>
+
+On the example, with acoustic phonons, the fit follows S closely, with an RMSE
+of 2.68 µV/K. It ends at its limit of 20 iterations, so these values are not a
+converged result, as the badge and the notes say. The same fit of S and ρ
+alone, whose limit is 1000 iterations, settles at the same S and ρ.
+
+The resistivity deviates at low temperatures (RMSE 9.8 %): with acoustic
+phonons, ρ follows from the carriers alone and has no residual part, which the
+data have. The fit of $R_H$ changes only $m_1$, which sets the size of $R_H$;
+here it ends at 9.0 $m_e$, near its upper bound of 10, and $R_H$ is not
+described (RMSE 104 %). A fit of $R_H$ is a check of the electronic structure
+that S and ρ set, and this one does not confirm it.
+
+## Results
+
+**Open results**, or **Results** in the header, gives the fit on one page:
+the model, scattering and RMSE of each quantity, the parameters with what each
+means and how it was found, and the fit log, which lists the solver runs in
+their order and how the fit stopped.
+
+<figure>
+  <img
+    src="/guide/results.png"
+    width="1440"
+    height="797"
+    loading="lazy"
+    alt="The results page: the RMSE of S, ρ and R_H, the iterations, the fit parameters with their bounds and status, and the fit log."
+  />
+  <figcaption>
+    The results of the DPB fit. Each parameter's status says how far the fit can
+    vouch for it; here all are not assessed, as the fit did not converge.
+  </figcaption>
+</figure>
+
+A parameter's status says what the fit can tell about it: estimated, at
+bound, not determined by the data, did not move from its start, not assessed,
+or fixed, as the degeneracies are. None of these says that a value is right.
+Uncertainties are not assessed. A fit that converges does not show that the
+model suits the sample: check the RMSE, the curves against the data, and any
+parameter at its bound.
+
+**Earlier runs** keeps each fit of the session, and compares two of them side
+by side.
+
+### Additional graphs
+
+The additional graphs are calculated from the values in use, for what the fit
+mode allows: μ(T) in every mode, σ, $\kappa_e$ and the Lorenz number with ρ
+data, and the band contributions and carrier concentrations for two bands.
+
+<figure>
+  <img
+    src="/guide/additional-graphs.png"
+    width="1392"
+    height="1070"
+    loading="lazy"
+    alt="Six additional graphs: chemical potential, conductivity with 1/ρ of the data, electronic thermal conductivity, Lorenz number, band contributions to S and carrier concentration by band."
+  />
+  <figcaption>The additional graphs of the DPB fit.</figcaption>
+</figure>
+
+- **Chemical potential μ(T).** Even for this small gap, μ moves with
+  temperature, out of the conduction band and towards the valence band, which
+  changes every transport coefficient.
+- **Band contributions.** Each band's S is weighted by its conductivity, so
+  the two contributions add up to S:
+
+  $$
+  S_{\mathrm{cont},i} = \frac{S_i\,\sigma_i}{\sigma_1 + \sigma_2}.
+  $$
+
+- **Electronic thermal conductivity $\kappa_e$.** It is often estimated by the
+  Wiedemann–Franz law, $\kappa_e = L\sigma T$, with the Lorenz number of
+  degenerate metals, $L_0$ = 2.44 × 10⁻⁸ W·Ω/K², or with an estimate from the
+  Seebeck coefficient such as that of Kim et al.¹ Here L follows from the band
+  parameters, and for two bands $\kappa_e$ includes the bipolar part, which
+  comes from electrons and holes moving together and can raise $\kappa_e$
+  markedly at high temperatures. It cannot be measured on its own, so a two-band
+  fit is a way to estimate it. The lattice part is not modelled.
+- **Lorenz number L(T)**, in units of $L_0$: the effective $\kappa_e/(\sigma T)$,
+  with the bipolar part, and each band's own L.
+- **Carrier concentration by band.** Without $R_H$ data the size of $m_1$ is
+  not measured, so these values are relative; compare the bands, not the values.
+
+The formulas are in [Conventions](/conventions/#thermal-conductivity-and-lorenz-number).
+
+## Export and sessions
+
+- **Data to file** saves the data, the curve of the start values and the fit
+  curve, as text, a CSV table or a ZIP of plain tables with the additional
+  graphs and the session.
+- **Parameters to file** saves a line for each parameter, with its unit and
+  status, as text or a CSV table.
+- **Session to file** saves the whole session, with the data, as one file;
+  **Open session**, under the data, loads it back.
+- **Report (PDF)**, on the results page, prints the results.
+
+## What differs from the desktop guide
+
+- Data can be loaded in other units, as one table or as σ instead of ρ.
+- Scattering offers ionized impurities, and no longer the combination of
+  acoustic phonons and alloy disorder.
+- The default fitting method checks each step numerically; **Legacy
+  sequential** reproduces the desktop's fitting.
+- A parameter is held with its padlock rather than by narrow bounds.
+- Some known errors of the desktop are corrected, so results can differ from it
+  on purpose: see [Results that changed](/results-changed/).
+- 641 K is 0.055 eV, not 0.059 eV, and the electronic thermal conductivity is
+  $\kappa_e$ throughout, not also λ.
+- The desktop guide's unresolved references are given in full where they could
+  be identified. Its pointer to a chapter of an unnamed reference, for examples
+  of how the parameters change the transport properties, could not be, and is
+  left out.
+
+## References
+
+1. H.-S. Kim, Z. M. Gibbs, Y. Tang, H. Wang and G. J. Snyder, “Characterization
+   of Lorenz number with Seebeck coefficient measurement”, APL Materials 3,
+   041506 (2015), [doi:10.1063/1.4908244](https://doi.org/10.1063/1.4908244).
+2. M. Parzer, A. Riss, F. Garmroudi, J. de Boor, T. Mori and E. Bauer,
+   “SeeBand: a highly efficient, interactive tool for analyzing electronic
+   transport data”, npj Computational Materials,
+   [doi:10.1038/s41524-025-01645-y](https://doi.org/10.1038/s41524-025-01645-y),
+   [arXiv:2409.06261](https://arxiv.org/abs/2409.06261).

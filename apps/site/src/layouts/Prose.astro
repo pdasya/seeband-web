@@ -9,7 +9,7 @@ interface PageProps {
   title: string;
   description: string;
   /** The header link this page is, if any. */
-  current?: "conventions";
+  current?: "conventions" | "guide";
 }
 interface Heading {
   depth: number;
@@ -164,6 +164,25 @@ const sections =
   .prose th {
     background: var(--muted);
     font-weight: 600;
+  }
+
+  /* A screenshot fits the column, keeping its proportions. */
+  .prose figure {
+    margin: 24px 0;
+  }
+
+  .prose img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+
+  .prose figcaption {
+    margin-top: 8px;
+    color: var(--color-zinc-600);
+    font-size: 14px;
   }
 
   .prose .katex-display {
