@@ -10,18 +10,20 @@ pnpm --filter @seeband/site test      # builds the site and checks its output
 pnpm --filter @seeband/site serve     # builds it and previews it on port 4321, for the app's dev:all
 ```
 
-| Path             | Holds                                                                          |
-| ---------------- | ------------------------------------------------------------------------------ |
-| `src/strings.ts` | every string the site shows                                                    |
-| `src/layouts`    | `Base.astro`, with the shared header and footer; `Prose.astro` for formulas    |
-| `src/pages`      | one file per page; `conventions.mdx` (MDX) and `results-changed.md` (Markdown) |
-| `markdown.mjs`   | remark-math and rehype-katex, which render formulas when the site is built     |
+| Path             | Holds                                                                                       |
+| ---------------- | ------------------------------------------------------------------------------------------- |
+| `src/strings.ts` | every string the site shows                                                                 |
+| `src/layouts`    | `Base.astro`, with the shared header and footer; `Prose.astro` for formulas                 |
+| `src/pages`      | one file per page; `conventions.mdx` and `guide.mdx` (MDX), `results-changed.md` (Markdown) |
+| `markdown.mjs`   | remark-math and rehype-katex, which render formulas when the site is built                  |
 
 **English only for now**, at `/`. Another language would get its own routes, and the shared header's language switch would then need to link to the page in that language, as a static page cannot read the language cookie.
 
 **The header lists the same sections as the app's:** Overview, Model fit, Results and Conventions. Links from Markdown pages into the repository go to GitHub, as its files are not on the site.
 
 **No script is needed.** Pages work with JavaScript turned off. The only script is the shared header's language handler, about 300 bytes, which does nothing with one language. Plotly and Pyodide are not loaded here, and the build test checks it.
+
+**The user guide** (`/guide/`) is adapted from the desktop SeeBand's PDF guide (MIT). Its screenshots in `public/guide/` and the numbers it quotes come from `scripts/capture-guide.mjs`, run against the app and API on the Fe2VAl0.9Si0.1 example; run it again when the screens change.
 
 **Formulas** in Markdown and MDX are rendered by KaTeX at build time, so a page gets HTML and CSS and no script. A page with formulas uses `Prose.astro`, the only layout that loads KaTeX's styles; in MDX, name it as `layout` in the frontmatter, with `title` and `description`. `tests/fixtures/math` builds such a page.
 

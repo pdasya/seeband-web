@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- S4 (#66): add the user guide at /guide/, adapted from the desktop SeeBand's
+  PDF guide (MIT) to the web app, on the Fe2VAl0.9Si0.1 example, with
+  screenshots and numbers from runs of this version. It corrects the desktop
+  guide's 641 K = 0.059 eV to 0.055 eV, uses κ_e throughout instead of also
+  λ_e, and gives its references in full where they could be identified.
+
 - P15 (#106): distinguish zero mass and the SPB and DPB Fermi-energy
   constraints in curve failures. The API returns HTTP 422 with a
   reason-specific detail. Fit failures distinguish the finite-root domain
