@@ -9,6 +9,7 @@ export const APP_RESULTS_URL = "/results";
 export const APP_DEMO_URL = "/fit?demo=1";
 export const CONVENTIONS_URL = "/conventions/";
 export const RESULTS_CHANGED_URL = "/results-changed/";
+export const GUIDE_URL = "/guide/";
 
 export const LANGUAGE = "en";
 
@@ -21,6 +22,7 @@ export const STRINGS = {
     fit: "Model fit",
     results: "Results",
     conventions: "Conventions",
+    guide: "Guide",
   },
   skipToContent: "Skip to content",
   onThisPage: "On this page",
