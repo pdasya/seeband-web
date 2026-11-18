@@ -95,6 +95,8 @@ test("links to the app and the original SeeBand", () => {
   );
 });
 
+const textOfPage = (html) => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+
 /** The page's main content, without the shared header and footer. */
 const mainOf = (html) => html.match(/<main[\s\S]*<\/main>/)?.[0] ?? "";
 // Visible text, with tags and Astro's attributes out of the way.
@@ -151,15 +153,15 @@ test("has the Conventions and results-changed pages, linked from the header", ()
     );
   }
   const conventions = page("conventions/index.html");
-  assert.match(
-    conventions,
-    /<title>Calculation conventions · SeeBand<\/title>/,
-  );
+  assert.match(conventions, /<title>Conventions and model · SeeBand<\/title>/);
   assert.match(
     conventions,
     /<a href="\/conventions\/"[^>]*aria-current="page"/,
   );
-  assert.match(conventions, /<h2[^>]*>Lorenz number<\/h2>/);
+  assert.match(
+    conventions,
+    /<h2[^>]*>Thermal conductivity and Lorenz number<\/h2>/,
+  );
   assert.match(conventions, /href="\/results-changed\/"/);
   assert.match(page("results-changed/index.html"), /<table>/);
   // Links into the repository go to GitHub, as relative paths do not exist on the site.
@@ -171,6 +173,37 @@ test("has the Conventions and results-changed pages, linked from the header", ()
       path,
     );
   }
+});
+
+test("Conventions renders its formulas, lists its sections and ties issues to the registry", () => {
+  const conventions = page("conventions/index.html");
+  // KaTeX at build time: math as HTML, no failures, and the page's own styles for it.
+  assert.ok((conventions.match(/class="katex"/g) ?? []).length >= 40);
+  assert.doesNotMatch(conventions, /katex-error/);
+  // Each section is in the side list, by its anchor.
+  const anchors = [...conventions.matchAll(/<h2 id="([^"]+)"/g)].map(
+    (m) => m[1],
+  );
+  assert.ok(anchors.length >= 10);
+  for (const anchor of anchors) {
+    assert.match(conventions, new RegExp(`<a href="#${anchor}">`), anchor);
+  }
+  // The registry's issues, each with its tracking issue; a core test checks they match it.
+  for (const id of [
+    "dpb_loop_degeneracy",
+    "collapsed_m_eff",
+    "no_chemical_potential",
+    "hall_dis_no_reference",
+    "band_diagram_formula",
+    "interpolation_extrapolates",
+  ]) {
+    assert.match(conventions, new RegExp(`<code>${id}</code>`), id);
+  }
+  // No mixed scattering is offered any more.
+  assert.match(
+    textOfPage(conventions),
+    /acPhDis, with its C and D\) is not offered/,
+  );
 });
 
 test("needs no script but the header's, and loads no heavy library", () => {

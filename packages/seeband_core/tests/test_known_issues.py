@@ -18,6 +18,8 @@ from seeband_core.model_interface import CurveKind, CurveRequest, FitMode, FitRe
 from seeband_core.model_scales import default_start
 
 DOC = Path(__file__).parents[1] / "docs" / "known-issues.md"
+# The public Conventions page lists them too, so that visitors see what is flagged.
+CONVENTIONS = Path(__file__).parents[3] / "apps" / "site" / "src" / "pages" / "conventions.mdx"
 SPB = ("spb_s", "spb_s_rho", "spb_s_rho_rh")
 DPB = ("dpb_s", "dpb_s_rho", "dpb_s_rho_rh")
 LOOP = ("dpb_s_rho", "dpb_s_rho_rh")
@@ -110,6 +112,15 @@ def test_the_doc_and_the_list_match_both_ways() -> None:
     rows = {}
     for line in DOC.read_text(encoding="utf-8").splitlines():
         match = re.match(r"\| `(\w+)`\s*\| (\w+)\s*\|.*\| (#\d+)\s*\|$", line)
+        if match:
+            rows[match.group(1)] = (match.group(2), match.group(3))
+    assert rows == {issue.id: (issue.severity, issue.fixed_by) for issue in KNOWN_ISSUES}
+
+
+def test_the_conventions_page_lists_each_issue_as_the_registry_does() -> None:
+    rows = {}
+    for line in CONVENTIONS.read_text(encoding="utf-8").splitlines():
+        match = re.match(r"\| `(\w+)`\s*\| (\w+)\s*\|.*\| \[(#\d+)\]\([^)]*\)\s*\|$", line)
         if match:
             rows[match.group(1)] = (match.group(2), match.group(3))
     assert rows == {issue.id: (issue.severity, issue.fixed_by) for issue in KNOWN_ISSUES}
