@@ -52,14 +52,21 @@ held values remain fixed. Evaluation and sweep budgets are finite; cycles,
 stalls and budget exhaustion are distinct diagnostic reasons. Neither solver
 success nor a small change from the starting vector is enough by itself.
 
-One DPB recovery failure can be reproduced with the bundled demo Seebeck
+One DPB recovery failure was reproduced with the bundled synthetic demo Seebeck
 data, acoustic phonons, held `m_eff = 1.2` and `band_gap = 800 K`, and a free
 `fermi_energy` starting at `400 K` with default bounds. The doubled seed lands
 at `800 K`, exactly the conduction-band edge. At that point the derivative
 estimates from scaled steps `1e-5` and `5e-6` differed by about 41% relative to
-the smaller-step estimate. The fit reports `derivative_validation_failure`.
-This is separate from the in-gap identification warning (#107): the data
-cannot locate the Fermi energy within the gap, even when the fit succeeds.
+the smaller-step estimate. The old fit reported `derivative_validation_failure`.
+The Fermi-energy derivative is now evaluated as exactly zero on the closed
+positive gap interval. For this free parameter, recovery tries the populated
+sides permitted by the user's bounds. On the same demo, a plateau RMSE of
+63.136 µV/K falls to 0.8084 µV/K at `fermi_energy ≈ −150.1195 K`, with the
+same fit objective, held values and certification thresholds. When the bounds
+keep the fit in the gap, the warning still applies: transport does not locate
+the Fermi energy there (#107). Other derivative columns must still pass the
+numerical check. In the same demo with only `m_eff` held and `band_gap` free,
+starting both `band_gap` and `fermi_energy` at `800 K` still fails that check.
 
 ## Result interpretation
 

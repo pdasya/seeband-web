@@ -4,8 +4,71 @@ import numpy as np
 import pytest
 from seeband_core import math_module as mm
 from seeband_core.band_models import DpbModel, SpbModel
+from seeband_core.demo_dataset import load_demo_dataset
 from seeband_core.model_interface import Bounds, CurveRequest, FitRequest, Measurement
 from seeband_core.model_scales import default_start
+
+
+@pytest.mark.parametrize("fermi_start_k", [0.0, 400.0, 800.0])
+def test_verified_recovers_from_the_dpb_gap_and_both_edges(fermi_start_k):
+    model = DpbModel()
+    mode = model.describe().fit_mode("dpb_s")
+    start = default_start(mode) | {
+        "m_eff": 1.2,
+        "band_gap": 800.0,
+        "fermi_energy": fermi_start_k,
+    }
+    data = load_demo_dataset().measurements["seebeck"]
+    result = model.fit(
+        FitRequest(
+            mode.id,
+            {"seebeck": data},
+            start,
+            scattering="acPh",
+            held=frozenset({"m_eff", "band_gap"}),
+        )
+    )
+
+    assert result.status == "converged"
+    assert result.diagnostics.stage_consistent is True
+    assert result.diagnostics.recoveries > 0
+    assert result.parameters["m_eff"] == 1.2
+    assert result.parameters["band_gap"] == 800.0
+    assert result.parameters["fermi_energy"] == pytest.approx(-150.1194, abs=0.002)
+    assert result.diagnostics.residuals["seebeck"].rmse * 1e6 < 0.81
+
+
+@pytest.mark.parametrize(("fermi_start_k", "lower_k"), [(400.0, 0.0), (800.0, 800.0)])
+def test_verified_can_recover_to_the_conduction_side_when_the_valence_side_is_excluded(
+    fermi_start_k, lower_k
+):
+    from seeband_core.verified_fit import evaluate
+
+    model = DpbModel()
+    mode = model.describe().fit_mode("dpb_s")
+    start = default_start(mode) | {
+        "m_eff": 1.2,
+        "band_gap": 800.0,
+        "fermi_energy": fermi_start_k,
+    }
+    temperature_k = np.linspace(100.0, 800.0, 18)
+    values = evaluate("dpb", mode.id, start | {"fermi_energy": 1000.0}, temperature_k, "acPh")[
+        "seebeck"
+    ]
+    result = model.fit(
+        FitRequest(
+            mode.id,
+            {"seebeck": Measurement(temperature_k, values)},
+            start,
+            bounds={"fermi_energy": Bounds(lower_k, 1100.0)},
+            scattering="acPh",
+            held=frozenset({"m_eff", "band_gap"}),
+        )
+    )
+
+    assert result.status == "converged"
+    assert result.parameters["fermi_energy"] == pytest.approx(1000.0, abs=1e-4)
+    assert result.diagnostics.residuals["seebeck"].rmse < 1e-10
 
 
 @pytest.mark.parametrize("scattering", ["acPh", "dis", "ionized"])

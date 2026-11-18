@@ -71,27 +71,27 @@ def test_a_fermi_energy_inside_the_gap_is_not_determined(
 ) -> None:
     """The review's s13 cases: E_F in the gap with m_eff > 0 has no effect on the data.
 
-    The legacy fit ends with E_F where it started, which says nothing about it. The verified fit
-    finds no derivative to verify and fails, so it assesses E_F not at all. Neither calls it
-    estimated.
+    The bounds keep E_F within the plateau. Both algorithms leave E_F where it started,
+    which says nothing about its value.
     """
     fit_mode = registry.get("dpb").describe().fit_mode(mode_id)
     start = default_start(fit_mode) | {"m_eff": 1.2, "band_gap": 800.0, "fermi_energy": 400.0}
     held = frozenset(name for name in ("m_eff", "band_gap", "A", "B") if name in start)
 
     result = _fit(
-        "dpb", mode_id, start=start, scattering=scattering, algorithm=algorithm, held=held
+        "dpb",
+        mode_id,
+        start=start,
+        bounds={"fermi_energy": Bounds(0.0, 800.0)},
+        scattering=scattering,
+        algorithm=algorithm,
+        held=held,
     )
 
-    status = result.parameter_status["fermi_energy"]  # type: ignore[attr-defined]
-    if algorithm == "legacy-sequential-v1":
-        assert result.status != "failed"  # type: ignore[attr-defined]
-        assert 0 < result.parameters["fermi_energy"] < 800.0  # type: ignore[attr-defined]
-        assert status == "not_determined"
-        assert "fermi_energy_in_gap" in result.known_issues  # type: ignore[attr-defined]
-    else:
-        assert result.status == "failed"  # type: ignore[attr-defined]
-        assert status == "not_assessed"
+    assert result.status == "converged"  # type: ignore[attr-defined]
+    assert result.parameters["fermi_energy"] == 400.0  # type: ignore[attr-defined]
+    assert result.parameter_status["fermi_energy"] == "not_determined"  # type: ignore[attr-defined]
+    assert "fermi_energy_in_gap" in result.known_issues  # type: ignore[attr-defined]
 
 
 def test_verified_fit_warns_about_fermi_energy_for_an_exact_in_gap_curve() -> None:

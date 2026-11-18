@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Verified Fit: recover from a flat DPB Fermi-energy interval without testing
+  its exact zero derivative by crossing a band edge. Try both permitted
+  populated sides and retain the better certified result. If the bounds keep
+  the fit in the gap, the Fermi energy remains undetermined. Transport
+  formulas, objectives and numerical acceptance thresholds are unchanged.
+
 - P16 (#107): flag a DPB Fermi energy in a positive valence–conduction gap,
   including either edge, where transport cannot locate E_F within the gap.
   The warning changes no calculated values or fit behavior.
