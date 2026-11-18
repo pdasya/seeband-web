@@ -6,6 +6,11 @@
   including either edge, where transport cannot locate E_F within the gap.
   The warning changes no calculated values or fit behavior.
 
+- P15 (#106): distinguish zero mass and the SPB and DPB Fermi-energy
+  constraints in curve failures. The API returns HTTP 422 with a
+  reason-specific detail. Fit failures distinguish the finite-root domain
+  from numerical certification failures.
+
 - R11 (#187): add the Lorenz number L(T) = kappa_e/(sigma*T) as a derived curve
   in modes with rho, in W*Ohm/K^2 and in units of L0 = pi^2/3 (k_B/e)^2, with
   export. For DPB, show the effective L with its bipolar part, and each band's

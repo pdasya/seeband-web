@@ -2741,6 +2741,58 @@
               }
             }
           },
+          "422": {
+            "description": "Invalid request or calculation has no result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "invalid_calculation": {
+                    "value": {
+                      "code": "invalid_calculation",
+                      "message": "Invalid calculation",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "parameters",
+                            "m_eff"
+                          ],
+                          "code": "missing_parameter",
+                          "message": "This mode needs it"
+                        }
+                      ]
+                    }
+                  },
+                  "calculation_failed": {
+                    "value": {
+                      "code": "calculation_failed",
+                      "message": "The calculation has no result for these parameters and temperatures",
+                      "details": []
+                    }
+                  },
+                  "calculation_without_chemical_potential": {
+                    "value": {
+                      "code": "calculation_failed",
+                      "message": "The calculation has no result for these parameters and temperatures",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "parameters"
+                          ],
+                          "code": "chemical_potential_zero_mass",
+                          "message": "Band mass must be nonzero."
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
           "429": {
             "description": "Too many requests from this client, or for the server",
             "headers": {

@@ -40,8 +40,13 @@ const NOTHING: LiveCalc = { result: null, busy: false, error: null };
 /** What a chart says of a failed curve, in our own words. */
 export function failureText(error: ApiError): string {
   switch (error.code) {
-    case "calculation_failed":
-      return text.noResult;
+    case "calculation_failed": {
+      const messages: Record<string, string> = text.calculationDetails;
+      const detail = error.details.find(({ code }) =>
+        Object.hasOwn(messages, code),
+      );
+      return messages[detail?.code ?? ""] ?? text.noResult;
+    }
     case "rate_limited":
       return retriesByItself(error) ? text.rateLimited : text.rateLimitedWait;
     // The server is busy, with the calculations of others or of this page, and says when to retry.

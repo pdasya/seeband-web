@@ -263,6 +263,8 @@ class _CallbackError(Exception):
 
 def _failure_message(error: Exception) -> str:
     """Return fixed text for a failed fit, because solver messages are not written for users."""
+    if isinstance(error, _CORE_MATH.NoFiniteChemicalPotentialError):
+        return "The fit encountered band parameters with no finite chemical potential."
     if isinstance(error, ChemicalPotentialError):
         return "The chemical-potential balance could not be verified during the fit."
     text = str(error)
