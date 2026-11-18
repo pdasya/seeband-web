@@ -487,7 +487,7 @@ export const STRINGS = {
     lorenzDescription:
       "Chart of the Lorenz number against temperature, in units of L₀",
     lorenzNote:
-      "L = κ_e/(σT), in units of L₀ = π²/3 (k_B/e)² = 2,44 × 10⁻⁸ W·Ω/K². It tends to L₀ for a degenerate band, and to 2 (k_B/e)² for a nondegenerate one with a constant mean free path.",
+      "L = κ_e/(σT), in units of L₀ = π²/3 (k_B/e)² = 2,44 × 10⁻⁸ W·Ω/K². It tends to L₀ for a degenerate band, and for a nondegenerate one to 2 (k_B/e)² with acoustic phonons or alloy disorder and to 4 (k_B/e)² with ionized impurities.",
     lorenzTwoBandsNote:
       "The solid line is the effective L = κ_e/(σT), with the bipolar part, which can rise far above either band's; the dashed lines are each band's own L. All in units of L₀ = π²/3 (k_B/e)² = 2,44 × 10⁻⁸ W·Ω/K².",
     thermalConductivityNote:

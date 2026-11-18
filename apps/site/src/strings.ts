@@ -23,6 +23,7 @@ export const STRINGS = {
     conventions: "Conventions",
   },
   skipToContent: "Skip to content",
+  onThisPage: "On this page",
   home: {
     title: "SeeBand Web",
     description:

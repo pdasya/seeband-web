@@ -1,0 +1,329 @@
+---
+layout: ../layouts/Prose.astro
+title: Conventions and model · SeeBand
+description: Units, formulas and assumptions of the single and double parabolic band models in SeeBand Web, as its calculation core computes them.
+current: conventions
+---
+
+# Conventions and model
+
+Units, formulas and assumptions of the parabolic band models, as the calculation
+core computes them. Formulas are checked against the core's code; where the
+core differs from the desktop SeeBand, the core is what is described here, and
+[Results that changed](/results-changed/) lists why. A physicist has not yet
+confirmed the corrections.
+
+## Units and signs
+
+- Energies ($E_F$, $E_g$, μ) are in kelvin in the core, that is $E/k_B$. The app
+  shows them in eV, at 1 K = 8.617333262 × 10⁻⁵ eV.
+- Masses are in units of the electron mass mₑ. A positive mass is an electron
+  (conduction) band, a negative mass a hole (valence) band.
+- For a band with signed mass m and edge E₀, the reduced potential is
+  $\eta = \operatorname{sign}(m)\,(\mu - E_0)/T$.
+- In DPB, band 1 is a valence band with its top at zero, so
+  $\eta_1 = -\mu/T$. Band 2 starts at $E_g$, and the sign of m₂/m₁ sets its type:
+  $\eta_2 = \operatorname{sign}(R)\,(\mu - E_g)/T$.
+- $E_F$ sets the carrier density at T = 0. The chemical potential μ(T) is
+  solved from it at each temperature.
+
+## Fermi integrals
+
+All transport properties are written with unnormalised Fermi integrals of the
+reduced potential:
+
+$$
+F_j(\eta) = \int_0^\infty \frac{x^j}{1 + e^{x-\eta}}\,dx,
+\qquad F_0(\eta) = \ln\!\left(1 + e^{\eta}\right).
+$$
+
+$F_{1/2}$ is interpolated from a table on $-10 \le \eta < 20$, with the
+nondegenerate form $\Gamma(\tfrac32)\,e^\eta/(1 + 0.27\,e^\eta)$ below −9.9 and
+the degenerate form $\tfrac23(\eta^2 + \pi^2/6)^{3/4}$ above 19.9. The other
+integrals of acoustic phonons and alloy disorder are evaluated as polylogarithms;
+ionized impurities use Gauss–Legendre quadrature.
+
+## Scattering
+
+The relaxation time is $\tau \propto T^{\beta} E^{\lambda - 1/2}$. One mechanism
+applies over the whole temperature range.
+
+| Mechanism                 | λ   | β   | Explicit T factor of σ |
+| ------------------------- | --- | --- | ---------------------- |
+| Acoustic phonons (`acPh`) | 0   | −1  | $T^0\,F_0(\eta)$       |
+| Alloy disorder (`dis`)    | 0   | 0   | $T^1\,F_0(\eta)$       |
+| Ionized impurities        | 2   | 0   | $T^3\,F_2(\eta)$       |
+
+σ also depends on T through η: a nondegenerate band at fixed density gives
+$\sigma \propto T^{-3/2}$ for acoustic phonons, $T^{-1/2}$ for alloy disorder and
+$T^{3/2}$ for ionized impurities.
+
+The ionized option is the power law $\tau \propto E^{3/2}$, with no screening
+or impurity-ionization model. The desktop's mixed acoustic-and-disorder option
+(acPhDis, with its C and D) is not offered; old mixed results are not ionized
+results. See the [ionized-impurity formulas](https://github.com/pdasya/seeband-web/blob/main/packages/seeband_core/docs/ionized-impurities.md).
+
+## Carrier density and chemical potential
+
+The carrier density of one band and the density that $E_F$ sets at T = 0, in
+m⁻³ as written; the core and the carrier-concentration curves report them in
+cm⁻³:
+
+$$
+n(\mu, m, T) = 4\pi \left(\frac{2|m|\,m_e k_B T}{h^2}\right)^{3/2}
+F_{1/2}\!\left(\frac{\operatorname{sign}(m)\,\mu}{T}\right),
+$$
+
+$$
+n_0(E_F, m) = \frac{8\pi}{3}\left(\frac{2|m|\,m_e k_B |E_F|}{h^2}\right)^{3/2},
+$$
+
+with $n_0 = 0$ unless $\operatorname{sign}(m)\,E_F > 0$.
+
+SPB solves $n(\mu, m, T) = n_0(E_F, m)$. DPB conserves the signed carrier
+balance, with $r = R/N$, $s = \operatorname{sign}(r)$ and band 2's density mass
+$rN^{5/3}$:
+
+$$
+-n(\mu, -1, T) + s\,n(\mu - E_g,\, rN^{5/3}, T)
+= -n_0(E_F, -1) + s\,n_0(E_F - E_g,\, rN^{5/3}).
+$$
+
+Both are solved at each temperature with a bracketed method in μ/T. A point is
+returned only if its normalised density residual is at most 10⁻¹²; otherwise the
+whole calculation fails explicitly. Temperature order and repeated points do not change the
+solution.
+
+SPB needs $\operatorname{sign}(m)\,E_F > 0$. DPB with one valence and one
+conduction band has a root even at zero net doping; two valence bands need
+$E_F < \max(0, E_g)$. Zero mass and nonpositive degeneracies are invalid. These
+checks do not establish fit quality.
+
+## DPB mass and degeneracy
+
+Let N = N₂/N₁. The public parameter m₂/m₁ is the signed mass ratio
+R = m₂/|m₁|: its magnitude is the band-mass ratio and its sign the type of
+band 2. The formulas receive r = R/N, the ratio weighted by inverse degeneracy,
+converted once; starts, fitted values, bounds and uncertainties stay in R. The
+carrier-density weight of band 2 is $N|R|^{3/2}$.
+
+R is the ratio of single-valley band masses, not of density-of-states masses:
+entering $m_{d,2}/m_{d,1}$ would count N twice. For R > 0 the transport weight
+N/R holds for λ = 0 acoustic deformation-potential scattering with the same
+deformation potential and elastic constant in both bands, isotropic valleys
+whose band mass serves for both density and conduction, and no inter-valley or
+inter-band scattering. Longitudinal transport uses the positive mass magnitude
+|r|; carrier signs stay in occupations, signed density and Hall. See
+[positive DPB weights](https://github.com/pdasya/seeband-web/blob/main/packages/seeband_core/docs/dpb-positive-weights.md).
+
+The same weight is used for alloy disorder, where it holds for equal alloy
+potentials, and for ionized impurities, where it does not follow from the same
+assumptions. For unscreened Coulomb scattering with the same impurity density in
+both bands, $\tau \propto m^{1/2}E^{3/2}$ gives $\sigma_2/\sigma_1 \propto N R$
+rather than $N/R$, so B would have to be $R^2$, which its default bounds exclude
+unless $|R| \approx 1$. Which law ionized DPB fits should use is open
+([#247](https://github.com/pdasya/seeband-web/issues/247)).
+
+## Seebeck coefficient
+
+For one band, with λ of the chosen mechanism:
+
+$$
+S_i = -\operatorname{sign}(m_i)\,\frac{k_B}{e}
+\left[\frac{(\lambda + 2)\,F_{\lambda+1}(\eta_i)}{(\lambda + 1)\,F_\lambda(\eta_i)} - \eta_i\right],
+$$
+
+that is $2F_1/F_0 - \eta$ for λ = 0 and $4F_3/(3F_2) - \eta$ for ionized
+impurities. SPB's S depends only on η, so not on |m| or on the scattering scale.
+
+For two bands the contributions are weighted by conductivity:
+
+$$
+S = \frac{F_\lambda(\eta_1)\,S_1 + w\,F_\lambda(\eta_2)\,S_2}{F_\lambda(\eta_1) + w\,F_\lambda(\eta_2)}
+$$
+
+| Mode and mechanism                 | Weight w            |
+| ---------------------------------- | ------------------- |
+| S only                             | $1/\lvert r \rvert$ |
+| S + ρ, acoustic phonons or ionized | $B/\lvert r \rvert$ |
+| S + ρ, alloy disorder              | $G/\lvert r \rvert$ |
+
+The band contributions on the charts are the weighted terms, which add up to S,
+not each band's own S.
+
+## Conductivity and resistivity
+
+ρ = 1/σ at the same parameters and temperatures. With $w$ as above and
+$T_{300} = T/(300\ \mathrm{K})$:
+
+| Mechanism          | SPB σ                     | DPB σ                                                           |
+| ------------------ | ------------------------- | --------------------------------------------------------------- |
+| Acoustic phonons   | $A\,F_0(\eta)$            | $A\,[F_0(\eta_1) + (B/\lvert r\rvert)\,F_0(\eta_2)]$            |
+| Alloy disorder     | $F\,T\,F_0(\eta)$         | $F\,T\,[F_0(\eta_1) + (G/\lvert r\rvert)\,F_0(\eta_2)]$         |
+| Ionized impurities | $A\,T_{300}^3\,F_2(\eta)$ | $A\,T_{300}^3\,[F_2(\eta_1) + (B/\lvert r\rvert)\,F_2(\eta_2)]$ |
+
+A is a free conductivity amplitude in S/m, and F one in S/(m·K), a unit the app
+does not yet label. B and G are dimensionless: band 2's amplitude relative to
+band 1's. They are fitted amplitudes, not densities or scattering rates derived
+from the sample. By default B is bounded to 0.9–1.1 and G to 0.5–2, both
+editable, so band 2's weight comes mostly from r; a value at its bound is marked
+so and is not determined by the data. The DPB band conductivities add up to σ.
+
+## Hall coefficient
+
+With $K = 3\pi^2\hbar^3 / \bigl(e\,(2k_B m_e)^{3/2}\bigr)$, one band gives
+
+$$
+R_{H} = -\operatorname{sign}(m)\,K\,\frac{T^{-3/2}}{|m|^{3/2}}\,
+\frac{(2\lambda + \tfrac12)\,F_{2\lambda - 1/2}(\eta)}{(\lambda + 1)^2\,F_\lambda(\eta)^2},
+$$
+
+with η from μ(T). For λ = 0 this is
+
+$$
+R_H\,n\,e = -\operatorname{sign}(m)\,\frac{3\,F_{-1/2}(\eta)\,F_{1/2}(\eta)}{4\,F_0(\eta)^2},
+$$
+
+whose magnitude tends to 1 when degenerate and to 3π/8 when nondegenerate; for
+ionized impurities it tends to 1 and to 315π/512 ≈ 1.93. In
+SPB, the $R_H$ fit sets the absolute mass |m|; a point with η > 700 is outside
+the supported range of the integrals and returns no value.
+
+Two bands combine as
+
+$$
+R_H = \frac{\sigma_1^2 R_{H,1} + \sigma_2^2 R_{H,2}}{(\sigma_1 + \sigma_2)^2},
+$$
+
+where band 1 has mass −m₁ and band 2 mass $r\,m_1 N^{5/3}$, each with the
+one-band $R_{H,i}$. The DPB $R_H$ fit sets the absolute mass m₁; the other
+parameters are held from the S and ρ fits. Without $R_H$ data, m₁ = 1, so the
+carrier concentration per band is relative. See the
+[DPB Hall prefactor](https://github.com/pdasya/seeband-web/blob/main/packages/seeband_core/docs/dpb-hall-prefactor.md)
+and the [SPB Hall fit](https://github.com/pdasya/seeband-web/blob/main/packages/seeband_core/docs/spb-hall-fit.md).
+
+## Thermal conductivity and Lorenz number
+
+One band's Lorenz number:
+
+$$
+L_i = \left(\frac{k_B}{e}\right)^2
+\left[\frac{(\lambda + 3)\,F_{\lambda+2}}{(\lambda + 1)\,F_\lambda}
+- \left(\frac{(\lambda + 2)\,F_{\lambda+1}}{(\lambda + 1)\,F_\lambda}\right)^2\right],
+$$
+
+which is $(k_B/e)^2\,(3F_0F_2 - 4F_1^2)/F_0^2$ for λ = 0. It tends to
+$(\lambda + 2)\,(k_B/e)^2$ when nondegenerate, so 2 for acoustic phonons and
+alloy disorder and 4 for ionized impurities, and to
+$L_0 = \tfrac{\pi^2}{3}(k_B/e)^2 = 2.443 \times 10^{-8}\ \mathrm{W\,\Omega/K^2}$
+when degenerate.
+
+The electronic thermal conductivity is $\kappa_e = L\,\sigma\,T$ for SPB, and for
+DPB
+
+$$
+\kappa_e = T\,(L_1\sigma_1 + L_2\sigma_2)
++ T\,\frac{\sigma_1\sigma_2}{\sigma_1 + \sigma_2}\,(S_1 - S_2)^2,
+$$
+
+where the second term is the bipolar part and $S_i$ is each band's own S. The
+lattice part is not modelled. The Lorenz number chart shows the effective
+$L = \kappa_e/(\sigma T)$, in units of L₀; for DPB it includes the bipolar part
+and can rise far above either band's L, which are shown beside it. L needs σ,
+so S-only modes do not offer it.
+
+## Which data fit which parameters
+
+| Fit mode      | SPB                                                  | DPB                                                               |
+| ------------- | ---------------------------------------------------- | ----------------------------------------------------------------- |
+| S             | $E_F$                                                | m₂/m₁, $E_g$, $E_F$                                               |
+| S + ρ         | $E_F$, then A (or F for alloy disorder), in one pass | m₂/m₁, $E_g$, $E_F$ and A, B (or F, G), repeated until they agree |
+| S + ρ + $R_H$ | the same, then the band mass m                       | the same, then m₁                                                 |
+
+In SPB S and S + ρ, the band mass is not fitted and only its sign matters.
+Whether the data pin a parameter down is shown for each fit; a fit that
+converges does not show that the model suits the sample.
+
+## Fitting methods
+
+The default method, `verified-sequential-v2`, fits each stage by least squares
+in the order above, solves the conductivity or Hall amplitude exactly for the
+other parameters, works in public R throughout, and checks at the end that no
+stage refit improves the result. `legacy-sequential-v1` reproduces the
+desktop's fitting loop, with a threshold of 0.1 on the relative change of every
+loop parameter and at most 1000 iterations in DPB S + ρ, or 20 with $R_H$; it
+keeps the desktop's degeneracy limitation (`dpb_loop_degeneracy`). Ionized
+impurities need the verified method. See
+[verified sequential fitting](https://github.com/pdasya/seeband-web/blob/main/packages/seeband_core/docs/verified-sequential-fit.md).
+
+Results name the core version, the fitting method and how the fit stopped. A
+missing version is unknown and is not inferred.
+
+## Initial values
+
+A neural net gives DPB starting values for acoustic phonons and alloy disorder,
+from the first of its temperature ranges that the data cover. SPB starting
+values come from the chosen mechanism. An estimate is a starting value only, not
+evidence that a model fits the sample.
+
+## Input data
+
+Data come as separate files per quantity or as one table whose columns are
+assigned. Columns are separated by spaces, tabs or commas; `#` starts a
+comment. A decimal comma is refused.
+
+| Quantity | SI unit | Recognised headers           | Other units              |
+| -------- | ------- | ---------------------------- | ------------------------ |
+| T        | K       | `T`, `T_K`, `temp`           | °C                       |
+| S        | V/K     | `S`, `seebeck`               | µV/K, mV/K               |
+| ρ        | Ω·m     | `rho`, `ρ`, `resistivity`    | Ω·cm, mΩ·cm, µΩ·m, µΩ·cm |
+| σ        | S/m     | `sigma`, `σ`, `conductivity` | S/cm                     |
+| $R_H$    | m³/C    | `RH`, `R_H`, `hall`          | cm³/C                    |
+
+Headers are matched without case, except `T` and `S`. A column with no unit
+given is read in SI. σ is used as ρ = 1/σ.
+
+## Interpolation
+
+Interpolation fits a degree-10 Chebyshev polynomial to all of a quantity's
+points and evaluates it only where the requested fit range and that quantity's
+measured range overlap, at about one point per 20 K. A 50–800 K request with
+data over 25–750 K is interpolated over 50–750 K. An overlap of less than 20 K
+(40 K where the data narrow the range) leaves that quantity out of the fit, and
+the app says why. It never extrapolates. Interpolated points are not
+independent measurements, and this does not cure overshoot or a poor model.
+
+## Known issues
+
+Known errors stay flagged where they apply until they are fixed, and results
+and exports name them. The core's registry holds these:
+
+| Issue                        | Severity   | Where it applies                                | What it means                                                                                                                                      | Tracked in                                               |
+| ---------------------------- | ---------- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| `dpb_loop_degeneracy`        | caution    | Legacy DPB S + ρ and S + ρ + $R_H$, N₂/N₁ ≠ 1   | The legacy fit returns m₂/m₁ times N₂/N₁, so the value can leave its bounds.                                                                       | [#85](https://github.com/pdasya/seeband-web/issues/85)   |
+| `collapsed_m_eff`            | unreliable | DPB, with \|m₂/m₁\| below 10⁻⁵                  | The fit can be poorly conditioned, and the band parameters may not be determined separately.                                                       | [#107](https://github.com/pdasya/seeband-web/issues/107) |
+| `no_chemical_potential`      | unreliable | SPB, with $E_F$ outside the band                | There are no carriers at T = 0, so no μ(T) exists, and the calculation fails explicitly.                                                           | [#106](https://github.com/pdasya/seeband-web/issues/106) |
+| `hall_dis_no_reference`      | caution    | DPB S + ρ + $R_H$ with alloy disorder           | The desktop fails this fit, so there is no desktop result to compare with.                                                                         | [#71](https://github.com/pdasya/seeband-web/issues/71)   |
+| `band_diagram_formula`       | caution    | The E(k) sketch                                 | The sketch does not follow E = ħ²k²/(2m); only $E_F$ and the band edges are exact.                                                                 | [#108](https://github.com/pdasya/seeband-web/issues/108) |
+| `interpolation_extrapolates` | unreliable | Results whose request is marked as extrapolated | Current interpolation never extrapolates; the flag stays for results built from older extrapolated points, which would enter the RMSE and the fit. | [#86](https://github.com/pdasya/seeband-web/issues/86)   |
+
+Not flagged for each result, as it cannot be told from the inputs: $F_0 = \ln(1 + e^\eta)$
+rounds to 0 for η below about −37 and overflows above about 710
+([#105](https://github.com/pdasya/seeband-web/issues/105)), which can give
+non-finite points at low T with a large gap or Fermi energy.
+
+## Model limitations
+
+These are assumptions of the approach, not errors:
+
+- Bands are strictly parabolic, at most two, and $E_g$ and the masses do not
+  depend on temperature.
+- One scattering mechanism applies over the whole range. There is no residual
+  resistivity: with acoustic phonons, ρ follows the carriers alone.
+- From S alone SPB determines only $E_F$; the absolute mass comes from $R_H$. In
+  DPB, N is set by the user, not fitted; from S it nearly trades off with R and
+  $E_g$, so results hold for the N chosen.
+- With $E_F$ in the gap, the data may not determine it. The $F_{1/2}$ table has
+  small seams at −9.9 and 19.9, of a few parts in 10⁶.
+- Lattice thermal conductivity is not modelled. SPB often holds only over a
+  narrow temperature range.
