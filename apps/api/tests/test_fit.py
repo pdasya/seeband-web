@@ -234,6 +234,26 @@ def test_no_root_at_the_start_ends_with_a_failed_fit(
     result = events[-1]["result"]
     assert result["status"] == "failed"
     assert (
+        result["message"]
+        == "The fit encountered band parameters with no finite chemical potential."
+    )
+    assert result["parameters"] == start
+
+
+def test_uncertified_chemical_potential_has_a_distinct_fit_message(client: TestClient) -> None:
+    start = {"m_eff": 1.01, "band_gap": 1000.0, "fermi_energy": 0.0}
+    result = _result(
+        client,
+        _body(
+            start=start,
+            min_temperature_k=0.01,
+            max_temperature_k=0.03,
+            measurements={"seebeck": {"temperature_k": [0.01, 0.02, 0.03], "values": [2.0e-4] * 3}},
+        ),
+    )
+
+    assert result["status"] == "failed"
+    assert (
         result["message"] == "The chemical-potential balance could not be verified during the fit."
     )
     assert result["parameters"] == start
