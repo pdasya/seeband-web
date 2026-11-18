@@ -72,17 +72,28 @@ the intrinsic side when the bounds allow it and still checks refinement at
 half the step. This changes only the derivative probes, not the allowed fit
 parameters. If fitting the gap leaves the Fermi energy on the plateau with
 a nonzero residual, the same stage tries populated-side starts from its
-improved point before the terminal audit. When no intrinsic-side stencil is
-available, the ordinary admissible derivative check still applies.
+improved point before the terminal audit.
 
 On the same demo, with only `m_eff` held and both energies starting at
 `800 K`, the fit now settles at `band_gap ≈ 799.8726 K` and
 `fermi_energy ≈ −150.1328 K` with a `0.808359 µV/K` RMSE. A noiseless
 conduction-side test from the same start recovers a `650 K` gap and
 `1000 K` Fermi energy. A separate intrinsic test recovers a `900 K` gap
-while leaving the Fermi energy undetermined. On the demo, setting the gap
-upper bound to the initial edge at `800 K` still gives an explicit derivative
-validation failure: no widened-gap probe is admissible.
+while leaving the Fermi energy undetermined.
+
+At the gap's upper bound, both energies must be free to use an equivalent
+reference strictly inside the positive gap. The zero-temperature carrier
+target and its first derivatives are the same as at the conduction edge.
+The fit checks that the residual vector is identical at the reference before
+using it to take shrinking-gap probes or seed the optimizer. The original
+endpoint remains a candidate and wins ties. If the Fermi energy is held or
+there is no admissible interior reference, the original derivative check
+still applies and can fail explicitly.
+
+With the demo's gap bounds set to `[300, 800] K`, the same start converges to
+`band_gap ≈ 799.8727 K` and `fermi_energy ≈ −150.1328 K`, with a Seebeck RMSE
+of `0.808359 µV/K`. All 1,202 transport evaluations, including derivative
+probes and the terminal audit, respected the supplied bounds.
 
 ## Result interpretation
 

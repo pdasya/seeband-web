@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Verified Fit: when the free DPB gap starts at its upper bound on the
+  conduction edge, use an in-bounds plateau reference with an identical
+  residual for the derivative check and optimizer seed. Keep the original
+  endpoint on ties and preserve fit bounds and certification thresholds.
+
 - Verified Fit: certify the free DPB gap derivative on the intrinsic side of
   the conduction edge when feasible. If fitting the gap still leaves the
   Fermi energy on a plateau with nonzero residual, try the populated sides

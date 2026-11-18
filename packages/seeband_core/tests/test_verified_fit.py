@@ -71,15 +71,29 @@ def test_verified_can_recover_to_the_conduction_side_when_the_valence_side_is_ex
     assert result.diagnostics.residuals["seebeck"].rmse < 1e-10
 
 
-def test_verified_recovers_with_the_gap_free_at_the_conduction_edge():
+@pytest.mark.parametrize("gap_upper_k", [800.0, 3000.0])
+def test_verified_recovers_with_the_gap_free_at_the_conduction_edge(gap_upper_k, monkeypatch):
+    from seeband_core import verified_fit
+
     model = DpbModel()
     mode = model.describe().fit_mode("dpb_s")
     start = default_start(mode) | {"m_eff": 1.2, "band_gap": 800.0, "fermi_energy": 800.0}
+    bounds = {"band_gap": Bounds(300.0, gap_upper_k), "fermi_energy": Bounds(-3000.0, 3000.0)}
+    original = verified_fit._evaluate_quantity
+
+    def check_bounds(quantity, temperatures, parameters, *args, **kwargs):
+        for name, limit in bounds.items():
+            assert limit.lower <= parameters[name] <= limit.upper
+        assert parameters["m_eff"] == 1.2
+        return original(quantity, temperatures, parameters, *args, **kwargs)
+
+    monkeypatch.setattr(verified_fit, "_evaluate_quantity", check_bounds)
     result = model.fit(
         FitRequest(
             mode.id,
             {"seebeck": load_demo_dataset().measurements["seebeck"]},
             start,
+            bounds=bounds,
             scattering="acPh",
             held=frozenset({"m_eff"}),
         )
@@ -89,6 +103,7 @@ def test_verified_recovers_with_the_gap_free_at_the_conduction_edge():
     assert result.diagnostics.stage_consistent is True
     assert result.diagnostics.recoveries > 0
     assert result.parameters["m_eff"] == 1.2
+    assert 300.0 <= result.parameters["band_gap"] <= gap_upper_k
     assert result.parameters["band_gap"] == pytest.approx(799.8726, abs=0.02)
     assert result.parameters["fermi_energy"] == pytest.approx(-150.1328, abs=0.01)
     assert result.diagnostics.residuals["seebeck"].rmse * 1e6 < 0.81
@@ -125,6 +140,29 @@ def test_verified_can_find_a_free_gap_from_the_conduction_edge(
         assert "fermi_energy_in_gap" not in result.known_issues
     else:
         assert "fermi_energy_in_gap" in result.known_issues
+
+
+def test_verified_keeps_an_exact_fit_at_the_gap_upper_bound():
+    model = DpbModel()
+    start = {"m_eff": 1.2, "band_gap": 800.0, "fermi_energy": 800.0}
+    temperature_k = np.linspace(100.0, 800.0, 18)
+    values = mm.dpb_see_vs_temp(temperature_k, 1.2, 800.0, 800.0, 1.0)
+    result = model.fit(
+        FitRequest(
+            "dpb_s",
+            {"seebeck": Measurement(temperature_k, values)},
+            start,
+            bounds={"band_gap": Bounds(300.0, 800.0)},
+            scattering="acPh",
+            held=frozenset({"m_eff"}),
+        )
+    )
+
+    assert result.status == "converged"
+    assert result.parameters == start
+    assert "band_gap" in result.at_bounds
+    assert "fermi_energy_in_gap" in result.known_issues
+    assert result.diagnostics.residuals["seebeck"].rmse == 0.0
 
 
 @pytest.mark.parametrize("scattering", ["acPh", "dis", "ionized"])

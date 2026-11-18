@@ -444,6 +444,41 @@ class _Engine:
             raise _UnattainedAmplitude("No finite inverse-amplitude optimum")
         p[name] = sign * inverse ** (-1.0 / power)
 
+    def upper_gap_reference(
+        self,
+        evaluate: Callable[[np.ndarray], np.ndarray],
+        coordinates: _Coordinates,
+        base: Mapping[str, float],
+        point: np.ndarray,
+    ) -> np.ndarray:
+        """Find an equivalent interior plateau point for a free EF at the gap's upper bound.
+
+        At the conduction edge, the carrier target and its first derivatives vanish. Moving EF
+        into the gap with Eg fixed therefore preserves both the residual and its first derivative.
+        Check exact residual equality before using the reference for differencing or as a seed.
+        """
+        names = coordinates.names
+        if not self.dpb or "band_gap" not in names or "fermi_energy" not in names:
+            return point
+        gap_index = names.index("band_gap")
+        if point[gap_index] != coordinates.upper[gap_index]:
+            return point
+        parameters = dict(base) | coordinates.decode(point)
+        if not (
+            fermi_energy_in_gap(parameters) and parameters["fermi_energy"] == parameters["band_gap"]
+        ):
+            return point
+        fermi_index = names.index("fermi_energy")
+        low = max(0.0, coordinates.lower[fermi_index])
+        energy = low + (point[fermi_index] - low) / 2
+        if not low < energy < point[fermi_index]:
+            return point
+        reference = point.copy()
+        reference[fermi_index] = energy
+        if not 0 < coordinates.decode(reference)["fermi_energy"] < parameters["band_gap"]:
+            return point
+        return reference if np.array_equal(evaluate(point), evaluate(reference)) else point
+
     def jacobian(
         self,
         evaluate: Callable[[np.ndarray], np.ndarray],
@@ -457,9 +492,10 @@ class _Engine:
         The Fermi-energy derivative is zero, but the gap derivative is generally nonzero. On the
         plateau, widening the gap gives the smooth side of the same first derivative. Clip only
         the stencil, never the optimizer's bounds, and use the ordinary half-step certificate.
-        If the gap is already at a bound that leaves no plateau stencil, keep the ordinary
-        admissible derivative check rather than moving another parameter or relaxing the test.
+        At the upper gap bound, an equivalent reference can make room for a shrinking stencil
+        without crossing the carrier onset. Otherwise the ordinary admissible check still applies.
         """
+        point = self.upper_gap_reference(evaluate, coordinates, base, point)
         zero_columns: tuple[int, ...] = ()
         lower = coordinates.lower
         names = coordinates.names
@@ -561,9 +597,10 @@ class _Engine:
         best, best_cost = x, initial_cost
         flat_fermi_only = self.dpb and names == ["fermi_energy"] and fermi_energy_in_gap(p)
         if not flat_fermi_only:
+            origin = self.upper_gap_reference(evaluate, coordinates, base, x)
             result = least_squares(
                 residual,
-                x,
+                origin,
                 jac=jacobian,
                 bounds=(lower, upper),
                 ftol=1e-11,
@@ -571,7 +608,9 @@ class _Engine:
                 gtol=1e-8,
                 max_nfev=250,
             )
-            best, best_cost = result.x, float(np.dot(result.fun, result.fun))
+            cost = float(np.dot(result.fun, result.fun))
+            if origin is x or cost < best_cost:
+                best, best_cost = result.x, cost
         # Flat initial derivatives can terminate immediately in a populated/hidden-band limit.
         # A stationary full-rank nonzero-residual optimum does not need recovery.
         # Rank loss can conceal a useful direction even when its computed gradient is zero.
