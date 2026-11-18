@@ -23,7 +23,7 @@ pnpm --filter @seeband/site serve     # builds it and previews it on port 4321, 
 
 **No script is needed.** Pages work with JavaScript turned off. The only script is the shared header's language handler, about 300 bytes, which does nothing with one language. Plotly and Pyodide are not loaded here, and the build test checks it.
 
-**The user guide** (`/guide/`) is adapted from the desktop SeeBand's PDF guide (MIT). Its screenshots in `public/guide/` and the numbers it quotes come from `scripts/capture-guide.mjs`, run against the app and API on the Fe2VAl0.9Si0.1 example; run it again when the screens change.
+**The user guide** (`/guide/`) is adapted from the desktop SeeBand's PDF guide (MIT). Its screenshots in `public/guide/` and the numbers it quotes come from `apps/web/scripts/capture-guide.mjs`, run against the app and API on the Fe2VAl0.9Si0.1 example; run it again when the screens change.
 
 **Formulas** in Markdown and MDX are rendered by KaTeX at build time, so a page gets HTML and CSS and no script. A page with formulas uses `Prose.astro`, the only layout that loads KaTeX's styles; in MDX, name it as `layout` in the frontmatter, with `title` and `description`. `tests/fixtures/math` builds such a page.
 
