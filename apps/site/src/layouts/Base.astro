@@ -8,7 +8,13 @@ import "../styles/site.css";
 import SiteHeader from "@seeband/ui/SiteHeader.astro";
 
 import Footer from "../components/Footer.astro";
-import { APP_FIT_URL, APP_RESULTS_URL, LANGUAGE, STRINGS } from "../strings";
+import {
+  APP_FIT_URL,
+  APP_RESULTS_URL,
+  CONVENTIONS_URL,
+  LANGUAGE,
+  STRINGS,
+} from "../strings";
 
 interface Props {
   title: string;
@@ -34,7 +40,7 @@ const links = [
   {
     id: "conventions",
     label: STRINGS.navigation.conventions,
-    href: "/conventions/",
+    href: CONVENTIONS_URL,
     current: current === "conventions",
   },
 ];

@@ -16,6 +16,8 @@
   --accent-blue: #2563eb;
   --accent-orange: #ea580c;
   --accent-teal: #0d9488;
+  /* The orange for text, as the accent is 3.4:1 on zinc-50; this is 5.2:1. */
+  --accent-orange-text: #c2410c;
 
   --background: #ffffff;
   --foreground: var(--color-zinc-950);

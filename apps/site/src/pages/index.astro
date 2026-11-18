@@ -1,16 +1,103 @@
 ---
+import BandFigure from "../components/BandFigure.astro";
 import Base from "../layouts/Base.astro";
-import { APP_FIT_URL, STRINGS } from "../strings";
+import {
+  APP_DEMO_URL,
+  APP_FIT_URL,
+  CONVENTIONS_URL,
+  RESULTS_CHANGED_URL,
+  STRINGS,
+} from "../strings";
 
 const text = STRINGS.home;
 ---
 
 <Base title={text.title} description={text.description} current="overview">
-  <section class="intro">
-    <h1>{text.heading}</h1>
-    <p class="lead">{text.lead}</p>
-    <p><a class="button" href={APP_FIT_URL}>{text.openApp}</a></p>
-    <p class="note">{text.serverNote}</p>
-    <p class="note">{text.status}</p>
-  </section>
+  <div class="overview">
+    <section class="hero">
+      <div class="hero__text">
+        <span class="eyebrow">{text.eyebrow}</span>
+        <h1>{text.heading}</h1>
+        <p class="lead">{text.lead}</p>
+        <div class="actions">
+          <a class="button" href={APP_FIT_URL}>{text.startFit}</a>
+          <a class="button button--outline" href={CONVENTIONS_URL}>
+            {text.readConventions}
+          </a>
+        </div>
+        <p class="note">{text.ctaNote}</p>
+      </div>
+      <BandFigure />
+    </section>
+
+    <section aria-labelledby="how">
+      <h2 id="how">{text.how.title}</h2>
+      <ol class="steps" role="list">
+        {
+          text.how.steps.map((step, index) => (
+            <li class="step">
+              <span class="step__number">{`0${String(index + 1)}`}</span>
+              <span class="step__title">{step.title}</span>
+              <span class="step__text">{step.text}</span>
+            </li>
+          ))
+        }
+      </ol>
+    </section>
+
+    <div class="panels">
+      <section class="panel panel--wide" aria-labelledby="inputs">
+        <h2 id="inputs">{text.inputs.title}</h2>
+        <div class="table-scroll" tabindex="0" role="region" aria-labelledby="inputs">
+          <table class="inputs">
+            <thead>
+              <tr>
+                <th scope="col">{text.inputs.quantity}</th>
+                <th scope="col">{text.inputs.unit}</th>
+                <th scope="col">{text.inputs.determines}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {
+                text.inputs.rows.map((row) => (
+                  <tr>
+                    <th scope="row">{row.quantity}</th>
+                    <td class="mono">{row.unit}</td>
+                    <td>{row.determines}</td>
+                  </tr>
+                ))
+              }
+            </tbody>
+          </table>
+        </div>
+        {text.inputs.notes.map((note) => <p class="note">{note}</p>)}
+      </section>
+      <section class="panel" aria-labelledby="outputs">
+        <h2 id="outputs">{text.outputs.title}</h2>
+        <ul class="outputs">
+          {text.outputs.items.map((item) => <li>{item}</li>)}
+        </ul>
+      </section>
+    </div>
+
+    <div class="panels">
+      <section class="panel" aria-labelledby="data">
+        <h2 id="data">{text.data.title}</h2>
+        <p>{text.data.text}</p>
+      </section>
+      <section class="panel" aria-labelledby="status">
+        <h2 id="status">{text.status.title}</h2>
+        <p>{text.status.text}</p>
+        <p><a href={RESULTS_CHANGED_URL}>{text.status.changed}</a></p>
+      </section>
+    </div>
+
+    <section class="demo" aria-labelledby="demo">
+      <div>
+        <h2 id="demo">{text.demo.title}</h2>
+        <p>{text.demo.text}</p>
+      </div>
+      <a class="button" href={APP_DEMO_URL}>{text.demo.action}</a>
+    </section>
+  </div>
 </Base>

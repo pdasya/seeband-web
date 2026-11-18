@@ -108,9 +108,15 @@ async function finishWith(page: Page, result: object = {}) {
   await expect(page.getByRole("button", { name: "Run fit" })).toBeVisible();
 }
 
-// Inside the app, as a reload would start a new session.
-const toResults = (page: Page) =>
-  page.getByRole("link", { name: "Results", exact: true }).click();
+// Inside the app, as a reload would start a new session. It waits for the page, as the fit
+// screen has its own Data to file, which a test must not open on the way.
+async function toResults(page: Page) {
+  await page.getByRole("link", { name: "Results", exact: true }).click();
+  await expect(page).toHaveURL(/\/results$/);
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Results", exact: true }),
+  ).toBeVisible();
+}
 
 const table = (page: Page) =>
   page.getByRole("table", { name: "Fit parameters" });

@@ -1,0 +1,46 @@
+---
+// The hero's sketch (F8, option A): two parabolic bands, E_g and E_F. A sketch, not a calculation.
+import { STRINGS } from "../strings";
+
+const text = STRINGS.home.figure;
+---
+
+<figure class="figure">
+  <svg viewBox="0 0 480 320" role="img" aria-label={text.label}>
+    <line x1="40" x2="40" y1="16" y2="300" class="figure__axis"></line>
+    <text x="48" y="24" class="figure__label">{text.energy}</text>
+    <line x1="40" x2="464" y1="300" y2="300" class="figure__axis"></line>
+    <text x="456" y="292" class="figure__label" text-anchor="end">
+      {text.wavevector}
+    </text>
+    <path d="M90 300 Q250 20 410 300" class="figure__band figure__band--1"
+    ></path>
+    <path d="M120 16 Q250 144 380 16" class="figure__band figure__band--2"
+    ></path>
+    <line x1="60" x2="456" y1="80" y2="80" class="figure__edge"></line>
+    <line x1="60" x2="456" y1="160" y2="160" class="figure__edge"></line>
+    <line x1="60" x2="456" y1="122" y2="122" class="figure__fermi"></line>
+    <text x="456" y="116" class="figure__label figure__label--strong" text-anchor="end"
+      >{text.fermi[0]}<tspan class="figure__sub" dy="4">{text.fermi[1]}</tspan></text
+    >
+    <text x="456" y="74" class="figure__label figure__label--edge" text-anchor="end">
+      {text.band2Bottom}
+    </text>
+    <text x="456" y="176" class="figure__label figure__label--edge" text-anchor="end">
+      {text.band1Top}
+    </text>
+    <line x1="70" x2="70" y1="84" y2="156" class="figure__arrow"></line>
+    <path d="M66 90 L70 82 L74 90 M66 150 L70 158 L74 150" class="figure__arrow"
+    ></path>
+    <text x="78" y="106" class="figure__label"
+      >{text.gap[0]}<tspan class="figure__sub" dy="4">{text.gap[1]}</tspan></text
+    >
+    <text x="250" y="234" class="figure__label figure__label--1" text-anchor="middle">
+      {text.band1[0]}<tspan class="figure__kind">{text.band1[1]}</tspan>
+    </text>
+    <text x="250" y="44" class="figure__label figure__label--2" text-anchor="middle">
+      {text.band2[0]}<tspan class="figure__kind">{text.band2[1]}</tspan>
+    </text>
+  </svg>
+  <figcaption>{text.caption}</figcaption>
+</figure>

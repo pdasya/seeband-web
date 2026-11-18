@@ -64,7 +64,10 @@ test("has its pages in English, as static HTML", () => {
   for (const path of ["index.html", "404.html"]) {
     assert.match(page(path), /<html lang="en"/, path);
   }
-  assert.match(page("index.html"), /Band models for thermoelectric/);
+  assert.match(
+    page("index.html"),
+    /<h1>Parabolic band models for transport measurements<\/h1>/,
+  );
   assert.match(page("index.html"), /<link rel="icon" href="\/favicon.svg"/);
   assert.ok(statSync(join(outDir, "favicon.svg")).isFile());
   assert.match(
@@ -86,6 +89,57 @@ test("links to the app and the original SeeBand", () => {
   assert.match(html, /<a href="\/results" class="sb-header__link">Results/);
   assert.match(html, /href="https:\/\/github.com\/pdasya\/seeband-web"/);
   assert.match(html, /href="https:\/\/github.com\/xAngelswordx\/SeeBand"/);
+  assert.match(
+    html,
+    /href="https:\/\/github.com\/pdasya\/seeband-web\/issues"/,
+  );
+});
+
+/** The page's main content, without the shared header and footer. */
+const mainOf = (html) => html.match(/<main[\s\S]*<\/main>/)?.[0] ?? "";
+// Visible text, with tags and Astro's attributes out of the way.
+const textOf = (html) => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+
+test("the overview says where data go, and promises only what the app does", () => {
+  const main = mainOf(page("index.html"));
+  const text = textOf(main);
+  // F4: the data go to the server, are used only for the calculation, and are not saved or logged.
+  assert.match(
+    text,
+    /Your data Calculations run on our server, so your measurements are sent to it\./,
+  );
+  assert.match(text, /does not save them/);
+  assert.match(text, /not your data/);
+  // Not delivered, or no longer offered: the browser, AI summaries, residual plots, acPhDis.
+  assert.doesNotMatch(
+    text,
+    /runs in the browser|\bAI\b|residuals|acPhDis|\[Repository/i,
+  );
+  // F8: the E(k) sketch, inline and labelled as one case, with no image file.
+  assert.match(
+    main,
+    /<svg[^>]*role="img"[^>]*aria-label="Schematic of one DPB case/,
+  );
+  assert.match(text, /Schematic, not to scale/);
+  assert.match(main, /href="\/fit\?demo=1"/);
+  assert.match(main, /href="\/results-changed\/"/);
+});
+
+test("the overview's structure holds together", () => {
+  const html = page("index.html");
+  assert.equal(html.match(/<h1[\s>]/g)?.length, 1);
+  const ids = new Set(
+    [...html.matchAll(/\sid="([^"]+)"/g)].map((match) => match[1]),
+  );
+  const labelled = [...html.matchAll(/aria-labelledby="([^"]+)"/g)].map(
+    (match) => match[1],
+  );
+  assert.ok(labelled.length >= 5);
+  for (const id of labelled) {
+    assert.ok(ids.has(id), id);
+  }
+  // A table that can scroll can be reached by keyboard.
+  assert.match(html, /class="table-scroll"[^>]*tabindex="0"/);
 });
 
 test("has the Conventions and results-changed pages, linked from the header", () => {
