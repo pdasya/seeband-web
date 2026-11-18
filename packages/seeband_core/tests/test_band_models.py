@@ -5,7 +5,6 @@ import math
 import subprocess
 import sys
 import warnings
-from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 from unittest.mock import ANY
@@ -20,7 +19,6 @@ from seeband_core.math_module import ChemicalPotentialError
 from seeband_core.model_catalog import registry
 from seeband_core.model_interface import (
     BandDiagramRequest,
-    BandDiagramResult,
     Bounds,
     CurveKind,
     CurveRequest,
@@ -395,82 +393,41 @@ def test_a_fit_needs_its_measurements() -> None:
         )
 
 
-def _golden_runs() -> Iterator[tuple[str, dict[str, Any]]]:
-    for path in sorted(GOLDEN.glob("*.json")):
-        for run in json.loads(path.read_text(encoding="utf-8"))["runs"]:
-            yield path.stem, run
+@pytest.mark.parametrize("mass_m_e", [1.5, -1.5])
+def test_spb_diagram_uses_the_signed_mass_on_a_physical_grid(mass_m_e: float) -> None:
+    model = registry.get("spb")
+    fit_mode = model.describe().fit_mode("spb_s_rho_rh")
+    parameters = {**default_start(fit_mode), "band_mass": mass_m_e, "fermi_energy": -25.0}
+    result = model.band_diagram(BandDiagramRequest(fit_mode.id, parameters))
+
+    assert len(result.wavevector_nm_inv) == 101
+    assert result.wavevector_nm_inv[[0, 25, 50, 75, 100]].tolist() == [-2, -1, 0, 1, 2]
+    expected = 442.13006509 * result.wavevector_nm_inv**2 / mass_m_e
+    np.testing.assert_allclose(result.curves["band_1_energy_k"], expected, rtol=1e-9)
+    np.testing.assert_array_equal(result.curves["fermi_energy_k"], np.full(101, -25.0))
+    assert not result.reference_mass_assumed
+    assert result.known_issues == ()
 
 
-def _band_calls(run: dict[str, Any]) -> list[dict[str, Any]]:
-    return [call for call in run["manual_curve_calls"] if call["function"] == "get_parabolic_band"]
+@pytest.mark.parametrize("fit_mode_id", ["dpb_s", "dpb_s_rho", "dpb_s_rho_rh"])
+@pytest.mark.parametrize("mass_ratio", [2.0, -2.0])
+def test_dpb_diagram_uses_signed_single_valley_masses(fit_mode_id: str, mass_ratio: float) -> None:
+    model = registry.get("dpb")
+    fit_mode = model.describe().fit_mode(fit_mode_id)
+    parameters = {**default_start(fit_mode), "m_eff": mass_ratio, "band_gap": 700.0}
+    hall = "hall" in fit_mode.quantities
+    if hall:
+        parameters["m1"] = 6.0
+    result = model.band_diagram(BandDiagramRequest(fit_mode_id, parameters, 8.0, 3.0))
 
-
-def _diagram_of(run: dict[str, Any]) -> tuple[BandDiagramResult, list[dict[str, Any]]]:
-    """The diagram for the values of a run's recorded calls, with those calls."""
-    mode_id = run["mode"]
-    model = registry.get(mode_id.partition("_")[0])
-    fit_mode = model.describe().fit_mode(mode_id)
-    band, fermi = _band_calls(run)
-    mass, energy = band["args"][3:5]
-    parameters = {
-        **default_start(fit_mode),
-        "fermi_energy": fermi["args"][4],
-    }
-    if model.describe().id == "spb":
-        parameters["band_mass"] = mass
-    else:
-        parameters |= {"m_eff": mass, "band_gap": energy}
-    return model.band_diagram(BandDiagramRequest(mode_id, parameters)), [band, fermi]
-
-
-def test_the_diagram_is_what_the_desktop_draws() -> None:
-    compared = 0
-    for _, run in _golden_runs():
-        if not _band_calls(run) or run["mode"] == "spb_s_rho_rh":
-            continue
-        result, (band, fermi) = _diagram_of(run)
-        name = "band_1_energy_k" if run["mode"].startswith("spb") else "band_2_energy_k"
-        assert result.wavevector.tolist() == band["result"][0]
-        assert result.curves[name].tolist() == band["result"][1]
-        assert result.curves["fermi_energy_k"].tolist() == fermi["result"][1]
-        compared += 1
-    assert compared > 10
-
-
-def test_the_diagram_scales_band_2_as_the_desktop_does() -> None:
-    fit_mode = registry.get("dpb").describe().fit_mode("dpb_s")
-    result = registry.get("dpb").band_diagram(
-        BandDiagramRequest(
-            "dpb_s",
-            {**default_start(fit_mode), "m_eff": 1.5, "band_gap": 700.0},
-            band_1_degeneracy=2.0,
-            band_2_degeneracy=3.0,
-        )
-    )
-
-    # As `seeband.py:3585`: the mass over N1/N2.
-    expected = parabolic_band(-40, 40, 100, 1.5 / (2 / 3), 700.0)[1]
-    assert result.curves["band_2_energy_k"].tolist() == expected.tolist()
-    assert result.curves["band_1_energy_k"].tolist() == (
-        parabolic_band(-40, 40, 100, -1, 0)[1].tolist()
-    )
-
-
-def test_the_diagram_shows_a_mass_as_the_user_sees_it() -> None:
-    # The repaired mode uses physical masses in core and displayed values.
-    fit_mode = registry.get("spb").describe().fit_mode("spb_s_rho_rh")
-    result = registry.get("spb").band_diagram(
-        BandDiagramRequest("spb_s_rho_rh", {**default_start(fit_mode), "band_mass": 1.5})
-    )
-
-    expected = parabolic_band(-40, 40, 100, 1.5, 0)[1]
-    assert result.curves["band_1_energy_k"].tolist() == expected.tolist()
-
-
-def test_the_diagram_lists_its_own_known_error() -> None:
-    fit_mode = registry.get("dpb").describe().fit_mode("dpb_s")
-    result = registry.get("dpb").band_diagram(BandDiagramRequest("dpb_s", default_start(fit_mode)))
-    assert result.known_issues == ("band_diagram_formula",)
+    mass_1_m_e = 1.5 if hall else 1.0
+    energy = 442.13006509 * result.wavevector_nm_inv**2
+    np.testing.assert_allclose(result.curves["band_1_energy_k"], -energy / mass_1_m_e, rtol=1e-9)
+    energy_2 = result.curves["band_2_energy_k"]
+    assert energy_2[50] == 700.0
+    np.testing.assert_allclose(energy_2 - 700.0, energy / (mass_ratio * mass_1_m_e), rtol=1e-9)
+    assert result.reference_mass_assumed is not hall
+    assert result.known_issues == ()
 
 
 def test_a_mass_of_0_has_no_finite_band_and_no_warning() -> None:
@@ -481,6 +438,7 @@ def test_a_mass_of_0_has_no_finite_band_and_no_warning() -> None:
             BandDiagramRequest("dpb_s", {**default_start(fit_mode), "m_eff": 0.0})
         )
     assert not np.isfinite(result.curves["band_2_energy_k"]).any()
+    assert np.isnan(result.curves["band_2_energy_k"][50])
     assert np.isfinite(result.curves["band_1_energy_k"]).all()
 
 
@@ -498,7 +456,15 @@ def test_extreme_masses_give_no_warning(m_eff: float) -> None:
 def test_band_diagram_is_available_without_a_model() -> None:
     wavevector, energy = parabolic_band(-1.0, 1.0, 3, 1.0, 5.0)
     assert wavevector.tolist() == [-1.0, 0.0, 1.0]
-    assert energy[1] == 5.0
+    assert energy.tolist() == pytest.approx([447.13006509, 5.0, 447.13006509], rel=1e-9)
+
+
+@pytest.mark.parametrize("mass", [0.0, float("inf"), float("nan")])
+def test_an_invalid_mass_has_no_finite_dispersion(mass: float) -> None:
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        _, energy = parabolic_band(-1.0, 1.0, 3, mass, 5.0)
+    assert np.isnan(energy).all()
 
 
 # Distinct values, so that a swapped argument shows.

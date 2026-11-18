@@ -445,16 +445,6 @@
                                   "condition": "fermi_energy_outside_band"
                                 },
                                 {
-                                  "id": "band_diagram_formula",
-                                  "severity": "caution",
-                                  "message_key": "known_issue.band_diagram_formula",
-                                  "fixed_by": "#108",
-                                  "scattering": [],
-                                  "curve_kinds": [],
-                                  "columns": [],
-                                  "affects_fit": false
-                                },
-                                {
                                   "id": "interpolation_extrapolates",
                                   "severity": "unreliable",
                                   "message_key": "known_issue.interpolation_extrapolates",
@@ -713,16 +703,6 @@
                                   "columns": [],
                                   "affects_fit": true,
                                   "condition": "fermi_energy_outside_band"
-                                },
-                                {
-                                  "id": "band_diagram_formula",
-                                  "severity": "caution",
-                                  "message_key": "known_issue.band_diagram_formula",
-                                  "fixed_by": "#108",
-                                  "scattering": [],
-                                  "curve_kinds": [],
-                                  "columns": [],
-                                  "affects_fit": false
                                 },
                                 {
                                   "id": "interpolation_extrapolates",
@@ -998,16 +978,6 @@
                                   "condition": "fermi_energy_outside_band"
                                 },
                                 {
-                                  "id": "band_diagram_formula",
-                                  "severity": "caution",
-                                  "message_key": "known_issue.band_diagram_formula",
-                                  "fixed_by": "#108",
-                                  "scattering": [],
-                                  "curve_kinds": [],
-                                  "columns": [],
-                                  "affects_fit": false
-                                },
-                                {
                                   "id": "interpolation_extrapolates",
                                   "severity": "unreliable",
                                   "message_key": "known_issue.interpolation_extrapolates",
@@ -1267,16 +1237,6 @@
                                   "columns": [],
                                   "affects_fit": true,
                                   "condition": "collapsed_m_eff"
-                                },
-                                {
-                                  "id": "band_diagram_formula",
-                                  "severity": "caution",
-                                  "message_key": "known_issue.band_diagram_formula",
-                                  "fixed_by": "#108",
-                                  "scattering": [],
-                                  "curve_kinds": [],
-                                  "columns": [],
-                                  "affects_fit": false
                                 },
                                 {
                                   "id": "interpolation_extrapolates",
@@ -1676,16 +1636,6 @@
                                   "columns": [],
                                   "affects_fit": true,
                                   "condition": "collapsed_m_eff"
-                                },
-                                {
-                                  "id": "band_diagram_formula",
-                                  "severity": "caution",
-                                  "message_key": "known_issue.band_diagram_formula",
-                                  "fixed_by": "#108",
-                                  "scattering": [],
-                                  "curve_kinds": [],
-                                  "columns": [],
-                                  "affects_fit": false
                                 },
                                 {
                                   "id": "interpolation_extrapolates",
@@ -2148,16 +2098,6 @@
                                   "affects_fit": true
                                 },
                                 {
-                                  "id": "band_diagram_formula",
-                                  "severity": "caution",
-                                  "message_key": "known_issue.band_diagram_formula",
-                                  "fixed_by": "#108",
-                                  "scattering": [],
-                                  "curve_kinds": [],
-                                  "columns": [],
-                                  "affects_fit": false
-                                },
-                                {
                                   "id": "interpolation_extrapolates",
                                   "severity": "unreliable",
                                   "message_key": "known_issue.interpolation_extrapolates",
@@ -2222,7 +2162,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "example": "\"721065269bcd2442becad75df2f99d34\""
+                "example": "\"e42d1867fd794c9570c6dae611878661\""
               }
             }
           },
@@ -5097,12 +5037,12 @@
       },
       "BandDiagramResponse": {
         "properties": {
-          "wavevector": {
+          "wavevector_nm_inv": {
             "items": {
               "type": "number"
             },
             "type": "array",
-            "title": "Wavevector"
+            "title": "Wavevector Nm Inv"
           },
           "curves": {
             "additionalProperties": {
@@ -5127,23 +5067,28 @@
             },
             "type": "array",
             "title": "Known Issues"
+          },
+          "reference_mass_assumed": {
+            "type": "boolean",
+            "title": "Reference Mass Assumed"
           }
         },
         "type": "object",
         "required": [
-          "wavevector",
+          "wavevector_nm_inv",
           "curves",
-          "known_issues"
+          "known_issues",
+          "reference_mass_assumed"
         ],
         "title": "BandDiagramResponse",
-        "description": "Curves over `wavevector`, by name, where null marks a value that is not finite.\n\nEach name ends in its unit. `wavevector` has none, as the formula states none, and the desktop\ndraws this axis with no ticks. `known_issues` names known errors, as in `GET /api/models`.",
+        "description": "Curves over `wavevector_nm_inv` (nm⁻¹), with energies divided by k_B (K).\n\nNull marks a non-finite energy. `reference_mass_assumed` marks DPB diagrams\nwhose curvature scale assumes a first-band mass magnitude of one electron mass.",
         "examples": [
           {
             "curves": {
               "band_1_energy_k": [
-                1954.5,
+                1751.01016,
                 0.0,
-                1954.5
+                1751.01016
               ],
               "fermi_energy_k": [
                 100.0,
@@ -5151,13 +5096,12 @@
                 100.0
               ]
             },
-            "known_issues": [
-              "band_diagram_formula"
-            ],
-            "wavevector": [
-              -40.0,
+            "known_issues": [],
+            "reference_mass_assumed": false,
+            "wavevector_nm_inv": [
+              -2.0,
               0.0,
-              40.0
+              2.0
             ]
           }
         ]

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- P17 (#108): draw local parabolic bands with physical k in nm⁻¹, signed
+  single-valley masses and a flat Fermi level. The band diagram API returns
+  `wavevector_nm_inv` and identifies DPB diagrams that assume a reference
+  mass because the mode has no Hall data.
+
 - R11 (#187): add the Lorenz number L(T) = kappa_e/(sigma*T) as a derived curve
   in modes with rho, in W*Ohm/K^2 and in units of L0 = pi^2/3 (k_B/e)^2, with
   export. For DPB, show the effective L with its bipolar part, and each band's

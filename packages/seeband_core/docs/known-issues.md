@@ -22,10 +22,11 @@ To remove a flag once its error is fixed, delete its entry and its row here, and
 | `collapsed_m_eff`            | unreliable | DPB, when m_eff is near 0, as on `02_SiP` (D19)                                                    | #107     |
 | `no_chemical_potential`      | unreliable | SPB, when the Fermi energy is outside the band                                                     | #106     |
 | `hall_dis_no_reference`      | caution    | DPB S + ρ + R_H with `dis`. This is a missing reference, not an error: the desktop fails here (D1) | #71      |
-| `band_diagram_formula`       | caution    | the sketch of E(k), in `band_diagram` alone, and in no fit or curve                                | #108     |
 | `interpolation_extrapolates` | unreliable | any result, when `extrapolated` is set on its request                                              | #86      |
 
-`affects_band_diagram` puts an entry on the sketch of E(k) alone, through `band_diagram_issue_ids`.
+P17 (#108) removes the `band_diagram_formula` flag. The live diagram now
+draws local parabolic bands with physical wavevector units. In DPB modes
+without Hall data, the response explicitly marks its assumed reference mass.
 
 P7 (#86) limits new interpolation to measured support and reports a limited
 range separately. `interpolation_extrapolates` is retained for legacy or

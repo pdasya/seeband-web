@@ -42,7 +42,7 @@ uv run python -m seeband_api
 | `GET /api/health`        | status, version and commit  |
 | `GET /api/models`        | model descriptions          |
 | `POST /api/calc`         | curves and RMSE             |
-| `POST /api/band-diagram` | the sketch of E(k)          |
+| `POST /api/band-diagram` | local parabolic bands E(k)  |
 | `POST /api/parse`        | reading measured data       |
 | `POST /api/guess`        | initial parameter estimates |
 | `POST /api/fit`          | fitting, as event stream    |
@@ -236,6 +236,11 @@ Fits on `01_Fe2VAl09Si01` from the default start, in the core without a worker p
 Each fit ends with the same status and number of iterations as before. The verified `dpb_s_rho_rh` fit ends at `iteration_limit` after 20 iterations.
 
 `packages/seeband_core/tests/test_calc_speed_equivalence.py` compares every model, mode, scattering and curve kind, and fits of both algorithms, also with solves that fail on the way, with both changes off and on.
+
+For `POST /api/band-diagram`, `wavevector_nm_inv` gives k in nm⁻¹ and
+each energy curve gives E/k_B in K. The Fermi level is constant across k.
+The response sets `reference_mass_assumed` in DPB modes without Hall data,
+where the first-band curvature uses a reference mass magnitude of one electron mass.
 
 ## Derived curves
 

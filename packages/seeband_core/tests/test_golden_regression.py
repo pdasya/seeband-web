@@ -2,7 +2,7 @@
 
 Golden results were captured on one Mac with Python 3.11, numpy 1.26 and scipy 1.17. The project
 uses newer versions, and CI runs on Linux, so this is the check across versions and machines.
-P8, P11 and P13 expectations are recorded separately; original desktop evidence stays unchanged.
+P8, P11, P13 and P17 expectations are separate from the original desktop evidence.
 docs/golden-results.md gives the measured differences.
 
 CURVE_TOLERANCE is tight, because curves are direct calculations. FIT_TOLERANCE is looser, because
@@ -154,7 +154,18 @@ def p13_results() -> dict[str, Any]:
     return json.loads((GOLDEN.parent / "physics" / "p13.json").read_text())["results"]
 
 
+@cache
+def p17_reference() -> dict[str, Any]:
+    return json.loads((GOLDEN.parent / "physics" / "p17.json").read_text())
+
+
 def regression_expected(identifier: str, scattering: str | None, call: dict[str, Any]) -> Any:
+    if call["function"] == "get_parabolic_band":
+        wavevector_nm_inv = call["result"][0]
+        mass, edge_k = call["args"][3:5]
+        curvature_k = p17_reference()["curvature_k_at_one_nm_inv_and_one_electron_mass"]
+        energy_k = [edge_k + curvature_k * k**2 / mass for k in wavevector_nm_inv]
+        return {"result": [wavevector_nm_inv, energy_k]}
     if call["function"] in P13_FUNCTIONS:
         return p13_results()[p8_key(identifier, call)]
     expected = p8_results()[p8_key(identifier, call)]
@@ -195,7 +206,7 @@ def assert_p8_replay(
     *,
     expected: Any = None,
 ) -> None:
-    """Compare original inputs with P8/P11/P13 regressions, including failures."""
+    """Compare original inputs with the physics regressions, including failures."""
     if expected is None:
         expected = regression_expected(identifier, scattering, call)
     if call["function"].endswith("_fit"):
@@ -599,7 +610,7 @@ def test_replay_matches_the_desktop(
     example: str, mode: str, scattering: str | None, source: str, call: dict[str, Any]
 ) -> None:
     identifier = f"{example}-{mode}-{scattering}-{source}-{call['function']}"
-    if call["function"] in P13_FUNCTIONS:
+    if call["function"] in P13_FUNCTIONS or call["function"] == "get_parabolic_band":
         assert_p8_replay(identifier, mode, scattering, call)
         return
     if "error" in call:

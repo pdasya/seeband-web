@@ -87,7 +87,7 @@ The files hold exact script output and are excluded from Prettier, so any change
 
 ## Regression tests
 
-`tests/test_golden_regression.py` replays all 390 recorded calls on the code in `band_models`: 306 through the model interface, and the 84 of `get_parabolic_band` through a plain function, on the project's versions: Python 3.13, numpy 2.5 and scipy 1.18. The golden results use Python 3.11, numpy 1.26 and scipy 1.17. Only 159 of the calls have distinct inputs, and 84 are `get_parabolic_band`, which uses no physical constants.
+`tests/test_golden_regression.py` replays all 390 recorded calls on the code in `band_models`: 306 through the model interface, and the 84 of `get_parabolic_band` through a plain function, on the project's versions: Python 3.13, numpy 2.5 and scipy 1.18. The golden results use Python 3.11, numpy 1.26 and scipy 1.17. Only 159 of the calls have distinct inputs.
 
 | Calls                             | Rule                                                                         | Difference seen                                           |
 | --------------------------------- | ---------------------------------------------------------------------------- | --------------------------------------------------------- |
@@ -115,6 +115,15 @@ Fit tolerance is wide enough that a small change can pass in a fit, but the curv
 - Other data, other fit ranges and interpolation.
 
 A test fails if this list of uncovered methods changes. The replay names recorded arguments through the signatures of the core, so a refactor that renames a function or drops an argument updates the test helpers, not the pinned fixtures. The test of `spb_see_res_hall_fit` has no recorded call and names its arguments itself.
+
+## P17 band diagram
+
+The 84 diagram replays preserve the desktop inputs and use the physical
+curvature in `tests/fixtures/physics/p17.json` as the energy reference.
+The fixture uses the SI values of Planck's and Boltzmann's constants and
+the CODATA electron mass. The replay interprets the recorded numeric
+coordinates in nm⁻¹. Live diagrams have their own grid from −2 to 2 nm⁻¹.
+The original desktop energies remain in the historical captures.
 
 ## P3 derived-curve correction
 

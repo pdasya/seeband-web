@@ -399,13 +399,14 @@ describe("band contributions", () => {
 
 describe("the band diagram", () => {
   const DIAGRAM: BandDiagramResponse = {
-    wavevector: [-40, 0, 40],
+    wavevector_nm_inv: [-2, 0, 2],
     curves: {
       band_1_energy_k: [-1, 0, -1],
       something_new_k: [1, 2, 1],
       fermi_energy_k: [5, 5, 5],
     },
-    known_issues: ["band_diagram_formula", "made_up"],
+    known_issues: ["made_up"],
+    reference_mass_assumed: true,
   };
   const view = (diagram: BandDiagramResponse | null) =>
     chartTabView(
@@ -426,26 +427,33 @@ describe("the band diagram", () => {
       "E_F",
     ]);
     expect(curves.map(({ dashed }) => dashed)).toEqual([false, false, true]);
-    expect(curves[0]?.temperatureK).toEqual([-40, 0, 40]);
-    expect(xAxis).toEqual({ title: "k", span: [-40, 40] });
+    expect(curves[0]?.temperatureK).toEqual([-2, 0, 2]);
+    expect(xAxis).toEqual({ title: "k, nm⁻¹", span: [-2, 2] });
     expect(yAxisTitle).toBe("E, K");
     expect(measurements).toBeNull();
     expect(empty).toBeNull();
   });
 
-  test("says what is known to be wrong, with no ids", () => {
+  test("explains the assumed mass alongside any known issue", () => {
     const { note } = view(DIAGRAM);
 
-    expect(note).toMatch(/^Caution: This is a sketch/);
+    expect(note).toContain("mass magnitude is assumed to be mₑ");
     expect(note).toContain("Unreliable: A known error applies");
-    expect(note).not.toMatch(/band_diagram_formula|made_up/);
+    expect(note).not.toContain("made_up");
   });
 
-  test("before an answer, has the k axis with no span, and nothing on it", () => {
+  test("has no note when the mass is supplied and there are no flags", () => {
+    expect(
+      view({ ...DIAGRAM, known_issues: [], reference_mass_assumed: false })
+        .note,
+    ).toBeNull();
+  });
+
+  test("before an answer, shows the wavevector axis without any curves", () => {
     const { curves, xAxis, note } = view(null);
 
     expect(curves).toEqual([]);
-    expect(xAxis).toEqual({ title: "k", span: null });
+    expect(xAxis).toEqual({ title: "k, nm⁻¹", span: [-2, 2] });
     expect(note).toBeNull();
   });
 

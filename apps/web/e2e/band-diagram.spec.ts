@@ -8,20 +8,30 @@ const EV_PER_K = 8.617333262e-5;
 const inEv = (values: (number | null)[]) =>
   values.map((value) => (value === null ? null : value * EV_PER_K));
 
-const answerFor = (curves: Record<string, (number | null)[]>) => ({
-  wavevector: [-40, 0, 40],
+const answerFor = (
+  curves: Record<string, (number | null)[]>,
+  reference_mass_assumed: boolean,
+) => ({
+  wavevector_nm_inv: [-2, 0, 2],
   curves,
-  known_issues: ["band_diagram_formula"],
+  known_issues: [],
+  reference_mass_assumed,
 });
-const DPB = answerFor({
-  band_1_energy_k: [-1954, 0, -1954],
-  band_2_energy_k: [2954, 1000, 2954],
-  fermi_energy_k: [-100, -100, -100],
-});
-const SPB = answerFor({
-  band_1_energy_k: [1935, 0, 1935],
-  fermi_energy_k: [100, 100, 100],
-});
+const DPB = answerFor(
+  {
+    band_1_energy_k: [-1768.52, 0, -1768.52],
+    band_2_energy_k: [2768.52, 1000, 2768.52],
+    fermi_energy_k: [-100, -100, -100],
+  },
+  true,
+);
+const SPB = answerFor(
+  {
+    band_1_energy_k: [1751.01, 0, 1751.01],
+    fermi_energy_k: [100, 100, 100],
+  },
+  false,
+);
 
 interface DiagramBody {
   model: string;
@@ -97,16 +107,16 @@ test("E_g over the chart shows in eV, as its field does, and follows it", async 
   await expect(field(page, "E_g")).toHaveValue("0,12");
 });
 
-test("it draws each band and E_F, with a k axis with no ticks or range shading", async ({
+test("it draws each band and E_F over k in nm⁻¹ without fit range shading", async ({
   page,
 }) => {
   await open(page);
 
   await expect(traces(page)).toHaveCount(3);
   await expect(legend(page)).toHaveText(["Band 1", "Band 2", "E_F"]);
-  await expect(diagram(page).locator(".xtitle")).toHaveText("k");
+  await expect(diagram(page).locator(".xtitle")).toHaveText("k, nm⁻¹");
   await expect(diagram(page).locator(".ytitle")).toHaveText("E, eV");
-  await expect(diagram(page).locator(".xtick text")).toHaveCount(0);
+  await expect(diagram(page).locator(".xtick text").first()).toBeVisible();
   await expect(diagram(page).locator(".shapelayer path")).toHaveCount(0);
 });
 
@@ -124,7 +134,7 @@ test("the axis spans k, and a temperature tab goes back to its own", async ({
         };
         return plot.layout.xaxis.range;
       });
-  expect(await range()).toEqual([-40, 40]);
+  expect(await range()).toEqual([-2, 2]);
 
   await show(page, "Chemical potential μ(T)", 4);
   await expect(diagram(page).locator(".xtitle")).toHaveText("T, K");
@@ -167,6 +177,9 @@ test("SPB draws what its answer holds, and an old mode's bands do not stay", asy
   gate.release();
   await expect(legend(page)).toHaveText(["Band 1", "E_F"]);
   await expect(traces(page)).toHaveCount(2);
+  await expect(
+    diagram(page).getByText(/mass magnitude is assumed/),
+  ).toHaveCount(0);
 });
 
 test("it stops asking when no chart shows it, and asks again when one does", async ({
@@ -192,27 +205,21 @@ test("it stops asking when no chart shows it, and asks again when one does", asy
   expect(bodies.at(-1)?.parameters.band_gap).toBe(580.225906087);
 });
 
-test("it says what is known to be wrong with it", async ({ page }) => {
+test("it labels the assumed mass in DPB without Hall data", async ({
+  page,
+}) => {
   await open(page);
 
   await expect(
-    page.getByText(/^Caution: This is a sketch, as on the desktop\./),
+    diagram(page).getByText(/mass magnitude is assumed to be mₑ/),
   ).toBeVisible();
-  await expect(page.getByText(/band_diagram_formula/)).toHaveCount(0);
 });
 
 test("a band with no finite values leaves a gap, and the rest stay", async ({
   page,
 }) => {
-  await open(page, (route) =>
-    route.fulfill({
-      json: answerFor({
-        band_1_energy_k: [-1954, 0, -1954],
-        band_2_energy_k: [null, null, null],
-        fermi_energy_k: [-100, -100, -100],
-      }),
-    }),
-  );
+  const curves = { ...DPB.curves, band_2_energy_k: [null, null, null] };
+  await open(page, (route) => route.fulfill({ json: { ...DPB, curves } }));
 
   await expect(legend(page)).toHaveText(["Band 1", "Band 2", "E_F"]);
   await expect(diagram(page).getByRole("alert")).toHaveCount(0);
@@ -224,14 +231,10 @@ test("a band with no finite values leaves a gap, and the rest stay", async ({
       };
       return plot.data.map(({ y }) => y);
     });
-  expect(ys).toEqual([
-    inEv([-1954, 0, -1954]),
-    [null, null, null],
-    inEv([-100, -100, -100]),
-  ]);
+  expect(ys).toEqual(Object.values(curves).map(inEv));
 });
 
-test("k has no ticks also while its first answer is on its way", async ({
+test("the k axis keeps its units and ticks while awaiting the first answer", async ({
   page,
 }) => {
   const gate = hold();
@@ -240,14 +243,14 @@ test("k has no ticks also while its first answer is on its way", async ({
     await route.fulfill({ json: DPB });
   });
 
-  await expect(diagram(page).locator(".xtitle")).toHaveText("k");
-  await expect(diagram(page).locator(".xtick text")).toHaveCount(0);
+  await expect(diagram(page).locator(".xtitle")).toHaveText("k, nm⁻¹");
+  await expect(diagram(page).locator(".xtick text").first()).toBeVisible();
   gate.release();
   await expect(traces(page)).toHaveCount(3);
-  await expect(diagram(page).locator(".xtick text")).toHaveCount(0);
+  await expect(diagram(page).locator(".xtick text").first()).toBeVisible();
 });
 
-test("a failure says so, and the last sketch stays", async ({ page }) => {
+test("a failure says so, and the last diagram stays", async ({ page }) => {
   let failing = false;
   await open(page, (route) =>
     failing

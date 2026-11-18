@@ -173,16 +173,16 @@ export interface components {
         };
         /**
          * BandDiagramResponse
-         * @description Curves over `wavevector`, by name, where null marks a value that is not finite.
+         * @description Curves over `wavevector_nm_inv` (nm⁻¹), with energies divided by k_B (K).
          *
-         *     Each name ends in its unit. `wavevector` has none, as the formula states none, and the desktop
-         *     draws this axis with no ticks. `known_issues` names known errors, as in `GET /api/models`.
+         *     Null marks a non-finite energy. `reference_mass_assumed` marks DPB diagrams
+         *     whose curvature scale assumes a first-band mass magnitude of one electron mass.
          * @example {
          *       "curves": {
          *         "band_1_energy_k": [
-         *           1954.5,
+         *           1751.01016,
          *           0,
-         *           1954.5
+         *           1751.01016
          *         ],
          *         "fermi_energy_k": [
          *           100,
@@ -190,25 +190,26 @@ export interface components {
          *           100
          *         ]
          *       },
-         *       "known_issues": [
-         *         "band_diagram_formula"
-         *       ],
-         *       "wavevector": [
-         *         -40,
+         *       "known_issues": [],
+         *       "reference_mass_assumed": false,
+         *       "wavevector_nm_inv": [
+         *         -2,
          *         0,
-         *         40
+         *         2
          *       ]
          *     }
          */
         BandDiagramResponse: {
-            /** Wavevector */
-            wavevector: number[];
+            /** Wavevector Nm Inv */
+            wavevector_nm_inv: number[];
             /** Curves */
             curves: {
                 [key: string]: (number | null)[];
             };
             /** Known Issues */
             known_issues: string[];
+            /** Reference Mass Assumed */
+            reference_mass_assumed: boolean;
         };
         /** BoundsInput */
         BoundsInput: {
@@ -1511,7 +1512,7 @@ export interface operations {
                 headers: {
                     /** @example no-cache */
                     "Cache-Control"?: string;
-                    /** @example "721065269bcd2442becad75df2f99d34" */
+                    /** @example "e42d1867fd794c9570c6dae611878661" */
                     ETag?: string;
                     [name: string]: unknown;
                 };

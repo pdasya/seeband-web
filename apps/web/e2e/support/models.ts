@@ -91,15 +91,16 @@ export const CALC = {
   rmse: {},
 };
 
-/** A sketch of the bands, for tests about other things. */
+/** A band diagram for tests about other things. */
 export const BAND_DIAGRAM = {
-  wavevector: [-40, 0, 40],
+  wavevector_nm_inv: [-2, 0, 2],
   curves: {
-    band_1_energy_k: [-1954, 0, -1954],
-    band_2_energy_k: [2954, 1000, 2954],
+    band_1_energy_k: [-1768.52, 0, -1768.52],
+    band_2_energy_k: [2768.52, 1000, 2768.52],
     fermi_energy_k: [-100, -100, -100],
   },
   known_issues: [],
+  reference_mass_assumed: true,
 };
 
 /** Leaves the values as they are, for tests about other things. */

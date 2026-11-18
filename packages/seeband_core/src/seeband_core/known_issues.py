@@ -79,15 +79,6 @@ KNOWN_ISSUES: tuple[KnownIssue, ...] = (
         "there is no desktop result to compare with",
     ),
     KnownIssue(
-        id="band_diagram_formula",
-        severity="caution",
-        fixed_by="#108",
-        fit_modes=(*_SPB_MODES, *_DPB_MODES),
-        affects_band_diagram=True,
-        explanation="The sketch of E(k) follows no E = hbar^2 k^2 / 2m in any stated units. It "
-        "enters no fit or curve, so no result lists this, only the diagram itself",
-    ),
-    KnownIssue(
         id="interpolation_extrapolates",
         severity="unreliable",
         fixed_by="#86",
@@ -145,7 +136,7 @@ def active_issue_ids(
 
 
 def band_diagram_issue_ids(fit_mode: FitMode) -> tuple[str, ...]:
-    """Return what the sketch of E(k) carries, which no fit or curve does."""
+    """Return issues specific to the band diagram."""
     return tuple(issue.id for issue in fit_mode.known_issues if issue.affects_band_diagram)
 
 

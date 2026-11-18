@@ -259,7 +259,6 @@ function MoreGraph({
         fitRange={null}
         xAxisTitle={chartText.temperatureAxis}
         xAxisSpan={null}
-        xAxisUnitless={false}
         yAxisTitle={view.yAxisTitle}
         description={view.description}
         failedText={chartText.failed}

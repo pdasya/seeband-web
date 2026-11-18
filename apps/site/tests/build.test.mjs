@@ -205,11 +205,11 @@ test("Conventions renders its formulas, lists its sections and ties issues to th
     "collapsed_m_eff",
     "no_chemical_potential",
     "hall_dis_no_reference",
-    "band_diagram_formula",
     "interpolation_extrapolates",
   ]) {
     assert.match(conventions, new RegExp(`<code>${id}</code>`), id);
   }
+  assert.match(conventions, /<h2 id="band-diagram">Band diagram<\/h2>/);
   // No mixed scattering is offered any more; the page says so where it names it.
   assert.match(textOfPage(conventions), /acPhDis[^.]*not offered/);
 });

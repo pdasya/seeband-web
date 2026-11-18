@@ -52,10 +52,8 @@ from seeband_core.model_interface import (
     IterationUpdate,
     Measurement,
     ModelDescription,
-    ParameterSpec,
     Quantity,
 )
-from seeband_core.model_scales import core_to_display
 from seeband_core.parameter_status import parameter_statuses
 
 # Any, because calls here spread lists of mixed arguments that mypy cannot match to a signature.
@@ -93,18 +91,15 @@ LORENZ_BAND_CURVES = (
 def parabolic_band(
     min_wavevector: float, max_wavevector: float, points: int, mass: float, energy: float
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Return the band diagram, which depends on no model state. P17 reviews its formula."""
+    """Return wavevectors in nm^-1 and energies in K for a signed mass in m_e."""
     wavevector, band_energy = _CORE.get_parabolic_band(
         min_wavevector, max_wavevector, points, mass, energy
     )
     return wavevector, band_energy
 
 
-# As the desktop redraws its sketch: this range of k, this many points, and for E_F a band so heavy
-# that it lies flat.
-_DIAGRAM_K_RANGE = (-40, 40)
-_DIAGRAM_POINTS = 100
-_FLAT_MASS = 100000000
+_DIAGRAM_K_RANGE_NM_INV = (-2.0, 2.0)
+_DIAGRAM_POINTS = 101
 
 
 def _values(parameters: Mapping[str, float], names: Iterable[str]) -> list[float]:
@@ -649,28 +644,32 @@ class _BandModel:
         return {}
 
     def band_diagram(self, request: BandDiagramRequest) -> BandDiagramResult:
-        """Return the desktop's sketch of the bands. It enters no fit or curve."""
+        """Return the local parabolic bands and constant Fermi energy."""
         fit_mode = self.describe().fit_mode(request.fit_mode)
-        specs = {spec.name: spec for spec in fit_mode.parameters}
-        bands = [
-            *self._diagram_bands(request, specs),
-            ("fermi_energy_k", _FLAT_MASS, _value(request.parameters, "fermi_energy")),
-        ]
-        wavevector: np.ndarray | None = None
+        wavevector_nm_inv: np.ndarray | None = None
         curves: dict[str, np.ndarray] = {}
-        # A mass of 0, which the controls allow, has no finite band, and a tiny one overflows.
-        with np.errstate(all="ignore"):
-            for name, mass, energy in bands:
-                wavevector, curves[name] = parabolic_band(
-                    *_DIAGRAM_K_RANGE, _DIAGRAM_POINTS, mass, energy
+        # A mass very close to 0 can put the energies outside the range of a float.
+        with np.errstate(over="ignore"):
+            for name, mass, energy in self._diagram_bands(request, fit_mode):
+                wavevector_nm_inv, curves[name] = parabolic_band(
+                    *_DIAGRAM_K_RANGE_NM_INV, _DIAGRAM_POINTS, mass, energy
                 )
-        assert wavevector is not None
-        return BandDiagramResult(wavevector, curves, band_diagram_issue_ids(fit_mode))
+        assert wavevector_nm_inv is not None
+        curves["fermi_energy_k"] = np.full_like(
+            wavevector_nm_inv, _value(request.parameters, "fermi_energy")
+        )
+        reference_mass_assumed = self.describe().id == "dpb" and "hall" not in fit_mode.quantities
+        return BandDiagramResult(
+            wavevector_nm_inv,
+            curves,
+            band_diagram_issue_ids(fit_mode),
+            reference_mass_assumed=reference_mass_assumed,
+        )
 
     def _diagram_bands(
-        self, request: BandDiagramRequest, specs: Mapping[str, ParameterSpec]
+        self, request: BandDiagramRequest, fit_mode: FitMode
     ) -> list[tuple[str, float, float]]:
-        """Each band as its curve's name, its mass as a user sees it, and its energy."""
+        """Each curve name, signed single-valley mass in m_e, and edge energy in K."""
         raise NotImplementedError
 
     def _curve_call(
@@ -684,10 +683,9 @@ class SpbModel(_BandModel):
         super().__init__(load_desktop_descriptions()["spb"])
 
     def _diagram_bands(
-        self, request: BandDiagramRequest, specs: Mapping[str, ParameterSpec]
+        self, request: BandDiagramRequest, fit_mode: FitMode
     ) -> list[tuple[str, float, float]]:
-        mass = core_to_display(specs["band_mass"], _value(request.parameters, "band_mass"))
-        return [("band_1_energy_k", mass, 0)]
+        return [("band_1_energy_k", _value(request.parameters, "band_mass"), 0.0)]
 
     def _stage_errors(
         self, fit_mode: FitMode, scattering: str | None, ratio: float, progress: Any
@@ -821,14 +819,16 @@ class DpbModel(_BandModel):
         super().__init__(load_desktop_descriptions()["dpb"])
 
     def _diagram_bands(
-        self, request: BandDiagramRequest, specs: Mapping[str, ParameterSpec]
+        self, request: BandDiagramRequest, fit_mode: FitMode
     ) -> list[tuple[str, float, float]]:
-        m_eff = core_to_display(specs["m_eff"], _value(request.parameters, "m_eff"))
-        ratio = request.band_1_degeneracy / request.band_2_degeneracy
+        """Convert the Hall density-of-states mass to a signed single-valley mass."""
+        mass_1 = -1.0
+        if "hall" in fit_mode.quantities:
+            mass_1 = -abs(_value(request.parameters, "m1")) / request.band_1_degeneracy ** (2 / 3)
+        mass_2 = _value(request.parameters, "m_eff") * abs(mass_1)
         return [
-            # The desktop draws band 1 with this mass, whatever the parameters are.
-            ("band_1_energy_k", -1, 0),
-            ("band_2_energy_k", m_eff / ratio, _value(request.parameters, "band_gap")),
+            ("band_1_energy_k", mass_1, 0.0),
+            ("band_2_energy_k", mass_2, _value(request.parameters, "band_gap")),
         ]
 
     def _stage_errors(

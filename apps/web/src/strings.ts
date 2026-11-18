@@ -415,8 +415,10 @@ export const STRINGS = {
       band_2_energy_k: "Band 2",
       fermi_energy_k: "E_F",
     },
-    diagramDescription: "Sketch of the band energies against wavevector",
-    wavevectorAxis: "k",
+    diagramDescription: "Local parabolic band energies against wavevector",
+    diagramReferenceMass:
+      "The curvature scale is illustrative. The first band's mass magnitude is assumed to be mₑ in this mode without Hall data.",
+    wavevectorAxis: "k, nm⁻¹",
     axes: {
       seebeck: "S, µV/K",
       resistivity: "ρ, µΩ·m",
@@ -693,8 +695,6 @@ export const STRINGS = {
         "With the Fermi energy outside the band, there are no carriers, so the chemical potential and the curves from it mean nothing.",
       "known_issue.hall_dis_no_reference":
         "This fit fails on the desktop, and runs here with other bounds of G, so there is no desktop result to compare with.",
-      "known_issue.band_diagram_formula":
-        "This is a sketch, as on the desktop. Its curves do not follow E = ħ²k²/(2m) in any stated units, and in DPB band 1 has a mass of −1 whatever the values. Only E_F and where each band starts are exact.",
       "known_issue.interpolation_extrapolates":
         "Interpolation made up points beyond the data, and they count in the RMSE and in a fit.",
     },

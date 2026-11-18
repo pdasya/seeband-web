@@ -124,6 +124,25 @@ rather than $N/R$, so B would have to be $R^2$, which its default bounds exclude
 unless $|R| \approx 1$. Which law ionized DPB fits should use is open
 ([#247](https://github.com/pdasya/seeband-web/issues/247)).
 
+## Band diagram
+
+The live diagram draws the local parabolic approximation for each band.
+The wavevector $k$ is measured in $\mathrm{nm}^{-1}$ relative to the band
+extremum. For a signed single-valley mass $m_b$,
+
+$$
+E(k)=E_0+\frac{\hbar^2 k^2}{2m_b}.
+$$
+
+The sign of $m_b$ sets the direction of the curvature. In DPB, band 1
+opens down from 0 and band 2 starts at $E_g$. For modes with Hall data, the
+diagram converts the first band's density-of-states mass $m_1$ to the magnitude
+of the single-valley mass $|m_{b,1}|=m_1/N_1^{2/3}$. The signed mass of band 2
+is $m_{b,2}=R|m_{b,1}|$. For DPB modes without Hall data, the diagram assumes
+$|m_{b,1}|=m_e$ to illustrate the relative curvatures. The Fermi level is a
+horizontal line at $E_F$. The API returns $E/k_B$ in K, and the chart uses the
+selected energy unit.
+
 ## Seebeck coefficient
 
 For one band, with λ of the chosen mechanism:
@@ -304,7 +323,6 @@ and exports name them. The core's registry holds these:
 | `collapsed_m_eff`            | unreliable | DPB, with \|m₂/m₁\| below 10⁻⁵                  | The fit can be poorly conditioned, and the band parameters may not be determined separately.                                                       | [#107](https://github.com/pdasya/seeband-web/issues/107) |
 | `no_chemical_potential`      | unreliable | SPB, with $E_F$ outside the band                | There are no carriers at T = 0, so no μ(T) exists, and the calculation fails explicitly.                                                           | [#106](https://github.com/pdasya/seeband-web/issues/106) |
 | `hall_dis_no_reference`      | caution    | DPB S + ρ + $R_H$ with alloy disorder           | The desktop fails this fit, so there is no desktop result to compare with.                                                                         | [#71](https://github.com/pdasya/seeband-web/issues/71)   |
-| `band_diagram_formula`       | caution    | The E(k) sketch                                 | The sketch does not follow E = ħ²k²/(2m); only $E_F$ and the band edges are exact.                                                                 | [#108](https://github.com/pdasya/seeband-web/issues/108) |
 | `interpolation_extrapolates` | unreliable | Results whose request is marked as extrapolated | Current interpolation never extrapolates; the flag stays for results built from older extrapolated points, which would enter the RMSE and the fit. | [#86](https://github.com/pdasya/seeband-web/issues/86)   |
 
 Not flagged for each result, as it cannot be told from the inputs: $F_0 = \ln(1 + e^\eta)$

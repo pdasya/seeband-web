@@ -1,0 +1,5 @@
+{
+  "reference": "h = 6.62607015e-34 J s, k_B = 1.380649e-23 J/K (exact SI), m_e = 9.1093837015e-31 kg (CODATA 2018), and k = 1 nm^-1",
+  "curvature_k_at_one_nm_inv_and_one_electron_mass": 442.130065097008,
+  "grid": "Replay uses the recorded low-level sample coordinates in nm^-1. Live diagrams use a separate -2 to 2 nm^-1 grid."
+}
