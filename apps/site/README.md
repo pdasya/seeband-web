@@ -7,6 +7,7 @@ pnpm --filter @seeband/site dev       # http://localhost:4321
 pnpm --filter @seeband/site build     # static files in apps/site/dist
 pnpm --filter @seeband/site typecheck # astro check
 pnpm --filter @seeband/site test      # builds the site and checks its output
+pnpm --filter @seeband/site serve     # builds it and previews it on port 4321, for the app's dev:all
 ```
 
 | Path             | Holds                                                                          |
