@@ -3,6 +3,7 @@
 import "katex/dist/katex.min.css";
 
 import Base from "./Base.astro";
+import { STRINGS } from "../strings";
 
 interface PageProps {
   title: string;
@@ -10,21 +11,113 @@ interface PageProps {
   /** The header link this page is, if any. */
   current?: "conventions";
 }
-// An MDX page that names this layout passes its frontmatter; an Astro page passes the props.
-type Props = PageProps | { frontmatter: PageProps };
+interface Heading {
+  depth: number;
+  slug: string;
+  text: string;
+}
+// An MDX page that names this layout passes its frontmatter and headings; an Astro page passes
+// the props.
+type Props = PageProps | { frontmatter: PageProps; headings?: Heading[] };
 
 const { title, description, current } =
   "frontmatter" in Astro.props ? Astro.props.frontmatter : Astro.props;
+// Its sections, for a side list of them, when there are enough to need one.
+const sections =
+  "headings" in Astro.props
+    ? (Astro.props.headings ?? []).filter((heading) => heading.depth === 2)
+    : [];
 ---
 
 <Base title={title} description={description} current={current}>
-  <article class="prose">
-    <slot />
-  </article>
+  <div class:list={["prose-page", { "prose-page--toc": sections.length > 3 }]}>
+    {
+      sections.length > 3 && (
+        <nav class="toc" aria-labelledby="toc-title">
+          <p id="toc-title" class="toc__title">
+            {STRINGS.onThisPage}
+          </p>
+          <ul>
+            {sections.map((heading) => (
+              <li>
+                <a href={`#${heading.slug}`}>{heading.text}</a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      )
+    }
+    <article class="prose">
+      <slot />
+    </article>
+  </div>
 </Base>
 
 <style is:global>
+  .prose-page {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 32px;
+    align-items: flex-start;
+  }
+
+  .prose-page .prose {
+    flex: 1 1 560px;
+    min-width: 0;
+  }
+
+  .toc {
+    flex: 0 1 240px;
+    min-width: 0;
+    font-size: 14px;
+  }
+
+  /* Beside the text, it stays in view while the text scrolls. */
+  @media (min-width: 900px) {
+    .toc {
+      position: sticky;
+      top: 16px;
+      max-height: calc(100vh - 32px);
+      overflow-y: auto;
+    }
+  }
+
+  .toc__title {
+    margin: 0 0 8px;
+    color: var(--color-zinc-600);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .toc ul {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .toc a {
+    display: block;
+    padding: 4px 0;
+    color: var(--color-zinc-700);
+    text-decoration: none;
+  }
+
+  .toc a:hover {
+    color: var(--foreground);
+    text-decoration: underline;
+  }
+
+  .prose h1 {
+    margin-top: 0;
+  }
+
   .prose h2 {
+    scroll-margin-top: 16px;
     margin: 40px 0 12px;
     font-size: 22px;
     font-weight: 600;
