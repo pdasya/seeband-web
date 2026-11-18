@@ -209,6 +209,26 @@ test("an edit ends what was said about the fit", async ({ page }) => {
   await expect(iterations(page)).toContainText("—");
 });
 
+test("an in-gap Fermi energy explains what the data cannot determine", async ({
+  page,
+}) => {
+  await open(page);
+  const warning = page.getByText(
+    /The transport data cannot determine where E_F is within this gap/,
+  );
+  await expect(warning).toHaveCount(0);
+
+  await finishWith(page, {
+    parameters: { ...RESULT.parameters, fermi_energy: 400 },
+    known_issues: ["fermi_energy_in_gap"],
+    parameter_status: { fermi_energy: "at_bound" },
+    at_bounds: ["fermi_energy"],
+  });
+
+  await expect(warning).toBeVisible();
+  await expect(row(page, "E_F")).toContainText("at bound");
+});
+
 test("a fit at its iteration limit says it did not converge", async ({
   page,
 }) => {

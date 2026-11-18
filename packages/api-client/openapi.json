@@ -1269,6 +1269,27 @@
                                   "condition": "collapsed_m_eff"
                                 },
                                 {
+                                  "id": "fermi_energy_in_gap",
+                                  "severity": "caution",
+                                  "message_key": "known_issue.fermi_energy_in_gap",
+                                  "fixed_by": "#107",
+                                  "scattering": [],
+                                  "curve_kinds": [
+                                    "measured",
+                                    "seebeck",
+                                    "seebeck_by_band",
+                                    "electrical_conductivity",
+                                    "electrical_conductivity_by_band",
+                                    "thermal_conductivity",
+                                    "lorenz_number",
+                                    "chemical_potential",
+                                    "carrier_concentration_by_band"
+                                  ],
+                                  "columns": [],
+                                  "affects_fit": true,
+                                  "condition": "fermi_energy_in_gap"
+                                },
+                                {
                                   "id": "band_diagram_formula",
                                   "severity": "caution",
                                   "message_key": "known_issue.band_diagram_formula",
@@ -1676,6 +1697,27 @@
                                   "columns": [],
                                   "affects_fit": true,
                                   "condition": "collapsed_m_eff"
+                                },
+                                {
+                                  "id": "fermi_energy_in_gap",
+                                  "severity": "caution",
+                                  "message_key": "known_issue.fermi_energy_in_gap",
+                                  "fixed_by": "#107",
+                                  "scattering": [],
+                                  "curve_kinds": [
+                                    "measured",
+                                    "seebeck",
+                                    "seebeck_by_band",
+                                    "electrical_conductivity",
+                                    "electrical_conductivity_by_band",
+                                    "thermal_conductivity",
+                                    "lorenz_number",
+                                    "chemical_potential",
+                                    "carrier_concentration_by_band"
+                                  ],
+                                  "columns": [],
+                                  "affects_fit": true,
+                                  "condition": "fermi_energy_in_gap"
                                 },
                                 {
                                   "id": "band_diagram_formula",
@@ -2136,6 +2178,27 @@
                                   "condition": "collapsed_m_eff"
                                 },
                                 {
+                                  "id": "fermi_energy_in_gap",
+                                  "severity": "caution",
+                                  "message_key": "known_issue.fermi_energy_in_gap",
+                                  "fixed_by": "#107",
+                                  "scattering": [],
+                                  "curve_kinds": [
+                                    "measured",
+                                    "seebeck",
+                                    "seebeck_by_band",
+                                    "electrical_conductivity",
+                                    "electrical_conductivity_by_band",
+                                    "thermal_conductivity",
+                                    "lorenz_number",
+                                    "chemical_potential",
+                                    "carrier_concentration_by_band"
+                                  ],
+                                  "columns": [],
+                                  "affects_fit": true,
+                                  "condition": "fermi_energy_in_gap"
+                                },
+                                {
                                   "id": "hall_dis_no_reference",
                                   "severity": "caution",
                                   "message_key": "known_issue.hall_dis_no_reference",
@@ -2222,7 +2285,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "example": "\"721065269bcd2442becad75df2f99d34\""
+                "example": "\"fc4597788df6c1d3eb3e1b358d52e79a\""
               }
             }
           },
@@ -7189,6 +7252,7 @@
                 "enum": [
                   "degeneracy_not_one",
                   "collapsed_m_eff",
+                  "fermi_energy_in_gap",
                   "fermi_energy_outside_band",
                   "interpolation_extrapolated"
                 ]

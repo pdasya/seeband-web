@@ -86,6 +86,12 @@ signed mass ratio R = m₂/|m₁|. Its magnitude is the band-mass ratio; its sig
 sets the type of band 2. The reference band 1 is hole-like. The low-level
 DPB formulas receive r = R/N, the mass ratio weighted by inverse degeneracy.
 
+With a positive gap between a valence and a conduction band, the 0 K Fermi
+energy can lie anywhere in the gap, including either edge, without changing
+the zero carrier density at 0 K. Holding the other parameters fixed gives
+the same finite-temperature S, ρ and R_H across that interval. SeeBand marks
+this case: the transport data cannot locate E_F within the gap (#107).
+
 In DPB S-only mode, fitting and drawing convert R to r = R/N exactly once;
 starts, fitted values, bounds and reported uncertainties remain in public R
 coordinates. Derived curves also convert R to r. The explicit legacy iterative

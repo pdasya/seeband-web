@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- P16 (#107): flag a DPB Fermi energy in a positive valence–conduction gap,
+  including either edge, where transport cannot locate E_F within the gap.
+  The warning changes no calculated values or fit behavior.
+
 - R11 (#187): add the Lorenz number L(T) = kappa_e/(sigma*T) as a derived curve
   in modes with rho, in W*Ohm/K^2 and in units of L0 = pi^2/3 (k_B/e)^2, with
   export. For DPB, show the effective L with its bipolar part, and each band's

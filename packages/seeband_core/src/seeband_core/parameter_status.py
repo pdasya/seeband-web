@@ -13,9 +13,9 @@ statuses say what the fit can tell, and no more:
   covariance at all. The values may then fit the data exactly.
 - `not_determined`: the data do not depend on it. Either the solver saw no effect of it on its
   data (a legacy stage error of exactly 0, from a Jacobian column of zeros, or an unidentified
-  parameter of the verified method), or it is the DPB Fermi energy in the gap, 0 <= E_F <= E_g,
-  with m_eff > 0, where both bands are empty at 0 K for any value in the gap, so μ(T), and so S,
-  ρ and R_H, are the same for each. The data then say only that E_F is somewhere in the gap.
+  parameter of the verified method), or it is the DPB Fermi energy in a positive gap,
+  0 <= E_F <= E_g with m_eff > 0. The carrier populations at 0 K vanish throughout that interval,
+  so with the other parameters fixed, transport cannot distinguish these energies.
 - `not_assessed` again for any other parameter of a fit that did not converge: one stopped, at its
   iteration limit or stalled has values that did not settle.
 - `did_not_move`: it ended within `DID_NOT_MOVE_TOLERANCE`, relative, of its start.
@@ -27,6 +27,7 @@ The first that applies, in this order, is the status.
 
 from collections.abc import Collection, Mapping
 
+from seeband_core.known_issues import fermi_energy_in_gap
 from seeband_core.model_interface import FitMode, FitStatus, ParameterStatus, Quantity
 
 # A value closer than this to its start, relative to the larger of |start| and 1, did not move.
@@ -54,6 +55,7 @@ def parameter_statuses(
     """
     active = {spec.name for spec in fit_mode.parameters_for(scattering)}
     unassessed = set(unassessed) | _without_spare_points(fit_mode, active, held, points)
+    in_gap = fit_mode.id.startswith("dpb_") and fermi_energy_in_gap(parameters)
     statuses: dict[str, ParameterStatus] = {}
     for spec in fit_mode.parameters:
         name = spec.name
@@ -69,7 +71,7 @@ def parameter_statuses(
             statuses[name] = "at_bound"
         elif name in unassessed:
             statuses[name] = "not_assessed"
-        elif name in undetermined or _fermi_energy_in_gap(fit_mode, name, parameters):
+        elif name in undetermined or (name == "fermi_energy" and in_gap):
             statuses[name] = "not_determined"
         elif status != "converged":
             statuses[name] = "not_assessed"
@@ -78,22 +80,6 @@ def parameter_statuses(
         else:
             statuses[name] = "estimated"
     return statuses
-
-
-def _fermi_energy_in_gap(fit_mode: FitMode, name: str, parameters: Mapping[str, float]) -> bool:
-    """The DPB carrier density at 0 K is 0 for any E_F in the gap, its edges too, with m_eff > 0.
-
-    Band 1 holds holes only for E_F < 0, and band 2, a conduction band for m_eff > 0, holds
-    electrons only for E_F > E_g. With neither, the density balance has the same target, 0, for
-    each such E_F, so the solved μ(T) and every curve are the same to the last bit, as
-    `tests/test_parameter_status.py` checks.
-    """
-    if name != "fermi_energy" or not fit_mode.id.startswith("dpb"):
-        return False
-    mass, gap, energy = (parameters.get(key) for key in ("m_eff", "band_gap", "fermi_energy"))
-    if mass is None or gap is None or energy is None:
-        return False
-    return mass > 0 and 0 <= energy <= gap
 
 
 def _without_spare_points(
