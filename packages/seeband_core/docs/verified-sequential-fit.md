@@ -115,8 +115,8 @@ The zero-temperature carrier target and its first derivatives are the same
 as at the conduction edge.
 The fit checks that the residual vector is identical at the reference before
 using it to take shrinking-gap probes or seed the optimizer. The original
-endpoint remains a candidate and wins ties. If the Fermi energy is held or
-there is no admissible interior reference, the original derivative check
+endpoint remains a candidate and wins ties. If both energies are free but
+no admissible interior reference exists, the original derivative check
 still applies and can fail explicitly.
 
 With the demo's gap bounds set to `[300, 800] K`, the same start converges to
@@ -137,6 +137,23 @@ energies from a 400 K start, including when the generating energy is at the
 only accessible outer bound. With all parameters free on the bundled demo,
 the start (m₂/m₁ = 1.2, E_g = 800 K, E_F = 0 K) now gives about
 0.807 µV/K RMSE. The earlier plateau result gave 48.34 µV/K.
+
+When the gap is the only free parameter of the Seebeck stage and the Fermi
+energy is held at the upper conduction edge, the zero-temperature carrier
+target has zero first derivative with respect to the gap at that point.
+The edge derivative can therefore use checked zero-target roots for its
+auxiliary probes without changing the held Fermi energy. The actual fit
+objective and terminal residuals still use the original carrier target.
+The solver checks smaller admissible gaps on the true objective before
+retaining the endpoint. This can find a better nearby fit even when the
+endpoint passes the local stationarity check.
+
+On the bundled demo with `m_eff = 1.2` and `fermi_energy = 800 K` held, and
+gap bounds `[300, 800] K`, the fit converges to `band_gap ≈ 799.8984 K`.
+Its Seebeck RMSE is `61.121734 µV/K`, matching an independent bounded
+one-variable search. The starting RMSE is `63.135757 µV/K`. All 305 checked
+transport evaluations respect the gap bounds and keep the public Fermi
+energy at `800 K`, including auxiliary derivative probes.
 
 ## Result interpretation
 

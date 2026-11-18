@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Verified Fit: recover a free DPB gap from its upper bound when the Fermi
+  energy is held at the conduction edge. Keep the held value and bounds,
+  and check nearby admissible gaps against the original objective.
+
 - S6 (#68): add the site's search-engine base. A build with
   `SEEBAND_SITE_URL` gets canonical links, `og:url`, a sitemap and a
   `robots.txt` that keeps search engines out of `/fit`, `/results` and

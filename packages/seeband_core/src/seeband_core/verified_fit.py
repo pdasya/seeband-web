@@ -112,12 +112,12 @@ def _evaluate_quantity(
     root_provider: _CheckedRootProvider | None = None,
     *,
     band_1_degeneracy: float = 1.0,
+    potentials: np.ndarray | None = None,
 ) -> np.ndarray:
     if scattering == "ionized":
         from seeband_core.transport import ionized_transport
 
-        potentials = None
-        if root_provider is not None:
+        if potentials is None and root_provider is not None:
             if fit_mode.startswith("dpb"):
                 potentials = root_provider(
                     "dpb", t, p["m_eff"] / degen, p["fermi_energy"], p["band_gap"], degen
@@ -140,11 +140,9 @@ def _evaluate_quantity(
     with np.errstate(all="ignore"):
         if dpb:
             r, gap = p["m_eff"] / degen, p["band_gap"]
-            roots = (
-                {}
-                if root_provider is None
-                else {"potentials": root_provider("dpb", t, r, ef, gap, degen)}
-            )
+            if potentials is None and root_provider is not None:
+                potentials = root_provider("dpb", t, r, ef, gap, degen)
+            roots = {} if potentials is None else {"potentials": potentials}
             if q == "seebeck":
                 if fit_mode == "dpb_s":
                     out = mm.dpb_see_vs_temp(t, r, gap, ef, degen, **roots)
@@ -232,6 +230,10 @@ class _Coordinates:
         return np.clip(seed, self.lower, self.upper)
 
 
+def _derivative_step(coordinate: float) -> float:
+    return float(np.finfo(float).eps ** 0.2 * max(1.0, abs(coordinate)))
+
+
 def _validated_jacobian(
     evaluate: Callable[[np.ndarray], np.ndarray],
     z: np.ndarray,
@@ -293,7 +295,7 @@ def _validated_jacobian(
                     )
             return None
 
-        initial = np.finfo(float).eps ** 0.2 * max(1.0, abs(z[i]))
+        initial = _derivative_step(z[i])
         steps = [initial]
         for k in range(1, 25):
             if k <= 8:
@@ -486,12 +488,31 @@ class _Engine:
             return point
         return reference if np.array_equal(evaluate(point), evaluate(reference)) else point
 
+    def held_fermi_at_gap_limit(
+        self, q: Quantity, coordinates: _Coordinates, base: Mapping[str, float], point: np.ndarray
+    ) -> bool:
+        if not (
+            q == "seebeck"
+            and self.dpb
+            and coordinates.names == ["band_gap"]
+            and "fermi_energy" in self.request.held
+            and point[0] == coordinates.upper[0]
+        ):
+            return False
+        parameters = dict(base) | coordinates.decode(point)
+        return parameters["fermi_energy"] == parameters["band_gap"] and fermi_energy_in_gap(
+            parameters
+        )
+
     def jacobian(
         self,
+        q: Quantity,
         evaluate: Callable[[np.ndarray], np.ndarray],
         coordinates: _Coordinates,
         base: Mapping[str, float],
         point: np.ndarray,
+        *,
+        terminal: bool = False,
     ) -> np.ndarray:
         """Certify DPB derivatives without crossing the carrier onset from inside the gap.
 
@@ -500,8 +521,39 @@ class _Engine:
         plateau, widening the gap gives the smooth side of the same first derivative. Clip only
         the stencil, never the optimizer's bounds, and use the ordinary half-step certificate.
         At the upper gap bound, an equivalent reference can make room for a shrinking stencil
-        without crossing the carrier onset. Otherwise the ordinary admissible check still applies.
+        without crossing the carrier onset. With held EF, zero-target roots provide the same
+        first derivative at the edge, where the density target itself has zero derivative.
         """
+        if self.held_fermi_at_gap_limit(q, coordinates, base, point):
+            temperatures, measurements = self.data[q]
+            target = 0.0 if terminal else measurements * _SCALE[q]
+
+            def zero_target(trial: np.ndarray) -> np.ndarray:
+                if not terminal and self.evaluations >= _MAX_EVALUATIONS:
+                    raise _BudgetReached
+                self.evaluations += 1
+                parameters = dict(base) | coordinates.decode(trial)
+                gap, mass = parameters["band_gap"], parameters["m_eff"] / self.n
+                with mm.independent_chemical_potential():
+                    potentials = mm.dpb_chemPot_vs_temp(temperatures, gap, mass, gap, self.n)
+                    prediction = _evaluate_quantity(
+                        q,
+                        temperatures,
+                        parameters,
+                        self.mode.id,
+                        self.request.scattering,
+                        self.n,
+                        potentials=potentials,
+                    )
+                return prediction * _SCALE[q] - target
+
+            if not np.array_equal(evaluate(point), zero_target(point)):
+                raise DerivativeValidationError("Zero-target residual differs at the gap edge")
+
+            return _validated_jacobian(
+                zero_target, point, np.maximum(coordinates.lower, 0.0), coordinates.upper
+            )
+
         point = self.upper_gap_reference(evaluate, coordinates, base, point)
         zero_columns: tuple[int, ...] = ()
         lower = coordinates.lower
@@ -638,7 +690,7 @@ class _Engine:
                 return np.full_like(target, np.inf)
 
         def jacobian(z: np.ndarray) -> np.ndarray:
-            return self.jacobian(evaluate, coordinates, base, z)
+            return self.jacobian(q, evaluate, coordinates, base, z)
 
         def cost_at(z: np.ndarray) -> float:
             error = evaluate(z)
@@ -656,8 +708,23 @@ class _Engine:
         best, best_cost = x, initial_cost
         uncertified_cost = np.inf
         flat_fermi_only = self.dpb and names == ["fermi_energy"] and fermi_energy_in_gap(p)
-        if not flat_fermi_only:
-            origin = self.upper_gap_reference(evaluate, coordinates, base, x)
+        held_fermi_edge = self.held_fermi_at_gap_limit(q, coordinates, base, x)
+        origin = self.upper_gap_reference(evaluate, coordinates, base, x)
+        if held_fermi_edge and initial_cost > 0.0:
+            step = min(_derivative_step(x[0]), x[0] - lower[0])
+            for refinement in range(8):
+                seed = np.clip(x - step / 2**refinement, lower, upper)
+                if seed[0] == x[0]:
+                    break
+                trial = residual(seed)
+                trial_cost = float(np.dot(trial, trial))
+                if trial_cost < best_cost:
+                    best, best_cost = seed, trial_cost
+            origin = best
+            if origin is not x:
+                self.recoveries += 1
+        stationary_edge = held_fermi_edge and origin is x and stationarity <= _STATIONARITY_TOL
+        if not flat_fermi_only and not stationary_edge:
             result = least_squares(
                 residual,
                 origin,
@@ -669,7 +736,7 @@ class _Engine:
                 max_nfev=250,
             )
             cost = float(np.dot(result.fun, result.fun))
-            if origin is x or cost < best_cost:
+            if (origin is x and not held_fermi_edge) or cost < best_cost:
                 best, best_cost = result.x, cost
         # Flat initial derivatives can terminate immediately in a populated/hidden-band limit.
         # A stationary full-rank nonzero-residual optimum does not need recovery.
@@ -803,7 +870,7 @@ class _Engine:
                 ) -> np.ndarray:
                     return final_prediction(q, self.values | coordinates.decode(z)) * _SCALE[q]
 
-                jac = self.jacobian(at_final, coordinates, self.values, x)
+                jac = self.jacobian(q, at_final, coordinates, self.values, x, terminal=True)
                 unidentified.update(
                     n for n, column in zip(names, jac.T, strict=True) if np.linalg.norm(column) == 0
                 )

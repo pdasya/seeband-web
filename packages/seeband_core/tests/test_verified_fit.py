@@ -242,7 +242,8 @@ def test_verified_can_find_a_free_gap_from_the_conduction_edge(
         assert "fermi_energy_in_gap" in result.known_issues
 
 
-def test_verified_keeps_an_exact_fit_at_the_gap_upper_bound():
+@pytest.mark.parametrize("hold_fermi", [False, True])
+def test_verified_keeps_an_exact_fit_at_the_gap_upper_bound(hold_fermi):
     model = DpbModel()
     start = {"m_eff": 1.2, "band_gap": 800.0, "fermi_energy": 800.0}
     temperature_k = np.linspace(100.0, 800.0, 18)
@@ -254,7 +255,7 @@ def test_verified_keeps_an_exact_fit_at_the_gap_upper_bound():
             start,
             bounds={"band_gap": Bounds(300.0, 800.0)},
             scattering="acPh",
-            held=frozenset({"m_eff"}),
+            held=frozenset({"m_eff", "fermi_energy"} if hold_fermi else {"m_eff"}),
         )
     )
 
@@ -263,6 +264,40 @@ def test_verified_keeps_an_exact_fit_at_the_gap_upper_bound():
     assert "band_gap" in result.at_bounds
     assert "fermi_energy_in_gap" in result.known_issues
     assert result.diagnostics.residuals["seebeck"].rmse == 0.0
+
+
+def test_verified_recovers_with_fermi_energy_held_at_the_upper_gap_edge(monkeypatch):
+    from seeband_core import verified_fit
+
+    start = {"m_eff": 1.2, "band_gap": 800.0, "fermi_energy": 800.0}
+    bounds = {"band_gap": Bounds(300.0, 800.0), "fermi_energy": Bounds(800.0, 900.0)}
+    original = verified_fit._evaluate_quantity
+
+    def check_bounds(quantity, temperatures, parameters, *args, **kwargs):
+        assert 300.0 <= parameters["band_gap"] <= 800.0
+        assert parameters["fermi_energy"] == 800.0
+        assert parameters["m_eff"] == 1.2
+        return original(quantity, temperatures, parameters, *args, **kwargs)
+
+    monkeypatch.setattr(verified_fit, "_evaluate_quantity", check_bounds)
+    result = DpbModel().fit(
+        FitRequest(
+            "dpb_s",
+            {"seebeck": load_demo_dataset().measurements["seebeck"]},
+            start,
+            bounds=bounds,
+            scattering="acPh",
+            held=frozenset({"m_eff", "fermi_energy"}),
+        )
+    )
+
+    assert result.status == "converged"
+    assert result.diagnostics.stage_consistent is True
+    assert result.parameters["fermi_energy"] == 800.0
+    assert result.parameter_status["fermi_energy"] == "held"
+    assert 300.0 <= result.parameters["band_gap"] <= 800.0
+    assert result.parameters["band_gap"] == pytest.approx(799.8984, abs=0.001)
+    assert result.diagnostics.residuals["seebeck"].rmse * 1e6 < 61.13
 
 
 @pytest.mark.parametrize("scattering", ["acPh", "dis", "ionized"])
