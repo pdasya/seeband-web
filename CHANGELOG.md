@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Verified Fit: search both permitted sides when a free DPB Fermi energy
+  remains in a positive gap after a stage solve. Probe toward each edge,
+  polish candidates with lower stage cost, and repeat the search in the
+  final conditional audit. Fits constrained to the gap still report the
+  Fermi energy as undetermined.
+
 - P16 (#107): flag a DPB Fermi energy in a positive valence–conduction gap,
   including either edge, where transport cannot locate E_F within the gap.
   The warning changes no calculated values or fit behavior.

@@ -52,14 +52,36 @@ held values remain fixed. Evaluation and sweep budgets are finite; cycles,
 stalls and budget exhaustion are distinct diagnostic reasons. Neither solver
 success nor a small change from the starting vector is enough by itself.
 
-One DPB recovery failure can be reproduced with the bundled demo Seebeck
+One DPB recovery failure was reproduced with the bundled synthetic demo Seebeck
 data, acoustic phonons, held `m_eff = 1.2` and `band_gap = 800 K`, and a free
 `fermi_energy` starting at `400 K` with default bounds. The doubled seed lands
 at `800 K`, exactly the conduction-band edge. At that point the derivative
 estimates from scaled steps `1e-5` and `5e-6` differed by about 41% relative to
-the smaller-step estimate. The fit reports `derivative_validation_failure`.
-This is separate from the in-gap identification warning (#107): the data
-cannot locate the Fermi energy within the gap, even when the fit succeeds.
+the smaller-step estimate. The old fit reported `derivative_validation_failure`.
+The Fermi-energy derivative is exactly zero on the closed positive gap
+interval. When a stage solve leaves a free Fermi energy on that plateau,
+the recovery starts from the parameters returned by the solver, including any
+updated mass ratio and gap. On each permitted populated side it evaluates up
+to 32 offsets, halved toward the edge, using the existing stage objective.
+It polishes the best improving probe on each side and retains the lowest-cost
+feasible candidate. The final conditional audit repeats the same search.
+The finite set of probes and shared evaluation budget define the search coverage.
+
+On the same demo, a plateau RMSE of
+63.136 µV/K falls to 0.8084 µV/K at `fermi_energy ≈ −150.1195 K`, with the
+same fit objective, held values and certification thresholds. When the bounds
+keep the fit in the gap, the warning still applies: transport does not locate
+the Fermi energy there (#107). Other derivative columns must still pass the
+numerical check. In the same demo with only `m_eff` held and `band_gap` free,
+starting both `band_gap` and `fermi_energy` at `800 K` still fails that check.
+
+Synthetic DPB Seebeck curves generated with the same mass ratio and gap,
+31 temperatures from 50 to 800 K, and Fermi energies 0.05 K or 0.0001 K
+outside either edge serve as near-edge regressions. The fits recover those
+energies from a 400 K start, including when the generating energy is at the
+only accessible outer bound. With all parameters free on the bundled demo,
+the start (m₂/m₁ = 1.2, E_g = 800 K, E_F = 0 K) now gives about
+0.807 µV/K RMSE. The earlier plateau result gave 48.34 µV/K.
 
 ## Result interpretation
 

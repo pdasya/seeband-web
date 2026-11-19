@@ -15,7 +15,7 @@ from scipy.optimize import least_squares
 
 from seeband_core import math_module as mm
 from seeband_core.fit_module import _dpb_branch_bounds
-from seeband_core.known_issues import active_issue_ids
+from seeband_core.known_issues import active_issue_ids, fermi_energy_in_gap
 from seeband_core.model_interface import (
     QUANTITY_UNITS,
     Bounds,
@@ -231,6 +231,8 @@ def _validated_jacobian(
     z: np.ndarray,
     lower: np.ndarray,
     upper: np.ndarray,
+    *,
+    zero_columns: tuple[int, ...] = (),
 ) -> np.ndarray:
     """Fourth-order admissible differences, independently checked at half-step.
 
@@ -240,6 +242,9 @@ def _validated_jacobian(
     f0 = evaluate(z)
     columns = []
     for i in range(len(z)):
+        if i in zero_columns:
+            columns.append(np.zeros_like(f0))
+            continue
         cache: dict[float, np.ndarray | None] = {0.0: f0}
 
         def at(
@@ -439,6 +444,87 @@ class _Engine:
             raise _UnattainedAmplitude("No finite inverse-amplitude optimum")
         p[name] = sign * inverse ** (-1.0 / power)
 
+    def jacobian(
+        self,
+        evaluate: Callable[[np.ndarray], np.ndarray],
+        coordinates: _Coordinates,
+        base: Mapping[str, float],
+        point: np.ndarray,
+    ) -> np.ndarray:
+        """Use the exact Fermi-energy derivative on the DPB plateau, including its edges.
+
+        Movement out of the plateau adds carriers as the distance to the edge to the power 3/2.
+        The derivative at the edge is zero, but stencils that cross it do not converge at fourth
+        order. All other columns still need the numerical certificate.
+        """
+        zero_columns: tuple[int, ...] = ()
+        if (
+            self.dpb
+            and "fermi_energy" in coordinates.names
+            and fermi_energy_in_gap(dict(base) | coordinates.decode(point))
+        ):
+            zero_columns = (coordinates.names.index("fermi_energy"),)
+        return _validated_jacobian(
+            evaluate,
+            point,
+            coordinates.lower,
+            coordinates.upper,
+            zero_columns=zero_columns,
+        )
+
+    def recovery_seeds(self, coordinates: _Coordinates) -> list[np.ndarray]:
+        names, x = coordinates.names, coordinates.point
+        seeds = [coordinates.multiply(x, factor) for factor in (0.5, 2.0)]
+        if "m_eff" in names:
+            index = names.index("m_eff")
+            seed = x.copy()
+            seed[index] = np.clip(0.0, coordinates.lower[index], coordinates.upper[index])
+            seeds.append(seed)
+        return seeds
+
+    def populated_gap_seeds(
+        self,
+        residual: Callable[[np.ndarray], np.ndarray],
+        coordinates: _Coordinates,
+        parameters: Mapping[str, float],
+        point: np.ndarray,
+        cost: float,
+    ) -> list[tuple[np.ndarray, float]]:
+        """Select an improving physical seed on each reachable side of the fitted gap."""
+        i = coordinates.names.index("fermi_energy")
+        bounds = self.bound("fermi_energy")
+        gap = parameters["band_gap"]
+        seeds = []
+        for edge, direction, bound in ((0.0, -1.0, bounds.lower), (gap, 1.0, bounds.upper)):
+            extent = direction * (bound - edge)
+            if extent <= 0.0:
+                continue
+            step = min(extent, max(1.0, gap) / 2)
+            best_seed = None
+            best_cost = cost
+            previous_energy = None
+            for refinement in range(32):
+                energy = edge + direction * step / 2**refinement
+                if refinement == 0 and step == extent:
+                    energy = bound
+                seed = point.copy()
+                seed[i] = np.clip(
+                    energy / coordinates.scale[i], coordinates.lower[i], coordinates.upper[i]
+                )
+                decoded_energy = coordinates.decode(seed)["fermi_energy"]
+                if direction * (decoded_energy - edge) <= 0.0:
+                    break
+                if decoded_energy == previous_energy:
+                    continue
+                previous_energy = decoded_energy
+                error = residual(seed)
+                trial_cost = float(np.dot(error, error))
+                if trial_cost < best_cost:
+                    best_seed, best_cost = seed, trial_cost
+            if best_seed is not None and cost - best_cost > _AUDIT_RTOL * max(1.0, cost):
+                seeds.append((best_seed, best_cost))
+        return seeds
+
     def stage(self, q: Quantity, base: Mapping[str, float]) -> tuple[dict[str, float], float]:
         stage = next(s for s in self.mode.stages if s.quantity == q)
         amp = self.amplitude(q)
@@ -469,7 +555,7 @@ class _Engine:
                 return np.full_like(target, np.inf)
 
         def jacobian(z: np.ndarray) -> np.ndarray:
-            return _validated_jacobian(evaluate, z, lower, upper)
+            return self.jacobian(evaluate, coordinates, base, z)
 
         # Independently audit scaled projected stationarity at the supplied vector.
         # An xtol/ftol exit or an unchanged candidate cannot certify convergence.
@@ -479,55 +565,72 @@ class _Engine:
         start_jac = jacobian(x)
         profiling = True
         stationarity = _projected_optimality(start_jac, audit_residual, x, lower, upper)
-        result = least_squares(
-            residual,
-            x,
-            jac=jacobian,
-            bounds=(lower, upper),
-            ftol=1e-11,
-            xtol=1e-11,
-            gtol=1e-8,
-            max_nfev=250,
-        )
+        initial_cost = float(np.dot(initial, initial))
+        best, best_cost = x, initial_cost
+        flat_fermi_only = self.dpb and names == ["fermi_energy"] and fermi_energy_in_gap(p)
+        if not flat_fermi_only:
+            result = least_squares(
+                residual,
+                x,
+                jac=jacobian,
+                bounds=(lower, upper),
+                ftol=1e-11,
+                xtol=1e-11,
+                gtol=1e-8,
+                max_nfev=250,
+            )
+            best, best_cost = result.x, float(np.dot(result.fun, result.fun))
         # Flat initial derivatives can terminate immediately in a populated/hidden-band limit.
         # A stationary full-rank nonzero-residual optimum does not need recovery.
         # Rank loss can conceal a useful direction even when its computed gradient is zero.
         deficient = np.linalg.matrix_rank(start_jac) < len(names)
         nonstationary = stationarity > _STATIONARITY_TOL
+        seeds: list[tuple[np.ndarray, float | None]] = []
+        best_parameters = p | coordinates.decode(best)
         if (
-            np.linalg.norm(result.x - x) <= 1e-10
-            and np.dot(initial, initial) > 1e-8
+            self.dpb
+            and "fermi_energy" in names
+            and best_cost > _AUDIT_RTOL
+            and fermi_energy_in_gap(best_parameters)
+        ):
+            seeds.extend(
+                self.populated_gap_seeds(residual, coordinates, best_parameters, best, best_cost)
+            )
+        if (
+            not flat_fermi_only
+            and np.linalg.norm(best - x) <= 1e-10
+            and initial_cost > 1e-8
             and (deficient or nonstationary)
         ):
-            seeds = [coordinates.multiply(x, factor) for factor in (0.5, 2.0)]
-            # Restore an order-one public mass as well as local scale probes; multiplying
-            # a numerically hidden 1e-20 band by two cannot reveal its sensitivity.
-            seed = x.copy()
-            if "m_eff" in names:
-                i = names.index("m_eff")
-                seed[i] = np.clip(0.0, lower[i], upper[i])
-                seeds.append(seed)
-            for seed in seeds:
-                if np.array_equal(seed, x):
-                    continue
+            seeds.extend((seed, None) for seed in self.recovery_seeds(coordinates))
+        tried = {tuple(x)}
+        for seed, seed_cost in seeds:
+            key = tuple(seed)
+            if key in tried:
+                continue
+            tried.add(key)
+            if seed_cost is None:
                 try:
                     evaluate(seed)
                 except mm.NoFiniteChemicalPotentialError:
                     continue
-                self.recoveries += 1
-                trial_result = least_squares(
-                    residual,
-                    seed,
-                    jac=jacobian,
-                    bounds=(lower, upper),
-                    ftol=1e-11,
-                    xtol=1e-11,
-                    gtol=1e-8,
-                    max_nfev=125,
-                )
-                if np.dot(trial_result.fun, trial_result.fun) < np.dot(result.fun, result.fun):
-                    result = trial_result
-        p.update(coordinates.decode(result.x))
+            elif seed_cost < best_cost:
+                best, best_cost = seed, seed_cost
+            self.recoveries += 1
+            trial_result = least_squares(
+                residual,
+                seed,
+                jac=jacobian,
+                bounds=(lower, upper),
+                ftol=1e-11,
+                xtol=1e-11,
+                gtol=1e-8,
+                max_nfev=125,
+            )
+            trial_cost = float(np.dot(trial_result.fun, trial_result.fun))
+            if trial_cost < best_cost:
+                best, best_cost = trial_result.x, trial_cost
+        p.update(coordinates.decode(best))
         self.profile(q, p)
         return p, stationarity
 
@@ -575,7 +678,7 @@ class _Engine:
                 ) -> np.ndarray:
                     return final_prediction(q, self.values | coordinates.decode(z)) * _SCALE[q]
 
-                jac = _validated_jacobian(at_final, x, lower, upper)
+                jac = self.jacobian(at_final, coordinates, self.values, x)
                 unidentified.update(
                     n for n, column in zip(names, jac.T, strict=True) if np.linalg.norm(column) == 0
                 )
