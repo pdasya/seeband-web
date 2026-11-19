@@ -105,6 +105,30 @@ def test_verified_recovers_after_other_free_parameters_move_on_the_dpb_plateau()
             assert spec.fit_bounds.lower <= value <= spec.fit_bounds.upper
 
 
+@pytest.mark.parametrize("mode_id", ["dpb_s", "dpb_s_rho_rh"])
+def test_verified_all_free_demo_escapes_the_conduction_onset(mode_id):
+    model = DpbModel()
+    mode = model.describe().fit_mode(mode_id)
+    start = default_start(mode) | {"m_eff": 1.2, "band_gap": 800.0, "fermi_energy": 800.0}
+    data = load_demo_dataset().measurements
+
+    result = model.fit(
+        FitRequest(mode_id, {q: data[q] for q in mode.quantities}, start, scattering="acPh")
+    )
+
+    assert result.status == "converged"
+    assert result.diagnostics is not None
+    assert result.diagnostics.stage_consistent
+    assert result.diagnostics.recoveries > 0
+    assert result.parameters["fermi_energy"] < 0.0
+    assert result.diagnostics.residuals["seebeck"].rmse * 1e6 < 0.82
+    for residual in result.diagnostics.residuals.values():
+        assert residual.relative_l2 is not None and residual.relative_l2 < 0.01
+    for spec in mode.parameters_for("acPh"):
+        if spec.fit_bounds is not None:
+            assert spec.fit_bounds.lower <= result.parameters[spec.name] <= spec.fit_bounds.upper
+
+
 @pytest.mark.parametrize(("fermi_start_k", "lower_k"), [(400.0, 0.0), (800.0, 800.0)])
 def test_verified_can_recover_to_the_conduction_side_when_the_valence_side_is_excluded(
     fermi_start_k, lower_k
@@ -136,6 +160,62 @@ def test_verified_can_recover_to_the_conduction_side_when_the_valence_side_is_ex
     assert result.status == "converged"
     assert result.parameters["fermi_energy"] == pytest.approx(1000.0, abs=1e-4)
     assert result.diagnostics.residuals["seebeck"].rmse < 1e-10
+
+
+def test_verified_recovers_with_the_gap_free_at_the_conduction_edge():
+    model = DpbModel()
+    mode = model.describe().fit_mode("dpb_s")
+    start = default_start(mode) | {"m_eff": 1.2, "band_gap": 800.0, "fermi_energy": 800.0}
+    result = model.fit(
+        FitRequest(
+            mode.id,
+            {"seebeck": load_demo_dataset().measurements["seebeck"]},
+            start,
+            scattering="acPh",
+            held=frozenset({"m_eff"}),
+        )
+    )
+
+    assert result.status == "converged"
+    assert result.diagnostics.stage_consistent is True
+    assert result.diagnostics.recoveries > 0
+    assert result.parameters["m_eff"] == 1.2
+    assert result.parameters["band_gap"] == pytest.approx(799.8726, abs=0.02)
+    assert result.parameters["fermi_energy"] == pytest.approx(-150.1328, abs=0.01)
+    assert result.diagnostics.residuals["seebeck"].rmse * 1e6 < 0.81
+
+
+@pytest.mark.parametrize(
+    ("true_gap_k", "true_fermi_k", "upper_fermi_k"),
+    [(650.0, 1000.0, 1400.0), (900.0, 800.0, 800.0)],
+)
+def test_verified_can_find_a_free_gap_from_the_conduction_edge(
+    true_gap_k, true_fermi_k, upper_fermi_k
+):
+    model = DpbModel()
+    mode = model.describe().fit_mode("dpb_s")
+    start = default_start(mode) | {"m_eff": 1.2, "band_gap": 800.0, "fermi_energy": 800.0}
+    temperature_k = np.linspace(100.0, 800.0, 18)
+    values = mm.dpb_see_vs_temp(temperature_k, 1.2, true_gap_k, true_fermi_k, 1.0)
+    result = model.fit(
+        FitRequest(
+            mode.id,
+            {"seebeck": Measurement(temperature_k, values)},
+            start,
+            bounds={"band_gap": Bounds(300.0, 1200.0), "fermi_energy": Bounds(0.0, upper_fermi_k)},
+            scattering="acPh",
+            held=frozenset({"m_eff"}),
+        )
+    )
+
+    assert result.status == "converged"
+    assert result.parameters["band_gap"] == pytest.approx(true_gap_k, abs=1e-4)
+    assert result.diagnostics.residuals["seebeck"].rmse < 1e-10
+    if true_fermi_k > true_gap_k:
+        assert result.parameters["fermi_energy"] == pytest.approx(true_fermi_k, abs=1e-4)
+        assert "fermi_energy_in_gap" not in result.known_issues
+    else:
+        assert "fermi_energy_in_gap" in result.known_issues
 
 
 @pytest.mark.parametrize("scattering", ["acPh", "dis", "ionized"])

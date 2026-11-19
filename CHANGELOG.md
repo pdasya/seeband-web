@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Verified Fit: check the free DPB gap derivative on the intrinsic side of
+  the conduction edge when that stencil fits the bounds. For joint fits
+  of the gap and Fermi energy, try a bounded restart across the gap from a
+  near-edge endpoint. Reject failed exploratory trials and certify the
+  retained solution through the final conditional audit.
+
 - DPB Hall fits and curves include the absolute valley multiplicity of
   band 1. The fitted `m1` is a mass per valley. Absolute carrier densities
   in the Hall mode use the same multiplicities. A mass from the previous
