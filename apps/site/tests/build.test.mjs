@@ -237,6 +237,36 @@ test("the user guide is a page of the site, with its screenshots and corrections
   assert.doesNotMatch(guide, /katex-error/);
 });
 
+test("the worked examples are pages of the site, each with its screenshots and limits", () => {
+  const index = page("examples/index.html");
+  assert.match(page("guide/index.html"), /<a href="\/examples\/">/);
+  for (const name of ["fe2val", "si-p", "awi32"]) {
+    assert.match(index, new RegExp(`<a href="/examples/${name}/">`), name);
+    const example = page(`examples/${name}/index.html`);
+    // Filed under the guide in the header.
+    assert.match(example, /<a href="\/guide\/"[^>]*aria-current="page"/, name);
+    const images = [...example.matchAll(/<img([^>]*)>/g)].map((m) => m[1]);
+    assert.ok(images.length >= 1, name);
+    for (const image of images) {
+      const source = /src="([^"]+)"/.exec(image)?.[1] ?? "";
+      assert.ok(statSync(join(outDir, source)).isFile(), source);
+      assert.match(image, /width="\d+"/, source);
+      assert.match(image, /height="\d+"/, source);
+      assert.match(image, /alt="[^"]{20,}"/, source);
+    }
+    // Each says what it rests on and how far to trust it, and names the known issue it meets.
+    for (const heading of ["Data", "Interpretation", "Limits", "Reproduce"]) {
+      assert.match(
+        example,
+        new RegExp(`<h2[^>]*>${heading}</h2>`),
+        `${name}: ${heading}`,
+      );
+    }
+    assert.match(example, /<code>band_diagram_formula<\/code>/, name);
+    assert.doesNotMatch(example, /katex-error/, name);
+  }
+});
+
 test("needs no script but the header's, and loads no heavy library", () => {
   const all = files(outDir);
   assert.deepEqual(

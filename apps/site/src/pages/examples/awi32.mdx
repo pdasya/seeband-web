@@ -1,0 +1,92 @@
+---
+layout: ../../layouts/Prose.astro
+current: guide
+title: "Example: AWI32 · SeeBand"
+description: A worked example in which two parabolic bands describe the Seebeck coefficient of the AWI32 sample with any scattering mechanism, but none describes S, resistivity and Hall coefficient together.
+---
+
+# AWI32: no mechanism describes everything
+
+## Data
+
+The sample AWI32, from the files `03_AWI32_SI_see.txt`, `_rho.txt` and
+`_hall.txt` of the desktop SeeBand: 50 points of S and of ρ from 4 to 561 K,
+and 50 of $R_H$ from 303 to 527 K. The desktop SeeBand does not say what the
+sample is or where its measurements come from, and neither does this page.
+
+## Choices
+
+DPB, fit mode S + ρ + $R_H$, the default fit range of 50–800 K (so 50–561 K of
+the data) and no interpolation. The fit was run three times, in this order:
+
+1. acoustic phonons, from the neural net's start (**Initial guess**);
+2. ionized impurities, from the values the first fit left, without a new
+   guess;
+3. alloy disorder, from the neural net's start.
+
+## Result
+
+All three fits settled numerically.
+
+| Scattering         | RMSE S    | RMSE ρ | RMSE $R_H$ | $m_2/m_1$ | $E_g$   | $E_F$    | $m_1$   | At a bound |
+| ------------------ | --------- | ------ | ---------- | --------- | ------- | -------- | ------- | ---------- |
+| Acoustic phonons   | 3.89 µV/K | 42.7 % | 23.6 %     | 1.39      | 0.16 eV | −0.02 eV | 1.96 mₑ | B = 1.1    |
+| Ionized impurities | 3.62 µV/K | 76.5 % | 8.9 %      | 0.59      | 0.02 eV | −0.07 eV | 0.70 mₑ | B = 0.9    |
+| Alloy disorder     | 3.84 µV/K | 28.2 % | 23.5 %     | 1.54      | 0.17 eV | −0.02 eV | 1.96 mₑ | none       |
+
+The energies are as the fields show them, to 0.01 eV.
+
+<figure>
+  <a href="/examples/awi32.png">
+    <img
+      src="/examples/awi32.png"
+      width="1440"
+      height="1478"
+      loading="lazy"
+      alt="The fit screen after a DPB fit of S, ρ and R_H of AWI32 with alloy disorder: the model follows S, but its ρ peak is lower and broader than the measured one."
+    />
+  </a>
+  <figcaption>
+    S + ρ + $R_H$ with alloy disorder. The model follows S, but its peak of ρ is
+    lower and broader than the measured one.
+  </figcaption>
+</figure>
+
+## Interpretation
+
+S does not choose: every mechanism describes it within 4 µV/K. ρ and $R_H$
+pull apart. Alloy disorder describes ρ best and still misses it by 28 %;
+ionized impurities describe $R_H$ best and miss ρ by 77 %. No mechanism
+describes all three quantities.
+
+The parameters depend on the choice. Acoustic phonons and alloy disorder agree
+on a gap of about 0.16 eV with $E_F$ 0.02 eV inside the valence band and
+$m_2/m_1$ of 1.4–1.5; ionized impurities give a gap of 0.02 eV and $m_2/m_1$ of
+0.59. Since none of the fits describes the data, none of these values should
+be read as the band structure of the sample.
+
+This is a valid result: the two-band model with a single scattering mechanism
+does not describe AWI32 over 50–561 K. Possible reasons, none tested here,
+include more than two bands, mixed scattering, or a range too wide for one
+mechanism.
+
+## Limits
+
+- B ends at a bound with acoustic phonons and with ionized impurities, so it
+  was set by the bound, not by the data.
+- The ionized-impurity fit started from the acoustic-phonon result; another
+  start may end elsewhere.
+- The band diagram on the fit screen is a sketch (known issue
+  `band_diagram_formula`, [#108](https://github.com/pdasya/seeband-web/issues/108)).
+- Uncertainties are not assessed, and a physicist has not confirmed these
+  results.
+
+## Reproduce
+
+1. On **Model fit**, choose **DPB** and **S + ρ + R_H**, load the
+   `03_AWI32_SI_` files, and choose S, ρ and $R_H$ for their second columns.
+2. Keep the fit range of 50–800 K and **Interpolation** off.
+3. Run the three fits in the order under [Choices](#choices).
+
+The script `apps/web/scripts/capture-examples.mjs` in the repository runs these
+steps in the app and prints the numbers.

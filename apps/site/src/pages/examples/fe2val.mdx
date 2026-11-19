@@ -1,0 +1,101 @@
+---
+layout: ../../layouts/Prose.astro
+current: guide
+title: "Example: Fe₂VAl₀.₉Si₀.₁ · SeeBand"
+description: A worked example of fitting two parabolic bands to the Seebeck coefficient and resistivity of the full-Heusler compound Fe2VAl0.9Si0.1, and of choosing the scattering mechanism.
+---
+
+# Fe₂VAl₀.₉Si₀.₁: choosing the scattering mechanism
+
+## Data
+
+The full-Heusler compound Fe₂VAl₀.₉Si₀.₁, from the files
+`01_Fe2VAl09Si01_see.txt` and `_rho.txt` of the desktop SeeBand: 30 points of
+S and of ρ from 25 to 750 K. The SeeBand paper [[1]](#references) analyses the
+same compound and cites its measurements to Garmroudi et al.
+[[2]](#references). The [user guide](/guide/) walks through these files step
+by step; this page is about one choice in it, the scattering mechanism.
+
+## Choices
+
+DPB, fit mode S + ρ, the default fit range of 50–800 K and no interpolation.
+The fit was run three times, in this order:
+
+1. alloy disorder, from the neural net's start (**Initial guess**);
+2. ionized impurities, from the values the first fit left, without a new
+   guess;
+3. acoustic phonons, from the neural net's start.
+
+## Result
+
+| Scattering         | Status              | RMSE S    | RMSE ρ | $m_2/m_1$ | $E_g$    | $E_F$   | At a bound |
+| ------------------ | ------------------- | --------- | ------ | --------- | -------- | ------- | ---------- |
+| Acoustic phonons   | numerically settled | 2.68 µV/K | 9.8 %  | 1.32      | 0.05 eV  | 0.11 eV | none       |
+| Alloy disorder     | numerically settled | 2.86 µV/K | 108 %  | 1.97      | 0.05 eV  | 0.10 eV | G = 2      |
+| Ionized impurities | numerically settled | 4.58 µV/K | 138 %  | 2.63      | −0.14 eV | 0.01 eV | B = 1.1    |
+
+The energies are as the fields show them, to 0.01 eV.
+
+<figure>
+  <a href="/examples/fe2val.png">
+    <img
+      src="/examples/fe2val.png"
+      width="1440"
+      height="964"
+      loading="lazy"
+      alt="The fit screen after a DPB fit of S and ρ of Fe2VAl0.9Si0.1 with acoustic phonons: the model follows S, and follows ρ above about 100 K."
+    />
+  </a>
+  <figcaption>
+    DPB fit of S and ρ with acoustic phonons. The model follows ρ above about
+    100 K and falls below it at lower temperatures.
+  </figcaption>
+</figure>
+
+## Interpretation
+
+S alone does not tell the mechanisms apart: all three describe it within
+5 µV/K. ρ does. With acoustic phonons the model follows ρ within 10 %. With
+alloy disorder it misses ρ by about its own size (RMSE 108 %) and G ends at its
+bound. With ionized impurities it misses ρ by more (138 %), band 2 moves below
+band 1 ($E_g$ < 0, overlapping bands) and B ends at its bound. Of the three,
+only acoustic phonons describe both quantities, and with them S and ρ give a
+small gap of about 0.05 eV with $E_F$ about 0.11 eV, in the conduction band.
+
+A good description of S and ρ does not prove the band picture: other
+parameter sets may describe the data as well, and this page did not search
+for them.
+
+## Limits
+
+- With acoustic phonons the model ρ falls towards 0 at low temperatures, so it
+  cannot follow the measured residual resistivity below about 100 K.
+- Adding $R_H$ does not confirm these values. In the [user guide](/guide/), the
+  S + ρ + $R_H$ fit with acoustic phonons reaches its limit of 20 iterations
+  with an RMSE of $R_H$ of 104 %.
+- The band diagram on the fit screen is a sketch (known issue
+  `band_diagram_formula`, [#108](https://github.com/pdasya/seeband-web/issues/108)).
+- Uncertainties are not assessed, and a physicist has not confirmed these
+  results.
+
+## Reproduce
+
+1. On **Model fit**, choose **DPB** and **S + ρ**, and load
+   `01_Fe2VAl09Si01_see.txt` and `_rho.txt`, choosing S and ρ for their
+   second columns.
+2. Keep the fit range of 50–800 K and **Interpolation** off.
+3. Run the three fits in the order under [Choices](#choices).
+
+The script `apps/web/scripts/capture-examples.mjs` in the repository runs these
+steps in the app and prints the numbers.
+
+## References
+
+1. M. Parzer, A. Riss, F. Garmroudi, J. de Boor, T. Mori and E. Bauer,
+   “SeeBand: a highly efficient, interactive tool for analyzing electronic
+   transport data”, npj Computational Materials,
+   [doi:10.1038/s41524-025-01645-y](https://doi.org/10.1038/s41524-025-01645-y),
+   [arXiv:2409.06261](https://arxiv.org/abs/2409.06261).
+2. F. Garmroudi, A. Riss, M. Parzer, N. Reumann, H. Müller, E. Bauer,
+   S. Khmelevskyi, R. Podloucky, T. Mori, K. Tobita et al., Physical Review B
+   103, 085202 (2021).

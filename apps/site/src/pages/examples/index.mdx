@@ -1,0 +1,29 @@
+---
+layout: ../../layouts/Prose.astro
+current: guide
+title: Worked examples · SeeBand
+description: Three worked examples of fitting parabolic band models to transport data in SeeBand Web, on the example sets of the desktop SeeBand.
+---
+
+# Worked examples
+
+Three walkthroughs on the example sets that come with the desktop SeeBand, in
+its [`data/Examples`](https://github.com/xAngelswordx/SeeBand/tree/803b0e7a425a0a3f4f59688df77e3ad283ca49a1/data/Examples)
+folder. Each says which data were used, what was chosen, what the fit gave and
+how far to trust it. The numbers and screenshots come from runs of this
+version; [Results that changed](/results-changed/) says why a later version can
+give others. The [user guide](/guide/) explains the screens.
+
+- [Fe₂VAl₀.₉Si₀.₁: choosing the scattering mechanism](/examples/fe2val/). Two
+  bands describe S and ρ; acoustic phonons describe ρ far better than the other
+  mechanisms.
+- [Si:P: a gap outside the default bounds](/examples/si-p/). Phosphorus-doped
+  silicon has a gap of about 1 eV, which the default bounds of 0.26 eV cannot
+  hold; with wider bounds the fit comes close to the published values.
+- [AWI32: no mechanism describes everything](/examples/awi32/). S is described
+  well with any mechanism, but none describes S, ρ and $R_H$ together, and the
+  fitted parameters depend on the choice.
+
+The example files are part of the desktop SeeBand, published under the MIT
+licence. Where the SeeBand paper names the source of a set's measurements,
+its page gives it.

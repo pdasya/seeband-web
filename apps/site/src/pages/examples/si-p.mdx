@@ -1,0 +1,127 @@
+---
+layout: ../../layouts/Prose.astro
+current: guide
+title: "Example: Si:P · SeeBand"
+description: A worked example of fitting two parabolic bands to phosphorus-doped silicon, whose band gap lies outside the default fit bounds of SeeBand Web.
+---
+
+# Si:P: a gap outside the default bounds
+
+## Data
+
+Phosphorus-doped silicon, from the files `02_SiP_see.txt`, `_rho.txt` and
+`_hall.txt` of the desktop SeeBand: 12 points of S from 308 to 650 K, 19 of ρ
+from 338 to 654 K and 10 of $R_H$ from 304 to 654 K. The SeeBand paper
+[[1]](#references) analyses Si:P and cites its measurements to Agrawal, de Boor
+and Dasgupta [[2]](#references), and gives a gap of about 1.08 eV from its own
+two-band fit.
+
+No neural net covers 308–650 K, so **Initial guess** offers no start.
+
+## With the default bounds
+
+DPB, fit mode S + ρ, acoustic phonons, the default start and bounds. The
+bounds of $E_g$ and $E_F$ are ±0.26 eV (±3000 K), a quarter of the gap of
+silicon.
+
+| Status      | RMSE S   | RMSE ρ | $E_g$             | $E_F$                   | Also at a bound |
+| ----------- | -------- | ------ | ----------------- | ----------------------- | --------------- |
+| fit stalled | 545 µV/K | 52 %   | 0.26 eV, at bound | 0.01 eV, not determined | B = 1.1         |
+
+<figure>
+  <a href="/examples/sip-default.png">
+    <img
+      src="/examples/sip-default.png"
+      width="1440"
+      height="964"
+      loading="lazy"
+      alt="The fit screen after a stalled DPB fit of S and ρ of Si:P with the default bounds: the model misses both S and ρ, and E_g sits at its upper bound."
+    />
+  </a>
+  <figcaption>
+    With the default bounds the fit stalls with $E_g$ at its upper bound, and
+    the model misses both S and ρ.
+  </figcaption>
+</figure>
+
+This fit is a failure, and the screen says so: the status, $E_g$ at its bound,
+and a caution that $E_F$ lies in the gap. It does not mean the two-band model
+cannot describe Si:P; it means the gap it needs is outside the bounds.
+
+## With wider bounds
+
+**Edit bounds** sets $E_g$ to 0.5–1.5 eV and $E_F$ to −1.5–1.6 eV. The start is
+then typed in: $m_2/m_1$ = 0.74, $E_g$ = 1.08 eV and $E_F$ = 1.0805 eV, 6 K
+inside the conduction band. The start matters. In S + ρ + $R_H$:
+
+- with $E_F$ exactly at the band edge, 1.08 eV, or 0.01 eV above it, the fit
+  fails: its derivative cannot be verified at the start;
+- **Legacy sequential** from those starts does finish, but with $m_1$ and A at
+  their upper bounds and $E_F$ deep in the gap. It is not used here.
+
+| Fit mode      | Status              | RMSE S    | RMSE ρ | RMSE $R_H$ | $m_2/m_1$ | $E_g$   | $m_1$   | At a bound |
+| ------------- | ------------------- | --------- | ------ | ---------- | --------- | ------- | ------- | ---------- |
+| S + ρ         | numerically settled | 54.7 µV/K | 23.8 % |            | 0.758     | 1.04 eV |         | B = 1.1    |
+| S + ρ + $R_H$ | numerically settled | 54.7 µV/K | 23.8 % | 34.0 %     | 0.758     | 1.04 eV | 1.33 mₑ | B = 1.1    |
+
+In both, $E_F$ ends 0.3 K above the conduction band edge. $R_H$ only sets $m_1$
+here: the other values do not change when it is added.
+
+<figure>
+  <a href="/examples/sip-hall.png">
+    <img
+      src="/examples/sip-hall.png"
+      width="1440"
+      height="1478"
+      loading="lazy"
+      alt="The fit screen after a DPB fit of S, ρ and R_H of Si:P with E_g allowed up to 1.5 eV: the model follows the shape of S, ρ and R_H, with E_g at 1.04 eV."
+    />
+  </a>
+  <figcaption>
+    S + ρ + $R_H$ with $E_g$ allowed up to 1.5 eV. The model follows the shape
+    of all three quantities, and misses S below about 450 K.
+  </figcaption>
+</figure>
+
+## Interpretation
+
+With room for it, the fit puts the gap at 1.04 eV, close to the 1.08 eV of the
+paper, and describes the onset of intrinsic conduction in all three
+quantities: the rise and fall of ρ and the steps in S and $R_H$. It is not a
+close fit: S is off by 55 µV/K on average, most below 450 K, and ρ by 24 %.
+
+## Limits
+
+- The result depends on the start, which here came from the published gap.
+  Without that knowledge, the default bounds and starts give the failed fit
+  above.
+- B ends at its upper bound, so B was set by the bound, not by the data.
+- $E_F$ ends where it started, at the band edge. Whether the data determine it
+  was not tested.
+- S + ρ + $R_H$ settled after 2 iterations of its limit of 20.
+- The band diagram on the fit screen is a sketch (known issue
+  `band_diagram_formula`, [#108](https://github.com/pdasya/seeband-web/issues/108)).
+- Uncertainties are not assessed, and a physicist has not confirmed these
+  results.
+
+## Reproduce
+
+1. On **Model fit**, choose **DPB** and **S + ρ** (or **S + ρ + R_H**), load
+   the `02_SiP_` files, and choose S, ρ and $R_H$ for their second columns.
+2. Run the fit for the default-bounds result.
+3. For the wider bounds, reload the page and the files, open **Edit bounds**,
+   set the bounds above, type the start values into the parameter fields, and
+   run the fit.
+
+The script `apps/web/scripts/capture-examples.mjs` in the repository runs these
+steps in the app and prints the numbers.
+
+## References
+
+1. M. Parzer, A. Riss, F. Garmroudi, J. de Boor, T. Mori and E. Bauer,
+   “SeeBand: a highly efficient, interactive tool for analyzing electronic
+   transport data”, npj Computational Materials,
+   [doi:10.1038/s41524-025-01645-y](https://doi.org/10.1038/s41524-025-01645-y),
+   [arXiv:2409.06261](https://arxiv.org/abs/2409.06261).
+2. A. Agrawal, J. de Boor and T. Dasgupta, Cell Reports Physical Science 5
+   (2024).
