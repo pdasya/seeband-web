@@ -266,11 +266,18 @@ def test_verified_keeps_an_exact_fit_at_the_gap_upper_bound(hold_fermi):
     assert result.diagnostics.residuals["seebeck"].rmse == 0.0
 
 
-def test_verified_recovers_with_fermi_energy_held_at_the_upper_gap_edge(monkeypatch):
+@pytest.mark.parametrize("true_gap", [None, 795.0, 750.0, 799.9999])
+def test_verified_recovers_with_fermi_energy_held_at_the_upper_gap_edge(monkeypatch, true_gap):
     from seeband_core import verified_fit
 
     start = {"m_eff": 1.2, "band_gap": 800.0, "fermi_energy": 800.0}
     bounds = {"band_gap": Bounds(300.0, 800.0), "fermi_energy": Bounds(800.0, 900.0)}
+    data = load_demo_dataset().measurements["seebeck"]
+    if true_gap is not None:
+        data = Measurement(
+            data.temperature_k,
+            mm.dpb_see_vs_temp(data.temperature_k, 1.2, true_gap, 800.0, 1.0),
+        )
     original = verified_fit._evaluate_quantity
 
     def check_bounds(quantity, temperatures, parameters, *args, **kwargs):
@@ -283,7 +290,7 @@ def test_verified_recovers_with_fermi_energy_held_at_the_upper_gap_edge(monkeypa
     result = DpbModel().fit(
         FitRequest(
             "dpb_s",
-            {"seebeck": load_demo_dataset().measurements["seebeck"]},
+            {"seebeck": data},
             start,
             bounds=bounds,
             scattering="acPh",
@@ -296,8 +303,12 @@ def test_verified_recovers_with_fermi_energy_held_at_the_upper_gap_edge(monkeypa
     assert result.parameters["fermi_energy"] == 800.0
     assert result.parameter_status["fermi_energy"] == "held"
     assert 300.0 <= result.parameters["band_gap"] <= 800.0
-    assert result.parameters["band_gap"] == pytest.approx(799.8984, abs=0.001)
-    assert result.diagnostics.residuals["seebeck"].rmse * 1e6 < 61.13
+    assert result.parameters["band_gap"] == pytest.approx(
+        799.8984 if true_gap is None else true_gap, abs=0.001 if true_gap is None else 1e-6
+    )
+    assert result.diagnostics.residuals["seebeck"].rmse * 1e6 < (
+        61.13 if true_gap is None else 1e-4
+    )
 
 
 @pytest.mark.parametrize("scattering", ["acPh", "dis", "ionized"])

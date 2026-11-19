@@ -11,7 +11,7 @@ from functools import lru_cache
 from typing import TypedDict
 
 import numpy as np
-from scipy.optimize import least_squares
+from scipy.optimize import least_squares, minimize_scalar
 
 from seeband_core import math_module as mm
 from seeband_core.fit_module import _dpb_branch_bounds
@@ -232,6 +232,43 @@ class _Coordinates:
 
 def _derivative_step(coordinate: float) -> float:
     return float(np.finfo(float).eps ** 0.2 * max(1.0, abs(coordinate)))
+
+
+def _held_fermi_gap_candidate(
+    residual: Callable[[np.ndarray], np.ndarray],
+    edge: np.ndarray,
+    lower: float,
+    initial_cost: float,
+) -> tuple[np.ndarray, float]:
+    """Search the true gap objective before choosing a derivative-checked start."""
+    upper = float(edge[0])
+    if not np.isfinite(lower):
+        # The direct core API also permits unbounded starts. Retain its local search window.
+        lower = upper - _derivative_step(upper)
+    extent = upper - lower
+    points = np.unique(
+        np.concatenate((np.linspace(lower, upper, 17), upper - extent * 0.5 ** np.arange(1, 25)))
+    )
+    best, best_cost = edge, initial_cost
+
+    def compare(gap_coordinate: float) -> float:
+        nonlocal best, best_cost
+        point = np.array([gap_coordinate])
+        error = residual(point)
+        cost = float(np.dot(error, error))
+        if cost < best_cost:
+            best, best_cost = point, cost
+        return cost
+
+    for point in points[:-1]:
+        compare(float(point))
+    for left, right in zip(points[:-1], points[1:], strict=True):
+        if best_cost == 0.0:
+            break
+        # Adjacent mesh values can both miss a minimum inside the interval.
+        # Retain actual comparisons during polishing, regardless of scalar solver status.
+        minimize_scalar(compare, bounds=(left, right), method="bounded", options={"maxiter": 48})
+    return best, best_cost
 
 
 def _validated_jacobian(
@@ -525,6 +562,7 @@ class _Engine:
         first derivative at the edge, where the density target itself has zero derivative.
         """
         if self.held_fermi_at_gap_limit(q, coordinates, base, point):
+            # The gate is specific to Seebeck, which has no profiled amplitude.
             temperatures, measurements = self.data[q]
             target = 0.0 if terminal else measurements * _SCALE[q]
 
@@ -711,15 +749,7 @@ class _Engine:
         held_fermi_edge = self.held_fermi_at_gap_limit(q, coordinates, base, x)
         origin = self.upper_gap_reference(evaluate, coordinates, base, x)
         if held_fermi_edge and initial_cost > 0.0:
-            step = min(_derivative_step(x[0]), x[0] - lower[0])
-            for refinement in range(8):
-                seed = np.clip(x - step / 2**refinement, lower, upper)
-                if seed[0] == x[0]:
-                    break
-                trial = residual(seed)
-                trial_cost = float(np.dot(trial, trial))
-                if trial_cost < best_cost:
-                    best, best_cost = seed, trial_cost
+            best, best_cost = _held_fermi_gap_candidate(residual, x, float(lower[0]), initial_cost)
             origin = best
             if origin is not x:
                 self.recoveries += 1

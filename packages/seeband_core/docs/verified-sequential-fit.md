@@ -138,22 +138,34 @@ only accessible outer bound. With all parameters free on the bundled demo,
 the start (m₂/m₁ = 1.2, E_g = 800 K, E_F = 0 K) now gives about
 0.807 µV/K RMSE. The earlier plateau result gave 48.34 µV/K.
 
-When the gap is the only free parameter of the Seebeck stage and the Fermi
-energy is held at the upper conduction edge, the zero-temperature carrier
-target has zero first derivative with respect to the gap at that point.
+When the gap is the only free parameter of the Seebeck stage and its current
+value and the held Fermi energy coincide exactly at the positive upper gap
+bound, the zero-temperature carrier target has zero first derivative with
+respect to the gap at that point.
 The edge derivative can therefore use checked zero-target roots for its
 auxiliary probes without changing the held Fermi energy. The actual fit
 objective and terminal residuals still use the original carrier target.
-The solver checks smaller admissible gaps on the true objective before
-retaining the endpoint. This can find a better nearby fit even when the
-endpoint passes the local stationarity check.
+For nonzero starting error, the solver samples the true objective at 17
+uniformly spaced gaps across the finite interval, plus 24 offsets halved
+toward the upper edge. It polishes each adjacent interval with a bounded
+scalar search of at most 48 iterations, then validates the selected point
+with the usual derivative and final conditional audit. The original point
+wins ties. An unbounded lower gap limit keeps the local one-step search
+window. The finite search can miss a narrower basin and does not certify a
+global optimum.
 
 On the bundled demo with `m_eff = 1.2` and `fermi_energy = 800 K` held, and
 gap bounds `[300, 800] K`, the fit converges to `band_gap ≈ 799.8984 K`.
 Its Seebeck RMSE is `61.121734 µV/K`, matching an independent bounded
-one-variable search. The starting RMSE is `63.135757 µV/K`. All 305 checked
-transport evaluations respect the gap bounds and keep the public Fermi
-energy at `800 K`, including auxiliary derivative probes.
+one-variable search. The starting RMSE is `63.135757 µV/K`. The same setup
+recovers noiseless gaps of `795 K`, `750 K` and `799.9999 K` with RMSE
+below `10⁻⁴ µV/K`.
+The regressions check the bounds and keep the public Fermi energy at
+`800 K` on every evaluation, including the auxiliary derivative probes.
+An exact fit at the original upper bound is retained.
+The derivative check can still fail explicitly on the demo with the held
+Fermi energy `10⁻⁶ K` to either side of `800 K` or at equal bounds of
+`1000 K` or `1500 K`.
 
 ## Result interpretation
 
