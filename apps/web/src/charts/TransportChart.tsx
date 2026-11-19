@@ -14,6 +14,7 @@ import {
   type ReferenceLine,
 } from "@/charts/figure";
 import { loadPlotly, type PlotlyModule } from "@/charts/loadPlotly";
+import { measureSince } from "@/model/timing";
 
 const NO_REFERENCE_LINES: readonly ReferenceLine[] = [];
 
@@ -183,10 +184,14 @@ function Plot({
       return;
     }
     // An error thrown here would otherwise take the whole page with it.
+    const startedAtMs = performance.now();
     Promise.resolve()
       .then(() => {
         const { data, layout } = buildFigure(input, readChartTheme(element));
         return plotly.react(element, data, layout, PLOT_CONFIG);
+      })
+      .then(() => {
+        measureSince("chart:draw", startedAtMs);
       })
       .catch(() => {
         setFailed(true);

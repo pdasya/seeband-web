@@ -361,3 +361,67 @@ describe("a busy server", () => {
     ).toBe(false);
   });
 });
+
+describe("timing", () => {
+  const entries = (name: string) =>
+    performance.getEntriesByName(`seeband:${name}`, "measure");
+
+  // The real performance clock, as the fake one keeps no User Timing entries.
+  beforeEach(() => {
+    vi.useRealTimers();
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
+    performance.clearMeasures();
+  });
+
+  function timed() {
+    const calls: Call[] = [];
+    const sender = new LatestOnly<string>({
+      send: (body, signal) =>
+        new Promise((resolve, reject) => {
+          calls.push({ body, signal, resolve, reject });
+        }),
+      onResult: () => undefined,
+      onFailure: () => undefined,
+      timing: "curves",
+    });
+    return { calls, sender };
+  }
+
+  test("records each request, and the wait from the last change to its answer", async () => {
+    const { calls, sender } = timed();
+    sender.change("a", false);
+    await rest();
+    calls[0]?.resolve("A");
+    await rest();
+
+    expect(entries("curves:request")).toHaveLength(1);
+    expect(entries("curves:change-to-answer")).toHaveLength(1);
+  });
+
+  test("does not count an answer for values the user has already left as the wait's end", async () => {
+    const { calls, sender } = timed();
+    sender.change("a", false);
+    await rest();
+    sender.change("b", false);
+    calls[0]?.resolve("A");
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(entries("curves:request")).toHaveLength(1);
+    expect(entries("curves:change-to-answer")).toHaveLength(0);
+
+    await rest();
+    calls[1]?.resolve("B");
+    await rest();
+    expect(entries("curves:change-to-answer")).toHaveLength(1);
+  });
+
+  test("records nothing without a name", async () => {
+    const { calls, sender } = setUp();
+    sender.change("a", false);
+    await rest();
+    calls[0]?.resolve("A");
+    await rest();
+
+    expect(performance.getEntriesByType("measure")).toHaveLength(0);
+  });
+});

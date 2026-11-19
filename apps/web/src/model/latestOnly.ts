@@ -1,4 +1,5 @@
 import { ApiError, NETWORK_ERROR } from "@/api/errors";
+import { measureSince } from "@/model/timing";
 
 // Until the values rest, or at the latest at the longer delay, so that a curve follows a long drag.
 export const DEBOUNCE_MS = 250;
@@ -26,6 +27,12 @@ export interface LatestOnlyHandlers<Result> {
   onResult: (result: Result, body: string) => void;
   /** `settled` is the body this ends, or null if another try is on its way. `sent` is the body. */
   onFailure: (error: ApiError, settled: string | null, sent: string) => void;
+  /**
+   * Names User Timing entries for each answer: `<timing>:request`, from sending to the answer,
+   * and `<timing>:change-to-answer`, from the last change to the answer for it, which includes the
+   * debounce and any wait for an earlier request.
+   */
+  timing?: string;
 }
 
 /**
@@ -41,6 +48,8 @@ export class LatestOnly<Result> {
   private running: AbortController | null = null;
   private run = 0;
   private firstChangeAtMs: number | null = null;
+  // On performance.now()'s clock, for the timing entries.
+  private lastChangeAtMs = 0;
   private notBeforeMs = 0;
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
@@ -58,6 +67,7 @@ export class LatestOnly<Result> {
     }
     this.latest = body;
     this.waiting = waiting;
+    this.lastChangeAtMs = performance.now();
     if (body === null) {
       this.stop();
     } else if (waiting) {
@@ -140,10 +150,12 @@ export class LatestOnly<Result> {
       );
     }, STUCK_AFTER_MS);
 
+    const sentAtMs = performance.now();
     this.handlers
       .send(body, controller.signal)
       .then((result) => {
         if (run === this.run) {
+          this.timeAnswer(body, sentAtMs);
           this.finish();
           this.handlers.onResult(result, body);
           this.next();
@@ -159,6 +171,18 @@ export class LatestOnly<Result> {
           );
         }
       });
+  }
+
+  private timeAnswer(body: string, sentAtMs: number): void {
+    const { timing } = this.handlers;
+    if (timing === undefined) {
+      return;
+    }
+    measureSince(`${timing}:request`, sentAtMs);
+    // Only an answer for the values now shown ends what the user waited for.
+    if (body === this.latest) {
+      measureSince(`${timing}:change-to-answer`, this.lastChangeAtMs);
+    }
   }
 
   private finish(): void {

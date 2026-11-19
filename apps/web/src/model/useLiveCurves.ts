@@ -87,6 +87,7 @@ function useLatest<Result>(
   body: string | null,
   scope: string | null,
   waiting: boolean,
+  timing: string,
 ): LiveCalc<Result> {
   const [answers, setAnswers] = useState<Answers<Result>>(NOTHING);
   // With nothing to ask, the old curve goes at once, and does not return with new data.
@@ -98,6 +99,7 @@ function useLatest<Result>(
     () =>
       new LatestOnly<Result>({
         send: route.send,
+        timing,
         onResult: (result, settled) => {
           setAnswers({
             result,
@@ -166,21 +168,47 @@ function useDerivedCurves(
     lorenz_number: lorenz,
   } = requests;
   return {
-    chemical_potential: useLatest(CALC, chemical.body, chemical.scope, false),
-    seebeck_by_band: useLatest(CALC, bands.body, bands.scope, false),
+    chemical_potential: useLatest(
+      CALC,
+      chemical.body,
+      chemical.scope,
+      false,
+      "chemical_potential",
+    ),
+    seebeck_by_band: useLatest(
+      CALC,
+      bands.body,
+      bands.scope,
+      false,
+      "seebeck_by_band",
+    ),
     electrical_conductivity: useLatest(
       CALC,
       electrical.body,
       electrical.scope,
       false,
+      "electrical_conductivity",
     ),
-    thermal_conductivity: useLatest(CALC, thermal.body, thermal.scope, false),
-    lorenz_number: useLatest(CALC, lorenz.body, lorenz.scope, false),
+    thermal_conductivity: useLatest(
+      CALC,
+      thermal.body,
+      thermal.scope,
+      false,
+      "thermal_conductivity",
+    ),
+    lorenz_number: useLatest(
+      CALC,
+      lorenz.body,
+      lorenz.scope,
+      false,
+      "lorenz_number",
+    ),
     carrier_concentration_by_band: useLatest(
       CALC,
       carriers.body,
       carriers.scope,
       false,
+      "carrier_concentration_by_band",
     ),
   };
 }
@@ -242,9 +270,21 @@ export function useLiveCurves(): LiveCurves {
   const waiting = interpolation.enabled && interpolation.loading;
 
   return {
-    measured: useLatest(CALC, measured.body, measured.scope, waiting),
+    measured: useLatest(
+      CALC,
+      measured.body,
+      measured.scope,
+      waiting,
+      "measured",
+    ),
     derived: useDerivedCurves(derived),
-    diagram: useLatest(BAND_DIAGRAM, diagram.body, diagram.scope, false),
+    diagram: useLatest(
+      BAND_DIAGRAM,
+      diagram.body,
+      diagram.scope,
+      false,
+      "band_diagram",
+    ),
   };
 }
 
@@ -293,6 +333,7 @@ export function useResultCurves(enabled: boolean): {
       requests.measured.body,
       requests.measured.scope,
       waiting,
+      "result_measured",
     ),
     derived: useDerivedCurves(requests),
   };
