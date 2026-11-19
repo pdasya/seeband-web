@@ -5,14 +5,36 @@ import {
   APP_DEMO_URL,
   APP_FIT_URL,
   CONVENTIONS_URL,
+  ORIGINAL_URL,
   RESULTS_CHANGED_URL,
   STRINGS,
 } from "../strings";
 
 const text = STRINGS.home;
+const app = STRINGS.application;
+// schema.org's description of the app, for search engines. Its address only on a public build.
+const application = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: app.name,
+  description: text.description,
+  ...(Astro.site === undefined ? {} : { url: new URL("/", Astro.site).href }),
+  applicationCategory: app.category,
+  operatingSystem: app.operatingSystem,
+  isAccessibleForFree: true,
+  offers: { "@type": "Offer", price: "0", priceCurrency: "EUR" },
+  license: app.licence,
+  isBasedOn: ORIGINAL_URL,
+};
 ---
 
 <Base title={text.title} description={text.description} current="overview">
+  <script
+    slot="head"
+    type="application/ld+json"
+    is:inline
+    set:html={JSON.stringify(application)}
+  />
   <div class="overview">
     <section class="hero">
       <div class="hero__text">

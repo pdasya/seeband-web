@@ -12,9 +12,21 @@ export const RESULTS_CHANGED_URL = "/results-changed/";
 export const GUIDE_URL = "/guide/";
 
 export const LANGUAGE = "en";
+// Open Graph's form of the language.
+export const LOCALE = "en_GB";
+// The app's screens and the API: robots.txt keeps search engines out of them. A new app screen
+// needs its path here.
+export const NOT_FOR_SEARCH = [APP_FIT_URL, APP_RESULTS_URL, "/api/"];
 
 export const STRINGS = {
   siteName: "SeeBand",
+  // schema.org's description of the app, on the overview.
+  application: {
+    name: "SeeBand Web",
+    category: "Scientific data analysis",
+    operatingSystem: "Any, in a web browser",
+    licence: "https://opensource.org/license/mit",
+  },
   stage: "web · prototype",
   navigationLabel: "Sections",
   navigation: {

@@ -28,15 +28,21 @@ const ASTRO = join(
 );
 const outDir = mkdtempSync(join(tmpdir(), "seeband-site-build-"));
 const mathOutDir = mkdtempSync(join(tmpdir(), "seeband-site-math-"));
+// The same site built for a public address: the one above is for a host closed to search.
+const publicOutDir = mkdtempSync(join(tmpdir(), "seeband-site-public-"));
+const SITE_URL = "https://seeband.example";
 
-function build(root, out) {
+function build(root, out, siteUrl) {
+  const env = { ...process.env, ASTRO_TELEMETRY_DISABLED: "1" };
+  delete env.SEEBAND_SITE_URL;
+  if (siteUrl !== undefined) env.SEEBAND_SITE_URL = siteUrl;
   const built = spawnSync(
     process.execPath,
     [ASTRO, "build", "--root", root, "--outDir", out],
     {
       cwd: SITE_DIR,
       encoding: "utf8",
-      env: { ...process.env, ASTRO_TELEMETRY_DISABLED: "1" },
+      env,
     },
   );
   assert.equal(built.status, 0, built.stderr + built.stdout);
@@ -49,15 +55,18 @@ function files(dir) {
 }
 
 const page = (path) => readFileSync(join(outDir, path), "utf8");
+const publicPage = (path) => readFileSync(join(publicOutDir, path), "utf8");
 
 before(() => {
   build(SITE_DIR, outDir);
   build(MATH_DIR, mathOutDir);
+  build(SITE_DIR, publicOutDir, SITE_URL);
 });
 
 after(() => {
   rmSync(outDir, { recursive: true, force: true });
   rmSync(mathOutDir, { recursive: true, force: true });
+  rmSync(publicOutDir, { recursive: true, force: true });
 });
 
 test("has its pages in English, as static HTML", () => {
@@ -282,6 +291,98 @@ test("the worked examples are pages of the site, each with its screenshots and l
   }
 });
 
+/** Each page's built HTML file, and its address on the site. */
+const pagesOf = (dir) =>
+  files(dir)
+    .filter((path) => path.endsWith(".html"))
+    .map((path) => {
+      const file = relative(dir, path);
+      const address = `/${file.replace(/(^|\/)index\.html$/, "$1").replace(/\.html$/, "")}`;
+      return { file, address };
+    });
+
+test("a build without a site address keeps every page out of search", () => {
+  assert.equal(page("robots.txt"), "User-agent: *\nDisallow: /\n");
+  assert.doesNotMatch(page("sitemap.xml"), /<url>/);
+  for (const { file } of pagesOf(outDir)) {
+    const html = page(file);
+    assert.match(html, /<meta name="robots" content="noindex">/, file);
+    // Absolute addresses need the site's.
+    assert.doesNotMatch(html, /rel="canonical"|og:url/, file);
+  }
+});
+
+test("a public build lists its pages and keeps the app and the API out of search", () => {
+  const robots = publicPage("robots.txt");
+  for (const path of ["/fit", "/results", "/api/"]) {
+    assert.match(robots, new RegExp(`^Disallow: ${path}$`, "m"), path);
+  }
+  assert.doesNotMatch(robots, /^Disallow: \/$/m);
+  assert.match(robots, new RegExp(`^Sitemap: ${SITE_URL}/sitemap.xml$`, "m"));
+
+  const sitemap = publicPage("sitemap.xml");
+  const listed = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
+  const titles = new Map();
+  const descriptions = new Map();
+  for (const { file, address } of pagesOf(publicOutDir)) {
+    const html = publicPage(file);
+    const title = /<title>([^<]+)<\/title>/.exec(html)?.[1];
+    const description = /<meta name="description" content="([^"]+)"/.exec(
+      html,
+    )?.[1];
+    assert.ok(title, file);
+    assert.ok(description, file);
+    assert.match(html, /<meta property="og:title" content="[^"]+">/, file);
+    assert.match(
+      html,
+      /<meta property="og:description" content="[^"]+">/,
+      file,
+    );
+    if (file === "404.html") {
+      assert.match(html, /<meta name="robots" content="noindex">/);
+      assert.ok(!listed.some((url) => url.includes("404")));
+      continue;
+    }
+    // Every other page is indexable, listed, and names itself as its canonical address, with a
+    // description long enough to say what it holds.
+    assert.ok(description.length >= 50, file);
+    const url = `${SITE_URL}${address}`;
+    assert.doesNotMatch(html, /name="robots"/, file);
+    assert.match(
+      html,
+      new RegExp(`<link rel="canonical" href="${url}">`),
+      file,
+    );
+    assert.match(
+      html,
+      new RegExp(`<meta property="og:url" content="${url}">`),
+      file,
+    );
+    assert.ok(listed.includes(url), url);
+    // Unique, so that search results tell the pages apart.
+    assert.ok(
+      !titles.has(title),
+      `${file} has the title of ${titles.get(title)}`,
+    );
+    assert.ok(!descriptions.has(description), `${file} repeats a description`);
+    titles.set(title, file);
+    descriptions.set(description, file);
+  }
+  assert.equal(listed.length, titles.size);
+});
+
+test("the overview describes the app for search engines", () => {
+  const json = /<script type="application\/ld\+json">([\s\S]*?)<\/script>/.exec(
+    publicPage("index.html"),
+  )?.[1];
+  const application = JSON.parse(json ?? "null");
+  assert.equal(application["@type"], "SoftwareApplication");
+  assert.equal(application.name, "SeeBand Web");
+  assert.equal(application.url, `${SITE_URL}/`);
+  assert.equal(application.offers.price, "0");
+  assert.match(application.description, /parabolic band/);
+});
+
 test("needs no script but the header's, and loads no heavy library", () => {
   const all = files(outDir);
   assert.deepEqual(
@@ -291,8 +392,11 @@ test("needs no script but the header's, and loads no heavy library", () => {
   );
   for (const path of all.filter((path) => path.endsWith(".html"))) {
     const html = readFileSync(path, "utf8");
-    // Only the shared header's language script, which does nothing with one language.
-    const scripts = html.match(/<script[\s\S]*?<\/script>/g) ?? [];
+    // Only the shared header's language script, which does nothing with one language. Data for
+    // search engines is not a script.
+    const scripts = (html.match(/<script[\s\S]*?<\/script>/g) ?? []).filter(
+      (script) => !script.includes('type="application/ld+json"'),
+    );
     assert.equal(scripts.length, 1, relative(outDir, path));
     assert.match(scripts[0], /seeband_language/);
     assert.ok(scripts[0].length < 1000, relative(outDir, path));
