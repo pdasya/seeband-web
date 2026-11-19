@@ -4,8 +4,8 @@ import { NavLink } from "react-router";
 
 import { STRINGS } from "@/strings";
 
-// Overview and Conventions belong to the public site, so they leave the app's router.
-const SITE_LINKS = new Set(["overview", "conventions"]);
+// Overview, Conventions and the guide belong to the public site, so they leave the app's router.
+const SITE_LINKS = new Set(["overview", "conventions", "guide"]);
 
 /** The shared header, with the app's links going through its router. */
 export function AppHeader() {
@@ -24,6 +24,7 @@ export function AppHeader() {
           label: navigation.conventions,
           href: "/conventions/",
         },
+        { id: "guide", label: navigation.guide, href: "/guide/" },
       ]}
       renderLink={(link) =>
         SITE_LINKS.has(link.id) ? (

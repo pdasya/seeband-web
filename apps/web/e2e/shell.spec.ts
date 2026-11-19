@@ -71,6 +71,10 @@ test("links to the public site leave the app", async ({ page }) => {
     "href",
     "/conventions/",
   );
+  await expect(page.getByRole("link", { name: "Guide" })).toHaveAttribute(
+    "href",
+    "/guide/",
+  );
 });
 
 test("there is no language switch while the app has one language", async ({
