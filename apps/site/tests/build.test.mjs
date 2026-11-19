@@ -203,6 +203,7 @@ test("Conventions renders its formulas, lists its sections and ties issues to th
   for (const id of [
     "dpb_loop_degeneracy",
     "collapsed_m_eff",
+    "fermi_energy_in_gap",
     "no_chemical_potential",
     "hall_dis_no_reference",
     "band_diagram_formula",
