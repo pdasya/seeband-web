@@ -33,6 +33,8 @@ pnpm install
 uv sync
 ```
 
+To run everything as it runs on the server, with Docker: `docker compose -f deploy/compose.yaml up --build`, then open http://localhost:8080. See [`deploy`](deploy/README.md).
+
 ## Checks
 
 ```sh
