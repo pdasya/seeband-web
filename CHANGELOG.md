@@ -17,6 +17,20 @@
   the method and the reported core version.
   See [validation and regression notes](packages/seeband_core/docs/golden-results.md#stable-fermi-integrals-p14).
 
+- FS12 (#56), tooling only: with `?timing` in its address, the fit screen
+  records User Timing entries for how long live curves take, from a change
+  to its answer and to each chart's painted frame, and
+  `apps/web/scripts/replay-calc.mjs` and `measure-latency.mjs` measure them
+  against a deployed app and API. No measurement or decision yet; results
+  are unchanged.
+
+- S6 (#68): add the site's search-engine base. A build with
+  `SEEBAND_SITE_URL` gets canonical links, `og:url`, a sitemap and a
+  `robots.txt` that keeps search engines out of `/fit`, `/results` and
+  `/api/`; a build without it, for the prototype host, keeps every page out
+  with `noindex` and `Disallow: /`. Every page has Open Graph tags, and the
+  overview a schema.org `SoftwareApplication` description.
+
 - S5 (#67): add worked examples at /examples/ on the three example sets of
   the desktop SeeBand, with screenshots and numbers from runs of this
   version: choosing the scattering mechanism for Fe2VAl0.9Si0.1, a gap

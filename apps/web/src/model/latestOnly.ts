@@ -1,4 +1,5 @@
 import { ApiError, NETWORK_ERROR } from "@/api/errors";
+import { measureSince } from "@/model/timing";
 
 // Until the values rest, or at the latest at the longer delay, so that a curve follows a long drag.
 export const DEBOUNCE_MS = 250;
@@ -23,9 +24,20 @@ export function retriesByItself(error: ApiError): boolean {
 
 export interface LatestOnlyHandlers<Result> {
   send: (body: string, signal: AbortSignal) => Promise<Result>;
-  onResult: (result: Result, body: string) => void;
+  /**
+   * `changedAtMs` is when the values it answers were set, on `performance.now()`'s clock, if they
+   * are still the latest, or null for an answer to values already left.
+   */
+  onResult: (result: Result, body: string, changedAtMs: number | null) => void;
   /** `settled` is the body this ends, or null if another try is on its way. `sent` is the body. */
   onFailure: (error: ApiError, settled: string | null, sent: string) => void;
+  /**
+   * Names User Timing entries for each request: `<timing>:request`, from sending to the answer;
+   * `<timing>:failed`, from sending to a failure; and `<timing>:change-to-answer`, from the last
+   * change of the values to the answer for them, which includes the debounce and any wait for an
+   * earlier request. A change of `waiting` alone is not a change of the values.
+   */
+  timing?: string;
 }
 
 /**
@@ -41,6 +53,8 @@ export class LatestOnly<Result> {
   private running: AbortController | null = null;
   private run = 0;
   private firstChangeAtMs: number | null = null;
+  // On performance.now()'s clock, for the timing entries.
+  private lastChangeAtMs = 0;
   private notBeforeMs = 0;
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
@@ -55,6 +69,9 @@ export class LatestOnly<Result> {
   change(body: string | null, waiting: boolean): void {
     if (body === this.latest && waiting === this.waiting) {
       return;
+    }
+    if (body !== this.latest) {
+      this.lastChangeAtMs = performance.now();
     }
     this.latest = body;
     this.waiting = waiting;
@@ -131,9 +148,11 @@ export class LatestOnly<Result> {
     const { run } = this;
     const controller = new AbortController();
     this.running = controller;
+    const sentAtMs = performance.now();
     this.stuckTimer = setTimeout(() => {
       this.run += 1;
       controller.abort();
+      this.timeFailure(sentAtMs);
       this.failed(
         new ApiError(504, "calculation_timeout", "No answer in time"),
         body,
@@ -144,13 +163,16 @@ export class LatestOnly<Result> {
       .send(body, controller.signal)
       .then((result) => {
         if (run === this.run) {
+          const changedAtMs = body === this.latest ? this.lastChangeAtMs : null;
+          this.timeAnswer(sentAtMs, changedAtMs);
           this.finish();
-          this.handlers.onResult(result, body);
+          this.handlers.onResult(result, body, changedAtMs);
           this.next();
         }
       })
       .catch((error: unknown) => {
         if (run === this.run) {
+          this.timeFailure(sentAtMs);
           this.failed(
             error instanceof ApiError
               ? error
@@ -159,6 +181,24 @@ export class LatestOnly<Result> {
           );
         }
       });
+  }
+
+  private timeAnswer(sentAtMs: number, changedAtMs: number | null): void {
+    const { timing } = this.handlers;
+    if (timing === undefined) {
+      return;
+    }
+    measureSince(`${timing}:request`, sentAtMs);
+    // Only an answer for the values now shown ends what the user waited for.
+    if (changedAtMs !== null) {
+      measureSince(`${timing}:change-to-answer`, changedAtMs);
+    }
+  }
+
+  private timeFailure(sentAtMs: number): void {
+    if (this.handlers.timing !== undefined) {
+      measureSince(`${this.handlers.timing}:failed`, sentAtMs);
+    }
   }
 
   private finish(): void {
