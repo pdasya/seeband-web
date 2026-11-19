@@ -110,6 +110,8 @@ def _evaluate_quantity(
     degen: float,
     check_finite: bool = True,
     root_provider: _CheckedRootProvider | None = None,
+    *,
+    band_1_degeneracy: float = 1.0,
 ) -> np.ndarray:
     if scattering == "ionized":
         from seeband_core.transport import ionized_transport
@@ -122,7 +124,9 @@ def _evaluate_quantity(
                 )
             else:
                 potentials = root_provider("spb", t, p["band_mass"], p["fermi_energy"])
-        out = ionized_transport(t, p, fit_mode, degen, potentials=potentials)[q]
+        out = ionized_transport(
+            t, p, fit_mode, degen, potentials=potentials, band_1_degeneracy=band_1_degeneracy
+        )[q]
         if check_finite and not np.all(np.isfinite(out)):
             raise ValueError("The model gave values that are not finite")
         return out
@@ -159,7 +163,9 @@ def _evaluate_quantity(
                     fm1, fm2 = mm.dpb_fermiInt_vs_temp(-0.5, t, r, gap, ef, degen, **roots)
                     args = [t, rho, fm1, fm2, r, degen, a, b]
                     args += ([c, d] if sc == "acPhDis" else []) + [p["m1"] ** 1.5]
-                    out = getattr(mm, "dpb_hall_vs_temp_" + suffix)(*args)
+                    out = getattr(mm, "dpb_hall_vs_temp_" + suffix)(
+                        *args, band_1_degeneracy=band_1_degeneracy
+                    )
         else:
             mass = p["band_mass"]
             root_mass = mass if q == "seebeck" else np.sign(mass)
@@ -390,6 +396,7 @@ class _Engine:
             self.request.scattering,
             self.n,
             root_provider=self._root_provider,
+            band_1_degeneracy=self.request.band_1_degeneracy,
         ).copy()
         values.setflags(write=False)
         return values
@@ -716,7 +723,13 @@ class _Engine:
             self.evaluations += 1
             with mm.independent_chemical_potential():
                 return _evaluate_quantity(
-                    q, self.data[q][0], p, self.mode.id, self.request.scattering, self.n
+                    q,
+                    self.data[q][0],
+                    p,
+                    self.mode.id,
+                    self.request.scattering,
+                    self.n,
+                    band_1_degeneracy=self.request.band_1_degeneracy,
                 )
 
         unidentified: set[str] = set()
@@ -923,6 +936,7 @@ def evaluate(
     *,
     quantities: tuple[Quantity, ...] | None = None,
     check_finite: bool = True,
+    band_1_degeneracy: float = 1.0,
 ) -> dict[Quantity, np.ndarray]:
     """Evaluate built-in measured quantities on the supplied temperatures in core units."""
     from seeband_core.model_descriptions import load_desktop_descriptions
@@ -931,14 +945,21 @@ def evaluate(
         raise ValueError("Unknown built-in model")
     mode = load_desktop_descriptions()[model_id].fit_mode(fit_mode)
     mode.parameters_for(scattering)
-    if not 0 < degen < np.inf:
+    if not (0 < degen < np.inf and 0 < band_1_degeneracy < np.inf):
         raise ValueError("Band degeneracies must be positive")
     selected = mode.quantities if quantities is None else quantities
     if any(q not in mode.quantities for q in selected):
         raise ValueError("Quantity is not available for this fit mode")
     return {
         q: _evaluate_quantity(
-            q, temperature_k, parameters, fit_mode, scattering, degen, check_finite
+            q,
+            temperature_k,
+            parameters,
+            fit_mode,
+            scattering,
+            degen,
+            check_finite,
+            band_1_degeneracy=band_1_degeneracy,
         )
         for q in selected
     }

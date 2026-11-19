@@ -1037,6 +1037,8 @@ class PB_fit:
         threshold: float,
         max_num_iterations: int,
         progress: FitProgress | None = None,
+        *,
+        band_1_degeneracy: float = 1.0,
     ) -> list[float]:
         """Fits the Seebeck coefficient, resistivity and Hall coefficient data within the
         double-parabolic-band model and returns band-structure and scattering parameters
@@ -1345,6 +1347,7 @@ class PB_fit:
                     current_para_B,
                     para_E,
                     scal_fac=1e10,
+                    band_1_degeneracy=band_1_degeneracy,
                 ),
                 temp_hall_list,
                 hall_list * 1e10,
@@ -1368,6 +1371,7 @@ class PB_fit:
                     current_para_B,
                     para_E,
                     scal_fac=1e10,
+                    band_1_degeneracy=band_1_degeneracy,
                 ),
                 temp_hall_list,
                 hall_list * 1e10,
@@ -1393,6 +1397,7 @@ class PB_fit:
                     current_para_D,
                     para_E,
                     scal_fac=1e10,
+                    band_1_degeneracy=band_1_degeneracy,
                 ),
                 temp_hall_list,
                 hall_list * 1e10,
@@ -1749,6 +1754,7 @@ class PB_fit:
         band_mass1: float,
         degen: float,
         scatter_type: str,
+        band_1_degeneracy: float = 1.0,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Fits the Seebeck coefficient and resistivity data within the double-parabolic-band model
         and returns band-structure and scattering parameters
@@ -1855,6 +1861,7 @@ class PB_fit:
                 para_B,
                 para_E,
                 scal_fac=1,
+                band_1_degeneracy=band_1_degeneracy,
             )
         elif scatter_type == "dis":
             hall_array = te.dpb_hall_vs_temp_dis(
@@ -1868,6 +1875,7 @@ class PB_fit:
                 para_B,
                 para_E,
                 scal_fac=1,
+                band_1_degeneracy=band_1_degeneracy,
             )
         else:
             hall_array = te.dpb_hall_vs_temp_acPh_dis(
@@ -1883,6 +1891,7 @@ class PB_fit:
                 para_D,
                 para_E,
                 scal_fac=1,
+                band_1_degeneracy=band_1_degeneracy,
             )
 
         return temp_array, see_array, res_array, hall_array
@@ -2173,6 +2182,7 @@ class PB_fit:
         parameter_see: list[float],
         degen: float,
         m1: float,
+        band_1_degeneracy: float = 1.0,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
 
         # Define the band structure parameters
@@ -2185,7 +2195,8 @@ class PB_fit:
         ind_charCon1, ind_charCon2 = te.dpb_ind_carCon_vs_temp(
             temp_array, fermi_energy, meff, gap, degen
         )
-        return temp_array, m1**1.5 * ind_charCon1, m1**1.5 * ind_charCon2
+        density_scale = band_1_degeneracy * m1**1.5
+        return temp_array, density_scale * ind_charCon1, density_scale * ind_charCon2
 
     def dpb_elecCond_calc(
         self,

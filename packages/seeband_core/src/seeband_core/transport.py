@@ -115,6 +115,7 @@ def ionized_transport(
     degen: float = 1.0,
     *,
     potentials: np.ndarray | None = None,
+    band_1_degeneracy: float = 1.0,
 ) -> dict[str, np.ndarray]:
     """Shared predictions for fitting, measured grids and displayed curves."""
     t = np.asarray(t, dtype=float)
@@ -155,7 +156,9 @@ def ionized_transport(
     return {
         "seebeck": w1 * s1 + w2 * s2,
         "resistivity": 1.0 / sigma,
-        "hall": (h1 / hall_base + (h2 / hall_base * b / abs(r)) * b / abs(r)) / hall_base,
+        "hall": (h1 / hall_base + (h2 / hall_base * b / abs(r)) * b / abs(r))
+        / hall_base
+        / band_1_degeneracy,
         "electrical_conductivity": sigma,
         "thermal_conductivity": thermal,
         "chemical_potential": mu,
