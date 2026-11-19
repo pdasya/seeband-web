@@ -265,6 +265,21 @@ test("the worked examples are pages of the site, each with its screenshots and l
     assert.match(example, /<code>band_diagram_formula<\/code>/, name);
     assert.doesNotMatch(example, /katex-error/, name);
   }
+  // The known issues the pictured fits carry.
+  assert.match(
+    page("examples/awi32/index.html"),
+    /<code>hall_dis_no_reference<\/code>/,
+  );
+  for (const name of ["fe2val", "awi32"]) {
+    assert.match(page(`examples/${name}/index.html`), /issues\/247/, name);
+  }
+  // Every screenshot in public/examples is shown on a page.
+  const shown = ["fe2val", "si-p", "awi32"]
+    .map((name) => page(`examples/${name}/index.html`))
+    .join("");
+  for (const file of readdirSync(join(SITE_DIR, "public", "examples"))) {
+    assert.match(shown, new RegExp(`src="/examples/${file}"`), file);
+  }
 });
 
 test("needs no script but the header's, and loads no heavy library", () => {

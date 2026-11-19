@@ -10,29 +10,32 @@ description: A worked example of fitting two parabolic bands to the Seebeck coef
 ## Data
 
 The full-Heusler compound Fe₂VAl₀.₉Si₀.₁, from the files
-`01_Fe2VAl09Si01_see.txt` and `_rho.txt` of the desktop SeeBand: 30 points of
-S and of ρ from 25 to 750 K. The SeeBand paper [[1]](#references) analyses the
-same compound and cites its measurements to Garmroudi et al.
-[[2]](#references). The [user guide](/guide/) walks through these files step
-by step; this page is about one choice in it, the scattering mechanism.
+[`01_Fe2VAl09Si01_see.txt` and `_rho.txt`](https://github.com/xAngelswordx/SeeBand/tree/803b0e7a425a0a3f4f59688df77e3ad283ca49a1/data/Examples)
+of the desktop SeeBand: 30 points of S and of ρ from 25 to 750 K, evenly
+spaced. The SeeBand paper [[1]](#references) analyses the same compound and
+cites its measurements to Garmroudi et al. [[2]](#references). The
+[user guide](/guide/) walks through these files step by step; this page is
+about one choice in it, the scattering mechanism.
 
 ## Choices
 
-DPB, fit mode S + ρ, the default fit range of 50–800 K and no interpolation.
-The fit was run three times, in this order:
+DPB, fit mode S + ρ, and otherwise the
+[defaults](/examples/#reading-these-pages). The fit was run three times on one
+page, in this order, each from the start shown:
 
-1. alloy disorder, from the neural net's start (**Initial guess**);
-2. ionized impurities, from the values the first fit left, without a new
-   guess;
-3. acoustic phonons, from the neural net's start.
+| Fit | Scattering         | Start                                                                                                            |
+| --- | ------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| 1   | Alloy disorder     | **Initial guess**: $m_2/m_1$ = 1.57, $E_g$ = 0.05 eV, $E_F$ = 0.10 eV; F = 1000 and G = 1, the defaults          |
+| 2   | Ionized impurities | no guess, as the net has none for this mechanism: the band values fit 1 left; A = 40 000 and B = 1, the defaults |
+| 3   | Acoustic phonons   | **Initial guess** for the band values; A = 14 099 and B = 1.1, which fit 2 left                                  |
 
 ## Result
 
-| Scattering         | Status              | RMSE S    | RMSE ρ | $m_2/m_1$ | $E_g$    | $E_F$   | At a bound |
-| ------------------ | ------------------- | --------- | ------ | --------- | -------- | ------- | ---------- |
-| Acoustic phonons   | numerically settled | 2.68 µV/K | 9.8 %  | 1.32      | 0.05 eV  | 0.11 eV | none       |
-| Alloy disorder     | numerically settled | 2.86 µV/K | 108 %  | 1.97      | 0.05 eV  | 0.10 eV | G = 2      |
-| Ionized impurities | numerically settled | 4.58 µV/K | 138 %  | 2.63      | −0.14 eV | 0.01 eV | B = 1.1    |
+| Scattering         | Status              | RMSE S    | RMSE ρ | $m_2/m_1$ | $E_g$    | $E_F$   | At a bound                     |
+| ------------------ | ------------------- | --------- | ------ | --------- | -------- | ------- | ------------------------------ |
+| Acoustic phonons   | numerically settled | 2.68 µV/K | 9.8 %  | 1.32      | 0.05 eV  | 0.11 eV | none; B = 1.097, its bound 1.1 |
+| Alloy disorder     | numerically settled | 2.86 µV/K | 108 %  | 1.97      | 0.05 eV  | 0.10 eV | G = 2                          |
+| Ionized impurities | numerically settled | 4.58 µV/K | 138 %  | 2.63      | −0.14 eV | 0.01 eV | B = 1.1                        |
 
 The energies are as the fields show them, to 0.01 eV.
 
@@ -54,13 +57,21 @@ The energies are as the fields show them, to 0.01 eV.
 
 ## Interpretation
 
-S alone does not tell the mechanisms apart: all three describe it within
-5 µV/K. ρ does. With acoustic phonons the model follows ρ within 10 %. With
-alloy disorder it misses ρ by about its own size (RMSE 108 %) and G ends at its
-bound. With ionized impurities it misses ρ by more (138 %), band 2 moves below
-band 1 ($E_g$ < 0, overlapping bands) and B ends at its bound. Of the three,
-only acoustic phonons describe both quantities, and with them S and ρ give a
-small gap of about 0.05 eV with $E_F$ about 0.11 eV, in the conduction band.
+S alone does not tell the mechanisms apart: all three describe it with an RMSE
+below 5 µV/K. ρ does. With acoustic phonons the model follows ρ with an RMSE of
+10 %. With alloy disorder the RMSE of ρ is 108 %, as large as ρ itself, and G
+ends at its bound. With ionized impurities it is 138 %, and B ends at its
+bound.
+
+So, with the default bounds and these starts, only acoustic phonons describe
+both quantities, and B then ends at 1.097, just inside its bound of 1.1. In
+the sequential method the band values come from the fit of S; ρ adds only the
+scattering amplitudes A and B. The fit of S gives a small gap of about 0.05 eV,
+with $E_F$ about 0.11 eV, so about 0.06 eV inside band 2, the conduction band.
+
+With ionized impurities, band 2's edge ends 0.14 eV below the top of band 1
+($E_g$ < 0, the bands overlap), with $E_F$ within about 0.01 eV of the top of
+band 1.
 
 A good description of S and ρ does not prove the band picture: other
 parameter sets may describe the data as well, and this page did not search
@@ -68,8 +79,18 @@ for them.
 
 ## Limits
 
-- With acoustic phonons the model ρ falls towards 0 at low temperatures, so it
-  cannot follow the measured residual resistivity below about 100 K.
+- B's default bounds are 0.9–1.1. B or G ends at or just inside a bound in
+  every fit here, so band 2's share of the scattering is largely set by the
+  bounds.
+- The ionized-impurity fit is provisional: whether band 2's weight should be
+  N/R or N·R for this mechanism is an open question
+  ([#247](https://github.com/pdasya/seeband-web/issues/247)), and it started
+  from the alloy-disorder result.
+- With acoustic phonons the model ρ falls towards 0 at low temperatures: with
+  $E_F$ inside band 2, σ grows as 1/T, and the model has no
+  temperature-independent scattering. So it cannot follow the measured
+  residual resistivity, and the points from 50 to about 100 K, inside the fit
+  range, count against it.
 - Adding $R_H$ does not confirm these values. In the [user guide](/guide/), the
   S + ρ + $R_H$ fit with acoustic phonons reaches its limit of 20 iterations
   with an RMSE of $R_H$ of 104 %.
@@ -80,14 +101,16 @@ for them.
 
 ## Reproduce
 
-1. On **Model fit**, choose **DPB** and **S + ρ**, and load
-   `01_Fe2VAl09Si01_see.txt` and `_rho.txt`, choosing S and ρ for their
-   second columns.
-2. Keep the fit range of 50–800 K and **Interpolation** off.
-3. Run the three fits in the order under [Choices](#choices).
+1. Open **Model fit**, choose **DPB**, then **S + ρ**.
+2. Load `01_Fe2VAl09Si01_see.txt` and choose S for its second column; load
+   `01_Fe2VAl09Si01_rho.txt` and choose ρ.
+3. Choose **Alloy disorder** under **Scattering**, press **Initial guess**,
+   then **Run fit**.
+4. Choose **Ionized impurities** and press **Run fit**, without a guess.
+5. Choose **Acoustic phonons**, press **Initial guess**, then **Run fit**.
 
-The script `apps/web/scripts/capture-examples.mjs` in the repository runs these
-steps in the app and prints the numbers.
+Check the start in the parameter fields against the table under
+[Choices](#choices) before each run.
 
 ## References
 
