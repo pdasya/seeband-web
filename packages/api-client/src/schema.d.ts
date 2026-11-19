@@ -16,6 +16,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ready": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Ready
+         * @description Whether the API can calculate: its worker processes have started and answered.
+         *
+         *     `/api/health` says the server answers; this says it can also take calculations, so that a proxy
+         *     or an orchestrator sends traffic only once it can.
+         */
+        get: operations["get_ready"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/models": {
         parameters: {
             query?: never;
@@ -1427,6 +1450,19 @@ export interface components {
             /** Fermi Energy K */
             fermi_energy_k: number;
         };
+        /**
+         * ReadyResponse
+         * @example {
+         *       "status": "ready"
+         *     }
+         */
+        ReadyResponse: {
+            /**
+             * Status
+             * @constant
+             */
+            status: "ready";
+        };
         /** ResidualDiagnostics */
         ResidualDiagnostics: {
             /** Rmse */
@@ -1483,6 +1519,42 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HealthResponse"];
                 };
+            };
+            /** @description Default Response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_ready: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadyResponse"];
+                };
+            };
+            /** @description The calculation workers are not ready yet. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Default Response */
             default: {

@@ -115,6 +115,15 @@ class CalcPool:
         self._closed = False
 
     @property
+    def ready(self) -> bool:
+        """Whether the pool can take jobs: its workers have started and answered their warm-up,
+        and it is not closed. While new workers start after a crash, it is not."""
+        return not self._closed and all(
+            future.done() and not future.cancelled() and future.exception() is None
+            for future in self._warming
+        )
+
+    @property
     def _per_client(self) -> dict[str, int]:
         """Jobs admitted for each client, waiting or running."""
         return {name: client.admitted for name, client in self._clients.items()}
