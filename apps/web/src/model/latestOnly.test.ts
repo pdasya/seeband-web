@@ -1,5 +1,13 @@
 // @vitest-environment node
-import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  test,
+  vi,
+  type MockInstance,
+} from "vitest";
 
 import { ApiError } from "@/api/errors";
 import {
@@ -9,6 +17,7 @@ import {
   STUCK_AFTER_MS,
   retriesByItself,
 } from "@/model/latestOnly";
+import { setTimingEnabled } from "@/model/timing";
 
 interface Call {
   body: string;
@@ -359,5 +368,128 @@ describe("a busy server", () => {
     expect(
       retriesByItself(new ApiError(503, "calculation_busy", "x", [], 600)),
     ).toBe(false);
+  });
+});
+
+describe("timing", () => {
+  let clockMs = 0;
+  let measure: MockInstance<Performance["measure"]>;
+  const at = (ms: number) => {
+    clockMs = ms;
+  };
+  const measured = (name: string) =>
+    measure.mock.calls
+      .filter(([entry]) => entry === `seeband:curves:${name}`)
+      .map(([, span]) => span);
+
+  beforeEach(() => {
+    setTimingEnabled(true);
+    clockMs = 0;
+    vi.spyOn(performance, "now").mockImplementation(() => clockMs);
+    measure = vi.spyOn(performance, "measure").mockImplementation(() => {
+      return undefined as unknown as PerformanceMeasure;
+    });
+  });
+  afterEach(() => {
+    setTimingEnabled(false);
+    vi.restoreAllMocks();
+  });
+
+  function timed() {
+    const calls: Call[] = [];
+    const answers: (number | null)[] = [];
+    const sender = new LatestOnly<string>({
+      send: (body, signal) =>
+        new Promise((resolve, reject) => {
+          calls.push({ body, signal, resolve, reject });
+        }),
+      onResult: (_result, _body, changedAtMs) => answers.push(changedAtMs),
+      onFailure: () => undefined,
+      timing: "curves",
+    });
+    return { calls, answers, sender };
+  }
+
+  test("times a request from sending, and the wait from the last change, to the answer", async () => {
+    const { calls, answers, sender } = timed();
+    at(100);
+    sender.change("a", false);
+    at(350);
+    await rest();
+    at(500);
+    calls[0]?.resolve("A");
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(measured("request")).toEqual([{ start: 350, end: 500 }]);
+    expect(measured("change-to-answer")).toEqual([{ start: 100, end: 500 }]);
+    expect(answers).toEqual([100]);
+  });
+
+  test("an answer for values already left times the request, not the wait", async () => {
+    const { calls, answers, sender } = timed();
+    at(100);
+    sender.change("a", false);
+    await rest();
+    at(400);
+    sender.change("b", false);
+    at(450);
+    calls[0]?.resolve("A");
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(measured("request")).toHaveLength(1);
+    expect(measured("change-to-answer")).toEqual([]);
+    expect(answers).toEqual([null]);
+
+    await rest();
+    at(900);
+    calls[1]?.resolve("B");
+    await vi.advanceTimersByTimeAsync(0);
+    expect(measured("change-to-answer")).toEqual([{ start: 400, end: 900 }]);
+    expect(answers).toEqual([null, 400]);
+  });
+
+  test("a change of waiting alone does not restart the wait", async () => {
+    const { calls, sender } = timed();
+    at(100);
+    sender.change("a", true);
+    at(300);
+    sender.change("a", false);
+    await rest();
+    at(700);
+    calls[0]?.resolve("A");
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(measured("change-to-answer")).toEqual([{ start: 100, end: 700 }]);
+  });
+
+  test("times a failure from sending", async () => {
+    const { calls, sender } = timed();
+    sender.change("a", false);
+    at(200);
+    await rest();
+    at(260);
+    calls[0]?.reject(new ApiError(500, "calc_failed", "x"));
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(measured("failed")).toEqual([{ start: 200, end: 260 }]);
+    expect(measured("request")).toEqual([]);
+  });
+
+  test("records nothing unless turned on, or without a name", async () => {
+    setTimingEnabled(false);
+    const { calls, sender } = timed();
+    sender.change("a", false);
+    await rest();
+    calls[0]?.resolve("A");
+    await vi.advanceTimersByTimeAsync(0);
+
+    setTimingEnabled(true);
+    const unnamed = setUp();
+    unnamed.sender.change("a", false);
+    await rest();
+    unnamed.calls[0]?.resolve("A");
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(measure).not.toHaveBeenCalled();
   });
 });

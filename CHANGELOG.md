@@ -7,6 +7,13 @@
   across the bounded gap interval before certifying a result. Keep the
   held value and the original objective.
 
+- FS12 (#56), tooling only: with `?timing` in its address, the fit screen
+  records User Timing entries for how long live curves take, from a change
+  to its answer and to each chart's painted frame, and
+  `apps/web/scripts/replay-calc.mjs` and `measure-latency.mjs` measure them
+  against a deployed app and API. No measurement or decision yet; results
+  are unchanged.
+
 - S6 (#68): add the site's search-engine base. A build with
   `SEEBAND_SITE_URL` gets canonical links, `og:url`, a sitemap and a
   `robots.txt` that keeps search engines out of `/fit`, `/results` and
