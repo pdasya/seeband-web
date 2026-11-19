@@ -135,6 +135,14 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
     ),
   ];
   const busy = (usesMeasured && measured.busy) || onTab.busy;
+  // The chart shows the latest values once every curve it draws answers them: the earliest of
+  // their times, or none while one still answers values already left.
+  const drawnFrom = [...(usesMeasured ? [measured] : []), onTab].filter(
+    ({ result }) => result !== null,
+  );
+  const changedAtMs = drawnFrom.some(({ changedAtMs }) => changedAtMs == null)
+    ? null
+    : Math.min(...drawnFrom.map(({ changedAtMs }) => changedAtMs ?? 0));
 
   const rmse = isQuantityTab(tab) ? measured.result?.rmse?.[tab] : undefined;
   // Shown as its field shows it, to the same step.
@@ -202,6 +210,8 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
         yAxisTitle={view.yAxisTitle}
         description={view.description}
         failedText={text.failed}
+        timing={`chart:${tab}`}
+        changedAtMs={drawnFrom.length === 0 ? null : changedAtMs}
       />
       {view.note !== null && (
         <p className="m-0 text-xs text-muted-foreground">{view.note}</p>

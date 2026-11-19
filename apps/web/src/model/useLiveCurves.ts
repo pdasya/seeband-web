@@ -35,6 +35,11 @@ export interface LiveCalc<Result = CalcResponse> {
   result: Result | null;
   busy: boolean;
   error: ApiError | null;
+  /**
+   * When the values `result` answers were set, on `performance.now()`'s clock, for timing how long
+   * a chart took to show them; null for an answer to values already left.
+   */
+  changedAtMs?: number | null;
 }
 
 export interface LiveCurves {
@@ -53,6 +58,7 @@ interface Answers<Result> {
   errorScope: string | null;
   /** The values that the last answer or failure ended. */
   settled: string | null;
+  changedAtMs: number | null;
 }
 
 const NOTHING: Answers<never> = {
@@ -61,6 +67,7 @@ const NOTHING: Answers<never> = {
   error: null,
   errorScope: null,
   settled: null,
+  changedAtMs: null,
 };
 
 /** What to send a request's body with, and what its answer is of. */
@@ -100,13 +107,14 @@ function useLatest<Result>(
       new LatestOnly<Result>({
         send: route.send,
         timing,
-        onResult: (result, settled) => {
+        onResult: (result, settled, changedAtMs) => {
           setAnswers({
             result,
             resultScope: route.scopeOf(settled),
             error: null,
             errorScope: null,
             settled,
+            changedAtMs,
           });
         },
         onFailure: (error, settled, sent) => {
@@ -147,6 +155,7 @@ function useLatest<Result>(
     result: answers.resultScope === scope ? answers.result : null,
     busy: pending && longPending,
     error: answers.errorScope === scope ? answers.error : null,
+    changedAtMs: answers.resultScope === scope ? answers.changedAtMs : null,
   };
 }
 
@@ -155,9 +164,13 @@ type DerivedRequests = Record<
   { body: string | null; scope: string | null }
 >;
 
-/** The latest answer for each kind of curve, asked in a fixed order, as hooks must be. */
+/**
+ * The latest answer for each kind of curve, asked in a fixed order, as hooks must be. `prefix`
+ * keeps the timing entries of one screen apart from another's.
+ */
 function useDerivedCurves(
   requests: DerivedRequests,
+  prefix = "",
 ): Record<DerivedKind, LiveCalc> {
   const {
     chemical_potential: chemical,
@@ -173,42 +186,42 @@ function useDerivedCurves(
       chemical.body,
       chemical.scope,
       false,
-      "chemical_potential",
+      `${prefix}chemical_potential`,
     ),
     seebeck_by_band: useLatest(
       CALC,
       bands.body,
       bands.scope,
       false,
-      "seebeck_by_band",
+      `${prefix}seebeck_by_band`,
     ),
     electrical_conductivity: useLatest(
       CALC,
       electrical.body,
       electrical.scope,
       false,
-      "electrical_conductivity",
+      `${prefix}electrical_conductivity`,
     ),
     thermal_conductivity: useLatest(
       CALC,
       thermal.body,
       thermal.scope,
       false,
-      "thermal_conductivity",
+      `${prefix}thermal_conductivity`,
     ),
     lorenz_number: useLatest(
       CALC,
       lorenz.body,
       lorenz.scope,
       false,
-      "lorenz_number",
+      `${prefix}lorenz_number`,
     ),
     carrier_concentration_by_band: useLatest(
       CALC,
       carriers.body,
       carriers.scope,
       false,
-      "carrier_concentration_by_band",
+      `${prefix}carrier_concentration_by_band`,
     ),
   };
 }
@@ -335,6 +348,6 @@ export function useResultCurves(enabled: boolean): {
       waiting,
       "result_measured",
     ),
-    derived: useDerivedCurves(requests),
+    derived: useDerivedCurves(requests, "result_"),
   };
 }
