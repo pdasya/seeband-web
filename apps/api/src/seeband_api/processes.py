@@ -62,14 +62,18 @@ def start_fork_server(timeout_s: float = START_TIMEOUT_S) -> None:
     Starting the server returns before it has imported anything, so this forks one process that
     does nothing: the fork waits until the imports are done. A fork server that has died is started
     again. Raises `TimeoutError` if the imports take longer than `timeout_s`, which a fork cannot be
-    told, so the waiting happens in a thread.
+    told, so the waiting happens in a thread. A startup that times out before the probe is needed
+    skips that probe when the fork server responds.
     """
     failures: list[BaseException] = []
     done = threading.Event()
+    expired = threading.Event()
 
     def start() -> None:
         try:
             forkserver.ensure_running()
+            if expired.is_set():
+                return
             process = context.Process(target=_nothing, daemon=True)
             process.start()
             process.join()
@@ -81,6 +85,7 @@ def start_fork_server(timeout_s: float = START_TIMEOUT_S) -> None:
 
     threading.Thread(target=start, name="fork-server-start", daemon=True).start()
     if not done.wait(timeout_s):
+        expired.set()
         raise TimeoutError("The fork server did not finish its imports")
     if failures:
         raise failures[0]
