@@ -25,6 +25,8 @@ pnpm --filter @seeband/site serve     # builds it and previews it on port 4321, 
 
 **The user guide** (`/guide/`) is adapted from the desktop SeeBand's PDF guide (MIT). Its screenshots in `public/guide/` and the numbers it quotes come from `apps/web/scripts/capture-guide.mjs`, run against the app and API on the Fe2VAl0.9Si0.1 example; run it again when the screens change.
 
+**The worked examples** (`/examples/`) walk through the three example sets of the desktop SeeBand. Their screenshots in `public/examples/` come from `apps/web/scripts/capture-examples.mjs`, which also prints each fit's start, status, RMSEs and parameters; the pages' numbers are copied from that output by hand, so after a change to the screens or the core, run it again and check each page against it.
+
 **Formulas** in Markdown and MDX are rendered by KaTeX at build time, so a page gets HTML and CSS and no script. A page with formulas uses `Prose.astro`, the only layout that loads KaTeX's styles; in MDX, name it as `layout` in the frontmatter, with `title` and `description`. `tests/fixtures/math` builds such a page.
 
 **Fonts** are Geist and Geist Mono from `packages/ui`, served by the site itself.
