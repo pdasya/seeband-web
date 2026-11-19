@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- S5 (#67): add worked examples at /examples/ on the three example sets of
+  the desktop SeeBand, with screenshots and numbers from runs of this
+  version: choosing the scattering mechanism for Fe2VAl0.9Si0.1, a gap
+  outside the default bounds for Si:P, and AWI32, which no single mechanism
+  describes. Each page states its limits and how to reproduce it.
+
 - S4 (#66): add the user guide at /guide/, adapted from the desktop SeeBand's
   PDF guide (MIT) to the web app, on the Fe2VAl0.9Si0.1 example, with
   screenshots and numbers from runs of this version. It corrects the desktop
