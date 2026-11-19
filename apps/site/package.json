@@ -7,6 +7,7 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
+    "serve": "astro build && astro preview --port 4321",
     "typecheck": "astro check",
     "test": "node --test tests/build.test.mjs"
   },

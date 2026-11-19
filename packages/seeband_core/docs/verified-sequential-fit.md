@@ -58,6 +58,92 @@ held values remain fixed. Evaluation and sweep budgets are finite; cycles,
 stalls and budget exhaustion are distinct diagnostic reasons. Neither solver
 success nor a small change from the starting vector is enough by itself.
 
+One DPB recovery failure was reproduced with the bundled synthetic demo Seebeck
+data, acoustic phonons, held `m_eff = 1.2` and `band_gap = 800 K`, and a free
+`fermi_energy` starting at `400 K` with default bounds. The doubled seed lands
+at `800 K`, exactly the conduction-band edge. At that point the derivative
+estimates from scaled steps `1e-5` and `5e-6` differed by about 41% relative to
+the smaller-step estimate. The old fit reported `derivative_validation_failure`.
+The Fermi-energy derivative is exactly zero on the closed positive gap
+interval. When a stage solve leaves a free Fermi energy on that plateau,
+the recovery starts from the parameters returned by the solver, including any
+updated mass ratio and gap. On each permitted populated side it evaluates up
+to 32 offsets, halved toward the edge, using the existing stage objective.
+It polishes the best improving probe on each side and retains the lowest-cost
+feasible candidate. The final conditional audit repeats the same search.
+The finite set of probes and shared evaluation budget define the search coverage.
+
+An optional restart can encounter an inadmissible carrier root or a
+derivative that fails validation. Verified Fit discards the failed restart
+and keeps evaluating other candidates. An improving probe needs a
+validated derivative before retention. If failure in a restart leaves a
+material improvement unverified, Verified Fit reports `stalled` and
+checks the retained endpoint's predictions and derivatives before
+returning it.
+
+On the same demo, a plateau RMSE of
+63.136 µV/K falls to 0.8084 µV/K at `fermi_energy ≈ −150.1195 K`, with the
+same fit objective, held values and certification thresholds. When the bounds
+keep the fit in the gap, the warning still applies: transport does not locate
+the Fermi energy there (#107).
+
+With a free gap, a stencil that narrows the gap across the conduction edge
+also samples the onset of carriers. Verified Fit keeps the gap stencil on
+the intrinsic side when the bounds allow it and still checks refinement at
+half the step. This changes the derivative probes while using the original
+fit bounds. If Fermi energy remains on the plateau after fitting the gap,
+the recovery described above uses the updated stage parameters. Before
+polishing another populated-side seed, it checks that the seed's evaluated
+cost still improves on the best candidate found so far.
+
+When the gap and Fermi energy are both free and the stage ends just outside
+a positive DPB gap, it can also restart on the opposite populated side.
+The numerical distance threshold is one nominal finite-difference step.
+The restart respects the Fermi-energy bounds and preserves the other
+coordinates at its starting point. The conditional audit checks the same
+recovery at the final parameters.
+
+Starting the synthetic demo at `band_gap = fermi_energy = 800 K` with every fitted
+parameter free gives a Seebeck RMSE of about `0.807 µV/K` in both the
+Seebeck-only and sequential Seebeck, resistivity and Hall modes. Both fits
+converge at `fermi_energy ≈ −150.17 K` within the fit bounds.
+
+On the same demo, with only `m_eff` held and both energies starting at
+`800 K`, the fit now settles at `band_gap ≈ 799.8726 K` and
+`fermi_energy ≈ −150.1328 K` with a `0.808359 µV/K` RMSE. A noiseless
+conduction-side test from the same start recovers a `650 K` gap and
+`1000 K` Fermi energy. A separate intrinsic test recovers a `900 K` gap
+while leaving the Fermi energy undetermined.
+
+When both DPB energies are free and coincide exactly at the upper gap bound,
+the solver can use an equivalent reference strictly inside the positive gap.
+The zero-temperature carrier target and its first derivatives are the same
+as at the conduction edge.
+The fit checks that the residual vector is identical at the reference before
+using it to take shrinking-gap probes or seed the optimizer. The original
+endpoint remains a candidate and wins ties. If the Fermi energy is held or
+there is no admissible interior reference, the original derivative check
+still applies and can fail explicitly.
+
+With the demo's gap bounds set to `[300, 800] K`, the same start converges to
+`band_gap ≈ 799.8727 K` and `fermi_energy ≈ −150.1328 K`, with a Seebeck RMSE
+of `0.808359 µV/K`. The regression checks the bounds during every transport
+evaluation, including derivative probes and the terminal audit. With the
+Fermi energy restricted to `[500, 3000] K`, recovery instead reaches
+`fermi_energy ≈ 800.10156 K` with a Seebeck RMSE of `61.119 µV/K`.
+On the same demo, starting the Fermi energy `10⁻⁶ K` to either side of the
+`800 K` edge can still fail derivative validation. The same failure can
+occur for coincident starts at `1000 K` or `1500 K` when the gap's upper
+bound equals the start.
+
+Synthetic DPB Seebeck curves generated with the same mass ratio and gap,
+31 temperatures from 50 to 800 K, and Fermi energies 0.05 K or 0.0001 K
+outside either edge serve as near-edge regressions. The fits recover those
+energies from a 400 K start, including when the generating energy is at the
+only accessible outer bound. With all parameters free on the bundled demo,
+the start (m₂/m₁ = 1.2, E_g = 800 K, E_F = 0 K) now gives about
+0.807 µV/K RMSE. The earlier plateau result gave 48.34 µV/K.
+
 ## Result interpretation
 
 Algorithm and diagnostics travel with the API result and exports. Diagnostics

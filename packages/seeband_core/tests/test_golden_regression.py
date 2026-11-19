@@ -24,6 +24,7 @@ import inspect
 import json
 import math
 from collections.abc import Iterator
+from dataclasses import replace
 from functools import cache
 from pathlib import Path
 from typing import Any
@@ -717,6 +718,33 @@ def test_coverage_of_public_methods_is_as_documented() -> None:
 def test_unstable_list_only_holds_cases_that_exist() -> None:
     found = {(mode, scattering) for example, mode, scattering, *_ in CALLS if example == "02_SiP"}
     assert UNSTABLE_02 <= found
+
+
+@pytest.mark.parametrize(
+    ("scattering", "seebeck_limit", "resistivity_limit"),
+    [("acPh", 0.62, 0.61), ("dis", 0.61, 0.69)],
+)
+def test_verified_sip_keeps_a_valid_endpoint_when_a_recovery_seed_fails(
+    scattering: str, seebeck_limit: float, resistivity_limit: float
+) -> None:
+    identifier = f"02_SiP-dpb_s_rho-{scattering}-thread-dpb_see_res_fit"
+    call = CALLS[CALL_IDS.index(identifier)][-1]
+    request = replace(fit_request("dpb_s_rho", call), algorithm="verified-sequential-v2")
+
+    result = default_registry.get("dpb").fit(request)
+
+    assert result.status in ("converged", "stalled")
+    assert result.diagnostics is not None
+    assert result.diagnostics.stage_consistent == (result.status == "converged")
+    if result.status == "stalled":
+        assert result.diagnostics.termination == "derivative_search_stall"
+    seebeck_error = result.diagnostics.residuals["seebeck"].relative_l2
+    resistivity_error = result.diagnostics.residuals["resistivity"].relative_l2
+    assert seebeck_error is not None and seebeck_error < seebeck_limit
+    assert resistivity_error is not None and resistivity_error < resistivity_limit
+    assert result.diagnostics.recoveries > 0
+    for name, bound in request.bounds.items():
+        assert bound.lower <= result.parameters[name] <= bound.upper
 
 
 @pytest.mark.parametrize(

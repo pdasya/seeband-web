@@ -36,8 +36,10 @@ valid or matches the desktop.
 
 Core `0.1.0` includes the landed P2–P7 corrections listed above. Core `0.1.1` additionally includes P8: a checked signed chemical-potential
 solve, stable negative F₁/₂ tail and rejection of analytically invalid optimizer
-trial points. Invalid starts and uncertifiable density roots fail explicitly;
-transport underflow can still yield nonfinite points. See the
+trial points. Invalid starts and uncertifiable density roots fail explicitly.
+P14 addresses the transport underflow that remained after P8. See the
+[P14 validation](https://github.com/pdasya/seeband-web/blob/main/packages/seeband_core/docs/golden-results.md#stable-fermi-integrals-p14)
+and the
 [solver contract](https://github.com/pdasya/seeband-web/blob/main/packages/seeband_core/docs/chemical-potential.md).
 Core `0.1.2` adds P9: neural-net selection uses the actual minimum and maximum
 temperatures, and paired rows are sorted on a copy before preparing the input.

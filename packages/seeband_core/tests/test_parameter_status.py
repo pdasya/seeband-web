@@ -35,13 +35,16 @@ def _fit(model_id: str, mode_id: str, **fields: object) -> object:
 
 
 @pytest.mark.parametrize("mode_id", ["dpb_s", "dpb_s_rho", "dpb_s_rho_rh"])
-def test_dpb_curves_do_not_depend_on_a_fermi_energy_inside_the_gap(mode_id: str) -> None:
-    """The reason for `not_determined` of E_F there: both bands are empty at 0 K for each value."""
+@pytest.mark.parametrize("scattering", ["acPh", "dis", "ionized"])
+def test_dpb_curves_do_not_depend_on_a_fermi_energy_inside_the_gap(
+    mode_id: str, scattering: str
+) -> None:
+    """The zero-temperature carrier populations vanish for every E_F in the gap."""
     model = registry.get("dpb")
     fit_mode = model.describe().fit_mode(mode_id)
     start = default_start(fit_mode) | {"m_eff": 1.2, "band_gap": 800.0}
 
-    def curves(fermi_energy: float) -> dict[str, bytes]:
+    def curves(fermi_energy: float, *, in_gap: bool) -> dict[str, bytes]:
         result = model.calculate(
             CurveRequest(
                 mode_id,
@@ -49,13 +52,16 @@ def test_dpb_curves_do_not_depend_on_a_fermi_energy_inside_the_gap(mode_id: str)
                 100.0,
                 800.0,
                 12,
-                fit_mode.default_scattering,
+                scattering,
             )
         )
+        assert ("fermi_energy_in_gap" in result.known_issues) is in_gap
         return {name: np.asarray(values).tobytes() for name, values in result.curves.items()}
 
-    assert curves(0.0) == curves(50.0) == curves(400.0) == curves(790.0) == curves(800.0)
-    assert curves(400.0) != curves(810.0)
+    reference = curves(400.0, in_gap=True)
+    for energy in (0.0, 50.0, 790.0, 800.0):
+        assert curves(energy, in_gap=True) == reference
+    assert curves(810.0, in_gap=False) != reference
 
 
 @pytest.mark.parametrize("algorithm", ALGORITHMS)
@@ -65,26 +71,50 @@ def test_a_fermi_energy_inside_the_gap_is_not_determined(
 ) -> None:
     """The review's s13 cases: E_F in the gap with m_eff > 0 has no effect on the data.
 
-    The legacy fit ends with E_F where it started, which says nothing about it. The verified fit
-    finds no derivative to verify and fails, so it assesses E_F not at all. Neither calls it
-    estimated.
+    The bounds keep E_F within the plateau. Both algorithms leave E_F where it started,
+    which says nothing about its value.
     """
     fit_mode = registry.get("dpb").describe().fit_mode(mode_id)
     start = default_start(fit_mode) | {"m_eff": 1.2, "band_gap": 800.0, "fermi_energy": 400.0}
     held = frozenset(name for name in ("m_eff", "band_gap", "A", "B") if name in start)
 
     result = _fit(
-        "dpb", mode_id, start=start, scattering=scattering, algorithm=algorithm, held=held
+        "dpb",
+        mode_id,
+        start=start,
+        bounds={"fermi_energy": Bounds(0.0, 800.0)},
+        scattering=scattering,
+        algorithm=algorithm,
+        held=held,
     )
 
-    status = result.parameter_status["fermi_energy"]  # type: ignore[attr-defined]
-    if algorithm == "legacy-sequential-v1":
-        assert result.status != "failed"  # type: ignore[attr-defined]
-        assert 0 < result.parameters["fermi_energy"] < 800.0  # type: ignore[attr-defined]
-        assert status == "not_determined"
-    else:
-        assert result.status == "failed"  # type: ignore[attr-defined]
-        assert status == "not_assessed"
+    assert result.status == "converged"  # type: ignore[attr-defined]
+    assert result.parameters["fermi_energy"] == 400.0  # type: ignore[attr-defined]
+    assert result.parameter_status["fermi_energy"] == "not_determined"  # type: ignore[attr-defined]
+    assert "fermi_energy_in_gap" in result.known_issues  # type: ignore[attr-defined]
+
+
+def test_verified_fit_warns_about_fermi_energy_for_an_exact_in_gap_curve() -> None:
+    model = registry.get("dpb")
+    mode = model.describe().fit_mode("dpb_s")
+    start = default_start(mode) | {"m_eff": 1.2, "band_gap": 800.0, "fermi_energy": 400.0}
+    curve = model.calculate(CurveRequest(mode.id, start, 100, 800, 12, "acPh"))
+    data = Measurement(curve.temperature_k, curve.curves["seebeck_v_per_k"])
+
+    result = model.fit(
+        FitRequest(
+            mode.id,
+            {"seebeck": data},
+            start,
+            scattering="acPh",
+            held=frozenset({"m_eff", "band_gap"}),
+        )
+    )
+
+    assert result.status == "converged"
+    assert result.parameters["fermi_energy"] == 400.0
+    assert result.parameter_status["fermi_energy"] == "not_determined"
+    assert "fermi_energy_in_gap" in result.known_issues
 
 
 @pytest.mark.parametrize("algorithm", ALGORITHMS)

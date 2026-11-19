@@ -92,6 +92,7 @@ def curve_rmse(
                 ratio,
                 quantities=(quantity,),
                 check_finite=False,
+                band_1_degeneracy=band_1_degeneracy if isinstance(model, DpbModel) else 1.0,
             )[quantity]
             # Percentage residuals are undefined at a measured zero. Verified
             # fit diagnostics supply absolute RMSE and safe relative L2 instead.

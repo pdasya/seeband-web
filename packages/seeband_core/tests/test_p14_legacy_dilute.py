@@ -34,10 +34,19 @@ def test_legacy_intrinsic_dpb_conductivities_keep_representable_values(scatterin
 
 @pytest.mark.parametrize("scattering", ["acPh", "dis", "acPhDis"])
 @pytest.mark.parametrize("b", [1.0, 1.05])
-def test_legacy_intrinsic_dpb_hall_cancels_before_the_inverse_density_scaling(scattering, b):
+@pytest.mark.parametrize("n1", [1.0, 3.0])
+def test_legacy_intrinsic_dpb_hall_cancels_before_the_inverse_density_scaling(scattering, b, n1):
     with np.errstate(invalid="ignore", over="ignore", divide="ignore"):
         _, _, _, hall = PB_fit().dpb_see_res_hall_calc(
-            2.0, 2.0, 1, [1.0, 2860.0, 1000.0], [1e6, b, 0.01, 0.01, 1e6, b], 1.0, 1.0, scattering
+            2.0,
+            2.0,
+            1,
+            [1.0, 2860.0, 1000.0],
+            [1e6, b, 0.01, 0.01, 1e6, b],
+            1.0,
+            1.0,
+            scattering,
+            band_1_degeneracy=n1,
         )
 
     # At equal DOS masses and identical temperature laws, the weighted Hall
@@ -46,7 +55,12 @@ def test_legacy_intrinsic_dpb_hall_cancels_before_the_inverse_density_scaling(sc
         context.prec = 70
         band_prefactor = 3 * te.hbar**3 * np.pi**2 / (2 * te.e * (4 * te.kB * te.me) ** 1.5)
         correction = (1 - Decimal(str(b))) / (1 + Decimal(str(b)))
-        expected = Decimal(715).exp() * Decimal(str(band_prefactor * np.sqrt(np.pi))) * correction
+        expected = (
+            Decimal(715).exp()
+            * Decimal(str(band_prefactor * np.sqrt(np.pi)))
+            * correction
+            / Decimal(str(n1))
+        )
     np.testing.assert_allclose(hall, [float(expected)], rtol=1e-12, atol=0)
 
 

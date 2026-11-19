@@ -16,7 +16,13 @@ from seeband_core.model_interface import (
 
 from seeband_api.calc_pool import CalcPoolDep
 from seeband_api.calc_worker import CalcOutcome, CalculationFailed, calculate
-from seeband_api.errors import ApiError, ErrorDetail
+from seeband_api.errors import (
+    CALCULATION_ERROR_EXAMPLES,
+    CHEMICAL_POTENTIAL_ERROR_MESSAGES,
+    ApiError,
+    ErrorDetail,
+    ErrorResponse,
+)
 from seeband_api.json_values import finite_or_none
 from seeband_api.request_checks import (
     MaxPointsDep,
@@ -231,6 +237,17 @@ def _to_response(
 @router.post(
     "/calc",
     responses={
+        422: {
+            "model": ErrorResponse,
+            "description": "Invalid request or calculation has no result",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        name: {"value": value} for name, value in CALCULATION_ERROR_EXAMPLES.items()
+                    }
+                }
+            },
+        },
         429: too_many_requests(("rate_limited", "client_calc_limit")),
         503: service_busy(),
     },
@@ -280,10 +297,17 @@ async def post_calc(body: CalcRequest, pool: CalcPoolDep, max_points: MaxPointsD
         )
     except CalculationFailed as error:
         log_calculation_failure(str(error))
+        failure_details = []
+        code = error.detail_code
+        if code is not None and code in CHEMICAL_POTENTIAL_ERROR_MESSAGES:
+            failure_details.append(
+                invalid(code, CHEMICAL_POTENTIAL_ERROR_MESSAGES[code], ["parameters"])
+            )
         raise ApiError(
             HTTPStatus.UNPROCESSABLE_CONTENT,
             "calculation_failed",
             "The calculation has no result for these parameters and temperatures",
+            failure_details,
         ) from None
     # A long list takes a moment to convert, so this leaves the event loop free too.
     return await run_in_threadpool(_to_response, outcome, _measured_points(body))

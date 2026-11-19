@@ -8,6 +8,38 @@
   The revised half-order integral changes the numerical density solutions and
   derived curves. See [validation and regression notes](packages/seeband_core/docs/golden-results.md#stable-fermi-integrals-p14).
 
+- Verified Fit: use an equivalent in-bounds plateau reference when both
+  DPB energies are free and meet at the upper gap bound. Check that the
+  residuals match before using the reference for the derivative or as a
+  starting point. Keep the original endpoint on ties.
+
+- Verified Fit: check the free DPB gap derivative on the intrinsic side of
+  the conduction edge when that stencil fits the bounds. For joint fits
+  of the gap and Fermi energy, try a bounded restart across the gap from a
+  near-edge endpoint. Reject failed exploratory trials and certify the
+  retained solution through the final conditional audit.
+
+- DPB Hall fits and curves include the absolute valley multiplicity of
+  band 1. The fitted `m1` is a mass per valley. Absolute carrier densities
+  in the Hall mode use the same multiplicities. A mass from the previous
+  Hall normalization maps to the new convention by dividing it by
+  `N1^(2/3)` at the same band shapes.
+
+- Verified Fit: search both permitted sides when a free DPB Fermi energy
+  remains in a positive gap after a stage solve. Probe toward each edge,
+  polish candidates with lower stage cost, and repeat the search in the
+  final conditional audit. Fits constrained to the gap still report the
+  Fermi energy as undetermined.
+
+- P16 (#107): flag a DPB Fermi energy in a positive valence–conduction gap,
+  including either edge, where transport cannot locate E_F within the gap.
+  The warning changes no calculated values or fit behavior.
+
+- P15 (#106): distinguish zero mass and the SPB and DPB Fermi-energy
+  constraints in curve failures. The API returns HTTP 422 with a
+  reason-specific detail. Fit failures distinguish the finite-root domain
+  from numerical certification failures.
+
 - R11 (#187): add the Lorenz number L(T) = kappa_e/(sigma*T) as a derived curve
   in modes with rho, in W*Ohm/K^2 and in units of L0 = pi^2/3 (k_B/e)^2, with
   export. For DPB, show the effective L with its bipolar part, and each band's

@@ -13,6 +13,26 @@ const apiProxy = {
   "/api": process.env.SEEBAND_API_TARGET ?? "http://127.0.0.1:4010",
 };
 
+/**
+ * The public site's paths, which Caddy serves beside the app on one origin. With
+ * `SEEBAND_SITE_TARGET`, the dev server sends them to the built site there (`astro preview`), so
+ * that links between the two work on one port. Not to `astro dev`: its modules use Vite's own
+ * /@fs and /@id paths, which are this server's too. Without it, as in tests, they stay the app's.
+ */
+const siteTarget = process.env.SEEBAND_SITE_TARGET;
+const siteProxy =
+  siteTarget === undefined || siteTarget === ""
+    ? {}
+    : Object.fromEntries(
+        [
+          "^/$",
+          "^/conventions(/|$)",
+          "^/results-changed(/|$)",
+          "^/_astro/",
+          "^/favicon\\.svg$",
+        ].map((path) => [path, siteTarget]),
+      );
+
 // Exported files name the app's version.
 const { version } = JSON.parse(
   readFileSync(new URL("./package.json", import.meta.url), "utf8"),
@@ -60,7 +80,7 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(version),
     __APP_COMMIT__: JSON.stringify(commit()),
   },
-  server: { proxy: apiProxy },
+  server: { proxy: { ...apiProxy, ...siteProxy } },
   preview: { proxy: apiProxy },
   plugins: [react(), tailwindcss()],
   resolve: {

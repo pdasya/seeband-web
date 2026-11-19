@@ -186,6 +186,17 @@ class ChemicalPotentialError(ValueError):
 class NoFiniteChemicalPotentialError(ChemicalPotentialError):
     """The parameters lie outside the analytically admissible finite-root model domain."""
 
+    def __init__(
+        self,
+        temperature: float | None,
+        reason: str,
+        residual: float | None = None,
+        *,
+        code: str | None = None,
+    ) -> None:
+        super().__init__(temperature, reason, residual)
+        self.code = code
+
 
 @dataclass(frozen=True)
 class ChemicalPotentialResult:
@@ -326,12 +337,22 @@ def _solve_chemical_potential(
         )
     if mass == 0:
         raise NoFiniteChemicalPotentialError(
-            None, "zero band mass is outside the supported model domain"
+            None,
+            "zero band mass is outside the supported model domain",
+            code="chemical_potential_zero_mass",
         )
     if (gap is None and fermi_energy * np.sign(mass) <= 0) or (
         gap is not None and mass < 0 and fermi_energy >= max(0.0, gap)
     ):
-        raise NoFiniteChemicalPotentialError(None, "no finite root for zero carrier density")
+        raise NoFiniteChemicalPotentialError(
+            None,
+            "no finite root for zero carrier density",
+            code=(
+                "chemical_potential_spb_fermi_energy"
+                if gap is None
+                else "chemical_potential_dpb_fermi_energy"
+            ),
+        )
 
     with np.errstate(over="ignore", under="ignore", invalid="ignore"):
         effective_mass = mass if gap is None else mass * np.float64(degen) ** (5 / 3)
@@ -1517,6 +1538,8 @@ def dpb_hall_vs_temp_acPh(
     para_B: float,
     para_E: float | list[float],
     scal_fac: float = 1.0,
+    *,
+    band_1_degeneracy: float = 1.0,
 ) -> np.ndarray:
     """
     Calculates the Hall coefficient of two bands at various temperatures for a given set of
@@ -1546,6 +1569,8 @@ def dpb_hall_vs_temp_acPh(
         Fitting parameter, proportional to the mass of band 1
     scal_fac : float
         Scaling factor, by which the function is multiplied for improved fitting convergence
+    band_1_degeneracy : float
+        Absolute valley multiplicity of band 1. The relative valley weight is in degen.
     Returns
     -------
     out : numpy.ndarray
@@ -1560,6 +1585,7 @@ def dpb_hall_vs_temp_acPh(
         * rho
         * para_A**2
         / para_E
+        / band_1_degeneracy
         * (
             f_m05_1
             - np.sign(meff)
@@ -1585,6 +1611,8 @@ def dpb_hall_vs_temp_dis(
     para_B: float,
     para_E: float | list[float],
     scal_fac: float = 1.0,
+    *,
+    band_1_degeneracy: float = 1.0,
 ) -> np.ndarray:
     """
     Calculates the Hall coefficient of two bands at various temperatures for a given set of
@@ -1614,6 +1642,8 @@ def dpb_hall_vs_temp_dis(
         Free parameter, proportional to the mass of band 1
     scal_fac : float
         Scaling factor, by which the function is multiplied for improved fitting convergence
+    band_1_degeneracy : float
+        Absolute valley multiplicity of band 1. The relative valley weight is in degen.
     Returns
     -------
     out : numpy.ndarray
@@ -1628,6 +1658,7 @@ def dpb_hall_vs_temp_dis(
         * rho
         * para_A**2
         / para_E
+        / band_1_degeneracy
         * (
             f_m05_1
             - np.sign(meff)
@@ -1655,6 +1686,8 @@ def dpb_hall_vs_temp_acPh_dis(
     para_D: float,
     para_E: float | list[float],
     scal_fac: float = 1.0,
+    *,
+    band_1_degeneracy: float = 1.0,
 ) -> np.ndarray:
     """
     Calculates the Hall coefficient of two bands at various temperatures for a given set of
@@ -1690,6 +1723,8 @@ def dpb_hall_vs_temp_acPh_dis(
         Fitting parameter, proportional to the mass of band 1
     scal_fac : float
         Scaling factor, by which the function is multiplied for improved fitting convergence
+    band_1_degeneracy : float
+        Absolute valley multiplicity of band 1. The relative valley weight is in degen.
     Returns
     -------
     out : numpy.ndarray
@@ -1704,6 +1739,7 @@ def dpb_hall_vs_temp_acPh_dis(
         * rho
         * para_A**2
         / para_E
+        / band_1_degeneracy
         * (
             (1 / (para_C + T)) ** 2 * f_m05_1
             - np.sign(meff)

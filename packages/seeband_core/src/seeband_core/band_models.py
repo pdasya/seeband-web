@@ -263,6 +263,8 @@ class _CallbackError(Exception):
 
 def _failure_message(error: Exception) -> str:
     """Return fixed text for a failed fit, because solver messages are not written for users."""
+    if isinstance(error, _CORE_MATH.NoFiniteChemicalPotentialError):
+        return "The fit encountered band parameters with no finite chemical potential."
     if isinstance(error, ChemicalPotentialError):
         return "The chemical-potential balance could not be verified during the fit."
     text = str(error)
@@ -561,7 +563,13 @@ class _BandModel:
                 request.min_temperature_k, request.max_temperature_k, request.points
             )
             ratio = _degeneracy_ratio(request) if fit_mode.degeneracy is not None else 1.0
-            predictions = ionized_transport(temperature_k, request.parameters, fit_mode.id, ratio)
+            predictions = ionized_transport(
+                temperature_k,
+                request.parameters,
+                fit_mode.id,
+                ratio,
+                band_1_degeneracy=request.band_1_degeneracy,
+            )
             keys: tuple[str, ...]
             if request.kind == "measured":
                 keys = fit_mode.quantities
@@ -901,7 +909,12 @@ class DpbModel(_BandModel):
         if kind == "carrier_concentration_by_band":
             if fit_mode.id == "dpb_s_rho_rh":
                 m1 = _value(parameters, "m1")
-                return _CORE.dpb_ind_carCon_calc_m1, [bands, degeneracy, m1]
+                return _CORE.dpb_ind_carCon_calc_m1, [
+                    bands,
+                    degeneracy,
+                    m1,
+                    request.band_1_degeneracy,
+                ]
             return _CORE.dpb_ind_carCon_calc, [bands, degeneracy]
         if fit_mode.id == "dpb_s":
             function = _CORE.dpb_see_calc if kind == "measured" else _CORE.dpb_ind_see_seeOnly_calc
@@ -915,6 +928,7 @@ class DpbModel(_BandModel):
                 m1,
                 degeneracy,
                 scattering,
+                request.band_1_degeneracy,
             ]
         function = {
             "measured": _CORE.dpb_see_res_calc,
@@ -981,5 +995,12 @@ class DpbModel(_BandModel):
             *loop,
         ]
         return self._run_iterative_fit(
-            request, fit_mode, _CORE.dpb_see_res_hall_fit, arguments, (*names, "m1"), on_iteration
+            request,
+            fit_mode,
+            functools.partial(
+                _CORE.dpb_see_res_hall_fit, band_1_degeneracy=request.band_1_degeneracy
+            ),
+            arguments,
+            (*names, "m1"),
+            on_iteration,
         )

@@ -117,6 +117,7 @@ def ionized_transport(
     degen: float = 1.0,
     *,
     potentials: np.ndarray | None = None,
+    band_1_degeneracy: float = 1.0,
 ) -> dict[str, np.ndarray]:
     """Shared predictions for fitting, measured grids and displayed curves."""
     t = np.asarray(t, dtype=float)
@@ -173,6 +174,7 @@ def ionized_transport(
     if a == 0.0:
         thermal = np.zeros_like(thermal)
     hall = (h1 * scale1 / total_f + (h2 * scale2 / total_f) * relative_amplitude) / total_f
+    hall /= band_1_degeneracy
     # An exactly compensated Hall response remains zero as carrier density drops.
     with np.errstate(over="ignore", divide="ignore"):
         np.divide(hall, half_scale, out=hall, where=hall != 0.0)

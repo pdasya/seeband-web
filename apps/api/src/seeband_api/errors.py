@@ -191,6 +191,32 @@ ERROR_EXAMPLES: dict[str, dict[str, Any]] = {
 }
 
 
+CHEMICAL_POTENTIAL_ERROR_MESSAGES = {
+    "chemical_potential_zero_mass": "Band mass must be nonzero.",
+    "chemical_potential_spb_fermi_energy": (
+        "Fermi energy must lie inside the band selected by the mass sign."
+    ),
+    "chemical_potential_dpb_fermi_energy": (
+        "Fermi energy must be below the higher valence-band edge for two hole bands."
+    ),
+}
+
+CALCULATION_ERROR_EXAMPLES = {
+    name: ERROR_EXAMPLES[name] for name in ("invalid_calculation", "calculation_failed")
+} | {
+    "calculation_without_chemical_potential": ERROR_EXAMPLES["calculation_failed"]
+    | {
+        "details": [
+            {
+                "location": ["body", "parameters"],
+                "code": "chemical_potential_zero_mass",
+                "message": CHEMICAL_POTENTIAL_ERROR_MESSAGES["chemical_potential_zero_mass"],
+            }
+        ]
+    }
+}
+
+
 class ApiError(Exception):
     """An error a route reports to the client."""
 
