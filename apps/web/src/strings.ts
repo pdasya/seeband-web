@@ -13,6 +13,7 @@ export const STRINGS = {
     fit: "Model fit",
     results: "Results",
     conventions: "Conventions",
+    guide: "Guide",
   },
   parameters: {
     title: "Parameters",

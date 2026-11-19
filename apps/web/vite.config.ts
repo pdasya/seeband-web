@@ -28,6 +28,7 @@ const siteProxy =
           "^/$",
           "^/conventions(/|$)",
           "^/results-changed(/|$)",
+          "^/guide(/|$)",
           "^/_astro/",
           "^/favicon\\.svg$",
         ].map((path) => [path, siteTarget]),

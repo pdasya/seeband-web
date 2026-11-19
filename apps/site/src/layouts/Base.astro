@@ -12,6 +12,7 @@ import {
   APP_FIT_URL,
   APP_RESULTS_URL,
   CONVENTIONS_URL,
+  GUIDE_URL,
   LANGUAGE,
   STRINGS,
 } from "../strings";
@@ -20,7 +21,7 @@ interface Props {
   title: string;
   description: string;
   /** The header link this page is, if any. */
-  current?: "overview" | "conventions";
+  current?: "overview" | "conventions" | "guide";
 }
 
 const { title, description, current } = Astro.props;
@@ -42,6 +43,12 @@ const links = [
     label: STRINGS.navigation.conventions,
     href: CONVENTIONS_URL,
     current: current === "conventions",
+  },
+  {
+    id: "guide",
+    label: STRINGS.navigation.guide,
+    href: GUIDE_URL,
+    current: current === "guide",
   },
 ];
 ---

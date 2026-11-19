@@ -215,6 +215,28 @@ test("Conventions renders its formulas, lists its sections and ties issues to th
   assert.match(textOfPage(conventions), /acPhDis[^.]*not offered/);
 });
 
+test("the user guide is a page of the site, with its screenshots and corrections", () => {
+  const guide = page("guide/index.html");
+  assert.match(guide, /<title>User guide · SeeBand<\/title>/);
+  assert.match(guide, /<a href="\/guide\/"[^>]*aria-current="page"/);
+  assert.match(page("index.html"), /<a href="\/guide\/"[^>]*>Guide<\/a>/);
+  // Every screenshot it shows is built with the site, and has its size and a description.
+  const images = [...guide.matchAll(/<img([^>]*)>/g)].map((match) => match[1]);
+  assert.ok(images.length >= 5);
+  for (const image of images) {
+    const source = /src="([^"]+)"/.exec(image)?.[1] ?? "";
+    assert.ok(statSync(join(outDir, source)).isFile(), source);
+    assert.match(image, /width="\d+"/, source);
+    assert.match(image, /height="\d+"/, source);
+    assert.match(image, /alt="[^"]{20,}"/, source);
+  }
+  // The desktop guide's mistakes: 641 K is 0.055 eV, and κ_e is not also λ_e.
+  const text = textOf(mainOf(guide));
+  assert.match(text, /641 K, which is 0\.055 eV/);
+  assert.doesNotMatch(text, /λ_?e|λbp|Ref\. \?|\?\?/);
+  assert.doesNotMatch(guide, /katex-error/);
+});
+
 test("needs no script but the header's, and loads no heavy library", () => {
   const all = files(outDir);
   assert.deepEqual(
@@ -243,7 +265,8 @@ test("serves its fonts itself, and asks no other host", () => {
   for (const path of files(outDir).filter((p) => /\.(html|css)$/.test(p))) {
     assert.doesNotMatch(
       readFileSync(path, "utf8"),
-      /(src|href)="?https?:\/\/(?!github\.com)|url\(["']?https?:/,
+      // What a browser loads: a link to another site is only followed when clicked.
+      /\s(?:src|srcset)=["']?https?:|<link[^>]*\shref=["']?https?:|url\(\s*["']?https?:|@import\s*["']https?:/,
       relative(outDir, path),
     );
   }

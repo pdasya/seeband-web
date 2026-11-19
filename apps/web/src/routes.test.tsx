@@ -66,6 +66,11 @@ test("links to the public site leave the app's router", () => {
   });
   expect(overview.getAttribute("href")).toBe("/");
   expect(conventions.getAttribute("href")).toBe("/conventions/");
+  expect(
+    screen
+      .getByRole("link", { name: STRINGS.navigation.guide })
+      .getAttribute("href"),
+  ).toBe("/guide/");
 });
 
 test("an unknown path has the not-found view inside the shell", () => {
