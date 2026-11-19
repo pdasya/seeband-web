@@ -1,0 +1,83 @@
+# One origin for everything, so the app needs no CORS: the public site at /, the app's screens at
+# /fit and /results, and the API at /api, proxied to its container.
+#
+# SEEBAND_SITE_ADDRESS is what Caddy serves: a domain on a real host, which also gets HTTPS from
+# Let's Encrypt, or :80 for plain HTTP, as locally. The other variables only move the parts for a
+# run outside the containers.
+{
+	# No admin endpoint is needed on the host.
+	admin off
+}
+
+{$SEEBAND_SITE_ADDRESS::80} {
+	# Logs hold method, path, status and duration: no headers, cookies or addresses, and never a
+	# body, as the overview promises. Measurements only travel in bodies.
+	log {
+		output stdout
+		format filter {
+			wrap json
+			fields {
+				request>headers delete
+				request>tls delete
+				request>remote_ip delete
+				request>remote_port delete
+				request>client_ip delete
+				resp_headers delete
+			}
+		}
+	}
+
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+		-Server
+	}
+
+	# The API. A fit's progress is an event stream, so each event goes on at once, and a stream
+	# that ends because the browser left or pressed Stop ends the upstream request, which stops the
+	# fit's process. Caddy sets X-Forwarded-For, which the API trusts from this network only.
+	handle /api/* {
+		header X-Robots-Tag "noindex, nofollow"
+		reverse_proxy {$SEEBAND_API_UPSTREAM:api:8000} {
+			flush_interval -1
+		}
+	}
+
+	# The app's screens: each answers with the app's index.html, which routes in the browser. A new
+	# screen needs its path here and in APP_SCREENS of apps/site/src/strings.ts.
+	@screens path /fit /fit/* /results /results/*
+	handle @screens {
+		header X-Robots-Tag "noindex, nofollow"
+		header Cache-Control "no-cache"
+		root * {$SEEBAND_APP_ROOT:/srv/app}
+		rewrite * /index.html
+		file_server
+	}
+
+	# The app's files. Their names change with their contents, so they keep for a year.
+	@appFiles path /assets/* /licenses/*
+	handle @appFiles {
+		root * {$SEEBAND_APP_ROOT:/srv/app}
+		header /assets/* Cache-Control "public, max-age=31536000, immutable"
+		header /licenses/* X-Robots-Tag "noindex"
+		encode zstd gzip
+		file_server
+	}
+
+	# Everything else is the public site, written as one directory per page.
+	handle {
+		root * {$SEEBAND_SITE_ROOT:/srv/site}
+		header /_astro/* Cache-Control "public, max-age=31536000, immutable"
+		encode zstd gzip
+		try_files {path} {path}/index.html
+		file_server
+	}
+
+	handle_errors 404 {
+		root * {$SEEBAND_SITE_ROOT:/srv/site}
+		rewrite * /404.html
+		file_server
+	}
+}
