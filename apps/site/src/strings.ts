@@ -14,9 +14,13 @@ export const GUIDE_URL = "/guide/";
 export const LANGUAGE = "en";
 // Open Graph's form of the language.
 export const LOCALE = "en_GB";
-// The app's screens and the API: robots.txt keeps search engines out of them. A new app screen
-// needs its path here.
-export const NOT_FOR_SEARCH = [APP_FIT_URL, APP_RESULTS_URL, "/api/"];
+// What robots.txt keeps search engines out of. Its rules match the start of a path, so a screen
+// is closed exactly, with and without a query or slash after it, and /results does not also close
+// /results-changed/. A new app screen needs its path here.
+export const APP_SCREENS = [APP_FIT_URL, APP_RESULTS_URL];
+// The API, and the app's licence texts, which are files, not pages. The app's /assets/ stay open,
+// as a search engine needs them to render its pages.
+export const NOT_FOR_SEARCH_PREFIXES = ["/api/", "/licenses/"];
 
 export const STRINGS = {
   siteName: "SeeBand",

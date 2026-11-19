@@ -1,8 +1,9 @@
 // robots.txt. A public build keeps search engines out of the app and the API and names the
-// sitemap; a build for a closed host, without a site address, keeps them out of everything.
+// sitemap; a build for a closed host, without a site address, keeps them out of everything. `$`
+// ends a rule at the end of the path, as Google and Bing read it.
 import type { APIRoute } from "astro";
 
-import { NOT_FOR_SEARCH } from "../strings";
+import { APP_SCREENS, NOT_FOR_SEARCH_PREFIXES } from "../strings";
 
 export const GET: APIRoute = ({ site }) => {
   const lines =
@@ -10,7 +11,12 @@ export const GET: APIRoute = ({ site }) => {
       ? ["User-agent: *", "Disallow: /"]
       : [
           "User-agent: *",
-          ...NOT_FOR_SEARCH.map((path) => `Disallow: ${path}`),
+          ...APP_SCREENS.flatMap((path) => [
+            `Disallow: ${path}$`,
+            `Disallow: ${path}?`,
+            `Disallow: ${path}/`,
+          ]),
+          ...NOT_FOR_SEARCH_PREFIXES.map((path) => `Disallow: ${path}`),
           "",
           `Sitemap: ${new URL("/sitemap.xml", site).href}`,
         ];

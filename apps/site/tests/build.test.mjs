@@ -312,12 +312,34 @@ test("a build without a site address keeps every page out of search", () => {
   }
 });
 
+/**
+ * Whether robots.txt keeps a crawler out of a path, as Google reads it: a rule matches the start
+ * of the path, `*` matches anything and a last `$` ends it, which a RegExp reads the same way.
+ */
+function disallows(robots, path) {
+  return [...robots.matchAll(/^Disallow: (.+)$/gm)].some(([, rule]) => {
+    const pattern = rule
+      .replace(/[.+?^{}()|[\]\\]/g, "\\$&")
+      .replace(/\*/g, ".*");
+    return new RegExp(`^${pattern}`).test(path);
+  });
+}
+
 test("a public build lists its pages and keeps the app and the API out of search", () => {
   const robots = publicPage("robots.txt");
-  for (const path of ["/fit", "/results", "/api/"]) {
-    assert.match(robots, new RegExp(`^Disallow: ${path}$`, "m"), path);
+  for (const path of [
+    "/fit",
+    "/fit?demo=1",
+    "/fit/",
+    "/results",
+    "/results/",
+    "/api/fit",
+    "/licenses/Geist-OFL.txt",
+  ]) {
+    assert.ok(disallows(robots, path), path);
   }
-  assert.doesNotMatch(robots, /^Disallow: \/$/m);
+  // The app's scripts and styles stay open, for a search engine to render its pages.
+  assert.ok(!disallows(robots, "/assets/index.js"));
   assert.match(robots, new RegExp(`^Sitemap: ${SITE_URL}/sitemap.xml$`, "m"));
 
   const sitemap = publicPage("sitemap.xml");
@@ -359,6 +381,7 @@ test("a public build lists its pages and keeps the app and the API out of search
       file,
     );
     assert.ok(listed.includes(url), url);
+    assert.ok(!disallows(robots, address), `robots.txt closes ${address}`);
     // Unique, so that search results tell the pages apart.
     assert.ok(
       !titles.has(title),
@@ -369,6 +392,35 @@ test("a public build lists its pages and keeps the app and the API out of search
     descriptions.set(description, file);
   }
   assert.equal(listed.length, titles.size);
+});
+
+test("a site address with a path, or no address at all, fails the build", () => {
+  for (const value of ["https://seeband.example/sub/", "seeband.example"]) {
+    const built = spawnSync(
+      process.execPath,
+      [
+        ASTRO,
+        "build",
+        "--outDir",
+        mkdtempSync(join(tmpdir(), "seeband-site-bad-")),
+      ],
+      {
+        cwd: SITE_DIR,
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          ASTRO_TELEMETRY_DISABLED: "1",
+          SEEBAND_SITE_URL: value,
+        },
+      },
+    );
+    assert.notEqual(built.status, 0, value);
+    assert.match(
+      built.stderr + built.stdout,
+      /SEEBAND_SITE_URL must be/,
+      value,
+    );
+  }
 });
 
 test("the overview describes the app for search engines", () => {
