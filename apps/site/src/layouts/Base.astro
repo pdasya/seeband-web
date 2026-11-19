@@ -14,6 +14,7 @@ import {
   CONVENTIONS_URL,
   GUIDE_URL,
   LANGUAGE,
+  LOCALE,
   STRINGS,
 } from "../strings";
 
@@ -22,9 +23,17 @@ interface Props {
   description: string;
   /** The header link this page is, if any. */
   current?: "overview" | "conventions" | "guide";
+  /** Keeps the page out of search even on a public build, as for the 404 page. */
+  noindex?: boolean;
 }
 
-const { title, description, current } = Astro.props;
+const { title, description, current, noindex = false } = Astro.props;
+// Absolute addresses need the public site address, which a build for a closed host lacks.
+const canonical =
+  Astro.site === undefined
+    ? undefined
+    : new URL(Astro.url.pathname, Astro.site).href;
+const indexable = canonical !== undefined && !noindex;
 const links = [
   {
     id: "overview",
@@ -60,7 +69,17 @@ const links = [
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
     <meta name="description" content={description} />
+    {!indexable && <meta name="robots" content="noindex" />}
+    {indexable && <link rel="canonical" href={canonical} />}
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={STRINGS.siteName} />
+    <meta property="og:locale" content={LOCALE} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    {indexable && <meta property="og:url" content={canonical} />}
+    <meta name="twitter:card" content="summary" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <slot name="head" />
   </head>
   <body>
     <a class="skip-link" href="#content">{STRINGS.skipToContent}</a>

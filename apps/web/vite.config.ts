@@ -32,6 +32,8 @@ const siteProxy =
           "^/examples(/|$)",
           "^/_astro/",
           "^/favicon\\.svg$",
+          "^/robots\\.txt$",
+          "^/sitemap\\.xml$",
         ].map((path) => [path, siteTarget]),
       );
 
