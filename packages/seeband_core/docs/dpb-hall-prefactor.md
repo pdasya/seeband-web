@@ -27,6 +27,14 @@ checks failed by a factor 0.5 before the correction and pass afterward. Two more
 checks cover the limits r_H→1 and r_H→3π/8 and the SPB formula at a supplied
 reduced potential. The separate SPB μ(T) issue (#103) is not addressed here.
 
+For a single-valley mass, each nᵢ in the Putley sum includes its absolute
+valley count Nᵢ. The DPB band weights already include N₂/N₁, so the Hall
+coefficient uses one additional factor of 1/N₁. This applies to the
+acoustic, disorder and ionized impurity paths. The Hall mode also reports
+absolute per-band carrier densities with their valley counts. A result
+computed under the earlier ratio-only convention gives the same Hall
+curve after converting m₁ to m₁/N₁^(2/3) at fixed band shapes.
+
 The issue points to Supplementary Note 3 Eq. (12) of
 [the SeeBand paper](https://doi.org/10.1038/s41524-025-01645-y), and warns that paper
 Eq. (7) omits a factor 3. The derivation and numerical reference above are explicit;

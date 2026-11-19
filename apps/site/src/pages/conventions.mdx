@@ -195,16 +195,20 @@ ionized impurities it tends to 1 and to 315π/512 ≈ 1.93. In
 SPB, the $R_H$ fit sets the absolute mass |m|; a point with η > 700 is outside
 the supported range of the integrals and returns no value.
 
-Two bands combine as
+For DPB, first evaluate the one-valley expression at the signed band
+masses $-m_1$ and $m_2=R\,m_1$. Divide each Hall coefficient by its
+own valley multiplicity $N_i$ to obtain $R_{H,i}$, then combine the bands as
 
 $$
 R_H = \frac{\sigma_1^2 R_{H,1} + \sigma_2^2 R_{H,2}}{(\sigma_1 + \sigma_2)^2},
 $$
 
-where band 1 has mass −m₁ and band 2 mass $r\,m_1 N^{5/3}$, each with the
-one-band $R_{H,i}$. The DPB $R_H$ fit sets the absolute mass m₁; the other
-parameters are held from the S and ρ fits. Without $R_H$ data, m₁ = 1, so the
-carrier concentration per band is relative. See the
+The DPB implementation includes $N_2/N_1$ in the relative band weights
+and divides the combined Hall coefficient by $N_1$. The $R_H$ fit sets
+the magnitude of the single-valley mass $m_1$ using the other parameters
+from the S and ρ fits. In the Hall mode, each carrier density includes
+its band's absolute multiplicity. Without $R_H$ data, carrier densities
+are reference values computed with $m_1=1$ and $N_1=1$. See the
 [DPB Hall prefactor](https://github.com/pdasya/seeband-web/blob/main/packages/seeband_core/docs/dpb-hall-prefactor.md)
 and the [SPB Hall fit](https://github.com/pdasya/seeband-web/blob/main/packages/seeband_core/docs/spb-hall-fit.md).
 

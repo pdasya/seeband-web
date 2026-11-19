@@ -587,7 +587,7 @@ for _mode, _hall in (("dpb_s_rho", False), ("dpb_s_rho_rh", True)):
     EXPECTED_CURVE_CALLS |= {
         (_mode, "measured"): (
             "dpb_see_res_hall_calc" if _hall else "dpb_see_res_calc",
-            [BANDS, DPB_RES, 10.5, RATIO, S] if _hall else [BANDS, DPB_RES, RATIO, S],
+            [BANDS, DPB_RES, 10.5, RATIO, S, 2.0] if _hall else [BANDS, DPB_RES, RATIO, S],
             [
                 "seebeck_v_per_k",
                 "resistivity_ohm_m",
@@ -626,7 +626,7 @@ for _mode, _hall in (("dpb_s_rho", False), ("dpb_s_rho_rh", True)):
         ),
         (_mode, "carrier_concentration_by_band"): (
             "dpb_ind_carCon_calc_m1" if _hall else "dpb_ind_carCon_calc",
-            [BANDS, RATIO, 10.5] if _hall else [BANDS, RATIO],
+            [BANDS, RATIO, 10.5, 2.0] if _hall else [BANDS, RATIO],
             ["carrier_concentration_band_1_per_cm3", "carrier_concentration_band_2_per_cm3"],
         ),
     }
@@ -718,7 +718,7 @@ EXPECTED_FIT_CALLS: dict[str, tuple[str, list[Any], dict[str, Any], list[str]]] 
             0.1,
             20,
         ],
-        {"progress": ANY},
+        {"progress": ANY, "band_1_degeneracy": 2.0},
         ["m_eff", "band_gap", "fermi_energy", "A", "B", "C", "D", "F", "G", "m1"],
     ),
 }
