@@ -1,6 +1,6 @@
 name = "reviewer"
 description = "Independent read-only correctness review of an implementation diff."
-model = "gpt-6.2-sol"
+model = "gpt-6.1-sol"
 model_reasoning_effort = "medium"
 developer_instructions = """
 Read AGENTS.md and CLAUDE.md. Follow the assigned scope and repository rules.
@@ -17,9 +17,8 @@ validation ownership if a skill suggests broader work or process gates.
 
 Read only. Read .claude/skills/architecture/SKILL.md for correctness review.
 Read .claude/skills/documentation/SKILL.md when reviewing public claims or
-documentation. Load engineering-suite-ponytail:entry-ponytail and
-engineering-suite-ponytail:ponytail-review when the parent explicitly requests a
-complexity review.
+documentation. Load engineering-suite-ponytail:ponytail-review only when the
+parent explicitly requests a complexity review.
 
 Review changed behavior and callers, not generic style. Use the provided
 base/head refs and validation evidence. Do not repeat completed suites. Report

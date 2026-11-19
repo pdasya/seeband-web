@@ -9,18 +9,20 @@ is not a Codex model selection mechanism.
 
 | Owner             | Model       | Effort | Assignment                                                      |
 | ----------------- | ----------- | ------ | --------------------------------------------------------------- |
-| Parent            | GPT-6.2 Sol | low    | Scope, acceptance, integration, user communication              |
-| explorer          | GPT-6.2 Sol | medium | Narrow read-only code mapping when ownership is unknown         |
-| worker            | GPT-6.2 Sol | medium | Bounded implementation, focused tests                           |
-| docs_worker       | GPT-6.2 Sol | medium | Assigned documentation based on verified facts                  |
-| validator         | GPT-6.2 Sol | medium | Run the agreed checks once, report concise results              |
-| reviewer          | GPT-6.2 Sol | medium | Independent correctness review of the final diff                |
-| numerics_reviewer | GPT-6.2 Sol | medium | Solver reliability, numerical stability and fit identifiability |
-| physics_reviewer  | GPT-6.2 Sol | high   | Independent formulas, units, limits and fit interpretation      |
+| Parent            | GPT-6.1 Sol | low    | Scope, acceptance, integration, user communication              |
+| explorer          | GPT-6 Luna  | medium | Narrow read-only code mapping when ownership is unknown         |
+| worker            | GPT-6.1 Sol | medium | Bounded implementation, focused tests                           |
+| docs_worker       | GPT-6 Luna  | medium | Assigned documentation based on verified facts                  |
+| validator         | GPT-6 Luna  | medium | Run the agreed checks once, report concise results              |
+| reviewer          | GPT-6.1 Sol | medium | Independent correctness review of the final diff                |
+| numerics_reviewer | GPT-6.1 Sol | medium | Solver reliability, numerical stability and fit identifiability |
+| physics_reviewer  | GPT-6.1 Sol | high   | Independent formulas, units, limits and fit interpretation      |
 
-An unclassified spawn defaults to GPT-6.2 Sol/medium. Explicit UI or session
-choices can override the parent model. Inspect the composer in an existing chat
-and start a fresh chat to verify current role settings.
+The default subagent is Luna/medium, so an unclassified spawn does not inherit an
+expensive parent model. No Astra, Max or Ultra role is enabled by default. Explicit
+UI/session choices can override the parent model; inspect the composer when an
+existing chat still uses another selection. This configuration does not switch
+the model of a turn already running.
 
 Agents share the parent's permission boundary. Apps remain disabled in every
 role. Roles using plugin skills enable plugins; explorer, physics_reviewer and numerics_reviewer
@@ -30,19 +32,19 @@ and all external publishing.
 
 ## Skills by role
 
-The `developer_instructions` in each role's TOML file define its required skills
-and triggers. The parent owns the project-wide plugin workflows in `AGENTS.md`.
-Within a role, load the skills whose triggers match the assignment.
+The executable skill assignments and triggers live in each role's
+`developer_instructions`. The map below summarizes them; it is not a requirement
+to load every listed skill for every task.
 
-| Role              | Required for every assignment                              | Required when triggered                                                                                                                                                                                                                                                                                                                          |
-| ----------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| explorer          |                                                            | Project `architecture` when tracing core/API/web boundaries.                                                                                                                                                                                                                                                                                     |
-| worker            | Project `architecture` before edits                        | `documentation` for public behavior, results or docs. Ponytail entry and coding workflows for coding. `diagnosing-bugs` for bugs. `tdd` for changed feature or bug behavior. Composition guidance for React APIs or state. `condensed-matter-theory` for assigned physics implementation. `scientific-computing` for symbolic or numerical work. |
-| docs_worker       | Project `documentation`                                    | `writing-for-agents` for agent instructions. `architecture` for boundaries or numerical policy. `condensed-matter-theory` when evaluating physical explanations.                                                                                                                                                                                 |
-| validator         | `verification-before-completion` before validation         | `systematic-debugging` when assigned failure diagnosis.                                                                                                                                                                                                                                                                                          |
-| reviewer          | Project `architecture`                                     | `documentation` for public claims or docs. Ponytail entry and `ponytail-review` when assigned complexity review.                                                                                                                                                                                                                                 |
-| physics_reviewer  | `condensed-matter-theory`, `architecture`, physics profile | `scientific-computing` for symbolic or numerical verification. Theory references for the specific physical question.                                                                                                                                                                                                                             |
-| numerics_reviewer | `scientific-computing`, `architecture`, numerics profile   | `documentation` for numerical claims in docs.                                                                                                                                                                                                                                                                                                    |
+| Role              | Skills and triggers                                                                                                                                                                                                                                                                             |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| explorer          | Project `architecture` when tracing core/API/web boundaries.                                                                                                                                                                                                                                    |
+| worker            | Project `architecture` before edits; `documentation` for public behavior/results/docs; Ponytail for coding; `diagnosing-bugs` for bugs; `tdd` for feature/bug behavior; component composition for React component APIs/state; `condensed-matter-theory` for an explicitly assigned physics fix. |
+| docs_worker       | Project `documentation`; `writing-for-agents` for agent instructions; `architecture` for boundaries/numerical policy; `condensed-matter-theory` when evaluating physical explanations.                                                                                                          |
+| validator         | `verification-before-completion` for evidence reports; `systematic-debugging` only when the parent assigns failure diagnosis.                                                                                                                                                                   |
+| reviewer          | Project `architecture`; `documentation` for public claims/docs; `ponytail-review` only for an explicitly requested complexity review.                                                                                                                                                           |
+| physics_reviewer  | `condensed-matter-theory`, project `architecture`, and the existing physics review profile. Load Boltzmann or symbolic/numerical references when the question needs them; Kubo/Wigner only for their corresponding physics.                                                                     |
+| numerics_reviewer | Project `scientific-computing`, `architecture` and the existing numerics-inference profile; project `documentation` for numerical claims in docs.                                                                                                                                               |
 
 `scientific-computing` is a repository skill at
 `.agents/skills/scientific-computing/SKILL.md`, discoverable through Codex's
@@ -73,13 +75,13 @@ Superpowers plugins for roles using their skills. Resolve their exact skill name
 and `SKILL.md` paths from the current session catalog; keep machine-specific home
 paths and versioned plugin-cache paths out of role files.
 
-Skills inherit from the parent. Plugin availability depends on installation and
-client discovery. `explorer`, `physics_reviewer` and `numerics_reviewer` use
-repository and user skills with plugins disabled. The parent applies any plugin
-workflow needed for the overall task. With explicit model/effort handoffs, send
-the role instructions and the resolved skill paths the child needs. If a required
-skill is absent, report it before dependent work. Load the relevant reference
-branches and follow the assigned write scope and validation ownership.
+Skills inherit from the parent; enabling plugins in a role permits plugin use but
+does not install a missing plugin or guarantee discovery. If a required skill is
+absent, report it before dependent work. When using explicit spawn handoffs,
+include the resolved skill paths and role instructions, and ensure the child can
+read them. Load only the matching skill and necessary reference branches. A skill
+does not expand write ownership, authorize publishing, duplicate final validation
+or replace human physics confirmation.
 
 After changing these assignments, start a new chat and check role/skill discovery.
 Static TOML and path checks establish configuration integrity; use a runtime check
@@ -89,17 +91,15 @@ spawned role. See the official
 
 ## Routing examples
 
-Apply the review triggers in [AGENTS.md](../AGENTS.md#delegation-and-model-routing).
-
 - One-line copy correction: parent edits and checks formatting; no team.
 - Ordinary bug: worker owns the fix and focused checks, reviewer inspects the
   final diff, parent or validator performs final validation once.
-- Solver tolerance under a fixed physical contract: numerics_reviewer checks
-  convergence and reliability. Reviewer checks integration for a nontrivial diff.
-- Fit change affecting both the algorithm and a physical assumption:
-  numerics_reviewer checks convergence and identifiability, physics_reviewer
-  checks the assumption and its limits, and reviewer checks integration. Share
-  the same validation evidence and keep the two-child concurrency limit.
+- Numerical model fix: worker owns implementation, physics_reviewer checks the
+  derivation and limits, reviewer checks integration without repeating physics.
+- Solver, quadrature, interpolation or fit-method change: numerics_reviewer checks
+  residuals, convergence, scaling and identifiability. Assign physics_reviewer a
+  separate model/interpretation question when needed; share evidence instead of
+  repeating calculations. Keep the two-child concurrency limit.
 - Unknown failure: explorer first maps the path and evidence. Only then assign
   implementation. Do not make two agents independently explore the entire repo.
 
@@ -108,8 +108,6 @@ files, not two writers on the same file. Send a fresh, small handoff: checkout,
 base/head, objective, owned files, constraints, acceptance criteria and evidence.
 Do not copy the whole chat into every agent. Reuse the same agent for a revision
 when its existing context is useful; start fresh when its old task is unrelated.
-For review follow-ups, send the new diff and unresolved findings with any fresh
-validation evidence.
 
 When a client exposes `spawn_agent` with explicit model settings rather than a
 role selector, the parent must read the matching TOML and pass its model/effort.
@@ -156,63 +154,19 @@ silently fall back to a more expensive model if one is unavailable.
 
 ## Limits and measuring the result
 
-Subagents share the account's usage allowance. Parallel agents can reduce elapsed
-time while increasing total tokens. Check the account dashboard for its usage
-windows and reset times.
+Subagents consume usage too. Parallel agents can reduce elapsed time while
+increasing total tokens. This setup reduces duplicated context and work; it does
+not increase the account's five-hour allowance or guarantee tasks per window.
 A long-lived root chat also carries context costs. Prefer a fresh task chat with
 a short handoff when moving to an unrelated issue; keep project knowledge in files.
 
-Compare similar tasks using the role, model, effort, elapsed time, token breakdown,
-review rounds and repeated checks. Measure through acceptance so follow-up work
-counts. Increase effort after identifying the unresolved problem it should address.
+For the next three representative tasks, record the selected role/model, duplicate
+suite runs, elapsed time and usage shown by the client. Compare with prior tasks
+of similar scope. If an agent costs more coordination than the work it replaces,
+do that work directly. Increase effort only after naming an unresolved problem.
+No API runner or separately billed Agents API service is introduced here.
 
-### Worker pilot, 2026-11-18
-
-Both models received the same worker instructions at medium effort in isolated
-copies of `def1eef`. Each task ran as a concurrent pair with explicit model
-selection and the inherited speed preference. Elapsed time covers each child
-turn, including tools and tests.
-
-| Task                      | Model       | Elapsed | Uncached input | Cached input | Output | Focused tests |
-| ------------------------- | ----------- | ------: | -------------: | -----------: | -----: | ------------: |
-| Fortran exponent import   | GPT-6.1 Sol |  88.8 s |         58,012 |      362,752 |  3,065 |           214 |
-| Fortran exponent import   | GPT-6.2 Sol |  80.5 s |         67,034 |      434,688 |  2,611 |           203 |
-| Multiline export comments | GPT-6.1 Sol |  65.2 s |         54,059 |      305,408 |  2,294 |            34 |
-| Multiline export comments | GPT-6.2 Sol |  61.9 s |         48,850 |      326,912 |  2,012 |            34 |
-
-Both models passed the same independent acceptance cases (six for import and
-seven for export). Focused test counts include each worker's own regression
-cases. GPT-6.2 Sol finished faster in both pairs, with less output and more input
-in aggregate. This small pilot measures implementation on two tasks. Token
-counts are useful for workload comparisons. The account dashboard reports the
-shared subscription allowance. The experimental patches stayed in the pilot copies.
-
-## GPT-6.2 Sol role verification, 2026-11-18
-
-All seven custom roles completed a read-only loading check in Codex Desktop.
-Each launch selected the role by name with `fork_turns="none"` and used its
-configured model and effort. At most two children ran concurrently. The parent
-checked the model and effort in the launch logs and verified the skill reads in
-the tool output.
-
-| Role                | Observed model | Observed effort | Assigned skill files read |
-| ------------------- | -------------- | --------------- | ------------------------- |
-| `worker`            | `gpt-6.2-sol`  | medium          | 9/9                       |
-| `docs_worker`       | `gpt-6.2-sol`  | medium          | 4/4                       |
-| `reviewer`          | `gpt-6.2-sol`  | medium          | 4/4                       |
-| `validator`         | `gpt-6.2-sol`  | medium          | 2/2                       |
-| `explorer`          | `gpt-6.2-sol`  | medium          | 1/1                       |
-| `numerics_reviewer` | `gpt-6.2-sol`  | medium          | 3/3                       |
-| `physics_reviewer`  | `gpt-6.2-sol`  | high            | 3/3                       |
-
-All 26 assigned skill reads succeeded, including skills with conditional
-triggers. Each child resolved installed skills from its own catalog and read
-repository skills at the paths in its role instructions. Both scientific
-reviewers also read their review profiles and relevant reference sections. The
-check covered Desktop launch, discovery and file loading. Workflow execution
-and CLI skill discovery were outside its scope.
-
-## Setup verification, 2026-11-14
+## Verification performed on the setup machine
 
 The local setup added the actual `seeband-web` root to trusted projects and saved
 `~/.codex/config.toml.before-seeband-trust.bak`. Global model defaults, sandbox and

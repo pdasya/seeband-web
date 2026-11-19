@@ -3,12 +3,11 @@
 Read `CLAUDE.md` and `CONTRIBUTING.md` for the shared engineering rules. Codex
 roles are in `.codex/agents/*.toml`; Claude profiles do not choose Codex models.
 
-## Parent workflow skills
+## Skills and plugin workflows
 
-The parent uses the installed Matt Pocock Skills, Ponytail and Superpowers
-plugins for the tasks below. Resolve skill locations from the session catalog
-and read the selected `SKILL.md` before applying it. Keep machine-specific paths
-out of project instructions. Subagents follow the role skill requirements below.
+Use the installed Matt Pocock Skills, Ponytail and Superpowers plugins for
+relevant tasks. Resolve skill locations from the session catalog and read the
+selected `SKILL.md` before applying it; keep machine-specific paths out of this file.
 
 - **Matt Pocock Skills:** use `mattpocock-skills:implement` for existing specs
   or tickets, `diagnosing-bugs` for reported failures, `codebase-design` for
@@ -42,21 +41,17 @@ own a coherent change. Use `explorer` only if the owning code is not yet known;
 use `docs_worker` for an independent, sufficiently large documentation change.
 Do not implement the same delegated change in parallel yourself.
 
-Use one `reviewer` for integration correctness on nontrivial changes. Small
-documentation or mechanical changes need focused validation. Add a
-security-specific review for a concrete security-sensitive surface.
+Use `reviewer` once for a nontrivial change. For formula, scale, solver or fit
+changes, also use `physics_reviewer`, restricted to physics; do not add three
+language/general reviewers over the same diff. Add a security-specific review
+only for a concrete security-sensitive surface. Small documentation-only or
+mechanical changes need focused validation, not a review team.
 
-- Use `numerics_reviewer` for changes to solvers, numerical integration or
-  interpolation, tolerances, fitting objectives or uncertainty estimates. It
-  checks algorithm reliability and identifiability.
-- Use `physics_reviewer` for changes to physical formulas, units, physical
-  scales, model assumptions, applicability or fit interpretation. A solver or
-  fit change under a fixed physical contract needs numerical review. If the
-  change also affects that contract or its interpretation, assign both roles
-  distinct questions and share validation evidence.
-
-For a review follow-up, send the new diff, outstanding findings and fresh
-validation evidence to the same reviewer when available.
+Use `numerics_reviewer` for changes to solvers, numerical integration or
+interpolation, tolerances, fitting objectives or uncertainty estimates. It owns
+algorithm reliability and identifiability; `physics_reviewer` owns the physical
+model and interpretation. Give each a distinct question and share evidence.
+The general reviewer owns integration correctness rather than repeating either.
 
 Honor each role's configured model and effort. For a client exposing only
 explicit spawn parameters, use the model/effort from the matching TOML. Use a
@@ -76,20 +71,17 @@ expensive model. Existing chats may need restarting to discover custom roles.
 
 Each role's `developer_instructions` in `.codex/agents/*.toml` defines its required
 skills and conditional triggers. Load only matching skills and referenced branches.
-Resolve installed skills from the session catalog and read repository skills at
-their explicit paths. `explorer`, `physics_reviewer` and `numerics_reviewer` use
-repository and user skills with plugins disabled. The parent owns any plugin
-workflow that applies to the overall task. Report a missing required skill before
-dependent work. Skills guide the assigned task within its file ownership,
-read-only and validation boundaries.
+Resolve installed skills from the session catalog; repository skills use explicit
+paths. Report a missing required skill before dependent work. Skills guide the
+assigned task within its file ownership, read-only and validation boundaries.
 
 `scientific-computing` lives in `.agents/skills/scientific-computing/SKILL.md`.
 The numerical reviewer loads it for its review; workers and physical reviewers
 load it for symbolic or numerical work. Read only the relevant reference branch.
 
 The parent includes required skill names and resolved paths in explicit handoffs
-when native role loading is unavailable. Read `docs/codex-orchestration.md` when
-setting up roles, checking skill discovery or measuring usage.
+when native role loading is unavailable. See `docs/codex-orchestration.md` for the
+role map and local skill/plugin prerequisites.
 
 ## Validation and completion
 

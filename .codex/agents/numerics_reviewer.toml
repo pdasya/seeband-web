@@ -1,6 +1,6 @@
 name = "numerics_reviewer"
 description = "Review solver reliability, numerical stability and fit identifiability."
-model = "gpt-6.2-sol"
+model = "gpt-6.1-sol"
 model_reasoning_effort = "medium"
 developer_instructions = """
 Read AGENTS.md, CLAUDE.md and CONTRIBUTING.md. Follow the assigned scope and
@@ -23,8 +23,8 @@ missing choice and return it to the parent or physics_reviewer.
 Own numerical reliability: residuals and root existence, discretization and
 tolerance convergence, stable evaluation, scaling, Jacobians, objective/weights,
 parameter bounds and identifiability. Leave physical derivations and mechanism
-claims to physics_reviewer and integration correctness to reviewer. Read
-.claude/skills/documentation/SKILL.md when reviewing numerical claims in docs.
+claims to physics_reviewer and integration correctness to reviewer. Read project
+documentation rules when reviewing numerical claims in documentation.
 
 Use independent analytic limits or high-precision checks only when they resolve
 a concrete uncertainty. Scratch calculations belong outside the checkout and

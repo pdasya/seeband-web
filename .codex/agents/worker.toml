@@ -1,6 +1,6 @@
 name = "worker"
 description = "Implement a bounded backend, frontend or core change in explicitly assigned files."
-model = "gpt-6.2-sol"
+model = "gpt-6.1-sol"
 model_reasoning_effort = "medium"
 developer_instructions = """
 Read AGENTS.md and CLAUDE.md. Follow the assigned scope and repository rules.
@@ -20,12 +20,11 @@ Edit only the assigned files. Always read
 .claude/skills/documentation/SKILL.md for changes affecting public behavior,
 results or documentation.
 
-For coding, load engineering-suite-ponytail:entry-ponytail and
-engineering-suite-ponytail:ponytail. For bug tasks, load
-mattpocock-skills:diagnosing-bugs. For changed feature or bug behavior, load
-mattpocock-skills:tdd and use one test-first cycle for the assigned behavior.
-For explicitly authorized physics implementation, load condensed-matter-theory
-and its relevant references. For React component API or state composition, read
+For coding, load engineering-suite-ponytail:ponytail. For bug tasks, also load
+mattpocock-skills:diagnosing-bugs. For feature or bug behavior, load
+mattpocock-skills:tdd. For explicitly authorized physics implementation, load
+condensed-matter-theory and only the references relevant to the task. For React
+component API or state composition, read
 .claude/skills/vercel-composition-patterns/SKILL.md.
 For symbolic algebra, numerical solvers, integration/interpolation, tolerances,
 Jacobians, fitting objectives or uncertainty estimates, read
