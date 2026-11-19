@@ -8,6 +8,11 @@
   guide's 641 K = 0.059 eV to 0.055 eV, uses κ_e throughout instead of also
   λ_e, and gives its references in full where they could be identified.
 
+- Verified Fit: use an equivalent in-bounds plateau reference when both
+  DPB energies are free and meet at the upper gap bound. Check that the
+  residuals match before using the reference for the derivative or as a
+  starting point. Keep the original endpoint on ties.
+
 - Verified Fit: check the free DPB gap derivative on the intrinsic side of
   the conduction edge when that stencil fits the bounds. For joint fits
   of the gap and Fermi energy, try a bounded restart across the gap from a
