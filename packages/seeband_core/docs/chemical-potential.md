@@ -52,6 +52,11 @@ balances still require a normal binary64 scale. Accept a root only with
 absolute normalized residual at most 1e-12. Bracketing failure, iteration
 failure, nonfinite values or an excessive residual raise an explicit error.
 
+When the opposite-sign bands have equal density-of-states normalization
+and the target is zero, the representable midpoint is an exact root by
+symmetry. The solver returns it directly. If the Hall weights also match,
+the two Hall contributions cancel at that root.
+
 `spb_chemPot_diagnostics` and `dpb_chemPot_diagnostics` return
 `ChemicalPotentialResult`: `chemical_potential` in kelvin,
 `normalized_residual` and per-temperature success `status`. Returned statuses

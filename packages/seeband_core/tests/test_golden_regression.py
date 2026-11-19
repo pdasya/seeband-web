@@ -29,9 +29,11 @@ from functools import cache
 from pathlib import Path
 from typing import Any
 
+import mpmath as mp
 import numpy as np
 import pytest
 from seeband_core import fit_module
+from seeband_core import math_module as mm
 from seeband_core.band_models import parabolic_band
 from seeband_core.model_catalog import registry as default_registry
 from seeband_core.model_interface import (
@@ -48,6 +50,8 @@ GOLDEN = Path(__file__).parent / "fixtures" / "golden"
 EXAMPLES = ["01_Fe2VAl09Si01", "02_SiP", "03_AWI32_SI"]
 CURVE_TOLERANCE = 1e-9
 FIT_TOLERANCE = 1e-5
+P14_CURVE_DELTA_RTOL = 3e-5
+P14_FIT_DELTA_RTOL = 1e-4
 # Number of leading arguments that are measurement arrays in each fit function.
 ARRAY_ARGUMENTS = {
     "spb_see_fit": 2,
@@ -314,20 +318,120 @@ def test_p14_preserves_prior_evidence_and_covers_affected_calls() -> None:
             assert hashlib.sha256((directory / name).read_bytes()).hexdigest() == sha
 
     affected = {
-        p8_key(identifier, call): (identifier, scattering, call)
-        for identifier, (_, _, scattering, _, call) in zip(CALL_IDS, CALLS, strict=True)
+        p8_key(identifier, call): (identifier, mode, scattering, call)
+        for identifier, (_, mode, scattering, _, call) in zip(CALL_IDS, CALLS, strict=True)
         if affected_by_p14(scattering, call)
     }
     assert set(document["results"]) == affected.keys()
     assert set(document["affected_functions"]) == {
-        call["function"] for _, _, call in affected.values()
+        call["function"] for _, _, _, call in affected.values()
     }
     for key, current in document["results"].items():
-        previous = regression_expected(*affected[key])
+        identifier, mode, scattering, call = affected[key]
+        previous = regression_expected(identifier, scattering, call)
         if previous.get("status") == "failed":
             assert current == previous
+        elif current.get("status") == "converged":
+            assert previous["status"] == "converged"
+            old, new = previous["parameters"], current["parameters"]
+            assert new.keys() == old.keys()
+            is_collapsed_d1 = identifier == "01_Fe2VAl09Si01-d1-dis-thread-dpb_see_res_hall_fit"
+            if is_collapsed_d1:
+                assert 0 < new["m_eff"] < COLLAPSED_M_EFF
+                names = sorted(old.keys() - {"m_eff", "F", "G"})
+                assert_close([new[n] for n in names], [old[n] for n in names], D1_01_TOLERANCE)
+            else:
+                assert_close(list(new.values()), [old[n] for n in new], P14_FIT_DELTA_RTOL)
         elif "result" in current and "result" in previous:
             assert current["result"][0] == previous["result"][0]
+            if identifier.startswith("03_AWI32_SI-") and call["function"] in (
+                "dpb_ind_see_calc",
+                "dpb_ind_see_seeOnly_calc",
+                "dpb_ind_elecCond_calc",
+                "dpb_thermCond_calc",
+            ):
+                assert_p14_awi32_dilute_correction(
+                    mode, scattering, call, current["result"], previous["result"]
+                )
+            else:
+                assert_close(current["result"][1:], previous["result"][1:], P14_CURVE_DELTA_RTOL)
+        else:
+            assert current == previous
+
+
+@cache
+def _awi32_transport_reference(
+    temperatures: tuple[float, ...],
+) -> tuple[list[float], list[float], float]:
+    """Independent unnormalised Fermi integrals and density balance for the recorded bands."""
+    weighted_seebeck, scaled_conductivity = [], []
+    first_kappa = 0.0
+    with mp.workdps(60):
+        mass, gap, ef = mp.mpf("1.22"), mp.mpf(1947), mp.mpf(-350)
+        kb_over_e = mp.mpf(str(mm.kB)) / mp.mpf(str(mm.e))
+
+        def moment(order, eta):
+            return -mp.re(mp.gamma(order + 1) * mp.polylog(order + 1, -mp.exp(eta)))
+
+        for temperature in temperatures:
+            t = mp.mpf(str(temperature))
+
+            def balance(mu, *, t=t):
+                return (
+                    -moment(mp.mpf("0.5"), -mu / t)
+                    + mass ** mp.mpf("1.5") * moment(mp.mpf("0.5"), (mu - gap) / t)
+                    + mp.mpf(2) / 3 * (-ef / t) ** mp.mpf("1.5")
+                )
+
+            mu = mp.findroot(balance, (ef, mp.mpf(0)))
+            assert abs(balance(mu)) < mp.mpf("1e-55")
+            eta1, eta2 = -mu / t, (mu - gap) / t
+            sigma1, sigma2 = moment(0, eta1), moment(0, eta2) / mass
+            mean2 = 2 * moment(1, eta2) / moment(0, eta2)
+            s2 = -kb_over_e * (mean2 - eta2)
+            weighted_seebeck.append(float(s2 * sigma2 / (sigma1 + sigma2)))
+            scaled_conductivity.append(float(sigma2))
+            if len(scaled_conductivity) == 1:
+                mean1 = 2 * moment(1, eta1) / sigma1
+                s1 = kb_over_e * (mean1 - eta1)
+                l1 = kb_over_e**2 * (3 * moment(2, eta1) / sigma1 - mean1**2)
+                l2 = kb_over_e**2 * (3 * moment(2, eta2) / moment(0, eta2) - mean2**2)
+                bipolar = sigma1 * sigma2 / (sigma1 + sigma2) * (s1 - s2) ** 2
+                first_kappa = float(t * (l1 * sigma1 + l2 * sigma2 + bipolar))
+    return weighted_seebeck, scaled_conductivity, first_kappa
+
+
+def assert_p14_awi32_dilute_correction(
+    mode: str,
+    scattering: str | None,
+    call: dict[str, Any],
+    current: list[list[float]],
+    previous: list[list[float]],
+) -> None:
+    arguments = recorded_arguments(call)
+    assert arguments["parameter_see"] == [1.22, 1947, -350]
+    assert arguments["degen"] == 1.0
+    if "parameter_res" in arguments:
+        assert arguments["parameter_res"] == [40000, 1.0, 100, 100, 1000, 1.0]
+    temperatures = current[0]
+    see2, sigma2, first_kappa = _awi32_transport_reference(tuple(temperatures))
+    actual = replay(mode, scattering, call)
+    if call["function"] == "dpb_thermCond_calc":
+        assert math.isnan(previous[1][0])
+        assert_close(current[1][1:], previous[1][1:], P14_CURVE_DELTA_RTOL)
+        factor = 40000.0 if scattering == "acPh" else 1000.0 * temperatures[0]
+        assert_close([actual[1][0]], [factor * first_kappa], 1e-10)
+        return
+    # Only the dilute band's contribution is replaced by the independent reference.
+    assert_close(current[1], previous[1], P14_CURVE_DELTA_RTOL)
+    if call["function"] == "dpb_ind_elecCond_calc":
+        expected = [
+            f * (40000.0 if scattering == "acPh" else 1000.0 * t)
+            for f, t in zip(sigma2, temperatures, strict=True)
+        ]
+    else:
+        expected = see2
+    assert_close(actual[2], expected, 1e-10)
 
 
 def core_arguments(
@@ -721,11 +825,11 @@ def test_unstable_list_only_holds_cases_that_exist() -> None:
 
 
 @pytest.mark.parametrize(
-    ("scattering", "seebeck_limit", "resistivity_limit"),
-    [("acPh", 0.62, 0.61), ("dis", 0.61, 0.69)],
+    ("scattering", "resistivity_error"),
+    [("acPh", 0.86168026), ("dis", 0.87459336)],
 )
-def test_verified_sip_keeps_a_valid_endpoint_when_a_recovery_seed_fails(
-    scattering: str, seebeck_limit: float, resistivity_limit: float
+def test_verified_sip_reports_a_collapsed_band_and_large_resistivity_error(
+    scattering: str, resistivity_error: float
 ) -> None:
     identifier = f"02_SiP-dpb_s_rho-{scattering}-thread-dpb_see_res_fit"
     call = CALLS[CALL_IDS.index(identifier)][-1]
@@ -733,16 +837,16 @@ def test_verified_sip_keeps_a_valid_endpoint_when_a_recovery_seed_fails(
 
     result = default_registry.get("dpb").fit(request)
 
-    assert result.status in ("converged", "stalled")
+    assert result.status == "converged"
     assert result.diagnostics is not None
-    assert result.diagnostics.stage_consistent == (result.status == "converged")
-    if result.status == "stalled":
-        assert result.diagnostics.termination == "derivative_search_stall"
-    seebeck_error = result.diagnostics.residuals["seebeck"].relative_l2
-    resistivity_error = result.diagnostics.residuals["resistivity"].relative_l2
-    assert seebeck_error is not None and seebeck_error < seebeck_limit
-    assert resistivity_error is not None and resistivity_error < resistivity_limit
-    assert result.diagnostics.recoveries > 0
+    assert result.diagnostics.stage_consistent
+    assert result.diagnostics.residual_adequacy == "not_assessed"
+    assert "collapsed_m_eff" in result.known_issues
+    assert 0 < result.parameters["m_eff"] < COLLAPSED_M_EFF
+    assert "band_gap" in result.at_bounds
+    residuals = result.diagnostics.residuals
+    assert residuals["seebeck"].relative_l2 == pytest.approx(0.18322352, abs=5e-5)
+    assert residuals["resistivity"].relative_l2 == pytest.approx(resistivity_error, abs=5e-5)
     for name, bound in request.bounds.items():
         assert bound.lower <= result.parameters[name] <= bound.upper
 

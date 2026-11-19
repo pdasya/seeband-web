@@ -38,6 +38,50 @@ def test_verified_recovers_from_the_dpb_gap_and_both_edges(fermi_start_k):
     assert result.diagnostics.residuals["seebeck"].rmse * 1e6 < 0.81
 
 
+@pytest.mark.parametrize("scattering", ["acPh", "dis"])
+def test_failed_exploratory_derivative_keeps_checked_endpoint(scattering, monkeypatch):
+    from seeband_core import verified_fit
+
+    model = DpbModel()
+    mode = model.describe().fit_mode("dpb_s_rho")
+    start = default_start(mode) | {"m_eff": 1.2, "band_gap": 800.0, "fermi_energy": 400.0}
+    t = np.linspace(100.0, 800.0, 18)
+    bounds = Bounds(-300.0, 800.0)
+    data = verified_fit.evaluate("dpb", mode.id, start | {"fermi_energy": -150.0}, t, scattering)
+    fitted = {spec.name for spec in mode.parameters_for(scattering) if spec.role == "fitted"}
+    original_jacobian = verified_fit._Engine.jacobian
+    rejected = []
+
+    def reject_exploratory_trial(engine, evaluate, coordinates, base, point, **kwargs):
+        parameters = coordinates.decode(point)
+        if parameters.get("fermi_energy", 400.0) < 0.0:
+            rejected.append(parameters["fermi_energy"])
+            raise verified_fit.DerivativeValidationError("Injected exploratory derivative failure")
+        return original_jacobian(engine, evaluate, coordinates, base, point, **kwargs)
+
+    monkeypatch.setattr(verified_fit._Engine, "jacobian", reject_exploratory_trial)
+    result = model.fit(
+        FitRequest(
+            mode.id,
+            {q: Measurement(t, values) for q, values in data.items()},
+            start,
+            {"fermi_energy": bounds},
+            scattering,
+            held=frozenset(fitted - {"fermi_energy"}),
+        )
+    )
+
+    assert rejected and all(bounds.lower <= ef < 0.0 for ef in rejected)
+    assert result.status == "stalled"
+    assert result.parameters == start
+    assert not result.diagnostics.stage_consistent
+    assert result.diagnostics.termination == "derivative_search_stall"
+    assert result.diagnostics.recoveries > 0
+    for q, curve in verified_fit.evaluate("dpb", mode.id, start, t, scattering).items():
+        rmse = np.sqrt(np.mean((curve - data[q]) ** 2))
+        assert result.diagnostics.residuals[q].rmse == pytest.approx(rmse, rel=1e-12)
+
+
 @pytest.mark.parametrize(
     ("truth_k", "energy_tolerance_k", "rmse_limit_uv_per_k"),
     [
@@ -552,7 +596,8 @@ def test_nonunit_degeneracy_fits_mass_in_public_custom_interval(mode_id, sign):
     assert "m_eff" not in result.at_bounds
 
 
-def test_compensated_zero_hall_keeps_unidentified_mass_and_nullable_relative_residual():
+@pytest.mark.parametrize("scattering", ["acPh", "dis", "ionized"])
+def test_compensated_zero_hall_keeps_unidentified_mass_and_nullable_relative_residual(scattering):
     from seeband_core.verified_fit import evaluate
 
     model = DpbModel()
@@ -567,15 +612,31 @@ def test_compensated_zero_hall_keeps_unidentified_mass_and_nullable_relative_res
         m1=2.0,
     )
     t = np.array([100.0, 200.0, 500.0])
-    data = evaluate("dpb", mode.id, p, t, "ionized")
+    data = evaluate("dpb", mode.id, p, t, scattering, band_1_degeneracy=2.5)
     assert np.all(data["hall"] == 0.0)
-    fitted = {s.name for s in mode.parameters_for("ionized") if s.role == "fitted"}
+
+    relative = "G" if scattering == "dis" else "B"
+    single_band = evaluate(
+        "dpb", mode.id, p | {relative: 0.0}, t, scattering, band_1_degeneracy=2.5
+    )["hall"]
+    weight = 1.000001
+    nearly_compensated = evaluate(
+        "dpb", mode.id, p | {relative: weight}, t, scattering, band_1_degeneracy=2.5
+    )["hall"]
+    # Equal band shapes give the signed conductivity-square weight (1-b)/(1+b).
+    np.testing.assert_allclose(
+        nearly_compensated, single_band * (1.0 - weight) / (1.0 + weight), rtol=1e-8, atol=0
+    )
+
+    fitted = {s.name for s in mode.parameters_for(scattering) if s.role == "fitted"}
     result = model.fit(
         FitRequest(
             mode.id,
             {q: Measurement(t, v) for q, v in data.items()},
             p,
-            scattering="ionized",
+            scattering=scattering,
+            band_1_degeneracy=2.5,
+            band_2_degeneracy=2.5,
             held=frozenset(fitted - {"m1"}),
         )
     )
@@ -935,20 +996,21 @@ def test_recorded_d1_small_mass_point_has_validated_nonzero_log_derivative():
     assert np.linalg.norm(jac[:, 0] - independent) / np.linalg.norm(independent) < 1e-3
 
 
-def test_recorded_d1_full_route_crosses_old_derivative_failure_with_finite_budget(monkeypatch):
-    from seeband_core import verified_fit
-
-    monkeypatch.setattr(verified_fit, "_MAX_EVALUATIONS", 1000)
+def test_recorded_d1_verified_converges_without_establishing_residual_adequacy():
     result = DpbModel().fit(_recorded_d1_request())
-    assert result.status != "failed"
-    assert result.diagnostics.termination in {
-        "evaluation_budget",
-        "conditional_stage_optima",
-        "cycle_or_stall",
-        "sweep_budget",
-    }
-    assert set(result.diagnostics.residuals) == {"seebeck", "resistivity", "hall"}
-    assert all(np.isfinite(r.rmse) for r in result.diagnostics.residuals.values())
+    assert result.status == "converged"
+    assert result.diagnostics.stage_consistent
+    assert result.diagnostics.termination == "conditional_stage_optima"
+    assert result.diagnostics.evaluations < 1000
+    assert result.parameters["m_eff"] == pytest.approx(0.002540814, rel=2e-4)
+    assert result.parameters["band_gap"] == pytest.approx(2377.275, rel=2e-4)
+    assert result.parameters["F"] == pytest.approx(0.008524426, rel=2e-4)
+    assert {"G", "fermi_energy", "m1"} <= set(result.at_bounds)
+    residuals = result.diagnostics.residuals
+    assert all(np.isfinite(r.rmse) for r in residuals.values())
+    assert residuals["resistivity"].relative_l2 == pytest.approx(0.7647383, abs=1e-4)
+    assert residuals["hall"].relative_l2 > 9000.0
+    assert result.diagnostics.residual_adequacy == "not_assessed"
 
 
 def test_terminal_derivative_failure_after_budget_keeps_its_own_reason(monkeypatch):

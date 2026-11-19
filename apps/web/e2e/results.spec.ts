@@ -436,11 +436,13 @@ test("two fits with other scattering compare side by side after a value changed"
 }) => {
   await openFit(page, serveCurves);
   await finishWith(page, {
+    core_version: "0.3.0",
     parameters: { m_eff: 0.5, band_gap: 900, fermi_energy: -50, A: 4e4, B: 1 },
   });
   await page.getByRole("combobox", { name: "Scattering" }).click();
   await page.getByRole("option", { name: "Alloy disorder (dis)" }).click();
   await finishWith(page, {
+    core_version: "0.3.1",
     parameters: { m_eff: 0.7, band_gap: 800, fermi_energy: -40, F: 3e4, G: 1 },
   });
   // A value changed: the current result ends, and the runs stay.
@@ -467,6 +469,11 @@ test("two fits with other scattering compare side by side after a value changed"
     });
   await expect(cells("Scattering")).toContainText("Acoustic phonons (acPh)");
   await expect(cells("Scattering")).toContainText("Alloy disorder (dis)");
+  await expect(cells("Core version").getByRole("cell")).toHaveText([
+    "Core version",
+    "0.3.0",
+    "0.3.1",
+  ]);
   await expect(cells("m₂/m₁")).toContainText("0,5");
   await expect(cells("m₂/m₁")).toContainText("0,7");
   await expect(cells("RMSE S")).toContainText("111 µV/K");

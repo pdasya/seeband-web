@@ -188,6 +188,7 @@ def _fit_outcome(model: Any, request: FitRequest) -> Any:
             sorted(result.at_bounds),
             sorted(result.held),
             _curve_bytes(curve),
+            None if result.diagnostics is None else result.diagnostics.termination,
         )
 
     with warnings.catch_warnings(record=True) as caught:
@@ -201,7 +202,7 @@ def _fit_outcome(model: Any, request: FitRequest) -> Any:
 
 
 # Both fit algorithms: the legacy one of the desktop, and the verified one, the default. A verified
-# dpb_s_rho fit takes about 36 s, so it runs only in the test with failing solves, which ends early.
+# dpb_s_rho fit is expensive, so the reuse comparison exercises it with failing solves only.
 _FITS = [
     ("dpb_s", None, "legacy-sequential-v1"),
     ("dpb_s_rho", "acPh", "legacy-sequential-v1"),
@@ -263,6 +264,9 @@ def test_a_fit_whose_solves_fail_on_the_way_is_the_same_to_the_bit(
     assert failures > 0
     if algorithm == "legacy-sequential-v1":
         assert before[0][0] == "converged"
+    elif mode_id == "dpb_s_rho" and scattering == "acPh":
+        assert before[0][0] == "iteration_limit"
+        assert before[0][-1] == "evaluation_budget"
     assert now == before
 
 

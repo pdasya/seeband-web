@@ -2,11 +2,20 @@
 
 ## Unreleased
 
-- P14 (#105): evaluate Fermi integrals stably at large reduced chemical
-  potentials, keep Seebeck and Lorenz ratios finite for dilute bands, and
-  preserve DPB electronic thermal conductivity in previously nonfinite cases.
-  The revised half-order integral changes the numerical density solutions and
-  derived curves. See [validation and regression notes](packages/seeband_core/docs/golden-results.md#stable-fermi-integrals-p14).
+- P14 (#105), core `0.3.1`. Stable Fermi integrals extend SPB Hall above the
+  former reduced-potential cutoff. Dilute bands give corrected Seebeck
+  contributions and finite Seebeck, Lorenz and electronic thermal values
+  where intermediate operations previously failed. Intrinsic DPB density
+  balance remains certifiable at lower temperatures and preserves exact
+  compensation for symmetric bands.
+- P14 changes some fitted endpoints. Verified Fit uses the same sequential
+  objectives with a stable profiled resistivity derivative. The recorded D1
+  fit now reaches conditional stationarity with a large Hall residual. The
+  recorded Si:P fits give smaller Seebeck errors and larger resistivity
+  errors with a collapsed mass ratio. The existing legacy D1 collapse
+  warning still applies after its endpoint moves. Compare runs using both
+  the method and the reported core version.
+  See [validation and regression notes](packages/seeband_core/docs/golden-results.md#stable-fermi-integrals-p14).
 
 - S4 (#66): add the user guide at /guide/, adapted from the desktop SeeBand's
   PDF guide (MIT) to the web app, on the Fe2VAl0.9Si0.1 example, with

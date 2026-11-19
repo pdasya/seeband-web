@@ -393,6 +393,11 @@ export function RunComparison() {
       b: b.interpolation.enabled ? text.on : text.off,
     },
     { label: text.method, a: methodText(a), b: methodText(b) },
+    {
+      label: text.coreVersion,
+      a: a.result.core_version ?? text.none,
+      b: b.result.core_version ?? text.none,
+    },
     { label: text.status, a: statusText(a, modeA), b: statusText(b, modeB) },
     {
       label: text.iterations,

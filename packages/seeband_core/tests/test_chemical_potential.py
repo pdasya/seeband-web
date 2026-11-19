@@ -113,10 +113,12 @@ def test_integral_and_transport_paths_reject_nonexistent_roots(evaluate):
         evaluate(np.array([300.0]))
 
 
-def test_intrinsic_equal_bands_have_gap_midpoint_potential():
-    result = mm.dpb_chemPot_diagnostics(np.array([50.0, 300.0, 800.0]), 1000.0, 1.0, 0.0, 1.0)
-    np.testing.assert_allclose(result.chemical_potential, [500.0, 500.0, 500.0], rtol=0, atol=1e-9)
-    assert np.all(result.normalized_residual <= 1e-12)
+@pytest.mark.parametrize("gap", [0.0, 1000.0, 2860.0])
+def test_intrinsic_equal_bands_have_exact_gap_midpoint_potential(gap):
+    temperatures = np.array([2.0, 100.0, 500.0, 2.0])
+    result = mm.dpb_chemPot_diagnostics(temperatures, gap, 1.0, 0.0, 1.0)
+    np.testing.assert_array_equal(result.chemical_potential, np.full_like(temperatures, gap / 2))
+    assert np.all(result.normalized_residual == 0.0)
 
 
 def test_finite_wrong_root_is_rejected_with_its_density_residual(monkeypatch):

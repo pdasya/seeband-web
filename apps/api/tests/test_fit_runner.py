@@ -9,6 +9,7 @@ import os
 import signal
 import subprocess
 import sys
+import threading
 import time
 from collections.abc import Awaitable, Callable, Iterator
 from multiprocessing import forkserver
@@ -264,12 +265,32 @@ def test_fit_processes_keep_linear_algebra_to_one_thread() -> None:
 def test_a_fork_server_that_does_not_finish_its_imports_fails_the_start(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(forkserver, "ensure_running", lambda: time.sleep(5))
+    resume_startup = threading.Event()
+    startup_threads: list[threading.Thread] = []
+    attempted_probe = threading.Event()
+
+    def slow_startup() -> None:
+        startup_threads.append(threading.current_thread())
+        assert resume_startup.wait(5)
+
+    def probe_started(*args: Any, **kwargs: Any) -> None:
+        attempted_probe.set()
+        raise AssertionError("The expired startup attempted to fork a warm-up process")
+
+    monkeypatch.setattr(forkserver, "ensure_running", slow_startup)
+    monkeypatch.setattr(processes.context, "Process", probe_started)
 
     started = time.monotonic()
-    with pytest.raises(TimeoutError):
-        start_fork_server(timeout_s=0.2)
+    try:
+        with pytest.raises(TimeoutError):
+            start_fork_server(timeout_s=0.2)
+    finally:
+        resume_startup.set()
+        for thread in startup_threads:
+            thread.join(5)
     assert time.monotonic() - started < 1
+    assert startup_threads and all(not thread.is_alive() for thread in startup_threads)
+    assert not attempted_probe.is_set()
 
 
 def test_a_fit_process_does_not_import_the_web_framework() -> None:

@@ -372,6 +372,12 @@ def _solve_chemical_potential(
     residuals = np.empty_like(unique)
     intrinsic_gap = gap if mass > 0 and target == 0 else None
     center = 0.0 if intrinsic_gap is None else intrinsic_gap / 2
+    if intrinsic_gap is not None and effective_mass == 1.0 and center - intrinsic_gap == -center:
+        # The two density contributions are identical at the representable midpoint.
+        # Using it directly also preserves exact cancellation of symmetric Hall channels.
+        return _converged(
+            np.full_like(temperatures, center), np.zeros_like(temperatures), temperatures.shape
+        )
     for index, temp in enumerate(unique):
 
         def intrinsic_balance(mu: float, offset: float, temperature: float) -> float:

@@ -1,6 +1,6 @@
 {
  "description": "P14 implementation-generated model replay and synthetic SPB Hall regressions.",
- "core_version": "0.3.0",
+ "core_version": "0.3.1",
  "environment": {
   "python": "3.13.18",
   "numpy": "2.5.4",
