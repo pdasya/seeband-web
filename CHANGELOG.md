@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- DPB Hall fits and curves include the absolute valley multiplicity of
+  band 1. The fitted `m1` is a mass per valley. Absolute carrier densities
+  in the Hall mode use the same multiplicities. A mass from the previous
+  Hall normalization maps to the new convention by dividing it by
+  `N1^(2/3)` at the same band shapes.
+
 - Verified Fit: search both permitted sides when a free DPB Fermi energy
   remains in a positive gap after a stage solve. Probe toward each edge,
   polish candidates with lower stage cost, and repeat the search in the
