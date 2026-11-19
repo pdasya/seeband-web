@@ -326,6 +326,8 @@ agreement with the uncorrected Desktop outputs.
   The named unreliable D1 case retains its prior 1e-3 tolerance for the
   stable parameters and its collapse and bounds checks. The Mac legacy D1
   capture moves from R = 9.9955e-11 to 4.2833e-19 and from four sweeps to ten.
+  Linux reached the existing sweep limit in CI. The P14 replay accepts that
+  status only at the full budget and with the same parameter and diagnostic checks.
 
 The method ID remains `verified-sequential-v2`. The pair of method ID and core
 version, now `0.3.1`, distinguishes this implementation in results, exports,

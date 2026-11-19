@@ -76,6 +76,7 @@ UNSTABLE_02 = {
 COLLAPSED_M_EFF = 1e-5
 # The G minimum case on 01 is not credible either, and differs by about 1e-4.
 D1_01_TOLERANCE = 1e-3
+D1_01_DIS_FIT = "01_Fe2VAl09Si01-d1-dis-thread-dpb_see_res_hall_fit"
 # E_F on 02_SiP with SPB S falls from 100 to 3.76 with solver warnings. It differed by 3.4e-6 on a
 # Mac, and by 1.8e-5 and 2.8e-5 in two Linux CI runs, so it varies between runs of the same code.
 SPB_S_02_TOLERANCE = 1e-4
@@ -202,17 +203,24 @@ def assert_recorded_replay(
     call: dict[str, Any],
     *,
     expected: Any = None,
+    allow_d1_budget_exit: bool = False,
 ) -> None:
     """Compare original inputs with a model replay baseline, including failures."""
     if expected is None:
         expected = regression_expected(identifier, scattering, call)
     if call["function"].endswith("_fit"):
         result = replay_fit(mode, call)
-        assert result.status == expected["status"]
+        budget_exit = allow_d1_budget_exit and result.status == "iteration_limit"
+        if budget_exit:
+            assert identifier == D1_01_DIS_FIT
+            budget = default_registry.get("dpb").describe().fit_mode("dpb_s_rho_rh").max_iterations
+            assert budget is not None and result.iterations == budget, result
+        else:
+            assert result.status == expected["status"], result
+            assert_fit_iterations(identifier, mode, scattering, result, expected["iterations"])
         assert result.message == expected["message"]
-        assert_fit_iterations(identifier, mode, scattering, result, expected["iterations"])
         assert result.parameters.keys() == expected["parameters"].keys()
-        if result.status == "converged":
+        if result.status == "converged" or budget_exit:
             expected_values = [
                 expected["parameters"][name] for name in FIT_RESULT_NAMES[call["function"]]
             ]
@@ -335,7 +343,7 @@ def test_p14_preserves_prior_evidence_and_covers_affected_calls() -> None:
             assert previous["status"] == "converged"
             old, new = previous["parameters"], current["parameters"]
             assert new.keys() == old.keys()
-            is_collapsed_d1 = identifier == "01_Fe2VAl09Si01-d1-dis-thread-dpb_see_res_hall_fit"
+            is_collapsed_d1 = identifier == D1_01_DIS_FIT
             if is_collapsed_d1:
                 assert 0 < new["m_eff"] < COLLAPSED_M_EFF
                 names = sorted(old.keys() - {"m_eff", "F", "G"})
@@ -736,7 +744,14 @@ def test_replay_matches_current_expectations(
 ) -> None:
     identifier = f"{example}-{mode}-{scattering}-{source}-{call['function']}"
     expected = current_regression_expected(identifier, scattering, call)
-    assert_recorded_replay(identifier, mode, scattering, call, expected=expected)
+    assert_recorded_replay(
+        identifier,
+        mode,
+        scattering,
+        call,
+        expected=expected,
+        allow_d1_budget_exit=identifier == D1_01_DIS_FIT,
+    )
     if call["function"] == "get_parabolic_band":
         assert_close(replay(mode, scattering, call), call["result"], CURVE_TOLERANCE)
 
@@ -957,7 +972,7 @@ def test_collapsed_d1_iterations_respect_the_existing_budget(iterations: Any) ->
 
 @pytest.mark.parametrize("missing", ["collapse", "reference", "bound"])
 def test_collapsed_d1_requires_its_diagnostics(missing: str) -> None:
-    identifier = "01_Fe2VAl09Si01-d1-dis-thread-dpb_see_res_hall_fit"
+    identifier = D1_01_DIS_FIT
     call = CALLS[CALL_IDS.index(identifier)][-1]
     expected = p13_results()[p8_key(identifier, call)]
     result = FitResult(
@@ -1001,7 +1016,7 @@ def test_collapsed_d1_requires_its_diagnostics(missing: str) -> None:
 def test_collapsed_d1_diagnostic_contract_preserves_its_remaining_checks(
     monkeypatch: pytest.MonkeyPatch, change: str
 ) -> None:
-    identifier = "01_Fe2VAl09Si01-d1-dis-thread-dpb_see_res_hall_fit"
+    identifier = D1_01_DIS_FIT
     call = CALLS[CALL_IDS.index(identifier)][-1]
     expected = p13_results()[p8_key(identifier, call)]
     # Complete endpoint from Linux CI run 43693830497. Its rho differs from
@@ -1041,3 +1056,23 @@ def test_collapsed_d1_diagnostic_contract_preserves_its_remaining_checks(
     else:
         with pytest.raises(AssertionError):
             assert_recorded_replay(identifier, "d1", "dis", call)
+
+
+@pytest.mark.parametrize("remaining_sweeps", [0, 1])
+def test_p14_d1_budget_exit_requires_the_full_budget(monkeypatch, remaining_sweeps):
+    call = CALLS[CALL_IDS.index(D1_01_DIS_FIT)][-1]
+    expected = current_regression_expected(D1_01_DIS_FIT, "dis", call)
+    budget = default_registry.get("dpb").describe().fit_mode("dpb_s_rho_rh").max_iterations
+    assert budget is not None
+    result = FitResult(
+        expected["parameters"],
+        "iteration_limit",
+        iterations=budget - remaining_sweeps,
+        known_issues=("collapsed_m_eff", "hall_dis_no_reference"),
+        at_bounds=("m_eff",),
+    )
+    monkeypatch.setattr(f"{__name__}.replay_fit", lambda *args: result)
+    with pytest.raises(AssertionError) if remaining_sweeps else contextlib.nullcontext():
+        assert_recorded_replay(
+            D1_01_DIS_FIT, "d1", "dis", call, expected=expected, allow_d1_budget_exit=True
+        )
