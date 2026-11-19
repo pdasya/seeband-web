@@ -88,8 +88,7 @@ half the step. This changes the derivative probes while using the original
 fit bounds. If Fermi energy remains on the plateau after fitting the gap,
 the recovery described above uses the updated stage parameters. Before
 polishing another populated-side seed, it checks that the seed's evaluated
-cost still improves on the best candidate found so far. When no intrinsic-side
-stencil is available, the ordinary admissible derivative check still applies.
+cost still improves on the best candidate found so far.
 
 When the gap and Fermi energy are both free and the stage ends just outside
 a positive DPB gap, it can also restart on the opposite populated side.
@@ -108,9 +107,28 @@ On the same demo, with only `m_eff` held and both energies starting at
 `fermi_energy ≈ −150.1328 K` with a `0.808359 µV/K` RMSE. A noiseless
 conduction-side test from the same start recovers a `650 K` gap and
 `1000 K` Fermi energy. A separate intrinsic test recovers a `900 K` gap
-while leaving the Fermi energy undetermined. On the demo, setting the gap
-upper bound to the initial edge at `800 K` still gives an explicit derivative
-validation failure: no widened-gap probe is admissible.
+while leaving the Fermi energy undetermined.
+
+When both DPB energies are free and coincide exactly at the upper gap bound,
+the solver can use an equivalent reference strictly inside the positive gap.
+The zero-temperature carrier target and its first derivatives are the same
+as at the conduction edge.
+The fit checks that the residual vector is identical at the reference before
+using it to take shrinking-gap probes or seed the optimizer. The original
+endpoint remains a candidate and wins ties. If the Fermi energy is held or
+there is no admissible interior reference, the original derivative check
+still applies and can fail explicitly.
+
+With the demo's gap bounds set to `[300, 800] K`, the same start converges to
+`band_gap ≈ 799.8727 K` and `fermi_energy ≈ −150.1328 K`, with a Seebeck RMSE
+of `0.808359 µV/K`. The regression checks the bounds during every transport
+evaluation, including derivative probes and the terminal audit. With the
+Fermi energy restricted to `[500, 3000] K`, recovery instead reaches
+`fermi_energy ≈ 800.10156 K` with a Seebeck RMSE of `61.119 µV/K`.
+On the same demo, starting the Fermi energy `10⁻⁶ K` to either side of the
+`800 K` edge can still fail derivative validation. The same failure can
+occur for coincident starts at `1000 K` or `1500 K` when the gap's upper
+bound equals the start.
 
 Synthetic DPB Seebeck curves generated with the same mass ratio and gap,
 31 temperatures from 50 to 800 K, and Fermi energies 0.05 K or 0.0001 K
