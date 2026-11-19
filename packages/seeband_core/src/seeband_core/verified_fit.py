@@ -535,7 +535,37 @@ class _Engine:
                 seeds.append((best_seed, best_cost))
         return seeds
 
+    def opposite_gap_seed(
+        self, coordinates: _Coordinates, parameters: Mapping[str, float], point: np.ndarray
+    ) -> np.ndarray | None:
+        """Cross a positive gap when the fitted energy is a stencil step outside one edge."""
+        gap = parameters["band_gap"]
+        energy = parameters["fermi_energy"]
+        if parameters["m_eff"] <= 0.0 or gap <= 0.0:
+            return None
+        step = np.finfo(float).eps ** 0.2 * max(1.0, gap)
+        bounds = self.bound("fermi_energy")
+        if 0.0 < energy - gap <= step and bounds.lower < 0.0:
+            opposite_energy = max(bounds.lower, -max(1.0, gap) / 2)
+            edge, direction = 0.0, -1.0
+        elif 0.0 < -energy <= step and bounds.upper > gap:
+            opposite_energy = min(bounds.upper, gap + max(1.0, gap) / 2)
+            edge, direction = gap, 1.0
+        else:
+            return None
+        index = coordinates.names.index("fermi_energy")
+        seed = point.copy()
+        seed[index] = np.clip(
+            opposite_energy / coordinates.scale[index],
+            coordinates.lower[index],
+            coordinates.upper[index],
+        )
+        if direction * (coordinates.decode(seed)["fermi_energy"] - edge) <= 0.0:
+            return None
+        return seed
+
     def stage(self, q: Quantity, base: Mapping[str, float]) -> tuple[dict[str, float], float]:
+        """Return the stage candidate and an audit measure that rejects unchecked improvements."""
         stage = next(s for s in self.mode.stages if s.quantity == q)
         amp = self.amplitude(q)
         names = [n for n in stage.parameters if n in self.free and n != amp]
@@ -567,6 +597,10 @@ class _Engine:
         def jacobian(z: np.ndarray) -> np.ndarray:
             return self.jacobian(evaluate, coordinates, base, z)
 
+        def cost_at(z: np.ndarray) -> float:
+            error = evaluate(z)
+            return float(np.dot(error, error))
+
         # Independently audit scaled projected stationarity at the supplied vector.
         # An xtol/ftol exit or an unchanged candidate cannot certify convergence.
         # Keep the amplitude exactly as returned during this derivative audit.
@@ -577,6 +611,7 @@ class _Engine:
         stationarity = _projected_optimality(start_jac, audit_residual, x, lower, upper)
         initial_cost = float(np.dot(initial, initial))
         best, best_cost = x, initial_cost
+        uncertified_cost = np.inf
         flat_fermi_only = self.dpb and names == ["fermi_energy"] and fermi_energy_in_gap(p)
         if not flat_fermi_only:
             result = least_squares(
@@ -597,15 +632,17 @@ class _Engine:
         nonstationary = stationarity > _STATIONARITY_TOL
         seeds: list[tuple[np.ndarray, float | None]] = []
         best_parameters = p | coordinates.decode(best)
-        if (
-            self.dpb
-            and "fermi_energy" in names
-            and best_cost > _AUDIT_RTOL
-            and fermi_energy_in_gap(best_parameters)
-        ):
-            seeds.extend(
-                self.populated_gap_seeds(residual, coordinates, best_parameters, best, best_cost)
-            )
+        if self.dpb and "fermi_energy" in names and best_cost > _AUDIT_RTOL:
+            if fermi_energy_in_gap(best_parameters):
+                seeds.extend(
+                    self.populated_gap_seeds(
+                        residual, coordinates, best_parameters, best, best_cost
+                    )
+                )
+            elif "band_gap" in names:
+                opposite = self.opposite_gap_seed(coordinates, best_parameters, best)
+                if opposite is not None:
+                    seeds.append((opposite, None))
         if (
             not flat_fermi_only
             and np.linalg.norm(best - x) <= 1e-10
@@ -613,6 +650,16 @@ class _Engine:
             and (deficient or nonstationary)
         ):
             seeds.extend((seed, None) for seed in self.recovery_seeds(coordinates))
+        rejected_trial: np.ndarray | None = None
+
+        def recovery_jacobian(z: np.ndarray) -> np.ndarray:
+            nonlocal rejected_trial
+            try:
+                return jacobian(z)
+            except DerivativeValidationError:
+                rejected_trial = z
+                raise
+
         tried = {tuple(x)}
         for seed, seed_cost in seeds:
             key = tuple(seed)
@@ -621,32 +668,41 @@ class _Engine:
             tried.add(key)
             if seed_cost is None:
                 try:
-                    evaluate(seed)
+                    seed_cost = cost_at(seed)
                 except mm.NoFiniteChemicalPotentialError:
                     continue
-            else:
-                # A joint gap fit can spend its remaining budget polishing a near-edge
-                # seed selected before an earlier recovery improved the stage.
-                if "band_gap" in names and best_cost - seed_cost <= _AUDIT_RTOL * max(
-                    1.0, best_cost
-                ):
-                    continue
-                if seed_cost < best_cost:
-                    best, best_cost = seed, seed_cost
+            elif "band_gap" in names and best_cost - seed_cost <= _AUDIT_RTOL * max(1.0, best_cost):
+                continue
             self.recoveries += 1
-            trial_result = least_squares(
-                residual,
-                seed,
-                jac=jacobian,
-                bounds=(lower, upper),
-                ftol=1e-11,
-                xtol=1e-11,
-                gtol=1e-8,
-                max_nfev=125,
-            )
+            rejected_trial = None
+            try:
+                trial_result = least_squares(
+                    residual,
+                    seed,
+                    jac=recovery_jacobian,
+                    bounds=(lower, upper),
+                    ftol=1e-11,
+                    xtol=1e-11,
+                    gtol=1e-8,
+                    max_nfev=125,
+                )
+            except DerivativeValidationError:
+                if rejected_trial is not None:
+                    uncertified_cost = min(uncertified_cost, cost_at(rejected_trial))
+                uncertified_cost = min(uncertified_cost, seed_cost)
+                continue
             trial_cost = float(np.dot(trial_result.fun, trial_result.fun))
             if trial_cost < best_cost:
                 best, best_cost = trial_result.x, trial_cost
+            if best_cost - seed_cost > _AUDIT_RTOL * max(1.0, best_cost):
+                try:
+                    jacobian(seed)
+                except DerivativeValidationError:
+                    uncertified_cost = min(uncertified_cost, seed_cost)
+                else:
+                    best, best_cost = seed, seed_cost
+        if best_cost - uncertified_cost > _AUDIT_RTOL * max(1.0, best_cost):
+            stationarity = np.inf
         p.update(coordinates.decode(best))
         self.profile(q, p)
         return p, stationarity
@@ -807,8 +863,10 @@ def fit_verified(
             engine.values = p
         history: list[np.ndarray] = []
         for iteration in range(1, (mode.max_iterations or 1) + 1):
+            uncertified_improvement = False
             for q in mode.quantities:
-                engine.values, _ = engine.stage(q, engine.values)
+                engine.values, stationarity = engine.stage(q, engine.values)
+                uncertified_improvement |= bool(np.isinf(stationarity))
             engine.iterations = iteration
             if mode.iterative and on_iteration is not None:
                 try:
@@ -818,11 +876,15 @@ def fit_verified(
                 except Exception as error:
                     callback_error = error
                     break
+            if uncertified_improvement:
+                return engine.result("stalled", "derivative_search_stall", False)
             final = dict(engine.values)
             consistent = True
             for q in mode.quantities:
                 before = engine.predict(q, final) * _SCALE[q] - engine.data[q][1] * _SCALE[q]
                 candidate, stationarity = engine.stage(q, final)
+                if np.isinf(stationarity):
+                    return engine.result("stalled", "derivative_search_stall", False)
                 after = engine.predict(q, candidate) * _SCALE[q] - engine.data[q][1] * _SCALE[q]
                 old, new = float(np.dot(before, before)), float(np.dot(after, after))
                 gain = max(0.0, old - new)

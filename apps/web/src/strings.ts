@@ -552,6 +552,8 @@ export const STRINGS = {
       terminationReasons: {
         conditional_stage_optima: "Conditional stage optima reached",
         cycle_or_stall: "Cycle or stall detected",
+        derivative_search_stall:
+          "A better trial could not pass derivative validation",
         callback: "Stopped by request",
         sweep_budget: "Iteration budget reached",
         evaluation_budget: "Evaluation budget reached",

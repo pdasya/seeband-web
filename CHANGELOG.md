@@ -3,8 +3,10 @@
 ## Unreleased
 
 - Verified Fit: check the free DPB gap derivative on the intrinsic side of
-  the conduction edge when the fit bounds make that stencil feasible.
-  The derivative still has to pass the half-step check.
+  the conduction edge when that stencil fits the bounds. For joint fits
+  of the gap and Fermi energy, try a bounded restart across the gap from a
+  near-edge endpoint. Reject failed exploratory trials and certify the
+  retained solution through the final conditional audit.
 
 - Verified Fit: search both permitted sides when a free DPB Fermi energy
   remains in a positive gap after a stage solve. Probe toward each edge,

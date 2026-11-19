@@ -67,6 +67,14 @@ It polishes the best improving probe on each side and retains the lowest-cost
 feasible candidate. The final conditional audit repeats the same search.
 The finite set of probes and shared evaluation budget define the search coverage.
 
+An optional restart can encounter an inadmissible carrier root or a
+derivative that fails validation. Verified Fit discards the failed restart
+and keeps evaluating other candidates. An improving probe needs a
+validated derivative before retention. If failure in a restart leaves a
+material improvement unverified, Verified Fit reports `stalled` and
+checks the retained endpoint's predictions and derivatives before
+returning it.
+
 On the same demo, a plateau RMSE of
 63.136 µV/K falls to 0.8084 µV/K at `fermi_energy ≈ −150.1195 K`, with the
 same fit objective, held values and certification thresholds. When the bounds
@@ -82,6 +90,18 @@ the recovery described above uses the updated stage parameters. Before
 polishing another populated-side seed, it checks that the seed's evaluated
 cost still improves on the best candidate found so far. When no intrinsic-side
 stencil is available, the ordinary admissible derivative check still applies.
+
+When the gap and Fermi energy are both free and the stage ends just outside
+a positive DPB gap, it can also restart on the opposite populated side.
+The numerical distance threshold is one nominal finite-difference step.
+The restart respects the Fermi-energy bounds and preserves the other
+coordinates at its starting point. The conditional audit checks the same
+recovery at the final parameters.
+
+Starting the synthetic demo at `band_gap = fermi_energy = 800 K` with every fitted
+parameter free gives a Seebeck RMSE of about `0.807 µV/K` in both the
+Seebeck-only and sequential Seebeck, resistivity and Hall modes. Both fits
+converge at `fermi_energy ≈ −150.17 K` within the fit bounds.
 
 On the same demo, with only `m_eff` held and both energies starting at
 `800 K`, the fit now settles at `band_gap ≈ 799.8726 K` and

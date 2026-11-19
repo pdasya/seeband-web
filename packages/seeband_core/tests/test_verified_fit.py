@@ -105,6 +105,30 @@ def test_verified_recovers_after_other_free_parameters_move_on_the_dpb_plateau()
             assert spec.fit_bounds.lower <= value <= spec.fit_bounds.upper
 
 
+@pytest.mark.parametrize("mode_id", ["dpb_s", "dpb_s_rho_rh"])
+def test_verified_all_free_demo_escapes_the_conduction_onset(mode_id):
+    model = DpbModel()
+    mode = model.describe().fit_mode(mode_id)
+    start = default_start(mode) | {"m_eff": 1.2, "band_gap": 800.0, "fermi_energy": 800.0}
+    data = load_demo_dataset().measurements
+
+    result = model.fit(
+        FitRequest(mode_id, {q: data[q] for q in mode.quantities}, start, scattering="acPh")
+    )
+
+    assert result.status == "converged"
+    assert result.diagnostics is not None
+    assert result.diagnostics.stage_consistent
+    assert result.diagnostics.recoveries > 0
+    assert result.parameters["fermi_energy"] < 0.0
+    assert result.diagnostics.residuals["seebeck"].rmse * 1e6 < 0.82
+    for residual in result.diagnostics.residuals.values():
+        assert residual.relative_l2 is not None and residual.relative_l2 < 0.01
+    for spec in mode.parameters_for("acPh"):
+        if spec.fit_bounds is not None:
+            assert spec.fit_bounds.lower <= result.parameters[spec.name] <= spec.fit_bounds.upper
+
+
 @pytest.mark.parametrize(("fermi_start_k", "lower_k"), [(400.0, 0.0), (800.0, 800.0)])
 def test_verified_can_recover_to_the_conduction_side_when_the_valence_side_is_excluded(
     fermi_start_k, lower_k
