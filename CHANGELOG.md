@@ -2,21 +2,24 @@
 
 ## Unreleased
 
-- Verified Fit: certify the free DPB gap derivative on the intrinsic side of
-  the conduction edge when feasible. If fitting the gap still leaves the
-  Fermi energy on a plateau with nonzero residual, try the populated sides
-  from the updated point before the terminal audit. Transport formulas, fit
-  bounds, objectives and certification thresholds are unchanged.
+- Verified Fit: check the free DPB gap derivative on the intrinsic side of
+  the conduction edge when the fit bounds make that stencil feasible.
+  The derivative still has to pass the half-step check.
 
-- Verified Fit: recover from a flat DPB Fermi-energy interval without testing
-  its exact zero derivative by crossing a band edge. Try both permitted
-  populated sides and retain the better certified result. If the bounds keep
-  the fit in the gap, the Fermi energy remains undetermined. Transport
-  formulas, objectives and numerical acceptance thresholds are unchanged.
+- Verified Fit: search both permitted sides when a free DPB Fermi energy
+  remains in a positive gap after a stage solve. Probe toward each edge,
+  polish candidates with lower stage cost, and repeat the search in the
+  final conditional audit. Fits constrained to the gap still report the
+  Fermi energy as undetermined.
 
 - P16 (#107): flag a DPB Fermi energy in a positive valence–conduction gap,
   including either edge, where transport cannot locate E_F within the gap.
   The warning changes no calculated values or fit behavior.
+
+- P15 (#106): distinguish zero mass and the SPB and DPB Fermi-energy
+  constraints in curve failures. The API returns HTTP 422 with a
+  reason-specific detail. Fit failures distinguish the finite-root domain
+  from numerical certification failures.
 
 - R11 (#187): add the Lorenz number L(T) = kappa_e/(sigma*T) as a derived curve
   in modes with rho, in W*Ohm/K^2 and in units of L0 = pi^2/3 (k_B/e)^2, with

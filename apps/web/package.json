@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "dev:api": "SEEBAND_API_TARGET=http://127.0.0.1:8000 vite",
+    "dev:all": "SEEBAND_API_TARGET=http://127.0.0.1:8000 SEEBAND_SITE_TARGET=http://localhost:4321 vite",
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",

@@ -38,6 +38,73 @@ def test_verified_recovers_from_the_dpb_gap_and_both_edges(fermi_start_k):
     assert result.diagnostics.residuals["seebeck"].rmse * 1e6 < 0.81
 
 
+@pytest.mark.parametrize(
+    ("truth_k", "energy_tolerance_k", "rmse_limit_uv_per_k"),
+    [
+        (-0.05, 5e-4, 0.01),
+        (800.05, 5e-4, 0.01),
+        (-0.0001, 2e-6, 3e-5),
+        (800.0001, 2e-6, 3e-5),
+    ],
+)
+@pytest.mark.parametrize("one_side_only", [False, True])
+def test_verified_distinguishes_light_doping_just_outside_either_gap_edge(
+    truth_k, energy_tolerance_k, rmse_limit_uv_per_k, one_side_only
+):
+    model = DpbModel()
+    mode = model.describe().fit_mode("dpb_s")
+    start = default_start(mode) | {"m_eff": 1.2, "band_gap": 800.0, "fermi_energy": 400.0}
+    temperature_k = np.linspace(50.0, 800.0, 31)
+    values = mm.dpb_see_vs_temp(temperature_k, 1.2, 800.0, truth_k, 1.0)
+    bounds = {}
+    if one_side_only:
+        bounds["fermi_energy"] = Bounds(min(0.0, truth_k), max(800.0, truth_k))
+
+    result = model.fit(
+        FitRequest(
+            mode.id,
+            {"seebeck": Measurement(temperature_k, values)},
+            start,
+            bounds=bounds,
+            scattering="acPh",
+            held=frozenset({"m_eff", "band_gap"}),
+        )
+    )
+
+    assert result.status == "converged"
+    assert result.diagnostics.stage_consistent
+    energy = result.parameters["fermi_energy"]
+    assert energy == pytest.approx(truth_k, abs=energy_tolerance_k)
+    if one_side_only:
+        assert bounds["fermi_energy"].lower <= energy <= bounds["fermi_energy"].upper
+        assert "fermi_energy" in result.at_bounds
+    assert result.parameters["m_eff"] == 1.2
+    assert result.parameters["band_gap"] == 800.0
+    assert result.diagnostics.residuals["seebeck"].rmse * 1e6 < rmse_limit_uv_per_k
+    assert "fermi_energy" not in result.diagnostics.unidentified
+    assert "fermi_energy_in_gap" not in result.known_issues
+
+
+def test_verified_recovers_after_other_free_parameters_move_on_the_dpb_plateau():
+    model = DpbModel()
+    mode = model.describe().fit_mode("dpb_s")
+    start = default_start(mode) | {"m_eff": 1.2, "band_gap": 800.0, "fermi_energy": 0.0}
+    data = load_demo_dataset().measurements["seebeck"]
+
+    result = model.fit(FitRequest(mode.id, {"seebeck": data}, start, scattering="acPh"))
+
+    assert result.status == "converged"
+    assert result.diagnostics.stage_consistent
+    assert result.diagnostics.recoveries > 0
+    assert result.parameters["fermi_energy"] < 0.0
+    assert result.diagnostics.residuals["seebeck"].rmse * 1e6 < 1.0
+    assert "fermi_energy_in_gap" not in result.known_issues
+    for spec in mode.parameters:
+        if spec.fit_bounds is not None:
+            value = result.parameters[spec.name]
+            assert spec.fit_bounds.lower <= value <= spec.fit_bounds.upper
+
+
 @pytest.mark.parametrize(("fermi_start_k", "lower_k"), [(400.0, 0.0), (800.0, 800.0)])
 def test_verified_can_recover_to_the_conduction_side_when_the_valence_side_is_excluded(
     fermi_start_k, lower_k

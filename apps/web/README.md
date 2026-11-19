@@ -35,7 +35,12 @@ pnpm --filter @seeband/web dev        # the app, with /api going to the mock on 
 
 uv run python -m seeband_api          # or the real API
 pnpm --filter @seeband/web dev:api    # the app, with /api going to port 8000
+
+pnpm --filter @seeband/site serve     # or with the site too: build it, preview it on port 4321
+pnpm --filter @seeband/web dev:all    # the app, with /api to port 8000 and the site's paths to 4321
 ```
+
+**The site and the app on one port.** In production Caddy serves both on one origin: the site at `/`, `/conventions/`, `/results-changed/` and `/_astro/`, the app at `/fit`, `/results` and `/assets/`. `dev:all` does the same on http://localhost:5173, so links between them work, by sending the site's paths, through `SEEBAND_SITE_TARGET`, to the built site. Not to `astro dev`, whose modules use Vite's own `/@fs` and `/@id` paths; a change to the site needs `serve` again. Without the variable, as in `dev` and the tests, the dev server serves the app alone.
 
 **Earlier runs.** Each fit that ends with values is kept in memory as it was: the settings, data, interpolation, start, bounds and held parameters it was started with, which a change while it runs does not touch, and what it found, at most 10 a session. A change of values ends the current result, not these. Earlier runs, on the results page, compares two of them side by side: their mode, scattering, fit range, interpolation, method and status in the words of the fit screen, iterations, RMSE, parameters with their status, and their curves over the points each was fit to. Each run is named by its number, time, mode and scattering, and the one that is the result now on the fit screen is marked as such. It says when the two were fit to different points, from other data, another range or interpolation, and when a run is compared with itself. It is not printed, as the report is of the current result, and opening a session file starts with no runs.
 
