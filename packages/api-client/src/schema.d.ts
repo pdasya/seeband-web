@@ -198,8 +198,9 @@ export interface components {
          * BandDiagramResponse
          * @description Curves over `wavevector_nm_inv` (nm⁻¹), with energies divided by k_B (K).
          *
-         *     Null marks a non-finite energy. `reference_mass_assumed` marks DPB diagrams
-         *     whose curvature scale assumes a first-band mass magnitude of one electron mass.
+         *     Null marks a non-finite energy. `reference_mass_assumed` marks diagrams of modes without
+         *     Hall data, SPB or DPB, whose curvature scale assumes a band-1 mass magnitude of one electron
+         *     mass, as no data in them set it.
          * @example {
          *       "curves": {
          *         "band_1_energy_k": [
@@ -349,7 +350,7 @@ export interface components {
          *     by name with its unit: `electrical_conductivity_s_per_m` is 1/rho, with null for a rho of 0 or
          *     below. They use no model, so they go with the data the request sent, interpolated or not.
          * @example {
-         *       "core_version": "0.3.2",
+         *       "core_version": "0.3.3",
          *       "curves": {
          *         "resistivity_ohm_m": [
          *           0.000036627,
@@ -400,7 +401,7 @@ export interface components {
             /**
              * Core Version
              * @description Core software version for provenance, not certification.
-             * @default 0.3.2
+             * @default 0.3.3
              */
             core_version?: string;
             /** Curves */
@@ -866,7 +867,7 @@ export interface components {
          *     E_F are from that stage. Otherwise it is empty.
          * @example {
          *       "at_bounds": [],
-         *       "core_version": "0.3.2",
+         *       "core_version": "0.3.3",
          *       "held": [],
          *       "known_issues": [],
          *       "parameter_errors": {
@@ -896,7 +897,7 @@ export interface components {
             /**
              * Core Version
              * @description Core software version for provenance, not certification.
-             * @default 0.3.2
+             * @default 0.3.3
              */
             core_version?: string;
             /**
@@ -1099,7 +1100,7 @@ export interface components {
         /**
          * HealthResponse
          * @example {
-         *       "core_version": "0.3.2",
+         *       "core_version": "0.3.3",
          *       "status": "ok",
          *       "version": "1.0.0"
          *     }
@@ -1120,7 +1121,7 @@ export interface components {
             /**
              * Core Version
              * @description Core software version for provenance, not certification.
-             * @default 0.3.2
+             * @default 0.3.3
              */
             core_version?: string;
         };

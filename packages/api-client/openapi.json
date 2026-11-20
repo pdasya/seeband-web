@@ -4311,10 +4311,10 @@
               "text/event-stream": {
                 "examples": {
                   "single_pass": {
-                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"done\",\"result\":{\"parameters\":{\"m_eff\":0.57,\"band_gap\":910.0,\"fermi_energy\":-35.0},\"core_version\":\"0.3.2\",\"status\":\"converged\",\"parameter_errors\":{\"m_eff\":0.02,\"band_gap\":12.0,\"fermi_energy\":4.0},\"at_bounds\":[],\"known_issues\":[],\"held\":[],\"algorithm\":\"legacy-sequential-v1\",\"parameter_status\":{\"m_eff\":\"estimated\",\"band_gap\":\"estimated\",\"fermi_energy\":\"estimated\"},\"uncertainty\":\"not_assessed\",\"last_changes\":{}}}\n\n"
+                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"done\",\"result\":{\"parameters\":{\"m_eff\":0.57,\"band_gap\":910.0,\"fermi_energy\":-35.0},\"core_version\":\"0.3.3\",\"status\":\"converged\",\"parameter_errors\":{\"m_eff\":0.02,\"band_gap\":12.0,\"fermi_energy\":4.0},\"at_bounds\":[],\"known_issues\":[],\"held\":[],\"algorithm\":\"legacy-sequential-v1\",\"parameter_status\":{\"m_eff\":\"estimated\",\"band_gap\":\"estimated\",\"fermi_energy\":\"estimated\"},\"uncertainty\":\"not_assessed\",\"last_changes\":{}}}\n\n"
                   },
                   "iterative": {
-                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"iteration\",\"iteration\":1,\"parameters\":{\"m_eff\":0.8,\"band_gap\":950.0,\"fermi_energy\":-60.0}}\n\ndata: {\"type\":\"iteration\",\"iteration\":2,\"parameters\":{\"m_eff\":0.6,\"band_gap\":915.0,\"fermi_energy\":-38.0}}\n\ndata: {\"type\":\"done\",\"result\":{\"parameters\":{\"m_eff\":0.57,\"band_gap\":910.0,\"fermi_energy\":-35.0},\"core_version\":\"0.3.2\",\"status\":\"converged\",\"iterations\":2,\"parameter_errors\":{\"m_eff\":0.02,\"band_gap\":12.0,\"fermi_energy\":4.0},\"at_bounds\":[],\"known_issues\":[],\"held\":[],\"algorithm\":\"legacy-sequential-v1\",\"parameter_status\":{\"m_eff\":\"estimated\",\"band_gap\":\"estimated\",\"fermi_energy\":\"estimated\"},\"uncertainty\":\"not_assessed\",\"last_changes\":{}}}\n\n"
+                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"iteration\",\"iteration\":1,\"parameters\":{\"m_eff\":0.8,\"band_gap\":950.0,\"fermi_energy\":-60.0}}\n\ndata: {\"type\":\"iteration\",\"iteration\":2,\"parameters\":{\"m_eff\":0.6,\"band_gap\":915.0,\"fermi_energy\":-38.0}}\n\ndata: {\"type\":\"done\",\"result\":{\"parameters\":{\"m_eff\":0.57,\"band_gap\":910.0,\"fermi_energy\":-35.0},\"core_version\":\"0.3.3\",\"status\":\"converged\",\"iterations\":2,\"parameter_errors\":{\"m_eff\":0.02,\"band_gap\":12.0,\"fermi_energy\":4.0},\"at_bounds\":[],\"known_issues\":[],\"held\":[],\"algorithm\":\"legacy-sequential-v1\",\"parameter_status\":{\"m_eff\":\"estimated\",\"band_gap\":\"estimated\",\"fermi_energy\":\"estimated\"},\"uncertainty\":\"not_assessed\",\"last_changes\":{}}}\n\n"
                   },
                   "fit_timeout": {
                     "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"error\",\"error\":{\"code\":\"fit_timeout\",\"message\":\"The fit took too long\",\"details\":[]}}\n\n"
@@ -5430,7 +5430,7 @@
           "reference_mass_assumed"
         ],
         "title": "BandDiagramResponse",
-        "description": "Curves over `wavevector_nm_inv` (nm⁻¹), with energies divided by k_B (K).\n\nNull marks a non-finite energy. `reference_mass_assumed` marks DPB diagrams\nwhose curvature scale assumes a first-band mass magnitude of one electron mass.",
+        "description": "Curves over `wavevector_nm_inv` (nm⁻¹), with energies divided by k_B (K).\n\nNull marks a non-finite energy. `reference_mass_assumed` marks diagrams of modes without\nHall data, SPB or DPB, whose curvature scale assumes a band-1 mass magnitude of one electron\nmass, as no data in them set it.",
         "examples": [
           {
             "curves": {
@@ -5658,7 +5658,7 @@
             "type": "string",
             "title": "Core Version",
             "description": "Core software version for provenance, not certification.",
-            "default": "0.3.2"
+            "default": "0.3.3"
           },
           "curves": {
             "additionalProperties": {
@@ -5717,7 +5717,7 @@
         "description": "Curves by name, where each name ends in its unit, and null marks a value that is not finite.\n\n`known_issues` names known errors that apply to this result, as in `GET /api/models`. `rmse` is\nempty without measurements. `measured_points` holds points made from the measurements sent,\nby name with its unit: `electrical_conductivity_s_per_m` is 1/rho, with null for a rho of 0 or\nbelow. They use no model, so they go with the data the request sent, interpolated or not.",
         "examples": [
           {
-            "core_version": "0.3.2",
+            "core_version": "0.3.3",
             "curves": {
               "resistivity_ohm_m": [
                 3.6627e-05,
@@ -6762,7 +6762,7 @@
             "type": "string",
             "title": "Core Version",
             "description": "Core software version for provenance, not certification.",
-            "default": "0.3.2"
+            "default": "0.3.3"
           },
           "status": {
             "type": "string",
@@ -6896,7 +6896,7 @@
         "examples": [
           {
             "at_bounds": [],
-            "core_version": "0.3.2",
+            "core_version": "0.3.3",
             "held": [],
             "known_issues": [],
             "parameter_errors": {
@@ -7244,7 +7244,7 @@
             "type": "string",
             "title": "Core Version",
             "description": "Core software version for provenance, not certification.",
-            "default": "0.3.2"
+            "default": "0.3.3"
           }
         },
         "type": "object",
@@ -7255,7 +7255,7 @@
         "title": "HealthResponse",
         "examples": [
           {
-            "core_version": "0.3.2",
+            "core_version": "0.3.3",
             "status": "ok",
             "version": "1.0.0"
           }

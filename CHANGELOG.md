@@ -2,10 +2,13 @@
 
 ## Unreleased
 
-- P17 (#108): draw local parabolic bands with physical k in nm⁻¹, signed
-  single-valley masses and a flat Fermi level. The band diagram API returns
-  `wavevector_nm_inv` and identifies DPB diagrams that assume a reference
-  mass because the mode has no Hall data.
+- P17 (#108), core `0.3.3`: draw local parabolic bands, E = ħ²k²/(2m),
+  with k in nm⁻¹, signed single-valley masses and a flat Fermi level, in
+  place of the desktop's sketch, and drop the `band_diagram_formula` flag.
+  The band diagram API returns `wavevector_nm_inv`, and
+  `reference_mass_assumed` for every mode without Hall data, SPB or DPB,
+  where the curvature takes a band-1 mass of mₑ because no data set its
+  size.
 
 - P16 (#107), core `0.3.2`. Verified Fit: when only the DPB gap is free in
   the Seebeck stage, from its upper bound, with the Fermi energy held at or
