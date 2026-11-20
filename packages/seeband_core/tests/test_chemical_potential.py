@@ -274,3 +274,17 @@ def test_density_restores_the_boltzmann_factor_after_applying_dimensional_scale(
         reference = float(scale * mp.gamma(mp.mpf("1.5")) * mp.exp(reduced) * mp.mpf("1e-6"))
     actual = mm.spb_carCon(reduced * temperature, 1.0, temperature)
     assert actual / reference == pytest.approx(1.0, rel=1e-12)
+
+
+@pytest.mark.parametrize(
+    "temperature,gap,mass", [(0.1, 3000.0, 3.0), (0.05, 2834.0, 1.2), (0.2, 5000.0, 3.0)]
+)
+def test_an_intrinsic_root_between_two_floats_is_reported_as_unrepresentable(
+    temperature, gap, mass
+):
+    # One float of μ moves the balance by about ulp(μ)/T, more than the 1e-12 tolerance here.
+    # The tolerance stays; the failure says that no binary64 μ meets it, not that the solve failed.
+    with pytest.raises(mm.ChemicalPotentialError, match="no representable chemical potential"):
+        mm.dpb_chemPot_diagnostics(np.array([temperature]), gap, mass, gap / 2, 1.0)
+    mu = gap / 2
+    assert np.spacing(mu) / temperature > 1e-12

@@ -431,24 +431,33 @@ def _solve_chemical_potential(
                 maxiter=256,
             )
             mu = float(center + eta * temp)
+            # Set when the root lies between two adjacent floats: no binary64 μ can meet the
+            # tolerance, which is a limit of the representation, not a failed solve.
+            unrepresentable = False
             if intrinsic_gap is None:
                 residual = abs(balance(eta))
             else:
                 candidates = (mu, float(np.nextafter(mu, -np.inf)), float(np.nextafter(mu, np.inf)))
-                residual, mu = min(
-                    (
-                        abs(intrinsic_balance(candidate, (candidate - center) / temp, temp)),
-                        candidate,
-                    )
+                signed = [
+                    intrinsic_balance(candidate, (candidate - center) / temp, temp)
                     for candidate in candidates
+                ]
+                residual, mu = min(
+                    (abs(value), candidate)
+                    for value, candidate in zip(signed, candidates, strict=True)
                 )
+                unrepresentable = np.sign(signed[1]) != np.sign(signed[2])
         except ChemicalPotentialError:
             raise
         except (ValueError, RuntimeError, OverflowError) as exc:
             raise ChemicalPotentialError(float(temp), "bracketed density solve failed") from exc
         if not np.isfinite(residual) or residual > 1e-12:
             raise ChemicalPotentialError(
-                float(temp), "density residual exceeds tolerance", residual
+                float(temp),
+                "no representable chemical potential meets the density tolerance"
+                if unrepresentable and np.isfinite(residual)
+                else "density residual exceeds tolerance",
+                residual,
             )
         roots[index] = mu
         residuals[index] = residual
@@ -554,7 +563,9 @@ def _dpb_conductivity_weights(
 ) -> tuple[np.ndarray, np.ndarray]:
     with np.errstate(divide="ignore"):
         # Use log sigma2/sigma1 before either raw conductivity underflows.
-        # A zero relative amplitude describes an absent second channel.
+        # A zero relative amplitude describes an absent second channel. The amplitude is one
+        # number at every temperature, as for acPh and dis; a mixed mechanism whose relative
+        # amplitude varies with T, such as acPhDis, must pass it per temperature.
         log_ratio = (
             np.minimum(reduced2, 0.0)
             - np.minimum(reduced1, 0.0)
