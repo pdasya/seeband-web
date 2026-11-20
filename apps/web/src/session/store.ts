@@ -170,7 +170,8 @@ export interface SingleFile {
 }
 
 export interface Selection {
-  parameterization?: "explicit_density_v1";
+  parameterization?: "explicit_density_v1" | "explicit_fermi_v1";
+  carrierType?: "p" | "n";
   bandConfiguration?: "vb_vb" | "vb_cb" | "cb_cb";
   netElectronDensityPerM3?: number;
   fitAbsoluteMass?: boolean;
@@ -213,8 +214,7 @@ export type FitState =
 
 function supportedSelection(selection: Selection): Selection {
   return selection.scattering === "ionized" ||
-    (selection.model === "dpb" &&
-      selection.parameterization === "explicit_density_v1")
+    (selection.model === "dpb" && selection.parameterization !== undefined)
     ? { ...selection, algorithm: "verified-sequential-v2" }
     : selection;
 }

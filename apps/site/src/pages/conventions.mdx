@@ -20,17 +20,14 @@ defines zero energy, and the offset is the second edge minus the first.
 Changing the sign of the offset preserves the band labels. In VB+CB, a
 positive offset opens a gap and a negative offset gives band overlap.
 
-Enter the single-valley mass magnitude of band 1 in electron masses, the
-positive ratio of band 2 to band 1, both valley multiplicities (spin
-excluded), and the excess carrier concentration in m⁻³. Select **n** for
-an electron excess or **p** for a hole excess and enter its magnitude. The
-core stores the resulting signed difference n − p. Two conduction bands
-require positive excess and two valence bands require negative excess. A
-mixed pair admits either sign and exact compensation. At each temperature
-the core solves for the chemical potential that preserves this input.
-Electron populations contribute positively and hole populations negatively
-to this number density. A gapped compensated sample has an interval of
-allowed Fermi energies at zero temperature.
+Choose **p** for a hole excess or **n** for an electron excess. Enter the
+zero-temperature Fermi energy relative to the first band edge, the
+single-valley mass of band 1 in electron masses, the positive mass ratio
+and both valley multiplicities (excluding spin). The model counts the
+occupied states to determine the excess $n-p$ at that trial point. It then
+solves for the chemical potential that preserves this excess at each
+temperature. A mixed pair permits either sign. Within an intrinsic gap,
+all Fermi energies between the band edges give the same transport curves.
 
 The total Seebeck coefficient is conductivity-weighted and each weak-field
 Hall contribution is weighted by the square of its conductivity fraction.
@@ -40,7 +37,9 @@ are acoustic phonons, alloy disorder and ionized impurities. Use manual
 starting values and bounds for the explicit model.
 
 With S or S+ρ the mass scale stays fixed. With S+ρ+Hall it can be fitted,
-which changes the carrier balance solution and all three predictions.
+which sets the absolute concentration scale. At fixed Fermi energy and
+mass ratio, rescaling both masses preserves the balance for the same
+chemical potential and changes the Hall amplitude.
 Opening an old S or S+ρ session for conversion requires the absolute mass
 and confirmation of both multiplicities. Its old Fermi energy specifies the
 new carrier excess only at that particular parameter vector.
@@ -289,10 +288,12 @@ In SPB S and S + ρ, the band mass is not fitted and only its sign matters.
 Whether the data pin a parameter down is shown for each fit; a fit that
 converges does not show that the model suits the sample.
 
-For explicit DPB the S stage fits the positive mass ratio and signed offset.
+For a new explicit DPB sample the S stage fits the positive mass ratio, signed
+offset and Fermi energy within the selected bounds.
 The ρ stage adds A and B (F and G for disorder). With Hall data, the user can
-release the absolute mass. Every trial keeps the specified carrier excess
-fixed. When the Hall mass or relative scattering weight couples the stages, a bounded search can seed
+release the absolute mass. Each trial computes its carrier excess from the
+trial energy and band parameters. Historical fixed-density sessions use the
+saved excess throughout the fit. When the Hall mass or relative scattering weight couples the stages, a bounded search can seed
 them with a vector that improves their residuals together. The solver
 checks the separate stage objectives at the returned vector.
 

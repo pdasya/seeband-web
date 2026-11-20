@@ -13,7 +13,7 @@ import { STRINGS } from "@/strings";
 
 const text = STRINGS.explicitDpb;
 
-export function ExplicitDpbControls() {
+function DensityDpbControls() {
   const selection = useSessionStore((state) => state.selection);
   const setSelection = useSessionStore((state) => state.setSelection);
   const density = selection.netElectronDensityPerM3 ?? 1e24;
@@ -195,6 +195,101 @@ export function ExplicitDpbControls() {
             : text.invalidMagnitude}
         </span>
       )}
+      {selection.legacySource && (
+        <details className="text-xs">
+          <summary>{text.legacyResult}</summary>
+          <pre className="max-h-64 overflow-auto whitespace-pre-wrap">
+            {selection.legacySource}
+          </pre>
+        </details>
+      )}
+    </div>
+  );
+}
+
+/** New sessions select carrier character; E_F remains a normal model parameter. */
+export function ExplicitDpbControls() {
+  const selection = useSessionStore((state) => state.selection);
+  const setSelection = useSessionStore((state) => state.setSelection);
+  const [hintOpen, setHintOpen] = useState(false);
+  if (selection.parameterization === "explicit_density_v1")
+    return <DensityDpbControls />;
+  const configuration = selection.bandConfiguration ?? "vb_cb";
+  const carrier = selection.carrierType ?? "p";
+  return (
+    <div className="flex flex-col gap-2">
+      <span className="text-xs text-muted-foreground">
+        {text.fermiRepresentation}
+      </span>
+      <label className="text-[13px] font-medium">
+        {text.configuration}
+        <select
+          className="mt-1 block w-full rounded-md border bg-background p-2"
+          value={configuration}
+          onChange={(event) => {
+            const bandConfiguration = event.target
+              .value as typeof configuration;
+            setSelection({
+              bandConfiguration,
+              carrierType:
+                bandConfiguration === "vb_vb"
+                  ? "p"
+                  : bandConfiguration === "cb_cb"
+                    ? "n"
+                    : carrier,
+            });
+          }}
+        >
+          {Object.entries(text.configurations).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <div className="flex items-center gap-2">
+        <ToggleGroup
+          type="single"
+          variant="outline"
+          value={carrier}
+          aria-label={text.carrierType}
+          onValueChange={(value) => {
+            if (value === "p" || value === "n")
+              setSelection({ carrierType: value });
+          }}
+        >
+          <ToggleGroupItem
+            value="p"
+            disabled={configuration === "cb_cb"}
+            aria-label={text.carrierTypes.p}
+          >
+            {text.p}
+          </ToggleGroupItem>
+          <ToggleGroupItem
+            value="n"
+            disabled={configuration === "vb_vb"}
+            aria-label={text.carrierTypes.n}
+          >
+            {text.n}
+          </ToggleGroupItem>
+        </ToggleGroup>
+        <Tooltip open={hintOpen} onOpenChange={setHintOpen}>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              aria-label={text.carrierAbout}
+              onClick={() => setHintOpen(true)}
+              className="inline-flex size-6 items-center justify-center rounded-full text-muted-foreground outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+            >
+              <InfoIcon className="size-3.5" aria-hidden="true" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-80">
+            {text.carrierTooltip}
+          </TooltipContent>
+        </Tooltip>
+      </div>
+      <span className="text-xs text-muted-foreground">{text.fermiHint}</span>
       {selection.legacySource && (
         <details className="text-xs">
           <summary>{text.legacyResult}</summary>

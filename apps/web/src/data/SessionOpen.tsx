@@ -4,12 +4,11 @@ import {
   historicalSource,
   legacyVector,
 } from "@/session/legacyDpb";
-import { useQuery } from "@tanstack/react-query";
 import { FolderOpenIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { apiClient, type FitRequest } from "@/api/client";
-import { modelsQuery } from "@/api/queries";
+import { useModels } from "@/api/queries";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -43,7 +42,7 @@ type Problem = SessionFileProblem | "read_failed" | "migration_failed";
  */
 function useSessionOpen() {
   const restore = useSessionStore((state) => state.restoreSession);
-  const { data: catalog } = useQuery(modelsQuery);
+  const { data: catalog } = useModels();
   const [pending, setPending] = useState<SessionFile | null>(null);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<Problem | null>(null);
@@ -64,11 +63,11 @@ function useSessionOpen() {
       const { session } = read;
       if (
         session.content.selection.model === "dpb" &&
-        session.content.selection.parameterization !== "explicit_density_v1"
+        session.content.selection.parameterization === undefined
       ) {
         const models =
           catalog ??
-          (await apiClient.getModels(undefined, "explicit_density_v1"));
+          (await apiClient.getModels(undefined, "explicit_fermi_v1"));
         if (models.models.some(offersExplicitDpb)) {
           setPending(session);
           return;
@@ -163,7 +162,7 @@ function inputsOf(request: FitRequest): string {
  * interpolation is on its way, and checks each time the inputs change.
  */
 function useStaleRestoredFit() {
-  const { data: models } = useQuery(modelsQuery);
+  const { data: models } = useModels();
   const restored = useSessionStore((state) => state.restored);
   const fit = useSessionStore((state) => state.fit);
   const selection = useSessionStore((state) => state.selection);

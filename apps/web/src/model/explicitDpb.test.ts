@@ -34,3 +34,17 @@ test("absolute mass is held by default and only Hall mode may release it", () =>
     ),
   ).toEqual(["mass_ratio"]);
 });
+
+test("Fermi representation sends carrier type without a density constraint", () => {
+  expect(
+    explicitDpbInputs({
+      ...selection,
+      parameterization: "explicit_fermi_v1",
+      carrierType: "p",
+    }),
+  ).toEqual({
+    parameterization: "explicit_fermi_v1",
+    band_configuration: "cb_cb",
+    carrier_type: "p",
+  });
+});

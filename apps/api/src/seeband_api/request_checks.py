@@ -12,6 +12,7 @@ from seeband_core.model_catalog import registry
 from seeband_core.model_descriptions import explicit_dpb_description
 from seeband_core.model_interface import (
     BandConfiguration,
+    CarrierType,
     DpbParameterization,
     ExplicitBands,
     FitMode,
@@ -68,30 +69,55 @@ class BandInputs(BaseModel):
     parameterization: DpbParameterization = "legacy_fermi"
     band_configuration: BandConfiguration | None = None
     net_electron_density_per_m3: FiniteFloat | None = None
+    carrier_type: CarrierType | None = None
 
     def explicit_settings(self) -> ExplicitBands | None:
         if self.parameterization == "legacy_fermi":
-            if self.band_configuration is not None or self.net_electron_density_per_m3 is not None:
-                raise ValueError("Band configuration and n − p require explicit_density_v1")
+            if any(
+                value is not None
+                for value in (
+                    self.band_configuration,
+                    self.net_electron_density_per_m3,
+                    self.carrier_type,
+                )
+            ):
+                raise ValueError("Band configuration and carrier inputs require explicit DPB")
             return None
-        if (
-            self.model != "dpb"
-            or self.band_configuration is None
-            or self.net_electron_density_per_m3 is None
-        ):
-            raise ValueError("Explicit DPB needs a band configuration and a signed density in m⁻³")
+        if self.model != "dpb" or self.band_configuration is None:
+            raise ValueError("Explicit DPB needs a band configuration")
+        if self.parameterization == "explicit_fermi_v1":
+            if self.carrier_type is None or self.net_electron_density_per_m3 is not None:
+                raise ValueError("Fermi-energy DPB needs carrier_type and no fixed density")
+            return ExplicitBands(self.band_configuration, carrier_type=self.carrier_type)
+        if self.net_electron_density_per_m3 is None or self.carrier_type is not None:
+            raise ValueError("Density DPB needs signed density in m⁻³ and no carrier_type")
         return ExplicitBands(self.band_configuration, self.net_electron_density_per_m3)
 
     @model_validator(mode="after")
     def _check_band_inputs(self) -> Self:
-        if self.explicit_settings() is not None:
+        settings = self.explicit_settings()
+        if settings is not None:
             values = getattr(self, "parameters", None) or getattr(self, "start", {})
             for name in ("m1", "mass_ratio"):
                 if name in values and values[name] <= 0:
                     raise ValueError(f"{name} must be positive in explicit DPB")
+            if (
+                settings.carrier_type is not None
+                and {"m1", "mass_ratio", "band_offset_k", "fermi_energy"} <= values.keys()
+            ):
+                from seeband_core.explicit_transport import density_settings
+
+                density_settings(
+                    settings,
+                    values,
+                    getattr(self, "band_1_degeneracy", 1.0),
+                    getattr(self, "band_2_degeneracy", 1.0),
+                )
             for name in ("band_1_degeneracy", "band_2_degeneracy"):
                 if name in type(self).model_fields and name not in self.model_fields_set:
-                    raise ValueError(f"Supply {name} explicitly for the density formulation")
+                    raise ValueError(
+                        f"Supply {name} explicitly for the selected band configuration"
+                    )
         return self
 
 
@@ -153,7 +179,7 @@ def find_mode(
         detail = invalid("unknown_model", "This model does not exist", ["model"])
         raise ApiError(HTTPStatus.UNPROCESSABLE_CONTENT, error_code, error_message, [detail])
     if explicit is not None:
-        description = explicit_dpb_description()
+        description = explicit_dpb_description(explicit.carrier_type is not None)
     try:
         fit_mode = description.fit_mode(fit_mode_id)
     except KeyError:

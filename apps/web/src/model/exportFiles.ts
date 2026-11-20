@@ -143,6 +143,15 @@ export function exportHeader(context: ExportContext): string[] {
     ),
     text.header.date(context.date),
     ...(selection.model === "dpb" &&
+    selection.parameterization === "explicit_fermi_v1"
+      ? [
+          STRINGS.explicitDpb.fermiIdentity(
+            selection.bandConfiguration ?? "vb_cb",
+            selection.carrierType ?? "p",
+          ),
+        ]
+      : []),
+    ...(selection.model === "dpb" &&
     selection.parameterization === "explicit_density_v1"
       ? [
           STRINGS.explicitDpb.identity(
@@ -313,8 +322,9 @@ function parameterRecords(
   saved: Readonly<Record<string, number>> | undefined,
   fit: FitState,
   held: readonly string[],
+  selection: DegeneracySelection,
 ): ParameterRecord[] {
-  const values = parameterValues(mode, saved);
+  const values = parameterValues(mode, saved, selection);
   const units: Record<string, string | undefined> = text.units;
   return visibleParameters(mode, scattering).map((parameter) => {
     const found = foundStatus(fit, parameter.name);
@@ -353,14 +363,12 @@ type DegeneracySelection = Pick<
       | "parameterization"
       | "bandConfiguration"
       | "netElectronDensityPerM3"
+      | "carrierType"
     >
   >;
 
 function explicitIdentityRows(selection: DegeneracySelection): string[][] {
-  if (
-    selection.model !== "dpb" ||
-    selection.parameterization !== "explicit_density_v1"
-  )
+  if (selection.model !== "dpb" || selection.parameterization === undefined)
     return [];
   return [
     [
@@ -368,7 +376,7 @@ function explicitIdentityRows(selection: DegeneracySelection): string[][] {
       "parameterization",
       STRINGS.explicitDpb.representationLabel,
       "",
-      "explicit_density_v1",
+      selection.parameterization,
       text.status.fixed,
     ],
     [
@@ -379,14 +387,27 @@ function explicitIdentityRows(selection: DegeneracySelection): string[][] {
       selection.bandConfiguration ?? "vb_cb",
       text.status.fixed,
     ],
-    [
-      "net_electron_density_per_m3",
-      "n − p",
-      STRINGS.explicitDpb.densityMeaning,
-      "m^-3",
-      numberText(selection.netElectronDensityPerM3 ?? 1e24),
-      text.status.fixed,
-    ],
+    ...(selection.parameterization === "explicit_fermi_v1"
+      ? [
+          [
+            "carrier_type",
+            "carrier_type",
+            STRINGS.explicitDpb.carrierType,
+            "",
+            selection.carrierType ?? "p",
+            text.status.fixed,
+          ],
+        ]
+      : [
+          [
+            "net_electron_density_per_m3",
+            "n − p",
+            STRINGS.explicitDpb.densityMeaning,
+            "m^-3",
+            numberText(selection.netElectronDensityPerM3 ?? 1e24),
+            text.status.fixed,
+          ],
+        ]),
   ];
 }
 
@@ -409,6 +430,7 @@ export function parametersFile(
     saved,
     fit,
     held,
+    selection,
   ).map(({ symbol, meaning, unit, value, status }) =>
     [text.parameter(symbol, meaning, unit), numberText(value), status].join(
       "\t",
@@ -461,7 +483,14 @@ export function parametersCsv(
   held: readonly string[] = [],
 ): string {
   const records = [
-    ...parameterRecords(mode, selection.scattering, saved, fit, held),
+    ...parameterRecords(
+      mode,
+      selection.scattering,
+      saved,
+      fit,
+      held,
+      selection,
+    ),
     ...(hasDegeneracy(mode)
       ? [
           {

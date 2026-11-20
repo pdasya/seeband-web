@@ -53,7 +53,7 @@ export async function runGuess(
 ): Promise<void> {
   if (
     store().selection.model === "dpb" &&
-    store().selection.parameterization === "explicit_density_v1"
+    store().selection.parameterization !== undefined
   )
     return;
   controller?.abort();

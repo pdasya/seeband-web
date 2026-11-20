@@ -370,3 +370,30 @@ test("explicit DPB identity survives saving while SPB is selected", async () => 
   });
   expect(read.session.content.selection.bandConfiguration).toBe("cb_cb");
 });
+
+test("Fermi session round-trip retains E_F, carrier type, bounds and holds without density", async () => {
+  const state = session();
+  state.selection = {
+    ...state.selection,
+    parameterization: "explicit_fermi_v1",
+    bandConfiguration: "vb_cb",
+    carrierType: "p",
+  };
+  state.parameters.dpb_s_rho = { fermi_energy: -140 };
+  state.customBounds.dpb_s_rho = { fermi_energy: { lower: -500, upper: 200 } };
+  state.held.dpb_s_rho = ["fermi_energy"];
+  const file = await sessionFile(
+    state,
+    { appVersion: "test", apiVersion: null, saved: "2026-11-20T00:00:00Z" },
+    () => null,
+  );
+  expect(file.version).toBe(2);
+  const read = await readSessionFile(JSON.stringify(file));
+  if (!("session" in read)) throw new Error("Fermi session rejected");
+  const restored = restoredSession(read.session.content);
+  expect(restored.selection).toEqual(state.selection);
+  expect(restored.parameters.dpb_s_rho).toEqual({ fermi_energy: -140 });
+  expect(restored.customBounds.dpb_s_rho).toEqual(state.customBounds.dpb_s_rho);
+  expect(restored.held.dpb_s_rho).toEqual(["fermi_energy"]);
+  expect(restored.selection).not.toHaveProperty("netElectronDensityPerM3");
+});

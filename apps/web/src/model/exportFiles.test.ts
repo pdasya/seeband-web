@@ -752,3 +752,41 @@ test("explicit parameter CSV carries typed density identity, and SPB exports omi
     }).join("\n"),
   ).not.toContain("historic DPB snapshot");
 });
+
+test("Fermi exports identify carrier type and keep E_F among normal parameters", () => {
+  const selection = {
+    ...SELECTION,
+    parameterization: "explicit_fermi_v1" as const,
+    bandConfiguration: "vb_cb" as const,
+    carrierType: "p" as const,
+  };
+  const csv = parametersCsv(
+    [],
+    modeOf("dpb_s_rho"),
+    selection,
+    { fermi_energy: -140 },
+    { status: "idle" },
+  );
+  expect(csv).toContain(
+    "parameterization,parameterization,Representation,,explicit_fermi_v1,fixed",
+  );
+  expect(csv).toContain("carrier_type,carrier_type,Carrier type,,p,fixed");
+  expect(csv).toContain("fermi_energy,E_F");
+  expect(csv).not.toContain("net_electron_density_per_m3");
+  expect(exportHeader({ ...CONTEXT, selection }).join("\n")).toContain(
+    "Parameterization: explicit_fermi_v1; configuration: vb_cb; carrier type: p",
+  );
+});
+
+test("Fermi parameter exports use the same virgin n start as live curves", () => {
+  const selection = {
+    ...SELECTION,
+    parameterization: "explicit_fermi_v1" as const,
+    bandConfiguration: "vb_cb" as const,
+    carrierType: "n" as const,
+  };
+  const csv = parametersCsv([], modeOf("dpb_s_rho"), selection, undefined, {
+    status: "idle",
+  });
+  expect(csv).toMatch(/fermi_energy,E_F,[^\n]*,0\.094790665882,/);
+});

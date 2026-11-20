@@ -344,6 +344,7 @@ class _Engine:
     def __init__(self, request: FitRequest, mode: FitMode) -> None:
         self.request, self.mode = request, mode
         self.dpb = request.fit_mode.startswith("dpb")
+        self.gap_name = "band_offset_k" if request.explicit_bands is not None else "band_gap"
         self.n = request.band_2_degeneracy / request.band_1_degeneracy
         self.values = dict(request.start)
         self.specs = {s.name: s for s in mode.parameters_for(request.scattering)}
@@ -470,6 +471,9 @@ class _Engine:
             raise _UnattainedAmplitude("No finite inverse-amplitude optimum")
         p[name] = sign * inverse ** (-1.0 / power)
 
+    def in_intrinsic_gap(self, parameters: Mapping[str, float]) -> bool:
+        return fermi_energy_in_gap(parameters, self.request.explicit_bands)
+
     def upper_gap_reference(
         self,
         evaluate: Callable[[np.ndarray], np.ndarray],
@@ -484,14 +488,15 @@ class _Engine:
         Check exact residual equality before using the reference for differencing or as a seed.
         """
         names = coordinates.names
-        if not self.dpb or "band_gap" not in names or "fermi_energy" not in names:
+        if not self.dpb or self.gap_name not in names or "fermi_energy" not in names:
             return point
-        gap_index = names.index("band_gap")
+        gap_index = names.index(self.gap_name)
         if point[gap_index] != coordinates.upper[gap_index]:
             return point
         parameters = dict(base) | coordinates.decode(point)
         if not (
-            fermi_energy_in_gap(parameters) and parameters["fermi_energy"] == parameters["band_gap"]
+            self.in_intrinsic_gap(parameters)
+            and parameters["fermi_energy"] == parameters[self.gap_name]
         ):
             return point
         fermi_index = names.index("fermi_energy")
@@ -501,7 +506,7 @@ class _Engine:
             return point
         reference = point.copy()
         reference[fermi_index] = energy
-        if not 0 < coordinates.decode(reference)["fermi_energy"] < parameters["band_gap"]:
+        if not 0 < coordinates.decode(reference)["fermi_energy"] < parameters[self.gap_name]:
             return point
         return reference if np.array_equal(evaluate(point), evaluate(reference)) else point
 
@@ -525,13 +530,13 @@ class _Engine:
         zero_columns: tuple[int, ...] = ()
         lower = coordinates.lower
         names = coordinates.names
-        if self.dpb and ("fermi_energy" in names or "band_gap" in names):
+        if self.dpb and ("fermi_energy" in names or self.gap_name in names):
             parameters = dict(base) | coordinates.decode(point)
-            if fermi_energy_in_gap(parameters):
+            if self.in_intrinsic_gap(parameters):
                 if "fermi_energy" in names:
                     zero_columns = (names.index("fermi_energy"),)
-                if "band_gap" in names:
-                    index = names.index("band_gap")
+                if self.gap_name in names:
+                    index = names.index(self.gap_name)
                     edge = parameters["fermi_energy"] / coordinates.scale[index]
                     if coordinates.upper[index] > edge:
                         lower = lower.copy()
@@ -565,7 +570,7 @@ class _Engine:
         """Select an improving physical seed on each reachable side of the fitted gap."""
         i = coordinates.names.index("fermi_energy")
         bounds = self.bound("fermi_energy")
-        gap = parameters["band_gap"]
+        gap = parameters[self.gap_name]
         seeds = []
         for edge, direction, bound in ((0.0, -1.0, bounds.lower), (gap, 1.0, bounds.upper)):
             extent = direction * (bound - edge)
@@ -650,16 +655,23 @@ class _Engine:
         start_costs = np.asarray([np.dot(r, r) for r in errors(coordinates.point)])
         if np.max(start_costs) <= _AUDIT_RTOL:
             return
-        candidate = least_squares(
-            residual,
-            coordinates.point,
-            bounds=(coordinates.lower, coordinates.upper),
-            x_scale="jac",
-            max_nfev=30,
-            ftol=1e-11,
-            xtol=1e-11,
-            gtol=1e-8,
-        )
+        try:
+            candidate = least_squares(
+                residual,
+                coordinates.point,
+                bounds=(coordinates.lower, coordinates.upper),
+                x_scale="jac",
+                max_nfev=30,
+                ftol=1e-11,
+                xtol=1e-11,
+                gtol=1e-8,
+            )
+        except mm.NoFiniteChemicalPotentialError:
+            # This optional joint search can cross the selected carrier branch.
+            # Resume from the valid start; the fit stages use admissible derivatives.
+            if self.request.explicit_bands.carrier_type is None:
+                raise
+            return
         trial_costs = np.asarray([np.dot(r, r) for r in errors(candidate.x)])
         tolerance = _AUDIT_RTOL * np.maximum(1.0, start_costs)
         if np.all(trial_costs <= start_costs + tolerance) and np.any(
@@ -716,7 +728,7 @@ class _Engine:
         initial_cost = float(np.dot(initial, initial))
         best, best_cost = x, initial_cost
         uncertified_cost = np.inf
-        flat_fermi_only = self.dpb and names == ["fermi_energy"] and fermi_energy_in_gap(p)
+        flat_fermi_only = self.dpb and names == ["fermi_energy"] and self.in_intrinsic_gap(p)
         if not flat_fermi_only:
             origin = self.upper_gap_reference(evaluate, coordinates, base, x)
             result = least_squares(
@@ -740,7 +752,7 @@ class _Engine:
         seeds: list[tuple[np.ndarray, float | None]] = []
         best_parameters = p | coordinates.decode(best)
         if self.dpb and "fermi_energy" in names and best_cost > _AUDIT_RTOL:
-            if fermi_energy_in_gap(best_parameters):
+            if self.in_intrinsic_gap(best_parameters):
                 seeds.extend(
                     self.populated_gap_seeds(
                         residual, coordinates, best_parameters, best, best_cost
@@ -896,6 +908,7 @@ class _Engine:
             self.values,
             self.n,
             extrapolated=self.request.extrapolated,
+            explicit_bands=self.request.explicit_bands,
         )
         at_bounds = []
         for n in sorted(self.free):

@@ -375,7 +375,17 @@ See [the physical contract](../../packages/seeband_core/docs/ionized-impurities.
 
 ### Explicit double parabolic bands (core 0.4.0)
 
-Request `GET /api/models?parameterization=explicit_density_v1` for the explicit
+New explicit DPB sessions request `GET /api/models?parameterization=explicit_fermi_v1`.
+Send the same discriminator, the band configuration, both valley multiplicities
+and `carrier_type` (`p` or `n`) on calculation, fit and diagram requests.
+Include `fermi_energy` in the parameter vector, in kelvin from the first band
+edge at zero temperature. Fit it with researcher-selected bounds or hold it
+at its supplied value. The model computes the signed electron excess from
+the trial energy and band parameters and conserves it across temperature.
+For mixed bands p/n constrains the resulting excess. Both choices admit an
+intrinsic sample. The API rejects a simultaneous fixed density input.
+
+Request `GET /api/models?parameterization=explicit_density_v1` for the saved fixed-density
 parameter names and bounds. On calculation, fit and diagram requests send
 `model: "dpb"`, `parameterization: "explicit_density_v1"`, `band_configuration`
 (`vb_vb`, `vb_cb` or `cb_cb`), `net_electron_density_per_m3` and both positive

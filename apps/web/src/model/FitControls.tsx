@@ -178,7 +178,7 @@ export function FitAlgorithmControl() {
   const explicit = useSessionStore(
     (state) =>
       state.selection.model === "dpb" &&
-      state.selection.parameterization === "explicit_density_v1",
+      state.selection.parameterization !== undefined,
   );
   const algorithm = useSessionStore(
     (state) => state.selection.algorithm ?? "verified-sequential-v2",

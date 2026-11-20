@@ -505,3 +505,89 @@ test.each(["cb_cb", "vb_vb"] as const)(
     ).toBe(0);
   },
 );
+
+test("Fermi fits and live curves retain E_F, its editable bounds and carrier identity", () => {
+  const state = {
+    ...STATE,
+    selection: {
+      ...STATE.selection,
+      parameterization: "explicit_fermi_v1" as const,
+      bandConfiguration: "vb_cb" as const,
+      carrierType: "p" as const,
+    },
+    parameters: { dpb_s_rho: { fermi_energy: -140 } },
+    customBounds: { dpb_s_rho: { fermi_energy: { lower: -500, upper: 100 } } },
+  };
+  const built = fitRequest(state, models);
+  if (!("request" in built)) throw new Error("Fermi fit blocked");
+  expect(built.request).toMatchObject({
+    parameterization: "explicit_fermi_v1",
+    carrier_type: "p",
+    start: { fermi_energy: -140 },
+    bounds: { fermi_energy: { lower: -500, upper: 100 } },
+  });
+  expect(built.request).not.toHaveProperty("net_electron_density_per_m3");
+  const calc = calcRequest(state, models);
+  if (!calc) throw new Error("Fermi calc blocked");
+  expect(calc).toMatchObject({
+    carrier_type: "p",
+    parameters: { fermi_energy: -140 },
+  });
+  expect(bandDiagramRequest(state, models)).toMatchObject({
+    carrier_type: "p",
+    parameters: { fermi_energy: -140 },
+  });
+  expect(requestScope({ ...calc, carrier_type: "n" })).not.toBe(
+    requestScope(calc),
+  );
+});
+
+test("virgin Fermi starts agree across fits, live curves and mode switches while custom bounds stay intact", () => {
+  const base = {
+    ...STATE,
+    selection: {
+      ...STATE.selection,
+      parameterization: "explicit_fermi_v1" as const,
+      bandConfiguration: "vb_cb" as const,
+      carrierType: "n" as const,
+    },
+    parameters: {},
+    customBounds: { dpb_s_rho: { fermi_energy: { lower: -500, upper: 2000 } } },
+  };
+  const fit = fitRequest(base, models);
+  if (!("request" in fit)) throw new Error("Virgin fit blocked");
+  expect(fit.request.start.fermi_energy).toBe(1100);
+  expect(fit.request.bounds?.fermi_energy).toEqual({
+    lower: -500,
+    upper: 2000,
+  });
+  expect(calcRequest(base, models)?.parameters.fermi_energy).toBe(1100);
+  expect(bandDiagramRequest(base, models)?.parameters.fermi_energy).toBe(1100);
+  const full = {
+    ...base,
+    selection: {
+      ...base.selection,
+      fitMode: "dpb_s_rho_rh",
+      bandConfiguration: "cb_cb" as const,
+    },
+  };
+  expect(bandDiagramRequest(full, models)?.parameters.fermi_energy).toBe(100);
+  const valence = {
+    ...base,
+    selection: {
+      ...base.selection,
+      bandConfiguration: "vb_vb" as const,
+      carrierType: "p" as const,
+    },
+  };
+  expect(calcRequest(valence, models)?.parameters.fermi_energy).toBe(900);
+  expect(base.parameters).toEqual({});
+  const manual = { ...base, parameters: { dpb_s_rho: { fermi_energy: -140 } } };
+  const request = fitRequest(manual, models);
+  if (!("request" in request)) throw new Error("Manual fit blocked");
+  expect(request.request.start.fermi_energy).toBe(-140);
+  expect(request.request.bounds?.fermi_energy).toEqual({
+    lower: -500,
+    upper: 2000,
+  });
+});

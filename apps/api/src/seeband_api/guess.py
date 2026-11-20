@@ -287,7 +287,7 @@ def _to_response(outcome: GuessOutcome) -> GuessFound | GuessNoNet | GuessNotFin
 async def post_guess(
     body: GuessRequest, pool: CalcPoolDep, max_points: MaxPointsDep
 ) -> GuessFound | NumericalGuessFound | GuessUnsupported | GuessNoNet | GuessNotFinite:
-    if body.parameterization == "explicit_density_v1":
+    if body.parameterization != "legacy_fermi":
         raise ApiError(422, "guess_unavailable", "Use manual starts for explicit DPB")
     _check_model(body.model)
     if body.scattering is not None and not any(

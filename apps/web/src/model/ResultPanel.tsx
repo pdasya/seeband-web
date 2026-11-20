@@ -1,9 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { limitedRanges } from "@/model/interpolatedRanges";
 
-import { modelsQuery } from "@/api/queries";
+import { useModels } from "@/api/queries";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -81,7 +80,7 @@ function Issues({ issues }: { issues: readonly ResultIssue[] }) {
 /** What the current values give, and what is known about them. */
 export function ResultPanel({ live }: { live: LiveCurves }) {
   const { result, error } = live.measured;
-  const { data: models } = useQuery(modelsQuery);
+  const { data: models } = useModels();
   const selection = useSessionStore((state) => state.selection);
   const parameters = useSessionStore((state) => state.parameters);
   const data = useSessionStore((state) => state.data);
@@ -125,6 +124,7 @@ export function ResultPanel({ live }: { live: LiveCurves }) {
           fitState,
           customBounds[mode.id],
           held[mode.id],
+          selection,
         );
   const { minTemperatureK: minK, maxTemperatureK: maxK } = selection;
   const subtitle = [

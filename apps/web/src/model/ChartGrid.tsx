@@ -1,10 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
 import { AlertCircleIcon } from "lucide-react";
 import { useId, useMemo } from "react";
 
 import type { ApiError } from "@/api/errors";
 import { NETWORK_ERROR } from "@/api/errors";
-import { modelsQuery } from "@/api/queries";
+import { useModels } from "@/api/queries";
 import { TransportChart } from "@/charts/TransportChart";
 import type { ChartFitRange } from "@/charts/figure";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -65,7 +64,7 @@ export function failureText(error: ApiError): string {
 function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
   const { measured, diagram } = live;
   const labelId = useId();
-  const { data: models } = useQuery(modelsQuery);
+  const { data: models } = useModels();
   const energy = models?.energy_display ?? ENERGY_IN_K;
   const tab = useSessionStore((state) => state.chartPanels[index] ?? "seebeck");
   const setPanel = useSessionStore((state) => state.setChartPanel);
@@ -100,7 +99,7 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
           interpolation,
           bandGapK,
           energy,
-          ...(selection.parameterization === "explicit_density_v1" &&
+          ...(selection.parameterization !== undefined &&
           selection.model === "dpb"
             ? { bandConfiguration: selection.bandConfiguration }
             : {}),

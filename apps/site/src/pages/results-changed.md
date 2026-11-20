@@ -6,11 +6,12 @@ description: Corrections that change SeeBand Web results compared with the deskt
 
 # Results that changed
 
-Core `0.4.0` adds an explicit two-band calculation with a fixed signed
-electron excess. The fit can now use two conduction bands and an independent
-positive mass ratio. Converting a historical fit uses the mass and valley
-counts of that parameter vector. At fixed density, varying a mass or the
-offset gives different curves from holding its old Fermi energy fixed.
+Core `0.4.0` supports any pair of valence or conduction bands with a
+positive mass ratio. In a new sample, choose p or n and set or fit the
+zero-temperature Fermi energy. The model calculates the electron excess at
+each trial. Saved fixed-density sessions retain their specified excess
+when a mass or band offset changes. Converting an older signed-mass session
+uses its original Fermi energy and the confirmed mass and valley counts.
 [Conventions and model](/conventions/).
 
 Core `0.3.0` replaces the public mixed acPhDis option with ionized impurity

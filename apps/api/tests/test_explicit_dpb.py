@@ -102,3 +102,57 @@ def test_migrated_point_and_intrinsic_diagram(client):
         ).status_code
         == 422
     )
+
+
+def test_fermi_energy_is_fitted_and_density_follows_the_trial(client):
+    response = client.get("/api/models?parameterization=explicit_fermi_v1")
+    assert response.status_code == 200, response.text
+    dpb = next(m for m in response.json()["models"] if m["id"] == "dpb")
+    for mode in dpb["fit_modes"]:
+        energy = next(p for p in mode["parameters"] if p["name"] == "fermi_energy")
+        assert energy["role"] == "fitted"
+
+    body = dict(
+        model="dpb",
+        fit_mode="dpb_s",
+        scattering="acPh",
+        parameterization="explicit_fermi_v1",
+        band_configuration="cb_cb",
+        carrier_type="n",
+        band_1_degeneracy=2,
+        band_2_degeneracy=3,
+    )
+    p = dict(m1=1.2, mass_ratio=1.7, band_offset_k=140, fermi_energy=85)
+    grid = dict(min_temperature_k=180, max_temperature_k=510)
+    request = body | grid | dict(parameters=p, points=5)
+    calculated = client.post("/api/calc", json=request)
+    assert calculated.status_code == 200, calculated.text
+    observed = calculated.json()
+    data = {
+        "seebeck": dict(
+            temperature_k=observed["temperature_k"], values=observed["curves"]["seebeck_v_per_k"]
+        )
+    }
+    result = client.post(
+        "/api/fit",
+        json=body
+        | grid
+        | dict(
+            start=p | {"fermi_energy": 95},
+            measurements=data,
+            held=["mass_ratio", "band_offset_k"],
+            bounds={"fermi_energy": {"lower": 50, "upper": 120}},
+        ),
+    )
+    assert result.status_code == 200, result.text
+    fit = list(read_events(iter(result.text.splitlines())))[-1]
+    assert fit["type"] == "done", fit
+    assert fit["result"]["status"] == "converged"
+    assert fit["result"]["parameters"]["fermi_energy"] == pytest.approx(85, rel=1e-5)
+
+    for change in [
+        {"net_electron_density_per_m3": 1e24},
+        {"carrier_type": "p"},
+        {"carrier_type": None},
+    ]:
+        assert client.post("/api/calc", json=request | change).status_code == 422

@@ -1,9 +1,8 @@
 import { ExplicitDpbControls } from "@/model/ExplicitDpbControls";
-import { useQuery } from "@tanstack/react-query";
 import { AlertCircleIcon } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 
-import { modelsQuery } from "@/api/queries";
+import { useModels } from "@/api/queries";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { formatNumber, parseNumber } from "@/lib/numbers";
@@ -353,17 +352,17 @@ function ModelControls({ models }: { models: readonly ModelDescription[] }) {
           if (next !== undefined) {
             if (
               offersExplicitDpb(next) &&
-              selection.parameterization !== "explicit_density_v1"
+              selection.parameterization === undefined
             ) {
               for (const mode of next.fit_modes) resetParameters(mode.id);
             }
             chooseModel(id, settingsFor(next, saved[id]));
             if (offersExplicitDpb(next))
               setSelection({
-                parameterization: "explicit_density_v1",
+                parameterization:
+                  selection.parameterization ?? "explicit_fermi_v1",
                 bandConfiguration: selection.bandConfiguration ?? "vb_cb",
-                netElectronDensityPerM3:
-                  selection.netElectronDensityPerM3 ?? 1e24,
+                carrierType: selection.carrierType ?? "p",
               });
           }
         }}
@@ -453,7 +452,7 @@ function ModelControls({ models }: { models: readonly ModelDescription[] }) {
 
 /** Which fit can run: all of it comes from the model descriptions of the API. */
 export function ModelPanel() {
-  const { data, isPending, isError } = useQuery(modelsQuery);
+  const { data, isPending, isError } = useModels();
   const models = data?.models;
   const selected = useSessionStore((state) => state.selection.model);
   const setSelection = useSessionStore((state) => state.setSelection);
@@ -465,9 +464,9 @@ export function ModelPanel() {
         model: model.id,
         ...(offersExplicitDpb(model)
           ? {
-              parameterization: "explicit_density_v1" as const,
+              parameterization: "explicit_fermi_v1" as const,
               bandConfiguration: "vb_cb" as const,
-              netElectronDensityPerM3: 1e24,
+              carrierType: "p" as const,
             }
           : {}),
         ...settingsFor(model),

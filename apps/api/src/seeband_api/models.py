@@ -312,8 +312,8 @@ def build_models_response(descriptions: Iterable[ModelDescription]) -> ModelsRes
 @cache
 def _registry_response(parameterization: DpbParameterization = "legacy_fermi") -> ModelsResponse:
     return build_models_response(
-        explicit_dpb_description()
-        if d.id == "dpb" and parameterization == "explicit_density_v1"
+        explicit_dpb_description(parameterization == "explicit_fermi_v1")
+        if d.id == "dpb" and parameterization != "legacy_fermi"
         else d
         for d in registry.descriptions()
     )

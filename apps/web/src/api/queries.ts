@@ -1,4 +1,5 @@
-import { QueryClient, queryOptions } from "@tanstack/react-query";
+import { useSessionStore } from "@/session/store";
+import { QueryClient, queryOptions, useQuery } from "@tanstack/react-query";
 
 import { apiClient } from "@/api/client";
 import { ApiError, NETWORK_ERROR } from "@/api/errors";
@@ -24,8 +25,8 @@ export function createQueryClient(): QueryClient {
 }
 
 export const modelsQuery = queryOptions({
-  queryKey: ["models", "explicit_density_v1"],
-  queryFn: ({ signal }) => apiClient.getModels(signal, "explicit_density_v1"),
+  queryKey: ["models", "explicit_fermi_v1"],
+  queryFn: ({ signal }) => apiClient.getModels(signal, "explicit_fermi_v1"),
 });
 
 export const demoQuery = queryOptions({
@@ -34,3 +35,15 @@ export const demoQuery = queryOptions({
   // It changes only with a new release.
   staleTime: Infinity,
 });
+
+/** Historical density sessions retain their own metadata and parameter meanings. */
+export function useModels() {
+  const parameterization = useSessionStore(
+    (state) => state.selection.parameterization ?? "explicit_fermi_v1",
+  );
+  return useQuery({
+    ...modelsQuery,
+    queryKey: ["models", parameterization],
+    queryFn: ({ signal }) => apiClient.getModels(signal, parameterization),
+  });
+}

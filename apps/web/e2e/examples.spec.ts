@@ -308,7 +308,7 @@ test("the real descriptions fill the parameters", async ({ page }) => {
   ).toBeVisible();
   await expect(
     page.getByRole("textbox", { name: "E_F", exact: true }),
-  ).toHaveCount(0);
+  ).toBeVisible();
   const offset = page.getByRole("slider", { name: "Δ", exact: true });
   expect(
     Number(await offset.getAttribute("aria-valuemin")),
@@ -456,7 +456,7 @@ test("the real API draws physical explicit bands and follows the signed offset",
   expect(response.status()).toBe(200);
   expect(body.wavevector_unit).toBe("Å⁻¹");
   expect(response.request().postDataJSON().parameterization).toBe(
-    "explicit_density_v1",
+    "explicit_fermi_v1",
   );
   const vb = (body.curves.band_1_energy_k ?? []).filter(
     (value): value is number => value !== null,
@@ -520,7 +520,8 @@ test.describe("real fits", () => {
   test("a real fit can be stopped, shows the verified outcome and resets", async ({
     page,
   }) => {
-    test.setTimeout(60_000);
+    // Allow the two independently bounded real fits to finish in sequence.
+    test.setTimeout(120_000);
     await page.goto("/fit");
     await loadExample(page, "01_Fe2VAl09Si01_see.txt");
     await expect(page.getByText(/^\d+ points/)).toBeVisible();

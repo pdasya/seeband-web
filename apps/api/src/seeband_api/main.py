@@ -88,6 +88,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     per_minute = {
         "/api/calc": settings.calc_per_minute,
         "/api/band-diagram": settings.band_diagram_per_minute,
+        "/api/dpb/migrate": settings.calc_per_minute,
         "/api/parse": settings.parse_per_minute,
         "/api/guess": settings.guess_per_minute,
         "/api/fit": settings.fit_per_minute,
@@ -97,7 +98,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         limiter=RateLimiter(per_minute),
         max_body_bytes=settings.max_body_bytes,
         max_body_bytes_by_path=dict.fromkeys(
-            ("/api/calc", "/api/fit", "/api/guess", "/api/band-diagram"),
+            ("/api/calc", "/api/fit", "/api/guess", "/api/band-diagram", "/api/dpb/migrate"),
             settings.json_body_bytes,
         ),
         body_timeout_s=settings.body_timeout_s,

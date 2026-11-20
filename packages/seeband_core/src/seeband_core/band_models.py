@@ -308,7 +308,7 @@ class _BandModel:
         if explicit is not None:
             if self._description.id != "dpb":
                 raise ValueError("Explicit band types require DPB")
-            return explicit_dpb_description().fit_mode(mode_id)
+            return explicit_dpb_description(explicit.carrier_type is not None).fit_mode(mode_id)
         return self._description.fit_mode(mode_id)
 
     def _mode_and_scattering(
@@ -594,6 +594,7 @@ class _BandModel:
                 _degeneracy_ratio(request),
                 request.kind,
                 extrapolated=request.extrapolated,
+                explicit_bands=request.explicit_bands,
             )
             return CurveResult(temperatures, curves, issues)
         if request.kind == "lorenz_number":

@@ -1,9 +1,8 @@
 import { heldForFit } from "@/model/explicitDpb";
-import { useQuery } from "@tanstack/react-query";
 import { InfoIcon, LockIcon, LockOpenIcon } from "lucide-react";
 import { useId, useState } from "react";
 
-import { modelsQuery } from "@/api/queries";
+import { useModels } from "@/api/queries";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
@@ -238,7 +237,7 @@ function ParameterControl({
 
 /** The parameters of the chosen fit mode. All of them come from its description. */
 export function ParametersPanel() {
-  const { data } = useQuery(modelsQuery);
+  const { data } = useModels();
   const selection = useSessionStore((state) => state.selection);
   const saved = useSessionStore((state) => state.parameters);
   const setParameter = useSessionStore((state) => state.setParameter);
@@ -273,8 +272,9 @@ export function ParametersPanel() {
                 customBounds[mode.id]?.[parameter.name],
               )}
               value={
-                parameterValues(mode, saved[mode.id])[parameter.name] ??
-                parameter.core_range.default
+                parameterValues(mode, saved[mode.id], selection)[
+                  parameter.name
+                ] ?? parameter.core_range.default
               }
               onChange={(value) => {
                 setParameter(mode.id, parameter.name, value);
@@ -288,8 +288,7 @@ export function ParametersPanel() {
                       ).includes(parameter.name),
                       onChange: (next) => {
                         if (
-                          selection.parameterization ===
-                            "explicit_density_v1" &&
+                          selection.parameterization !== undefined &&
                           parameter.name === "m1"
                         ) {
                           setSelection({ fitAbsoluteMass: !next });

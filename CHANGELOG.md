@@ -11,8 +11,9 @@ deploy/compose.yaml up --build`. The API image installs exactly `uv.lock`
   starts the stack and checks it through Caddy.
 
 - Core `0.4.0` adds explicit VB+VB, VB+CB and CB+CB double parabolic bands
-  with conserved signed electron excess in m⁻³. Absolute masses and valley
-  counts determine the populations for calculation and fitting. Historical
+  with p/n selection and a Fermi energy that can be set or fitted. Band masses,
+  valley counts and the trial energy determine the conserved electron excess.
+  Saved fixed-density sessions keep their original parametrization. Historical
   signed-mass requests retain their versioned behavior. See [P18](docs/superpowers/specs/2026-11-20-p18-explicit-dpb-bands-design.md).
 
 - Results ZIP exports calculate one curve at a time and retry temporary

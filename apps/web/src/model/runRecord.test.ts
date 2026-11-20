@@ -198,3 +198,18 @@ test("the results subtitle names each unit read, °C, and an open doubt", () => 
     )[0],
   ).toBe("S in µV/K, T in °C, unit in doubt");
 });
+
+test("run records describe virgin Fermi starts consistently with the live request", () => {
+  const state = session();
+  state.selection = {
+    ...state.selection,
+    parameterization: "explicit_fermi_v1",
+    bandConfiguration: "vb_cb",
+    carrierType: "n",
+  };
+  state.parameters = {};
+  state.fit = { status: "idle" };
+  expect(runLines(state, MODE, null, false).join("\n")).toContain(
+    "E_F = 0.094790665882 eV",
+  );
+});

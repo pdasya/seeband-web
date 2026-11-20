@@ -4,7 +4,7 @@ import { useSearchParams } from "react-router";
 
 import { apiClient, type DemoResponse } from "@/api/client";
 import { parameterValues } from "@/model/parameters";
-import { demoQuery, modelsQuery } from "@/api/queries";
+import { demoQuery, useModels } from "@/api/queries";
 import {
   offersExplicitDpb,
   settingsFor,
@@ -148,7 +148,7 @@ export function useDemoData() {
   const [params, setParams] = useSearchParams();
   const [initializationFailed, setInitializationFailed] = useState(false);
   const wanted = params.get("demo") === "1";
-  const { data: models, isError: modelsFailed } = useQuery(modelsQuery);
+  const { data: models, isError: modelsFailed } = useModels();
   const { data: demo, isError: demoFailed } = useQuery({
     ...demoQuery,
     enabled: wanted,

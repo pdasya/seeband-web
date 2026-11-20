@@ -207,8 +207,8 @@ def load_desktop_descriptions() -> dict[str, ModelDescription]:
 
 
 @cache
-def explicit_dpb_description() -> ModelDescription:
-    """Public controls for the signed-density formulation, independent of legacy sessions."""
+def explicit_dpb_description(fermi_energy: bool = False) -> ModelDescription:
+    """Controls for explicit band configurations with fixed density or a fitted Fermi energy."""
     desktop = load_desktop_descriptions()["dpb"]
     hall_mass = next(p for p in desktop.fit_modes[-1].parameters if p.name == "m1")
     modes = []
@@ -235,7 +235,12 @@ def explicit_dpb_description() -> ModelDescription:
                         fit_bounds=Bounds(-35000, 35000),
                     )
                 )
-            elif p.name != "fermi_energy":
+            elif p.name == "fermi_energy":
+                if fermi_energy:
+                    parameters.append(
+                        replace(p, meaning="Zero-temperature Fermi energy relative to band 1")
+                    )
+            else:
                 parameters.append(p)
         if "hall" not in mode.quantities:
             parameters.append(
@@ -251,9 +256,14 @@ def explicit_dpb_description() -> ModelDescription:
                     i
                     for i in mode.known_issues
                     if i.id in ("hall_dis_no_reference", "interpolation_extrapolates")
+                    or (fermi_energy and i.id == "fermi_energy_in_gap")
                 ),
                 stages=tuple(
-                    replace(stage, parameters=("mass_ratio", "band_offset_k"))
+                    replace(
+                        stage,
+                        parameters=("mass_ratio", "band_offset_k")
+                        + (("fermi_energy",) if fermi_energy else ()),
+                    )
                     if stage.quantity == "seebeck"
                     else replace(stage, repeats=mode.iterative)
                     for stage in mode.stages

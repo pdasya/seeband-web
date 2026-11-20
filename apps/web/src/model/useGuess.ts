@@ -1,7 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 
-import { modelsQuery } from "@/api/queries";
+import { useModels } from "@/api/queries";
 import { guessModel, isNewLoad, runGuess } from "@/model/guessRun";
 import {
   currentGuess,
@@ -15,7 +14,7 @@ const { fit: text } = STRINGS;
 
 /** The Initial guess button, and the guess that each new file of S starts, as on the desktop. */
 export function useGuess() {
-  const { data: models } = useQuery(modelsQuery);
+  const { data: models } = useModels();
   const measurement = useSessionStore(
     (state) => state.data.seebeck?.measurement,
   );
@@ -27,7 +26,7 @@ export function useGuess() {
   const selected = useSessionStore((state) => state.selection.model);
   const explicit = useSessionStore(
     (state) =>
-      state.selection.parameterization === "explicit_density_v1" &&
+      state.selection.parameterization !== undefined &&
       state.selection.model === "dpb",
   );
   const model = guessModel(models?.models, selected ?? "");

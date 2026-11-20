@@ -1,11 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { limitedRanges } from "@/model/interpolatedRanges";
 
 import { apiClient, type CalcRequest, type CalcResponse } from "@/api/client";
 import { ApiError } from "@/api/errors";
 import { APP_VERSION, withCommit } from "@/lib/version";
-import { modelsQuery } from "@/api/queries";
+import { useModels } from "@/api/queries";
 import { strToU8, zipSync } from "fflate";
 
 import { DERIVED_KINDS_ASKED, ENERGY_IN_K } from "@/model/chartTabs";
@@ -104,7 +103,7 @@ function preFitState(state: SessionState, modeId: string): SessionState {
  * server for the curves it needs, as the client calculates nothing.
  */
 export function useExport() {
-  const { data: models } = useQuery(modelsQuery);
+  const { data: models } = useModels();
   const energy = models?.energy_display ?? ENERGY_IN_K;
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(false);

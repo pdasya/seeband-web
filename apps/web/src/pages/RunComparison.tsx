@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { apiClient, type CalcRequest, type CalcResponse } from "@/api/client";
-import { modelsQuery } from "@/api/queries";
+import { useModels } from "@/api/queries";
 import { TransportChart } from "@/charts/TransportChart";
 import {
   Select,
@@ -216,6 +216,7 @@ function rowsOf(
         { status: "done", result: run.result },
         run.customBounds,
         run.held,
+        run.selection,
       );
 }
 
@@ -322,7 +323,7 @@ function QuantityChart({
 export function RunComparison() {
   const runs = useSessionStore((state) => state.runs);
   const fit = useSessionStore((state) => state.fit);
-  const { data: models } = useQuery(modelsQuery);
+  const { data: models } = useModels();
   // By `runKey`, which no other run of any session in this tab shares.
   const [chosenA, setA] = useState<string | null>(null);
   const [chosenB, setB] = useState<string | null>(null);

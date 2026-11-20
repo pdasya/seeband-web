@@ -34,12 +34,40 @@ test("explicit CB+CB curves and confirmed historical conversion round-trip", asy
   page,
 }) => {
   await page.goto("/fit");
+  await expect(page.getByText("Explicit bands · Fermi energy")).toBeVisible();
   await expect(
-    page.getByText("Explicit bands · fixed carrier excess"),
-  ).toBeVisible();
+    page.getByRole("textbox", { name: /Carrier excess magnitude/ }),
+  ).toHaveCount(0);
+  const energy = page.getByRole("textbox", { name: "E_F", exact: true });
+  await expect(energy).toHaveValue("-0,01");
+  await page.getByRole("radio", { name: "n: electrons" }).click();
+  await expect(energy).toHaveValue("0,09");
   await page
     .getByLabel("Band configuration", { exact: false })
     .selectOption("cb_cb");
+  await expect(energy).toHaveValue("0,01");
+  await page.getByRole("radio", { name: "S + ρ + R_H", exact: true }).click();
+  await expect(energy).toHaveValue("0,01");
+  await page
+    .getByLabel("Band configuration", { exact: false })
+    .selectOption("vb_vb");
+  await expect(energy).toHaveValue("0,08");
+  await page
+    .getByLabel("Band configuration", { exact: false })
+    .selectOption("cb_cb");
+  await page.getByRole("radio", { name: "S + ρ", exact: true }).click();
+  await energy.fill("0.02");
+  await energy.press("Enter");
+  const calculated = page.waitForResponse((response) => {
+    if (!response.url().endsWith("/api/calc")) return false;
+    const body = response
+      .request()
+      .postDataJSON() as components["schemas"]["CalcRequest"];
+    return (
+      body.band_configuration === "cb_cb" &&
+      (body.parameters.fermi_energy ?? 0) > 0
+    );
+  });
   await page
     .locator('input[type="file"]')
     .first()
@@ -50,21 +78,6 @@ test("explicit CB+CB curves and confirmed historical conversion round-trip", asy
         "T [K] S [V/K]\n100 -0.0001\n300 -0.0002\n800 -0.0003\n",
       ),
     });
-  const density = page.getByRole("textbox", {
-    name: "Carrier excess magnitude |n − p| (m⁻³)",
-  });
-  await density.fill("2e24");
-  const calculated = page.waitForResponse((response) => {
-    if (!response.url().endsWith("/api/calc")) return false;
-    const body = response
-      .request()
-      .postDataJSON() as components["schemas"]["CalcRequest"];
-    return (
-      body.band_configuration === "cb_cb" &&
-      body.net_electron_density_per_m3 === 2e24
-    );
-  });
-  await density.press("Enter");
   const response = await calculated;
   expect(response.ok()).toBe(true);
   const answer =
@@ -74,61 +87,39 @@ test("explicit CB+CB curves and confirmed historical conversion round-trip", asy
       (value) => value !== null && value < 0,
     ),
   ).toBe(true);
-  const plotted = page
-    .getByRole("region", { name: "Chart 1", exact: true })
-    .locator(".js-plotly-plot");
-  await expect
-    .poll(async () =>
-      plotted.evaluate((element) => {
-        const graph = element as HTMLElement & {
-          data?: { mode?: string; y?: (number | null)[] }[];
-        };
-        const values = (graph.data ?? [])
-          .filter((trace) => trace.mode === "lines")
-          .flatMap((trace) => trace.y ?? [])
-          .filter((value): value is number => value !== null);
-        return values.length > 0 && values.every((value) => value < 0);
-      }),
-    )
-    .toBe(true);
   expect(response.request().postDataJSON()).toMatchObject({
-    parameterization: "explicit_density_v1",
+    parameterization: "explicit_fermi_v1",
     band_configuration: "cb_cb",
-    net_electron_density_per_m3: 2e24,
+    carrier_type: "n",
   });
-  await expect(
-    page.getByRole("button", { name: "Initial guess", exact: true }),
-  ).toBeDisabled();
-
-  await expect(
-    page.getByRole("radio", { name: "p: excess holes" }),
-  ).toBeDisabled();
+  expect(response.request().postDataJSON()).not.toHaveProperty(
+    "net_electron_density_per_m3",
+  );
+  await expect(page.getByRole("radio", { name: "p: holes" })).toBeDisabled();
   await page
     .getByLabel("Band configuration", { exact: false })
     .selectOption("vb_cb");
+  await page.getByRole("radio", { name: "p: holes" }).click();
+  // Carrier choice does not invent the sign of a physical energy.
+  await expect(energy).toHaveValue("0,02");
   const changedPolarity = page.waitForResponse(
     (response) =>
       response.url().endsWith("/api/calc") &&
-      response.request().postDataJSON().band_configuration === "vb_cb" &&
-      response.request().postDataJSON().net_electron_density_per_m3 === -2e24,
+      response.request().postDataJSON().carrier_type === "p" &&
+      response.request().postDataJSON().parameters.fermi_energy < 0,
   );
-  await page.getByRole("radio", { name: "p: excess holes" }).click();
+  await energy.fill("-0.01");
+  await energy.press("Enter");
   expect((await changedPolarity).ok()).toBe(true);
-  await expect(density).toHaveValue("2e+24");
-  await expect(page.getByText("n − p = −2e+24 m⁻³ (p)")).toBeVisible();
-  const about = page.getByRole("button", { name: "About carrier excess" });
+  const about = page.getByRole("button", { name: "About carrier type" });
   await about.hover();
-  await expect(page.getByRole("tooltip")).toContainText(
-    "vary with temperature",
-  );
-  await page.getByRole("heading", { name: "Parameters", exact: true }).hover();
-  await expect(page.getByRole("tooltip")).not.toBeVisible();
-  await about.focus();
-  await expect(page.getByRole("tooltip")).toContainText("per cubic metre");
+  await expect(page.getByRole("tooltip")).toContainText("p means excess holes");
   await page.keyboard.press("Escape");
-  await about.click();
-  await expect(page.getByRole("tooltip")).toContainText("VB + VB");
-  await page.getByRole("heading", { name: "Parameters", exact: true }).click();
+  await page.getByRole("button", { name: "Edit bounds" }).click();
+  await expect(
+    page.getByRole("textbox", { name: "E_F, lower bound", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Done", exact: true }).click();
 
   const content = {
     dataMode: "separate",
@@ -178,13 +169,19 @@ test("explicit CB+CB curves and confirmed historical conversion round-trip", asy
     .getByRole("button", { name: "Cancel", exact: true })
     .last()
     .click();
-  await expect(density).toHaveValue("2e+24");
+  await expect(energy).toHaveValue("-0,01");
   await openSession(page, Buffer.from(JSON.stringify(historical)));
   await dialog.getByLabel("Single-valley |m₁| (mₑ)").fill("1.7");
   await dialog
     .getByRole("button", { name: "Confirm scale and convert" })
     .click();
   await expect(dialog).not.toBeVisible();
+  const density = page.getByRole("textbox", {
+    name: "Carrier excess magnitude |n − p| (m⁻³)",
+  });
+  await expect(
+    page.getByText("Explicit bands · fixed carrier excess"),
+  ).toBeVisible();
   await expect(
     page.getByText(
       "Original historical session and fit (legacy parameterization)",

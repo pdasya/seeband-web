@@ -1,7 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef } from "react";
 
-import { modelsQuery } from "@/api/queries";
+import { useModels } from "@/api/queries";
 import {
   fitInputsKey,
   fitRequest,
@@ -15,7 +14,7 @@ import { isFitActive, useSessionStore } from "@/session/store";
 
 /** Run, Stop and Reset for the fit screen, and what they depend on. */
 export function useFitControl() {
-  const { data: models } = useQuery(modelsQuery);
+  const { data: models } = useModels();
   const selection = useSessionStore((state) => state.selection);
   const parameters = useSessionStore((state) => state.parameters);
   const data = useSessionStore((state) => state.data);

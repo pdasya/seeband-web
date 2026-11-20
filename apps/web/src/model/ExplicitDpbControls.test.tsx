@@ -148,3 +148,58 @@ test("blurring an unchanged magnitude preserves a completed fit", () => {
   fireEvent.blur(magnitude());
   expect(useSessionStore.getState().fit).toEqual({ status: "done", result });
 });
+
+test("Fermi sessions select p/n without concentration or sign captions and preserve E_F", () => {
+  useSessionStore.setState({
+    selection: {
+      ...original.selection,
+      model: "dpb",
+      fitMode: "dpb_s_rho",
+      parameterization: "explicit_fermi_v1",
+      bandConfiguration: "vb_cb",
+      carrierType: "n",
+    },
+    parameters: { dpb_s_rho: { fermi_energy: 140 } },
+  });
+  render(<ExplicitDpbControls />);
+  expect(screen.queryByRole("textbox")).toBeNull();
+  expect(screen.queryByText(/n − p =/)).toBeNull();
+  fireEvent.click(screen.getByRole("radio", { name: "p: holes" }));
+  expect(useSessionStore.getState().selection.carrierType).toBe("p");
+  expect(useSessionStore.getState().parameters.dpb_s_rho?.fermi_energy).toBe(
+    140,
+  );
+  fireEvent.change(screen.getByLabelText(/Band configuration/), {
+    target: { value: "cb_cb" },
+  });
+  expect(useSessionStore.getState().selection.carrierType).toBe("n");
+  expect(
+    screen.getByRole("radio", { name: "p: holes" }).hasAttribute("disabled"),
+  ).toBe(true);
+  expect(useSessionStore.getState().parameters.dpb_s_rho?.fermi_energy).toBe(
+    140,
+  );
+  expect(screen.getByText(/Adjust E_F in Parameters/)).toBeTruthy();
+});
+
+test("virgin configuration switches retain automatic E_F as a derived default", () => {
+  useSessionStore.setState({
+    selection: {
+      ...original.selection,
+      model: "dpb",
+      fitMode: "dpb_s_rho",
+      parameterization: "explicit_fermi_v1",
+      bandConfiguration: "vb_cb",
+      carrierType: "p",
+    },
+    parameters: {},
+  });
+  render(<ExplicitDpbControls />);
+  fireEvent.change(screen.getByLabelText(/Band configuration/), {
+    target: { value: "cb_cb" },
+  });
+  expect(
+    useSessionStore.getState().parameters.dpb_s_rho?.fermi_energy,
+  ).toBeUndefined();
+  expect(useSessionStore.getState().selection.carrierType).toBe("n");
+});

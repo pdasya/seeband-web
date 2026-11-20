@@ -3,11 +3,21 @@ import type { Selection } from "@/session/store";
 export function isExplicitDpb(selection: Selection): boolean {
   return (
     selection.model === "dpb" &&
-    selection.parameterization === "explicit_density_v1"
+    (selection.parameterization === "explicit_density_v1" ||
+      selection.parameterization === "explicit_fermi_v1")
   );
 }
 
 export function explicitDpbInputs(selection: Selection) {
+  if (
+    selection.model === "dpb" &&
+    selection.parameterization === "explicit_fermi_v1"
+  )
+    return {
+      parameterization: "explicit_fermi_v1" as const,
+      band_configuration: selection.bandConfiguration ?? "vb_cb",
+      carrier_type: selection.carrierType ?? "p",
+    };
   return isExplicitDpb(selection)
     ? {
         parameterization: "explicit_density_v1" as const,
@@ -19,7 +29,11 @@ export function explicitDpbInputs(selection: Selection) {
 
 /** A same-type pair has no finite-temperature solution at zero carrier density. */
 export function isValidCarrierDensity(selection: Selection): boolean {
-  if (!isExplicitDpb(selection)) return true;
+  if (
+    selection.parameterization !== "explicit_density_v1" ||
+    !isExplicitDpb(selection)
+  )
+    return true;
   const { band_configuration, net_electron_density_per_m3: density } =
     explicitDpbInputs(selection);
   if (density === undefined || !Number.isFinite(density)) return false;

@@ -142,7 +142,7 @@ export function fitRequest(
       ...explicitDpbInputs(selection),
       fit_mode: mode.id,
       scattering: selection.scattering,
-      start: parameterValues(mode, state.parameters[mode.id]),
+      start: parameterValues(mode, state.parameters[mode.id], selection),
       ...(Object.keys(bounds).length === 0 ? {} : { bounds }),
       ...(held.length === 0 ? {} : { held }),
       min_temperature_k: minK,

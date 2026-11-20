@@ -199,11 +199,13 @@ export interface components {
              * @default legacy_fermi
              * @enum {string}
              */
-            parameterization?: "legacy_fermi" | "explicit_density_v1";
+            parameterization?: "legacy_fermi" | "explicit_density_v1" | "explicit_fermi_v1";
             /** Band Configuration */
             band_configuration?: ("vb_vb" | "vb_cb" | "cb_cb") | null;
             /** Net Electron Density Per M3 */
             net_electron_density_per_m3?: number | null;
+            /** Carrier Type */
+            carrier_type?: ("p" | "n") | null;
             /** Fit Mode */
             fit_mode: string;
             /** Parameters */
@@ -328,11 +330,13 @@ export interface components {
              * @default legacy_fermi
              * @enum {string}
              */
-            parameterization?: "legacy_fermi" | "explicit_density_v1";
+            parameterization?: "legacy_fermi" | "explicit_density_v1" | "explicit_fermi_v1";
             /** Band Configuration */
             band_configuration?: ("vb_vb" | "vb_cb" | "cb_cb") | null;
             /** Net Electron Density Per M3 */
             net_electron_density_per_m3?: number | null;
+            /** Carrier Type */
+            carrier_type?: ("p" | "n") | null;
             /** Fit Mode */
             fit_mode: string;
             /** Scattering */
@@ -494,7 +498,19 @@ export interface components {
             /** Unit */
             unit?: ("K" | "C" | "V/K" | "uV/K" | "mV/K" | "Ohm*m" | "Ohm*cm" | "mOhm*cm" | "uOhm*m" | "uOhm*cm" | "S/m" | "S/cm" | "m^3/C" | "cm^3/C") | null;
         };
-        /** ConvertedDpbPoint */
+        /**
+         * ConvertedDpbPoint
+         * @example {
+         *       "band_configuration": "vb_cb",
+         *       "net_electron_density_per_m3": 0,
+         *       "parameterization": "explicit_density_v1",
+         *       "parameters": {
+         *         "band_offset_k": 600,
+         *         "m1": 1.2,
+         *         "mass_ratio": 1.8
+         *       }
+         *     }
+         */
         ConvertedDpbPoint: {
             /**
              * Parameterization
@@ -716,11 +732,13 @@ export interface components {
              * @default legacy_fermi
              * @enum {string}
              */
-            parameterization?: "legacy_fermi" | "explicit_density_v1";
+            parameterization?: "legacy_fermi" | "explicit_density_v1" | "explicit_fermi_v1";
             /** Band Configuration */
             band_configuration?: ("vb_vb" | "vb_cb" | "cb_cb") | null;
             /** Net Electron Density Per M3 */
             net_electron_density_per_m3?: number | null;
+            /** Carrier Type */
+            carrier_type?: ("p" | "n") | null;
             /** Fit Mode */
             fit_mode: string;
             /** Scattering */
@@ -1147,11 +1165,13 @@ export interface components {
              * @default legacy_fermi
              * @enum {string}
              */
-            parameterization?: "legacy_fermi" | "explicit_density_v1";
+            parameterization?: "legacy_fermi" | "explicit_density_v1" | "explicit_fermi_v1";
             /** Band Configuration */
             band_configuration?: ("vb_vb" | "vb_cb" | "cb_cb") | null;
             /** Net Electron Density Per M3 */
             net_electron_density_per_m3?: number | null;
+            /** Carrier Type */
+            carrier_type?: ("p" | "n") | null;
             /** Scattering */
             scattering?: string | null;
             /** Temperature K */
@@ -1662,7 +1682,7 @@ export interface operations {
     get_models: {
         parameters: {
             query?: {
-                parameterization?: "legacy_fermi" | "explicit_density_v1";
+                parameterization?: "legacy_fermi" | "explicit_density_v1" | "explicit_fermi_v1";
             };
             header?: {
                 "if-none-match"?: string | null;
@@ -1723,6 +1743,17 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConvertedDpbPoint"];
+                };
+            };
+            /** @description Too many requests from this client, or for the server */
+            429: {
+                headers: {
+                    /** @example 5 */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Default Response */

@@ -5,6 +5,17 @@
  */
 export const STRINGS = {
   explicitDpb: {
+    fermiRepresentation: "Explicit bands · Fermi energy",
+    carrierType: "Carrier type",
+    carrierTypes: { p: "p: holes", n: "n: electrons" },
+    carrierAbout: "About carrier type",
+    carrierTooltip:
+      "p means excess holes; n means excess electrons. E_F sets the zero-temperature state. Intrinsic states have equal electron and hole populations.",
+    fermiHint:
+      "Adjust E_F in Parameters to match the selected bands and carrier type. Your entered E_F is preserved when changing p/n.",
+    fermiIdentity: (configuration: string, carrier: string) =>
+      `Parameterization: explicit_fermi_v1; configuration: ${configuration}; carrier type: ${carrier}`,
+
     representation: "Explicit bands · fixed carrier excess",
     representationLabel: "Representation",
     densityMeaning: "Signed net electron density n − p",

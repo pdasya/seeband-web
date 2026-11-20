@@ -102,6 +102,7 @@ def _solve_potentials(
 ) -> tuple[np.ndarray, np.ndarray]:
     signs = np.asarray(_SIGNS[settings.band_configuration])
     doping = settings.net_electron_density_per_m3
+    assert doping is not None
     if not isfinite(doping) or (np.all(signs == signs[0]) and signs[0] * doping <= 0):
         raise mm.NoFiniteChemicalPotentialError(
             None,
@@ -180,21 +181,64 @@ def _potentials(
 
 
 def zero_temperature_density(
-    configuration: str, parameters: Mapping[str, float], ef_k: float, n1: float, n2: float
+    configuration: str,
+    parameters: Mapping[str, float],
+    ef_k: float,
+    n1: float,
+    n2: float,
+    *,
+    resolve_compensation: bool = False,
 ) -> float:
-    """Signed D in m^-3 for migration; uses the same constants as finite-T roots."""
+    """Signed zero-temperature excess in m^-3 with the constants of the finite-T solver."""
     signs, masses, valleys, edges = _bands(configuration, parameters, n1, n2)
     if not isfinite(ef_k):
         raise ValueError("Zero-temperature Fermi energy must be finite")
+    log_prefactors = _log_prefactors(masses, valleys)
     populations = (
-        np.exp(_log_prefactors(masses, valleys))
+        np.exp(log_prefactors)
         * (2 / 3)
         * np.maximum(np.asarray(signs) * (ef_k - edges), 0.0) ** 1.5
     )
     result = float(np.dot(signs, populations))
     if not isfinite(result):
         raise ValueError("Zero-temperature density overflow")
+    if resolve_compensation and configuration == "vb_cb" and populations.min() > 0:
+        # At exact pocket compensation the two logarithmic DOS prefactors have
+        # already rounded before subtraction. Only treat a difference at their
+        # arithmetic resolution as zero; there is no absolute density floor.
+        precision = np.spacing(max(1.0, float(np.abs(log_prefactors).max())))
+        if abs(result) <= 4 * precision * populations.max():
+            return 0.0
     return result
+
+
+def density_settings(
+    settings: ExplicitBands, parameters: Mapping[str, float], n1: float, n2: float
+) -> ExplicitBands:
+    """Resolve each EF trial to its fixed n-p target; carrier type selects its sign.
+
+    EF is the signed T=0 chemical potential relative to band 1, including overlaps.
+    At compensation D=0 either carrier selection gives the same intrinsic state.
+    """
+    if settings.carrier_type is None:
+        return settings
+    density = zero_temperature_density(
+        settings.band_configuration,
+        parameters,
+        parameters["fermi_energy"],
+        n1,
+        n2,
+        resolve_compensation=True,
+    )
+    if (settings.carrier_type == "n" and density < 0) or (
+        settings.carrier_type == "p" and density > 0
+    ):
+        raise mm.NoFiniteChemicalPotentialError(
+            0.0, "Fermi energy gives a carrier excess opposite to carrier_type"
+        )
+    if settings.band_configuration != "vb_cb" and density == 0:
+        raise mm.NoFiniteChemicalPotentialError(0.0, "Same-type bands require occupied carriers")
+    return ExplicitBands(settings.band_configuration, density)
 
 
 def explicit_curves(
@@ -208,6 +252,7 @@ def explicit_curves(
     kind: CurveKind = "measured",
 ) -> dict[str, np.ndarray]:
     """Existing public curve keys, evaluated once from a shared fixed-D root grid."""
+    settings = density_settings(settings, parameters, n1, n2)
     t = np.asarray(temperatures, dtype=float)
     if t.ndim != 1 or not np.isfinite(t).all() or (t <= 0).any():
         raise mm.ChemicalPotentialError(
@@ -328,9 +373,14 @@ def explicit_diagram(
     settings: ExplicitBands, parameters: Mapping[str, float], n1: float, n2: float
 ) -> BandDiagramResult:
     """Physical k in inverse angstroms, single-valley masses and T=0 root/interval."""
+    supplied_ef = parameters["fermi_energy"] if settings.carrier_type is not None else None
+    settings = density_settings(settings, parameters, n1, n2)
     signs, masses, _, edges = _bands(settings.band_configuration, parameters, n1, n2)
     doping = settings.net_electron_density_per_m3
-    if settings.band_configuration == "vb_cb" and doping == 0 and edges[1] >= 0:
+    assert doping is not None
+    if supplied_ef is not None:
+        ef = supplied_ef
+    elif settings.band_configuration == "vb_cb" and doping == 0 and edges[1] >= 0:
         if edges[1] > 0:
             ef = None
         else:
@@ -353,15 +403,20 @@ def explicit_diagram(
         ef = brentq(balance, -width, width, xtol=1e-11, rtol=4 * np.finfo(float).eps)
     energy_scale_k = max(300.0, abs(float(edges[1])), abs(ef) if ef is not None else 0.0)
     extent = sqrt(2 * float(max(masses)) * mm.me * mm.kB * energy_scale_k) / mm.hbar / 1e10
-    k = np.linspace(-extent, extent, 101)
+    k = extent * np.linspace(-1.0, 1.0, 101)
     curves = {
         f"band_{i + 1}_energy_k": edges[i]
         + signs[i] * mm.hbar**2 * (k * 1e10) ** 2 / (2 * masses[i] * mm.me * mm.kB)
         for i in range(2)
     }
-    if ef is None:
+    if ef is None or (
+        supplied_ef is not None
+        and settings.band_configuration == "vb_cb"
+        and doping == 0
+        and edges[1] > 0
+    ):
         curves["fermi_energy_lower_k"] = np.full_like(k, 0.0)
         curves["fermi_energy_upper_k"] = np.full_like(k, edges[1])
-    else:
+    if ef is not None:
         curves["fermi_energy_k"] = np.full_like(k, ef)
     return BandDiagramResult(k, curves)

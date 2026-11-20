@@ -87,7 +87,7 @@ export function calcRequest(
     ...explicitDpbInputs(selection),
     fit_mode: mode.id,
     scattering: selection.scattering,
-    parameters: parameterValues(mode, state.parameters[mode.id]),
+    parameters: parameterValues(mode, state.parameters[mode.id], selection),
     min_temperature_k: minK,
     max_temperature_k: maxK,
     band_1_degeneracy: selection.band1Degeneracy,
@@ -128,7 +128,7 @@ export function bandDiagramRequest(
         model: model.id,
         ...explicitDpbInputs(selection),
         fit_mode: mode.id,
-        parameters: parameterValues(mode, state.parameters[mode.id]),
+        parameters: parameterValues(mode, state.parameters[mode.id], selection),
         band_1_degeneracy: selection.band1Degeneracy,
         band_2_degeneracy: selection.band2Degeneracy,
       };
@@ -217,6 +217,14 @@ export function rmseGaps(
 function explicitDpbInputsFromRequest(
   request: CalcRequest | BandDiagramRequest,
 ) {
+  if (request.parameterization === "explicit_fermi_v1")
+    return {
+      parameterization: request.parameterization,
+      band_configuration: request.band_configuration,
+      carrier_type: request.carrier_type,
+      band_1_degeneracy: request.band_1_degeneracy,
+      band_2_degeneracy: request.band_2_degeneracy,
+    };
   if (request.parameterization !== "explicit_density_v1") return {};
   return {
     parameterization: request.parameterization,

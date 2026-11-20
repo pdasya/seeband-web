@@ -177,7 +177,7 @@ export async function sessionFile(
   };
   return {
     format: SESSION_FORMAT,
-    version: state.selection.parameterization === "explicit_density_v1" ? 2 : 1,
+    version: state.selection.parameterization !== undefined ? 2 : 1,
     saved: versions.saved,
     appVersion: versions.appVersion,
     apiVersion: versions.apiVersion,
@@ -305,7 +305,8 @@ const isSingleFile = orNull(
 );
 
 const isSelection = shape({
-  parameterization: optional(oneOf("explicit_density_v1")),
+  parameterization: optional(oneOf("explicit_density_v1", "explicit_fermi_v1")),
+  carrierType: optional(oneOf("p", "n")),
   bandConfiguration: optional(oneOf("vb_vb", "vb_cb", "cb_cb")),
   netElectronDensityPerM3: optional(isNumber),
   fitAbsoluteMass: optional(isBoolean),
@@ -423,7 +424,7 @@ export async function readSessionFile(
   }
   const session = file as unknown as SessionFile;
   const selected = session.content.selection;
-  const explicit = selected.parameterization === "explicit_density_v1";
+  const explicit = selected.parameterization !== undefined;
   if (
     (session.version === 1 && explicit) ||
     (session.version === 2 && selected.model === "dpb" && !explicit)
@@ -432,7 +433,9 @@ export async function readSessionFile(
   if (
     explicit &&
     (selected.bandConfiguration === undefined ||
-      selected.netElectronDensityPerM3 === undefined ||
+      (selected.parameterization === "explicit_density_v1"
+        ? selected.netElectronDensityPerM3 === undefined
+        : selected.carrierType === undefined) ||
       selected.band1Degeneracy <= 0 ||
       selected.band2Degeneracy <= 0)
   )

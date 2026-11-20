@@ -484,7 +484,8 @@
             "schema": {
               "enum": [
                 "legacy_fermi",
-                "explicit_density_v1"
+                "explicit_density_v1",
+                "explicit_fermi_v1"
               ],
               "type": "string",
               "default": "legacy_fermi",
@@ -2983,6 +2984,33 @@
                           "message": "Input should be a valid number, unable to parse string as a number"
                         }
                       ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this client, or for the server",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer"
+                },
+                "example": 5
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "rate_limited": {
+                    "value": {
+                      "code": "rate_limited",
+                      "message": "Too many requests",
+                      "details": []
                     }
                   }
                 }
@@ -5657,7 +5685,8 @@
             "type": "string",
             "enum": [
               "legacy_fermi",
-              "explicit_density_v1"
+              "explicit_density_v1",
+              "explicit_fermi_v1"
             ],
             "title": "Parameterization",
             "default": "legacy_fermi"
@@ -5688,6 +5717,21 @@
               }
             ],
             "title": "Net Electron Density Per M3"
+          },
+          "carrier_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "p",
+                  "n"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carrier Type"
           },
           "fit_mode": {
             "type": "string",
@@ -5858,7 +5902,8 @@
             "type": "string",
             "enum": [
               "legacy_fermi",
-              "explicit_density_v1"
+              "explicit_density_v1",
+              "explicit_fermi_v1"
             ],
             "title": "Parameterization",
             "default": "legacy_fermi"
@@ -5889,6 +5934,21 @@
               }
             ],
             "title": "Net Electron Density Per M3"
+          },
+          "carrier_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "p",
+                  "n"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carrier Type"
           },
           "fit_mode": {
             "type": "string",
@@ -6315,7 +6375,19 @@
           "net_electron_density_per_m3",
           "parameters"
         ],
-        "title": "ConvertedDpbPoint"
+        "title": "ConvertedDpbPoint",
+        "examples": [
+          {
+            "band_configuration": "vb_cb",
+            "net_electron_density_per_m3": 0.0,
+            "parameterization": "explicit_density_v1",
+            "parameters": {
+              "band_offset_k": 600.0,
+              "m1": 1.2,
+              "mass_ratio": 1.8
+            }
+          }
+        ]
       },
       "CurveAvailabilityResponse": {
         "properties": {
@@ -6722,7 +6794,8 @@
             "type": "string",
             "enum": [
               "legacy_fermi",
-              "explicit_density_v1"
+              "explicit_density_v1",
+              "explicit_fermi_v1"
             ],
             "title": "Parameterization",
             "default": "legacy_fermi"
@@ -6753,6 +6826,21 @@
               }
             ],
             "title": "Net Electron Density Per M3"
+          },
+          "carrier_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "p",
+                  "n"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carrier Type"
           },
           "fit_mode": {
             "type": "string",
@@ -7577,7 +7665,8 @@
             "type": "string",
             "enum": [
               "legacy_fermi",
-              "explicit_density_v1"
+              "explicit_density_v1",
+              "explicit_fermi_v1"
             ],
             "title": "Parameterization",
             "default": "legacy_fermi"
@@ -7608,6 +7697,21 @@
               }
             ],
             "title": "Net Electron Density Per M3"
+          },
+          "carrier_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "p",
+                  "n"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carrier Type"
           },
           "scattering": {
             "anyOf": [

@@ -129,7 +129,11 @@ function interpolationLines(
 
 /** The values in use, which the file's fitted curve and parameters are of. */
 function valueLines(state: RunState, mode: FitModeDescription): string[] {
-  const values = parameterValues(mode, state.parameters[mode.id]);
+  const values = parameterValues(
+    mode,
+    state.parameters[mode.id],
+    state.selection,
+  );
   const listed = visibleParameters(mode, state.selection.scattering)
     .map((parameter) => {
       const value = values[parameter.name] ?? parameter.core_range.default;
@@ -154,7 +158,7 @@ function startLines(state: RunState, mode: FitModeDescription): string[] {
       : state.fitStartNumerical
         ? text.fromNumerical
         : text.fromScreen;
-  const values = parameterValues(mode, start);
+  const values = parameterValues(mode, start, state.selection);
   const listed = visibleParameters(mode, state.selection.scattering)
     .map((parameter) => {
       const value = values[parameter.name] ?? parameter.core_range.default;

@@ -277,3 +277,19 @@ def test_finite_thermal_curve_at_large_conductivity():
         "thermal_conductivity_w_per_m_k"
     ]
     np.testing.assert_allclose(large / p["A"], small, rtol=1e-12)
+
+
+def test_overlap_compensation_roundoff_allows_both_carrier_signs():
+    from seeband_core.explicit_transport import density_settings
+
+    ratio, n1, n2, offset = 1.7, 2, 3, -140.0
+    neutral = offset / (1 + (n1 / n2) ** (2 / 3) / ratio)
+    p = dict(m1=1.2, mass_ratio=ratio, band_offset_k=offset, fermi_energy=neutral)
+    for carrier in ("p", "n"):
+        settings = ExplicitBands("vb_cb", carrier_type=carrier)
+        assert density_settings(settings, p, n1, n2).net_electron_density_per_m3 == 0.0
+        sign = 1 if carrier == "n" else -1
+        doped = p | {"fermi_energy": neutral + sign * 1e-8}
+        assert sign * density_settings(settings, doped, n1, n2).net_electron_density_per_m3 > 0
+        with pytest.raises(mm.NoFiniteChemicalPotentialError):
+            density_settings(settings, p | {"fermi_energy": neutral - sign * 1e-8}, n1, n2)

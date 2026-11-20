@@ -1,12 +1,28 @@
-# P18 — Double parabolic bands at fixed carrier excess
+# P18 — Explicit double parabolic bands
 
-Design for [#166](https://github.com/pdasya/seeband-web/issues/166), based on
-`045d2de`. The researcher chose a signed net electron density as the new input and
-requires absolute mass and valley multiplicities on opening historical S
-or S+ρ sessions for conversion. The researcher approved the public fields, fixed band labels and fit
-controls below.
+For new samples in [#166](https://github.com/pdasya/seeband-web/issues/166),
+the researcher selects the band configuration and carrier type (p or n), and
+enters or fits the zero-temperature Fermi energy. The signed-density form
+below remains the representation for previously saved fixed-density sessions.
 
-## Inputs and identity
+## New samples with a Fermi-energy input
+
+Use `explicit_fermi_v1` and `carrier_type` with `fermi_energy` in kelvin,
+measured from the edge of band 1. At each trial, compute the signed excess
+from both occupied zero-temperature pockets using the masses, multiplicities,
+offset and trial energy. Conserve this excess while solving for the chemical
+potential at each temperature. Changing a mass, the offset or the Fermi energy
+can therefore change the conserved excess between fit trials.
+
+Select **n** for electron excess or **p** for hole excess. For CB+CB at least
+one conduction band must be occupied. VB+VB requires at least one hole
+pocket. For VB+CB the carrier sign follows the sum of the two populations,
+including when the bands overlap. In an intrinsic gap both selections admit
+the same compensated solution. The data cannot distinguish different
+zero-temperature energies inside that gap. Seebeck polarity alone cannot
+determine the sign of the excess when both electrons and holes contribute.
+
+## Saved samples with a signed-density input
 
 | Explicit DPB field                       | Meaning                                                                       |
 | ---------------------------------------- | ----------------------------------------------------------------------------- |

@@ -254,17 +254,35 @@ class Measurement:
 
 
 BandConfiguration = Literal["vb_vb", "vb_cb", "cb_cb"]
-DpbParameterization = Literal["legacy_fermi", "explicit_density_v1"]
+DpbParameterization = Literal["legacy_fermi", "explicit_density_v1", "explicit_fermi_v1"]
+CarrierType = Literal["p", "n"]
 
 
 @dataclass(frozen=True)
 class ExplicitBands:
     band_configuration: BandConfiguration
-    net_electron_density_per_m3: float
+    net_electron_density_per_m3: float | None = None
+    carrier_type: CarrierType | None = None
 
     def __post_init__(self) -> None:
         d = self.net_electron_density_per_m3
-        if self.band_configuration not in get_args(BandConfiguration) or not isfinite(d):
+        if self.carrier_type is not None:
+            if (
+                self.band_configuration not in get_args(BandConfiguration)
+                or self.carrier_type not in get_args(CarrierType)
+                or d is not None
+            ):
+                raise ValueError("Fermi-energy bands require a carrier type and no fixed density")
+            if (self.band_configuration == "cb_cb" and self.carrier_type != "n") or (
+                self.band_configuration == "vb_vb" and self.carrier_type != "p"
+            ):
+                raise ValueError("Carrier type is incompatible with the band configuration")
+            return
+        if (
+            self.band_configuration not in get_args(BandConfiguration)
+            or d is None
+            or not isfinite(d)
+        ):
             raise ValueError("The band configuration and finite carrier excess are required")
         if self.band_configuration == "cb_cb" and d <= 0:
             raise ValueError("Two conduction bands require n − p > 0")

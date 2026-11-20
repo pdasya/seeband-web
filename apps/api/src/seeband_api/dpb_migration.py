@@ -2,12 +2,12 @@
 
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from seeband_core.model_interface import BandConfiguration, ExplicitBands
 
 from seeband_api.errors import ApiError
 from seeband_api.request_checks import ParameterValues, PositiveFloat
-from seeband_api.routing import api_router
+from seeband_api.routing import api_router, too_many_requests
 
 router = api_router("dpb")
 
@@ -20,13 +20,26 @@ class LegacyDpbPoint(BaseModel):
 
 
 class ConvertedDpbPoint(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "parameterization": "explicit_density_v1",
+                    "band_configuration": "vb_cb",
+                    "net_electron_density_per_m3": 0.0,
+                    "parameters": {"mass_ratio": 1.8, "band_offset_k": 600.0, "m1": 1.2},
+                }
+            ]
+        }
+    )
+
     parameterization: Literal["explicit_density_v1"] = "explicit_density_v1"
     band_configuration: BandConfiguration
     net_electron_density_per_m3: float
     parameters: dict[str, float]
 
 
-@router.post("/dpb/migrate")
+@router.post("/dpb/migrate", responses={429: too_many_requests()})
 def migrate_dpb(body: LegacyDpbPoint) -> ConvertedDpbPoint:
     from seeband_core.explicit_transport import zero_temperature_density
 

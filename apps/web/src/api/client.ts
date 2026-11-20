@@ -51,7 +51,12 @@ export class ApiClient {
     );
   }
 
-  getModels(signal?: AbortSignal, parameterization?: "explicit_density_v1") {
+  getModels(
+    signal?: AbortSignal,
+    parameterization?: NonNullable<
+      operations["get_models"]["parameters"]["query"]
+    >["parameterization"],
+  ) {
     return this.request<ModelsResponse>(
       "GET",
       parameterization
