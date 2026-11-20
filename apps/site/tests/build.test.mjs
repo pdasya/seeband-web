@@ -215,11 +215,11 @@ test("Conventions renders its formulas, lists its sections and ties issues to th
     "fermi_energy_in_gap",
     "no_chemical_potential",
     "hall_dis_no_reference",
-    "band_diagram_formula",
     "interpolation_extrapolates",
   ]) {
     assert.match(conventions, new RegExp(`<code>${id}</code>`), id);
   }
+  assert.match(conventions, /<h2 id="band-diagram">Band diagram<\/h2>/);
   // No mixed scattering is offered any more; the page says so where it names it.
   assert.match(textOfPage(conventions), /acPhDis[^.]*not offered/);
 });
@@ -263,7 +263,7 @@ test("the worked examples are pages of the site, each with its screenshots and l
       assert.match(image, /height="\d+"/, source);
       assert.match(image, /alt="[^"]{20,}"/, source);
     }
-    // Each says what it rests on and how far to trust it, and names the known issue it meets.
+    // Each says what it rests on and how far to trust it.
     for (const heading of ["Data", "Interpretation", "Limits", "Reproduce"]) {
       assert.match(
         example,
@@ -271,7 +271,6 @@ test("the worked examples are pages of the site, each with its screenshots and l
         `${name}: ${heading}`,
       );
     }
-    assert.match(example, /<code>band_diagram_formula<\/code>/, name);
     assert.doesNotMatch(example, /katex-error/, name);
   }
   // The known issues the pictured fits carry.

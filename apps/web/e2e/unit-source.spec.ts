@@ -156,7 +156,13 @@ test("a unit from the header is never marked as assumed", async ({ page }) => {
   await expect(seebeckUnit(page)).not.toHaveAccessibleName(ASSUMED);
   await expect(temperatureUnit(page)).toHaveText("K");
   await expect(temperatureUnit(page)).not.toHaveAccessibleName(ASSUMED);
-  await expect(page.getByText(/assumed/)).toHaveCount(0);
+  // Only in the data panel: other notes, such as the band diagram's reference mass, can say
+  // "assumed" about something else.
+  const dataPanel = page
+    .getByRole("heading", { name: "Data", exact: true })
+    .locator("xpath=ancestor::section[1]");
+  await expect(dataPanel).toBeVisible();
+  await expect(dataPanel.getByText(/assumed/)).toHaveCount(0);
 });
 
 test("a file card shows its first row as written, and in SI where the unit is another", async ({

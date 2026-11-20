@@ -679,16 +679,6 @@
                                   "condition": "fermi_energy_outside_band"
                                 },
                                 {
-                                  "id": "band_diagram_formula",
-                                  "severity": "caution",
-                                  "message_key": "known_issue.band_diagram_formula",
-                                  "fixed_by": "#108",
-                                  "scattering": [],
-                                  "curve_kinds": [],
-                                  "columns": [],
-                                  "affects_fit": false
-                                },
-                                {
                                   "id": "interpolation_extrapolates",
                                   "severity": "unreliable",
                                   "message_key": "known_issue.interpolation_extrapolates",
@@ -947,16 +937,6 @@
                                   "columns": [],
                                   "affects_fit": true,
                                   "condition": "fermi_energy_outside_band"
-                                },
-                                {
-                                  "id": "band_diagram_formula",
-                                  "severity": "caution",
-                                  "message_key": "known_issue.band_diagram_formula",
-                                  "fixed_by": "#108",
-                                  "scattering": [],
-                                  "curve_kinds": [],
-                                  "columns": [],
-                                  "affects_fit": false
                                 },
                                 {
                                   "id": "interpolation_extrapolates",
@@ -1230,16 +1210,6 @@
                                   "columns": [],
                                   "affects_fit": true,
                                   "condition": "fermi_energy_outside_band"
-                                },
-                                {
-                                  "id": "band_diagram_formula",
-                                  "severity": "caution",
-                                  "message_key": "known_issue.band_diagram_formula",
-                                  "fixed_by": "#108",
-                                  "scattering": [],
-                                  "curve_kinds": [],
-                                  "columns": [],
-                                  "affects_fit": false
                                 },
                                 {
                                   "id": "interpolation_extrapolates",
@@ -1522,16 +1492,6 @@
                                   "columns": [],
                                   "affects_fit": true,
                                   "condition": "fermi_energy_in_gap"
-                                },
-                                {
-                                  "id": "band_diagram_formula",
-                                  "severity": "caution",
-                                  "message_key": "known_issue.band_diagram_formula",
-                                  "fixed_by": "#108",
-                                  "scattering": [],
-                                  "curve_kinds": [],
-                                  "columns": [],
-                                  "affects_fit": false
                                 },
                                 {
                                   "id": "interpolation_extrapolates",
@@ -1952,16 +1912,6 @@
                                   "columns": [],
                                   "affects_fit": true,
                                   "condition": "fermi_energy_in_gap"
-                                },
-                                {
-                                  "id": "band_diagram_formula",
-                                  "severity": "caution",
-                                  "message_key": "known_issue.band_diagram_formula",
-                                  "fixed_by": "#108",
-                                  "scattering": [],
-                                  "curve_kinds": [],
-                                  "columns": [],
-                                  "affects_fit": false
                                 },
                                 {
                                   "id": "interpolation_extrapolates",
@@ -2445,16 +2395,6 @@
                                   "affects_fit": true
                                 },
                                 {
-                                  "id": "band_diagram_formula",
-                                  "severity": "caution",
-                                  "message_key": "known_issue.band_diagram_formula",
-                                  "fixed_by": "#108",
-                                  "scattering": [],
-                                  "curve_kinds": [],
-                                  "columns": [],
-                                  "affects_fit": false
-                                },
-                                {
                                   "id": "interpolation_extrapolates",
                                   "severity": "unreliable",
                                   "message_key": "known_issue.interpolation_extrapolates",
@@ -2519,7 +2459,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "example": "\"fc4597788df6c1d3eb3e1b358d52e79a\""
+                "example": "\"9cf4365e1a42a826ec11ec2a52e1a198\""
               }
             }
           },
@@ -4371,10 +4311,10 @@
               "text/event-stream": {
                 "examples": {
                   "single_pass": {
-                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"done\",\"result\":{\"parameters\":{\"m_eff\":0.57,\"band_gap\":910.0,\"fermi_energy\":-35.0},\"core_version\":\"0.3.2\",\"status\":\"converged\",\"parameter_errors\":{\"m_eff\":0.02,\"band_gap\":12.0,\"fermi_energy\":4.0},\"at_bounds\":[],\"known_issues\":[],\"held\":[],\"algorithm\":\"legacy-sequential-v1\",\"parameter_status\":{\"m_eff\":\"estimated\",\"band_gap\":\"estimated\",\"fermi_energy\":\"estimated\"},\"uncertainty\":\"not_assessed\",\"last_changes\":{}}}\n\n"
+                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"done\",\"result\":{\"parameters\":{\"m_eff\":0.57,\"band_gap\":910.0,\"fermi_energy\":-35.0},\"core_version\":\"0.3.3\",\"status\":\"converged\",\"parameter_errors\":{\"m_eff\":0.02,\"band_gap\":12.0,\"fermi_energy\":4.0},\"at_bounds\":[],\"known_issues\":[],\"held\":[],\"algorithm\":\"legacy-sequential-v1\",\"parameter_status\":{\"m_eff\":\"estimated\",\"band_gap\":\"estimated\",\"fermi_energy\":\"estimated\"},\"uncertainty\":\"not_assessed\",\"last_changes\":{}}}\n\n"
                   },
                   "iterative": {
-                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"iteration\",\"iteration\":1,\"parameters\":{\"m_eff\":0.8,\"band_gap\":950.0,\"fermi_energy\":-60.0}}\n\ndata: {\"type\":\"iteration\",\"iteration\":2,\"parameters\":{\"m_eff\":0.6,\"band_gap\":915.0,\"fermi_energy\":-38.0}}\n\ndata: {\"type\":\"done\",\"result\":{\"parameters\":{\"m_eff\":0.57,\"band_gap\":910.0,\"fermi_energy\":-35.0},\"core_version\":\"0.3.2\",\"status\":\"converged\",\"iterations\":2,\"parameter_errors\":{\"m_eff\":0.02,\"band_gap\":12.0,\"fermi_energy\":4.0},\"at_bounds\":[],\"known_issues\":[],\"held\":[],\"algorithm\":\"legacy-sequential-v1\",\"parameter_status\":{\"m_eff\":\"estimated\",\"band_gap\":\"estimated\",\"fermi_energy\":\"estimated\"},\"uncertainty\":\"not_assessed\",\"last_changes\":{}}}\n\n"
+                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"iteration\",\"iteration\":1,\"parameters\":{\"m_eff\":0.8,\"band_gap\":950.0,\"fermi_energy\":-60.0}}\n\ndata: {\"type\":\"iteration\",\"iteration\":2,\"parameters\":{\"m_eff\":0.6,\"band_gap\":915.0,\"fermi_energy\":-38.0}}\n\ndata: {\"type\":\"done\",\"result\":{\"parameters\":{\"m_eff\":0.57,\"band_gap\":910.0,\"fermi_energy\":-35.0},\"core_version\":\"0.3.3\",\"status\":\"converged\",\"iterations\":2,\"parameter_errors\":{\"m_eff\":0.02,\"band_gap\":12.0,\"fermi_energy\":4.0},\"at_bounds\":[],\"known_issues\":[],\"held\":[],\"algorithm\":\"legacy-sequential-v1\",\"parameter_status\":{\"m_eff\":\"estimated\",\"band_gap\":\"estimated\",\"fermi_energy\":\"estimated\"},\"uncertainty\":\"not_assessed\",\"last_changes\":{}}}\n\n"
                   },
                   "fit_timeout": {
                     "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"error\",\"error\":{\"code\":\"fit_timeout\",\"message\":\"The fit took too long\",\"details\":[]}}\n\n"
@@ -5446,12 +5386,12 @@
       },
       "BandDiagramResponse": {
         "properties": {
-          "wavevector": {
+          "wavevector_nm_inv": {
             "items": {
               "type": "number"
             },
             "type": "array",
-            "title": "Wavevector"
+            "title": "Wavevector Nm Inv"
           },
           "curves": {
             "additionalProperties": {
@@ -5476,23 +5416,28 @@
             },
             "type": "array",
             "title": "Known Issues"
+          },
+          "reference_mass_assumed": {
+            "type": "boolean",
+            "title": "Reference Mass Assumed"
           }
         },
         "type": "object",
         "required": [
-          "wavevector",
+          "wavevector_nm_inv",
           "curves",
-          "known_issues"
+          "known_issues",
+          "reference_mass_assumed"
         ],
         "title": "BandDiagramResponse",
-        "description": "Curves over `wavevector`, by name, where null marks a value that is not finite.\n\nEach name ends in its unit. `wavevector` has none, as the formula states none, and the desktop\ndraws this axis with no ticks. `known_issues` names known errors, as in `GET /api/models`.",
+        "description": "Curves over `wavevector_nm_inv` (nm⁻¹), with energies divided by k_B (K).\n\nNull marks a non-finite energy. `reference_mass_assumed` marks diagrams of modes without\nHall data, SPB or DPB, whose curvature scale assumes a band-1 mass magnitude of one electron\nmass, as no data in them set it.",
         "examples": [
           {
             "curves": {
               "band_1_energy_k": [
-                1954.5,
+                1751.01016,
                 0.0,
-                1954.5
+                1751.01016
               ],
               "fermi_energy_k": [
                 100.0,
@@ -5500,13 +5445,12 @@
                 100.0
               ]
             },
-            "known_issues": [
-              "band_diagram_formula"
-            ],
-            "wavevector": [
-              -40.0,
+            "known_issues": [],
+            "reference_mass_assumed": false,
+            "wavevector_nm_inv": [
+              -2.0,
               0.0,
-              40.0
+              2.0
             ]
           }
         ]
@@ -5714,7 +5658,7 @@
             "type": "string",
             "title": "Core Version",
             "description": "Core software version for provenance, not certification.",
-            "default": "0.3.2"
+            "default": "0.3.3"
           },
           "curves": {
             "additionalProperties": {
@@ -5773,7 +5717,7 @@
         "description": "Curves by name, where each name ends in its unit, and null marks a value that is not finite.\n\n`known_issues` names known errors that apply to this result, as in `GET /api/models`. `rmse` is\nempty without measurements. `measured_points` holds points made from the measurements sent,\nby name with its unit: `electrical_conductivity_s_per_m` is 1/rho, with null for a rho of 0 or\nbelow. They use no model, so they go with the data the request sent, interpolated or not.",
         "examples": [
           {
-            "core_version": "0.3.2",
+            "core_version": "0.3.3",
             "curves": {
               "resistivity_ohm_m": [
                 3.6627e-05,
@@ -6818,7 +6762,7 @@
             "type": "string",
             "title": "Core Version",
             "description": "Core software version for provenance, not certification.",
-            "default": "0.3.2"
+            "default": "0.3.3"
           },
           "status": {
             "type": "string",
@@ -6952,7 +6896,7 @@
         "examples": [
           {
             "at_bounds": [],
-            "core_version": "0.3.2",
+            "core_version": "0.3.3",
             "held": [],
             "known_issues": [],
             "parameter_errors": {
@@ -7300,7 +7244,7 @@
             "type": "string",
             "title": "Core Version",
             "description": "Core software version for provenance, not certification.",
-            "default": "0.3.2"
+            "default": "0.3.3"
           }
         },
         "type": "object",
@@ -7311,7 +7255,7 @@
         "title": "HealthResponse",
         "examples": [
           {
-            "core_version": "0.3.2",
+            "core_version": "0.3.3",
             "status": "ok",
             "version": "1.0.0"
           }

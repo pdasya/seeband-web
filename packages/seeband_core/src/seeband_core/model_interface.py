@@ -111,7 +111,7 @@ class KnownIssue:
 
     `scattering` is empty for every type. `condition` limits it to some inputs. `columns` names the
     curves of a kind that it changes, and is empty for all of them. `fixed_by` is the issue that
-    removes it. `affects_band_diagram` puts it on the sketch of E(k), and on nothing else.
+    removes it. `affects_band_diagram` applies it only to the band diagram.
     `explanation` is for developers, and a user sees `message_key` through i18n.
     """
 
@@ -274,7 +274,7 @@ class CurveRequest:
 
 @dataclass(frozen=True)
 class BandDiagramRequest:
-    """Ask for the sketch of E(k). `parameters` holds every parameter of the mode, in core units."""
+    """Describe the model parameters in core units for the band diagram."""
 
     fit_mode: str
     parameters: Mapping[str, float]
@@ -284,14 +284,12 @@ class BandDiagramRequest:
 
 @dataclass(frozen=True, eq=False)
 class BandDiagramResult:
-    """Curves over `wavevector`, by name, where each name ends in its unit.
+    """Energy curves in K over wavevector in nm^-1."""
 
-    `wavevector` has no unit, as the formula states none (`band_diagram_formula`).
-    """
-
-    wavevector: np.ndarray
+    wavevector_nm_inv: np.ndarray
     curves: Mapping[str, np.ndarray]
     known_issues: tuple[str, ...] = ()
+    reference_mass_assumed: bool = False
 
 
 @dataclass(frozen=True, eq=False)

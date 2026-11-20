@@ -10,6 +10,7 @@ from scipy.optimize import brentq
 from scipy.special import expit
 
 from seeband_core.fermi_integrals import fermi_integral, scaled_fermi_integral
+from seeband_core.model_scales import BOLTZMANN_EV_PER_K
 
 """
 #################################################
@@ -2108,4 +2109,8 @@ Temporary helper functions
 
 
 def parabolic_band(k: float, mass: float, energy: float) -> float:
-    return (k / 2 * np.pi) ** 2 / (2 * mass) + energy
+    """Return E/k_B in K for k in nm^-1, signed mass in m_e, and edge energy in K."""
+    if mass == 0.0 or not np.isfinite(mass):
+        return float("nan")
+    curvature = (hbar * 1e9) ** 2 / (2 * me * BOLTZMANN_EV_PER_K * e)
+    return energy + curvature * k**2 / mass

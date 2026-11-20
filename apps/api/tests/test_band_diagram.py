@@ -1,4 +1,4 @@
-"""`POST /api/band-diagram`, against the desktop's own calls."""
+"""`POST /api/band-diagram`, with physical wavevector and signed masses."""
 
 from collections.abc import Iterator
 from typing import Any
@@ -35,12 +35,15 @@ def test_spb_has_its_band_and_the_fermi_energy(client: TestClient) -> None:
 
     assert response.status_code == 200
     body = response.json()
-    assert len(body["wavevector"]) == 100
-    assert body["wavevector"][0] == -40.0
-    assert body["wavevector"][-1] == 40.0
+    k = body["wavevector_nm_inv"]
+    assert len(k) == 101
+    assert [k[0], k[50], k[-1]] == [-2.0, 0.0, 2.0]
     assert list(body["curves"]) == ["band_1_energy_k", "fermi_energy_k"]
-    assert body["known_issues"] == ["band_diagram_formula"]
-    assert body["curves"]["fermi_energy_k"][50] == pytest.approx(100.0, abs=1e-3)
+    assert body["known_issues"] == []
+    # S alone does not set the mass's size, so the curvature takes |m| = mₑ, with its sign.
+    assert body["reference_mass_assumed"] is True
+    assert body["curves"]["band_1_energy_k"][75] == pytest.approx(442.1300651, rel=1e-8)
+    assert body["curves"]["fermi_energy_k"] == [100.0] * len(k)
 
 
 def test_dpb_has_both_bands_and_the_fermi_energy(client: TestClient) -> None:
@@ -50,20 +53,28 @@ def test_dpb_has_both_bands_and_the_fermi_energy(client: TestClient) -> None:
     )
 
     assert response.status_code == 200
-    curves = response.json()["curves"]
+    result = response.json()
+    curves = result["curves"]
+    assert result["reference_mass_assumed"] is True
     assert list(curves) == ["band_1_energy_k", "band_2_energy_k", "fermi_energy_k"]
     # Band 2 opens up from E_g and band 1 down from 0, as the masses have those signs.
-    assert min(curves["band_2_energy_k"]) > 500.0
-    assert max(curves["band_1_energy_k"]) < 0.0
+    assert min(curves["band_2_energy_k"]) == 500.0
+    assert max(curves["band_1_energy_k"]) == 0.0
+    assert curves["band_1_energy_k"][25] == pytest.approx(-442.1300651, rel=1e-8)
+    assert curves["band_2_energy_k"][25] == pytest.approx(500.0 + 442.1300651 / 1.25)
 
 
-def test_the_ratio_of_degeneracies_sets_the_mass_of_band_2(client: TestClient) -> None:
-    body = _body("dpb", "dpb_s", m_eff=1.0, band_gap=0.0)
-    one = client.post("/api/band-diagram", json=body).json()["curves"]["band_2_energy_k"]
-    body |= {"band_1_degeneracy": 1.0, "band_2_degeneracy": 2.0}
-    two = client.post("/api/band-diagram", json=body).json()["curves"]["band_2_energy_k"]
+@pytest.mark.parametrize("m1", [16.0, -16.0])
+def test_dpb_hall_diagram_uses_single_valley_masses(client: TestClient, m1: float) -> None:
+    body = _body("dpb", "dpb_s_rho_rh", m1=m1, m_eff=2.0, band_gap=500.0)
+    body |= {"band_1_degeneracy": 8.0, "band_2_degeneracy": 1.0}
+    result = client.post("/api/band-diagram", json=body).json()
+    other = client.post("/api/band-diagram", json=body | {"band_2_degeneracy": 8.0}).json()
 
-    assert two[0] == pytest.approx(one[0] / 2)
+    assert result["reference_mass_assumed"] is False
+    assert result["curves"] == other["curves"]
+    assert result["curves"]["band_1_energy_k"][75] == pytest.approx(-442.1300651 / 4)
+    assert result["curves"]["band_2_energy_k"][75] == pytest.approx(500.0 + 442.1300651 / 8)
 
 
 def test_a_mass_of_0_gives_null_and_leaves_the_rest(client: TestClient) -> None:
@@ -93,17 +104,15 @@ def test_what_is_wrong_is_named(client: TestClient, change: dict[str, Any], code
 
 
 @pytest.mark.parametrize(("band_1", "band_2"), [(1e-308, 1e308), (1e308, 1e-308)])
-def test_a_ratio_of_degeneracies_past_a_float_is_refused(
+def test_the_diagram_does_not_require_a_finite_degeneracy_ratio(
     client: TestClient, band_1: float, band_2: float
 ) -> None:
     body = _body("dpb", "dpb_s") | {"band_1_degeneracy": band_1, "band_2_degeneracy": band_2}
 
     response = client.post("/api/band-diagram", json=body)
 
-    assert response.status_code == 422
-    assert [detail["code"] for detail in response.json()["details"]] == [
-        "degeneracy_ratio_out_of_range"
-    ]
+    assert response.status_code == 200
+    assert response.json() == client.post("/api/band-diagram", json=_body("dpb", "dpb_s")).json()
 
 
 def test_a_mode_with_no_degeneracy_refuses_one(client: TestClient) -> None:

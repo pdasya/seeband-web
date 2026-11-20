@@ -196,16 +196,17 @@ export interface components {
         };
         /**
          * BandDiagramResponse
-         * @description Curves over `wavevector`, by name, where null marks a value that is not finite.
+         * @description Curves over `wavevector_nm_inv` (nm⁻¹), with energies divided by k_B (K).
          *
-         *     Each name ends in its unit. `wavevector` has none, as the formula states none, and the desktop
-         *     draws this axis with no ticks. `known_issues` names known errors, as in `GET /api/models`.
+         *     Null marks a non-finite energy. `reference_mass_assumed` marks diagrams of modes without
+         *     Hall data, SPB or DPB, whose curvature scale assumes a band-1 mass magnitude of one electron
+         *     mass, as no data in them set it.
          * @example {
          *       "curves": {
          *         "band_1_energy_k": [
-         *           1954.5,
+         *           1751.01016,
          *           0,
-         *           1954.5
+         *           1751.01016
          *         ],
          *         "fermi_energy_k": [
          *           100,
@@ -213,25 +214,26 @@ export interface components {
          *           100
          *         ]
          *       },
-         *       "known_issues": [
-         *         "band_diagram_formula"
-         *       ],
-         *       "wavevector": [
-         *         -40,
+         *       "known_issues": [],
+         *       "reference_mass_assumed": false,
+         *       "wavevector_nm_inv": [
+         *         -2,
          *         0,
-         *         40
+         *         2
          *       ]
          *     }
          */
         BandDiagramResponse: {
-            /** Wavevector */
-            wavevector: number[];
+            /** Wavevector Nm Inv */
+            wavevector_nm_inv: number[];
             /** Curves */
             curves: {
                 [key: string]: (number | null)[];
             };
             /** Known Issues */
             known_issues: string[];
+            /** Reference Mass Assumed */
+            reference_mass_assumed: boolean;
         };
         /** BoundsInput */
         BoundsInput: {
@@ -348,7 +350,7 @@ export interface components {
          *     by name with its unit: `electrical_conductivity_s_per_m` is 1/rho, with null for a rho of 0 or
          *     below. They use no model, so they go with the data the request sent, interpolated or not.
          * @example {
-         *       "core_version": "0.3.2",
+         *       "core_version": "0.3.3",
          *       "curves": {
          *         "resistivity_ohm_m": [
          *           0.000036627,
@@ -399,7 +401,7 @@ export interface components {
             /**
              * Core Version
              * @description Core software version for provenance, not certification.
-             * @default 0.3.2
+             * @default 0.3.3
              */
             core_version?: string;
             /** Curves */
@@ -865,7 +867,7 @@ export interface components {
          *     E_F are from that stage. Otherwise it is empty.
          * @example {
          *       "at_bounds": [],
-         *       "core_version": "0.3.2",
+         *       "core_version": "0.3.3",
          *       "held": [],
          *       "known_issues": [],
          *       "parameter_errors": {
@@ -895,7 +897,7 @@ export interface components {
             /**
              * Core Version
              * @description Core software version for provenance, not certification.
-             * @default 0.3.2
+             * @default 0.3.3
              */
             core_version?: string;
             /**
@@ -1098,7 +1100,7 @@ export interface components {
         /**
          * HealthResponse
          * @example {
-         *       "core_version": "0.3.2",
+         *       "core_version": "0.3.3",
          *       "status": "ok",
          *       "version": "1.0.0"
          *     }
@@ -1119,7 +1121,7 @@ export interface components {
             /**
              * Core Version
              * @description Core software version for provenance, not certification.
-             * @default 0.3.2
+             * @default 0.3.3
              */
             core_version?: string;
         };
@@ -1583,7 +1585,7 @@ export interface operations {
                 headers: {
                     /** @example no-cache */
                     "Cache-Control"?: string;
-                    /** @example "fc4597788df6c1d3eb3e1b358d52e79a" */
+                    /** @example "9cf4365e1a42a826ec11ec2a52e1a198" */
                     ETag?: string;
                     [name: string]: unknown;
                 };

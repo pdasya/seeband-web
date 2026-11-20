@@ -603,8 +603,18 @@ function bandDiagramView(
   const { fit } = STRINGS;
   const labels: Record<string, string> = text.diagramCurves;
   const issueTexts: Record<string, string> = fit.knownIssueTexts;
-  const first = diagram?.wavevector[0];
-  const last = diagram?.wavevector.at(-1);
+  const wavevector = diagram?.wavevector_nm_inv ?? [];
+  const first = wavevector[0];
+  const last = wavevector.at(-1);
+  const notes = (diagram?.known_issues ?? []).map((id) => {
+    const issue = mode?.known_issues.find((item) => item.id === id);
+    const severity = fit.issueSeverity[issue?.severity ?? "unreliable"];
+    const said = issueTexts[`known_issue.${id}`] ?? fit.knownIssueOther;
+    return `${severity}: ${said}`;
+  });
+  if (diagram?.reference_mass_assumed === true) {
+    notes.unshift(text.diagramReferenceMass);
+  }
   return {
     ...NO_CHART,
     yAxisTitle: text.axes.energy(energy.unit),
@@ -612,29 +622,18 @@ function bandDiagramView(
     empty: null,
     xAxis: {
       title: text.wavevectorAxis,
-      span: first === undefined || last === undefined ? null : [first, last],
+      // Before the first answer, the core's own k range, _DIAGRAM_K_RANGE_NM_INV in band_models.
+      span: first === undefined || last === undefined ? [-2, 2] : [first, last],
     },
     // Each name comes from the server, so a model with other bands needs no change here.
     curves: Object.entries(diagram?.curves ?? {}).map(([name, values]) => ({
       id: name,
       label: labels[name] ?? name,
-      temperatureK: diagram?.wavevector ?? [],
+      temperatureK: wavevector,
       values: energies(values, energy),
       dashed: name === "fermi_energy_k",
     })),
-    note:
-      diagram === null || diagram.known_issues.length === 0
-        ? null
-        : diagram.known_issues
-            .map((id) => {
-              const issue = mode?.known_issues.find((item) => item.id === id);
-              const severity =
-                fit.issueSeverity[issue?.severity ?? "unreliable"];
-              const said =
-                issueTexts[`known_issue.${id}`] ?? fit.knownIssueOther;
-              return `${severity}: ${said}`;
-            })
-            .join(" "),
+    note: notes.join(" ") || null,
   };
 }
 

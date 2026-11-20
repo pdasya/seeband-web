@@ -1,3 +1,3 @@
 """Band model calculations and fits for SeeBand Web."""
 
-__version__ = "0.3.2"
+__version__ = "0.3.3"

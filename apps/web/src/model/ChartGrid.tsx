@@ -206,7 +206,6 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
         fitRange={view.xAxis === undefined ? fitRange : null}
         xAxisTitle={view.xAxis?.title ?? text.temperatureAxis}
         xAxisSpan={view.xAxis?.span ?? null}
-        xAxisUnitless={view.xAxis !== undefined}
         yAxisTitle={view.yAxisTitle}
         description={view.description}
         failedText={text.failed}

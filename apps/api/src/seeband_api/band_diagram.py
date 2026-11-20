@@ -1,6 +1,4 @@
-"""`POST /api/band-diagram`: the sketch of E(k) for given parameters. It keeps no state."""
-
-import math
+"""`POST /api/band-diagram`: the local parabolic bands for given parameters."""
 
 from pydantic import BaseModel, ConfigDict
 from seeband_core.model_catalog import registry
@@ -14,7 +12,6 @@ from seeband_api.request_checks import (
     check_degeneracy,
     check_parameter_names,
     find_mode,
-    invalid,
 )
 from seeband_api.routing import api_router, too_many_requests
 
@@ -47,30 +44,33 @@ class BandDiagramRequest(BaseModel):
 
 
 class BandDiagramResponse(BaseModel):
-    """Curves over `wavevector`, by name, where null marks a value that is not finite.
+    """Curves over `wavevector_nm_inv` (nm⁻¹), with energies divided by k_B (K).
 
-    Each name ends in its unit. `wavevector` has none, as the formula states none, and the desktop
-    draws this axis with no ticks. `known_issues` names known errors, as in `GET /api/models`.
+    Null marks a non-finite energy. `reference_mass_assumed` marks diagrams of modes without
+    Hall data, SPB or DPB, whose curvature scale assumes a band-1 mass magnitude of one electron
+    mass, as no data in them set it.
     """
 
     model_config = ConfigDict(
         json_schema_extra={
             "examples": [
                 {
-                    "wavevector": [-40.0, 0.0, 40.0],
+                    "wavevector_nm_inv": [-2.0, 0.0, 2.0],
                     "curves": {
-                        "band_1_energy_k": [1954.5, 0.0, 1954.5],
+                        "band_1_energy_k": [1751.01016, 0.0, 1751.01016],
                         "fermi_energy_k": [100.0, 100.0, 100.0],
                     },
-                    "known_issues": ["band_diagram_formula"],
+                    "known_issues": [],
+                    "reference_mass_assumed": False,
                 }
             ]
         }
     )
 
-    wavevector: list[float]
+    wavevector_nm_inv: list[float]
     curves: dict[str, list[float | None]]
     known_issues: list[str]
+    reference_mass_assumed: bool
 
 
 @router.post("/band-diagram", responses={429: too_many_requests()})
@@ -80,16 +80,6 @@ def post_band_diagram(body: BandDiagramRequest) -> BandDiagramResponse:
         *check_degeneracy(body.band_1_degeneracy, body.band_2_degeneracy, fit_mode),
         *check_parameter_names(list(body.parameters), "parameters", fit_mode),
     ]
-    # The mass of band 2 takes this ratio, which a float holds only within its range.
-    ratio = body.band_1_degeneracy / body.band_2_degeneracy
-    if not (math.isfinite(ratio) and ratio > 0):
-        details.append(
-            invalid(
-                "degeneracy_ratio_out_of_range",
-                "N1 / N2 must be a finite number above 0",
-                ["band_2_degeneracy"],
-            )
-        )
     if details:
         raise ApiError(422, ERROR_CODE, ERROR_MESSAGE, details)
     result = registry.get(description.id).band_diagram(
@@ -101,7 +91,8 @@ def post_band_diagram(body: BandDiagramRequest) -> BandDiagramResponse:
         )
     )
     return BandDiagramResponse(
-        wavevector=result.wavevector.tolist(),
+        wavevector_nm_inv=result.wavevector_nm_inv.tolist(),
         curves={name: finite_or_none(values) for name, values in result.curves.items()},
         known_issues=list(result.known_issues),
+        reference_mass_assumed=result.reference_mass_assumed,
     )

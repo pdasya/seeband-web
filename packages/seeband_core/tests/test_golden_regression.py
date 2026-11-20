@@ -2,7 +2,7 @@
 
 Golden results were captured on one Mac with Python 3.11, numpy 1.26 and scipy 1.17. The project
 uses newer versions, and CI runs on Linux, so this is the check across versions and machines.
-P8, P11, P13 and P14 expectations are recorded separately. The desktop recordings are preserved.
+P8, P11, P13, P14 and P17 expectations are recorded separately; desktop recordings are kept.
 docs/golden-results.md gives the measured differences.
 
 CURVE_TOLERANCE is tight, because curves are direct calculations. FIT_TOLERANCE is looser, because
@@ -143,7 +143,18 @@ def p13_results() -> dict[str, Any]:
     return json.loads((GOLDEN.parent / "physics" / "p13.json").read_text())["results"]
 
 
+@cache
+def p17_reference() -> dict[str, Any]:
+    return json.loads((GOLDEN.parent / "physics" / "p17.json").read_text())
+
+
 def regression_expected(identifier: str, scattering: str | None, call: dict[str, Any]) -> Any:
+    if call["function"] == "get_parabolic_band":
+        wavevector_nm_inv = call["result"][0]
+        mass, edge_k = call["args"][3:5]
+        curvature_k = p17_reference()["curvature_k_at_one_nm_inv_and_one_electron_mass"]
+        energy_k = [edge_k + curvature_k * k**2 / mass for k in wavevector_nm_inv]
+        return {"result": [wavevector_nm_inv, energy_k]}
     if call["function"] in P13_FUNCTIONS:
         return p13_results()[p8_key(identifier, call)]
     expected = p8_results()[p8_key(identifier, call)]
@@ -753,7 +764,9 @@ def test_replay_matches_current_expectations(
         allow_d1_budget_exit=identifier == D1_01_DIS_FIT,
     )
     if call["function"] == "get_parabolic_band":
-        assert_close(replay(mode, scattering, call), call["result"], CURVE_TOLERANCE)
+        # P17 replaces the desktop's sketch with E = ħ²k²/(2m); the desktop recording keeps only
+        # its wavevector grid, against an independent SI reference.
+        assert_close(replay(mode, scattering, call), expected["result"], CURVE_TOLERANCE)
 
 
 def same_value(first: Any, second: Any) -> bool:

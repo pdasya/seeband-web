@@ -326,19 +326,17 @@ test("the figure does not share arrays with its input", () => {
   expect((data[0] as { x: number[] }).x).not.toBe(temperatureK);
 });
 
-describe("an axis with no unit", () => {
+describe("a wavevector axis", () => {
   const xaxis = (input: Partial<FigureInput>) =>
     buildFigure({ ...INPUT, ...input }, THEME).layout.xaxis;
 
-  test("has no ticks, with its span or before it is known", () => {
-    expect(xaxis({ xAxisUnitless: true, xAxisSpan: [-40, 40] })).toMatchObject({
-      range: [-40, 40],
-      ticks: "",
-      showticklabels: false,
+  test("shows ticks at spacing appropriate to its signed span", () => {
+    const wavevector = xaxis({ xAxisSpan: [-2, 2] });
+    expect(wavevector).toMatchObject({
+      range: [-2, 2],
+      ticks: "outside",
     });
-    const waiting = xaxis({ xAxisUnitless: true, xAxisSpan: null });
-    expect(waiting).toMatchObject({ ticks: "", showticklabels: false });
-    expect(waiting).not.toHaveProperty("dtick");
+    expect(wavevector).not.toHaveProperty("dtick");
   });
 
   test("leaves a temperature axis as it was", () => {

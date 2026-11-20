@@ -55,7 +55,6 @@ EXPECTED: dict[str, tuple[Any, ...]] = {
         "fermi_energy_outside_band",
     ),
     "hall_dis_no_reference": ("caution", "#71", ("dpb_s_rho_rh",), ("dis",), (), True, None),
-    "band_diagram_formula": ("caution", "#108", (*SPB, *DPB), (), (), False, None),
     "interpolation_extrapolates": (
         "unreliable",
         "#86",
@@ -136,24 +135,14 @@ def test_a_description_serialises_with_its_keys() -> None:
 
 
 @pytest.mark.parametrize("name", [*SPB, *DPB])
-@pytest.mark.parametrize("kind", [*ALL_CURVES, None])
-def test_the_band_diagram_flag_is_on_no_fit_or_curve(name: str, kind: Any) -> None:
-    mode = fit_mode(name)
-    for scattering in mode.scattering or [None]:
-        found = active_issue_ids(mode, scattering, {}, 2.0, kind, extrapolated=True)
-        assert "band_diagram_formula" not in found
-
-
-@pytest.mark.parametrize("name", [*SPB, *DPB])
-def test_the_band_diagram_carries_what_the_registry_marks(name: str) -> None:
-    assert band_diagram_issue_ids(fit_mode(name)) == ("band_diagram_formula",)
+def test_the_repaired_band_diagram_has_no_active_issues(name: str) -> None:
+    assert band_diagram_issue_ids(fit_mode(name)) == ()
 
 
 def test_issues_for_mode_selects_by_mode() -> None:
     names = {issue.id for issue in issues_for_mode("spb_s")}
     assert names == {
         "no_chemical_potential",
-        "band_diagram_formula",
         "interpolation_extrapolates",
     }
 

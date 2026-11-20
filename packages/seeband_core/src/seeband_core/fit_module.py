@@ -2482,6 +2482,7 @@ class PB_fit:
     def get_parabolic_band(
         self, kmin: float, kmax: float, knumb: int, mass: float, energy: float
     ) -> tuple[np.ndarray, np.ndarray]:
+        """Sample the signed-mass parabola on a wavevector grid in nm^-1."""
         k_array = np.linspace(kmin, kmax, knumb)
         energy_array = np.zeros(knumb)
         for i, wavevector in enumerate(k_array):

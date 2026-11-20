@@ -40,8 +40,6 @@ export interface FigureInput {
   yAxisTitle: string;
   /** For an axis that is not temperature: its span, once known. */
   xAxisSpan?: readonly [number, number] | null | undefined;
-  /** An axis with no unit, so it has no ticks, as on the desktop's sketch. */
-  xAxisUnitless?: boolean | undefined;
 }
 
 /** Colours and fonts from the tokens, as Plotly draws with values rather than CSS variables. */
@@ -267,11 +265,9 @@ export function buildFigure(
       ticklen: 5,
       tickcolor: theme.axis,
       tickfont: tickFont,
-      ...(input.xAxisUnitless === true
-        ? { ticks: "", showticklabels: false }
-        : maxK <= MAX_TICKED_K
-          ? { dtick: AXIS_STEP_K }
-          : {}),
+      ...(input.xAxisSpan == null && maxK <= MAX_TICKED_K
+        ? { dtick: AXIS_STEP_K }
+        : {}),
     },
     yaxis: {
       // An SI letter such as µ would read as part of the unit in the axis title.
