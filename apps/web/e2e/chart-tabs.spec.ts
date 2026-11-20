@@ -509,23 +509,44 @@ test("a change of mode takes the old curve away at once, and says it waits", asy
   await expect(page.getByText("Updating…")).toHaveCount(0);
 });
 
-test("a failed curve of a new mode leaves no old curve", async ({ page }) => {
-  await open(page);
-  await load(page, 0);
-  await expect(lines(page)).toHaveCount(1);
-  await page.route("**/api/calc", (route) =>
-    route.fulfill({
-      status: 422,
-      json: { code: "calculation_failed", message: "x", details: [] },
-    }),
-  );
+for (const detail of [null, "chemical_potential_dpb_fermi_energy"]) {
+  test(`a failed curve of a new mode leaves no old curve (${detail ?? "general error"})`, async ({
+    page,
+  }) => {
+    await open(page);
+    await load(page, 0);
+    await expect(lines(page)).toHaveCount(1);
+    await page.route("**/api/calc", (route) =>
+      route.fulfill({
+        status: 422,
+        json: {
+          code: "calculation_failed",
+          message: "x",
+          details:
+            detail === null
+              ? []
+              : [
+                  {
+                    code: detail,
+                    message: "x",
+                    location: ["body", "parameters"],
+                  },
+                ],
+        },
+      }),
+    );
 
-  await page.getByRole("radio", { name: "S", exact: true }).click();
+    await page.getByRole("radio", { name: "S", exact: true }).click();
 
-  await expect(page.getByRole("alert")).toContainText("no result");
-  await expect(page.getByRole("alert")).not.toContainText("last curve");
-  await expect(lines(page)).toHaveCount(0);
-});
+    await expect(page.getByRole("alert")).toContainText(
+      detail === null
+        ? "no result"
+        : "Set E_F below the higher band edge, max(0, E_g).",
+    );
+    await expect(page.getByRole("alert")).not.toContainText("last curve");
+    await expect(lines(page)).toHaveCount(0);
+  });
+}
 
 test("a failure of the last mode goes at once with the change of mode", async ({
   page,

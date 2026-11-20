@@ -16,6 +16,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ready": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Ready
+         * @description Whether the API can calculate: its worker processes have started and answered.
+         *
+         *     `/api/health` says the server answers; this says it can also take calculations, so that a proxy
+         *     or an orchestrator sends traffic only once it can.
+         */
+        get: operations["get_ready"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/models": {
         parameters: {
             query?: never;
@@ -326,7 +349,7 @@ export interface components {
          *     by name with its unit: `electrical_conductivity_s_per_m` is 1/rho, with null for a rho of 0 or
          *     below. They use no model, so they go with the data the request sent, interpolated or not.
          * @example {
-         *       "core_version": "0.3.0",
+         *       "core_version": "0.3.2",
          *       "curves": {
          *         "resistivity_ohm_m": [
          *           0.000036627,
@@ -377,7 +400,7 @@ export interface components {
             /**
              * Core Version
              * @description Core software version for provenance, not certification.
-             * @default 0.3.0
+             * @default 0.3.2
              */
             core_version?: string;
             /** Curves */
@@ -843,7 +866,7 @@ export interface components {
          *     E_F are from that stage. Otherwise it is empty.
          * @example {
          *       "at_bounds": [],
-         *       "core_version": "0.3.0",
+         *       "core_version": "0.3.2",
          *       "held": [],
          *       "known_issues": [],
          *       "parameter_errors": {
@@ -873,7 +896,7 @@ export interface components {
             /**
              * Core Version
              * @description Core software version for provenance, not certification.
-             * @default 0.3.0
+             * @default 0.3.2
              */
             core_version?: string;
             /**
@@ -1076,7 +1099,7 @@ export interface components {
         /**
          * HealthResponse
          * @example {
-         *       "core_version": "0.3.0",
+         *       "core_version": "0.3.2",
          *       "status": "ok",
          *       "version": "1.0.0"
          *     }
@@ -1097,7 +1120,7 @@ export interface components {
             /**
              * Core Version
              * @description Core software version for provenance, not certification.
-             * @default 0.3.0
+             * @default 0.3.2
              */
             core_version?: string;
         };
@@ -1181,7 +1204,7 @@ export interface components {
             /** Affects Fit */
             affects_fit: boolean;
             /** Condition */
-            condition?: ("degeneracy_not_one" | "collapsed_m_eff" | "fermi_energy_outside_band" | "interpolation_extrapolated") | null;
+            condition?: ("degeneracy_not_one" | "collapsed_m_eff" | "fermi_energy_in_gap" | "fermi_energy_outside_band" | "interpolation_extrapolated") | null;
         };
         /**
          * MeasuredPointsResponse
@@ -1428,6 +1451,19 @@ export interface components {
             /** Fermi Energy K */
             fermi_energy_k: number;
         };
+        /**
+         * ReadyResponse
+         * @example {
+         *       "status": "ready"
+         *     }
+         */
+        ReadyResponse: {
+            /**
+             * Status
+             * @constant
+             */
+            status: "ready";
+        };
         /** ResidualDiagnostics */
         ResidualDiagnostics: {
             /** Rmse */
@@ -1496,6 +1532,42 @@ export interface operations {
             };
         };
     };
+    get_ready: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadyResponse"];
+                };
+            };
+            /** @description The calculation workers are not ready yet. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Default Response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     get_models: {
         parameters: {
             query?: never;
@@ -1512,7 +1584,7 @@ export interface operations {
                 headers: {
                     /** @example no-cache */
                     "Cache-Control"?: string;
-                    /** @example "e42d1867fd794c9570c6dae611878661" */
+                    /** @example "9cf4365e1a42a826ec11ec2a52e1a198" */
                     ETag?: string;
                     [name: string]: unknown;
                 };
@@ -1558,6 +1630,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CalcResponse"];
+                };
+            };
+            /** @description Invalid request or calculation has no result */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Too many requests from this client, or for the server */

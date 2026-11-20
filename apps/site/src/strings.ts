@@ -9,11 +9,28 @@ export const APP_RESULTS_URL = "/results";
 export const APP_DEMO_URL = "/fit?demo=1";
 export const CONVENTIONS_URL = "/conventions/";
 export const RESULTS_CHANGED_URL = "/results-changed/";
+export const GUIDE_URL = "/guide/";
 
 export const LANGUAGE = "en";
+// Open Graph's form of the language.
+export const LOCALE = "en_GB";
+// What robots.txt keeps search engines out of. Its rules match the start of a path, so a screen
+// is closed exactly, with and without a query or slash after it, and /results does not also close
+// /results-changed/. A new app screen needs its path here.
+export const APP_SCREENS = [APP_FIT_URL, APP_RESULTS_URL];
+// The API, and the app's licence texts, which are files, not pages. The app's /assets/ stay open,
+// as a search engine needs them to render its pages.
+export const NOT_FOR_SEARCH_PREFIXES = ["/api/", "/licenses/"];
 
 export const STRINGS = {
   siteName: "SeeBand",
+  // schema.org's description of the app, on the overview.
+  application: {
+    name: "SeeBand Web",
+    category: "Scientific data analysis",
+    operatingSystem: "Any, in a web browser",
+    licence: "https://opensource.org/license/mit",
+  },
   stage: "web · prototype",
   navigationLabel: "Sections",
   navigation: {
@@ -21,6 +38,7 @@ export const STRINGS = {
     fit: "Model fit",
     results: "Results",
     conventions: "Conventions",
+    guide: "Guide",
   },
   skipToContent: "Skip to content",
   onThisPage: "On this page",

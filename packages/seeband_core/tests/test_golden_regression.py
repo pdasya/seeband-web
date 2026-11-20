@@ -1,8 +1,8 @@
-"""Replay historical desktop inputs against independent desktop and generated P8 expectations.
+"""Replay historical desktop inputs against desktop and generated regression expectations.
 
 Golden results were captured on one Mac with Python 3.11, numpy 1.26 and scipy 1.17. The project
 uses newer versions, and CI runs on Linux, so this is the check across versions and machines.
-P8, P11, P13 and P17 expectations are separate from the original desktop evidence.
+P8, P11, P13, P14 and P17 expectations are recorded separately; desktop recordings are kept.
 docs/golden-results.md gives the measured differences.
 
 CURVE_TOLERANCE is tight, because curves are direct calculations. FIT_TOLERANCE is looser, because
@@ -24,13 +24,16 @@ import inspect
 import json
 import math
 from collections.abc import Iterator
+from dataclasses import replace
 from functools import cache
 from pathlib import Path
 from typing import Any
 
+import mpmath as mp
 import numpy as np
 import pytest
 from seeband_core import fit_module
+from seeband_core import math_module as mm
 from seeband_core.band_models import parabolic_band
 from seeband_core.model_catalog import registry as default_registry
 from seeband_core.model_interface import (
@@ -47,6 +50,8 @@ GOLDEN = Path(__file__).parent / "fixtures" / "golden"
 EXAMPLES = ["01_Fe2VAl09Si01", "02_SiP", "03_AWI32_SI"]
 CURVE_TOLERANCE = 1e-9
 FIT_TOLERANCE = 1e-5
+P14_CURVE_DELTA_RTOL = 3e-5
+P14_FIT_DELTA_RTOL = 1e-4
 # Number of leading arguments that are measurement arrays in each fit function.
 ARRAY_ARGUMENTS = {
     "spb_see_fit": 2,
@@ -58,8 +63,6 @@ ARRAY_ARGUMENTS = {
 }
 # Fits that the desktop called with print_info as a further positional argument.
 POSITIONAL_ARGUMENTS = {"dpb_see_res_fit": 12, "dpb_see_res_hall_fit": 16}
-# Error text can change with a scipy update, so only a stable part of it is compared.
-ERROR_FRAGMENTS = {"ValueError": "bounds"}
 # These fits are not stable across versions or machines (D19).
 UNSTABLE_02 = {
     ("dpb_s", None),
@@ -73,6 +76,7 @@ UNSTABLE_02 = {
 COLLAPSED_M_EFF = 1e-5
 # The G minimum case on 01 is not credible either, and differs by about 1e-4.
 D1_01_TOLERANCE = 1e-3
+D1_01_DIS_FIT = "01_Fe2VAl09Si01-d1-dis-thread-dpb_see_res_hall_fit"
 # E_F on 02_SiP with SPB S falls from 100 to 3.76 with solver warnings. It differed by 3.4e-6 on a
 # Mac, and by 1.8e-5 and 2.8e-5 in two Linux CI runs, so it varies between runs of the same code.
 SPB_S_02_TOLERANCE = 1e-4
@@ -101,21 +105,6 @@ CALL_IDS = [
     f"{example}-{mode}-{scattering}-{source}-{call['function']}"
     for example, mode, scattering, source, call in CALLS
 ]
-
-
-@cache
-def p2_results() -> dict[str, Any]:
-    return json.loads((GOLDEN.parent / "physics" / "p2.json").read_text())
-
-
-@cache
-def p3_results() -> dict[str, Any]:
-    return json.loads((GOLDEN.parent / "physics" / "p3.json").read_text())
-
-
-@cache
-def p5_results() -> dict[str, Any]:
-    return json.loads((GOLDEN.parent / "physics" / "p5.json").read_text())["results"]
 
 
 @cache
@@ -192,30 +181,57 @@ def regression_expected(identifier: str, scattering: str | None, call: dict[str,
     }
 
 
+P14_PRIOR_FIXTURES = ("p2.json", "p3.json", "p4.json", "p5.json", "p8.json", "p11.json", "p13.json")
+
+
+def affected_by_p14(scattering: str | None, call: dict[str, Any]) -> bool:
+    return scattering != "acPhDis" and call["function"] != "get_parabolic_band"
+
+
+@cache
+def p14_document() -> dict[str, Any]:
+    return json.loads((GOLDEN.parent / "physics" / "p14.json").read_text())
+
+
+def current_regression_expected(
+    identifier: str, scattering: str | None, call: dict[str, Any]
+) -> Any:
+    if affected_by_p14(scattering, call):
+        return p14_document()["results"][p8_key(identifier, call)]
+    return regression_expected(identifier, scattering, call)
+
+
 def p8_key(identifier: str, call: dict[str, Any]) -> str:
     # A graph can call the same function repeatedly with different band parameters.
     inputs = json.dumps([call["args"], call["kwargs"]], sort_keys=True).encode()
     return identifier + "-" + hashlib.sha256(inputs).hexdigest()[:16]
 
 
-def assert_p8_replay(
+def assert_recorded_replay(
     identifier: str,
     mode: str,
     scattering: str | None,
     call: dict[str, Any],
     *,
     expected: Any = None,
+    allow_d1_budget_exit: bool = False,
 ) -> None:
-    """Compare original inputs with the physics regressions, including failures."""
+    """Compare original inputs with a model replay baseline, including failures."""
     if expected is None:
         expected = regression_expected(identifier, scattering, call)
     if call["function"].endswith("_fit"):
         result = replay_fit(mode, call)
-        assert result.status == expected["status"]
+        budget_exit = allow_d1_budget_exit and result.status == "iteration_limit"
+        if budget_exit:
+            assert identifier == D1_01_DIS_FIT
+            budget = default_registry.get("dpb").describe().fit_mode("dpb_s_rho_rh").max_iterations
+            assert budget is not None and result.iterations == budget, result
+        else:
+            assert result.status == expected["status"], result
+            assert_fit_iterations(identifier, mode, scattering, result, expected["iterations"])
         assert result.message == expected["message"]
-        assert_fit_iterations(identifier, mode, scattering, result, expected["iterations"])
         assert result.parameters.keys() == expected["parameters"].keys()
-        if result.status == "converged":
+        if result.status == "converged" or budget_exit:
             expected_values = [
                 expected["parameters"][name] for name in FIT_RESULT_NAMES[call["function"]]
             ]
@@ -307,6 +323,134 @@ def test_p13_preserves_prior_evidence_and_records_only_branch_constrained_fits()
         if corrected["status"] == "failed":
             assert corrected["parameters"] == request.start
             assert corrected["message"]
+
+
+def test_p14_preserves_prior_evidence_and_covers_affected_calls() -> None:
+    document = p14_document()
+    assert set(document["prior_sha256"]) == set(P14_PRIOR_FIXTURES)
+    assert set(document["desktop_sha256"]) == {f"{name}.json" for name in EXAMPLES}
+    for directory, hashes in (
+        (GOLDEN, document["desktop_sha256"]),
+        (GOLDEN.parent / "physics", document["prior_sha256"]),
+    ):
+        for name, sha in hashes.items():
+            assert hashlib.sha256((directory / name).read_bytes()).hexdigest() == sha
+
+    affected = {
+        p8_key(identifier, call): (identifier, mode, scattering, call)
+        for identifier, (_, mode, scattering, _, call) in zip(CALL_IDS, CALLS, strict=True)
+        if affected_by_p14(scattering, call)
+    }
+    assert set(document["results"]) == affected.keys()
+    assert set(document["affected_functions"]) == {
+        call["function"] for _, _, _, call in affected.values()
+    }
+    for key, current in document["results"].items():
+        identifier, mode, scattering, call = affected[key]
+        previous = regression_expected(identifier, scattering, call)
+        if previous.get("status") == "failed":
+            assert current == previous
+        elif current.get("status") == "converged":
+            assert previous["status"] == "converged"
+            old, new = previous["parameters"], current["parameters"]
+            assert new.keys() == old.keys()
+            is_collapsed_d1 = identifier == D1_01_DIS_FIT
+            if is_collapsed_d1:
+                assert 0 < new["m_eff"] < COLLAPSED_M_EFF
+                names = sorted(old.keys() - {"m_eff", "F", "G"})
+                assert_close([new[n] for n in names], [old[n] for n in names], D1_01_TOLERANCE)
+            else:
+                assert_close(list(new.values()), [old[n] for n in new], P14_FIT_DELTA_RTOL)
+        elif "result" in current and "result" in previous:
+            assert current["result"][0] == previous["result"][0]
+            if identifier.startswith("03_AWI32_SI-") and call["function"] in (
+                "dpb_ind_see_calc",
+                "dpb_ind_see_seeOnly_calc",
+                "dpb_ind_elecCond_calc",
+                "dpb_thermCond_calc",
+            ):
+                assert_p14_awi32_dilute_correction(
+                    mode, scattering, call, current["result"], previous["result"]
+                )
+            else:
+                assert_close(current["result"][1:], previous["result"][1:], P14_CURVE_DELTA_RTOL)
+        else:
+            assert current == previous
+
+
+@cache
+def _awi32_transport_reference(
+    temperatures: tuple[float, ...],
+) -> tuple[list[float], list[float], float]:
+    """Independent unnormalised Fermi integrals and density balance for the recorded bands."""
+    weighted_seebeck, scaled_conductivity = [], []
+    first_kappa = 0.0
+    with mp.workdps(60):
+        mass, gap, ef = mp.mpf("1.22"), mp.mpf(1947), mp.mpf(-350)
+        kb_over_e = mp.mpf(str(mm.kB)) / mp.mpf(str(mm.e))
+
+        def moment(order, eta):
+            return -mp.re(mp.gamma(order + 1) * mp.polylog(order + 1, -mp.exp(eta)))
+
+        for temperature in temperatures:
+            t = mp.mpf(str(temperature))
+
+            def balance(mu, *, t=t):
+                return (
+                    -moment(mp.mpf("0.5"), -mu / t)
+                    + mass ** mp.mpf("1.5") * moment(mp.mpf("0.5"), (mu - gap) / t)
+                    + mp.mpf(2) / 3 * (-ef / t) ** mp.mpf("1.5")
+                )
+
+            mu = mp.findroot(balance, (ef, mp.mpf(0)))
+            assert abs(balance(mu)) < mp.mpf("1e-55")
+            eta1, eta2 = -mu / t, (mu - gap) / t
+            sigma1, sigma2 = moment(0, eta1), moment(0, eta2) / mass
+            mean2 = 2 * moment(1, eta2) / moment(0, eta2)
+            s2 = -kb_over_e * (mean2 - eta2)
+            weighted_seebeck.append(float(s2 * sigma2 / (sigma1 + sigma2)))
+            scaled_conductivity.append(float(sigma2))
+            if len(scaled_conductivity) == 1:
+                mean1 = 2 * moment(1, eta1) / sigma1
+                s1 = kb_over_e * (mean1 - eta1)
+                l1 = kb_over_e**2 * (3 * moment(2, eta1) / sigma1 - mean1**2)
+                l2 = kb_over_e**2 * (3 * moment(2, eta2) / moment(0, eta2) - mean2**2)
+                bipolar = sigma1 * sigma2 / (sigma1 + sigma2) * (s1 - s2) ** 2
+                first_kappa = float(t * (l1 * sigma1 + l2 * sigma2 + bipolar))
+    return weighted_seebeck, scaled_conductivity, first_kappa
+
+
+def assert_p14_awi32_dilute_correction(
+    mode: str,
+    scattering: str | None,
+    call: dict[str, Any],
+    current: list[list[float]],
+    previous: list[list[float]],
+) -> None:
+    arguments = recorded_arguments(call)
+    assert arguments["parameter_see"] == [1.22, 1947, -350]
+    assert arguments["degen"] == 1.0
+    if "parameter_res" in arguments:
+        assert arguments["parameter_res"] == [40000, 1.0, 100, 100, 1000, 1.0]
+    temperatures = current[0]
+    see2, sigma2, first_kappa = _awi32_transport_reference(tuple(temperatures))
+    actual = replay(mode, scattering, call)
+    if call["function"] == "dpb_thermCond_calc":
+        assert math.isnan(previous[1][0])
+        assert_close(current[1][1:], previous[1][1:], P14_CURVE_DELTA_RTOL)
+        factor = 40000.0 if scattering == "acPh" else 1000.0 * temperatures[0]
+        assert_close([actual[1][0]], [factor * first_kappa], 1e-10)
+        return
+    # Only the dilute band's contribution is replaced by the independent reference.
+    assert_close(current[1], previous[1], P14_CURVE_DELTA_RTOL)
+    if call["function"] == "dpb_ind_elecCond_calc":
+        expected = [
+            f * (40000.0 if scattering == "acPh" else 1000.0 * t)
+            for f, t in zip(sigma2, temperatures, strict=True)
+        ]
+    else:
+        expected = see2
+    assert_close(actual[2], expected, 1e-10)
 
 
 def core_arguments(
@@ -606,128 +750,23 @@ def assert_fit_iterations(
         identifier for identifier, case in zip(CALL_IDS, CALLS, strict=True) if case[2] != "acPhDis"
     ],
 )
-def test_replay_matches_the_desktop(
+def test_replay_matches_current_expectations(
     example: str, mode: str, scattering: str | None, source: str, call: dict[str, Any]
 ) -> None:
     identifier = f"{example}-{mode}-{scattering}-{source}-{call['function']}"
-    if call["function"] in P13_FUNCTIONS or call["function"] == "get_parabolic_band":
-        assert_p8_replay(identifier, mode, scattering, call)
-        return
-    if "error" in call:
-        kind, _, message = call["error"].partition(": ")
-        assert kind == "ValueError"
-        assert ERROR_FRAGMENTS[kind] in message
-        failed = replay_fit(mode, call)
-        assert failed.status == "failed"
-        assert failed.message is not None
-        assert ERROR_FRAGMENTS.get(kind, message) in failed.message
-        return
-
-    if affected_by_p11(scattering, call):
-        corrected = p11_results()[p8_key(identifier, call)]
-        if call["function"].endswith("_fit"):
-            assert_p8_replay(identifier, mode, scattering, call)
-            return
-        # Only S changes in these calculations; retain the independent desktop
-        # expectations for every other output, including temperature/rho/Hall.
-        call = dict(call, result=[call["result"][0], corrected["result"][1], *call["result"][2:]])
-    expected_p2 = p2_results()
-    if identifier in expected_p2:
-        # P2 changes only the last field: Hall on curves, m1 on fits.
-        call = dict(call, result=[*call["result"][:-1], expected_p2[identifier][-1]])
-    expected_p3 = p3_results()
-    if identifier in expected_p3:
-        call = dict(call, result=[call["result"][0], *expected_p3[identifier][1:]])
-    expected_p5 = p5_results()
-    if identifier in expected_p5:
-        call = dict(call, result=expected_p5[identifier]["result"])
-    expected_p4 = json.loads((GOLDEN.parent / "physics" / "p4.json").read_text())
-    if identifier in expected_p4["corrected_hall_curves"]:
-        call = dict(
-            call, result=[*call["result"][:-1], expected_p4["corrected_hall_curves"][identifier]]
-        )
-    if call["function"].endswith("_fit"):
-        result = replay_fit(mode, call)
-        assert result.status == "converged"
-        if not assert_named_fit_case(identifier, mode, scattering, call, result, call["result"]):
-            values = [result.parameters[name] for name in FIT_RESULT_NAMES[call["function"]]]
-            assert_close(values, call["result"], FIT_TOLERANCE)
-    else:
-        assert_close(replay(mode, scattering, call), call["result"], CURVE_TOLERANCE)
-
-
-def recorded_iterative_runs() -> Iterator[tuple[str, str | None, int, dict[str, Any]]]:
-    # 02_SiP is left out, because its DPB fits differ between versions and machines (D19).
-    for example in ("01_Fe2VAl09Si01", "03_AWI32_SI"):
-        document = json.loads((GOLDEN / f"{example}.json").read_text(encoding="utf-8"))
-        for run in document["runs"]:
-            if (
-                run["iterations"] is not None
-                and "error" not in run["calls"][0]
-                and run["scattering"] != "acPhDis"
-            ):
-                call = run["calls"][0]
-                identifier = (
-                    f"{example}-{run['mode']}-{run['scattering']}-thread-{call['function']}"
-                )
-                corrected = p5_results().get(identifier)
-                iterations = corrected["iterations"] if corrected else run["iterations"]
-                if affected_by_p11(run["scattering"], call):
-                    iterations = p11_results()[p8_key(identifier, call)]["iterations"]
-                if call["function"] in P13_FUNCTIONS:
-                    iterations = p13_results()[p8_key(identifier, call)]["iterations"]
-                yield run["mode"], run["scattering"], iterations, call
-
-
-@pytest.mark.filterwarnings("ignore")
-@pytest.mark.parametrize(
-    ("mode", "scattering", "iterations", "call"), list(recorded_iterative_runs())
-)
-def test_iterations_match_the_desktop(
-    mode: str, scattering: str | None, iterations: int, call: dict[str, Any]
-) -> None:
-    result = replay_fit(mode, call)
-    assert result.status == "converged"
-    assert result.iterations == iterations
-
-
-@pytest.mark.filterwarnings("ignore")
-@pytest.mark.parametrize(
-    ("example", "mode", "scattering", "source", "call"),
-    [case for case in CALLS if case[2] != "acPhDis"],
-    ids=[
-        identifier for identifier, case in zip(CALL_IDS, CALLS, strict=True) if case[2] != "acPhDis"
-    ],
-)
-def test_replay_matches_p8_expectations(
-    example: str, mode: str, scattering: str | None, source: str, call: dict[str, Any]
-) -> None:
-    identifier = f"{example}-{mode}-{scattering}-{source}-{call['function']}"
-    assert_p8_replay(identifier, mode, scattering, call)
-
-
-def p8_iterative_runs() -> Iterator[tuple[str, str, dict[str, Any]]]:
-    for identifier, (_, mode, scattering, source, call) in zip(CALL_IDS, CALLS, strict=True):
-        if scattering == "acPhDis":
-            continue  # Removed public choice; unchanged low-level golden tests retain it.
-        if source == "thread" and call["function"] in {"dpb_see_res_fit", "dpb_see_res_hall_fit"}:
-            yield identifier, mode, call
-
-
-@pytest.mark.filterwarnings("ignore")
-@pytest.mark.parametrize(("identifier", "mode", "call"), list(p8_iterative_runs()))
-def test_iterations_match_p8_expectations(identifier: str, mode: str, call: dict[str, Any]) -> None:
-    result = replay_fit(mode, call)
-    scattering = recorded_arguments(call).get("scatter_type")
-    expected = regression_expected(identifier, scattering, call)
-    assert result.status == expected["status"]
-    assert_fit_iterations(
+    expected = current_regression_expected(identifier, scattering, call)
+    assert_recorded_replay(
         identifier,
         mode,
-        recorded_arguments(call).get("scatter_type"),
-        result,
-        expected["iterations"],
+        scattering,
+        call,
+        expected=expected,
+        allow_d1_budget_exit=identifier == D1_01_DIS_FIT,
     )
+    if call["function"] == "get_parabolic_band":
+        # P17 replaces the desktop's sketch with E = ħ²k²/(2m); the desktop recording keeps only
+        # its wavevector grid, against an independent SI reference.
+        assert_close(replay(mode, scattering, call), expected["result"], CURVE_TOLERANCE)
 
 
 def same_value(first: Any, second: Any) -> bool:
@@ -814,6 +853,33 @@ def test_unstable_list_only_holds_cases_that_exist() -> None:
 
 
 @pytest.mark.parametrize(
+    ("scattering", "resistivity_error"),
+    [("acPh", 0.86168026), ("dis", 0.87459336)],
+)
+def test_verified_sip_reports_a_collapsed_band_and_large_resistivity_error(
+    scattering: str, resistivity_error: float
+) -> None:
+    identifier = f"02_SiP-dpb_s_rho-{scattering}-thread-dpb_see_res_fit"
+    call = CALLS[CALL_IDS.index(identifier)][-1]
+    request = replace(fit_request("dpb_s_rho", call), algorithm="verified-sequential-v2")
+
+    result = default_registry.get("dpb").fit(request)
+
+    assert result.status == "converged"
+    assert result.diagnostics is not None
+    assert result.diagnostics.stage_consistent
+    assert result.diagnostics.residual_adequacy == "not_assessed"
+    assert "collapsed_m_eff" in result.known_issues
+    assert 0 < result.parameters["m_eff"] < COLLAPSED_M_EFF
+    assert "band_gap" in result.at_bounds
+    residuals = result.diagnostics.residuals
+    assert residuals["seebeck"].relative_l2 == pytest.approx(0.18322352, abs=5e-5)
+    assert residuals["resistivity"].relative_l2 == pytest.approx(resistivity_error, abs=5e-5)
+    for name, bound in request.bounds.items():
+        assert bound.lower <= result.parameters[name] <= bound.upper
+
+
+@pytest.mark.parametrize(
     ("energy", "accepted"),
     [(3.7588615470073488, True), (3.758784715324298 * 1.001, False)],
 )
@@ -831,10 +897,10 @@ def test_p8_spb_sip_uses_the_existing_cross_platform_fit_contract(
     )
     monkeypatch.setattr(f"{__name__}.replay_fit", lambda *args: result)
     if accepted:
-        assert_p8_replay(identifier, "spb_s", None, call)
+        assert_recorded_replay(identifier, "spb_s", None, call)
     else:
         with pytest.raises(AssertionError):
-            assert_p8_replay(identifier, "spb_s", None, call)
+            assert_recorded_replay(identifier, "spb_s", None, call)
 
 
 @pytest.mark.parametrize(
@@ -864,10 +930,10 @@ def test_p8_d19_keeps_the_existing_physical_and_failure_checks(
     )
     monkeypatch.setattr(f"{__name__}.replay_fit", lambda *args: result)
     if change == "allowed":
-        assert_p8_replay(identifier, "dpb_s_rho", "acPh", call, expected=expected)
+        assert_recorded_replay(identifier, "dpb_s_rho", "acPh", call, expected=expected)
     else:
         with pytest.raises(AssertionError):
-            assert_p8_replay(identifier, "dpb_s_rho", "acPh", call, expected=expected)
+            assert_recorded_replay(identifier, "dpb_s_rho", "acPh", call, expected=expected)
 
 
 @pytest.mark.parametrize("iterations", [0, 1, 1000, 1001, None, 1.5])
@@ -919,7 +985,7 @@ def test_collapsed_d1_iterations_respect_the_existing_budget(iterations: Any) ->
 
 @pytest.mark.parametrize("missing", ["collapse", "reference", "bound"])
 def test_collapsed_d1_requires_its_diagnostics(missing: str) -> None:
-    identifier = "01_Fe2VAl09Si01-d1-dis-thread-dpb_see_res_hall_fit"
+    identifier = D1_01_DIS_FIT
     call = CALLS[CALL_IDS.index(identifier)][-1]
     expected = p13_results()[p8_key(identifier, call)]
     result = FitResult(
@@ -963,7 +1029,7 @@ def test_collapsed_d1_requires_its_diagnostics(missing: str) -> None:
 def test_collapsed_d1_diagnostic_contract_preserves_its_remaining_checks(
     monkeypatch: pytest.MonkeyPatch, change: str
 ) -> None:
-    identifier = "01_Fe2VAl09Si01-d1-dis-thread-dpb_see_res_hall_fit"
+    identifier = D1_01_DIS_FIT
     call = CALLS[CALL_IDS.index(identifier)][-1]
     expected = p13_results()[p8_key(identifier, call)]
     # Complete endpoint from Linux CI run 43693830497. Its rho differs from
@@ -999,7 +1065,27 @@ def test_collapsed_d1_diagnostic_contract_preserves_its_remaining_checks(
     )
     monkeypatch.setattr(f"{__name__}.replay_fit", lambda *args: result)
     if change == "allowed":
-        assert_p8_replay(identifier, "d1", "dis", call)
+        assert_recorded_replay(identifier, "d1", "dis", call)
     else:
         with pytest.raises(AssertionError):
-            assert_p8_replay(identifier, "d1", "dis", call)
+            assert_recorded_replay(identifier, "d1", "dis", call)
+
+
+@pytest.mark.parametrize("remaining_sweeps", [0, 1])
+def test_p14_d1_budget_exit_requires_the_full_budget(monkeypatch, remaining_sweeps):
+    call = CALLS[CALL_IDS.index(D1_01_DIS_FIT)][-1]
+    expected = current_regression_expected(D1_01_DIS_FIT, "dis", call)
+    budget = default_registry.get("dpb").describe().fit_mode("dpb_s_rho_rh").max_iterations
+    assert budget is not None
+    result = FitResult(
+        expected["parameters"],
+        "iteration_limit",
+        iterations=budget - remaining_sweeps,
+        known_issues=("collapsed_m_eff", "hall_dis_no_reference"),
+        at_bounds=("m_eff",),
+    )
+    monkeypatch.setattr(f"{__name__}.replay_fit", lambda *args: result)
+    with pytest.raises(AssertionError) if remaining_sweeps else contextlib.nullcontext():
+        assert_recorded_replay(
+            D1_01_DIS_FIT, "d1", "dis", call, expected=expected, allow_d1_budget_exit=True
+        )

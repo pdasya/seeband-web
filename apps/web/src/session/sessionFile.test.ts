@@ -152,6 +152,20 @@ test("a saved session loads back into a new one as it was, its fit not run again
   expect(after.restored?.request).toEqual(REQUEST);
 });
 
+test("saved guess origins survive restoration while legacy starts remain manual", async () => {
+  const before = session();
+  before.guessedParameters = { dpb_s: { band_gap: 900 } };
+  const file = await sessionFile(before, VERSIONS, () => REQUEST);
+  const after = restoredInto(await opened(JSON.stringify(file))).getState();
+  expect(after.guessedParameters).toEqual({ dpb_s: { band_gap: 900 } });
+
+  delete file.content.guessedParameters;
+  file.checksum = await checksum(file.content);
+  const legacy = restoredInto(await opened(JSON.stringify(file))).getState();
+  expect(legacy.parameters).toEqual(before.parameters);
+  expect(legacy.guessedParameters).toEqual({});
+});
+
 test("saving a restored session again keeps the request of its fit as it was", async () => {
   const store = restoredInto(await opened(await saved()));
   // Today the request could not be built, as interpolation is on its way after a restore.

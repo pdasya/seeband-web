@@ -6,6 +6,9 @@ Code ported from SeeBand, including the calculation code in
 packages/seeband_core, and the neural net weights exported from SeeBand are
 covered by the original license below.
 
+The user guide in apps/site/src/pages/guide.mdx is adapted from SeeBand's
+UserGuide_SeeBand.pdf at the reference commit, which the same license covers.
+
 The example data in packages/seeband_core/tests/fixtures/examples are copied from
 SeeBand. Its license covers software and documentation, and it does not state the
 source of these measurements.

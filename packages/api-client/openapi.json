@@ -235,6 +235,240 @@
         }
       }
     },
+    "/api/ready": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Get Ready",
+        "description": "Whether the API can calculate: its worker processes have started and answered.\n\n`/api/health` says the server answers; this says it can also take calculations, so that a proxy\nor an orchestrator sends traffic only once it can.",
+        "operationId": "get_ready",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadyResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "internal_error": {
+                    "value": {
+                      "code": "internal_error",
+                      "message": "Internal server error",
+                      "details": []
+                    }
+                  },
+                  "not_found": {
+                    "value": {
+                      "code": "not_found",
+                      "message": "Not Found",
+                      "details": []
+                    }
+                  },
+                  "calculation_failed": {
+                    "value": {
+                      "code": "calculation_failed",
+                      "message": "The calculation has no result for these parameters and temperatures",
+                      "details": []
+                    }
+                  },
+                  "calculation_timeout": {
+                    "value": {
+                      "code": "calculation_timeout",
+                      "message": "The calculation took too long",
+                      "details": []
+                    }
+                  },
+                  "calculation_unavailable": {
+                    "value": {
+                      "code": "calculation_unavailable",
+                      "message": "The calculation stopped unexpectedly. Try again.",
+                      "details": []
+                    }
+                  },
+                  "fit_mode_disabled": {
+                    "value": {
+                      "code": "fit_mode_disabled",
+                      "message": "This fit mode is disabled until its known issue is fixed",
+                      "details": []
+                    }
+                  },
+                  "invalid_fit": {
+                    "value": {
+                      "code": "invalid_fit",
+                      "message": "Invalid fit",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "bounds",
+                            "m_eff"
+                          ],
+                          "code": "parameter_not_fitted",
+                          "message": "This fit does not fit it"
+                        }
+                      ]
+                    }
+                  },
+                  "fit_queue_full": {
+                    "value": {
+                      "code": "fit_queue_full",
+                      "message": "Too many fits are running. Try again shortly.",
+                      "details": []
+                    }
+                  },
+                  "rate_limited": {
+                    "value": {
+                      "code": "rate_limited",
+                      "message": "Too many requests",
+                      "details": []
+                    }
+                  },
+                  "request_too_large": {
+                    "value": {
+                      "code": "request_too_large",
+                      "message": "A request can hold at most 10000000 bytes",
+                      "details": []
+                    }
+                  },
+                  "calculation_busy": {
+                    "value": {
+                      "code": "calculation_busy",
+                      "message": "Too many calculations are waiting. Try again shortly.",
+                      "details": []
+                    }
+                  },
+                  "client_calc_limit": {
+                    "value": {
+                      "code": "client_calc_limit",
+                      "message": "At most 4 calculations of one client at once",
+                      "details": []
+                    }
+                  },
+                  "server_busy": {
+                    "value": {
+                      "code": "server_busy",
+                      "message": "Too many requests at once. Try again shortly.",
+                      "details": []
+                    }
+                  },
+                  "request_timeout": {
+                    "value": {
+                      "code": "request_timeout",
+                      "message": "A request's body must arrive within 60.0 s, with no pause over 10.0 s",
+                      "details": []
+                    }
+                  },
+                  "client_fit_limit": {
+                    "value": {
+                      "code": "client_fit_limit",
+                      "message": "This client has too many fits running or waiting",
+                      "details": []
+                    }
+                  },
+                  "invalid_parse_request": {
+                    "value": {
+                      "code": "invalid_parse_request",
+                      "message": "Invalid request",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "mapping"
+                          ],
+                          "code": "unknown_column",
+                          "message": "The text has no such column"
+                        }
+                      ]
+                    }
+                  },
+                  "invalid_guess": {
+                    "value": {
+                      "code": "invalid_guess",
+                      "message": "Invalid request",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "model"
+                          ],
+                          "code": "unknown_model",
+                          "message": "This model does not exist"
+                        }
+                      ]
+                    }
+                  },
+                  "guess_unavailable": {
+                    "value": {
+                      "code": "guess_unavailable",
+                      "message": "This model has no neural net guess",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "model"
+                          ],
+                          "code": "no_neural_net",
+                          "message": "See has_initial_guess in GET /api/models"
+                        }
+                      ]
+                    }
+                  },
+                  "invalid_calculation": {
+                    "value": {
+                      "code": "invalid_calculation",
+                      "message": "Invalid calculation",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "parameters",
+                            "m_eff"
+                          ],
+                          "code": "missing_parameter",
+                          "message": "This mode needs it"
+                        }
+                      ]
+                    }
+                  },
+                  "validation_error": {
+                    "value": {
+                      "code": "validation_error",
+                      "message": "Invalid request",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "seebeck_v_per_k",
+                            3
+                          ],
+                          "code": "float_parsing",
+                          "message": "Input should be a valid number, unable to parse string as a number"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The calculation workers are not ready yet."
+          }
+        }
+      }
+    },
     "/api/models": {
       "get": {
         "tags": [
@@ -1239,6 +1473,27 @@
                                   "condition": "collapsed_m_eff"
                                 },
                                 {
+                                  "id": "fermi_energy_in_gap",
+                                  "severity": "caution",
+                                  "message_key": "known_issue.fermi_energy_in_gap",
+                                  "fixed_by": "#107",
+                                  "scattering": [],
+                                  "curve_kinds": [
+                                    "measured",
+                                    "seebeck",
+                                    "seebeck_by_band",
+                                    "electrical_conductivity",
+                                    "electrical_conductivity_by_band",
+                                    "thermal_conductivity",
+                                    "lorenz_number",
+                                    "chemical_potential",
+                                    "carrier_concentration_by_band"
+                                  ],
+                                  "columns": [],
+                                  "affects_fit": true,
+                                  "condition": "fermi_energy_in_gap"
+                                },
+                                {
                                   "id": "interpolation_extrapolates",
                                   "severity": "unreliable",
                                   "message_key": "known_issue.interpolation_extrapolates",
@@ -1636,6 +1891,27 @@
                                   "columns": [],
                                   "affects_fit": true,
                                   "condition": "collapsed_m_eff"
+                                },
+                                {
+                                  "id": "fermi_energy_in_gap",
+                                  "severity": "caution",
+                                  "message_key": "known_issue.fermi_energy_in_gap",
+                                  "fixed_by": "#107",
+                                  "scattering": [],
+                                  "curve_kinds": [
+                                    "measured",
+                                    "seebeck",
+                                    "seebeck_by_band",
+                                    "electrical_conductivity",
+                                    "electrical_conductivity_by_band",
+                                    "thermal_conductivity",
+                                    "lorenz_number",
+                                    "chemical_potential",
+                                    "carrier_concentration_by_band"
+                                  ],
+                                  "columns": [],
+                                  "affects_fit": true,
+                                  "condition": "fermi_energy_in_gap"
                                 },
                                 {
                                   "id": "interpolation_extrapolates",
@@ -2086,6 +2362,27 @@
                                   "condition": "collapsed_m_eff"
                                 },
                                 {
+                                  "id": "fermi_energy_in_gap",
+                                  "severity": "caution",
+                                  "message_key": "known_issue.fermi_energy_in_gap",
+                                  "fixed_by": "#107",
+                                  "scattering": [],
+                                  "curve_kinds": [
+                                    "measured",
+                                    "seebeck",
+                                    "seebeck_by_band",
+                                    "electrical_conductivity",
+                                    "electrical_conductivity_by_band",
+                                    "thermal_conductivity",
+                                    "lorenz_number",
+                                    "chemical_potential",
+                                    "carrier_concentration_by_band"
+                                  ],
+                                  "columns": [],
+                                  "affects_fit": true,
+                                  "condition": "fermi_energy_in_gap"
+                                },
+                                {
                                   "id": "hall_dis_no_reference",
                                   "severity": "caution",
                                   "message_key": "known_issue.hall_dis_no_reference",
@@ -2162,7 +2459,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "example": "\"e42d1867fd794c9570c6dae611878661\""
+                "example": "\"9cf4365e1a42a826ec11ec2a52e1a198\""
               }
             }
           },
@@ -2610,6 +2907,58 @@
                           ],
                           "code": "float_parsing",
                           "message": "Input should be a valid number, unable to parse string as a number"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request or calculation has no result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "invalid_calculation": {
+                    "value": {
+                      "code": "invalid_calculation",
+                      "message": "Invalid calculation",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "parameters",
+                            "m_eff"
+                          ],
+                          "code": "missing_parameter",
+                          "message": "This mode needs it"
+                        }
+                      ]
+                    }
+                  },
+                  "calculation_failed": {
+                    "value": {
+                      "code": "calculation_failed",
+                      "message": "The calculation has no result for these parameters and temperatures",
+                      "details": []
+                    }
+                  },
+                  "calculation_without_chemical_potential": {
+                    "value": {
+                      "code": "calculation_failed",
+                      "message": "The calculation has no result for these parameters and temperatures",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "parameters"
+                          ],
+                          "code": "chemical_potential_zero_mass",
+                          "message": "Band mass must be nonzero."
                         }
                       ]
                     }
@@ -3962,10 +4311,10 @@
               "text/event-stream": {
                 "examples": {
                   "single_pass": {
-                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"done\",\"result\":{\"parameters\":{\"m_eff\":0.57,\"band_gap\":910.0,\"fermi_energy\":-35.0},\"core_version\":\"0.3.0\",\"status\":\"converged\",\"parameter_errors\":{\"m_eff\":0.02,\"band_gap\":12.0,\"fermi_energy\":4.0},\"at_bounds\":[],\"known_issues\":[],\"held\":[],\"algorithm\":\"legacy-sequential-v1\",\"parameter_status\":{\"m_eff\":\"estimated\",\"band_gap\":\"estimated\",\"fermi_energy\":\"estimated\"},\"uncertainty\":\"not_assessed\",\"last_changes\":{}}}\n\n"
+                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"done\",\"result\":{\"parameters\":{\"m_eff\":0.57,\"band_gap\":910.0,\"fermi_energy\":-35.0},\"core_version\":\"0.3.2\",\"status\":\"converged\",\"parameter_errors\":{\"m_eff\":0.02,\"band_gap\":12.0,\"fermi_energy\":4.0},\"at_bounds\":[],\"known_issues\":[],\"held\":[],\"algorithm\":\"legacy-sequential-v1\",\"parameter_status\":{\"m_eff\":\"estimated\",\"band_gap\":\"estimated\",\"fermi_energy\":\"estimated\"},\"uncertainty\":\"not_assessed\",\"last_changes\":{}}}\n\n"
                   },
                   "iterative": {
-                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"iteration\",\"iteration\":1,\"parameters\":{\"m_eff\":0.8,\"band_gap\":950.0,\"fermi_energy\":-60.0}}\n\ndata: {\"type\":\"iteration\",\"iteration\":2,\"parameters\":{\"m_eff\":0.6,\"band_gap\":915.0,\"fermi_energy\":-38.0}}\n\ndata: {\"type\":\"done\",\"result\":{\"parameters\":{\"m_eff\":0.57,\"band_gap\":910.0,\"fermi_energy\":-35.0},\"core_version\":\"0.3.0\",\"status\":\"converged\",\"iterations\":2,\"parameter_errors\":{\"m_eff\":0.02,\"band_gap\":12.0,\"fermi_energy\":4.0},\"at_bounds\":[],\"known_issues\":[],\"held\":[],\"algorithm\":\"legacy-sequential-v1\",\"parameter_status\":{\"m_eff\":\"estimated\",\"band_gap\":\"estimated\",\"fermi_energy\":\"estimated\"},\"uncertainty\":\"not_assessed\",\"last_changes\":{}}}\n\n"
+                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"iteration\",\"iteration\":1,\"parameters\":{\"m_eff\":0.8,\"band_gap\":950.0,\"fermi_energy\":-60.0}}\n\ndata: {\"type\":\"iteration\",\"iteration\":2,\"parameters\":{\"m_eff\":0.6,\"band_gap\":915.0,\"fermi_energy\":-38.0}}\n\ndata: {\"type\":\"done\",\"result\":{\"parameters\":{\"m_eff\":0.57,\"band_gap\":910.0,\"fermi_energy\":-35.0},\"core_version\":\"0.3.2\",\"status\":\"converged\",\"iterations\":2,\"parameter_errors\":{\"m_eff\":0.02,\"band_gap\":12.0,\"fermi_energy\":4.0},\"at_bounds\":[],\"known_issues\":[],\"held\":[],\"algorithm\":\"legacy-sequential-v1\",\"parameter_status\":{\"m_eff\":\"estimated\",\"band_gap\":\"estimated\",\"fermi_energy\":\"estimated\"},\"uncertainty\":\"not_assessed\",\"last_changes\":{}}}\n\n"
                   },
                   "fit_timeout": {
                     "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"error\",\"error\":{\"code\":\"fit_timeout\",\"message\":\"The fit took too long\",\"details\":[]}}\n\n"
@@ -4310,187 +4659,187 @@
                       "preview": [
                         [
                           50.0,
-                          9.268892694384608e-05,
-                          6.114959298287624e-06,
-                          5.959825101441012e-07
+                          9.268892627882655e-05,
+                          6.114959241413011e-06,
+                          5.959825026065723e-07
                         ],
                         [
                           75.0,
-                          0.00013063742872412742,
-                          9.902036137652306e-06,
-                          6.11473399997891e-07
+                          0.0001306374275173049,
+                          9.902035988029256e-06,
+                          6.114733883005773e-07
                         ],
                         [
                           100.0,
-                          0.00015817298717411932,
-                          1.4283697194756858e-05,
-                          6.243234571981225e-07
+                          0.00015817298503181712,
+                          1.4283696824857732e-05,
+                          6.243234377778799e-07
                         ],
                         [
                           125.0,
-                          0.00018508771206913953,
-                          1.8939864426941722e-05,
-                          6.364995875481932e-07
+                          0.00018508770990087803,
+                          1.893986392625545e-05,
+                          6.364995681375118e-07
                         ],
                         [
                           150.0,
-                          0.0002008961323606316,
-                          2.4172951253570913e-05,
-                          6.234965756109561e-07
+                          0.00020089612944781973,
+                          2.417295031091891e-05,
+                          6.234965487232375e-07
                         ],
                         [
                           175.0,
-                          0.0002065060336835406,
-                          2.876149230362729e-05,
-                          5.942928199146077e-07
+                          0.0002065060324265783,
+                          2.8761491644419394e-05,
+                          5.942928058414453e-07
                         ],
                         [
                           200.0,
-                          0.00020076334664054232,
-                          3.233885960184509e-05,
-                          5.249569530886411e-07
+                          0.00020076334592709775,
+                          3.2338858307825964e-05,
+                          5.249569340634414e-07
                         ],
                         [
                           225.0,
-                          0.00018535678356561513,
-                          3.4310336596647014e-05,
-                          4.3863309321808774e-07
+                          0.00018535678419136017,
+                          3.4310335980701446e-05,
+                          4.386330877171462e-07
                         ],
                         [
                           250.0,
-                          0.00016400387682983324,
-                          3.454218618855157e-05,
-                          3.4273395168925865e-07
+                          0.0001640038791021678,
+                          3.454218537147746e-05,
+                          3.4273394842284136e-07
                         ],
                         [
                           275.0,
-                          0.00014354013305271633,
-                          3.3544002341563496e-05,
-                          2.6601184106241833e-07
+                          0.00014354013273584486,
+                          3.354400240873078e-05,
+                          2.6601184107699126e-07
                         ]
                       ],
                       "preview_text": [
                         [
                           "50.0",
-                          "9.268892694384608e-05",
-                          "6.114959298287624e-06",
-                          "5.959825101441012e-07"
+                          "9.268892627882655e-05",
+                          "6.114959241413011e-06",
+                          "5.959825026065723e-07"
                         ],
                         [
                           "75.0",
-                          "0.00013063742872412742",
-                          "9.902036137652306e-06",
-                          "6.11473399997891e-07"
+                          "0.0001306374275173049",
+                          "9.902035988029256e-06",
+                          "6.114733883005773e-07"
                         ],
                         [
                           "100.0",
-                          "0.00015817298717411932",
-                          "1.4283697194756858e-05",
-                          "6.243234571981225e-07"
+                          "0.00015817298503181712",
+                          "1.4283696824857732e-05",
+                          "6.243234377778799e-07"
                         ],
                         [
                           "125.0",
-                          "0.00018508771206913953",
-                          "1.8939864426941722e-05",
-                          "6.364995875481932e-07"
+                          "0.00018508770990087803",
+                          "1.893986392625545e-05",
+                          "6.364995681375118e-07"
                         ],
                         [
                           "150.0",
-                          "0.0002008961323606316",
-                          "2.4172951253570913e-05",
-                          "6.234965756109561e-07"
+                          "0.00020089612944781973",
+                          "2.417295031091891e-05",
+                          "6.234965487232375e-07"
                         ],
                         [
                           "175.0",
-                          "0.0002065060336835406",
-                          "2.876149230362729e-05",
-                          "5.942928199146077e-07"
+                          "0.0002065060324265783",
+                          "2.8761491644419394e-05",
+                          "5.942928058414453e-07"
                         ],
                         [
                           "200.0",
-                          "0.00020076334664054232",
-                          "3.233885960184509e-05",
-                          "5.249569530886411e-07"
+                          "0.00020076334592709775",
+                          "3.2338858307825964e-05",
+                          "5.249569340634414e-07"
                         ],
                         [
                           "225.0",
-                          "0.00018535678356561513",
-                          "3.4310336596647014e-05",
-                          "4.3863309321808774e-07"
+                          "0.00018535678419136017",
+                          "3.4310335980701446e-05",
+                          "4.386330877171462e-07"
                         ],
                         [
                           "250.0",
-                          "0.00016400387682983324",
-                          "3.454218618855157e-05",
-                          "3.4273395168925865e-07"
+                          "0.0001640038791021678",
+                          "3.454218537147746e-05",
+                          "3.4273394842284136e-07"
                         ],
                         [
                           "275.0",
-                          "0.00014354013305271633",
-                          "3.3544002341563496e-05",
-                          "2.6601184106241833e-07"
+                          "0.00014354013273584486",
+                          "3.354400240873078e-05",
+                          "2.6601184107699126e-07"
                         ]
                       ],
                       "preview_si": [
                         [
                           50.0,
-                          9.268892694384608e-05,
-                          6.114959298287624e-06,
-                          5.959825101441012e-07
+                          9.268892627882655e-05,
+                          6.114959241413011e-06,
+                          5.959825026065723e-07
                         ],
                         [
                           75.0,
-                          0.00013063742872412742,
-                          9.902036137652306e-06,
-                          6.11473399997891e-07
+                          0.0001306374275173049,
+                          9.902035988029256e-06,
+                          6.114733883005773e-07
                         ],
                         [
                           100.0,
-                          0.00015817298717411932,
-                          1.4283697194756858e-05,
-                          6.243234571981225e-07
+                          0.00015817298503181712,
+                          1.4283696824857732e-05,
+                          6.243234377778799e-07
                         ],
                         [
                           125.0,
-                          0.00018508771206913953,
-                          1.8939864426941722e-05,
-                          6.364995875481932e-07
+                          0.00018508770990087803,
+                          1.893986392625545e-05,
+                          6.364995681375118e-07
                         ],
                         [
                           150.0,
-                          0.0002008961323606316,
-                          2.4172951253570913e-05,
-                          6.234965756109561e-07
+                          0.00020089612944781973,
+                          2.417295031091891e-05,
+                          6.234965487232375e-07
                         ],
                         [
                           175.0,
-                          0.0002065060336835406,
-                          2.876149230362729e-05,
-                          5.942928199146077e-07
+                          0.0002065060324265783,
+                          2.8761491644419394e-05,
+                          5.942928058414453e-07
                         ],
                         [
                           200.0,
-                          0.00020076334664054232,
-                          3.233885960184509e-05,
-                          5.249569530886411e-07
+                          0.00020076334592709775,
+                          3.2338858307825964e-05,
+                          5.249569340634414e-07
                         ],
                         [
                           225.0,
-                          0.00018535678356561513,
-                          3.4310336596647014e-05,
-                          4.3863309321808774e-07
+                          0.00018535678419136017,
+                          3.4310335980701446e-05,
+                          4.386330877171462e-07
                         ],
                         [
                           250.0,
-                          0.00016400387682983324,
-                          3.454218618855157e-05,
-                          3.4273395168925865e-07
+                          0.0001640038791021678,
+                          3.454218537147746e-05,
+                          3.4273394842284136e-07
                         ],
                         [
                           275.0,
-                          0.00014354013305271633,
-                          3.3544002341563496e-05,
-                          2.6601184106241833e-07
+                          0.00014354013273584486,
+                          3.354400240873078e-05,
+                          2.6601184107699126e-07
                         ]
                       ],
                       "mapping": [
@@ -4555,37 +4904,37 @@
                             800.0
                           ],
                           "values": [
-                            9.268892694384608e-05,
-                            0.00013063742872412742,
-                            0.00015817298717411932,
-                            0.00018508771206913953,
-                            0.0002008961323606316,
-                            0.0002065060336835406,
-                            0.00020076334664054232,
-                            0.00018535678356561513,
-                            0.00016400387682983324,
-                            0.00014354013305271633,
-                            0.00012672126245604273,
-                            0.00011200672924364626,
-                            9.983573973556606e-05,
-                            9.058407386037577e-05,
-                            8.343946235216095e-05,
-                            7.668895584319947e-05,
-                            7.201380448319064e-05,
-                            6.892579851946376e-05,
-                            6.486900666096288e-05,
-                            6.077094465760645e-05,
-                            5.9233202377790883e-05,
-                            5.827127830325408e-05,
-                            5.5563587138795824e-05,
-                            5.4056888080695455e-05,
-                            5.3447457582250436e-05,
-                            5.338993839357904e-05,
-                            4.974695510180394e-05,
-                            5.081830829622962e-05,
-                            4.734884011787525e-05,
-                            4.7947870990616674e-05,
-                            4.5871479246336865e-05
+                            9.268892627882655e-05,
+                            0.0001306374275173049,
+                            0.00015817298503181712,
+                            0.00018508770990087803,
+                            0.00020089612944781973,
+                            0.0002065060324265783,
+                            0.00020076334592709775,
+                            0.00018535678419136017,
+                            0.0001640038791021678,
+                            0.00014354013273584486,
+                            0.0001267212610348809,
+                            0.00011200672851603435,
+                            9.983573611227673e-05,
+                            9.058407704392594e-05,
+                            8.343946321864152e-05,
+                            7.668896134246166e-05,
+                            7.201380703883913e-05,
+                            6.892579980659314e-05,
+                            6.486900712197202e-05,
+                            6.0770941842890946e-05,
+                            5.9233200977232896e-05,
+                            5.827127614980726e-05,
+                            5.556358273610984e-05,
+                            5.4056888056674725e-05,
+                            5.344745921054255e-05,
+                            5.338993618903858e-05,
+                            4.974695306946565e-05,
+                            5.081830738873347e-05,
+                            4.734883663660303e-05,
+                            4.79478697748053e-05,
+                            4.587147917965808e-05
                           ],
                           "points": 31,
                           "min_temperature_k": 50.0,
@@ -4627,37 +4976,37 @@
                             800.0
                           ],
                           "values": [
-                            6.114959298287624e-06,
-                            9.902036137652306e-06,
-                            1.4283697194756858e-05,
-                            1.8939864426941722e-05,
-                            2.4172951253570913e-05,
-                            2.876149230362729e-05,
-                            3.233885960184509e-05,
-                            3.4310336596647014e-05,
-                            3.454218618855157e-05,
-                            3.3544002341563496e-05,
-                            3.204892808188386e-05,
-                            3.054102497962955e-05,
-                            2.944856668777577e-05,
-                            2.8011397273392927e-05,
-                            2.685491869521857e-05,
-                            2.600423346416561e-05,
-                            2.470863757895393e-05,
-                            2.4310101709722265e-05,
-                            2.3655080620860475e-05,
-                            2.2835987895973814e-05,
-                            2.2176574893284842e-05,
-                            2.1504753641361556e-05,
-                            2.1223057328112645e-05,
-                            2.065771150702352e-05,
-                            2.0324948286540144e-05,
-                            1.9955060450757923e-05,
-                            1.9698180655975205e-05,
-                            1.950707178861511e-05,
-                            1.9063949348947223e-05,
-                            1.8779182985524005e-05,
-                            1.8551888780467e-05
+                            6.114959241413011e-06,
+                            9.902035988029256e-06,
+                            1.4283696824857732e-05,
+                            1.893986392625545e-05,
+                            2.417295031091891e-05,
+                            2.8761491644419394e-05,
+                            3.2338858307825964e-05,
+                            3.4310335980701446e-05,
+                            3.454218537147746e-05,
+                            3.354400240873078e-05,
+                            3.204892829203345e-05,
+                            3.054102506207299e-05,
+                            2.9448567025183287e-05,
+                            2.8011397023664057e-05,
+                            2.6854918635956157e-05,
+                            2.600423312651728e-05,
+                            2.4708637438734e-05,
+                            2.431010164365772e-05,
+                            2.3655080598780515e-05,
+                            2.2835988021622183e-05,
+                            2.217657495222208e-05,
+                            2.1504753727038647e-05,
+                            2.1223057497269573e-05,
+                            2.0657711507905174e-05,
+                            2.0324948228686184e-05,
+                            1.9955060526579586e-05,
+                            1.9698180724124583e-05,
+                            1.9507071818424026e-05,
+                            1.9063949459631857e-05,
+                            1.8779183023279964e-05,
+                            1.8551888782497193e-05
                           ],
                           "points": 31,
                           "min_temperature_k": 50.0,
@@ -4699,37 +5048,37 @@
                             800.0
                           ],
                           "values": [
-                            5.959825101441012e-07,
-                            6.11473399997891e-07,
-                            6.243234571981225e-07,
-                            6.364995875481932e-07,
-                            6.234965756109561e-07,
-                            5.942928199146077e-07,
-                            5.249569530886411e-07,
-                            4.3863309321808774e-07,
-                            3.4273395168925865e-07,
-                            2.6601184106241833e-07,
-                            2.0864179699963602e-07,
-                            1.6112735437632498e-07,
-                            1.296215718706638e-07,
-                            1.050328775832452e-07,
-                            8.668004925384607e-08,
-                            7.274949999470784e-08,
-                            6.270631306437681e-08,
-                            5.3819307484284724e-08,
-                            4.7453260068975605e-08,
-                            4.1427160924848424e-08,
-                            3.703412213668765e-08,
-                            3.329821851353125e-08,
-                            3.006690370447187e-08,
-                            2.710661766658826e-08,
-                            2.4839610555556725e-08,
-                            2.2861100660532264e-08,
-                            2.1013696745480577e-08,
-                            1.9606148210720887e-08,
-                            1.8211031206947464e-08,
-                            1.676333957855635e-08,
-                            1.568850983138888e-08
+                            5.959825026065723e-07,
+                            6.114733883005773e-07,
+                            6.243234377778799e-07,
+                            6.364995681375118e-07,
+                            6.234965487232375e-07,
+                            5.942928058414453e-07,
+                            5.249569340634414e-07,
+                            4.386330877171462e-07,
+                            3.4273394842284136e-07,
+                            2.6601184107699126e-07,
+                            2.086417964408535e-07,
+                            1.611273539927933e-07,
+                            1.296215698331746e-07,
+                            1.0503287932709858e-07,
+                            8.668004970162968e-08,
+                            7.274950263953593e-08,
+                            6.270631421537097e-08,
+                            5.381930801697732e-08,
+                            4.745326024713505e-08,
+                            4.142715992757593e-08,
+                            3.703412167391781e-08,
+                            3.3298217849710046e-08,
+                            3.006690243849978e-08,
+                            2.7106617660178822e-08,
+                            2.48396109640892e-08,
+                            2.2861100139540232e-08,
+                            2.10136962946523e-08,
+                            1.960614801929068e-08,
+                            1.821103051291503e-08,
+                            1.6763339351865955e-08,
+                            1.5688509819582474e-08
                           ],
                           "points": 31,
                           "min_temperature_k": 50.0,
@@ -5309,7 +5658,7 @@
             "type": "string",
             "title": "Core Version",
             "description": "Core software version for provenance, not certification.",
-            "default": "0.3.0"
+            "default": "0.3.2"
           },
           "curves": {
             "additionalProperties": {
@@ -5368,7 +5717,7 @@
         "description": "Curves by name, where each name ends in its unit, and null marks a value that is not finite.\n\n`known_issues` names known errors that apply to this result, as in `GET /api/models`. `rmse` is\nempty without measurements. `measured_points` holds points made from the measurements sent,\nby name with its unit: `electrical_conductivity_s_per_m` is 1/rho, with null for a rho of 0 or\nbelow. They use no model, so they go with the data the request sent, interpolated or not.",
         "examples": [
           {
-            "core_version": "0.3.0",
+            "core_version": "0.3.2",
             "curves": {
               "resistivity_ohm_m": [
                 3.6627e-05,
@@ -6413,7 +6762,7 @@
             "type": "string",
             "title": "Core Version",
             "description": "Core software version for provenance, not certification.",
-            "default": "0.3.0"
+            "default": "0.3.2"
           },
           "status": {
             "type": "string",
@@ -6547,7 +6896,7 @@
         "examples": [
           {
             "at_bounds": [],
-            "core_version": "0.3.0",
+            "core_version": "0.3.2",
             "held": [],
             "known_issues": [],
             "parameter_errors": {
@@ -6895,7 +7244,7 @@
             "type": "string",
             "title": "Core Version",
             "description": "Core software version for provenance, not certification.",
-            "default": "0.3.0"
+            "default": "0.3.2"
           }
         },
         "type": "object",
@@ -6906,7 +7255,7 @@
         "title": "HealthResponse",
         "examples": [
           {
-            "core_version": "0.3.0",
+            "core_version": "0.3.2",
             "status": "ok",
             "version": "1.0.0"
           }
@@ -7133,6 +7482,7 @@
                 "enum": [
                   "degeneracy_not_one",
                   "collapsed_m_eff",
+                  "fermi_energy_in_gap",
                   "fermi_energy_outside_band",
                   "interpolation_extrapolated"
                 ]
@@ -7745,6 +8095,25 @@
         ],
         "title": "Prediction",
         "description": "The net's prediction as it is, in core units, before any rounding or limits."
+      },
+      "ReadyResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "ready",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "ReadyResponse",
+        "examples": [
+          {
+            "status": "ready"
+          }
+        ]
       },
       "ResidualDiagnostics": {
         "properties": {

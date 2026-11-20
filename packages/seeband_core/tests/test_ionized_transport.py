@@ -192,6 +192,48 @@ def test_two_boltzmann_channels_do_not_square_overflowing_inverse_density():
     assert result["hall"][0] == pytest.approx(2.1664969e170, rel=1e-7)
 
 
+@pytest.mark.parametrize(
+    ("gap", "amplitude", "conductivities_underflow", "kappa"),
+    [
+        (2980.0, 1000.0, True, 0.0),
+        (2960.0, 1e6, False, 5e-324),
+    ],
+)
+def test_intrinsic_ionized_transport_keeps_boltzmann_band_weights(
+    gap, amplitude, conductivities_underflow, kappa
+):
+    from seeband_core.model_interface import CurveRequest
+    from seeband_core.transport import ionized_transport
+
+    t = np.array([2.0])
+    p = {
+        "m_eff": 1.0,
+        "band_gap": gap,
+        "fermi_energy": 1500.0,
+        "A": amplitude,
+        "B": 1.1,
+        "m1": 1.0,
+    }
+    with np.errstate(divide="ignore", invalid="ignore"):
+        result = ionized_transport(t, p, "dpb_s_rho_rh")
+        curve = registry.get("dpb").calculate(
+            CurveRequest("dpb_s_rho_rh", p, 2.0, 3.0, 2, "ionized", "thermal_conductivity")
+        )
+    assert result["chemical_potential"][0] == pytest.approx(gap / 2.0)
+    for band in (1, 2):
+        sigma = result[f"electrical_conductivity_band_{band}"][0]
+        assert (sigma == 0.0) == conductivities_underflow
+    # The unrounded Boltzmann limits are 2.92e-329 and 4.28e-324 W/(m K).
+    assert curve.curves["thermal_conductivity_w_per_m_k"][0] == kappa
+    # For equal DOS masses, the Boltzmann mean transport energy is 4 k_B T
+    # above each edge, and the relative conductivities are 1:B.
+    s1 = mm.kB / mm.e * (4.0 + p["band_gap"] / (2.0 * t[0]))
+    assert result["seebeck"][0] == pytest.approx(s1 * (1.0 - p["B"]) / (1.0 + p["B"]), rel=1e-12)
+    expected_lorenz = 4.0 * (mm.kB / mm.e) ** 2 + p["B"] * (2.0 * s1 / (1.0 + p["B"])) ** 2
+    assert result["lorenz_number"][0] == pytest.approx(expected_lorenz, rel=1e-12)
+    assert np.isneginf(result["hall"][0])
+
+
 def test_independent_ionized_reference_evidence():
     import json
     from pathlib import Path

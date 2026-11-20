@@ -66,6 +66,16 @@ describe("guessMessages", () => {
     );
   });
 
+  test("unchanged starts retain warnings without an applied badge or success message", () => {
+    const outcome: GuessOutcome = {
+      kind: "unchanged",
+      warnings: ["underdetermined_fit"],
+    };
+    expect(guessBadge(outcome, { status: "idle" })).toBeNull();
+    expect(guessMessages(outcome)).toHaveLength(1);
+    expect(guessMessages(outcome)[0]).toContain("too few temperatures");
+  });
+
   test("a limit has its own text", () => {
     expect(
       guessMessages({ kind: "failed", code: "rate_limited", warnings: [] })[0],

@@ -52,6 +52,18 @@ KNOWN_ISSUES: tuple[KnownIssue, ...] = (
         "to numerical details (D19); channel contributions and identifiability require assessment.",
     ),
     KnownIssue(
+        id="fermi_energy_in_gap",
+        severity="caution",
+        fixed_by="#107",
+        fit_modes=_DPB_MODES,
+        curve_kinds=_ALL_CURVES,
+        affects_fit=True,
+        condition="fermi_energy_in_gap",
+        explanation="For a positive DPB gap between a valence and a conduction band, including "
+        "its edges, the conserved density is zero at every in-gap Fermi energy. Transport cannot "
+        "distinguish those Fermi energies at fixed other parameters.",
+    ),
+    KnownIssue(
         id="no_chemical_potential",
         severity="unreliable",
         fixed_by="#106",
@@ -93,6 +105,14 @@ def issues_for_mode(fit_mode_id: str) -> tuple[KnownIssue, ...]:
     return tuple(issue for issue in KNOWN_ISSUES if fit_mode_id in issue.fit_modes)
 
 
+def fermi_energy_in_gap(parameters: Mapping[str, float]) -> bool:
+    """DPB has the same zero carrier target throughout a positive valence–conduction gap."""
+    mass = parameters.get("m_eff", 0.0)
+    gap = parameters.get("band_gap", 0.0)
+    energy = parameters.get("fermi_energy", float("nan"))
+    return mass > 0 and gap > 0 and 0 <= energy <= gap
+
+
 def _condition_holds(
     issue: KnownIssue,
     parameters: Mapping[str, float],
@@ -103,6 +123,8 @@ def _condition_holds(
         return degeneracy_ratio != 1
     if issue.condition == "collapsed_m_eff":
         return abs(parameters.get("m_eff", 1.0)) < COLLAPSED_M_EFF
+    if issue.condition == "fermi_energy_in_gap":
+        return fermi_energy_in_gap(parameters)
     if issue.condition == "fermi_energy_outside_band":
         return parameters.get("band_mass", 1.0) * parameters.get("fermi_energy", 1.0) <= 0
     if issue.condition == "interpolation_extrapolated":

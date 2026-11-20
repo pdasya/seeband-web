@@ -113,10 +113,12 @@ def test_integral_and_transport_paths_reject_nonexistent_roots(evaluate):
         evaluate(np.array([300.0]))
 
 
-def test_intrinsic_equal_bands_have_gap_midpoint_potential():
-    result = mm.dpb_chemPot_diagnostics(np.array([50.0, 300.0, 800.0]), 1000.0, 1.0, 0.0, 1.0)
-    np.testing.assert_allclose(result.chemical_potential, [500.0, 500.0, 500.0], rtol=0, atol=1e-9)
-    assert np.all(result.normalized_residual <= 1e-12)
+@pytest.mark.parametrize("gap", [0.0, 1000.0, 2860.0])
+def test_intrinsic_equal_bands_have_exact_gap_midpoint_potential(gap):
+    temperatures = np.array([2.0, 100.0, 500.0, 2.0])
+    result = mm.dpb_chemPot_diagnostics(temperatures, gap, 1.0, 0.0, 1.0)
+    np.testing.assert_array_equal(result.chemical_potential, np.full_like(temperatures, gap / 2))
+    assert np.all(result.normalized_residual == 0.0)
 
 
 def test_finite_wrong_root_is_rejected_with_its_density_residual(monkeypatch):
@@ -170,11 +172,13 @@ def test_roots_match_for_ascending_descending_shuffled_and_single_temperatures(m
     np.testing.assert_allclose(singles, ascending, rtol=0, atol=1e-9)
 
 
-def test_subnormal_density_cannot_certify_a_root():
-    # Subnormal carriers can round to equality despite a ~1e-6 relative imbalance.
-    with pytest.raises(mm.ChemicalPotentialError) as caught:
-        mm.dpb_chemPot_vs_temp(np.array([1e-20]), 1.4e-17, 1.01, 0.0, 1.0)
-    assert caught.value.temperature == 1e-20
+def test_intrinsic_balance_is_certified_before_subnormal_density_rounding():
+    temperature, gap, mass = 1e-20, 1.4e-17, 1.01
+    result = mm.dpb_chemPot_diagnostics(np.array([temperature]), gap, mass, 0.0, 1.0)
+    # Both bands are in the Boltzmann limit. Solve the ratio n/p = 1 analytically.
+    expected = (gap - 1.5 * temperature * np.log(mass)) / 2
+    assert result.chemical_potential[0] == pytest.approx(expected, rel=1e-14, abs=0)
+    assert result.normalized_residual[0] <= 1e-12
 
 
 def test_representable_intrinsic_negative_tail_has_a_certified_root():
@@ -242,3 +246,45 @@ def test_uncertifiable_density_is_not_classified_as_a_domain_error():
     with pytest.raises(mm.ChemicalPotentialError) as caught:
         mm.dpb_chemPot_vs_temp(np.array([0.01]), 1000.0, 1.01, 0.0, 1.0)
     assert not isinstance(caught.value, mm.NoFiniteChemicalPotentialError)
+
+
+@pytest.mark.parametrize(("temperature", "mass"), [(0.251, 0.362), (0.253, 0.369)])
+def test_intrinsic_root_residual_is_certified_at_the_returned_potential(temperature, mass):
+    import mpmath as mp
+
+    gap = 3000.0
+    result = mm.dpb_chemPot_diagnostics(np.array([temperature]), gap, mass, 0.0, 1.0)
+    with mp.workdps(60):
+        # The reduced potentials are below -5900, where all nonclassical terms
+        # are far below the accuracy needed to certify the returned binary64 mu.
+        mu = mp.mpf(float(result.chemical_potential[0]))
+        log_ratio = mp.mpf("1.5") * mp.log(mp.mpf(mass)) + (2 * mu - gap) / mp.mpf(temperature)
+        reference = abs(float(mp.tanh(log_ratio / 2)))
+    assert reference <= 1e-12
+    assert abs(result.normalized_residual[0] - reference) <= 1e-15
+
+
+@pytest.mark.parametrize("reduced", [-744.0, -746.0])
+def test_density_restores_the_boltzmann_factor_after_applying_dimensional_scale(reduced):
+    import mpmath as mp
+
+    temperature = 2.0
+    with mp.workdps(60):
+        scale = 4 * mp.pi * (2 * mm.me * mm.kB * temperature / mm.h**2) ** mp.mpf("1.5")
+        reference = float(scale * mp.gamma(mp.mpf("1.5")) * mp.exp(reduced) * mp.mpf("1e-6"))
+    actual = mm.spb_carCon(reduced * temperature, 1.0, temperature)
+    assert actual / reference == pytest.approx(1.0, rel=1e-12)
+
+
+@pytest.mark.parametrize(
+    "temperature,gap,mass", [(0.1, 3000.0, 3.0), (0.05, 2834.0, 1.2), (0.2, 5000.0, 3.0)]
+)
+def test_an_intrinsic_root_between_two_floats_is_reported_as_unrepresentable(
+    temperature, gap, mass
+):
+    # One float of μ moves the balance by about ulp(μ)/T, more than the 1e-12 tolerance here.
+    # The tolerance stays; the failure says that no binary64 μ meets it, not that the solve failed.
+    with pytest.raises(mm.ChemicalPotentialError, match="no representable chemical potential"):
+        mm.dpb_chemPot_diagnostics(np.array([temperature]), gap, mass, gap / 2, 1.0)
+    mu = gap / 2
+    assert np.spacing(mu) / temperature > 1e-12

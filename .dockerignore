@@ -1,0 +1,20 @@
+# The images build from the repository root and need only the sources and lockfiles.
+**/node_modules
+**/.venv
+**/__pycache__
+**/.mypy_cache
+**/.pytest_cache
+**/.ruff_cache
+**/dist
+**/.astro
+**/test-results
+**/playwright-report
+.git
+.claude
+.agents
+data
+docs
+deploy/.env
+**/.env
+**/.env.*
+**/.DS_Store

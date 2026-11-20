@@ -169,6 +169,7 @@ def test_a_fermi_energy_inside_the_gap_is_not_determined(client: TestClient) -> 
 
     assert result["parameter_status"]["fermi_energy"] == "not_determined"
     assert result["parameter_status"]["m_eff"] == "held"
+    assert "fermi_energy_in_gap" in result["known_issues"]
 
 
 @pytest.mark.parametrize(
@@ -232,6 +233,26 @@ def test_no_root_at_the_start_ends_with_a_failed_fit(
 
     assert [event["type"] for event in events] == ["started", "done"]
     result = events[-1]["result"]
+    assert result["status"] == "failed"
+    assert (
+        result["message"]
+        == "The fit encountered band parameters with no finite chemical potential."
+    )
+    assert result["parameters"] == start
+
+
+def test_uncertified_chemical_potential_has_a_distinct_fit_message(client: TestClient) -> None:
+    start = {"m_eff": 1.01, "band_gap": 1000.0, "fermi_energy": 0.0}
+    result = _result(
+        client,
+        _body(
+            start=start,
+            min_temperature_k=0.01,
+            max_temperature_k=0.03,
+            measurements={"seebeck": {"temperature_k": [0.01, 0.02, 0.03], "values": [2.0e-4] * 3}},
+        ),
+    )
+
     assert result["status"] == "failed"
     assert (
         result["message"] == "The chemical-potential balance could not be verified during the fit."

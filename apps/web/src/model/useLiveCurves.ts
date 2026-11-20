@@ -35,6 +35,11 @@ export interface LiveCalc<Result = CalcResponse> {
   result: Result | null;
   busy: boolean;
   error: ApiError | null;
+  /**
+   * When the values `result` answers were set, on `performance.now()`'s clock, for timing how long
+   * a chart took to show them; null for an answer to values already left.
+   */
+  changedAtMs?: number | null;
 }
 
 export interface LiveCurves {
@@ -53,6 +58,7 @@ interface Answers<Result> {
   errorScope: string | null;
   /** The values that the last answer or failure ended. */
   settled: string | null;
+  changedAtMs: number | null;
 }
 
 const NOTHING: Answers<never> = {
@@ -61,6 +67,7 @@ const NOTHING: Answers<never> = {
   error: null,
   errorScope: null,
   settled: null,
+  changedAtMs: null,
 };
 
 /** What to send a request's body with, and what its answer is of. */
@@ -87,6 +94,7 @@ function useLatest<Result>(
   body: string | null,
   scope: string | null,
   waiting: boolean,
+  timing: string,
 ): LiveCalc<Result> {
   const [answers, setAnswers] = useState<Answers<Result>>(NOTHING);
   // With nothing to ask, the old curve goes at once, and does not return with new data.
@@ -98,13 +106,15 @@ function useLatest<Result>(
     () =>
       new LatestOnly<Result>({
         send: route.send,
-        onResult: (result, settled) => {
+        timing,
+        onResult: (result, settled, changedAtMs) => {
           setAnswers({
             result,
             resultScope: route.scopeOf(settled),
             error: null,
             errorScope: null,
             settled,
+            changedAtMs,
           });
         },
         onFailure: (error, settled, sent) => {
@@ -145,6 +155,7 @@ function useLatest<Result>(
     result: answers.resultScope === scope ? answers.result : null,
     busy: pending && longPending,
     error: answers.errorScope === scope ? answers.error : null,
+    changedAtMs: answers.resultScope === scope ? answers.changedAtMs : null,
   };
 }
 
@@ -153,9 +164,13 @@ type DerivedRequests = Record<
   { body: string | null; scope: string | null }
 >;
 
-/** The latest answer for each kind of curve, asked in a fixed order, as hooks must be. */
+/**
+ * The latest answer for each kind of curve, asked in a fixed order, as hooks must be. `prefix`
+ * keeps the timing entries of one screen apart from another's.
+ */
 function useDerivedCurves(
   requests: DerivedRequests,
+  prefix = "",
 ): Record<DerivedKind, LiveCalc> {
   const {
     chemical_potential: chemical,
@@ -166,21 +181,47 @@ function useDerivedCurves(
     lorenz_number: lorenz,
   } = requests;
   return {
-    chemical_potential: useLatest(CALC, chemical.body, chemical.scope, false),
-    seebeck_by_band: useLatest(CALC, bands.body, bands.scope, false),
+    chemical_potential: useLatest(
+      CALC,
+      chemical.body,
+      chemical.scope,
+      false,
+      `${prefix}chemical_potential`,
+    ),
+    seebeck_by_band: useLatest(
+      CALC,
+      bands.body,
+      bands.scope,
+      false,
+      `${prefix}seebeck_by_band`,
+    ),
     electrical_conductivity: useLatest(
       CALC,
       electrical.body,
       electrical.scope,
       false,
+      `${prefix}electrical_conductivity`,
     ),
-    thermal_conductivity: useLatest(CALC, thermal.body, thermal.scope, false),
-    lorenz_number: useLatest(CALC, lorenz.body, lorenz.scope, false),
+    thermal_conductivity: useLatest(
+      CALC,
+      thermal.body,
+      thermal.scope,
+      false,
+      `${prefix}thermal_conductivity`,
+    ),
+    lorenz_number: useLatest(
+      CALC,
+      lorenz.body,
+      lorenz.scope,
+      false,
+      `${prefix}lorenz_number`,
+    ),
     carrier_concentration_by_band: useLatest(
       CALC,
       carriers.body,
       carriers.scope,
       false,
+      `${prefix}carrier_concentration_by_band`,
     ),
   };
 }
@@ -242,9 +283,21 @@ export function useLiveCurves(): LiveCurves {
   const waiting = interpolation.enabled && interpolation.loading;
 
   return {
-    measured: useLatest(CALC, measured.body, measured.scope, waiting),
+    measured: useLatest(
+      CALC,
+      measured.body,
+      measured.scope,
+      waiting,
+      "measured",
+    ),
     derived: useDerivedCurves(derived),
-    diagram: useLatest(BAND_DIAGRAM, diagram.body, diagram.scope, false),
+    diagram: useLatest(
+      BAND_DIAGRAM,
+      diagram.body,
+      diagram.scope,
+      false,
+      "band_diagram",
+    ),
   };
 }
 
@@ -293,7 +346,8 @@ export function useResultCurves(enabled: boolean): {
       requests.measured.body,
       requests.measured.scope,
       waiting,
+      "result_measured",
     ),
-    derived: useDerivedCurves(requests),
+    derived: useDerivedCurves(requests, "result_"),
   };
 }

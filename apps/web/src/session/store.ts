@@ -273,7 +273,13 @@ export type GuessOutcome =
         | "scattering_not_supported";
       warnings: GuessWarnings;
     }
-  | { kind: "applied"; netRange?: NetRange; warnings: GuessWarnings }
+  | {
+      kind: "applied";
+      netRange?: NetRange;
+      warnings: GuessWarnings;
+      fitModes?: readonly string[];
+    }
+  | { kind: "unchanged"; warnings: GuessWarnings }
   | {
       kind: "no_net";
       firstK: number;
@@ -287,6 +293,8 @@ export type GuessOutcome =
 
 interface GuessRecord {
   outcome: GuessOutcome;
+  /** Stable selector result for a mode that received no values. */
+  unchanged: Extract<GuessOutcome, { kind: "unchanged" }>;
   model: string;
   measurement: Measurement;
   /** The values it left, as a badge about it holds only while they stand. */
@@ -301,6 +309,8 @@ export interface SessionState {
    * and ranges, so a value of one does not carry to another. `parameterValues` adds the defaults.
    */
   parameters: Record<string, Record<string, number>>;
+  /** Last estimates, so automatic guesses can distinguish them from manual starts. */
+  guessedParameters: Record<string, Record<string, number>>;
   fit: FitState;
   dataMode: DataMode;
   singleFile: SingleFile | null;
@@ -417,6 +427,7 @@ export interface RestoredSession {
   savedModelSettings: Record<string, ModelSettings>;
   selection: Selection;
   parameters: SessionState["parameters"];
+  guessedParameters?: SessionState["guessedParameters"];
   customBounds: SessionState["customBounds"];
   held: SessionState["held"];
   interpolationEnabled: boolean;
@@ -476,12 +487,12 @@ export interface Restored extends RestoredFrom {
   stale: boolean;
 }
 
-function withoutMode(
-  customBounds: SessionState["customBounds"],
+function withoutMode<T>(
+  values: Record<string, T>,
   fitMode: string,
-): SessionState["customBounds"] {
+): Record<string, T> {
   return Object.fromEntries(
-    Object.entries(customBounds).filter(([name]) => name !== fitMode),
+    Object.entries(values).filter(([name]) => name !== fitMode),
   );
 }
 
@@ -550,16 +561,22 @@ function afterEvent(fit: FitState, event: FitEvent): FitState {
  * badge of one that was applied, as these are no longer its values.
  */
 export function currentGuess(
-  state: Pick<SessionState, "guess" | "data" | "parameters">,
+  state: Pick<SessionState, "guess" | "data" | "parameters" | "selection">,
 ): GuessOutcome | null {
   const { guess } = state;
   if (guess === null || state.data.seebeck?.measurement !== guess.measurement) {
     return null;
   }
-  return guess.outcome.kind === "applied" &&
-    guess.parameters !== state.parameters
-    ? null
-    : guess.outcome;
+  if (guess.outcome.kind === "applied") {
+    if (guess.parameters !== state.parameters) return null;
+    if (
+      guess.outcome.fitModes !== undefined &&
+      !guess.outcome.fitModes.includes(state.selection.fitMode ?? "")
+    ) {
+      return guess.unchanged;
+    }
+  }
+  return guess.outcome;
 }
 
 /** Whether a file of the user's is on its way, in either way of loading. */
@@ -608,6 +625,7 @@ export const createSessionStore = () =>
       data: {},
       selection: INITIAL_SELECTION,
       parameters: {},
+      guessedParameters: {},
       fit: { status: "idle" },
       dataMode: "separate",
       singleFile: null,
@@ -661,6 +679,7 @@ export const createSessionStore = () =>
           chartPanels: session.chartPanels,
           selection: supportedSelection(session.selection),
           parameters: session.parameters,
+          guessedParameters: session.guessedParameters ?? {},
           customBounds: session.customBounds,
           held: session.held,
           interpolation: {
@@ -723,6 +742,7 @@ export const createSessionStore = () =>
         set((state) => ({
           guessPending: false,
           guess: {
+            unchanged: { kind: "unchanged", warnings: outcome.warnings },
             outcome,
             model,
             measurement,
@@ -736,13 +756,25 @@ export const createSessionStore = () =>
       guessApplied: (modes, outcome, model, measurement) => {
         set((state) => {
           const parameters = { ...state.parameters };
+          const guessedParameters = { ...state.guessedParameters };
           for (const { fitMode, values } of modes) {
             parameters[fitMode] = { ...parameters[fitMode], ...values };
+            guessedParameters[fitMode] = {
+              ...guessedParameters[fitMode],
+              ...values,
+            };
           }
           return {
             parameters,
+            guessedParameters,
             guessPending: false,
-            guess: { outcome, model, measurement, parameters },
+            guess: {
+              outcome,
+              model,
+              measurement,
+              parameters,
+              unchanged: { kind: "unchanged", warnings: outcome.warnings },
+            },
             fit: withoutOldResult(state.fit),
           };
         });
@@ -917,11 +949,20 @@ export const createSessionStore = () =>
       setParameters: (fitMode, values) => {
         set((state) => ({
           parameters: { ...state.parameters, [fitMode]: values },
+          guessedParameters: withoutMode(state.guessedParameters, fitMode),
           fit: withoutOldResult(state.fit),
         }));
       },
       setParameter: (fitMode, name, value) => {
         set((state) => ({
+          guessedParameters: {
+            ...state.guessedParameters,
+            [fitMode]: Object.fromEntries(
+              Object.entries(state.guessedParameters[fitMode] ?? {}).filter(
+                ([parameter]) => parameter !== name,
+              ),
+            ),
+          },
           parameters: {
             ...state.parameters,
             [fitMode]: { ...state.parameters[fitMode], [name]: value },
@@ -968,6 +1009,7 @@ export const createSessionStore = () =>
       },
       resetParameters: (fitMode) => {
         set((state) => ({
+          guessedParameters: withoutMode(state.guessedParameters, fitMode),
           customBounds: withoutMode(state.customBounds, fitMode),
           held: Object.fromEntries(
             Object.entries(state.held).filter(([name]) => name !== fitMode),

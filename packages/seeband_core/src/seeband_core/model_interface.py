@@ -33,6 +33,7 @@ IssueSeverity = Literal["disabled", "unreliable", "caution"]
 IssueCondition = Literal[
     "degeneracy_not_one",
     "collapsed_m_eff",
+    "fermi_energy_in_gap",
     "fermi_energy_outside_band",
     "interpolation_extrapolated",
 ]

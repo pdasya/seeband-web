@@ -13,6 +13,7 @@ export const STRINGS = {
     fit: "Model fit",
     results: "Results",
     conventions: "Conventions",
+    guide: "Guide",
   },
   parameters: {
     title: "Parameters",
@@ -97,6 +98,7 @@ export const STRINGS = {
     on: "on",
     off: "off",
     method: "Fitting method",
+    coreVersion: "Core version",
     status: "Status",
     iterations: "Iterations",
     rmse: (symbol: string) => `RMSE ${symbol}`,
@@ -510,6 +512,16 @@ export const STRINGS = {
     updating: "Updating…",
     lastCurveStays: "The last curve stays on the chart.",
     noResult: "The calculation has no result for these parameters.",
+    calculationDetails: {
+      chemical_potential_zero_mass:
+        "The calculation needs a nonzero band mass in SPB or a nonzero mass ratio m₂/m₁ in DPB.",
+      chemical_potential_spb_fermi_energy:
+        "At T = 0 this band has no carriers with these values. Set E_F above 0 for m > 0 or below 0 for m < 0.",
+      chemical_potential_dpb_fermi_energy:
+        "At T = 0 neither valence band has hole carriers with these values. Set E_F below the higher band edge, max(0, E_g).",
+      no_chemical_potential:
+        "The model has no finite chemical potential for these band parameters.",
+    },
     rateLimited: "Too many updates in a short time. Trying again shortly.",
     rateLimitedWait:
       "Too many updates in a short time. Change a value to try again.",
@@ -544,6 +556,8 @@ export const STRINGS = {
       terminationReasons: {
         conditional_stage_optima: "Conditional stage optima reached",
         cycle_or_stall: "Cycle or stall detected",
+        derivative_search_stall:
+          "A better trial could not pass derivative validation",
         callback: "Stopped by request",
         sweep_budget: "Iteration budget reached",
         evaluation_budget: "Evaluation budget reached",
@@ -579,7 +593,7 @@ export const STRINGS = {
     panelTitle: "Fit",
     guess: "Initial guess",
     guessHint:
-      "Estimate band parameters from S(T); SPB mass magnitude is preserved",
+      "Estimate band parameters from S(T), replacing free manual starts; held and fixed values and SPB mass magnitudes are preserved",
     guessUnsupported: {
       scattering_not_supported:
         "The DPB neural estimate is unavailable for ionized impurities. Set start values manually.",
@@ -635,6 +649,10 @@ export const STRINGS = {
         "The start values do not fit the bounds.",
       "The model gave values that are not finite during the fit.":
         "The model gave values that are not finite during the fit.",
+      "The fit encountered band parameters with no finite chemical potential.":
+        "The fit encountered band parameters with no finite chemical potential. Check the band parameters and their bounds.",
+      "The chemical-potential balance could not be verified during the fit.":
+        "The fit could not verify the chemical-potential balance to numerical precision.",
       "The fit reached its limit of function evaluations.":
         "The fit reached its limit of function evaluations.",
       "The sign of the start band mass does not match the sign of R_H.":
@@ -691,8 +709,10 @@ export const STRINGS = {
         "In the legacy method with N₂/N₁ other than 1, the fit returns m₂/m₁ times N₂/N₁, so the value shown can leave its bounds. The bounds and the at-bound mark apply before that factor.",
       "known_issue.collapsed_m_eff":
         "With m₂/m₁ near 0, the fit can be poorly conditioned. The data may not determine the band parameters separately, and results can differ between machines.",
+      "known_issue.fermi_energy_in_gap":
+        "The 0 K Fermi energy is in the DPB gap or at one of its edges. The transport data cannot determine where E_F is within this gap: with the other parameters fixed, every value in the gap gives the same S, ρ and R_H.",
       "known_issue.no_chemical_potential":
-        "With the Fermi energy outside the band, there are no carriers, so the chemical potential and the curves from it mean nothing.",
+        "When E_F is at the band edge or outside the band, SPB has zero carrier density at T = 0 and cannot calculate a curve.",
       "known_issue.hall_dis_no_reference":
         "This fit fails on the desktop, and runs here with other bounds of G, so there is no desktop result to compare with.",
       "known_issue.interpolation_extrapolates":

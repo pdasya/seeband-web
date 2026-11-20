@@ -7,6 +7,106 @@
   `wavevector_nm_inv` and identifies DPB diagrams that assume a reference
   mass because the mode has no Hall data.
 
+- P16 (#107), core `0.3.2`. Verified Fit: when only the DPB gap is free in
+  the Seebeck stage, from its upper bound, with the Fermi energy held at or
+  below that bound, it first searches the bounded gap interval with the true
+  objective. Fits that stopped at the bound or in the onset layer below it
+  now reach a lower minimum: on the demo with E_F held at 799.9 K, 61.12
+  instead of 63.14 µV/K. A fit with E_F held exactly at the bound, which
+  failed derivative validation, now converges. The derivative there comes
+  from the zero-target plateau and equals the true one-sided limit. A gap
+  with no finite lower bound is refused. The search is finite and certifies
+  no global optimum.
+
+- I1 (#53): run everything with one command, `docker compose -f
+deploy/compose.yaml up --build`. The API image installs exactly `uv.lock`
+  and runs as a user on a read-only file system; Caddy serves the site at
+  `/`, the app at `/fit` and `/results`, and proxies `/api` with the fit
+  stream unbuffered. New `GET /api/ready` answers once the calculation
+  workers have started; the API's health check uses it. CI builds and
+  starts the stack and checks it through Caddy.
+
+- Results ZIP exports calculate one curve at a time and retry temporary
+  capacity errors. This lets an archive finish while the Results page is
+  still calculating its plots.
+
+- P28 (#258): loading Seebeck data preserves manual starting values. Both
+  automatic and requested estimates respect held and fixed parameters in
+  each fit mode. Use **Initial guess** to replace eligible manual starts.
+
+- P14 (#105), core `0.3.1`. Stable Fermi integrals extend SPB Hall above the
+  former reduced-potential cutoff. Dilute bands give corrected Seebeck
+  contributions and finite Seebeck, Lorenz and electronic thermal values
+  where intermediate operations previously failed. Intrinsic DPB density
+  balance remains certifiable at lower temperatures and preserves exact
+  compensation for symmetric bands.
+- P14 changes some fitted endpoints. Verified Fit uses the same sequential
+  objectives with a stable profiled resistivity derivative. The recorded D1
+  fit now reaches conditional stationarity with a large Hall residual. The
+  recorded Si:P fits give smaller Seebeck errors and larger resistivity
+  errors with a collapsed mass ratio. The existing legacy D1 collapse
+  warning still applies after its endpoint moves. Compare runs using both
+  the method and the reported core version.
+  See [validation and regression notes](packages/seeband_core/docs/golden-results.md#stable-fermi-integrals-p14).
+
+- FS12 (#56), tooling only: with `?timing` in its address, the fit screen
+  records User Timing entries for how long live curves take, from a change
+  to its answer and to each chart's painted frame, and
+  `apps/web/scripts/replay-calc.mjs` and `measure-latency.mjs` measure them
+  against a deployed app and API. No measurement or decision yet; results
+  are unchanged.
+
+- S6 (#68): add the site's search-engine base. A build with
+  `SEEBAND_SITE_URL` gets canonical links, `og:url`, a sitemap and a
+  `robots.txt` that keeps search engines out of `/fit`, `/results` and
+  `/api/`; a build without it, for the prototype host, keeps every page out
+  with `noindex` and `Disallow: /`. Every page has Open Graph tags, and the
+  overview a schema.org `SoftwareApplication` description.
+
+- S5 (#67): add worked examples at /examples/ on the three example sets of
+  the desktop SeeBand, with screenshots and numbers from runs of this
+  version: choosing the scattering mechanism for Fe2VAl0.9Si0.1, a gap
+  outside the default bounds for Si:P, and AWI32, which no single mechanism
+  describes. Each page states its limits and how to reproduce it.
+
+- S4 (#66): add the user guide at /guide/, adapted from the desktop SeeBand's
+  PDF guide (MIT) to the web app, on the Fe2VAl0.9Si0.1 example, with
+  screenshots and numbers from runs of this version. It corrects the desktop
+  guide's 641 K = 0.059 eV to 0.055 eV, uses κ_e throughout instead of also
+  λ_e, and gives its references in full where they could be identified.
+
+- Verified Fit: use an equivalent in-bounds plateau reference when both
+  DPB energies are free and meet at the upper gap bound. Check that the
+  residuals match before using the reference for the derivative or as a
+  starting point. Keep the original endpoint on ties.
+
+- Verified Fit: check the free DPB gap derivative on the intrinsic side of
+  the conduction edge when that stencil fits the bounds. For joint fits
+  of the gap and Fermi energy, try a bounded restart across the gap from a
+  near-edge endpoint. Reject failed exploratory trials and certify the
+  retained solution through the final conditional audit.
+
+- DPB Hall fits and curves include the absolute valley multiplicity of
+  band 1. The fitted `m1` is a mass per valley. Absolute carrier densities
+  in the Hall mode use the same multiplicities. A mass from the previous
+  Hall normalization maps to the new convention by dividing it by
+  `N1^(2/3)` at the same band shapes.
+
+- Verified Fit: search both permitted sides when a free DPB Fermi energy
+  remains in a positive gap after a stage solve. Probe toward each edge,
+  polish candidates with lower stage cost, and repeat the search in the
+  final conditional audit. Fits constrained to the gap still report the
+  Fermi energy as undetermined.
+
+- P16 (#107): flag a DPB Fermi energy in a positive valence–conduction gap,
+  including either edge, where transport cannot locate E_F within the gap.
+  The warning changes no calculated values or fit behavior.
+
+- P15 (#106): distinguish zero mass and the SPB and DPB Fermi-energy
+  constraints in curve failures. The API returns HTTP 422 with a
+  reason-specific detail. Fit failures distinguish the finite-root domain
+  from numerical certification failures.
+
 - R11 (#187): add the Lorenz number L(T) = kappa_e/(sigma*T) as a derived curve
   in modes with rho, in W*Ohm/K^2 and in units of L0 = pi^2/3 (k_B/e)^2, with
   export. For DPB, show the effective L with its bipolar part, and each band's

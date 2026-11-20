@@ -40,8 +40,13 @@ const NOTHING: LiveCalc = { result: null, busy: false, error: null };
 /** What a chart says of a failed curve, in our own words. */
 export function failureText(error: ApiError): string {
   switch (error.code) {
-    case "calculation_failed":
-      return text.noResult;
+    case "calculation_failed": {
+      const messages: Record<string, string> = text.calculationDetails;
+      const detail = error.details.find(({ code }) =>
+        Object.hasOwn(messages, code),
+      );
+      return messages[detail?.code ?? ""] ?? text.noResult;
+    }
     case "rate_limited":
       return retriesByItself(error) ? text.rateLimited : text.rateLimitedWait;
     // The server is busy, with the calculations of others or of this page, and says when to retry.
@@ -130,6 +135,14 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
     ),
   ];
   const busy = (usesMeasured && measured.busy) || onTab.busy;
+  // The chart shows the latest values once every curve it draws answers them: the earliest of
+  // their times, or none while one still answers values already left.
+  const drawnFrom = [...(usesMeasured ? [measured] : []), onTab].filter(
+    ({ result }) => result !== null,
+  );
+  const changedAtMs = drawnFrom.some(({ changedAtMs }) => changedAtMs == null)
+    ? null
+    : Math.min(...drawnFrom.map(({ changedAtMs }) => changedAtMs ?? 0));
 
   const rmse = isQuantityTab(tab) ? measured.result?.rmse?.[tab] : undefined;
   // Shown as its field shows it, to the same step.
@@ -196,6 +209,8 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
         yAxisTitle={view.yAxisTitle}
         description={view.description}
         failedText={text.failed}
+        timing={`chart:${tab}`}
+        changedAtMs={drawnFrom.length === 0 ? null : changedAtMs}
       />
       {view.note !== null && (
         <p className="m-0 text-xs text-muted-foreground">{view.note}</p>

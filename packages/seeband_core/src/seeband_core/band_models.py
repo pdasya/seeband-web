@@ -258,9 +258,13 @@ class _CallbackError(Exception):
 
 def _failure_message(error: Exception) -> str:
     """Return fixed text for a failed fit, because solver messages are not written for users."""
+    if isinstance(error, _CORE_MATH.NoFiniteChemicalPotentialError):
+        return "The fit encountered band parameters with no finite chemical potential."
     if isinstance(error, ChemicalPotentialError):
         return "The chemical-potential balance could not be verified during the fit."
     text = str(error)
+    if isinstance(error, ValueError) and "finite lower gap bound" in text:
+        return "A gap fit with the Fermi energy held needs a finite lower bound of the gap."
     if isinstance(error, ValueError) and "bounds" in text:
         return "The start values do not fit the bounds."
     if isinstance(error, ValueError) and "contradicts the sign of R_H" in text:
@@ -556,7 +560,13 @@ class _BandModel:
                 request.min_temperature_k, request.max_temperature_k, request.points
             )
             ratio = _degeneracy_ratio(request) if fit_mode.degeneracy is not None else 1.0
-            predictions = ionized_transport(temperature_k, request.parameters, fit_mode.id, ratio)
+            predictions = ionized_transport(
+                temperature_k,
+                request.parameters,
+                fit_mode.id,
+                ratio,
+                band_1_degeneracy=request.band_1_degeneracy,
+            )
             keys: tuple[str, ...]
             if request.kind == "measured":
                 keys = fit_mode.quantities
@@ -613,10 +623,46 @@ class _BandModel:
         kappa = self.calculate(dataclasses.replace(request, kind="thermal_conductivity"))
         sigma = self.calculate(dataclasses.replace(request, kind="electrical_conductivity"))
         temperature_k = kappa.temperature_k
+        thermal = np.asarray(kappa.curves["thermal_conductivity_w_per_m_k"])
+        conductivity = np.asarray(sigma.curves["electrical_conductivity_s_per_m"])
         with np.errstate(all="ignore"):
-            effective = np.asarray(kappa.curves["thermal_conductivity_w_per_m_k"]) / (
-                np.asarray(sigma.curves["electrical_conductivity_s_per_m"]) * temperature_k
-            )
+            effective = thermal / (conductivity * temperature_k)
+        # The normalized ratio stays finite when the underlying curves lose
+        # precision in the subnormal range. Explicit zero amplitude is undefined.
+        amplitude = request.parameters.get("F" if scattering == "dis" else "A", 1.0)
+        tiny = np.finfo(float).tiny
+        underflowed = (
+            np.isfinite(thermal)
+            & np.isfinite(conductivity)
+            & (thermal >= 0)
+            & (conductivity >= 0)
+            & ((thermal < tiny) | (conductivity < tiny))
+            & (amplitude > 0)
+        )
+        if underflowed.any() and fit_mode.degeneracy is not None:
+            temperatures = temperature_k[underflowed]
+            parameters = request.parameters
+            ratio = _degeneracy_ratio(request)
+            if scattering == "ionized":
+                from seeband_core.transport import ionized_transport
+
+                effective[underflowed] = ionized_transport(
+                    temperatures, parameters, fit_mode.id, ratio
+                )["lorenz_number"]
+            elif scattering in ("acPh", "dis"):
+                # The dilute fallback takes band 2's amplitude relative to band 1 as one number,
+                # which holds for acPh and dis. A mixed mechanism such as acPhDis, B(C+T)/(D+T),
+                # varies with T and needs its own fallback before it may reach this branch.
+                effective[underflowed] = _CORE_MATH.dpb_effective_lorenz(
+                    temperatures,
+                    _value(parameters, "m_eff") / ratio,
+                    _value(parameters, "band_gap"),
+                    _value(parameters, "fermi_energy"),
+                    ratio,
+                    _value(parameters, "G" if scattering == "dis" else "B"),
+                )
+            else:
+                raise ValueError(f"No dilute Lorenz fallback for scattering {scattering!r}")
         curves: dict[str, np.ndarray] = {LORENZ_CURVE: effective}
         curves |= self._band_lorenz_numbers(request, fit_mode, scattering, temperature_k)
         issues = active_issue_ids(
@@ -870,7 +916,12 @@ class DpbModel(_BandModel):
         if kind == "carrier_concentration_by_band":
             if fit_mode.id == "dpb_s_rho_rh":
                 m1 = _value(parameters, "m1")
-                return _CORE.dpb_ind_carCon_calc_m1, [bands, degeneracy, m1]
+                return _CORE.dpb_ind_carCon_calc_m1, [
+                    bands,
+                    degeneracy,
+                    m1,
+                    request.band_1_degeneracy,
+                ]
             return _CORE.dpb_ind_carCon_calc, [bands, degeneracy]
         if fit_mode.id == "dpb_s":
             function = _CORE.dpb_see_calc if kind == "measured" else _CORE.dpb_ind_see_seeOnly_calc
@@ -884,6 +935,7 @@ class DpbModel(_BandModel):
                 m1,
                 degeneracy,
                 scattering,
+                request.band_1_degeneracy,
             ]
         function = {
             "measured": _CORE.dpb_see_res_calc,
@@ -950,5 +1002,12 @@ class DpbModel(_BandModel):
             *loop,
         ]
         return self._run_iterative_fit(
-            request, fit_mode, _CORE.dpb_see_res_hall_fit, arguments, (*names, "m1"), on_iteration
+            request,
+            fit_mode,
+            functools.partial(
+                _CORE.dpb_see_res_hall_fit, band_1_degeneracy=request.band_1_degeneracy
+            ),
+            arguments,
+            (*names, "m1"),
+            on_iteration,
         )

@@ -1,0 +1,65 @@
+---
+layout: ../../layouts/Prose.astro
+current: guide
+title: Worked examples · SeeBand
+description: Three worked examples of fitting parabolic band models to transport data in SeeBand Web, on the example sets of the desktop SeeBand.
+---
+
+# Worked examples
+
+Three walkthroughs on the example sets that come with the desktop SeeBand, in
+its [`data/Examples`](https://github.com/xAngelswordx/SeeBand/tree/803b0e7a425a0a3f4f59688df77e3ad283ca49a1/data/Examples)
+folder; the app's copies are in `packages/seeband_core/tests/fixtures/examples`
+of this repository. Each says which data were used, what was chosen, what the
+fit gave and how far to trust it. The [user guide](/guide/) explains the
+screens.
+
+- [Fe₂VAl₀.₉Si₀.₁: choosing the scattering mechanism](/examples/fe2val/). With
+  the default bounds and the starts given, only acoustic phonons describe both
+  S and ρ.
+- [Si:P: a gap outside the default bounds](/examples/si-p/). With the default
+  $E_g$ bounds of −0.26 to 0.26 eV the fit fails; with wider bounds it settles
+  at a gap near that of silicon, with one parameter at its bound.
+- [AWI32: no fit describes everything](/examples/awi32/). Every mechanism
+  describes S, but none of these fits describes S, ρ and $R_H$ together, and
+  the fitted parameters depend on the choice.
+
+## Reading these pages
+
+**Version.** The numbers and screenshots come from runs of SeeBand Web at the
+commit that adds or last changes each page.
+[Results that changed](/results-changed/) says why a later version can give
+others. The script `apps/web/scripts/capture-examples.mjs` runs every fit on
+these pages in the app and prints its start, status, RMSEs and parameters.
+
+**Settings not named on a page** are the app's defaults: fitting method
+Verified sequential; at most 1000 iterations for S + ρ and 20 with $R_H$;
+degeneracies $N_1 = N_2 = 1$; no parameter locked; fit range 50–800 K;
+interpolation off. The files have no header, so the app reads them in SI
+units: T in K, S in V/K, ρ in Ω·m, $R_H$ in m³/C.
+
+**Statuses** are the app's words:
+
+- _Numerically settled_: the numerical stop criteria were met. Physical
+  adequacy and uncertainty have not been assessed, so a settled fit can still
+  describe the data badly.
+- _Numerical fit stalled_: the values are usable end points, not a converged
+  result.
+- _At a bound_: a parameter ended on one of its bounds, so the bound, not the
+  data, may have set it. Where a value ends just inside a bound, the pages say
+  so.
+
+**RMSE** is the root mean square difference between model and measurement over
+the points in the fit range: in µV/K for S, and for ρ and $R_H$ in percent of
+each measured value. An RMSE of S of 3 µV/K is an average, not a largest
+deviation.
+
+**Energies** are measured from the top of band 1. They are given in eV, or in
+K as $E/k_B$; 1 eV is 11 605 K. Screenshots show the app's decimal comma; the
+text uses a point.
+
+**Data.** The example files are part of the desktop SeeBand, published under
+the MIT licence. Where the SeeBand paper names the source of a set's
+measurements, its page gives it. The Fe₂VAl₀.₉Si₀.₁ and AWI32 files lie on
+evenly spaced temperatures, and the Si:P values carry many digits, so they may
+be resampled or digitised curves rather than raw measured points.

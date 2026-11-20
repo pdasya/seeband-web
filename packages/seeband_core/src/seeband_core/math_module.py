@@ -5,10 +5,11 @@ from dataclasses import dataclass
 from importlib import resources
 from typing import Any
 
-import mpmath
 import numpy as np
 from scipy.optimize import brentq
+from scipy.special import expit
 
+from seeband_core.fermi_integrals import fermi_integral, scaled_fermi_integral
 from seeband_core.model_scales import BOLTZMANN_EV_PER_K
 
 """
@@ -45,34 +46,7 @@ Fermi integral
 
 
 def fdint_robust(s: float, eta: float, T: float) -> float:
-    etaT = eta / T
-    if etaT > 709 and s == 1:
-        return eta**2 / (2 * T**2)
-    if s == 0:
-        return float(np.log(1 + np.exp(etaT)))
-    if s == 0.5:
-        if (etaT) < -9.9:
-            exp_eta = np.exp(etaT)
-            return float(0.886226925452758 * exp_eta / (1 + 0.27 * exp_eta))
-        if (etaT) > 19.9:
-            return float(
-                0.886226925452758
-                * (0.7522527780636751 * ((etaT) ** 2 + 1.6449340668482264) ** 0.75)
-            )  # approximation with constant values pre-calculated
-        else:
-            interpolated: float = fermi1_10[int(etaT * 1000 + 10000)][1] + (
-                fermi1_10[int(etaT * 1000 + 10000 + 1)][1] - fermi1_10[int(etaT * 1000 + 10000)][1]
-            ) / (
-                fermi1_10[int(etaT * 1000 + 10000 + 1)][0] - fermi1_10[int(etaT * 1000 + 10000)][0]
-            ) * (
-                etaT - fermi1_10[int(etaT * 1000 + 10000)][0]
-            )  # approximation with constant values pre-calculated
-            return interpolated
-
-    result = -mpmath.gamma(s + 1) * mpmath.fp.polylog(s + 1, -np.exp(etaT))
-    return float(
-        result.real
-    )  # important: it is not float-type before but: <class 'mpmath.ctx_mp_python.mpf'>
+    return fermi_integral(s, eta / T)
 
 
 fdint_vec: Callable[..., Any] = np.vectorize(fdint_robust)
@@ -187,13 +161,13 @@ def spb_carCon(eta: float, meff: float, T: float) -> float:
         else:
             return 0
     else:
-        carrier_concentration: float = (
-            4
-            * np.pi
-            * (2 * np.abs(meff) * me * kB * T / h**2) ** 1.5
-            * fdint(0.5, np.sign(meff) * eta, T)
-            * 1e-6
-        )
+        scale = 4 * np.pi * (2 * np.abs(meff) * me * kB * T / h**2) ** 1.5
+        x = float(np.sign(meff) * eta / T)
+        if x < -700.0:
+            # Restore occupation after applying the physical density prefactor.
+            half_scale = np.exp(x / 2)
+            return float((scale * 1e-6 * scaled_fermi_integral(0.5, x) * half_scale) * half_scale)
+        carrier_concentration: float = scale * fdint(0.5, np.sign(meff) * eta, T) * 1e-6
         return carrier_concentration
 
 
@@ -212,6 +186,17 @@ class ChemicalPotentialError(ValueError):
 
 class NoFiniteChemicalPotentialError(ChemicalPotentialError):
     """The parameters lie outside the analytically admissible finite-root model domain."""
+
+    def __init__(
+        self,
+        temperature: float | None,
+        reason: str,
+        residual: float | None = None,
+        *,
+        code: str | None = None,
+    ) -> None:
+        super().__init__(temperature, reason, residual)
+        self.code = code
 
 
 @dataclass(frozen=True)
@@ -353,12 +338,22 @@ def _solve_chemical_potential(
         )
     if mass == 0:
         raise NoFiniteChemicalPotentialError(
-            None, "zero band mass is outside the supported model domain"
+            None,
+            "zero band mass is outside the supported model domain",
+            code="chemical_potential_zero_mass",
         )
     if (gap is None and fermi_energy * np.sign(mass) <= 0) or (
         gap is not None and mass < 0 and fermi_energy >= max(0.0, gap)
     ):
-        raise NoFiniteChemicalPotentialError(None, "no finite root for zero carrier density")
+        raise NoFiniteChemicalPotentialError(
+            None,
+            "no finite root for zero carrier density",
+            code=(
+                "chemical_potential_spb_fermi_energy"
+                if gap is None
+                else "chemical_potential_dpb_fermi_energy"
+            ),
+        )
 
     with np.errstate(over="ignore", under="ignore", invalid="ignore"):
         effective_mass = mass if gap is None else mass * np.float64(degen) ** (5 / 3)
@@ -376,11 +371,35 @@ def _solve_chemical_potential(
     unique, inverse = np.unique(temperatures, return_inverse=True)
     roots = np.empty_like(unique)
     residuals = np.empty_like(unique)
+    intrinsic_gap = gap if mass > 0 and target == 0 else None
+    center = 0.0 if intrinsic_gap is None else intrinsic_gap / 2
+    if intrinsic_gap is not None and effective_mass == 1.0 and center - intrinsic_gap == -center:
+        # The two density contributions are identical at the representable midpoint.
+        # Using it directly also preserves exact cancellation of symmetric Hall channels.
+        return _converged(
+            np.full_like(temperatures, center), np.zeros_like(temperatures), temperatures.shape
+        )
     for index, temp in enumerate(unique):
+
+        def intrinsic_balance(mu: float, offset: float, temperature: float) -> float:
+            assert intrinsic_gap is not None
+            x1, x2 = -mu / temperature, (mu - intrinsic_gap) / temperature
+            # In the doubly dilute regime the two large reduced potentials
+            # differ by just twice the displacement from the center.
+            log_scale_ratio = 2 * offset if x1 <= 0 and x2 <= 0 else min(x2, 0.0) - min(x1, 0.0)
+            log_density_ratio = (
+                1.5 * np.log(effective_mass)
+                + log_scale_ratio
+                + np.log(scaled_fermi_integral(0.5, x2) / scaled_fermi_integral(0.5, x1))
+            )
+            # (n-p)/(n+p) = tanh(log(n/p)/2), including when n and p round to zero.
+            return float(np.tanh(log_density_ratio / 2))
 
         def balance(eta: float, temperature: float = float(temp)) -> float:
             with np.errstate(over="ignore", under="ignore", invalid="ignore"):
-                mu = eta * temperature
+                mu = center + eta * temperature
+                if intrinsic_gap is not None and np.isfinite(mu):
+                    return intrinsic_balance(mu, eta, temperature)
                 first = spb_carCon(mu, mass if gap is None else -1, temperature)
                 second = 0.0 if gap is None else spb_carCon(mu - gap, effective_mass, temperature)
                 density = first if gap is None else -first + np.sign(mass) * second
@@ -412,16 +431,36 @@ def _solve_chemical_potential(
                 rtol=4 * np.finfo(float).eps,
                 maxiter=256,
             )
-            residual = abs(balance(eta))
+            mu = float(center + eta * temp)
+            # Set when the root lies between two adjacent floats: no binary64 μ can meet the
+            # tolerance, which is a limit of the representation, not a failed solve.
+            unrepresentable = False
+            if intrinsic_gap is None:
+                residual = abs(balance(eta))
+            else:
+                candidates = (mu, float(np.nextafter(mu, -np.inf)), float(np.nextafter(mu, np.inf)))
+                signed = [
+                    intrinsic_balance(candidate, (candidate - center) / temp, temp)
+                    for candidate in candidates
+                ]
+                residual, mu = min(
+                    (abs(value), candidate)
+                    for value, candidate in zip(signed, candidates, strict=True)
+                )
+                unrepresentable = np.sign(signed[1]) != np.sign(signed[2])
         except ChemicalPotentialError:
             raise
         except (ValueError, RuntimeError, OverflowError) as exc:
             raise ChemicalPotentialError(float(temp), "bracketed density solve failed") from exc
         if not np.isfinite(residual) or residual > 1e-12:
             raise ChemicalPotentialError(
-                float(temp), "density residual exceeds tolerance", residual
+                float(temp),
+                "no representable chemical potential meets the density tolerance"
+                if unrepresentable and np.isfinite(residual)
+                else "density residual exceeds tolerance",
+                residual,
             )
-        roots[index] = eta * temp
+        roots[index] = mu
         residuals[index] = residual
     return _converged(roots[inverse], residuals[inverse], temperatures.shape)
 
@@ -478,30 +517,114 @@ def dpb_chemPot_vs_temp(
     return dpb_chemPot_diagnostics(temp_array, gap, meff, fermi_energy, degen).chemical_potential
 
 
-# Calculates the temperature-dependent Lorenz number of a single band
-def spb_lorNum_vs_temp(temp_array: np.ndarray, fermi_energy: float, band_mass: float) -> np.ndarray:
-    fermiInt_0 = spb_fermiInt_vs_temp(0, temp_array, np.sign(band_mass), fermi_energy)
-    fermiInt_1 = spb_fermiInt_vs_temp(1, temp_array, np.sign(band_mass), fermi_energy)
-    fermiInt_2 = spb_fermiInt_vs_temp(2, temp_array, np.sign(band_mass), fermi_energy)
+def _scaled_integrals(order: float, reduced: np.ndarray) -> np.ndarray:
+    return np.fromiter(
+        (scaled_fermi_integral(order, float(x)) for x in reduced), dtype=float, count=len(reduced)
+    )
 
+
+def _band_seebeck(reduced: np.ndarray, mass_sign: float) -> np.ndarray:
+    mean = np.empty_like(reduced)
+    # For eta >= 40 the exponentially small parts of F0 and F1 are below the
+    # precision of the ratio. Cancel the leading eta analytically.
+    degenerate = reduced >= 40.0
+    mean[degenerate] = (np.pi**2 / 3) / reduced[degenerate]
+    x = reduced[~degenerate]
+    mean[~degenerate] = 2 * _scaled_integrals(1, x) / _scaled_integrals(0, x) - x
+    return -mass_sign * (kB / e) * mean
+
+
+def _band_lorenz(reduced: np.ndarray) -> np.ndarray:
+    variance = np.empty_like(reduced)
+    degenerate = reduced >= 40.0
+    variance[degenerate] = np.pi**2 / 3 - (np.pi**2 / 3 / reduced[degenerate]) ** 2
+    x = reduced[~degenerate]
+    f0 = _scaled_integrals(0, x)
+    variance[~degenerate] = (
+        3 * _scaled_integrals(2, x) / f0 - (2 * _scaled_integrals(1, x) / f0) ** 2
+    )
+    return (kB / e) ** 2 * variance
+
+
+def _dpb_reduced_potentials(
+    temperatures: np.ndarray,
+    mass: float,
+    gap: float,
+    fermi_energy: float,
+    degen: float,
+    potentials: np.ndarray | None = None,
+) -> tuple[np.ndarray, np.ndarray]:
+    if potentials is None:
+        potentials = dpb_chemPot_vs_temp(temperatures, gap, mass, fermi_energy, degen)
+    return -potentials / temperatures, np.sign(mass) * (potentials - gap) / temperatures
+
+
+def _dpb_conductivity_weights(
+    reduced1: np.ndarray, reduced2: np.ndarray, conductivity_factor: float | np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
+    with np.errstate(divide="ignore"):
+        # Use log sigma2/sigma1 before either raw conductivity underflows.
+        # A zero relative amplitude describes an absent second channel. The amplitude is one
+        # number at every temperature, as for acPh and dis; a mixed mechanism whose relative
+        # amplitude varies with T, such as acPhDis, must pass it per temperature.
+        log_ratio = (
+            np.minimum(reduced2, 0.0)
+            - np.minimum(reduced1, 0.0)
+            + np.log(_scaled_integrals(0, reduced2) / _scaled_integrals(0, reduced1))
+            + np.log(np.abs(conductivity_factor))
+        )
+    weight1, weight2 = expit(-log_ratio), expit(log_ratio)
+    negative = np.broadcast_to(np.asarray(conductivity_factor) < 0, log_ratio.shape)
+    if negative.any():
+        # The low-level curve API accepts signed amplitudes. Use the signed
+        # denominator, with expm1 resolving near cancellation.
+        x = log_ratio[negative]
+        norm = -np.expm1(-np.abs(x))
+        difference = np.where(x > 0, -norm, norm)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            weight1[negative] = np.exp(-np.maximum(x, 0)) / difference
+            weight2[negative] = -np.exp(np.minimum(x, 0)) / difference
+    return weight1, weight2
+
+
+def _dpb_seebeck_contributions(
+    reduced1: np.ndarray, reduced2: np.ndarray, mass: float, conductivity_factor: float | np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
+    weight1, weight2 = _dpb_conductivity_weights(reduced1, reduced2, conductivity_factor)
+    return (
+        weight1 * _band_seebeck(reduced1, -1),
+        weight2 * _band_seebeck(reduced2, float(np.sign(mass))),
+    )
+
+
+def dpb_effective_lorenz(
+    temperatures: np.ndarray,
+    mass: float,
+    gap: float,
+    fermi_energy: float,
+    degen: float,
+    relative_amplitude: float,
+) -> np.ndarray:
+    # Equal temperature factors cancel in the acoustic and disorder weights.
+    x1, x2 = _dpb_reduced_potentials(temperatures, mass, gap, fermi_energy, degen)
+    weight1, weight2 = _dpb_conductivity_weights(x1, x2, relative_amplitude / abs(mass))
+    difference = _band_seebeck(x1, -1) - _band_seebeck(x2, float(np.sign(mass)))
     result: np.ndarray = (
-        (kB / e) ** 2 * (3 * fermiInt_0 * fermiInt_2 - 4 * fermiInt_1**2) / fermiInt_0**2
+        weight1 * _band_lorenz(x1) + weight2 * _band_lorenz(x2) + weight1 * weight2 * difference**2
     )
     return result
 
 
-# Calculates the individual temperature-dependent Lorenz numbers of two bands
+def spb_lorNum_vs_temp(temp_array: np.ndarray, fermi_energy: float, band_mass: float) -> np.ndarray:
+    potentials = spb_chemPot_vs_temp(temp_array, band_mass, fermi_energy)
+    return _band_lorenz(np.sign(band_mass) * potentials / temp_array)
+
+
 def dpb_lorNum_vs_temp(
     temp_array: np.ndarray, meff: float, gap: float, fermi_energy: float, degen: float
 ) -> tuple[np.ndarray, np.ndarray]:
-    f0_1, f0_2 = dpb_fermiInt_vs_temp(0, temp_array, meff, gap, fermi_energy, degen)
-    f1_1, f1_2 = dpb_fermiInt_vs_temp(1, temp_array, meff, gap, fermi_energy, degen)
-    f2_1, f2_2 = dpb_fermiInt_vs_temp(2, temp_array, meff, gap, fermi_energy, degen)
-
-    lorNum_1 = (kB / e) ** 2 * (3 * f0_1 * f2_1 - 4 * f1_1**2) / f0_1**2
-    lorNum_2 = (kB / e) ** 2 * (3 * f0_2 * f2_2 - 4 * f1_2**2) / f0_2**2
-
-    return lorNum_1, lorNum_2
+    x1, x2 = _dpb_reduced_potentials(temp_array, meff, gap, fermi_energy, degen)
+    return _band_lorenz(x1), _band_lorenz(x2)
 
 
 """
@@ -547,21 +670,8 @@ def spb_see_vs_temp(
 
     if potentials is None:
         potentials = spb_chemPot_vs_temp(temp_array, band_mass, fermi_energy)
-    sig = np.zeros(shape=len(temp_array))
-    ons = np.zeros(shape=len(temp_array))
-    see = np.zeros(shape=len(temp_array))
-
-    for i, (temp, mu) in enumerate(zip(temp_array, potentials, strict=True)):
-        sig[i] = sigma_general(
-            eta=mu, meff=band_mass, K=1, beta=-1, T=temp
-        )  # beta = -1 to remove any temperature dependence that would cancel out eventually
-        ons[i] = onsi_general(
-            eta=mu, meff=band_mass, K=1, beta=-1, T=temp
-        )  # beta = -1 to remove any temperature dependence that would cancel out eventually
-
-    see = scal_fac * ons / sig
-
-    return see
+    sign = float(np.sign(band_mass))
+    return scal_fac * _band_seebeck(sign * potentials / temp_array, sign)
 
 
 # Calculates the electrical resistivity of a single band for acoustic-phonon scattering
@@ -863,8 +973,6 @@ def spb_thermCond_vs_temp_acPh_dis(
     return result
 
 
-# Above this reduced potential, exp(eta) in the Fermi integrals of order -1/2 and 0 overflows.
-MAX_REDUCED_POTENTIAL = 700.0
 # A chemical potential whose carrier density is further than this, relatively, from the density at
 # T = 0 is no root, and is left out rather than used.
 MAX_DENSITY_MISMATCH = 1e-6
@@ -920,23 +1028,23 @@ def spb_hall_vs_temp(
     if potentials is None:
         potentials = spb_chemPot_vs_temp(temperatures, mass_sign, fermi_energy)
     chemical_potential = potentials
-    reduced = mass_sign * chemical_potential / temperatures
     usable = _conserves_density(chemical_potential, temperatures, mass_sign, fermi_energy)
-    # The Fermi integrals overflow above a reduced potential of about 709, so those points are NaN,
-    # as in the other SPB curves, and not a failure of the whole curve.
-    usable &= ~(reduced > MAX_REDUCED_POTENTIAL)
     result = np.full_like(temperatures, np.nan)
     if usable.any():
-        mu = chemical_potential[usable]
         at = temperatures[usable]
-        result[usable] = (
-            factor
-            * at ** (-1.5)
-            * scal_fac
-            / np.asarray(para_E, dtype=float)
-            * fdint(-0.5, mass_sign * mu, at)
-            / fdint(0, mass_sign * mu, at) ** 2
-        )
+        x = mass_sign * chemical_potential[usable] / at
+        f0 = _scaled_integrals(0, x)
+        prefactor = factor * at**-1.5 * scal_fac / np.asarray(para_E, dtype=float)
+        # One inverse Boltzmann factor survives. Apply it after moving the
+        # prefactor into log space so an intermediate exp(-eta) cannot overflow.
+        with np.errstate(over="ignore", divide="ignore", invalid="ignore"):
+            log_magnitude = (
+                np.log(np.abs(prefactor))
+                + np.log(_scaled_integrals(-0.5, x))
+                - 2 * np.log(f0)
+                - np.minimum(x, 0.0)
+            )
+            result[usable] = np.copysign(np.exp(log_magnitude), prefactor)
     return result
 
 
@@ -980,34 +1088,10 @@ def dpb_see_vs_temp(
         Numpy array of Seebeck coefficient values
     """
 
-    if potentials is None:
-        potentials = dpb_chemPot_vs_temp(T, gap, meff, fermi_energy, degen)
-    sig1 = np.zeros(shape=len(T))
-    sig2 = np.zeros(shape=len(T))
-    ons1 = np.zeros(shape=len(T))
-    ons2 = np.zeros(shape=len(T))
-    see = np.zeros(shape=len(T))
-
-    for i, (temp, mu) in enumerate(zip(T, potentials, strict=True)):
-        factor = 1 / abs(meff)
-
-        sig1[i] = sigma_general(
-            eta=mu, meff=-1, K=1, beta=-1, T=temp
-        )  # beta = -1 to remove any temperature dependence that would cancel out eventually
-        sig2[i] = sigma_general(
-            eta=mu - gap, meff=np.sign(meff), K=1, beta=-1, T=temp
-        )  # beta = -1 to remove any temperature dependence that would cancel out eventually
-
-        ons1[i] = onsi_general(
-            eta=mu, meff=-1, K=1, beta=-1, T=temp
-        )  # beta = -1 to remove any temperature dependence that would cancel out eventually
-        ons2[i] = onsi_general(
-            eta=mu - gap, meff=np.sign(meff), K=1, beta=-1, T=temp
-        )  # beta = -1 to remove any temperature dependence that would cancel out eventually
-
-    see = scal_fac * (ons1 + factor * ons2) / (sig1 + factor * sig2)
-
-    return see
+    x1, x2 = _dpb_reduced_potentials(T, meff, gap, fermi_energy, degen, potentials)
+    see1, see2 = _dpb_seebeck_contributions(x1, x2, meff, 1 / abs(meff))
+    result: np.ndarray = scal_fac * (see1 + see2)
+    return result
 
 
 # Calculates the Seebeck coefficient of two bands if scattering times of acoustic-phonon and
@@ -1065,35 +1149,12 @@ def dpb_see_vs_temp_double_scatter(
     rho_vs_temp_acPh_dis : Returns an array of resistivity values
     """
 
-    sig1 = np.zeros(shape=len(temp_array))
-    sig2 = np.zeros(shape=len(temp_array))
-    ons1 = np.zeros(shape=len(temp_array))
-    ons2 = np.zeros(shape=len(temp_array))
-    see = np.zeros(shape=len(temp_array))
-
-    if potentials is None:
-        potentials = dpb_chemPot_vs_temp(temp_array, gap, meff, fermi_energy, degen)
-    chemPot_array = potentials
-    factor = para_B * (para_C + temp_array) / (para_D + temp_array) / abs(meff)
-
-    for i, temp in enumerate(temp_array):
-        sig1[i] = sigma_general(
-            eta=chemPot_array[i], meff=-1, K=1, beta=-1, T=temp
-        )  # beta = -1 to remove any temperature dependence that would cancel out eventually
-        sig2[i] = sigma_general(
-            eta=chemPot_array[i] - gap, meff=np.sign(meff), K=1, beta=-1, T=temp
-        )  # beta = -1 to remove any temperature dependence that would cancel out eventually
-
-        ons1[i] = onsi_general(
-            eta=chemPot_array[i], meff=-1, K=1, beta=-1, T=temp
-        )  # beta = -1 to remove any temperature dependence that would cancel out eventually
-        ons2[i] = onsi_general(
-            eta=chemPot_array[i] - gap, meff=np.sign(meff), K=1, beta=-1, T=temp
-        )  # beta = -1 to remove any temperature dependence that would cancel out eventually
-
-    see = scal_fac * (ons1 + factor * ons2) / (sig1 + factor * sig2)
-
-    return see
+    x1, x2 = _dpb_reduced_potentials(temp_array, meff, gap, fermi_energy, degen, potentials)
+    see1, see2 = _dpb_seebeck_contributions(
+        x1, x2, meff, para_B * (para_C + temp_array) / (para_D + temp_array) / abs(meff)
+    )
+    result: np.ndarray = scal_fac * (see1 + see2)
+    return result
 
 
 # Calculates the Seebeck coefficient of two bands if scattering times of either acoustic-phonon or
@@ -1139,35 +1200,10 @@ def dpb_see_vs_temp_single_scatter(
         Numpy array of Seebeck coefficient values
     """
 
-    sig1 = np.zeros(shape=len(temp_array))
-    sig2 = np.zeros(shape=len(temp_array))
-    ons1 = np.zeros(shape=len(temp_array))
-    ons2 = np.zeros(shape=len(temp_array))
-    see = np.zeros(shape=len(temp_array))
-
-    if potentials is None:
-        potentials = dpb_chemPot_vs_temp(temp_array, gap, meff, fermi_energy, degen)
-    chemPot_array = potentials
-    factor = para_B / abs(meff)
-
-    for i, temp in enumerate(temp_array):
-        sig1[i] = sigma_general(
-            eta=chemPot_array[i], meff=-1, K=1, beta=-1, T=temp
-        )  # beta = -1 to remove any temperature dependence that would cancel out eventually
-        sig2[i] = sigma_general(
-            eta=chemPot_array[i] - gap, meff=np.sign(meff), K=1, beta=-1, T=temp
-        )  # beta = -1 to remove any temperature dependence that would cancel out eventually
-
-        ons1[i] = onsi_general(
-            eta=chemPot_array[i], meff=-1, K=1, beta=-1, T=temp
-        )  # beta = -1 to remove any temperature dependence that would cancel out eventually
-        ons2[i] = onsi_general(
-            eta=chemPot_array[i] - gap, meff=np.sign(meff), K=1, beta=-1, T=temp
-        )  # beta = -1 to remove any temperature dependence that would cancel out eventually
-
-    see = scal_fac * (ons1 + factor * ons2) / (sig1 + factor * sig2)
-
-    return see
+    x1, x2 = _dpb_reduced_potentials(temp_array, meff, gap, fermi_energy, degen, potentials)
+    see1, see2 = _dpb_seebeck_contributions(x1, x2, meff, para_B / abs(meff))
+    result: np.ndarray = scal_fac * (see1 + see2)
+    return result
 
 
 # Calculates the electrical resistivity of two bands for acoustic-phonon scattering
@@ -1310,6 +1346,17 @@ def dpb_rho_vs_temp_acPh_dis(
     )
 
 
+def _bipolar_conductivity(sig1: np.ndarray, sig2: np.ndarray) -> np.ndarray:
+    # sigma1*sigma2/(sigma1+sigma2), without multiplying two dilute band
+    # conductivities. If both are zero, their bipolar conductivity is zero.
+    total = sig1 + sig2
+    fraction = np.divide(
+        np.maximum(sig1, sig2), total, out=np.zeros_like(total), where=(sig1 != 0) | (sig2 != 0)
+    )
+    result: np.ndarray = np.minimum(sig1, sig2) * fraction
+    return result
+
+
 # Calculates the electron thermal conductivity of two bands for acoustic-phonon scattering
 def dpb_thermCond_vs_temp_acPh(
     temp_array: np.ndarray,
@@ -1363,10 +1410,9 @@ def dpb_thermCond_vs_temp_acPh(
     see1, see2 = dpb_ind_see_vs_temp(temp_array, meff, gap, fermi_energy, degen, scal_fac=1.0)
     lorNum_1, lorNum_2 = dpb_lorNum_vs_temp(temp_array, meff, gap, fermi_energy, degen)
 
-    result: np.ndarray = scal_fac * temp_array * (
-        lorNum_1 * sig1 + lorNum_2 * sig2
-    ) + temp_array * (
-        sig1 * see1**2 + sig2 * see2**2 - (sig1 * see1 + sig2 * see2) ** 2 / (sig1 + sig2)
+    result: np.ndarray = temp_array * (
+        scal_fac * (lorNum_1 * sig1 + lorNum_2 * sig2)
+        + _bipolar_conductivity(sig1, sig2) * (see1 - see2) ** 2
     )
     return result
 
@@ -1424,10 +1470,9 @@ def dpb_thermCond_vs_temp_dis(
     see1, see2 = dpb_ind_see_vs_temp(temp_array, meff, gap, fermi_energy, degen, scal_fac=1.0)
     lorNum_1, lorNum_2 = dpb_lorNum_vs_temp(temp_array, meff, gap, fermi_energy, degen)
 
-    result: np.ndarray = scal_fac * temp_array * (
-        lorNum_1 * sig1 + lorNum_2 * sig2
-    ) + temp_array * (
-        sig1 * see1**2 + sig2 * see2**2 - (sig1 * see1 + sig2 * see2) ** 2 / (sig1 + sig2)
+    result: np.ndarray = temp_array * (
+        scal_fac * (lorNum_1 * sig1 + lorNum_2 * sig2)
+        + _bipolar_conductivity(sig1, sig2) * (see1 - see2) ** 2
     )
     return result
 
@@ -1492,10 +1537,9 @@ def dpb_thermCond_vs_temp_acPh_dis(
     see1, see2 = dpb_ind_see_vs_temp(temp_array, meff, gap, fermi_energy, degen, scal_fac=1.0)
     lorNum_1, lorNum_2 = dpb_lorNum_vs_temp(temp_array, meff, gap, fermi_energy, degen)
 
-    result: np.ndarray = scal_fac * temp_array * (
-        lorNum_1 * sig1 + lorNum_2 * sig2
-    ) + temp_array * (
-        sig1 * see1**2 + sig2 * see2**2 - (sig1 * see1 + sig2 * see2) ** 2 / (sig1 + sig2)
+    result: np.ndarray = temp_array * (
+        scal_fac * (lorNum_1 * sig1 + lorNum_2 * sig2)
+        + _bipolar_conductivity(sig1, sig2) * (see1 - see2) ** 2
     )
     return result
 
@@ -1512,6 +1556,8 @@ def dpb_hall_vs_temp_acPh(
     para_B: float,
     para_E: float | list[float],
     scal_fac: float = 1.0,
+    *,
+    band_1_degeneracy: float = 1.0,
 ) -> np.ndarray:
     """
     Calculates the Hall coefficient of two bands at various temperatures for a given set of
@@ -1541,6 +1587,8 @@ def dpb_hall_vs_temp_acPh(
         Fitting parameter, proportional to the mass of band 1
     scal_fac : float
         Scaling factor, by which the function is multiplied for improved fitting convergence
+    band_1_degeneracy : float
+        Absolute valley multiplicity of band 1. The relative valley weight is in degen.
     Returns
     -------
     out : numpy.ndarray
@@ -1552,9 +1600,10 @@ def dpb_hall_vs_temp_acPh(
         factor
         * T ** (-1.5)
         * scal_fac
-        * rho**2
+        * rho
         * para_A**2
         / para_E
+        / band_1_degeneracy
         * (
             f_m05_1
             - np.sign(meff)
@@ -1563,6 +1612,7 @@ def dpb_hall_vs_temp_acPh(
             * (para_B / meff) ** 2
             * f_m05_2
         )
+        * rho
     )
     return result
 
@@ -1579,6 +1629,8 @@ def dpb_hall_vs_temp_dis(
     para_B: float,
     para_E: float | list[float],
     scal_fac: float = 1.0,
+    *,
+    band_1_degeneracy: float = 1.0,
 ) -> np.ndarray:
     """
     Calculates the Hall coefficient of two bands at various temperatures for a given set of
@@ -1608,6 +1660,8 @@ def dpb_hall_vs_temp_dis(
         Free parameter, proportional to the mass of band 1
     scal_fac : float
         Scaling factor, by which the function is multiplied for improved fitting convergence
+    band_1_degeneracy : float
+        Absolute valley multiplicity of band 1. The relative valley weight is in degen.
     Returns
     -------
     out : numpy.ndarray
@@ -1619,9 +1673,10 @@ def dpb_hall_vs_temp_dis(
         factor
         * T ** (0.5)
         * scal_fac
-        * rho**2
+        * rho
         * para_A**2
         / para_E
+        / band_1_degeneracy
         * (
             f_m05_1
             - np.sign(meff)
@@ -1630,6 +1685,7 @@ def dpb_hall_vs_temp_dis(
             * (para_B / meff) ** 2
             * f_m05_2
         )
+        * rho
     )
     return result
 
@@ -1648,6 +1704,8 @@ def dpb_hall_vs_temp_acPh_dis(
     para_D: float,
     para_E: float | list[float],
     scal_fac: float = 1.0,
+    *,
+    band_1_degeneracy: float = 1.0,
 ) -> np.ndarray:
     """
     Calculates the Hall coefficient of two bands at various temperatures for a given set of
@@ -1683,6 +1741,8 @@ def dpb_hall_vs_temp_acPh_dis(
         Fitting parameter, proportional to the mass of band 1
     scal_fac : float
         Scaling factor, by which the function is multiplied for improved fitting convergence
+    band_1_degeneracy : float
+        Absolute valley multiplicity of band 1. The relative valley weight is in degen.
     Returns
     -------
     out : numpy.ndarray
@@ -1694,9 +1754,10 @@ def dpb_hall_vs_temp_acPh_dis(
         factor
         * T ** (0.5)
         * scal_fac
-        * rho**2
+        * rho
         * para_A**2
         / para_E
+        / band_1_degeneracy
         * (
             (1 / (para_C + T)) ** 2 * f_m05_1
             - np.sign(meff)
@@ -1705,6 +1766,7 @@ def dpb_hall_vs_temp_acPh_dis(
             * (para_B / meff / (para_D + T)) ** 2
             * f_m05_2
         )
+        * rho
     )
     return result
 
@@ -1747,32 +1809,8 @@ def dpb_ind_see_vs_temp(
         Tuple of numpy array of individual Seebeck coefficients
     """
 
-    sig1 = np.zeros(shape=len(temp_array))
-    sig2 = np.zeros(shape=len(temp_array))
-    ons1 = np.zeros(shape=len(temp_array))
-    ons2 = np.zeros(shape=len(temp_array))
-
-    chemPot_array = dpb_chemPot_vs_temp(temp_array, gap, meff, fermi_energy, degen)
-
-    for i, temp in enumerate(temp_array):
-        sig1[i] = sigma_general(
-            eta=chemPot_array[i], meff=-1, K=1, beta=-1, T=temp
-        )  # beta = -1 to remove any temperature dependence that would cancel out eventually
-        sig2[i] = sigma_general(
-            eta=chemPot_array[i] - gap, meff=np.sign(meff), K=1, beta=-1, T=temp
-        )  # beta = -1 to remove any temperature dependence that would cancel out eventually
-
-        ons1[i] = onsi_general(
-            eta=chemPot_array[i], meff=-1, K=1, beta=-1, T=temp
-        )  # beta = -1 to remove any temperature dependence that would cancel out eventually
-        ons2[i] = onsi_general(
-            eta=chemPot_array[i] - gap, meff=np.sign(meff), K=1, beta=-1, T=temp
-        )  # beta = -1 to remove any temperature dependence that would cancel out eventually
-
-    ind_see1 = ons1 / sig1
-    ind_see2 = ons2 / sig2
-
-    return ind_see1, ind_see2
+    x1, x2 = _dpb_reduced_potentials(temp_array, meff, gap, fermi_energy, degen)
+    return scal_fac * _band_seebeck(x1, -1), scal_fac * _band_seebeck(x2, float(np.sign(meff)))
 
 
 # Calculates the individual contributions to the Seebeck coefficient of two bands for the
@@ -1809,33 +1847,9 @@ def dpb_indCont_see_vs_temp(
         Tuple of numpy array of individual Seebeck coefficient contributions
     """
 
-    sig1 = np.zeros(shape=len(temp_array))
-    sig2 = np.zeros(shape=len(temp_array))
-    ons1 = np.zeros(shape=len(temp_array))
-    ons2 = np.zeros(shape=len(temp_array))
-
-    chemPot_array = dpb_chemPot_vs_temp(temp_array, gap, meff, fermi_energy, degen)
-    factor = 1 / abs(meff)
-
-    for i, temp in enumerate(temp_array):
-        sig1[i] = sigma_general(
-            eta=chemPot_array[i], meff=-1, K=1, beta=-1, T=temp
-        )  # beta = -1 to remove any temperature dependence that would cancel out eventually
-        sig2[i] = sigma_general(
-            eta=chemPot_array[i] - gap, meff=np.sign(meff), K=1, beta=-1, T=temp
-        )  # beta = -1 to remove any temperature dependence that would cancel out eventually
-
-        ons1[i] = onsi_general(
-            eta=chemPot_array[i], meff=-1, K=1, beta=-1, T=temp
-        )  # beta = -1 to remove any temperature dependence that would cancel out eventually
-        ons2[i] = onsi_general(
-            eta=chemPot_array[i] - gap, meff=np.sign(meff), K=1, beta=-1, T=temp
-        )  # beta = -1 to remove any temperature dependence that would cancel out eventually
-
-    ind_see1 = scal_fac * ons1 / (sig1 + factor * sig2)
-    ind_see2 = scal_fac * factor * ons2 / (sig1 + factor * sig2)
-
-    return ind_see1, ind_see2
+    x1, x2 = _dpb_reduced_potentials(temp_array, meff, gap, fermi_energy, degen)
+    see1, see2 = _dpb_seebeck_contributions(x1, x2, meff, 1 / abs(meff))
+    return scal_fac * see1, scal_fac * see2
 
 
 # Calculates the individual contributions to the Seebeck coefficient of two bands if scattering
@@ -1881,33 +1895,11 @@ def dpb_indCont_see_vs_temp_double_scatter(
         Tuple of numpy array of individual Seebeck coefficient contributions
     """
 
-    sig1 = np.zeros(shape=len(temp_array))
-    sig2 = np.zeros(shape=len(temp_array))
-    ons1 = np.zeros(shape=len(temp_array))
-    ons2 = np.zeros(shape=len(temp_array))
-
-    chemPot_array = dpb_chemPot_vs_temp(temp_array, gap, meff, fermi_energy, degen)
-    factor = para_B * (para_C + temp_array) / (para_D + temp_array) / abs(meff)
-
-    for i, temp in enumerate(temp_array):
-        sig1[i] = sigma_general(
-            eta=chemPot_array[i], meff=-1, K=1, beta=-1, T=temp
-        )  # beta = -1 to remove any temperature dependence that would cancel out eventually
-        sig2[i] = sigma_general(
-            eta=chemPot_array[i] - gap, meff=np.sign(meff), K=1, beta=-1, T=temp
-        )  # beta = -1 to remove any temperature dependence that would cancel out eventually
-
-        ons1[i] = onsi_general(
-            eta=chemPot_array[i], meff=-1, K=1, beta=-1, T=temp
-        )  # beta = -1 to remove any temperature dependence that would cancel out eventually
-        ons2[i] = onsi_general(
-            eta=chemPot_array[i] - gap, meff=np.sign(meff), K=1, beta=-1, T=temp
-        )  # beta = -1 to remove any temperature dependence that would cancel out eventually
-
-    ind_see1 = scal_fac * ons1 / (sig1 + factor * sig2)
-    ind_see2 = scal_fac * factor * ons2 / (sig1 + factor * sig2)
-
-    return ind_see1, ind_see2
+    x1, x2 = _dpb_reduced_potentials(temp_array, meff, gap, fermi_energy, degen)
+    see1, see2 = _dpb_seebeck_contributions(
+        x1, x2, meff, para_B * (para_C + temp_array) / (para_D + temp_array) / abs(meff)
+    )
+    return scal_fac * see1, scal_fac * see2
 
 
 # Calculates the individual contributions to the Seebeck coefficient of two bands if scattering
@@ -1948,33 +1940,9 @@ def dpb_indCont_see_vs_temp_single_scatter(
         Tuple of numpy array of individual Seebeck coefficient contributions
     """
 
-    sig1 = np.zeros(shape=len(temp_array))
-    sig2 = np.zeros(shape=len(temp_array))
-    ons1 = np.zeros(shape=len(temp_array))
-    ons2 = np.zeros(shape=len(temp_array))
-
-    chemPot_array = dpb_chemPot_vs_temp(temp_array, gap, meff, fermi_energy, degen)
-    factor = para_B / abs(meff)
-
-    for i, temp in enumerate(temp_array):
-        sig1[i] = sigma_general(
-            eta=chemPot_array[i], meff=-1, K=1, beta=-1, T=temp
-        )  # beta = -1 to remove any temperature dependence that would cancel out eventually
-        sig2[i] = sigma_general(
-            eta=chemPot_array[i] - gap, meff=np.sign(meff), K=1, beta=-1, T=temp
-        )  # beta = -1 to remove any temperature dependence that would cancel out eventually
-
-        ons1[i] = onsi_general(
-            eta=chemPot_array[i], meff=-1, K=1, beta=-1, T=temp
-        )  # beta = -1 to remove any temperature dependence that would cancel out eventually
-        ons2[i] = onsi_general(
-            eta=chemPot_array[i] - gap, meff=np.sign(meff), K=1, beta=-1, T=temp
-        )  # beta = -1 to remove any temperature dependence that would cancel out eventually
-
-    ind_see1 = scal_fac * ons1 / (sig1 + factor * sig2)
-    ind_see2 = scal_fac * factor * ons2 / (sig1 + factor * sig2)
-
-    return ind_see1, ind_see2
+    x1, x2 = _dpb_reduced_potentials(temp_array, meff, gap, fermi_energy, degen)
+    see1, see2 = _dpb_seebeck_contributions(x1, x2, meff, para_B / abs(meff))
+    return scal_fac * see1, scal_fac * see2
 
 
 # Calculates the individual electrical conductivities of two bands for acoustic-phonon scattering

@@ -1,5 +1,5 @@
 {
-  "reference": "h = 6.62607015e-34 J s, k_B = 1.380649e-23 J/K (exact SI), m_e = 9.1093837015e-31 kg (CODATA 2018), and k = 1 nm^-1",
+  "reference": "h = 6.62607015e-34 J s, k_B = 1.380649e-23 J/K (exact SI), m_e = 9.1093837015e-31 kg (CODATA 2018), and k = 1 nm^-1. This independent reference uses full CODATA values; the code uses m_e = 9.1093837e-31 kg and k_B = 8.617333262e-5 eV/K times e, which give a curvature 1.8e-10 relative away, within the curve tolerance",
   "curvature_k_at_one_nm_inv_and_one_electron_mass": 442.130065097008,
   "grid": "Replay uses the recorded low-level sample coordinates in nm^-1. Live diagrams use a separate -2 to 2 nm^-1 grid."
 }

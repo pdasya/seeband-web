@@ -37,18 +37,21 @@ uv run python -m seeband_api
 | `SEEBAND_API_FIT_PER_MINUTE`              | `30`                             | `POST /api/fit` for one client                                                                                       |
 | `SEEBAND_API_TRUSTED_PROXIES`             | `127.0.0.1,::1`                  | whose `X-Forwarded-For` to believe. `python -m seeband_api` only                                                     |
 
-| Route                    | Purpose                     |
-| ------------------------ | --------------------------- |
-| `GET /api/health`        | status, version and commit  |
-| `GET /api/models`        | model descriptions          |
-| `POST /api/calc`         | curves and RMSE             |
-| `POST /api/band-diagram` | local parabolic bands E(k)  |
-| `POST /api/parse`        | reading measured data       |
-| `POST /api/guess`        | initial parameter estimates |
-| `POST /api/fit`          | fitting, as event stream    |
-| `GET /api/demo`          | synthetic dataset           |
-| `GET /api/openapi.json`  | the contract                |
-| `GET /api/docs`          | Swagger UI over the same    |
+| Route                    | Purpose                      |
+| ------------------------ | ---------------------------- |
+| `GET /api/health`        | status, version and commit   |
+| `GET /api/ready`         | whether calculations can run |
+| `GET /api/models`        | model descriptions           |
+| `POST /api/calc`         | curves and RMSE              |
+| `POST /api/band-diagram` | local parabolic bands E(k)   |
+| `POST /api/parse`        | reading measured data        |
+| `POST /api/guess`        | initial parameter estimates  |
+| `POST /api/fit`          | fitting, as event stream     |
+| `GET /api/demo`          | synthetic dataset            |
+| `GET /api/openapi.json`  | the contract                 |
+| `GET /api/docs`          | Swagger UI over the same     |
+
+`GET /api/health` says the server answers; `GET /api/ready` answers 200 only once the calculation workers have started and answered their warm-up, and 503 `not_ready` with `Retry-After` while they start or are replaced after a crash. A proxy or a container's health check should use readiness before sending traffic. Neither is ever refused as too busy.
 
 `commit` in `GET /api/health` is the commit the API runs from: `SEEBAND_COMMIT`, which an image should set as it is built, or git's in a checkout, with `-dirty` for uncommitted changes, or null when neither knows. The app's own build reads its commit the same way, and exports and the report name both.
 
@@ -199,8 +202,19 @@ It has no rate limit and no `ETag`, as it costs almost nothing and is under 10 K
 
 - **Parameters:** all of a mode's parameters are needed, and values outside a control's range are allowed, because a fit can end there. Names are checked, and problems are listed in `details`. Numbers must be JSON numbers: `true` or `"1.5"` are refused.
 - **A disabled mode** gets a 409 `fit_mode_disabled`, with the ids of its known issues as the `code` in `details`. Show `known_issue.<code>` through i18n.
-- **A value that is not finite** usually comes back as `null`, with the rest of the curve, as with a band mass of 0.
-- **`calculation_failed`** is a 422 that loses the whole curve, because the core raises. This happens at `m_eff` = 0, which divides by zero, and in DPB S + ρ + R_H where a value at low temperature is not finite: at 2 to 300 K, 55 of 100 random parameter sets inside the control ranges failed, and none at 10 to 300 K or 50 to 800 K. In DPB S + ρ, the same condition gives one `null` instead. A submitted measurement at a low temperature can cause a density-certification failure during RMSE evaluation too. A negative m1 fails too, as it gives complex values. The API logs the exception's type.
+- **A nonfinite curve point** usually comes back as `null`, with the rest of the curve.
+- **`calculation_failed`** is a 422 with no curve. If the band parameters are
+  outside the finite-root domain, the response names the reason in `details`
+  at `body.parameters`:
+  - `chemical_potential_zero_mass` for zero band mass in SPB or a zero mass ratio in DPB.
+  - `chemical_potential_spb_fermi_energy` for `sign(m) × E_F ≤ 0`.
+  - `chemical_potential_dpb_fermi_energy` for two valence bands with `E_F ≥ max(0, E_g)`.
+
+  Clients can map these calculation detail codes directly to user guidance.
+  Known-issue IDs come from the model registry. An uncertifiable root or an
+  invalid transport result gets the general error. The API logs only the
+  exception type.
+
 - **`measured_points`** holds points made from the `measurements` sent, with no model: `electrical_conductivity_s_per_m` is 1/ρ at each ρ temperature, with `null` for a ρ of 0 or below. They go with the data the request sent: points in the fit range, as a client sends for the RMSE, and of interpolated ρ when it sends interpolated values. `seeband_core.measured_points` makes them. There are no κ_e points: κ_e is not measured, and an estimate from ρ needs a Lorenz number, which was decided against in #159.
 - **RMSE** for built-in SPB/DPB models evaluates the final parameters directly at each submitted measurement temperature. `points` and `rmse_points` do not affect this metric. Submitted points may be interpolated by the client. Custom registered models retain the grid-based fallback controlled by `rmse_points`. `/api/calc` retains its `422 zero_measured_value` rejection for submitted zero ρ/Hall measurements; the web preview excludes those points. The core metric helper itself returns an unavailable percentage for zeros. Fit diagnostics separately provide absolute RMSE and relative L2 when defined.
 - **`calculation_unavailable`** is a 503: a worker died, and the next request gets a new pool.

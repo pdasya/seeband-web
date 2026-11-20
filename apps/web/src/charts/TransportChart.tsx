@@ -14,6 +14,7 @@ import {
   type ReferenceLine,
 } from "@/charts/figure";
 import { loadPlotly, type PlotlyModule } from "@/charts/loadPlotly";
+import { measureSince } from "@/model/timing";
 
 const NO_REFERENCE_LINES: readonly ReferenceLine[] = [];
 
@@ -38,6 +39,13 @@ export interface TransportChartProps {
   description: string;
   /** Shown if Plotly cannot load, or cannot draw this data. */
   failedText: string;
+  /**
+   * Names the chart's User Timing entries: `<timing>:draw` for each drawing, and
+   * `<timing>:change-to-paint` from `changedAtMs`, when the values it shows were set, to the first
+   * frame after the drawing that shows them. Without it nothing is timed.
+   */
+  timing?: string | undefined;
+  changedAtMs?: number | null | undefined;
 }
 
 function ChartEmptyState({ title, text }: EmptyState) {
@@ -113,6 +121,8 @@ function Plot({
   yAxisTitle,
   description,
   failedText,
+  timing,
+  changedAtMs,
 }: {
   curves: readonly ChartCurve[];
   measurements: ChartMeasurements | null;
@@ -124,8 +134,17 @@ function Plot({
   yAxisTitle: string;
   description: string;
   failedText: string;
+  timing?: string | undefined;
+  changedAtMs?: number | null | undefined;
 }) {
   const container = useRef<HTMLDivElement>(null);
+  // Read when a drawing ends, so that a new time alone does not draw again.
+  const changedAt = useRef<number | null>(null);
+  const painted = useRef<number | null>(null);
+  // Before the drawing's effect, which reads it once the drawing ends.
+  useEffect(() => {
+    changedAt.current = changedAtMs ?? null;
+  }, [changedAtMs]);
   const [plotly, setPlotly] = useState<PlotlyModule | null>(null);
   const [failed, setFailed] = useState(false);
 
@@ -178,15 +197,32 @@ function Plot({
       return;
     }
     // An error thrown here would otherwise take the whole page with it.
+    const startedAtMs = performance.now();
     Promise.resolve()
       .then(() => {
         const { data, layout } = buildFigure(input, readChartTheme(element));
         return plotly.react(element, data, layout, PLOT_CONFIG);
       })
+      .then(() => {
+        if (timing === undefined) {
+          return;
+        }
+        measureSince(`${timing}:draw`, startedAtMs);
+        const since = changedAt.current;
+        if (since !== null && since !== painted.current) {
+          painted.current = since;
+          // The second frame starts after the first one, which shows the drawing, is painted.
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              measureSince(`${timing}:change-to-paint`, since);
+            });
+          });
+        }
+      })
       .catch(() => {
         setFailed(true);
       });
-  }, [plotly, input]);
+  }, [plotly, input, timing]);
 
   useEffect(() => {
     const element = container.current;
@@ -231,6 +267,8 @@ export function TransportChart({
   yAxisTitle,
   description,
   failedText,
+  timing,
+  changedAtMs,
 }: TransportChartProps) {
   if (empty !== null) {
     return <ChartEmptyState title={empty.title} text={empty.text} />;
@@ -253,6 +291,8 @@ export function TransportChart({
         yAxisTitle={yAxisTitle}
         description={description}
         failedText={failedText}
+        timing={timing}
+        changedAtMs={changedAtMs}
       />
     </figure>
   );

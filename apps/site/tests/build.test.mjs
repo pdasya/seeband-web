@@ -28,15 +28,21 @@ const ASTRO = join(
 );
 const outDir = mkdtempSync(join(tmpdir(), "seeband-site-build-"));
 const mathOutDir = mkdtempSync(join(tmpdir(), "seeband-site-math-"));
+// The same site built for a public address: the one above is for a host closed to search.
+const publicOutDir = mkdtempSync(join(tmpdir(), "seeband-site-public-"));
+const SITE_URL = "https://seeband.example";
 
-function build(root, out) {
+function build(root, out, siteUrl) {
+  const env = { ...process.env, ASTRO_TELEMETRY_DISABLED: "1" };
+  delete env.SEEBAND_SITE_URL;
+  if (siteUrl !== undefined) env.SEEBAND_SITE_URL = siteUrl;
   const built = spawnSync(
     process.execPath,
     [ASTRO, "build", "--root", root, "--outDir", out],
     {
       cwd: SITE_DIR,
       encoding: "utf8",
-      env: { ...process.env, ASTRO_TELEMETRY_DISABLED: "1" },
+      env,
     },
   );
   assert.equal(built.status, 0, built.stderr + built.stdout);
@@ -49,15 +55,18 @@ function files(dir) {
 }
 
 const page = (path) => readFileSync(join(outDir, path), "utf8");
+const publicPage = (path) => readFileSync(join(publicOutDir, path), "utf8");
 
 before(() => {
   build(SITE_DIR, outDir);
   build(MATH_DIR, mathOutDir);
+  build(SITE_DIR, publicOutDir, SITE_URL);
 });
 
 after(() => {
   rmSync(outDir, { recursive: true, force: true });
   rmSync(mathOutDir, { recursive: true, force: true });
+  rmSync(publicOutDir, { recursive: true, force: true });
 });
 
 test("has its pages in English, as static HTML", () => {
@@ -203,6 +212,7 @@ test("Conventions renders its formulas, lists its sections and ties issues to th
   for (const id of [
     "dpb_loop_degeneracy",
     "collapsed_m_eff",
+    "fermi_energy_in_gap",
     "no_chemical_potential",
     "hall_dis_no_reference",
     "interpolation_extrapolates",
@@ -214,6 +224,216 @@ test("Conventions renders its formulas, lists its sections and ties issues to th
   assert.match(textOfPage(conventions), /acPhDis[^.]*not offered/);
 });
 
+test("the user guide is a page of the site, with its screenshots and corrections", () => {
+  const guide = page("guide/index.html");
+  assert.match(guide, /<title>User guide · SeeBand<\/title>/);
+  assert.match(guide, /<a href="\/guide\/"[^>]*aria-current="page"/);
+  assert.match(page("index.html"), /<a href="\/guide\/"[^>]*>Guide<\/a>/);
+  // Every screenshot it shows is built with the site, and has its size and a description.
+  const images = [...guide.matchAll(/<img([^>]*)>/g)].map((match) => match[1]);
+  assert.ok(images.length >= 5);
+  for (const image of images) {
+    const source = /src="([^"]+)"/.exec(image)?.[1] ?? "";
+    assert.ok(statSync(join(outDir, source)).isFile(), source);
+    assert.match(image, /width="\d+"/, source);
+    assert.match(image, /height="\d+"/, source);
+    assert.match(image, /alt="[^"]{20,}"/, source);
+  }
+  // The desktop guide's mistakes: 641 K is 0.055 eV, and κ_e is not also λ_e.
+  const text = textOf(mainOf(guide));
+  assert.match(text, /641 K, which is 0\.055 eV/);
+  assert.doesNotMatch(text, /λ_?e|λbp|Ref\. \?|\?\?/);
+  assert.doesNotMatch(guide, /katex-error/);
+});
+
+test("the worked examples are pages of the site, each with its screenshots and limits", () => {
+  const index = page("examples/index.html");
+  assert.match(page("guide/index.html"), /<a href="\/examples\/">/);
+  for (const name of ["fe2val", "si-p", "awi32"]) {
+    assert.match(index, new RegExp(`<a href="/examples/${name}/">`), name);
+    const example = page(`examples/${name}/index.html`);
+    // Filed under the guide in the header.
+    assert.match(example, /<a href="\/guide\/"[^>]*aria-current="page"/, name);
+    const images = [...example.matchAll(/<img([^>]*)>/g)].map((m) => m[1]);
+    assert.ok(images.length >= 1, name);
+    for (const image of images) {
+      const source = /src="([^"]+)"/.exec(image)?.[1] ?? "";
+      assert.ok(statSync(join(outDir, source)).isFile(), source);
+      assert.match(image, /width="\d+"/, source);
+      assert.match(image, /height="\d+"/, source);
+      assert.match(image, /alt="[^"]{20,}"/, source);
+    }
+    // Each says what it rests on and how far to trust it.
+    for (const heading of ["Data", "Interpretation", "Limits", "Reproduce"]) {
+      assert.match(
+        example,
+        new RegExp(`<h2[^>]*>${heading}</h2>`),
+        `${name}: ${heading}`,
+      );
+    }
+    assert.doesNotMatch(example, /katex-error/, name);
+  }
+  // The known issues the pictured fits carry.
+  assert.match(
+    page("examples/awi32/index.html"),
+    /<code>hall_dis_no_reference<\/code>/,
+  );
+  for (const name of ["fe2val", "awi32"]) {
+    assert.match(page(`examples/${name}/index.html`), /issues\/247/, name);
+  }
+  // Every screenshot in public/examples is shown on a page.
+  const shown = ["fe2val", "si-p", "awi32"]
+    .map((name) => page(`examples/${name}/index.html`))
+    .join("");
+  for (const file of readdirSync(join(SITE_DIR, "public", "examples"))) {
+    assert.match(shown, new RegExp(`src="/examples/${file}"`), file);
+  }
+});
+
+/** Each page's built HTML file, and its address on the site. */
+const pagesOf = (dir) =>
+  files(dir)
+    .filter((path) => path.endsWith(".html"))
+    .map((path) => {
+      const file = relative(dir, path);
+      const address = `/${file.replace(/(^|\/)index\.html$/, "$1").replace(/\.html$/, "")}`;
+      return { file, address };
+    });
+
+test("a build without a site address keeps every page out of search", () => {
+  assert.equal(page("robots.txt"), "User-agent: *\nDisallow: /\n");
+  assert.doesNotMatch(page("sitemap.xml"), /<url>/);
+  for (const { file } of pagesOf(outDir)) {
+    const html = page(file);
+    assert.match(html, /<meta name="robots" content="noindex">/, file);
+    // Absolute addresses need the site's.
+    assert.doesNotMatch(html, /rel="canonical"|og:url/, file);
+  }
+});
+
+/**
+ * Whether robots.txt keeps a crawler out of a path, as Google reads it: a rule matches the start
+ * of the path, `*` matches anything and a last `$` ends it, which a RegExp reads the same way.
+ */
+function disallows(robots, path) {
+  return [...robots.matchAll(/^Disallow: (.+)$/gm)].some(([, rule]) => {
+    const pattern = rule
+      .replace(/[.+?^{}()|[\]\\]/g, "\\$&")
+      .replace(/\*/g, ".*");
+    return new RegExp(`^${pattern}`).test(path);
+  });
+}
+
+test("a public build lists its pages and keeps the app and the API out of search", () => {
+  const robots = publicPage("robots.txt");
+  for (const path of [
+    "/fit",
+    "/fit?demo=1",
+    "/fit/",
+    "/results",
+    "/results/",
+    "/api/fit",
+    "/licenses/Geist-OFL.txt",
+  ]) {
+    assert.ok(disallows(robots, path), path);
+  }
+  // The app's scripts and styles stay open, for a search engine to render its pages.
+  assert.ok(!disallows(robots, "/assets/index.js"));
+  assert.match(robots, new RegExp(`^Sitemap: ${SITE_URL}/sitemap.xml$`, "m"));
+
+  const sitemap = publicPage("sitemap.xml");
+  const listed = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
+  const titles = new Map();
+  const descriptions = new Map();
+  for (const { file, address } of pagesOf(publicOutDir)) {
+    const html = publicPage(file);
+    const title = /<title>([^<]+)<\/title>/.exec(html)?.[1];
+    const description = /<meta name="description" content="([^"]+)"/.exec(
+      html,
+    )?.[1];
+    assert.ok(title, file);
+    assert.ok(description, file);
+    assert.match(html, /<meta property="og:title" content="[^"]+">/, file);
+    assert.match(
+      html,
+      /<meta property="og:description" content="[^"]+">/,
+      file,
+    );
+    if (file === "404.html") {
+      assert.match(html, /<meta name="robots" content="noindex">/);
+      assert.ok(!listed.some((url) => url.includes("404")));
+      continue;
+    }
+    // Every other page is indexable, listed, and names itself as its canonical address, with a
+    // description long enough to say what it holds.
+    assert.ok(description.length >= 50, file);
+    const url = `${SITE_URL}${address}`;
+    assert.doesNotMatch(html, /name="robots"/, file);
+    assert.match(
+      html,
+      new RegExp(`<link rel="canonical" href="${url}">`),
+      file,
+    );
+    assert.match(
+      html,
+      new RegExp(`<meta property="og:url" content="${url}">`),
+      file,
+    );
+    assert.ok(listed.includes(url), url);
+    assert.ok(!disallows(robots, address), `robots.txt closes ${address}`);
+    // Unique, so that search results tell the pages apart.
+    assert.ok(
+      !titles.has(title),
+      `${file} has the title of ${titles.get(title)}`,
+    );
+    assert.ok(!descriptions.has(description), `${file} repeats a description`);
+    titles.set(title, file);
+    descriptions.set(description, file);
+  }
+  assert.equal(listed.length, titles.size);
+});
+
+test("a site address with a path, or no address at all, fails the build", () => {
+  for (const value of ["https://seeband.example/sub/", "seeband.example"]) {
+    const built = spawnSync(
+      process.execPath,
+      [
+        ASTRO,
+        "build",
+        "--outDir",
+        mkdtempSync(join(tmpdir(), "seeband-site-bad-")),
+      ],
+      {
+        cwd: SITE_DIR,
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          ASTRO_TELEMETRY_DISABLED: "1",
+          SEEBAND_SITE_URL: value,
+        },
+      },
+    );
+    assert.notEqual(built.status, 0, value);
+    assert.match(
+      built.stderr + built.stdout,
+      /SEEBAND_SITE_URL must be/,
+      value,
+    );
+  }
+});
+
+test("the overview describes the app for search engines", () => {
+  const json = /<script type="application\/ld\+json">([\s\S]*?)<\/script>/.exec(
+    publicPage("index.html"),
+  )?.[1];
+  const application = JSON.parse(json ?? "null");
+  assert.equal(application["@type"], "SoftwareApplication");
+  assert.equal(application.name, "SeeBand Web");
+  assert.equal(application.url, `${SITE_URL}/`);
+  assert.equal(application.offers.price, "0");
+  assert.match(application.description, /parabolic band/);
+});
+
 test("needs no script but the header's, and loads no heavy library", () => {
   const all = files(outDir);
   assert.deepEqual(
@@ -223,8 +443,11 @@ test("needs no script but the header's, and loads no heavy library", () => {
   );
   for (const path of all.filter((path) => path.endsWith(".html"))) {
     const html = readFileSync(path, "utf8");
-    // Only the shared header's language script, which does nothing with one language.
-    const scripts = html.match(/<script[\s\S]*?<\/script>/g) ?? [];
+    // Only the shared header's language script, which does nothing with one language. Data for
+    // search engines is not a script.
+    const scripts = (html.match(/<script[\s\S]*?<\/script>/g) ?? []).filter(
+      (script) => !script.includes('type="application/ld+json"'),
+    );
     assert.equal(scripts.length, 1, relative(outDir, path));
     assert.match(scripts[0], /seeband_language/);
     assert.ok(scripts[0].length < 1000, relative(outDir, path));
@@ -242,7 +465,8 @@ test("serves its fonts itself, and asks no other host", () => {
   for (const path of files(outDir).filter((p) => /\.(html|css)$/.test(p))) {
     assert.doesNotMatch(
       readFileSync(path, "utf8"),
-      /(src|href)="?https?:\/\/(?!github\.com)|url\(["']?https?:/,
+      // What a browser loads: a link to another site is only followed when clicked.
+      /\s(?:src|srcset)=["']?https?:|<link[^>]*\shref=["']?https?:|url\(\s*["']?https?:|@import\s*["']https?:/,
       relative(outDir, path),
     );
   }
