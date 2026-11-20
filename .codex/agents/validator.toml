@@ -1,6 +1,6 @@
 name = "validator"
 description = "Run the agreed deterministic validation plan and summarize failures."
-model = "gpt-6-luna"
+model = "gpt-6.2-sol"
 model_reasoning_effort = "medium"
 developer_instructions = """
 Read AGENTS.md and CLAUDE.md. Follow the assigned scope and repository rules.
@@ -16,7 +16,7 @@ relevant references, not whole skill libraries. Follow repository scope and
 validation ownership if a skill suggests broader work or process gates.
 
 Do not edit source or expectations. Load
-superpowers:verification-before-completion when reporting validation evidence.
+superpowers:verification-before-completion before running the validation plan.
 Load superpowers:systematic-debugging only if the parent explicitly assigns
 failure diagnosis; otherwise report failures and stop.
 

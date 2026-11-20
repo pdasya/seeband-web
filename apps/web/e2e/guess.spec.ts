@@ -124,6 +124,94 @@ test("a new file of S applies the net's values, and shows its real range", async
   ]);
 });
 
+test("the DPB S guess keeps the held 1000 K gap in the calculated curve", async ({
+  page,
+}) => {
+  const temperatures = [100, 200, 300, 400];
+  const seebeck = [1e-5, 2e-5, 3e-5, 4e-5];
+  const bodies = await open(page, (route) =>
+    route.fulfill({
+      json: {
+        ...GUESS,
+        prediction: { ...GUESS.prediction, band_gap_k: 901 },
+        start_values: { ...GUESS.start_values, band_gap: 901 },
+      },
+    }),
+  );
+  await page.route("**/api/parse", (route) =>
+    route.fulfill({
+      json: {
+        ...PARSED,
+        row_count: 4,
+        measurements: {
+          seebeck: {
+            temperature_k: temperatures,
+            values: seebeck,
+            points: 4,
+            min_temperature_k: 100,
+            max_temperature_k: 400,
+          },
+        },
+      },
+    }),
+  );
+  const calcs: { parameters: Record<string, number> }[] = [];
+  await page.route("**/api/calc", (route) => {
+    calcs.push(route.request().postDataJSON() as (typeof calcs)[number]);
+    return route.fulfill({ json: CALC });
+  });
+  await choose(page, "S");
+  const lock = page.getByRole("button", {
+    name: "Hold E_g at its value in a fit",
+  });
+  await lock.click();
+  await page
+    .locator('input[type="file"]')
+    .first()
+    .setInputFiles({
+      name: "seebeck.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from("T S\n100 10\n200 20\n300 30\n400 40\n"),
+    });
+  await expect(field(page, "E_F")).toHaveValue("0,1");
+  expect(bodies[0]).toMatchObject({
+    temperature_k: temperatures,
+    seebeck_v_per_k: seebeck,
+  });
+  await expect(lock).toHaveAttribute("aria-pressed", "true");
+  await expect(field(page, "E_g")).toHaveValue("0,09");
+  await expect
+    .poll(() => calcs.at(-1)?.parameters)
+    .toMatchObject({ band_gap: 1000, fermi_energy: 1170 });
+});
+
+test("DPB ionized impurity curves use manual starts while guessing is unavailable", async ({
+  page,
+}) => {
+  const bodies = await open(page);
+  await choose(page, "S");
+  await page.getByRole("combobox", { name: "Scattering" }).click();
+  await page.getByRole("option", { name: /Ionized impurities/ }).click();
+  const calcs: { parameters: Record<string, number>; scattering: string }[] =
+    [];
+  await page.route("**/api/calc", (route) => {
+    calcs.push(route.request().postDataJSON() as (typeof calcs)[number]);
+    return route.fulfill({ json: CALC });
+  });
+  await load(page);
+  await expect(button(page)).toBeDisabled();
+  await expect(button(page)).toHaveAttribute(
+    "title",
+    /unavailable for ionized impurities/,
+  );
+  await field(page, "m₂/m₁").fill("2");
+  await field(page, "m₂/m₁").blur();
+  await expect
+    .poll(() => calcs.at(-1))
+    .toMatchObject({ scattering: "ionized", parameters: { m_eff: 2 } });
+  expect(bodies).toHaveLength(0);
+});
+
 test("the values go to every mode of the model, and stay out of others", async ({
   page,
 }) => {
@@ -189,6 +277,27 @@ test("the button is for a model with nets and S data, and says so", async ({
   );
 });
 
+test("a fully held S mode stays usable when another mode receives estimates", async ({
+  page,
+}) => {
+  await open(page);
+  await choose(page, "S");
+  for (const symbol of ["m₂/m₁", "E_g", "E_F"]) {
+    await page
+      .getByRole("button", { name: `Hold ${symbol} at its value in a fit` })
+      .click();
+  }
+  const answered = page.waitForResponse("**/api/guess");
+  await load(page);
+  await answered;
+  await expect(button(page)).toBeEnabled();
+  await expect(badge(page, "Initial guess")).toHaveCount(0);
+  await expect(field(page, "E_g")).toHaveValue("0,09");
+  await choose(page, "S + ρ + R_H");
+  await expect(badge(page, "Initial guess")).toBeVisible();
+  await expect(field(page, "E_g")).toHaveValue("0,05");
+});
+
 test("the button applies the net again after edits", async ({ page }) => {
   const bodies = await open(page);
   await load(page);
@@ -236,7 +345,7 @@ test("edits after the file are kept, if the answer comes later", async ({
   await expect(badge(page, "Initial guess")).toHaveCount(0);
 });
 
-test("edits before the file are overwritten, as on the desktop", async ({
+test("automatic guesses preserve manual starts and update free starts", async ({
   page,
 }) => {
   await open(page);
@@ -245,7 +354,8 @@ test("edits before the file are overwritten, as on the desktop", async ({
 
   await load(page);
 
-  await expect(field(page, "E_g")).toHaveValue("0,05");
+  await expect(field(page, "E_F")).toHaveValue("0,1");
+  await expect(field(page, "E_g")).toHaveValue("0,06");
 });
 
 test("coming back to a tab does not guess again, or undo edits", async ({
@@ -282,7 +392,8 @@ test("a removed file loaded again guesses again", async ({ page }) => {
   await expect(page.getByText(/^3 points/)).toHaveCount(0);
   await load(page);
 
-  await expect(field(page, "E_g")).toHaveValue("0,05");
+  await expect(button(page)).toBeEnabled();
+  await expect(field(page, "E_g")).toHaveValue("0,06");
   expect(bodies).toHaveLength(2);
 });
 

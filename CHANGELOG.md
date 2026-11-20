@@ -10,6 +10,10 @@ deploy/compose.yaml up --build`. The API image installs exactly `uv.lock`
   workers have started; the API's health check uses it. CI builds and
   starts the stack and checks it through Caddy.
 
+- P28 (#258): loading Seebeck data preserves manual starting values. Both
+  automatic and requested estimates respect held and fixed parameters in
+  each fit mode. Use **Initial guess** to replace eligible manual starts.
+
 - FS12 (#56), tooling only: with `?timing` in its address, the fit screen
   records User Timing entries for how long live curves take, from a change
   to its answer and to each chart's painted frame, and
