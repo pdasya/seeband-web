@@ -129,23 +129,42 @@ jobs:
       - name: Site, app and API answer through Caddy
         run: |
           base=http://localhost:8080
-          curl -fsS "$base/" | grep -q "<title>SeeBand Web</title>"
+          # Caddy has no health check of its own; wait for it to listen.
+          curl -fsS --retry 15 --retry-delay 1 --retry-all-errors "$base/" | grep -q "<title>SeeBand Web</title>"
           curl -fsS "$base/guide/" | grep -q "User guide"
+          test "$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' "$base/guide")" = "308 $base/guide/"
           curl -fsS "$base/fit" | grep -q '<div id="root">'
           curl -fsSI "$base/fit" | grep -qi "x-robots-tag: noindex"
-          test "$(curl -s -o /dev/null -w '%{http_code}' "$base/nope")" = 404
+          # Built for no public address, every answer keeps search engines out.
+          curl -fsSI "$base/" | grep -qi "x-robots-tag: noindex"
+          curl -sI "$base/nope" | grep -qi "^HTTP/1.1 404"
+          curl -sI "$base/nope" | grep -qi "x-frame-options: deny"
           curl -fsS "$base/api/ready" | grep -q '"ready"'
           curl -fsS "$base/api/health" | grep -q "\"commit\":\"${GITHUB_SHA:0:12}\""
           # A calculation runs in the API's worker processes, behind the proxy.
-          curl -fsS "$base/api/models" -o models.json
           curl -fsS "$base/api/calc" -H "Content-Type: application/json" -d '{
             "model": "spb", "fit_mode": "spb_s", "scattering": "acPh",
             "parameters": {"band_mass": 1.01, "fermi_energy": 100},
             "min_temperature_k": 50, "max_temperature_k": 800
           }' | grep -q '"curves"'
-          # The API runs as a user, not root, on a read-only file system.
-          test "$(docker compose -f deploy/compose.yaml exec -T api id -u)" != 0
-          if docker compose -f deploy/compose.yaml exec -T api touch /opt/venv/x; then exit 1; fi
+      - name: Containers run hardened
+        run: |
+          compose="docker compose -f deploy/compose.yaml"
+          test "$($compose exec -T api id -u)" != 0
+          for service in api web; do
+            id=$($compose ps -q "$service")
+            test "$(docker inspect -f '{{.HostConfig.ReadonlyRootfs}}' "$id")" = true
+            docker inspect -f '{{.HostConfig.CapDrop}}' "$id" | grep -q ALL
+          done
+          test "$(docker inspect -f '{{.HostConfig.Init}}' "$($compose ps -q api)")" = true
+      - name: Logs hold no addresses or headers
+        run: |
+          base=http://localhost:8080
+          curl -fsS -A "secret-agent" "$base/" > /dev/null
+          curl -s -A "secret-agent" "$base/nope" > /dev/null
+          logs=$(docker compose -f deploy/compose.yaml logs --no-color web)
+          echo "$logs" | grep -q '"uri":"/"'
+          if echo "$logs" | grep -E 'secret-agent|remote_ip|client_ip|X-Forwarded-For'; then exit 1; fi
       - name: Logs
         if: always()
         run: docker compose -f deploy/compose.yaml logs --no-color
