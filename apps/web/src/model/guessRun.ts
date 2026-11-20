@@ -41,18 +41,20 @@ function sameRows(a: Measurement, b: Measurement): boolean {
 
 /**
  * Asks the nets for start values from every row of S, as the desktop does, whatever the fit range.
- * Like the desktop, it writes to every mode of the model. An edit while it waits wins, as the user
+ * Eligible values in every mode can change; held and fixed parameters stay untouched.
+ * Automatic guesses also preserve manual starts. An edit while it waits wins, as the user
  * has moved on from these values, and so does S going away, as they would describe nothing on
  * screen. A new mapping that reads the same S is no such thing.
  */
 export async function runGuess(
   model: ModelDescription,
   measurement: Measurement,
+  intent: "automatic" | "requested" = "requested",
 ): Promise<void> {
   controller?.abort();
   const own = new AbortController();
   controller = own;
-  const { parameters, selection } = store();
+  const { parameters, selection, held } = store();
   const scattering = selection.scattering;
   store().guessStarted();
   // The data this answer is still about, if the user has not moved on.
@@ -93,28 +95,50 @@ export async function runGuess(
           now,
         );
       } else {
+        const modes = model.fit_modes.map(({ id, parameters: specs }) => ({
+          fitMode: id,
+          values: Object.fromEntries(
+            specs.flatMap(({ name, role, core_range }) => {
+              const previous = parameters[id]?.[name];
+              if (
+                role === "fixed" ||
+                held[id]?.includes(name) ||
+                store().held[id]?.includes(name) ||
+                (intent === "automatic" &&
+                  previous !== undefined &&
+                  store().guessedParameters[id]?.[name] !== previous)
+              )
+                return [];
+              let value = answer.start_values[name];
+              if (
+                answer.status === "numerical_guess" &&
+                answer.sign_only_parameters?.includes(name) &&
+                value !== undefined
+              ) {
+                value =
+                  Math.sign(value) *
+                  (Math.abs(previous ?? core_range.default) ||
+                    Math.abs(core_range.default));
+              }
+              return value === undefined ? [] : [[name, value]];
+            }),
+          ),
+        }));
+        if (!modes.some(({ values }) => Object.keys(values).length > 0)) {
+          store().guessFinished(
+            { kind: "unchanged", warnings: answer.warnings },
+            model.id,
+            now,
+          );
+          return;
+        }
         store().guessApplied(
-          model.fit_modes.map(({ id, parameters: specs }) => ({
-            fitMode: id,
-            values: Object.fromEntries(
-              specs.flatMap(({ name, core_range }) => {
-                let value = answer.start_values[name];
-                if (
-                  answer.status === "numerical_guess" &&
-                  answer.sign_only_parameters?.includes(name) &&
-                  value !== undefined
-                ) {
-                  const previous = parameters[id]?.[name] ?? core_range.default;
-                  value =
-                    Math.sign(value) *
-                    (Math.abs(previous) || Math.abs(core_range.default));
-                }
-                return value === undefined ? [] : [[name, value]];
-              }),
-            ),
-          })),
+          modes,
           {
             kind: "applied",
+            fitModes: modes
+              .filter(({ values }) => Object.keys(values).length > 0)
+              .map(({ fitMode }) => fitMode),
             ...(answer.status === "guess"
               ? { netRange: answer.net_range }
               : {}),
