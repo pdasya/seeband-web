@@ -335,6 +335,27 @@ and the comparison of saved runs. The resistivity derivative of the profiled
 acoustic or disorder shape is analytic on its supported interior branch.
 The prior fit objectives, bounds and final audit still apply.
 
+**Speed.** The quadrature is slower than the old table. The independent review of 1d301a5
+measured on one Mac, against main at the time:
+
+| Measurement                             | Before  | P14        |
+| --------------------------------------- | ------- | ---------- |
+| 1008 curve cases                        | 10.2 s  | 16.1 s     |
+| median `carrier_concentration_by_band`  | 9.7 ms  | 18.3 ms    |
+| median `seebeck`                        | 11.3 ms | 18.5 ms    |
+| legacy `dpb_s_rho`                      | 0.43 s  | 0.77 s     |
+| verified `dpb_s`                        | 2.38 s  | 3.60 s     |
+| one scalar F₁/₂ inside the density root | 0.9 µs  | about 6 µs |
+
+The quadrature nodes are fixed, so evaluating many reduced potentials at once is a
+matrix-vector product; vectorising the density solve is the way to win this back.
+
+**Low temperatures.** Below about 0.5 K an intrinsic root can lie between two adjacent floats of
+μ: one float moves the balance by about ulp(μ)/T, for example 2.3e-12 at μ = 1417 K and 0.1 K,
+more than the 1e-12 tolerance. The tolerance is not relaxed. The solve then fails with "no
+representable chemical potential meets the density tolerance", a limit of binary64 rather than
+a failed solve. In the review's sweep of 840 intrinsic cases, 56 remained, all at T ≤ 0.5 K.
+
 For the recorded Verified D1 request, the old derivative failure now ends
 with conditional stage optima. The checked run has R ≈ 0.0025408, E_g ≈
 2377.28 K and F ≈ 0.0085244, with G, E_F and m₁ at their bounds. The relative
