@@ -3,7 +3,7 @@
 # Build from the repository root: docker build -f deploy/web.Dockerfile .
 
 # Base images are pinned by digest; Dependabot proposes updates (.github/dependabot.yml).
-FROM node:24-bookworm-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54 AS build
+FROM node:26-bookworm-slim@sha256:5df79989ed685e09f0a98019db4cebfb22fb9df1a53c0161664a011f7ff6b0f1 AS build
 RUN corepack enable
 WORKDIR /src
 COPY . .
