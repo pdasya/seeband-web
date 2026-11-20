@@ -156,3 +156,96 @@ def test_fermi_energy_is_fitted_and_density_follows_the_trial(client):
         {"carrier_type": None},
     ]:
         assert client.post("/api/calc", json=request | change).status_code == 422
+
+
+@pytest.mark.parametrize(
+    "configuration,carrier,ef",
+    [
+        ("vb_vb", "p", 1000),
+        ("vb_vb", "p", 1100),
+        ("cb_cb", "n", 0),
+        ("cb_cb", "n", -100),
+        ("vb_cb", "n", -100),
+        ("vb_cb", "p", 1100),
+    ],
+)
+def test_ef_diagram_draws_unoccupied_and_opposite_carrier_states(
+    client, configuration, carrier, ef
+):
+    body = dict(
+        model="dpb",
+        fit_mode="dpb_s",
+        parameterization="explicit_fermi_v1",
+        band_configuration=configuration,
+        carrier_type=carrier,
+        band_1_degeneracy=1,
+        band_2_degeneracy=1,
+        parameters=dict(m1=1, mass_ratio=1, band_offset_k=1000, fermi_energy=ef),
+    )
+    response = client.post("/api/band-diagram", json=body)
+    assert response.status_code == 200, response.text
+    curves = response.json()["curves"]
+    assert set(curves["fermi_energy_k"]) == {ef}
+    assert curves["band_1_energy_k"][50] == 0
+    assert curves["band_2_energy_k"][50] == 1000
+    assert all(np.isfinite(values).all() for values in curves.values())
+
+
+@pytest.mark.parametrize("path,field", [("/api/calc", "parameters"), ("/api/fit", "start")])
+@pytest.mark.parametrize(
+    "configuration,carrier,ef,code",
+    [
+        ("vb_vb", "p", 1000, "fermi_energy_unoccupied_bands"),
+        ("vb_vb", "p", 1100, "fermi_energy_unoccupied_bands"),
+        ("cb_cb", "n", 0, "fermi_energy_unoccupied_bands"),
+        ("cb_cb", "n", -100, "fermi_energy_unoccupied_bands"),
+        ("vb_cb", "n", -100, "fermi_energy_carrier_mismatch"),
+        ("vb_cb", "p", 1100, "fermi_energy_carrier_mismatch"),
+    ],
+)
+def test_transport_ef_domain_errors_are_actionable(
+    client, path, field, configuration, carrier, ef, code
+):
+    body = dict(
+        model="dpb",
+        fit_mode="dpb_s",
+        parameterization="explicit_fermi_v1",
+        band_configuration=configuration,
+        carrier_type=carrier,
+        band_1_degeneracy=1,
+        band_2_degeneracy=1,
+        min_temperature_k=100,
+        max_temperature_k=500,
+        measurements={"seebeck": {"temperature_k": [100, 300, 500], "values": [0, 0, 0]}},
+    )
+    body[field] = dict(m1=1, mass_ratio=1, band_offset_k=1000, fermi_energy=ef)
+    response = client.post(path, json=body)
+    assert response.status_code == 422, response.text
+    assert response.json()["details"][0]["code"] == code
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"carrier_type": "n"},
+        {"carrier_type": None},
+        {"net_electron_density_per_m3": 1e24},
+        {"band_1_degeneracy": 0},
+        {"parameters": dict(m1=0, mass_ratio=1, band_offset_k=1000, fermi_energy=1100)},
+        {"parameters": dict(m1=1, mass_ratio=-1, band_offset_k=1000, fermi_energy=1100)},
+        {"parameters": dict(m1=1, mass_ratio=1, band_offset_k=1000)},
+        {"parameters": dict(m1=1, mass_ratio=1, band_offset_k=1000, fermi_energy="NaN")},
+    ],
+)
+def test_ef_diagram_keeps_structural_input_validation(client, change):
+    body = dict(
+        model="dpb",
+        fit_mode="dpb_s",
+        parameterization="explicit_fermi_v1",
+        band_configuration="vb_vb",
+        carrier_type="p",
+        band_1_degeneracy=1,
+        band_2_degeneracy=1,
+        parameters=dict(m1=1, mass_ratio=1, band_offset_k=1000, fermi_energy=1100),
+    )
+    assert client.post("/api/band-diagram", json=body | change).status_code == 422

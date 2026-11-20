@@ -234,10 +234,18 @@ def density_settings(
         settings.carrier_type == "p" and density > 0
     ):
         raise mm.NoFiniteChemicalPotentialError(
-            0.0, "Fermi energy gives a carrier excess opposite to carrier_type"
+            0.0,
+            "Fermi energy gives a carrier excess opposite to carrier_type; "
+            "change Fermi energy or select the matching carrier type",
+            code="fermi_energy_carrier_mismatch",
         )
     if settings.band_configuration != "vb_cb" and density == 0:
-        raise mm.NoFiniteChemicalPotentialError(0.0, "Same-type bands require occupied carriers")
+        raise mm.NoFiniteChemicalPotentialError(
+            0.0,
+            "Same-type bands require occupied carriers; set Fermi energy below the higher "
+            "valence-band edge for VB+VB or above the lower conduction-band edge for CB+CB",
+            code="fermi_energy_unoccupied_bands",
+        )
     return ExplicitBands(settings.band_configuration, density)
 
 
@@ -374,11 +382,11 @@ def explicit_diagram(
 ) -> BandDiagramResult:
     """Physical k in inverse angstroms, single-valley masses and T=0 root/interval."""
     supplied_ef = parameters["fermi_energy"] if settings.carrier_type is not None else None
-    settings = density_settings(settings, parameters, n1, n2)
     signs, masses, _, edges = _bands(settings.band_configuration, parameters, n1, n2)
     doping = settings.net_electron_density_per_m3
-    assert doping is not None
     if supplied_ef is not None:
+        if not isfinite(supplied_ef):
+            raise ValueError("Zero-temperature Fermi energy must be finite")
         ef = supplied_ef
     elif settings.band_configuration == "vb_cb" and doping == 0 and edges[1] >= 0:
         if edges[1] > 0:
@@ -386,6 +394,7 @@ def explicit_diagram(
         else:
             ef = 0.0
     else:
+        assert doping is not None
         width = max(1.0, abs(float(edges[1])))
 
         def balance(value: float) -> float:
@@ -404,15 +413,18 @@ def explicit_diagram(
     energy_scale_k = max(300.0, abs(float(edges[1])), abs(ef) if ef is not None else 0.0)
     extent = sqrt(2 * float(max(masses)) * mm.me * mm.kB * energy_scale_k) / mm.hbar / 1e10
     k = extent * np.linspace(-1.0, 1.0, 101)
-    curves = {
-        f"band_{i + 1}_energy_k": edges[i]
-        + signs[i] * mm.hbar**2 * (k * 1e10) ** 2 / (2 * masses[i] * mm.me * mm.kB)
-        for i in range(2)
-    }
+    with np.errstate(over="ignore", invalid="ignore", divide="ignore"):
+        curves = {
+            f"band_{i + 1}_energy_k": edges[i]
+            + signs[i] * mm.hbar**2 * (k * 1e10) ** 2 / (2 * masses[i] * mm.me * mm.kB)
+            for i in range(2)
+        }
+    if not np.isfinite(k).all() or any(not np.isfinite(v).all() for v in curves.values()):
+        raise ValueError("Band diagram geometry is outside the finite numerical range")
     if ef is None or (
         supplied_ef is not None
         and settings.band_configuration == "vb_cb"
-        and doping == 0
+        and 0 <= supplied_ef <= edges[1]
         and edges[1] > 0
     ):
         curves["fermi_energy_lower_k"] = np.full_like(k, 0.0)

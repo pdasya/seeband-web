@@ -385,6 +385,14 @@ the trial energy and band parameters and conserves it across temperature.
 For mixed bands p/n constrains the resulting excess. Both choices admit an
 intrinsic sample. The API rejects a simultaneous fixed density input.
 
+The band diagram draws a supplied Fermi energy and both dispersions even
+when that energy is outside the transport domain. In VB+VB, transport
+requires `fermi_energy < max(0, band_offset_k)`; CB+CB requires
+`fermi_energy > min(0, band_offset_k)`. For calculations and fits, HTTP 422
+includes the detail code `fermi_energy_unoccupied_bands` for a same-type
+pair with zero carrier population, or `fermi_energy_carrier_mismatch` when
+the mixed-band excess has the opposite sign to the selected carrier type.
+
 Request `GET /api/models?parameterization=explicit_density_v1` for the saved fixed-density
 parameter names and bounds. On calculation, fit and diagram requests send
 `model: "dpb"`, `parameterization: "explicit_density_v1"`, `band_configuration`

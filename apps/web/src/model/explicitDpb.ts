@@ -1,3 +1,5 @@
+import type { ApiErrorDetail } from "@/api/errors";
+import { STRINGS } from "@/strings";
 import type { Selection } from "@/session/store";
 
 export function isExplicitDpb(selection: Selection): boolean {
@@ -52,4 +54,15 @@ export function heldForFit(
     )
     ? [...new Set([...held, "m1"])].sort()
     : [...held];
+}
+
+/** Validation details shared by live transport curves and fits. */
+export function carrierValidationMessage(details: readonly ApiErrorDetail[]) {
+  for (const { code } of details) {
+    if (code === "fermi_energy_unoccupied_bands")
+      return STRINGS.explicitDpb.unoccupiedBands;
+    if (code === "fermi_energy_carrier_mismatch")
+      return STRINGS.explicitDpb.carrierMismatch;
+  }
+  return null;
 }

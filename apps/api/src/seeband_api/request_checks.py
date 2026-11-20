@@ -2,7 +2,7 @@
 
 from collections.abc import Callable, Sized
 from http import HTTPStatus
-from typing import Annotated, Any, Self, get_args
+from typing import Annotated, Any, ClassVar, Self, get_args
 
 import numpy as np
 from fastapi import Depends, Request
@@ -65,6 +65,8 @@ ParameterValues = Annotated[dict[str, FiniteFloat], *bounded(MAX_PARAMETERS)]
 
 
 class BandInputs(BaseModel):
+    requires_transport_fermi: ClassVar[bool] = True
+
     model: str
     parameterization: DpbParameterization = "legacy_fermi"
     band_configuration: BandConfiguration | None = None
@@ -102,17 +104,24 @@ class BandInputs(BaseModel):
                 if name in values and values[name] <= 0:
                     raise ValueError(f"{name} must be positive in explicit DPB")
             if (
-                settings.carrier_type is not None
+                self.requires_transport_fermi
+                and settings.carrier_type is not None
                 and {"m1", "mass_ratio", "band_offset_k", "fermi_energy"} <= values.keys()
             ):
                 from seeband_core.explicit_transport import density_settings
+                from seeband_core.math_module import NoFiniteChemicalPotentialError
 
-                density_settings(
-                    settings,
-                    values,
-                    getattr(self, "band_1_degeneracy", 1.0),
-                    getattr(self, "band_2_degeneracy", 1.0),
-                )
+                try:
+                    density_settings(
+                        settings,
+                        values,
+                        getattr(self, "band_1_degeneracy", 1.0),
+                        getattr(self, "band_2_degeneracy", 1.0),
+                    )
+                except NoFiniteChemicalPotentialError as exc:
+                    if exc.code is None:
+                        raise
+                    raise PydanticCustomError(exc.code, exc.reason) from exc
             for name in ("band_1_degeneracy", "band_2_degeneracy"):
                 if name in type(self).model_fields and name not in self.model_fields_set:
                     raise ValueError(

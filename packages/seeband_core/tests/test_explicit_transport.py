@@ -293,3 +293,29 @@ def test_overlap_compensation_roundoff_allows_both_carrier_signs():
         assert sign * density_settings(settings, doped, n1, n2).net_electron_density_per_m3 > 0
         with pytest.raises(mm.NoFiniteChemicalPotentialError):
             density_settings(settings, p | {"fermi_energy": neutral - sign * 1e-8}, n1, n2)
+
+
+def test_ef_diagram_preserves_intrinsic_interval_and_ignores_carrier_selection():
+    p = dict(m1=1.7, mass_ratio=0.8 / 1.7, band_offset_k=650.0, fermi_energy=200)
+    for carrier in ("p", "n"):
+        diagram = explicit_diagram(ExplicitBands("vb_cb", carrier_type=carrier), p, 2, 6)
+        assert set(diagram.curves["fermi_energy_k"]) == {200}
+        assert set(diagram.curves["fermi_energy_lower_k"]) == {0}
+        assert set(diagram.curves["fermi_energy_upper_k"]) == {650}
+
+
+@pytest.mark.parametrize(
+    "configuration,density", [("vb_vb", -2e24), ("cb_cb", 2e24), ("vb_cb", 2e24)]
+)
+def test_density_diagram_still_inverts_fixed_density(configuration, density):
+    p = dict(m1=1.7, mass_ratio=0.8 / 1.7, band_offset_k=650.0)
+    diagram = explicit_diagram(ExplicitBands(configuration, density), p, 2, 6)
+    ef = diagram.curves["fermi_energy_k"][0]
+    assert zero_temperature_density(configuration, p, ef, 2, 6) == pytest.approx(density, rel=1e-12)
+
+
+@pytest.mark.parametrize("ef", [float("inf"), float("nan"), 1e308])
+def test_ef_diagram_rejects_nonfinite_or_unrepresentable_geometry(ef):
+    p = dict(m1=1.0, mass_ratio=1.0, band_offset_k=1000.0, fermi_energy=ef)
+    with pytest.raises(ValueError):
+        explicit_diagram(ExplicitBands("cb_cb", carrier_type="n"), p, 1, 1)

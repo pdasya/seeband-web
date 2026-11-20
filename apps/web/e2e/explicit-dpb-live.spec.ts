@@ -222,3 +222,64 @@ test("explicit CB+CB curves and confirmed historical conversion round-trip", asy
   await massLock.click();
   await expect(massLock).toHaveAttribute("aria-pressed", "false");
 });
+
+test("VB+VB updates at positive offset and explains the hole threshold", async ({
+  page,
+}) => {
+  await page.goto("/fit");
+  await page.getByLabel("Band configuration").selectOption("vb_vb");
+  const energy = page.getByRole("textbox", { name: "E_F", exact: true });
+  const offset = page.getByRole("textbox", { name: "Δ", exact: true });
+  const chart = page.getByRole("region", { name: "Chart 1", exact: true });
+  const dispersion = page.getByRole("region", { name: "Chart 4", exact: true });
+  await page
+    .locator('input[type="file"]')
+    .first()
+    .setInputFiles({
+      name: "positive-s.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from(
+        "T [K] S [V/K]\n100 0.0001\n300 0.0002\n500 0.0003\n",
+      ),
+    });
+  await offset.fill("0.06");
+  await offset.press("Enter");
+  const editEnergy = async (value: string) => {
+    const calc = page.waitForResponse(
+      (r) =>
+        r.url().endsWith("/api/calc") &&
+        Math.abs(
+          r.request().postDataJSON().parameters.fermi_energy * 8.617333262e-5 -
+            Number(value),
+        ) < 0.0002,
+    );
+    const diagram = page.waitForResponse(
+      (r) =>
+        r.url().endsWith("/api/band-diagram") &&
+        Math.abs(
+          r.request().postDataJSON().parameters.fermi_energy * 8.617333262e-5 -
+            Number(value),
+        ) < 0.0002,
+    );
+    await energy.fill(value);
+    await energy.press("Enter");
+    return Promise.all([calc, diagram]);
+  };
+  const [valid] = await editEnergy("0.03");
+  expect(valid.status()).toBe(200);
+  expect(
+    (await valid.json()).curves.seebeck_v_per_k.every(
+      (s: number) => Number.isFinite(s) && s > 0,
+    ),
+  ).toBe(true);
+  const [empty, geometry] = await editEnergy("0.10");
+  expect(empty.status()).toBe(422);
+  expect(geometry.status()).toBe(200);
+  await expect(chart.getByRole("alert")).toContainText(
+    "below the higher valence-band edge",
+  );
+  await expect(dispersion.getByRole("alert")).toHaveCount(0);
+  const [recovered] = await editEnergy("0.02");
+  expect(recovered.status()).toBe(200);
+  await expect(chart.getByRole("alert")).toHaveCount(0);
+});

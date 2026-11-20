@@ -2,6 +2,7 @@ import { AlertCircleIcon } from "lucide-react";
 import { useId, useMemo } from "react";
 
 import type { ApiError } from "@/api/errors";
+import { carrierValidationMessage } from "@/model/explicitDpb";
 import { NETWORK_ERROR } from "@/api/errors";
 import { useModels } from "@/api/queries";
 import { TransportChart } from "@/charts/TransportChart";
@@ -39,6 +40,8 @@ const NOTHING: LiveCalc = { result: null, busy: false, error: null };
 /** What a chart says of a failed curve, in our own words. */
 export function failureText(error: ApiError): string {
   switch (error.code) {
+    case "validation_error":
+      return carrierValidationMessage(error.details) ?? text.calcFailed;
     case "calculation_failed": {
       const messages: Record<string, string> = text.calculationDetails;
       const detail = error.details.find(({ code }) =>

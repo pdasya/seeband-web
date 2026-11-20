@@ -5,6 +5,10 @@
  */
 export const STRINGS = {
   explicitDpb: {
+    unoccupiedBands:
+      "For VB + VB, set E_F below the higher valence-band edge. For CB + CB, set E_F above the lower conduction-band edge.",
+    carrierMismatch:
+      "The chosen E_F gives the opposite carrier excess. Adjust E_F or switch p/n.",
     fermiRepresentation: "Explicit bands · Fermi energy",
     carrierType: "Carrier type",
     carrierTypes: { p: "p: holes", n: "n: electrons" },

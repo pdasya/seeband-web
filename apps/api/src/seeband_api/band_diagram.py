@@ -40,6 +40,8 @@ class BandDiagramRequest(BandInputs):
         }
     )
 
+    requires_transport_fermi = False
+
     fit_mode: str
     parameters: ParameterValues
     band_1_degeneracy: PositiveFloat = 1.0
