@@ -121,8 +121,8 @@ The zero-temperature carrier target and its first derivatives are the same
 as at the conduction edge.
 The fit checks that the residual vector is identical at the reference before
 using it to take shrinking-gap probes or seed the optimizer. The original
-endpoint remains a candidate and wins ties. If the Fermi energy is held or
-there is no admissible interior reference, the original derivative check
+endpoint remains a candidate and wins ties. If both energies are free but
+no admissible interior reference exists, the original derivative check
 still applies and can fail explicitly.
 
 With the demo's gap bounds set to `[300, 800] K`, the same start converges to
@@ -143,6 +143,68 @@ energies from a 400 K start, including when the generating energy is at the
 only accessible outer bound. With all parameters free on the bundled demo,
 the start (m₂/m₁ = 1.2, E_g = 800 K, E_F = 0 K) now gives about
 0.807 µV/K RMSE. The earlier plateau result gave 48.34 µV/K.
+
+### Gap fitted with the Fermi energy held
+
+A Seebeck stage that fits only the
+gap, from its upper bound, with the held Fermi energy at or below that bound,
+first searches the finite gap interval with the true objective. Its local solve
+could otherwise stop in the onset layer just below the bound, a higher minimum
+than one deeper in the interval.
+
+- The search samples 17 evenly spaced gaps, 24 offsets halved toward the
+  upper bound, and 24 halved toward the carrier onset at E_g = E_F from each
+  side. It then polishes, with at most 16 bounded scalar iterations each, the
+  two brackets around each of the three lowest mesh minima. That is at most
+  about 190 evaluations.
+- The best point found starts the local solve, which the usual derivative
+  check and final conditional audit then validate. The original point wins
+  ties.
+- The search is finite. It can miss a basin narrower than the mesh that lies
+  near no mesh minimum, and it certifies no global optimum.
+- A gap with no finite lower bound is refused with its own message. Only the
+  core API can send one; the web API requires finite bounds.
+
+#### The derivative at the edge
+
+When the held Fermi energy equals the gap at
+its upper bound, a shrinking gap moves band 2's edge below E_F, and the true
+objective's one-sided difference quotient goes as a + b h^(1/2) + c h, since
+band 2's density grows as (E_F − E_g)^(3/2). Its limit a equals the derivative
+of the zero-target plateau, on which E_F moves with the gap. The fit certifies
+that plateau derivative with the usual half-step check, after checking that
+both objectives give the same residual at the edge. A test checks the limit,
+extrapolated from three steps, against it. The parameters passed in keep E_F
+at its held value on every evaluation; on the plateau's probes only the
+chemical potentials follow the moving gap. Below the edge, the h^(1/2) term
+means the linear model holds only very close to it at low temperature.
+
+On the bundled demo with `m_eff = 1.2` held and gap bounds `[300, 800] K`, on
+one Mac:
+
+| Held E_F | Gap found    | Seebeck RMSE   | Dense profile |
+| -------- | ------------ | -------------- | ------------- |
+| 800 K    | 799.898412 K | 61.121734 µV/K | 799.8985 K    |
+| 799.9 K  | 799.798352 K | 61.124691 µV/K | 799.7985 K    |
+| 799 K    | 798.897810 K | 61.151309 µV/K | 798.897 K     |
+
+The dense profile evaluates the model directly over 9,000 gaps; its RMSE is
+at most 1e-5 relative above the fit's. Before the search covered E_F below
+the bound, 799.9 and 799 K converged at the 800 K bound with 63.135757 µV/K.
+The 800 K fit takes about 285 evaluations, against 638 with the earlier
+polish of every mesh interval. The same setup recovers noiseless gaps of
+`795 K`, `750 K` and `799.9999 K` with RMSE below `10⁻⁴ µV/K`. An exact fit at
+the original upper bound is retained.
+
+The 800 K fit takes 2.4 s on the demo's 31 points and 115 s on the same
+curve interpolated to 2000 points, the API's largest, against 228 s before
+and the API's fit limit of 180 s.
+
+The derivative check can still fail explicitly, with the held Fermi energy
+10⁻⁶ K below the bound. The fit then says so; it does not guess. With 10⁻⁴ and 10⁻⁵ K
+below and 10⁻⁶ K above, at equal bounds of `1000 K` and `1500 K` (999.9701
+and 1499.9988 K), and on the demo curve interpolated to 1000 points, which
+all failed before, it now converges.
 
 ## Result interpretation
 

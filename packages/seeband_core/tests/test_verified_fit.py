@@ -52,12 +52,12 @@ def test_failed_exploratory_derivative_keeps_checked_endpoint(scattering, monkey
     original_jacobian = verified_fit._Engine.jacobian
     rejected = []
 
-    def reject_exploratory_trial(engine, evaluate, coordinates, base, point, **kwargs):
+    def reject_exploratory_trial(engine, q, evaluate, coordinates, base, point, **kwargs):
         parameters = coordinates.decode(point)
         if parameters.get("fermi_energy", 400.0) < 0.0:
             rejected.append(parameters["fermi_energy"])
             raise verified_fit.DerivativeValidationError("Injected exploratory derivative failure")
-        return original_jacobian(engine, evaluate, coordinates, base, point, **kwargs)
+        return original_jacobian(engine, q, evaluate, coordinates, base, point, **kwargs)
 
     monkeypatch.setattr(verified_fit._Engine, "jacobian", reject_exploratory_trial)
     result = model.fit(
@@ -286,7 +286,8 @@ def test_verified_can_find_a_free_gap_from_the_conduction_edge(
         assert "fermi_energy_in_gap" in result.known_issues
 
 
-def test_verified_keeps_an_exact_fit_at_the_gap_upper_bound():
+@pytest.mark.parametrize("hold_fermi", [False, True])
+def test_verified_keeps_an_exact_fit_at_the_gap_upper_bound(hold_fermi):
     model = DpbModel()
     start = {"m_eff": 1.2, "band_gap": 800.0, "fermi_energy": 800.0}
     temperature_k = np.linspace(100.0, 800.0, 18)
@@ -298,7 +299,7 @@ def test_verified_keeps_an_exact_fit_at_the_gap_upper_bound():
             start,
             bounds={"band_gap": Bounds(300.0, 800.0)},
             scattering="acPh",
-            held=frozenset({"m_eff"}),
+            held=frozenset({"m_eff", "fermi_energy"} if hold_fermi else {"m_eff"}),
         )
     )
 
@@ -307,6 +308,141 @@ def test_verified_keeps_an_exact_fit_at_the_gap_upper_bound():
     assert "band_gap" in result.at_bounds
     assert "fermi_energy_in_gap" in result.known_issues
     assert result.diagnostics.residuals["seebeck"].rmse == 0.0
+
+
+@pytest.mark.parametrize("true_gap", [None, 795.0, 750.0, 799.9999])
+def test_verified_recovers_with_fermi_energy_held_at_the_upper_gap_edge(monkeypatch, true_gap):
+    from seeband_core import verified_fit
+
+    start = {"m_eff": 1.2, "band_gap": 800.0, "fermi_energy": 800.0}
+    bounds = {"band_gap": Bounds(300.0, 800.0), "fermi_energy": Bounds(800.0, 900.0)}
+    data = load_demo_dataset().measurements["seebeck"]
+    if true_gap is not None:
+        data = Measurement(
+            data.temperature_k,
+            mm.dpb_see_vs_temp(data.temperature_k, 1.2, true_gap, 800.0, 1.0),
+        )
+    original = verified_fit._evaluate_quantity
+
+    def check_bounds(quantity, temperatures, parameters, *args, **kwargs):
+        assert 300.0 <= parameters["band_gap"] <= 800.0
+        assert parameters["fermi_energy"] == 800.0
+        assert parameters["m_eff"] == 1.2
+        return original(quantity, temperatures, parameters, *args, **kwargs)
+
+    monkeypatch.setattr(verified_fit, "_evaluate_quantity", check_bounds)
+    result = DpbModel().fit(
+        FitRequest(
+            "dpb_s",
+            {"seebeck": data},
+            start,
+            bounds=bounds,
+            scattering="acPh",
+            held=frozenset({"m_eff", "fermi_energy"}),
+        )
+    )
+
+    assert result.status == "converged"
+    assert result.diagnostics.stage_consistent is True
+    assert result.parameters["fermi_energy"] == 800.0
+    assert result.parameter_status["fermi_energy"] == "held"
+    assert 300.0 <= result.parameters["band_gap"] <= 800.0
+    if true_gap is None:
+        # Against an independent dense profile of the same objective, not the fit's own output.
+        gap, rmse = _dense_gap_profile(data, 800.0)
+        assert result.parameters["band_gap"] == pytest.approx(gap, abs=0.01)
+        assert result.diagnostics.residuals["seebeck"].rmse <= rmse * (1 + 1e-6)
+    else:
+        assert result.parameters["band_gap"] == pytest.approx(true_gap, abs=1e-6)
+        assert result.diagnostics.residuals["seebeck"].rmse * 1e6 < 1e-4
+    # The search is bounded: the original mesh-and-polish took 638 evaluations on the demo.
+    assert result.diagnostics.evaluations <= 400
+
+
+def _dense_gap_profile(data, fermi_energy, lower=300.0, upper=800.0):
+    """The best gap and its Seebeck RMSE over an even and an edge-refined grid, by direct model
+    evaluation, independent of the fit's search."""
+    gaps = np.concatenate(
+        (
+            np.linspace(lower, upper, 2001),
+            upper - (upper - lower) * np.logspace(-9, -1, 400),
+            fermi_energy + (upper - lower) * np.logspace(-9, -1, 400) * np.array([[-1], [1]]),
+        ),
+        axis=None,
+    )
+    gaps = gaps[(gaps >= lower) & (gaps <= upper)]
+    t, s = np.asarray(data.temperature_k), np.asarray(data.values)
+    rmse, gap = min(
+        (float(np.sqrt(np.mean((mm.dpb_see_vs_temp(t, 1.2, g, fermi_energy, 1.0) - s) ** 2))), g)
+        for g in gaps
+    )
+    return gap, rmse
+
+
+@pytest.mark.parametrize("fermi_energy", [799.999, 799.9, 799.0])
+def test_verified_searches_the_gap_with_fermi_energy_held_just_below_the_bound(fermi_energy):
+    # Before, these converged at the 800 K bound, a higher minimum than one inside the interval.
+    data = load_demo_dataset().measurements["seebeck"]
+    result = DpbModel().fit(
+        FitRequest(
+            "dpb_s",
+            {"seebeck": data},
+            {"m_eff": 1.2, "band_gap": 800.0, "fermi_energy": fermi_energy},
+            bounds={"band_gap": Bounds(300.0, 800.0)},
+            scattering="acPh",
+            held=frozenset({"m_eff", "fermi_energy"}),
+        )
+    )
+
+    gap, rmse = _dense_gap_profile(data, fermi_energy)
+    assert result.status == "converged"
+    assert result.parameters["band_gap"] < 800.0
+    assert result.parameters["band_gap"] == pytest.approx(gap, abs=0.01)
+    assert result.diagnostics.residuals["seebeck"].rmse <= rmse * (1 + 1e-6)
+
+
+def test_verified_refuses_the_held_gap_search_without_a_finite_lower_bound():
+    t = load_demo_dataset().measurements["seebeck"].temperature_k
+    data = Measurement(t, mm.dpb_see_vs_temp(t, 1.2, 795.0, 800.0, 1.0))
+    result = DpbModel().fit(
+        FitRequest(
+            "dpb_s",
+            {"seebeck": data},
+            {"m_eff": 1.2, "band_gap": 800.0, "fermi_energy": 800.0},
+            bounds={"band_gap": Bounds(-np.inf, 800.0)},
+            scattering="acPh",
+            held=frozenset({"m_eff", "fermi_energy"}),
+        )
+    )
+
+    # Before, a local window gave a wrong "converged" at 799.43 K.
+    assert result.status == "failed"
+    assert result.message == (
+        "A gap fit with the Fermi energy held needs a finite lower bound of the gap."
+    )
+
+
+def test_the_edge_derivative_from_the_plateau_matches_the_true_objective_below_the_edge():
+    # At E_g = E_F the true objective is defined only for a shrinking gap. Its one-sided
+    # difference quotient there goes as a + b h^(1/2) + c h, as band 2's density grows as
+    # (E_F - E_g)^(3/2), so its limit a, extrapolated from three steps, must match the
+    # zero-target plateau's derivative that the fit certifies.
+    t = np.asarray(load_demo_dataset().measurements["seebeck"].temperature_k)
+    edge = 800.0
+
+    def true(gap):
+        return mm.dpb_see_vs_temp(t, 1.2, gap, edge, 1.0)
+
+    def plateau(gap):
+        with mm.independent_chemical_potential():
+            mu = mm.dpb_chemPot_vs_temp(t, gap, 1.2, gap, 1.0)
+            return mm.dpb_see_vs_temp(t, 1.2, gap, edge, 1.0, potentials=mu)
+
+    steps = np.array([1e-4, 4e-4, 1.6e-3])
+    quotients = np.array([(true(edge) - true(edge - h)) / h for h in steps])
+    limit = np.linalg.solve(np.stack([np.ones(3), np.sqrt(steps), steps], axis=1), quotients)[0]
+    central = (plateau(edge + 1e-3) - plateau(edge - 1e-3)) / 2e-3
+    np.testing.assert_allclose(limit, central, rtol=1e-2)
 
 
 @pytest.mark.parametrize("scattering", ["acPh", "dis", "ionized"])

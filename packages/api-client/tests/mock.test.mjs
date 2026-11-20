@@ -100,7 +100,7 @@ describe("the mock of the real contract", async () => {
     assert.deepEqual(await response.json(), {
       status: "ok",
       version: "1.0.0",
-      core_version: "0.3.1",
+      core_version: "0.3.2",
     });
   });
 
