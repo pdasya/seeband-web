@@ -652,7 +652,10 @@ class _BandModel:
                 effective[underflowed] = ionized_transport(
                     temperatures, parameters, fit_mode.id, ratio
                 )["lorenz_number"]
-            else:
+            elif scattering in ("acPh", "dis"):
+                # The dilute fallback takes band 2's amplitude relative to band 1 as one number,
+                # which holds for acPh and dis. A mixed mechanism such as acPhDis, B(C+T)/(D+T),
+                # varies with T and needs its own fallback before it may reach this branch.
                 effective[underflowed] = _CORE_MATH.dpb_effective_lorenz(
                     temperatures,
                     _value(parameters, "m_eff") / ratio,
@@ -661,6 +664,8 @@ class _BandModel:
                     ratio,
                     _value(parameters, "G" if scattering == "dis" else "B"),
                 )
+            else:
+                raise ValueError(f"No dilute Lorenz fallback for scattering {scattering!r}")
         curves: dict[str, np.ndarray] = {LORENZ_CURVE: effective}
         curves |= self._band_lorenz_numbers(request, fit_mode, scattering, temperature_k)
         issues = active_issue_ids(
