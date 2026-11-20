@@ -46,8 +46,9 @@ class BandDiagramRequest(BaseModel):
 class BandDiagramResponse(BaseModel):
     """Curves over `wavevector_nm_inv` (nm⁻¹), with energies divided by k_B (K).
 
-    Null marks a non-finite energy. `reference_mass_assumed` marks DPB diagrams
-    whose curvature scale assumes a first-band mass magnitude of one electron mass.
+    Null marks a non-finite energy. `reference_mass_assumed` marks diagrams of modes without
+    Hall data, SPB or DPB, whose curvature scale assumes a band-1 mass magnitude of one electron
+    mass, as no data in them set it.
     """
 
     model_config = ConfigDict(

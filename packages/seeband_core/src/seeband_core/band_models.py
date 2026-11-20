@@ -704,7 +704,9 @@ class _BandModel:
         curves["fermi_energy_k"] = np.full_like(
             wavevector_nm_inv, _value(request.parameters, "fermi_energy")
         )
-        reference_mass_assumed = self.describe().id == "dpb" and "hall" not in fit_mode.quantities
+        # Without Hall data no mode sets a mass's size, so band 1's is taken as mₑ. With them, the
+        # curvature follows the current mass, which the data set only once a fit has run.
+        reference_mass_assumed = "hall" not in fit_mode.quantities
         return BandDiagramResult(
             wavevector_nm_inv,
             curves,
@@ -731,7 +733,12 @@ class SpbModel(_BandModel):
     def _diagram_bands(
         self, request: BandDiagramRequest, fit_mode: FitMode
     ) -> list[tuple[str, float, float]]:
-        return [("band_1_energy_k", _value(request.parameters, "band_mass"), 0.0)]
+        """The band's signed mass. Without Hall data only its sign is set by the data, as S does
+        not depend on its size and ρ's prefactor absorbs it, so the curvature takes |m| = mₑ."""
+        mass = _value(request.parameters, "band_mass")
+        if "hall" not in fit_mode.quantities:
+            mass = float(np.sign(mass))
+        return [("band_1_energy_k", mass, 0.0)]
 
     def _stage_errors(
         self, fit_mode: FitMode, scattering: str | None, ratio: float, progress: Any

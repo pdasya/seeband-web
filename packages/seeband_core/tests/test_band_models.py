@@ -409,6 +409,23 @@ def test_spb_diagram_uses_the_signed_mass_on_a_physical_grid(mass_m_e: float) ->
     assert result.known_issues == ()
 
 
+@pytest.mark.parametrize("fit_mode_id", ["spb_s", "spb_s_rho"])
+@pytest.mark.parametrize("mass_m_e", [1.5, -0.2])
+def test_spb_diagram_without_hall_data_assumes_the_electron_mass(
+    fit_mode_id: str, mass_m_e: float
+) -> None:
+    # S does not depend on the mass's size, and ρ's prefactor absorbs it, so only its sign is
+    # set by the data: the curvature takes |m| = mₑ and says so.
+    model = registry.get("spb")
+    fit_mode = model.describe().fit_mode(fit_mode_id)
+    parameters = {**default_start(fit_mode), "band_mass": mass_m_e}
+    result = model.band_diagram(BandDiagramRequest(fit_mode.id, parameters))
+
+    expected = 442.13006509 * result.wavevector_nm_inv**2 * np.sign(mass_m_e)
+    np.testing.assert_allclose(result.curves["band_1_energy_k"], expected, rtol=1e-9)
+    assert result.reference_mass_assumed
+
+
 @pytest.mark.parametrize("fit_mode_id", ["dpb_s", "dpb_s_rho", "dpb_s_rho_rh"])
 @pytest.mark.parametrize("mass_ratio", [2.0, -2.0])
 def test_dpb_diagram_uses_signed_single_valley_masses(fit_mode_id: str, mass_ratio: float) -> None:

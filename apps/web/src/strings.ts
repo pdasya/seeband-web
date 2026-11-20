@@ -419,7 +419,7 @@ export const STRINGS = {
     },
     diagramDescription: "Local parabolic band energies against wavevector",
     diagramReferenceMass:
-      "The curvature scale is illustrative. The first band's mass magnitude is assumed to be mₑ in this mode without Hall data.",
+      "The curvature scale is illustrative. Without Hall data the size of band 1's mass is not set by the data, so it is assumed to be mₑ.",
     wavevectorAxis: "k, nm⁻¹",
     axes: {
       seebeck: "S, µV/K",

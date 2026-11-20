@@ -40,7 +40,9 @@ def test_spb_has_its_band_and_the_fermi_energy(client: TestClient) -> None:
     assert [k[0], k[50], k[-1]] == [-2.0, 0.0, 2.0]
     assert list(body["curves"]) == ["band_1_energy_k", "fermi_energy_k"]
     assert body["known_issues"] == []
-    assert body["reference_mass_assumed"] is False
+    # S alone does not set the mass's size, so the curvature takes |m| = mₑ, with its sign.
+    assert body["reference_mass_assumed"] is True
+    assert body["curves"]["band_1_energy_k"][75] == pytest.approx(442.1300651, rel=1e-8)
     assert body["curves"]["fermi_energy_k"] == [100.0] * len(k)
 
 
