@@ -1,6 +1,6 @@
 name = "docs_worker"
 description = "Update assigned documentation from verified implementation facts."
-model = "gpt-6-luna"
+model = "gpt-6.2-sol"
 model_reasoning_effort = "medium"
 developer_instructions = """
 Read AGENTS.md and CLAUDE.md. Follow the assigned scope and repository rules.
