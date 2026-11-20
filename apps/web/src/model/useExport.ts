@@ -2,7 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { limitedRanges } from "@/model/interpolatedRanges";
 
-import { apiClient, type CalcResponse } from "@/api/client";
+import { apiClient, type CalcRequest, type CalcResponse } from "@/api/client";
+import { ApiError } from "@/api/errors";
 import { APP_VERSION, withCommit } from "@/lib/version";
 import { modelsQuery } from "@/api/queries";
 import { strToU8, zipSync } from "fflate";
@@ -19,6 +20,7 @@ import {
   zipEntries,
 } from "@/model/exportFiles";
 import { calcRequest, derivedRequest } from "@/model/liveCurves";
+import { retriesByItself } from "@/model/latestOnly";
 import { runLines } from "@/model/runRecord";
 import { fitRequest } from "@/model/fitRequest";
 import { sessionFile } from "@/session/sessionFile";
@@ -36,6 +38,26 @@ const { export: text } = STRINGS;
 
 // Long enough for a browser to take the file before its address is freed.
 const RELEASE_AFTER_MS = 60_000;
+
+/** Temporary admission failures can outlive a live curve; an export must still finish or fail. */
+async function exportCalc(request: CalcRequest): Promise<CalcResponse> {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await apiClient.postCalc(request);
+    } catch (error) {
+      if (
+        attempt >= 2 ||
+        !(error instanceof ApiError) ||
+        !retriesByItself(error)
+      ) {
+        throw error;
+      }
+      await new Promise((resolve) =>
+        setTimeout(resolve, (error.retryAfterS ?? 0) * 1000),
+      );
+    }
+  }
+}
 
 /** Hands the user a file, as a download. */
 export function download(
@@ -183,7 +205,7 @@ export function useExport() {
 
   const calc = async (state: SessionState): Promise<CalcResponse | null> => {
     const request = calcRequest(state, models?.models, true);
-    return request === null ? null : apiClient.postCalc(request);
+    return request === null ? null : exportCalc(request);
   };
 
   /**
@@ -201,18 +223,17 @@ export function useExport() {
           mode.curves.some((curve) => curve.kind === kind && curve.available),
         )
       : [];
-    const [preFit, fit, ...answers] = await Promise.all([
-      calc(preFitState(state, mode.id)),
-      hasFittedValues(state.fit) ? calc(state) : Promise.resolve(null),
-      ...kinds.map((kind) => {
-        const request = derivedRequest(state, models?.models, kind);
-        return request === null ? null : apiClient.postCalc(request);
-      }),
-    ]);
-    const graphs = kinds.flatMap((kind, at) => {
-      const result = answers[at];
-      return result === null || result === undefined ? [] : [{ kind, result }];
-    });
+    // Results also asks for live curves. Keep the export to one slot rather than submitting
+    // every graph at once and exceeding the API's per-client calculation admission limit.
+    const preFit = await calc(preFitState(state, mode.id));
+    const fit = hasFittedValues(state.fit) ? await calc(state) : null;
+    const graphs: { kind: string; result: CalcResponse }[] = [];
+    for (const kind of kinds) {
+      const request = derivedRequest(state, models?.models, kind);
+      if (request !== null) {
+        graphs.push({ kind, result: await exportCalc(request) });
+      }
+    }
     const missing = kinds.filter(
       (kind) => !graphs.some((graph) => graph.kind === kind),
     );
