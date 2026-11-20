@@ -2,10 +2,16 @@
 
 ## Unreleased
 
-- Verified Fit: when only the DPB gap is free in the Seebeck stage and the
-  held Fermi energy equals the positive upper gap bound, compare candidates
-  across the bounded gap interval before certifying a result. Keep the
-  held value and the original objective.
+- P16 (#107), core `0.3.2`. Verified Fit: when only the DPB gap is free in
+  the Seebeck stage, from its upper bound, with the Fermi energy held at or
+  below that bound, it first searches the bounded gap interval with the true
+  objective. Fits that stopped at the bound or in the onset layer below it
+  now reach a lower minimum: on the demo with E_F held at 799.9 K, 61.12
+  instead of 63.14 µV/K. A fit with E_F held exactly at the bound, which
+  failed derivative validation, now converges. The derivative there comes
+  from the zero-target plateau and equals the true one-sided limit. A gap
+  with no finite lower bound is refused. The search is finite and certifies
+  no global optimum.
 
 - I1 (#53): run everything with one command, `docker compose -f
 deploy/compose.yaml up --build`. The API image installs exactly `uv.lock`

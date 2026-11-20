@@ -330,7 +330,7 @@ agreement with the uncorrected Desktop outputs.
   status only at the full budget and with the same parameter and diagnostic checks.
 
 The method ID remains `verified-sequential-v2`. The pair of method ID and core
-version, now `0.3.1`, distinguishes this implementation in results, exports,
+version, `0.3.1` for P14, distinguishes this implementation in results, exports,
 and the comparison of saved runs. The resistivity derivative of the profiled
 acoustic or disorder shape is analytic on its supported interior branch.
 The prior fit objectives, bounds and final audit still apply.
