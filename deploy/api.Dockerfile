@@ -3,7 +3,7 @@
 # Build from the repository root: docker build -f deploy/api.Dockerfile .
 
 # Base images are pinned by digest; Dependabot proposes updates (.github/dependabot.yml).
-FROM python:3.13-slim-bookworm@sha256:a5a7017efc5969e00ae2b91c8eb0631049a569652aa4ffc4501769049ae45c72 AS build
+FROM python:3.15-slim-bookworm@sha256:96599df822d0e1c6bb700014a05c7f3c8cabc6e0f7ff3c4f9f69cee033b4b5d9 AS build
 COPY --from=ghcr.io/astral-sh/uv:0.13.7@sha256:96f40d3904aad8d0bd010539001d36c8e2188b981e1334471a90c4a1d93bb490 /uv /bin/uv
 # Bytecode is compiled now, as the running container's file system is read-only.
 ENV UV_COMPILE_BYTECODE=1 \
@@ -18,7 +18,7 @@ COPY packages/seeband_core packages/seeband_core
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-dev --no-editable --package seeband-api
 
-FROM python:3.13-slim-bookworm@sha256:a5a7017efc5969e00ae2b91c8eb0631049a569652aa4ffc4501769049ae45c72
+FROM python:3.15-slim-bookworm@sha256:96599df822d0e1c6bb700014a05c7f3c8cabc6e0f7ff3c4f9f69cee033b4b5d9
 RUN useradd --system --uid 10001 --no-create-home --shell /usr/sbin/nologin seeband
 COPY --from=build /opt/venv /opt/venv
 # The commit names the build in /api/health and in every export.
