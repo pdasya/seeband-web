@@ -1,10 +1,12 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
+import type { components } from "@seeband/api-client";
 import { strFromU8, unzipSync } from "fflate";
 
 import { expect, test, type Page } from "@playwright/test";
 
+import type { FitEvent } from "../src/api/fitStream";
 import { chart, show, fitBadges } from "./support/fitScreen";
 
 // Against a real API, as the mock's answers do not depend on the file. See the README.
@@ -21,6 +23,8 @@ const EXAMPLES = fileURLToPath(
     import.meta.url,
   ),
 );
+
+type Schemas = components["schemas"];
 
 const SYMBOL_OF_SUFFIX = { see: "S", rho: "ρ", hall: "R_H" } as const;
 
@@ -214,11 +218,20 @@ test("interpolation of an example through the real API has its flags", async ({
   await loadExample(page, "01_Fe2VAl09Si01_see.txt");
   await expect(slots(page).getByText(/\d+ points/)).toBeVisible();
 
+  const parsed = page.waitForResponse("**/api/parse");
   await page.getByRole("switch", { name: /Interpolation/ }).click();
+  const response = await parsed;
+  expect(response.ok()).toBe(true);
+  const result = (await response.json()) as Schemas["ParseResponse"];
+  const grid = result.interpolated.seebeck;
+  if (!grid) throw new Error("Missing interpolated Seebeck data");
+  expect(grid).toMatchObject({ range_limited: true, extrapolated: false });
+  expect(Math.min(...grid.temperature_k)).toBe(50);
+  expect(Math.max(...grid.temperature_k)).toBe(750);
 
   await expect(page.getByText("Fit range 50–800 K")).toBeVisible();
   await expect(page.getByRole("alert")).toContainText(
-    "S: the grid goes beyond the data",
+    "S: the measured range limits interpolation to 50–750 K",
   );
 
   await page.getByRole("switch", { name: /Interpolation/ }).click();
@@ -229,7 +242,9 @@ test("interpolation of an example through the real API has its flags", async ({
   ).toBeVisible();
 });
 
-test("the real model descriptions fill the model panel", async ({ page }) => {
+test("the SPB Hall mode is selectable and draws its calculated coefficient", async ({
+  page,
+}) => {
   await page.goto("/fit");
 
   await expect(page.getByRole("radio", { name: "DPB" })).toBeChecked();
@@ -239,10 +254,37 @@ test("the real model descriptions fill the model panel", async ({ page }) => {
 
   await page.getByRole("radio", { name: "SPB" }).click();
 
+  const hallMode = page.getByRole("radio", {
+    name: "S + ρ + R_H",
+    exact: true,
+  });
+  await hallMode.click();
+  await expect(hallMode).toBeChecked();
+  // Put the Fermi energy inside the default electron band.
+  const fermi = page.getByRole("textbox", { name: "E_F", exact: true });
+  await fermi.fill("0,02");
+  await fermi.blur();
+  const calculated = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/api/calc") &&
+      response.request().postDataJSON().fit_mode === "spb_s_rho_rh",
+  );
+  await loadExample(page, "01_Fe2VAl09Si01_hall.txt");
+  const response = await calculated;
+  expect(response.ok()).toBe(true);
+  const result = (await response.json()) as Schemas["CalcResponse"];
+  const hall = result.curves.hall_m3_per_c ?? [];
+  expect(result.temperature_k.length).toBeGreaterThan(1);
+  expect(hall).toHaveLength(result.temperature_k.length);
+  expect(
+    hall.every(
+      (value) => value !== null && Number.isFinite(value) && value < 0,
+    ),
+  ).toBe(true);
+  await show(page, "Hall coefficient R_H(T)");
   await expect(
-    page.getByRole("radio", { name: "S + ρ + R_H", exact: true }),
-  ).toBeDisabled();
-  await expect(page.getByText(/fails on the desktop/)).toBeVisible();
+    chart(page).locator(".scatterlayer .trace path.js-line"),
+  ).toBeVisible();
 });
 
 test("the real descriptions fill the parameters", async ({ page }) => {
@@ -380,11 +422,54 @@ test("the real API draws the sketch of the bands, and it follows the values", as
   expect(Math.min(...(body.curves.band_2_energy_k ?? []))).toBeGreaterThan(464);
 });
 
+/** Compare the visible result with the terminal event of the same real fit. */
+async function runVerifiedFit(page: Page) {
+  // Chromium does not retain fetch-event-stream bodies for response.text(). Read a
+  // clone in the page so the application still consumes its original stream live.
+  const capture = await page.evaluateHandle(() => {
+    const body = new Promise<string>((resolve, reject) => {
+      const originalFetch = window.fetch;
+      window.fetch = (input, init) => {
+        const response = originalFetch.call(window, input, init);
+        const url = input instanceof Request ? input.url : String(input);
+        if (new URL(url, location.href).pathname === "/api/fit") {
+          window.fetch = originalFetch;
+          void response.then((res) => res.clone().text()).then(resolve, reject);
+        }
+        return response;
+      };
+    });
+    return { body };
+  });
+  await page.getByRole("button", { name: "Run fit" }).click();
+  const raw = await capture.evaluate(({ body }) => body);
+  await capture.dispose();
+  const last = raw
+    .split(/\r?\n/)
+    .filter((line) => line.startsWith("data:"))
+    .at(-1);
+  const event = JSON.parse(last?.slice(5) ?? "null") as FitEvent | null;
+  if (event?.type !== "done")
+    throw new Error(`Expected a completed fit, received ${last}`);
+  const { result } = event;
+  expect(result.algorithm).toBe("verified-sequential-v2");
+  const labels = {
+    converged: "Numerically settled",
+    stalled: "Numerical fit stalled",
+    iteration_limit: "Iteration limit reached",
+  };
+  if (result.status === "failed" || result.status === "stopped") {
+    throw new Error(`Fit ended with ${result.status}: ${result.message ?? ""}`);
+  }
+  await expect(fitBadges(page)).toHaveText(labels[result.status]);
+  return result;
+}
+
 // One after another, as the API limits the fits of a client, and all tests here are one client.
 test.describe("real fits", () => {
   test.describe.configure({ mode: "serial" });
 
-  test("a real fit stops, converges and resets through the real API", async ({
+  test("a real fit can be stopped, shows the verified outcome and resets", async ({
     page,
   }) => {
     test.setTimeout(60_000);
@@ -402,29 +487,29 @@ test.describe("real fits", () => {
     // The net has set its start values from S, as on the desktop.
     await expect(gap).toHaveValue("0,05");
 
-    // A real fit takes about a second here, so a Stop can only come right at its start.
+    // Stop before the first iteration updates the initial values.
     await run.click();
     await page.getByRole("button", { name: "Stop" }).click();
     await expect(badge(/^Stopped/)).toBeVisible();
     await expect(gap).toHaveValue("0,05");
 
-    // S + ρ is iterative, so its result counts them.
-    await run.click();
-    await expect(
-      badge(
-        /^Stopped by its rule \(each parameter changed by at most 10 % in the last iteration\) in \d+ iter\.$/,
-      ),
-    ).toBeVisible({
-      timeout: 30_000,
-    });
-    await expect(gap).not.toHaveValue("0,09");
+    async function expectFittedGap(gapK: number | null | undefined) {
+      if (gapK == null) throw new Error("Fit result is missing E_g");
+      const displayedEv = Number((await gap.inputValue()).replace(",", "."));
+      expect(displayedEv).toBeCloseTo(gapK * 8.617333262e-5, 2);
+    }
+    const joint = await runVerifiedFit(page);
+    await expectFittedGap(joint.parameters.band_gap);
     await expect(page.getByRole("alert")).toHaveCount(0);
     // The result panel counts them, and shows the values the fit reached.
     const iterations = page
       .locator("dl > div")
       .filter({ hasText: "Iterations" });
     const parameters = page.getByRole("table", { name: "Parameters in use" });
-    await expect(iterations).toContainText(/^Iterations\d+limit 1000$/);
+    expect(joint.iterations).toBeGreaterThan(0);
+    await expect(iterations).toHaveText(
+      `Iterations${String(joint.iterations)}limit 1000`,
+    );
     await expect(
       parameters.getByRole("row").filter({ hasText: /^E_g/ }),
     ).toContainText("-0,26 … 0,26");
@@ -432,14 +517,11 @@ test.describe("real fits", () => {
     await page.getByRole("button", { name: "Reset" }).click();
     await expect(gap).toHaveValue("0,09");
 
-    // S is single-pass, so it ends with no counter, on values other than its start.
+    // The S-only mode has no outer iteration counter.
     await page.getByRole("radio", { name: "S", exact: true }).click();
     await expect(gap).toHaveValue("0,05");
-    await run.click();
-    await expect(badge(/^Solver finished$/)).toBeVisible({
-      timeout: 30_000,
-    });
-    await expect(gap).not.toHaveValue("0,05");
+    const single = await runVerifiedFit(page);
+    await expectFittedGap(single.parameters.band_gap);
     await expect(page.getByRole("alert")).toHaveCount(0);
     await expect(iterations).toHaveCount(0);
   });
@@ -467,12 +549,7 @@ test.describe("real fits", () => {
     await expect(page.getByRole("alert")).toHaveCount(0);
     await page.getByRole("switch", { name: /Interpolation/ }).click();
 
-    await page.getByRole("button", { name: "Run fit" }).click();
-    await expect(
-      page
-        .locator('[data-slot="badge"]')
-        .filter({ hasText: /^Stopped by its rule/ }),
-    ).toBeVisible({ timeout: 30_000 });
+    await runVerifiedFit(page);
     await expect(page.getByRole("alert")).toHaveCount(0);
     await expect(page.getByText(/^Unreliable:/)).toHaveCount(0);
     await expect(page.getByText(/^Synthetic data/)).toBeVisible();
@@ -485,12 +562,7 @@ test.describe("real fits", () => {
     await page.goto("/fit?demo=1");
     await expect(page.getByText(/^Synthetic data/)).toBeVisible();
     await page.getByRole("radio", { name: "S + ρ", exact: true }).click();
-    await page.getByRole("button", { name: "Run fit" }).click();
-    await expect(
-      page
-        .locator('[data-slot="badge"]')
-        .filter({ hasText: /^Stopped by its rule/ }),
-    ).toBeVisible({ timeout: 30_000 });
+    await runVerifiedFit(page);
     await page.getByRole("link", { name: "Results", exact: true }).click();
     // The fit screen has its own Data to file, so the results page must be open first.
     await expect(
@@ -554,12 +626,7 @@ test.describe("real fits", () => {
     await page.getByRole("textbox", { name: "E_g, lower bound" }).fill("0,08");
     await page.getByRole("textbox", { name: "E_g, upper bound" }).fill("0,1");
     await page.getByRole("button", { name: "Done" }).click();
-    await page.getByRole("button", { name: "Run fit" }).click();
-    await expect(
-      page
-        .locator('[data-slot="badge"]')
-        .filter({ hasText: /^Stopped by its rule/ }),
-    ).toBeVisible({ timeout: 30_000 });
+    await runVerifiedFit(page);
 
     await expect(gap).toHaveValue("0,08");
     const row = page

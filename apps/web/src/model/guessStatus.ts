@@ -39,6 +39,8 @@ export function guessMessages(outcome: GuessOutcome | null): string[] {
   switch (outcome.kind) {
     case "unsupported":
       return [text.guessUnsupported[outcome.reason], ...warnings];
+    case "unchanged":
+      return warnings;
     case "applied":
       return outcome.netRange ? warnings : [text.guessNumerical, ...warnings];
     case "no_net":

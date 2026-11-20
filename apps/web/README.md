@@ -20,7 +20,7 @@ pnpm --filter @seeband/web preview  # the production build
 `src/routes.tsx` holds the routes, and `src/shell` what screens share: the header, the page heading with its slots for a status badge and actions, and panels.
 
 - **Overview and Conventions** are plain links to the public site, which does not exist before S1, so they lead nowhere in development.
-- **The app has no path prefix, so a server must list its paths.** [I1](https://github.com/pdasya/seeband-web/issues/53) must answer `/fit` and `/results` with `index.html`, as a reload there otherwise gets a 404, and serve `/assets/` and `/licenses/` from this build. `vite preview` answers any path with `index.html`. A new screen needs a line there, and its path in `APP_SCREENS` in `apps/site/src/strings.ts`, which writes `robots.txt` ([S6](https://github.com/pdasya/seeband-web/issues/68)); the site must not use these paths.
+- **The app has no path prefix, so a server must list its paths.** `deploy/Caddyfile` ([I1](https://github.com/pdasya/seeband-web/issues/53)) answers `/fit` and `/results` with `index.html`, as a reload there otherwise gets a 404, and serves `/assets/` and `/licenses/` from this build. `vite preview` answers any path with `index.html`. A new screen needs its path there, and in `APP_SCREENS` in `apps/site/src/strings.ts`, which writes `robots.txt` ([S6](https://github.com/pdasya/seeband-web/issues/68)); the site must not use these paths.
 - **The error views show no details,** as an error's message could quote a user's data. An error in a page appears inside the shell, and one in the shell appears without it.
 - **A move inside the app takes focus to `main`,** so that a screen reader follows it, without scrolling. A move by link starts the new screen at its top, and back and forward keep the scroll the browser gives them.
 - **Headings on the fit screen follow its layout:** the data and charts on the left come before the `h1` of the fit panel on the right. V2 should check this with a screen reader.
@@ -143,9 +143,9 @@ SEEBAND_API_TARGET=http://127.0.0.1:8000 pnpm --filter @seeband/web exec playwri
 
 `model/guessRun.ts` asks `POST /api/guess` for start values, with every row of S, whatever the fit range. The Initial guess button does this, for a model with `has_initial_guess`, and so does each new file of S, as on the desktop.
 
-- **It writes to every mode of the model,** as the desktop does to all its DPB windows, so also from another model's screen. Only the parameters a mode has, and the rest keep their values.
-- **An edit or a fit while it waits wins,** as the user has moved on, and so does S going away, as the values would describe nothing on screen. Edits before a new file are overwritten, as on the desktop. Coming back to a tab or reading the same S under a new mapping is no new load, and keeps what was edited.
-- **The badge shows the net's real range,** from the API, while its values stand. With no net, a prediction that is not finite, or `m_eff` of about 0, the values stay, and a line says why.
+- **Loading S estimates eligible starts in each mode of the selected model.** Manual starts, held and fixed values, fit bounds and valley counts are preserved. Click **Initial guess** to replace eligible free manual starts. A sign-only suggestion keeps the mass magnitude.
+- **Edits made while waiting take priority.** A fit, a parameter edit or removing S makes the pending answer stale. Returning to a tab or remapping the same S does not start a new request.
+- **The badge and fit history reflect the selected mode.** A mode that received a neural estimate shows its temperature range. A numerical estimate is labeled separately. Where no estimate can be used, the user can still enter starts and calculate curves.
 
 ## Demo data
 

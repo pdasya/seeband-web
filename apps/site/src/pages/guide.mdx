@@ -128,8 +128,10 @@ disorder or ionized impurities. One mechanism applies over the whole range.
 The desktop's combination of acoustic phonons and alloy disorder by
 Matthiessen's rule is not offered.
 
-For acoustic phonons and alloy disorder, a neural net gives the starting
-values when S is loaded, and **Initial guess** gives them again. Until you
+For acoustic phonons and alloy disorder, loading S fills eligible starting
+values from a neural net and preserves values you entered by hand. Choose
+**Initial guess** to replace a free manual start with the estimate. Held and
+fixed parameters, including $N_1$ and $N_2$, and fit bounds keep their values. Until you
 fit, the badge beside **Fit** names the net's temperature range; afterwards
 the fit log's first step does, here 400–700 K. The fit of S is the most
 delicate step, as its parameters set the electronic structure, so a good start
