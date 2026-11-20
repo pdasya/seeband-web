@@ -1,7 +1,16 @@
-# Proposes updates of the pinned base images of the deployment, monthly.
+# Proposes updates of the pinned base images of the deployment, monthly: new digests and patch
+# releases, and Caddy's minor releases. Python and Node stay on the versions CI tests, 3.13 and 24;
+# moving to a new one is a task of its own, with the tests, golden results and CI moved too.
 version: 2
 updates:
   - package-ecosystem: docker
     directory: /deploy
     schedule:
       interval: monthly
+    ignore:
+      - dependency-name: python
+        update-types: [version-update:semver-major, version-update:semver-minor]
+      - dependency-name: node
+        update-types: [version-update:semver-major]
+      - dependency-name: ghcr.io/astral-sh/uv
+        update-types: [version-update:semver-major]

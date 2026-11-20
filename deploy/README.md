@@ -32,7 +32,7 @@ the file also goes into the API container, where an empty value would hide the i
 | `api`     | `api.Dockerfile`: Python 3.13 slim, packages exactly as in `uv.lock`       | the API on port 8000, inside the network only        |
 | `web`     | `web.Dockerfile`: the site and the app built with Node 24, served by Caddy | ports 80 and 443 of the host (8080 and 8443 locally) |
 
-Base images are pinned by digest. Dependabot proposes updates monthly (`.github/dependabot.yml`).
+Base images are pinned by digest. Dependabot proposes new digests and patch releases monthly (`.github/dependabot.yml`), and Caddy's minor releases. Python stays on 3.13 and Node on 24, the versions CI tests: a move to a new version is a task of its own, with the tests, golden results and CI moved too.
 
 **Caddy** (`Caddyfile`) routes by path:
 
