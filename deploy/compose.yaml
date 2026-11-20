@@ -5,6 +5,13 @@
 # out of the repository.
 name: seeband
 
+# Docker's logs, rotated so that they cannot fill the disk that also holds the certificates.
+x-logging: &logging
+  driver: local
+  options:
+    max-size: 10m
+    max-file: "5"
+
 services:
   api:
     build:
@@ -18,10 +25,18 @@ services:
         required: false
     environment:
       # Caddy's X-Forwarded-For is believed from this network only, so each user is their own
-      # client for the rate limits and the queue's turns.
-      SEEBAND_API_TRUSTED_PROXIES: 172.30.0.0/24
+      # client for the rate limits and the queue's turns. The network has IPv6 too, so that an
+      # IPv6 visitor reaches Caddy with their own address, not the bridge's.
+      SEEBAND_API_TRUSTED_PROXIES: 172.30.0.0/24,fd5e:eba0:d000::/64
     networks: [internal]
     restart: unless-stopped
+    # tini as PID 1 reaps a fit's process if its fork server dies before it.
+    init: true
+    logging: *logging
+    # Bounds for the calculation processes, so that a spike stops in this container rather than
+    # in the host's OOM killer. To size on the machine (I3).
+    mem_limit: ${SEEBAND_MEM_LIMIT_API:-3g}
+    pids_limit: 256
     read_only: true
     # The fork server's socket and Python's temporary files.
     tmpfs: [/tmp]
@@ -40,6 +55,10 @@ services:
     image: ${SEEBAND_IMAGE_PREFIX:-seeband}-web:${SEEBAND_TAG:-local}
     environment:
       SEEBAND_SITE_ADDRESS: ${SEEBAND_SITE_ADDRESS:-:80}
+      # Empty, every answer says noindex, whatever the site was built with.
+      SEEBAND_SITE_URL: ${SEEBAND_SITE_URL:-}
+    # On every address of the host, IPv4 and IPv6. Docker's published ports bypass ufw, so the
+    # provider's firewall decides what is reachable.
     ports:
       - ${SEEBAND_HTTP_PORT:-8080}:80
       - ${SEEBAND_HTTPS_PORT:-8443}:443
@@ -53,13 +72,22 @@ services:
       api:
         condition: service_healthy
     restart: unless-stopped
+    logging: *logging
+    mem_limit: 256m
+    # Caddy only needs to bind ports 80 and 443; its own files are read-only.
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
     security_opt: ["no-new-privileges:true"]
 
 networks:
   internal:
+    enable_ipv6: true
     ipam:
       config:
         - subnet: 172.30.0.0/24
+        - subnet: fd5e:eba0:d000::/64
 
 volumes:
   caddy_data:
