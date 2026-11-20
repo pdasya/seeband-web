@@ -147,10 +147,23 @@ The sign of $m_b$ sets the direction of the curvature. In DPB, band 1
 opens down from 0 and band 2 starts at $E_g$. For modes with Hall data, the
 diagram converts the first band's density-of-states mass $m_1$ to the magnitude
 of the single-valley mass $|m_{b,1}|=m_1/N_1^{2/3}$. The signed mass of band 2
-is $m_{b,2}=R|m_{b,1}|$. For DPB modes without Hall data, the diagram assumes
-$|m_{b,1}|=m_e$ to illustrate the relative curvatures. The Fermi level is a
-horizontal line at $E_F$. The API returns $E/k_B$ in K, and the chart uses the
-selected energy unit.
+is $m_{b,2}=R|m_{b,1}|$. In modes without Hall data, SPB or DPB, no data set
+the size of a mass, so the diagram assumes $|m_{b,1}|=m_e$, keeping its sign, and
+says that the curvature scale is illustrative. With Hall data the curvature
+follows the current masses, which the data set only once a fit has run. The
+Fermi level is a horizontal line at $E_F$. The API returns $E/k_B$ in K, and the
+chart uses the selected energy unit.
+
+$k$ is measured from each band's own extremum, so drawing both DPB bands at
+$k = 0$ does not say that the gap is direct: band 2 can lie in another valley.
+
+The fitted $m_1$ is the density-of-states mass of band 1, $N_1^{2/3}|m_{b,1}|$;
+it equals the single-valley mass only for $N_1 = 1$. So with $N_1 
+e 1$ the
+displayed $m_2/m_1$, a ratio of single-valley masses, is not $m_2$ divided by
+the displayed $m_1$. After a legacy DPB fit with $N_2/N_1 
+e 1$, R carries
+the factor of `dpb_loop_degeneracy`, and band 2's curvature inherits it.
 
 ## Seebeck coefficient
 

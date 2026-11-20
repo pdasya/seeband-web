@@ -158,7 +158,8 @@ def active_issue_ids(
 
 
 def band_diagram_issue_ids(fit_mode: FitMode) -> tuple[str, ...]:
-    """Return issues specific to the band diagram."""
+    """Return issues specific to the band diagram. None remain since P17 (#108) corrected its
+    formula; this stays so that a later diagram-only issue reaches the diagram's response."""
     return tuple(issue.id for issue in fit_mode.known_issues if issue.affects_band_diagram)
 
 

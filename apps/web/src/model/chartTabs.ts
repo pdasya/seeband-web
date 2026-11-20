@@ -622,6 +622,7 @@ function bandDiagramView(
     empty: null,
     xAxis: {
       title: text.wavevectorAxis,
+      // Before the first answer, the core's own k range, _DIAGRAM_K_RANGE_NM_INV in band_models.
       span: first === undefined || last === undefined ? [-2, 2] : [first, last],
     },
     // Each name comes from the server, so a model with other bands needs no change here.

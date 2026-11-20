@@ -253,8 +253,10 @@ Each fit ends with the same status and number of iterations as before. The verif
 
 For `POST /api/band-diagram`, `wavevector_nm_inv` gives k in nm⁻¹ and
 each energy curve gives E/k_B in K. The Fermi level is constant across k.
-The response sets `reference_mass_assumed` in DPB modes without Hall data,
-where the first-band curvature uses a reference mass magnitude of one electron mass.
+The response sets `reference_mass_assumed` in modes without Hall data, SPB or
+DPB, where no data set the size of a mass, so band 1's curvature takes a mass
+magnitude of one electron mass, keeping its sign. With Hall data the curvature
+follows the current masses, which the data set only once a fit has run.
 
 ## Derived curves
 
