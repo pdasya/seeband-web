@@ -119,6 +119,8 @@ export function fitBlockerText(blocker: FitBlocker): string {
   switch (blocker.reason) {
     case "no_mode":
       return text.blockers.noMode;
+    case "invalid_density":
+      return STRINGS.explicitDpb.densityRequired;
     case "interpolating":
       return text.blockers.interpolating;
     case "missing_data":

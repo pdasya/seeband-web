@@ -479,3 +479,29 @@ test("explicit fit, calculation and diagram agree on band identity, SI density a
     requestScope(calc),
   );
 });
+
+test.each(["cb_cb", "vb_vb"] as const)(
+  "zero density suspends %s fit and plots",
+  (configuration) => {
+    const selection = {
+      ...STATE.selection,
+      parameterization: "explicit_density_v1" as const,
+      bandConfiguration: configuration,
+      netElectronDensityPerM3: 0,
+    };
+    const state = { ...STATE, selection };
+    expect(fitRequest(state, models)).toEqual({
+      blocked: { reason: "invalid_density" },
+    });
+    expect(calcRequest(state, models)).toBeNull();
+    expect(bandDiagramRequest(state, models)).toBeNull();
+    const intrinsic = {
+      ...state,
+      selection: { ...selection, bandConfiguration: "vb_cb" as const },
+    };
+    expect(calcRequest(intrinsic, models)?.net_electron_density_per_m3).toBe(0);
+    expect(
+      bandDiagramRequest(intrinsic, models)?.net_electron_density_per_m3,
+    ).toBe(0);
+  },
+);

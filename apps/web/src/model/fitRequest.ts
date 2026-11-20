@@ -2,6 +2,7 @@ import {
   explicitDpbInputs,
   heldForFit,
   isExplicitDpb,
+  isValidCarrierDensity,
 } from "@/model/explicitDpb";
 import type { FitRequest } from "@/api/client";
 import {
@@ -36,6 +37,7 @@ export type FitBlocker =
   | { reason: "not_interpolated"; quantities: Quantity[] }
   | { reason: "no_points_in_range"; quantities: Quantity[] }
   | { reason: "all_held" }
+  | { reason: "invalid_density" }
   | { reason: "start_outside_bounds"; parameters: string[] };
 
 /** Blockers that come from the request as it is, and so before it is built. */
@@ -61,6 +63,8 @@ export function fitRequest(
     return { blocked: { reason: "no_mode" } };
   }
 
+  if (!isValidCarrierDensity(selection))
+    return { blocked: { reason: "invalid_density" } };
   const quantities = mode.quantities;
   const missing = quantities.filter((q) => state.data[q] === undefined);
   if (missing.length > 0) {

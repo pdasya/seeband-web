@@ -56,7 +56,7 @@ export function useGuess() {
   const unsupported =
     explicit || (selected === "dpb" && scattering === "ionized");
   const title = explicit
-    ? STRINGS.explicitDpb.manualStarts
+    ? text.guessUnavailable
     : unsupported
       ? text.guessUnsupported.scattering_not_supported
       : !offered

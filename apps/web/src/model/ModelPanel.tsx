@@ -374,11 +374,7 @@ function ModelControls({ models }: { models: readonly ModelDescription[] }) {
         }))}
       />
 
-      {offersExplicitDpb(model) && (
-        <ExplicitDpbControls
-          key={`${selection.bandConfiguration}-${selection.netElectronDensityPerM3}`}
-        />
-      )}
+      {offersExplicitDpb(model) && <ExplicitDpbControls />}
 
       <div className="flex flex-col gap-1.5">
         <ChoiceGroup

@@ -51,7 +51,7 @@ test("explicit CB+CB curves and confirmed historical conversion round-trip", asy
       ),
     });
   const density = page.getByRole("textbox", {
-    name: "Net electron density n − p (m⁻³)",
+    name: "Carrier excess magnitude |n − p| (m⁻³)",
   });
   await density.fill("2e24");
   const calculated = page.waitForResponse((response) => {
@@ -99,6 +99,36 @@ test("explicit CB+CB curves and confirmed historical conversion round-trip", asy
   await expect(
     page.getByRole("button", { name: "Initial guess", exact: true }),
   ).toBeDisabled();
+
+  await expect(
+    page.getByRole("radio", { name: "p: excess holes" }),
+  ).toBeDisabled();
+  await page
+    .getByLabel("Band configuration", { exact: false })
+    .selectOption("vb_cb");
+  const changedPolarity = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/api/calc") &&
+      response.request().postDataJSON().band_configuration === "vb_cb" &&
+      response.request().postDataJSON().net_electron_density_per_m3 === -2e24,
+  );
+  await page.getByRole("radio", { name: "p: excess holes" }).click();
+  expect((await changedPolarity).ok()).toBe(true);
+  await expect(density).toHaveValue("2e+24");
+  await expect(page.getByText("n − p = −2e+24 m⁻³ (p)")).toBeVisible();
+  const about = page.getByRole("button", { name: "About carrier excess" });
+  await about.hover();
+  await expect(page.getByRole("tooltip")).toContainText(
+    "vary with temperature",
+  );
+  await page.getByRole("heading", { name: "Parameters", exact: true }).hover();
+  await expect(page.getByRole("tooltip")).not.toBeVisible();
+  await about.focus();
+  await expect(page.getByRole("tooltip")).toContainText("per cubic metre");
+  await page.keyboard.press("Escape");
+  await about.click();
+  await expect(page.getByRole("tooltip")).toContainText("VB + VB");
+  await page.getByRole("heading", { name: "Parameters", exact: true }).click();
 
   const content = {
     dataMode: "separate",
@@ -185,6 +215,13 @@ test("explicit CB+CB curves and confirmed historical conversion round-trip", asy
   await openSession(page, saved);
   await expect(dialog).not.toBeVisible();
   await expect(density).toHaveValue(
-    String(file.content.selection.netElectronDensityPerM3),
+    String(Math.abs(file.content.selection.netElectronDensityPerM3)),
   );
+  await page.getByRole("radio", { name: "S + ρ + R_H", exact: true }).click();
+  const massLock = page.getByRole("button", {
+    name: "Hold m₁ at its value in a fit",
+  });
+  await expect(massLock).toHaveAttribute("aria-pressed", "true");
+  await massLock.click();
+  await expect(massLock).toHaveAttribute("aria-pressed", "false");
 });

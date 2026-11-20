@@ -246,6 +246,7 @@ export function ParametersPanel() {
   const customBounds = useSessionStore((state) => state.customBounds);
   const held = useSessionStore((state) => state.held);
   const setHeld = useSessionStore((state) => state.setHeld);
+  const setSelection = useSessionStore((state) => state.setSelection);
   const active = useSessionStore((state) => isFitActive(state.fit));
 
   const model = data?.models.find(({ id }) => id === selection.model);
@@ -279,17 +280,20 @@ export function ParametersPanel() {
                 setParameter(mode.id, parameter.name, value);
               }}
               held={
-                parameter.role === "fitted" &&
-                !(
-                  selection.parameterization === "explicit_density_v1" &&
-                  parameter.name === "m1"
-                )
+                parameter.role === "fitted"
                   ? {
                       value: heldForFit(
                         selection,
                         held[mode.id] ?? [],
                       ).includes(parameter.name),
                       onChange: (next) => {
+                        if (
+                          selection.parameterization ===
+                            "explicit_density_v1" &&
+                          parameter.name === "m1"
+                        ) {
+                          setSelection({ fitAbsoluteMass: !next });
+                        }
                         setHeld(mode.id, parameter.name, next);
                       },
                     }

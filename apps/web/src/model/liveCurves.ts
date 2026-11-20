@@ -1,4 +1,4 @@
-import { explicitDpbInputs } from "@/model/explicitDpb";
+import { explicitDpbInputs, isValidCarrierDensity } from "@/model/explicitDpb";
 import type { BandDiagramRequest, CalcRequest } from "@/api/client";
 import { parameterValues } from "@/model/parameters";
 import { fitModeOf, type ModelDescription } from "@/model/selection";
@@ -58,6 +58,7 @@ export function calcRequest(
     model === undefined ||
     mode === undefined ||
     mode.disabled ||
+    !isValidCarrierDensity(selection) ||
     minK === null ||
     maxK === null ||
     (!evenWithoutData &&
@@ -118,7 +119,10 @@ export function bandDiagramRequest(
   const { selection } = state;
   const model = models?.find(({ id }) => id === selection.model);
   const mode = fitModeOf(model, selection.fitMode);
-  return model === undefined || mode === undefined || mode.disabled
+  return model === undefined ||
+    mode === undefined ||
+    mode.disabled ||
+    !isValidCarrierDensity(selection)
     ? null
     : {
         model: model.id,
