@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Results ZIP exports calculate one curve at a time and retry temporary
+  capacity errors. This lets an archive finish while the Results page is
+  still calculating its plots.
+
 - P28 (#258): loading Seebeck data preserves manual starting values. Both
   automatic and requested estimates respect held and fixed parameters in
   each fit mode. Use **Initial guess** to replace eligible manual starts.
