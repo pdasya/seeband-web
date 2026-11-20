@@ -178,7 +178,7 @@ test("SPB draws what its answer holds, and an old mode's bands do not stay", asy
   await expect(legend(page)).toHaveText(["Band 1", "E_F"]);
   await expect(traces(page)).toHaveCount(2);
   await expect(
-    diagram(page).getByText(/mass magnitude is assumed/),
+    diagram(page).getByText(/so it is assumed to be mₑ/),
   ).toHaveCount(0);
 });
 
@@ -211,7 +211,7 @@ test("it labels the assumed mass in DPB without Hall data", async ({
   await open(page);
 
   await expect(
-    diagram(page).getByText(/mass magnitude is assumed to be mₑ/),
+    diagram(page).getByText(/so it is assumed to be mₑ/),
   ).toBeVisible();
 });
 

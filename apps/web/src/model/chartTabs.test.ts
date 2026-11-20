@@ -437,7 +437,7 @@ describe("the band diagram", () => {
   test("explains the assumed mass alongside any known issue", () => {
     const { note } = view(DIAGRAM);
 
-    expect(note).toContain("mass magnitude is assumed to be mₑ");
+    expect(note).toContain("so it is assumed to be mₑ");
     expect(note).toContain("Unreliable: A known error applies");
     expect(note).not.toContain("made_up");
   });
