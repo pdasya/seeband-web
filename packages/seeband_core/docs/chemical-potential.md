@@ -28,9 +28,8 @@ r N^(5/3) = R N^(2/3), giving population weight N |R|^(3/2). The equation is
 For r > 0 the exact parabolic-band balance has a unique physical root,
 including when the target is zero. For r < 0 both bands are valence;
 a finite root exists only when E_F < max(0, E_g). Invalid domains are
-rejected. The former statement that DPB at E_F = 0 had no root was wrong:
-for r = 1.01, E_g = 1000 K and N = 1, the checked solution at 50 K is
-μ = 499.626858019 K with the existing Fermi-integral approximation.
+rejected. For example, r = 1.01, E_g = 1000 K, E_F = 0 and N = 1
+give a root close to the midpoint of the gap at 50 K.
 
 ## Numerical checks
 
@@ -44,11 +43,19 @@ more than 1e-9 K.
 
 Normalize the signed residual by the larger of the total unsigned
 finite-temperature density and the absolute conserved target. The scale
-must be finite, positive and at least the smallest normal binary64 value:
-subnormal densities cannot certify 1e-12 relative accuracy, and two populations underflowing to zero
-cannot certify a zero-target root. Accept a root only with absolute
-normalized residual at most 1e-12. Bracketing failure, iteration failure,
-nonfinite values or an excessive residual raise an explicit error.
+must be finite and positive. For a zero-target DPB balance with opposite
+carrier signs, P14 evaluates the same dimensionless residual as
+`tanh(log(n₂/p)/2)`, using scaled Fermi integrals so both populations can
+be below the absolute density range. The solver uses the displacement from
+the midpoint in units of T and certifies the final rounded μ. Other density
+balances still require a normal binary64 scale. Accept a root only with
+absolute normalized residual at most 1e-12. Bracketing failure, iteration
+failure, nonfinite values or an excessive residual raise an explicit error.
+
+When the opposite-sign bands have equal density-of-states normalization
+and the target is zero, the representable midpoint is an exact root by
+symmetry. The solver returns it directly. If the Hall weights also match,
+the two Hall contributions cancel at that root.
 
 `spb_chemPot_diagnostics` and `dpb_chemPot_diagnostics` return
 `ChemicalPotentialResult`: `chemical_potential` in kelvin,
@@ -78,26 +85,17 @@ Numeric values from exceptions are not copied into fit messages or logs.
 
 ## Limits and evidence
 
-The 1e-12 check certifies the implemented density approximation, not the
-physical accuracy of Fermi integrals. The negative F₁/₂ tail is evaluated as
-A exp(x)/(1 + 0.27 exp(x)), A = 0.886226925452758, algebraically identical to
-the inherited approximation. This avoids artificial overflow of exp(−x)
-without changing the physical model. For T = 2 K, E_g = 2833.6537 K,
-r = 0.25845, E_F = 2192.647 K and N = 7.6606, the checked root is
+The normalized residual measures numerical carrier conservation within the
+parabolic-band model. P14 uses the continuous Fermi-integral implementation
+documented in [the golden results](golden-results.md#stable-fermi-integrals-p14).
+The P8 version used a table and tail approximations for F₁/₂. Its historical
+evidence is preserved below. For T = 2 K, E_g = 2833.6537 K, r = 0.25845,
+E_F = 2192.647 K and N = 7.6606, the checked root is
 μ ≈ 1413.766203766843 K, consistent with an independent Boltzmann limit.
+A dimensional carrier density can round to zero even when its normalized
+ratio is representable.
 
-The table and positive-tail approximation remain unchanged. Small downward
-jumps near reduced energies −9.9 and 19.9 mean the approximation need not be
-monotonic or have a unique root even when the exact equation does. A failed
-residual check alone does not identify a seam, and no universal floating-point
-accuracy floor or seam-induced failure is asserted. The conservation tolerance
-is not relaxed.
-
-Density underflow that prevents certification fails the whole request. This
-is distinct from subsequent transport cancellation/underflow: the unchanged
-F₀ = log(1 + exp(x)) can still round to zero after a successful density solve,
-so transport can return nonfinite points (#105). P8 does not claim to repair
-all Fermi-integral or transport issues.
+### Historical P8 validation
 
 Previously observed new fit failures on the P8 solver-only version were optimizer
 trial-domain exits after admissible starts, not proof that the data or model
@@ -124,7 +122,7 @@ PYTHONPATH=packages/seeband_core/src uv run python packages/seeband_core/scripts
 Human physicist confirmation of the conventions and the #71 desktop/web
 comparison remain separate outstanding gates. Agent review supplies neither.
 
-## Timing comparison
+## P8 timing comparison
 
 On one arm64 Mac with macOS 26.6.2 and Python 3.13.18, the median of five
 50-point Seebeck calls from 50 to 800 K changed from 5.45 to 7.00 ms for

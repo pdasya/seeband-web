@@ -15,6 +15,10 @@ S peaks at about 207 µV/K near 175 K. From there to 300 K it falls mostly becau
 
 R_H uses the corrected DPB Hall prefactor from P2 (#81). The demo was regenerated with the same seed and relative noise: R_H doubles at fixed parameters, while S and ρ are unchanged. Its `known_issues` list is empty.
 
+P14 (#105) regenerated the demo with the same parameters, seed and relative noise, as its
+half-order Fermi integral changed; it stays `synthetic: true`. The stored values moved by at most
+7.9e-8 relative, and the regeneration reproduces byte for byte.
+
 ## What a fit gets from it
 
 Fits start from `default_start`. Note that this has B = 1, its true value. On one Mac:

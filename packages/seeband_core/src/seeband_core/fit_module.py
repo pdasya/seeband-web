@@ -9,6 +9,103 @@ from scipy import optimize as opt
 
 from seeband_core import math_module as te
 
+# Begin scaling before raw moments become subnormal, and before the legacy
+# Hall product can overflow an intermediate inverse conductivity.
+_DILUTE_REDUCED_POTENTIAL = -700.0
+
+
+def _dpb_scattering_coefficients(
+    t: np.ndarray,
+    scattering: str,
+    b: float,
+    mass: float,
+    mixed: tuple[float, float] | None,
+) -> tuple[np.ndarray, np.ndarray]:
+    ratio = b / abs(mass)
+    if mixed is not None:
+        c, d = mixed
+        return t / (c + t), ratio * t / (d + t)
+    first = t if scattering == "dis" else np.ones_like(t)
+    return first, ratio * first
+
+
+def _dpb_boltzmann_scales(
+    x1: np.ndarray, x2: np.ndarray, coefficient2: np.ndarray
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Return the active channels' relative weights and half their common exponential."""
+    log1 = np.minimum(x1, 0.0)
+    log2 = np.where(coefficient2 != 0.0, np.minimum(x2, 0.0), -np.inf)
+    common = np.maximum(log1, log2)
+    return np.exp(log1 - common), np.exp(log2 - common), np.exp(common / 2.0)
+
+
+def _dpb_dilute_total(
+    x1: np.ndarray, x2: np.ndarray, base1: np.ndarray, base2: np.ndarray
+) -> np.ndarray:
+    scale1, scale2, half = _dpb_boltzmann_scales(x1, x2, base2)
+    total: np.ndarray = ((base1 * scale1 + base2 * scale2) * half) * half
+    return total
+
+
+def _dpb_curve_resistivity(
+    t: np.ndarray,
+    reduced: tuple[np.ndarray, np.ndarray],
+    moments: tuple[np.ndarray, np.ndarray],
+    a: float,
+    b: float,
+    mass: float,
+    scattering: str,
+    mixed: tuple[float, float] | None,
+) -> np.ndarray:
+    x1, x2 = reduced
+    dilute = np.minimum(x1, x2) < _DILUTE_REDUCED_POTENTIAL
+    ordinary = ~dilute
+    temp = t[ordinary]
+    f1, f2 = moments[0][ordinary], moments[1][ordinary]
+    rho = np.empty_like(t)
+    if mixed is not None:
+        c, d = mixed
+        rho[ordinary] = te.dpb_rho_vs_temp_acPh_dis(temp, f1, f2, a, b, c, d, mass)
+    elif scattering == "dis":
+        rho[ordinary] = te.dpb_rho_vs_temp_dis(temp, f1, f2, a, b, mass)
+    else:
+        rho[ordinary] = te.dpb_rho_vs_temp_acPh(temp, f1, f2, a, b, mass)
+    if np.any(dilute):
+        first, second = x1[dilute], x2[dilute]
+        c1, c2 = _dpb_scattering_coefficients(t[dilute], scattering, b, mass, mixed)
+        base1 = a * c1 * te._scaled_integrals(0, first)
+        base2 = a * c2 * te._scaled_integrals(0, second)
+        with np.errstate(divide="ignore", over="ignore"):
+            rho[dilute] = 1.0 / _dpb_dilute_total(first, second, base1, base2)
+    return rho
+
+
+def _dpb_dilute_hall(
+    t: np.ndarray,
+    x1: np.ndarray,
+    x2: np.ndarray,
+    coefficients: tuple[np.ndarray, np.ndarray],
+    mass: float,
+    degen: float,
+    hall_mass_factor: float,
+    band_1_degeneracy: float,
+) -> np.ndarray:
+    c1, c2 = coefficients
+    scale1, scale2, half = _dpb_boltzmann_scales(x1, x2, c2)
+    total = c1 * te._scaled_integrals(0, x1) * scale1 + c2 * te._scaled_integrals(0, x2) * scale2
+    mass_factor = np.sign(mass) / degen**2.5 / abs(mass) ** 1.5
+    numerator = c1**2 * scale1 * te._scaled_integrals(
+        -0.5, x1
+    ) - mass_factor * c2**2 * scale2 * te._scaled_integrals(-0.5, x2)
+    factor = 3 * te.hbar**3 * np.pi**2 / (2 * te.e * (2 * te.kB * te.me) ** 1.5)
+    hall: np.ndarray = (
+        factor * t**-1.5 / band_1_degeneracy / hall_mass_factor * (numerator / total) / total
+    )
+    with np.errstate(over="ignore", divide="ignore"):
+        np.divide(hall, half, out=hall, where=hall != 0.0)
+        np.divide(hall, half, out=hall, where=hall != 0.0)
+    return hall
+
 
 @dataclass
 class FitProgress:
@@ -1657,25 +1754,24 @@ class PB_fit:
                 temp_array, mass, gap, fermi_energy, degen, para_B, para_C, para_D, scal_fac=1
             )
 
+        potentials = te.dpb_chemPot_vs_temp(temp_array, gap, mass, fermi_energy, degen)
+        x1, x2 = te._dpb_reduced_potentials(temp_array, mass, gap, fermi_energy, degen, potentials)
         # Calculate the 'pristine' conductivities of band 1 and band 2 from the fitted
         # band-structure parameters with K = 1, abs(meff) = 1 and beta = 0
         f0_1, f0_2 = te.dpb_fermiInt_vs_temp(
-            s=0, T=temp_array, mass=mass, gap=gap, fermi_energy=fermi_energy, degen=degen
+            s=0,
+            T=temp_array,
+            mass=mass,
+            gap=gap,
+            fermi_energy=fermi_energy,
+            degen=degen,
+            potentials=potentials,
         )
 
-        # Calculate the electrical resistivity
-        if scatter_type == "acPh":
-            res_array = te.dpb_rho_vs_temp_acPh(
-                temp_array, f0_1, f0_2, para_A, para_B, mass, scal_fac=1
-            )
-        elif scatter_type == "dis":
-            res_array = te.dpb_rho_vs_temp_dis(
-                temp_array, f0_1, f0_2, para_A, para_B, mass, scal_fac=1
-            )
-        else:
-            res_array = te.dpb_rho_vs_temp_acPh_dis(
-                temp_array, f0_1, f0_2, para_A, para_B, para_C, para_D, mass, scal_fac=1
-            )
+        mixed = (para_C, para_D) if scatter_type == "acPhDis" else None
+        res_array = _dpb_curve_resistivity(
+            temp_array, (x1, x2), (f0_1, f0_2), para_A, para_B, mass, scatter_type, mixed
+        )
 
         return temp_array, see_array, res_array
 
@@ -1802,6 +1898,8 @@ class PB_fit:
                 )  # adjusted, as the input is given at 300 K
 
         temp_array = np.linspace(Tmin, Tmax, Tnumb)
+        if band_mass1 < 0.0:
+            raise ValueError("The Hall band mass must be nonnegative")
         para_E = [band_mass1 ** (3 / 2)]
 
         # Define the scattering parameters
@@ -1827,71 +1925,94 @@ class PB_fit:
             )
 
         # Calculate Fermi integrals
+        potentials = te.dpb_chemPot_vs_temp(temp_array, gap, mass, fermi_energy, degen)
+        x1, x2 = te._dpb_reduced_potentials(temp_array, mass, gap, fermi_energy, degen, potentials)
         f0_1, f0_2 = te.dpb_fermiInt_vs_temp(
-            s=0, T=temp_array, mass=mass, gap=gap, fermi_energy=fermi_energy, degen=degen
+            s=0,
+            T=temp_array,
+            mass=mass,
+            gap=gap,
+            fermi_energy=fermi_energy,
+            degen=degen,
+            potentials=potentials,
         )
         fm05_1, fm05_2 = te.dpb_fermiInt_vs_temp(
-            s=-0.5, T=temp_array, mass=mass, gap=gap, fermi_energy=fermi_energy, degen=degen
+            s=-0.5,
+            T=temp_array,
+            mass=mass,
+            gap=gap,
+            fermi_energy=fermi_energy,
+            degen=degen,
+            potentials=potentials,
         )
 
-        # Calculate the electrical resistivity
-        if scatter_type == "acPh":
-            res_array = te.dpb_rho_vs_temp_acPh(
-                temp_array, f0_1, f0_2, para_A, para_B, mass, scal_fac=1
-            )
-        elif scatter_type == "dis":
-            res_array = te.dpb_rho_vs_temp_dis(
-                temp_array, f0_1, f0_2, para_A, para_B, mass, scal_fac=1
-            )
-        else:
-            res_array = te.dpb_rho_vs_temp_acPh_dis(
-                temp_array, f0_1, f0_2, para_A, para_B, para_C, para_D, mass, scal_fac=1
-            )
+        mixed = (para_C, para_D) if scatter_type == "acPhDis" else None
+        res_array = _dpb_curve_resistivity(
+            temp_array, (x1, x2), (f0_1, f0_2), para_A, para_B, mass, scatter_type, mixed
+        )
 
-        # Calculate the Hall coefficient
-        if scatter_type == "acPh":
-            hall_array = te.dpb_hall_vs_temp_acPh(
-                temp_array,
-                res_array,
-                fm05_1,
-                fm05_2,
+        # The Hall numerator must cancel before restoring inverse density.
+        dilute = (np.minimum(x1, x2) < _DILUTE_REDUCED_POTENTIAL) & (para_A != 0.0)
+        ordinary = ~dilute
+        hall_array = np.zeros_like(temp_array)
+        with np.errstate(over="ignore", invalid="ignore"):
+            if scatter_type == "acPh":
+                hall_array[ordinary] = te.dpb_hall_vs_temp_acPh(
+                    temp_array[ordinary],
+                    res_array[ordinary],
+                    fm05_1[ordinary],
+                    fm05_2[ordinary],
+                    mass,
+                    degen,
+                    para_A,
+                    para_B,
+                    para_E,
+                    scal_fac=1,
+                    band_1_degeneracy=band_1_degeneracy,
+                )
+            elif scatter_type == "dis":
+                hall_array[ordinary] = te.dpb_hall_vs_temp_dis(
+                    temp_array[ordinary],
+                    res_array[ordinary],
+                    fm05_1[ordinary],
+                    fm05_2[ordinary],
+                    mass,
+                    degen,
+                    para_A,
+                    para_B,
+                    para_E,
+                    scal_fac=1,
+                    band_1_degeneracy=band_1_degeneracy,
+                )
+            else:
+                hall_array[ordinary] = te.dpb_hall_vs_temp_acPh_dis(
+                    temp_array[ordinary],
+                    res_array[ordinary],
+                    fm05_1[ordinary],
+                    fm05_2[ordinary],
+                    mass,
+                    degen,
+                    para_A,
+                    para_B,
+                    para_C,
+                    para_D,
+                    para_E,
+                    scal_fac=1,
+                    band_1_degeneracy=band_1_degeneracy,
+                )
+        dilute |= ~np.isfinite(hall_array) & ordinary & (para_A != 0.0)
+        if np.any(dilute):
+            t = temp_array[dilute]
+            coefficients = _dpb_scattering_coefficients(t, scatter_type, para_B, mass, mixed)
+            hall_array[dilute] = _dpb_dilute_hall(
+                t,
+                x1[dilute],
+                x2[dilute],
+                coefficients,
                 mass,
                 degen,
-                para_A,
-                para_B,
-                para_E,
-                scal_fac=1,
-                band_1_degeneracy=band_1_degeneracy,
-            )
-        elif scatter_type == "dis":
-            hall_array = te.dpb_hall_vs_temp_dis(
-                temp_array,
-                res_array,
-                fm05_1,
-                fm05_2,
-                mass,
-                degen,
-                para_A,
-                para_B,
-                para_E,
-                scal_fac=1,
-                band_1_degeneracy=band_1_degeneracy,
-            )
-        else:
-            hall_array = te.dpb_hall_vs_temp_acPh_dis(
-                temp_array,
-                res_array,
-                fm05_1,
-                fm05_2,
-                mass,
-                degen,
-                para_A,
-                para_B,
-                para_C,
-                para_D,
-                para_E,
-                scal_fac=1,
-                band_1_degeneracy=band_1_degeneracy,
+                para_E[0],
+                band_1_degeneracy,
             )
 
         return temp_array, see_array, res_array, hall_array
@@ -2105,6 +2226,22 @@ class PB_fit:
         scatter_type: str,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
 
+        t, sigma1, sigma2, _ = self._dpb_elecCond_components(
+            Tmin, Tmax, Tnumb, parameter_see, parameter_res, degen, scatter_type
+        )
+        return t, sigma1, sigma2
+
+    def _dpb_elecCond_components(
+        self,
+        Tmin: float,
+        Tmax: float,
+        Tnumb: int,
+        parameter_see: list[float],
+        parameter_res: list[float],
+        degen: float,
+        scatter_type: str,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+
         # Check if scatter_type is properly set to acPh, dis or acPhDis
         if scatter_type != "acPh" and scatter_type != "dis" and scatter_type != "acPhDis":
             raise Exception(
@@ -2135,10 +2272,19 @@ class PB_fit:
         gap = parameter_see[1]
         fermi_energy = parameter_see[2]
 
+        potentials = te.dpb_chemPot_vs_temp(temp_array, gap, meff, fermi_energy, degen)
+        x1, x2 = te._dpb_reduced_potentials(temp_array, meff, gap, fermi_energy, degen, potentials)
+
         # Calculate the 'pristine' conductivities of band 1 and band 2 from the fitted
         # band-structure parameters with K = 1, abs(meff) = 1 and beta = 0
         f0_1, f0_2 = te.dpb_fermiInt_vs_temp(
-            s=0, T=temp_array, mass=meff, gap=gap, fermi_energy=fermi_energy, degen=degen
+            s=0,
+            T=temp_array,
+            mass=meff,
+            gap=gap,
+            fermi_energy=fermi_energy,
+            degen=degen,
+            potentials=potentials,
         )
 
         # Calculate the electrical resistivity
@@ -2155,7 +2301,20 @@ class PB_fit:
                 temp_array, f0_1, f0_2, para_A, para_B, para_C, para_D, meff, scal_fac=1
             )
 
-        return temp_array, sig1, sig2
+        total = sig1 + sig2
+        dilute = np.minimum(x1, x2) < _DILUTE_REDUCED_POTENTIAL
+        if np.any(dilute):
+            t, first, second = temp_array[dilute], x1[dilute], x2[dilute]
+            mixed = (para_C, para_D) if scatter_type == "acPhDis" else None
+            c1, c2 = _dpb_scattering_coefficients(t, scatter_type, para_B, meff, mixed)
+            base1 = para_A * c1 * te._scaled_integrals(0, first)
+            base2 = para_A * c2 * te._scaled_integrals(0, second)
+            half1 = np.exp(np.minimum(first, 0.0) / 2.0)
+            half2 = np.exp(np.minimum(second, 0.0) / 2.0)
+            sig1[dilute], sig2[dilute] = (base1 * half1) * half1, (base2 * half2) * half2
+            total[dilute] = _dpb_dilute_total(first, second, base1, base2)
+
+        return temp_array, sig1, sig2, total
 
     def dpb_ind_carCon_calc(
         self, Tmin: float, Tmax: float, Tnumb: int, parameter_see: list[float], degen: float
@@ -2209,57 +2368,10 @@ class PB_fit:
         scatter_type: str,
     ) -> tuple[np.ndarray, np.ndarray]:
 
-        # Check if scatter_type is properly set to acPh, dis or acPhDis
-        if scatter_type != "acPh" and scatter_type != "dis" and scatter_type != "acPhDis":
-            raise Exception(
-                "Error! Parameter 'scatter_type' in function 'dpb_thermCond_calc' must either be "
-                "'acPh', 'dis' or 'acPhDis'"
-            )
-
-        # Change parameter arrays for the fit according to the scattering type:
-        parameter_res = list(parameter_res)
-        if scatter_type == "acPh":
-            del parameter_res[2:6]
-        elif scatter_type == "dis":
-            del parameter_res[0:4]
-        else:
-            del parameter_res[4:6]
-
-        temp_array = np.linspace(Tmin, Tmax, Tnumb)
-
-        # Define the scattering parameters
-        para_A = parameter_res[0]
-        para_B = parameter_res[1]
-        if scatter_type == "acPhDis":
-            para_C = parameter_res[2] * 300.0
-            para_D = parameter_res[3] * 300.0
-
-        # Define the band structure parameters
-        meff = parameter_see[0] / degen
-        gap = parameter_see[1]
-        fermi_energy = parameter_see[2]
-
-        # Calculate the 'pristine' conductivities of band 1 and band 2 from the fitted
-        # band-structure parameters with K = 1, abs(meff) = 1 and beta = 0
-        f0_1, f0_2 = te.dpb_fermiInt_vs_temp(
-            s=0, T=temp_array, mass=meff, gap=gap, fermi_energy=fermi_energy, degen=degen
+        t, _, _, total = self._dpb_elecCond_components(
+            Tmin, Tmax, Tnumb, parameter_see, parameter_res, degen, scatter_type
         )
-
-        # Calculate the electrical resistivity
-        if scatter_type == "acPh":
-            cond = 1 / te.dpb_rho_vs_temp_acPh(
-                temp_array, f0_1, f0_2, para_A, para_B, meff, scal_fac=1
-            )
-        elif scatter_type == "dis":
-            cond = 1 / te.dpb_rho_vs_temp_dis(
-                temp_array, f0_1, f0_2, para_A, para_B, meff, scal_fac=1
-            )
-        else:
-            cond = 1 / te.dpb_rho_vs_temp_acPh_dis(
-                temp_array, f0_1, f0_2, para_A, para_B, para_C, para_D, meff, scal_fac=1
-            )
-
-        return temp_array, cond
+        return t, total
 
     def dpb_thermCond_calc(
         self,
@@ -2302,10 +2414,19 @@ class PB_fit:
         gap = parameter_see[1]
         fermi_energy = parameter_see[2]
 
+        potentials = te.dpb_chemPot_vs_temp(temp_array, gap, meff, fermi_energy, degen)
+        x1, x2 = te._dpb_reduced_potentials(temp_array, meff, gap, fermi_energy, degen, potentials)
+
         # Calculate the 'pristine' conductivities of band 1 and band 2 from the fitted
         # band-structure parameters with K = 1, abs(meff) = 1 and beta = 0
         f0_1, f0_2 = te.dpb_fermiInt_vs_temp(
-            s=0, T=temp_array, mass=meff, gap=gap, fermi_energy=fermi_energy, degen=degen
+            s=0,
+            T=temp_array,
+            mass=meff,
+            gap=gap,
+            fermi_energy=fermi_energy,
+            degen=degen,
+            potentials=potentials,
         )
 
         # Calculate the electrical resistivity
@@ -2332,6 +2453,22 @@ class PB_fit:
                 degen,
                 scal_fac=1,
             )
+
+        dilute = np.minimum(x1, x2) < _DILUTE_REDUCED_POTENTIAL
+        if np.any(dilute):
+            t, first, second = temp_array[dilute], x1[dilute], x2[dilute]
+            mixed = (para_C, para_D) if scatter_type == "acPhDis" else None
+            c1, c2 = _dpb_scattering_coefficients(t, scatter_type, para_B, meff, mixed)
+            scale1, scale2, half = _dpb_boltzmann_scales(first, second, c2)
+            sigma1 = para_A * c1 * te._scaled_integrals(0, first) * scale1
+            sigma2 = para_A * c2 * te._scaled_integrals(0, second) * scale2
+            difference = te._band_seebeck(first, -1) - te._band_seebeck(second, np.sign(meff))
+            prefactor = t * (
+                sigma1 * te._band_lorenz(first)
+                + sigma2 * te._band_lorenz(second)
+                + te._bipolar_conductivity(sigma1, sigma2) * difference**2
+            )
+            thermCond[dilute] = (prefactor * half) * half
 
         return temp_array, thermCond
 

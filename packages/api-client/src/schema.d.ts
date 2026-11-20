@@ -348,7 +348,7 @@ export interface components {
          *     by name with its unit: `electrical_conductivity_s_per_m` is 1/rho, with null for a rho of 0 or
          *     below. They use no model, so they go with the data the request sent, interpolated or not.
          * @example {
-         *       "core_version": "0.3.0",
+         *       "core_version": "0.3.1",
          *       "curves": {
          *         "resistivity_ohm_m": [
          *           0.000036627,
@@ -399,7 +399,7 @@ export interface components {
             /**
              * Core Version
              * @description Core software version for provenance, not certification.
-             * @default 0.3.0
+             * @default 0.3.1
              */
             core_version?: string;
             /** Curves */
@@ -865,7 +865,7 @@ export interface components {
          *     E_F are from that stage. Otherwise it is empty.
          * @example {
          *       "at_bounds": [],
-         *       "core_version": "0.3.0",
+         *       "core_version": "0.3.1",
          *       "held": [],
          *       "known_issues": [],
          *       "parameter_errors": {
@@ -895,7 +895,7 @@ export interface components {
             /**
              * Core Version
              * @description Core software version for provenance, not certification.
-             * @default 0.3.0
+             * @default 0.3.1
              */
             core_version?: string;
             /**
@@ -1098,7 +1098,7 @@ export interface components {
         /**
          * HealthResponse
          * @example {
-         *       "core_version": "0.3.0",
+         *       "core_version": "0.3.1",
          *       "status": "ok",
          *       "version": "1.0.0"
          *     }
@@ -1119,7 +1119,7 @@ export interface components {
             /**
              * Core Version
              * @description Core software version for provenance, not certification.
-             * @default 0.3.0
+             * @default 0.3.1
              */
             core_version?: string;
         };

@@ -272,11 +272,121 @@ does not repair it, change the estimator or supply a physical acceptance gate.
 
 ## Explicit legacy and verified fitting (P19)
 
-From core0.2.0, historical estimator replays in test_golden_regression.py request
-legacy-sequential-v1 explicitly. Desktop/P8/P11/P13 fixtures and their comparison
-tolerances are unchanged. These tests establish reproduction of that route,
-not agreement of the new default with unreliable historical parameter vectors.
+Since core 0.2.0, historical estimator replays in `test_golden_regression.py`
+request `legacy-sequential-v1` explicitly. The Desktop/P8/P11/P13 artifacts
+are preserved. The P14 section below defines how changed outputs are compared
+with that evidence. The Verified estimator has its own numerical checks.
 New verified-sequential-v2 tests independently check profiling, final conditional
 consistency, public-R bounds/held values and physical limits. New implementation
 regressions and measured-input aggregate evidence must be recorded separately.
 See [the verified fitting contract](verified-sequential-fit.md).
+
+## Stable Fermi integrals (P14)
+
+P14 evaluates the same unnormalised Fermi–Dirac integrals. It uses the stable
+softplus for F₀ and quadrature of the Fermi window for the other supported
+orders. The continuous half-order integral replaces the old piecewise
+approximation in the density equation. Intrinsic DPB density balance uses
+scaled positive densities, preserving the normalized residual and its tolerance.
+The exactly symmetric zero-target case uses the midpoint and retains exact
+Hall cancellation when the channel weights also match.
+
+The scalar tests compare the required orders −½, 0, ½, 1 and 2 against 60-digit
+references over a grid spanning reduced potentials from −6000 to 6000.
+They use a relative tolerance of 1e-12 for normally representable results,
+and separately check the scaled forms in the dilute limit. Raw integrals below
+the representable range round to zero. The transport tests check the analytic
+dilute limits and finite electronic thermal conductivity from 2 K to 800 K
+on representative SPB and DPB cases. At 50 K and a 2000 K DPB gap with E_F
+at −100 K, all three legacy scattering paths previously returned NaN. An
+additional deterministic sample across the public parameter ranges gave
+7425 finite, nonnegative thermal points over 2–800 K. The 315 curve requests
+in analytically excluded no-root domains were counted separately.
+
+The P14 overlay, `tests/fixtures/physics/p14.json`, records reproducibility
+on the original inputs. The tests also bound its differences from the prior
+Desktop/P8/P11/P13 reference chain. For affected calls, the tests use this
+chain with its documented corrections and no longer assert direct numerical
+agreement with the uncorrected Desktop outputs.
+
+- Ordinary curves stay within a relative difference of 3e-5 per point.
+  The largest measured difference in this group is 1.88e-5, in a small Hall
+  coefficient for Fe₂VAl₀.₉Si₀.₁.
+- The 03_AWI32 band-2 Seebeck contributions and conductivities are checked
+  against 60-digit polylogarithms and an independently solved carrier balance.
+  At 50 K the weighted band-2 Seebeck contribution changes from
+  −2.5937e-25 to −6.2013e-24 V/K. Band-2 conductivity changes from zero to
+  4.1411e-16 S/m in `acPh` and 5.1764e-16 S/m in `dis`.
+- The same 50 K reference checks the restored total electronic thermal
+  conductivity at the four recorded 03_AWI32 points that previously gave NaN.
+  It gives 0.31406753 W/(m K) in `acPh` and 0.39258441 W/(m K) in `dis`.
+  The rest of those curves still use the 3e-5 comparison.
+- Stable legacy fit parameters stay within a relative difference of 1e-4.
+  The largest measured difference is 6.34e-5 for G in the 03_AWI32 `dis` fit.
+  The named unreliable D1 case retains its prior 1e-3 tolerance for the
+  stable parameters and its collapse and bounds checks. The Mac legacy D1
+  capture moves from R = 9.9955e-11 to 4.2833e-19 and from four sweeps to ten.
+  Linux reached the existing sweep limit in CI. The P14 replay accepts that
+  status only at the full budget and with the same parameter and diagnostic checks.
+
+The method ID remains `verified-sequential-v2`. The pair of method ID and core
+version, now `0.3.1`, distinguishes this implementation in results, exports,
+and the comparison of saved runs. The resistivity derivative of the profiled
+acoustic or disorder shape is analytic on its supported interior branch.
+The prior fit objectives, bounds and final audit still apply.
+
+**Speed.** The quadrature is slower than the old table. The independent review of 1d301a5
+measured on one Mac, against main at the time:
+
+| Measurement                             | Before  | P14        |
+| --------------------------------------- | ------- | ---------- |
+| 1008 curve cases                        | 10.2 s  | 16.1 s     |
+| median `carrier_concentration_by_band`  | 9.7 ms  | 18.3 ms    |
+| median `seebeck`                        | 11.3 ms | 18.5 ms    |
+| legacy `dpb_s_rho`                      | 0.43 s  | 0.77 s     |
+| verified `dpb_s`                        | 2.38 s  | 3.60 s     |
+| one scalar F₁/₂ inside the density root | 0.9 µs  | about 6 µs |
+
+The quadrature nodes are fixed, so evaluating many reduced potentials at once is a
+matrix-vector product; vectorising the density solve is the way to win this back.
+
+**Low temperatures.** Below about 0.5 K an intrinsic root can lie between two adjacent floats of
+μ: one float moves the balance by about ulp(μ)/T, for example 2.3e-12 at μ = 1417 K and 0.1 K,
+more than the 1e-12 tolerance. The tolerance is not relaxed. The solve then fails with "no
+representable chemical potential meets the density tolerance", a limit of binary64 rather than
+a failed solve. In the review's sweep of 840 intrinsic cases, 56 remained, all at T ≤ 0.5 K.
+
+For the recorded Verified D1 request, the old derivative failure now ends
+with conditional stage optima. The checked run has R ≈ 0.0025408, E_g ≈
+2377.28 K and F ≈ 0.0085244, with G, E_F and m₁ at their bounds. The relative
+L2 residual is about 0.765 for resistivity and 9338 for Hall. This is an
+inadequate fit to those properties despite numerical convergence.
+
+The following diagnostics use the same recorded Si:P S and ρ inputs, start,
+and bounds on a Mac with NumPy 2.5.4 and SciPy 1.18.1. This is the original
+historical replay, which has a DPB gap upper bound of 3000 K.
+
+| Mechanism | Pre-P14 relative L2 S | P14 relative L2 S | Pre-P14 relative L2 ρ | P14 relative L2 ρ |
+| --------- | --------------------: | ----------------: | --------------------: | ----------------: |
+| `acPh`    |               0.61949 |           0.18322 |               0.60204 |           0.86168 |
+| `dis`     |               0.60897 |           0.18322 |               0.67872 |           0.87459 |
+
+Both P14 runs reach E_g = 3000 K and E_F ≈ −824.19 K. The fitted R is
+collapsed and the result retains the `collapsed_m_eff` warning.
+Different starts can give R values separated by many orders of magnitude
+with effectively unchanged curves. The Si:P regression records the
+observed residuals and the warning. A separate synthetic test injects a
+failed recovery derivative and requires the solver to retain its checked
+endpoint without claiming stage consistency. The reuse regression with
+injected no-root trials reaches the shared evaluation budget for the
+recorded Verified DPB `acPh` case.
+
+Regenerate the overlay from the source checkout with:
+
+```sh
+PYTHONPATH=packages/seeband_core/src uv run python packages/seeband_core/scripts/capture_p14_results.py
+```
+
+Desktop/web comparison in #71 and a physicist's confirmation remain release
+requirements. The overlay measures reproducibility of the corrected numerical
+paths.

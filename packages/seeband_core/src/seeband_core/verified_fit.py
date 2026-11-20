@@ -451,6 +451,51 @@ class _Engine:
             raise _UnattainedAmplitude("No finite inverse-amplitude optimum")
         p[name] = sign * inverse ** (-1.0 / power)
 
+    def profiled_resistivity_derivative(
+        self, p: Mapping[str, float], amplitude: str, relative: str
+    ) -> np.ndarray | None:
+        """Exact shape derivative for a free interior DPB inverse amplitude."""
+        b = p[relative]
+        if b <= 0:
+            return None
+        shape = self.predict("resistivity", dict(p) | {amplitude: 1.0}) * _SCALE["resistivity"]
+        norm = float(np.linalg.norm(shape))
+        if norm == 0 or not np.isfinite(norm):
+            return None
+        unit = shape / norm
+        observed = self.data["resistivity"][1] * _SCALE["resistivity"]
+        projection = float(np.dot(unit, observed))
+        inverse = projection / norm
+        bound = self.bound(amplitude)
+        upper_inverse = 1.0 / bound.lower if bound.lower > 0 else np.inf
+        if not 1.0 / bound.upper < inverse < upper_inverse:
+            return None
+
+        t = self.data["resistivity"][0]
+        mass = p["m_eff"] / self.n
+        gap, ef = p["band_gap"], p["fermi_energy"]
+        potentials = (
+            None
+            if self._root_provider is None
+            else self._root_provider("dpb", t, mass, ef, gap, self.n)
+        )
+        f0_1, f0_2 = mm.dpb_fermiInt_vs_temp(0, t, mass, gap, ef, self.n, potentials=potentials)
+        band2 = f0_2 / abs(mass)
+        denominator = f0_1 + b * band2
+        if not np.all(np.isfinite(denominator) & (denominator > 0)):
+            return None
+        # q'/q is -band2/(f0_1 + b*band2). When band 2 dominates
+        # the normalized shape, remove its common -1/b before centering.
+        # The direct ratio is stable in the opposite limit, including b near zero.
+        weight1 = f0_1 / denominator
+        weights = unit**2
+        log_slope = weight1 / b if np.dot(weights, weight1) < 0.5 else -band2 / denominator
+        unit_derivative = unit * (log_slope - np.dot(weights, log_slope))
+        derivative: np.ndarray = unit_derivative * projection + unit * np.dot(
+            unit_derivative, observed
+        )
+        return derivative if np.all(np.isfinite(derivative)) else None
+
     def upper_gap_reference(
         self,
         evaluate: Callable[[np.ndarray], np.ndarray],
@@ -492,6 +537,8 @@ class _Engine:
         coordinates: _Coordinates,
         base: Mapping[str, float],
         point: np.ndarray,
+        *,
+        prediction: Callable[[np.ndarray], np.ndarray] | None = None,
     ) -> np.ndarray:
         """Certify DPB derivatives without crossing the carrier onset from inside the gap.
 
@@ -517,8 +564,10 @@ class _Engine:
                     if coordinates.upper[index] > edge:
                         lower = lower.copy()
                         lower[index] = min(point[index], max(lower[index], edge))
+        # A constant observation has zero derivative. At the stage solve,
+        # difference predictions directly to avoid cancellation from subtracting it.
         return _validated_jacobian(
-            evaluate,
+            evaluate if prediction is None else prediction,
             point,
             lower,
             coordinates.upper,
@@ -622,11 +671,14 @@ class _Engine:
 
         profiling = True
 
-        def evaluate(z: np.ndarray) -> np.ndarray:
+        def prediction(z: np.ndarray) -> np.ndarray:
             v = dict(base) | coordinates.decode(z)
             if profiling:
                 self.profile(q, v)
-            return self.predict(q, v) * _SCALE[q] - target
+            return self.predict(q, v) * _SCALE[q]
+
+        def evaluate(z: np.ndarray) -> np.ndarray:
+            return prediction(z) - target
 
         # Invalid density trials are rejected; valid-domain numerical failures propagate.
         initial = evaluate(x)
@@ -637,8 +689,24 @@ class _Engine:
             except mm.NoFiniteChemicalPotentialError:
                 return np.full_like(target, np.inf)
 
+        relative = "G" if self.request.scattering == "dis" else "B"
+
         def jacobian(z: np.ndarray) -> np.ndarray:
-            return self.jacobian(evaluate, coordinates, base, z)
+            if (
+                profiling
+                and q == "resistivity"
+                and self.dpb
+                and self.request.scattering in {"acPh", "dis"}
+                and amp in self.free
+                and names == [relative]
+            ):
+                assert amp is not None
+                derivative = self.profiled_resistivity_derivative(
+                    dict(base) | coordinates.decode(z), amp, relative
+                )
+                if derivative is not None:
+                    return np.asarray(derivative[:, None] * coordinates.scale[0])
+            return self.jacobian(evaluate, coordinates, base, z, prediction=prediction)
 
         def cost_at(z: np.ndarray) -> float:
             error = evaluate(z)

@@ -98,6 +98,7 @@ export const STRINGS = {
     on: "on",
     off: "off",
     method: "Fitting method",
+    coreVersion: "Core version",
     status: "Status",
     iterations: "Iterations",
     rmse: (symbol: string) => `RMSE ${symbol}`,
