@@ -1,0 +1,133 @@
+# One origin for everything, so the app needs no CORS: the public site at /, the app's screens at
+# /fit and /results, and the API at /api, proxied to its container.
+#
+# SEEBAND_SITE_ADDRESS is what Caddy serves: a domain on a real host, which also gets HTTPS from
+# Let's Encrypt, or :80 for plain HTTP, as locally. SEEBAND_SITE_URL is the public address the site
+# was built for; while it is empty, as on the prototype host, every answer says noindex. The other
+# variables only move the parts for a run outside the containers.
+{
+	# No admin endpoint on the host. A change of this file therefore means recreating the
+	# container, which ends open fit streams, and with them their fits.
+	admin off
+
+	# Caddy's own messages, such as the proxy's when a browser leaves a fit's stream, carry the
+	# request too. They lose its addresses and headers, as the access log does below.
+	log default {
+		output stdout
+		format filter {
+			wrap json
+			fields {
+				request>headers delete
+				request>tls delete
+				request>remote_ip delete
+				request>remote_port delete
+				request>client_ip delete
+			}
+		}
+	}
+
+	servers {
+		# A request's headers must arrive in time; bodies and streams are left to the API, whose
+		# own limits are made for them.
+		timeouts {
+			read_header 10s
+		}
+	}
+}
+
+(security_headers) {
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+		-Server
+	}
+}
+
+{$SEEBAND_SITE_ADDRESS::80} {
+	# The access log holds method, URI, status and duration: no headers, cookies or addresses, and
+	# never a body, as the overview promises. Measurements only travel in bodies; the API takes no
+	# query parameters.
+	log {
+		output stdout
+		format filter {
+			wrap json
+			fields {
+				request>headers delete
+				request>tls delete
+				request>remote_ip delete
+				request>remote_port delete
+				request>client_ip delete
+				resp_headers delete
+			}
+		}
+	}
+
+	import security_headers
+
+	# A host the site was not built for stays out of search engines, whatever the file.
+	@closed expression `{env.SEEBAND_SITE_URL} == ""`
+	header @closed X-Robots-Tag "noindex, nofollow"
+
+	# The API. A fit's progress is an event stream, so each event goes on at once, and a stream
+	# that ends because the browser left or pressed Stop ends the upstream request, which stops the
+	# fit's process. Caddy sets X-Forwarded-For, which the API trusts from this network only.
+	handle /api/* {
+		header X-Robots-Tag "noindex, nofollow"
+		# The API's largest limit, for a file to parse; it refuses smaller ones itself.
+		request_body {
+			max_size 10MB
+		}
+		reverse_proxy {$SEEBAND_API_UPSTREAM:api:8000} {
+			flush_interval -1
+			transport http {
+				# Shorter than uvicorn's 5 s, so that Caddy never sends a request on a connection
+				# the API is closing, which a POST could not retry.
+				keepalive 4s
+			}
+		}
+	}
+
+	# The app's screens: each answers with the app's index.html, which routes in the browser. A new
+	# screen needs its path here and in APP_SCREENS of apps/site/src/strings.ts.
+	@screens path /fit /fit/* /results /results/*
+	handle @screens {
+		header X-Robots-Tag "noindex, nofollow"
+		header Cache-Control "no-cache"
+		root * {$SEEBAND_APP_ROOT:/srv/app}
+		rewrite * /index.html
+		file_server
+	}
+
+	# The app's files. Their names change with their contents, so they keep for a year.
+	@appFiles path /assets/* /licenses/*
+	handle @appFiles {
+		root * {$SEEBAND_APP_ROOT:/srv/app}
+		header /assets/* Cache-Control "public, max-age=31536000, immutable"
+		header /licenses/* X-Robots-Tag "noindex"
+		encode zstd gzip
+		file_server
+	}
+
+	# Everything else is the public site, one directory per page. A page's address without its
+	# slash redirects to the one with it, so each page has one address.
+	handle {
+		root * {$SEEBAND_SITE_ROOT:/srv/site}
+		header /_astro/* Cache-Control "public, max-age=31536000, immutable"
+		encode zstd gzip
+		file_server
+	}
+
+	# Caddy's own errors, such as a missing page or the API down, with the same headers.
+	handle_errors {
+		import security_headers
+		header @closed X-Robots-Tag "noindex, nofollow"
+		@missing expression `{err.status_code} == 404`
+		handle @missing {
+			root * {$SEEBAND_SITE_ROOT:/srv/site}
+			rewrite * /404.html
+			file_server
+		}
+	}
+}

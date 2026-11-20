@@ -436,11 +436,13 @@ test("two fits with other scattering compare side by side after a value changed"
 }) => {
   await openFit(page, serveCurves);
   await finishWith(page, {
+    core_version: "0.3.0",
     parameters: { m_eff: 0.5, band_gap: 900, fermi_energy: -50, A: 4e4, B: 1 },
   });
   await page.getByRole("combobox", { name: "Scattering" }).click();
   await page.getByRole("option", { name: "Alloy disorder (dis)" }).click();
   await finishWith(page, {
+    core_version: "0.3.1",
     parameters: { m_eff: 0.7, band_gap: 800, fermi_energy: -40, F: 3e4, G: 1 },
   });
   // A value changed: the current result ends, and the runs stay.
@@ -467,6 +469,11 @@ test("two fits with other scattering compare side by side after a value changed"
     });
   await expect(cells("Scattering")).toContainText("Acoustic phonons (acPh)");
   await expect(cells("Scattering")).toContainText("Alloy disorder (dis)");
+  await expect(cells("Core version").getByRole("cell")).toHaveText([
+    "Core version",
+    "0.3.0",
+    "0.3.1",
+  ]);
   await expect(cells("m₂/m₁")).toContainText("0,5");
   await expect(cells("m₂/m₁")).toContainText("0,7");
   await expect(cells("RMSE S")).toContainText("111 µV/K");
@@ -1123,6 +1130,149 @@ test("the ZIP holds the session too", async ({ page }) => {
     strFromU8(zip["seeband-session.json"] ?? new Uint8Array()),
   ) as { format: string };
   expect(session.format).toBe("seeband-session");
+});
+
+test("ZIP export respects occupied calculation slots and retries temporary admission limits", async ({
+  page,
+}) => {
+  await openFit(page, serveCurves);
+  await finishWith(page, { core_version: "fit-core" });
+  await toResults(page);
+  await expect(
+    graph(page, "Chemical potential μ(T)")
+      .locator(".scatterlayer .trace path.js-line")
+      .first(),
+  ).toBeVisible();
+
+  let active = 0;
+  let peak = 0;
+  let rejected = 0;
+  let first = true;
+  const accepted: string[] = [];
+  await page.route("**/api/calc", async (route) => {
+    // The real per-client limit is four; three slots may belong to live Results curves.
+    if (first || active + 3 >= 4) {
+      first = false;
+      rejected += 1;
+      await route.fulfill({
+        status: 429,
+        headers: { "Retry-After": "1" },
+        json: { code: "client_calc_limit", message: "Busy", details: [] },
+      });
+      return;
+    }
+    active += 1;
+    peak = Math.max(peak, active);
+    const { kind = "measured" } = route.request().postDataJSON() as {
+      kind?: string;
+    };
+    accepted.push(kind);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    await route.fulfill({
+      json: {
+        ...CALC,
+        core_version: "export-core",
+        curves: kind === "measured" ? CALC.curves : DERIVED[kind],
+        rmse: kind === "measured" ? RMSE : {},
+      },
+    });
+    active -= 1;
+  });
+
+  const zip = unzipSync(
+    new Uint8Array(await inFormat(page, "ZIP, a file each")),
+  );
+  expect(peak).toBe(1);
+  expect(rejected).toBe(1);
+  expect(accepted.filter((kind) => kind === "measured")).toHaveLength(2);
+  for (const kind of Object.keys(DERIVED)) {
+    expect(zip[`graphs/${kind}.txt`], kind).toBeDefined();
+  }
+  expect(zip["curves/pre-fit.txt"]).toBeDefined();
+  expect(zip["curves/fit.txt"]).toBeDefined();
+  const metadata = strFromU8(zip["metadata.txt"] ?? new Uint8Array());
+  expect(metadata).toContain("Fit core fit-core");
+  expect(metadata).toContain("Curve core export-core");
+  expect(metadata).not.toContain("Not in this ZIP");
+});
+
+for (const status of [429, 503]) {
+  test(`ZIP export stops after bounded retries of HTTP ${String(status)}`, async ({
+    page,
+  }) => {
+    await openFit(page, serveCurves);
+    await finishWith(page);
+    await toResults(page);
+    let attempts = 0;
+    await page.route("**/api/calc", async (route) => {
+      const { parameters } = route.request().postDataJSON() as {
+        parameters: { band_gap: number };
+      };
+      // Only the export asks for the pre-fit values; live Results uses the fitted gap, 900 K.
+      if (parameters.band_gap !== 1000) {
+        await route.fallback();
+        return;
+      }
+      attempts += 1;
+      await route.fulfill({
+        status,
+        headers: { "Retry-After": "0" },
+        json: { code: "server_busy", message: "Busy", details: [] },
+      });
+    });
+    let downloads = 0;
+    page.on("download", () => {
+      downloads += 1;
+    });
+    await page.getByRole("button", { name: "Data to file" }).click();
+    await page.getByRole("radio", { name: /^ZIP, a file each/ }).click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Download", exact: true })
+      .click();
+    await expect(
+      page.getByText(
+        "The file could not be made, as the server did not answer. Try again.",
+      ),
+    ).toBeVisible();
+    expect(attempts).toBe(3);
+    expect(downloads).toBe(0);
+  });
+}
+
+test("ZIP export downloads nothing when an additional calculation fails", async ({
+  page,
+}) => {
+  await openFit(page, serveCurves);
+  await finishWith(page);
+  await toResults(page);
+  await page.route("**/api/calc", async (route) => {
+    const { kind } = route.request().postDataJSON() as { kind?: string };
+    if (kind !== "thermal_conductivity") {
+      await route.fallback();
+      return;
+    }
+    await route.fulfill({
+      status: 500,
+      json: { code: "internal_error", message: "Failed", details: [] },
+    });
+  });
+  let downloads = 0;
+  page.on("download", () => {
+    downloads += 1;
+  });
+  await page.getByRole("button", { name: "Data to file" }).click();
+  await page.getByRole("radio", { name: /^ZIP, a file each/ }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Download", exact: true })
+    .click();
+  await expect(
+    page.getByText(
+      "The file could not be made, as the server did not answer. Try again.",
+    ),
+  ).toBeVisible();
+  expect(downloads).toBe(0);
 });
 
 test("the dialog of Data to file starts on text, says what each format is, and closes", async ({

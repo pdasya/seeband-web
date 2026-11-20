@@ -43,6 +43,12 @@ the step, searching both smaller and larger steps to balance truncation and
 evaluation noise. Invalid density trials can be rejected; numerical failures
 at admissible parameters remain errors. Final checks use the returned vector,
 including its exact amplitudes, rather than the previous stage's parameters.
+For the DPB acoustic and disorder resistivity stages, P14 differentiates the
+normalized shape analytically when the profiled inverse amplitude is interior.
+Removing the common gain before differentiating retains the weak relative-band
+sensitivity in the near-single-band limit. The derivative is checked against
+a 60-digit reference on the recorded D1 inputs. At an active amplitude bound
+the stage retains its admissible finite differences.
 Conditional objective reductions and independent projected-gradient checks
 must support convergence. A rho update that changes the Seebeck weight therefore
 requires another consistent sweep.

@@ -42,7 +42,7 @@ export function useGuess() {
       isNewLoad(measurement, model.id) &&
       measurement
     ) {
-      void runGuess(model, measurement);
+      void runGuess(model, measurement, "automatic");
     }
   }, [model, measurement, doubted, scattering]);
 

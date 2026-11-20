@@ -48,6 +48,7 @@ export interface SessionContent {
   singleFile: SavedSingleFile | null;
   selection: Selection;
   parameters: SessionState["parameters"];
+  guessedParameters?: SessionState["guessedParameters"];
   customBounds: SessionState["customBounds"];
   held: SessionState["held"];
   interpolation: { enabled: boolean };
@@ -172,6 +173,7 @@ export async function sessionFile(
     singleFile: savedSingleFile(state.singleFile),
     selection: state.selection,
     parameters: state.parameters,
+    guessedParameters: state.guessedParameters,
     customBounds: state.customBounds,
     held: state.held,
     interpolation: { enabled: state.interpolation.enabled },
@@ -363,6 +365,7 @@ const isContent = shape({
   singleFile: isSingleFile,
   selection: isSelection,
   parameters: recordOf(recordOf(isNumber)),
+  guessedParameters: optional(recordOf(recordOf(isNumber))),
   customBounds: recordOf(recordOf(shape({ lower: isNumber, upper: isNumber }))),
   held: recordOf(arrayOf(isString)),
   interpolation: shape({ enabled: isBoolean }),
@@ -453,6 +456,7 @@ export function restoredSession(content: SessionContent): RestoredSession {
     savedModelSettings: content.savedModelSettings,
     selection: content.selection,
     parameters: content.parameters,
+    guessedParameters: content.guessedParameters ?? {},
     customBounds: content.customBounds,
     held: content.held,
     interpolationEnabled: content.interpolation.enabled,

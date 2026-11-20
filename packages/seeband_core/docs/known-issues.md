@@ -53,7 +53,6 @@ P4/P12 (#83, #103) remove the SPB Hall disabled-mode and stale-Fermi-energy flag
 ## What is not here
 
 - **Disabled is a flag.** The API refuses any mode carrying a disabled issue with a 409. No current mode carries one after P4/P12.
-- **F₀ underflowing (#105)** gives NaN or infinity at low temperatures with large gaps, which a client can see as non-finite values. The flag would need the result, not its inputs.
 - **`underdetermined` interpolation** has no issue that fixes it, because it describes the data. `InterpolatedData` reports it.
 - **Neural-net range selection (P9)** now uses actual Tmin/Tmax and sorts paired input rows before inference. The parser already sorts files (D22), and direct `POST /api/guess` callers now get the same range and prediction for reordered distinct-temperature rows. `unsorted_temperature` remains input provenance. It belongs to no mode, so it is not a registry entry.
 - **Missing desktop coverage (#71)** remains open, including the desktop/web
@@ -65,9 +64,11 @@ is used. In DPB with two valence bands, `E_F ≥ max(0, E_g)` gives no finite
 root. The calculation API reports the corresponding `chemical_potential_*`
 error detail for each unsupported domain (#106). The SPB
 `no_chemical_potential` registry ID is retained for interpretation of flagged
-fit results and exports. Successful density checks do not prevent the separate F₀ transport
-cancellation/underflow (#105), which can still produce nonfinite curve points.
-Invalid optimizer trial domains are rejected separately from numerical failures;
+fit results and exports.
+
+P14 (#105) stabilizes the Fermi integrals and transport ratios.
+Absolute results outside the floating-point range can still round to zero or
+overflow. Invalid optimizer trial domains are rejected separately from numerical failures;
 invalid starts still fail. See [the solver contract](chemical-potential.md).
 
 P11 (#102) removes `acphdis_band_weight`: total DPB acPhDis Seebeck now

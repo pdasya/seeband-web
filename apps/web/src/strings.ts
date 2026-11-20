@@ -98,6 +98,7 @@ export const STRINGS = {
     on: "on",
     off: "off",
     method: "Fitting method",
+    coreVersion: "Core version",
     status: "Status",
     iterations: "Iterations",
     rmse: (symbol: string) => `RMSE ${symbol}`,
@@ -590,7 +591,7 @@ export const STRINGS = {
     panelTitle: "Fit",
     guess: "Initial guess",
     guessHint:
-      "Estimate band parameters from S(T); SPB mass magnitude is preserved",
+      "Estimate band parameters from S(T), replacing free manual starts; held and fixed values and SPB mass magnitudes are preserved",
     guessUnsupported: {
       scattering_not_supported:
         "The DPB neural estimate is unavailable for ionized impurities. Set start values manually.",

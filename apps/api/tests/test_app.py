@@ -1,3 +1,5 @@
+import time
+from concurrent.futures import Future
 from pathlib import Path
 
 import pytest
@@ -60,6 +62,33 @@ def test_health_returns_status_and_version(client: TestClient) -> None:
         "commit": API_COMMIT,
         "core_version": seeband_core.__version__,
     }
+
+
+def test_ready_answers_once_the_calculation_workers_have_started() -> None:
+    with TestClient(create_app()) as client:
+        deadline = time.monotonic() + 60
+        response = client.get("/api/ready")
+        while response.status_code == 503 and time.monotonic() < deadline:
+            time.sleep(0.1)
+            response = client.get("/api/ready")
+
+        assert response.status_code == 200
+        assert response.json() == {"status": "ready"}
+
+
+def test_ready_refuses_while_the_workers_are_not_ready() -> None:
+    with TestClient(create_app()) as client:
+        pool = client.app.state.calc_pool  # type: ignore[attr-defined]
+        pool._warming = [Future()]  # A warm-up that has not answered.
+
+        response = client.get("/api/ready")
+
+        assert response.status_code == 503
+        assert response.json()["code"] == "not_ready"
+        assert response.headers["Retry-After"] == "1"
+        # Health still says the server answers.
+        assert client.get("/api/health").status_code == 200
+        pool._warming = []
 
 
 def test_the_commit_comes_from_the_environment_first(monkeypatch: pytest.MonkeyPatch) -> None:

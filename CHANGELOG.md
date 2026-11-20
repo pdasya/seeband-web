@@ -7,6 +7,37 @@
   across the bounded gap interval before certifying a result. Keep the
   held value and the original objective.
 
+- I1 (#53): run everything with one command, `docker compose -f
+deploy/compose.yaml up --build`. The API image installs exactly `uv.lock`
+  and runs as a user on a read-only file system; Caddy serves the site at
+  `/`, the app at `/fit` and `/results`, and proxies `/api` with the fit
+  stream unbuffered. New `GET /api/ready` answers once the calculation
+  workers have started; the API's health check uses it. CI builds and
+  starts the stack and checks it through Caddy.
+
+- Results ZIP exports calculate one curve at a time and retry temporary
+  capacity errors. This lets an archive finish while the Results page is
+  still calculating its plots.
+
+- P28 (#258): loading Seebeck data preserves manual starting values. Both
+  automatic and requested estimates respect held and fixed parameters in
+  each fit mode. Use **Initial guess** to replace eligible manual starts.
+
+- P14 (#105), core `0.3.1`. Stable Fermi integrals extend SPB Hall above the
+  former reduced-potential cutoff. Dilute bands give corrected Seebeck
+  contributions and finite Seebeck, Lorenz and electronic thermal values
+  where intermediate operations previously failed. Intrinsic DPB density
+  balance remains certifiable at lower temperatures and preserves exact
+  compensation for symmetric bands.
+- P14 changes some fitted endpoints. Verified Fit uses the same sequential
+  objectives with a stable profiled resistivity derivative. The recorded D1
+  fit now reaches conditional stationarity with a large Hall residual. The
+  recorded Si:P fits give smaller Seebeck errors and larger resistivity
+  errors with a collapsed mass ratio. The existing legacy D1 collapse
+  warning still applies after its endpoint moves. Compare runs using both
+  the method and the reported core version.
+  See [validation and regression notes](packages/seeband_core/docs/golden-results.md#stable-fermi-integrals-p14).
+
 - FS12 (#56), tooling only: with `?timing` in its address, the fit screen
   records User Timing entries for how long live curves take, from a change
   to its answer and to each chart's painted frame, and

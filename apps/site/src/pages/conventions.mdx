@@ -37,11 +37,13 @@ F_j(\eta) = \int_0^\infty \frac{x^j}{1 + e^{x-\eta}}\,dx,
 \qquad F_0(\eta) = \ln\!\left(1 + e^{\eta}\right).
 $$
 
-$F_{1/2}$ is interpolated from a table on $-10 \le \eta < 20$, with the
-nondegenerate form $\Gamma(\tfrac32)\,e^\eta/(1 + 0.27\,e^\eta)$ below −9.9 and
-the degenerate form $\tfrac23(\eta^2 + \pi^2/6)^{3/4}$ above 19.9. The other
-integrals of acoustic phonons and alloy disorder are evaluated as polylogarithms;
-ionized impurities use Gauss–Legendre quadrature.
+The core uses a stable logarithm for $F_0$ and fixed quadrature for the other
+orders where needed. For $\eta \le -38$, the scaled integral
+$e^{-\eta}F_j(\eta)$ is evaluated as $\Gamma(j+1)$ at floating-point precision.
+Factoring out the common Boltzmann exponential keeps ratios of dilute-band
+moments finite even when the raw moments round to zero. The
+[P14 validation](https://github.com/pdasya/seeband-web/blob/main/packages/seeband_core/docs/golden-results.md#stable-fermi-integrals-p14)
+reports the tested range.
 
 ## Scattering
 
@@ -91,8 +93,9 @@ $$
 
 Both are solved at each temperature with a bracketed method in μ/T. A point is
 returned only if its normalised density residual is at most 10⁻¹²; otherwise the
-whole calculation fails explicitly. Temperature order and repeated points do not change the
-solution.
+whole calculation fails explicitly. In an intrinsic DPB gap, the solver normalises
+the electron and hole densities before either can round to zero. Temperature order
+and repeated points do not change the solution.
 
 SPB needs $\operatorname{sign}(m)\,E_F > 0$. DPB with one valence and one
 conduction band has a root even at zero net doping; two valence bands need
@@ -192,8 +195,8 @@ $$
 
 whose magnitude tends to 1 when degenerate and to 3π/8 when nondegenerate; for
 ionized impurities it tends to 1 and to 315π/512 ≈ 1.93. In
-SPB, the $R_H$ fit sets the absolute mass |m|; a point with η > 700 is outside
-the supported range of the integrals and returns no value.
+SPB, the $R_H$ fit sets the absolute mass |m|. The Fermi integrals also support
+reduced potentials above the former cutoff at η = 700.
 
 For DPB, first evaluate the one-valley expression at the signed band
 masses $-m_1$ and $m_2=R\,m_1$. Divide each Hall coefficient by its
@@ -236,8 +239,9 @@ $$
 + T\,\frac{\sigma_1\sigma_2}{\sigma_1 + \sigma_2}\,(S_1 - S_2)^2,
 $$
 
-where the second term is the bipolar part and $S_i$ is each band's own S. The
-lattice part is not modelled. The Lorenz number chart shows the effective
+where the second term is the bipolar part and $S_i$ is each band's own S.
+The core evaluates this term without forming a product of two small
+conductivities. The lattice part is not modelled. The Lorenz number chart shows the effective
 $L = \kappa_e/(\sigma T)$, in units of L₀; for DPB it includes the bipolar part
 and can rise far above either band's L, which are shown beside it. L needs σ,
 so S-only modes do not offer it.
@@ -318,10 +322,10 @@ and exports name them. The core's registry holds these:
 | `band_diagram_formula`       | caution    | The E(k) sketch                                           | The sketch does not follow E = ħ²k²/(2m); only $E_F$ and the band edges are exact.                                                                 | [#108](https://github.com/pdasya/seeband-web/issues/108) |
 | `interpolation_extrapolates` | unreliable | Results whose request is marked as extrapolated           | Current interpolation never extrapolates; the flag stays for results built from older extrapolated points, which would enter the RMSE and the fit. | [#86](https://github.com/pdasya/seeband-web/issues/86)   |
 
-Not flagged for each result, as it cannot be told from the inputs: $F_0 = \ln(1 + e^\eta)$
-rounds to 0 for η below about −37 and overflows above about 710
-([#105](https://github.com/pdasya/seeband-web/issues/105)), which can give
-non-finite points at low T with a large gap or Fermi energy.
+At low temperatures with both bands deeply dilute, the absolute conductivity
+can still round to zero. The calculation then reports null resistivity and
+the thermal conductivity can round to zero. Seebeck and Lorenz ratios can
+remain finite because the common exponential cancels.
 
 ## Model limitations
 
@@ -334,6 +338,5 @@ These are assumptions of the approach, not errors:
 - From S alone SPB determines only $E_F$; the absolute mass comes from $R_H$. In
   DPB, N is set by the user, not fitted; from S it nearly trades off with R and
   $E_g$, so results hold for the N chosen.
-- The $F_{1/2}$ table has small seams at −9.9 and 19.9, of a few parts in 10⁶.
 - Lattice thermal conductivity is not modelled. SPB often holds only over a
   narrow temperature range.
