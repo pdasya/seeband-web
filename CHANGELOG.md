@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- I1 (#53): run everything with one command, `docker compose -f
+deploy/compose.yaml up --build`. The API image installs exactly `uv.lock`
+  and runs as a user on a read-only file system; Caddy serves the site at
+  `/`, the app at `/fit` and `/results`, and proxies `/api` with the fit
+  stream unbuffered. New `GET /api/ready` answers once the calculation
+  workers have started; the API's health check uses it. CI builds and
+  starts the stack and checks it through Caddy.
+
 - Results ZIP exports calculate one curve at a time and retry temporary
   capacity errors. This lets an archive finish while the Results page is
   still calculating its plots.

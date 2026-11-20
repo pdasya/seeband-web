@@ -18,8 +18,8 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from seeband_api.errors import ErrorResponse, error_response
 
 _SECONDS_PER_MINUTE = 60.0
-# A probe of health must get through however busy the server is.
-_NEVER_REFUSED = frozenset({"/api/health"})
+# A probe of health or readiness must get through however busy the server is.
+_NEVER_REFUSED = frozenset({"/api/health", "/api/ready"})
 # A request refused for being one too many can come back as soon as one ends.
 _BUSY_RETRY_AFTER_S = 1
 _IPV6_NETWORK_BITS = 64

@@ -37,18 +37,21 @@ uv run python -m seeband_api
 | `SEEBAND_API_FIT_PER_MINUTE`              | `30`                             | `POST /api/fit` for one client                                                                                       |
 | `SEEBAND_API_TRUSTED_PROXIES`             | `127.0.0.1,::1`                  | whose `X-Forwarded-For` to believe. `python -m seeband_api` only                                                     |
 
-| Route                    | Purpose                     |
-| ------------------------ | --------------------------- |
-| `GET /api/health`        | status, version and commit  |
-| `GET /api/models`        | model descriptions          |
-| `POST /api/calc`         | curves and RMSE             |
-| `POST /api/band-diagram` | the sketch of E(k)          |
-| `POST /api/parse`        | reading measured data       |
-| `POST /api/guess`        | initial parameter estimates |
-| `POST /api/fit`          | fitting, as event stream    |
-| `GET /api/demo`          | synthetic dataset           |
-| `GET /api/openapi.json`  | the contract                |
-| `GET /api/docs`          | Swagger UI over the same    |
+| Route                    | Purpose                      |
+| ------------------------ | ---------------------------- |
+| `GET /api/health`        | status, version and commit   |
+| `GET /api/ready`         | whether calculations can run |
+| `GET /api/models`        | model descriptions           |
+| `POST /api/calc`         | curves and RMSE              |
+| `POST /api/band-diagram` | the sketch of E(k)           |
+| `POST /api/parse`        | reading measured data        |
+| `POST /api/guess`        | initial parameter estimates  |
+| `POST /api/fit`          | fitting, as event stream     |
+| `GET /api/demo`          | synthetic dataset            |
+| `GET /api/openapi.json`  | the contract                 |
+| `GET /api/docs`          | Swagger UI over the same     |
+
+`GET /api/health` says the server answers; `GET /api/ready` answers 200 only once the calculation workers have started and answered their warm-up, and 503 `not_ready` with `Retry-After` while they start or are replaced after a crash. A proxy or a container's health check should use readiness before sending traffic. Neither is ever refused as too busy.
 
 `commit` in `GET /api/health` is the commit the API runs from: `SEEBAND_COMMIT`, which an image should set as it is built, or git's in a checkout, with `-dirty` for uncommitted changes, or null when neither knows. The app's own build reads its commit the same way, and exports and the report name both.
 
