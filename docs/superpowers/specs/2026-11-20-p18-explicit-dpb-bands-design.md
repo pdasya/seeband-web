@@ -1,13 +1,14 @@
 # P18 — Double parabolic bands at fixed carrier excess
 
 Design for [#166](https://github.com/pdasya/seeband-web/issues/166), based on
-`045d2de`. The researcher chose a signed net electron density as the new input.
-The field spellings, fit controls and transition policy below are proposed for
-agreement before changing public calculations.
+`045d2de`. The researcher chose a signed net electron density as the new input and
+requires absolute mass and valley multiplicities on opening historical S
+or S+ρ sessions for conversion. The researcher approved the public fields, fixed band labels and fit
+controls below.
 
 ## Inputs and identity
 
-| Proposed explicit DPB field              | Meaning                                                                       |
+| Explicit DPB field                       | Meaning                                                                       |
 | ---------------------------------------- | ----------------------------------------------------------------------------- |
 | `parameterization = explicit_density_v1` | Discriminator for requests, sessions and exported parameters                  |
 | `band_configuration`                     | `vb_vb`, `vb_cb` or `cb_cb`, fixed for the fit                                |
@@ -112,10 +113,25 @@ mass or valley scale the same legacy curve admits infinitely many D values.
 
 A versionless DPB request is interpreted using the historical fields. Do not
 mix a legacy signed mass or Fermi-energy input with the explicit density fields
-in one request. If a session lacks the density scale, conversion requires
-researcher-supplied absolute values. Store their provenance.
+in one request.
 
-The proposed default holds the researcher-supplied D, configuration and
+**On opening a legacy S or S+ρ session**, immediately request the positive
+single-valley |m₁| and both valley multiplicities. The current session file
+stores `band1Degeneracy` and `band2Degeneracy`, which can both originate
+from defaults of 1. Show saved values for confirmation. The old unit-mass
+normalization used in the relative carrier plot does not supply |m₁|.
+Perform the conversion only when the researcher supplies the mass and
+confirms both multiplicities. Cancel leaves the current workspace intact.
+On success, store the original E_F and inputs alongside the researcher-confirmed
+values and derived D. Open the converted state with fresh explicit bounds;
+display old fit results with their original parameterization.
+
+For a legacy Hall fit, use the absolute mass from the parameter vector being
+converted and its accompanying multiplicities. Do not combine a starting
+mass from one vector with final fitted energies from another. If the saved
+scale is incomplete, request the missing values before conversion.
+
+The explicit fit holds the researcher-supplied D, configuration and
 multiplicities fixed. The researcher supplies m₁ in S and S+ρ. For an
 S+ρ+Hall fit with free m₁, changing its trial value requires solving μ again
 and updating the predictions for all three observables. Verify all stage
@@ -160,9 +176,11 @@ concentration output.
 PYTHONPATH=packages/seeband_core/src python scripts/verify_p18_contract.py
 ```
 
-The reference script exercises selected temperatures and densities. The 27
-public calculation and fitting combinations above remain integration
-acceptance criteria for the implementation.
+The reference script exercises selected temperatures and densities. The production fit matrix in
+`packages/seeband_core/tests/test_explicit_dpb_fit.py` separately exercises
+all 27 public combinations. It perturbs the mass ratio in every mode and
+also the absolute mass in the Hall fits. Each final vector is passed back
+through the public calculation entry point to reproduce its curves.
 
 On the base revision, the 15 finite-temperature roots at 100, 300 and 800 K
 had a maximum normalized balance residual of 4.03 × 10⁻¹⁵. All 12 invalid
@@ -173,3 +191,19 @@ In three legacy examples with m₁ = 1.7 mₑ, m₂ = 0.8 mₑ and (N₁,N₂) =
 the largest difference from the independent root was 6.24 × 10⁻⁵ K and the
 largest relative band population difference was 5.41 × 10⁻⁷. These figures
 apply to the script's specified points and precision.
+
+Additional reference cases cover mixed bands at offsets of both signs and
+magnitude 3 eV. At 300 and 800 K the eight additional roots had maximum
+normalized residual 7.89 × 10⁻¹⁵. A second quadrature in momentum gave
+chemical potentials within 9.10 × 10⁻¹² K. The production implementation
+keeps the inherited constants consistently in its density and transport
+kernels; the reference uses the current SI values.
+
+For the verified fitter, a bounded coupled starting-point search uses the
+existing S, ρ and Hall stage scales when a free absolute mass or a relative
+scattering factor couples stages. Its candidate must improve at least one
+stage and preserve the others within their objective audit tolerances.
+The sequential solver then checks the original stage objectives and the
+uncached predictions at the returned vector. This certifies conditional
+numerical convergence. The synthetic tests use identified examples and
+nearby starts; full parameter identifiability remains sample-dependent.

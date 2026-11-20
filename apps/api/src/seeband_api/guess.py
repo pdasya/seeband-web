@@ -18,6 +18,7 @@ from seeband_api.calc_worker import CalculationFailed
 from seeband_api.errors import ApiError, ErrorDetail
 from seeband_api.guess_worker import GuessOutcome, guess, numerical_guess
 from seeband_api.request_checks import (
+    BandInputs,
     MaxPointsDep,
     PointList,
     ValueList,
@@ -90,7 +91,7 @@ RESPONSE_EXAMPLES: dict[str, dict[str, Any]] = {
 }
 
 
-class GuessRequest(BaseModel):
+class GuessRequest(BandInputs):
     """Measured Seebeck data, in V/K, with all rows of the data.
 
     Unlike `POST /api/calc`, this takes every row and not only the fit range, as the desktop does.
@@ -99,7 +100,6 @@ class GuessRequest(BaseModel):
 
     model_config = ConfigDict(json_schema_extra={"examples": [REQUEST_EXAMPLE]})
 
-    model: str
     scattering: str | None = None
     temperature_k: PointList
     seebeck_v_per_k: ValueList
@@ -287,6 +287,8 @@ def _to_response(outcome: GuessOutcome) -> GuessFound | GuessNoNet | GuessNotFin
 async def post_guess(
     body: GuessRequest, pool: CalcPoolDep, max_points: MaxPointsDep
 ) -> GuessFound | NumericalGuessFound | GuessUnsupported | GuessNoNet | GuessNotFinite:
+    if body.parameterization == "explicit_density_v1":
+        raise ApiError(422, "guess_unavailable", "Use manual starts for explicit DPB")
     _check_model(body.model)
     if body.scattering is not None and not any(
         body.scattering in mode.scattering for mode in registry.get(body.model).describe().fit_modes

@@ -225,7 +225,11 @@ export interface ChartTabView {
   /** Says what a chart with points only leaves out, or what is known to be wrong with it. */
   note: string | null;
   /** For a chart that is not against temperature. */
-  xAxis?: { title: string; span: readonly [number, number] | null };
+  xAxis?: {
+    title: string;
+    span: readonly [number, number] | null;
+    unitless?: boolean;
+  };
 }
 
 const NO_CHART = {
@@ -244,6 +248,7 @@ export const ENERGY_IN_K: EnergyDisplay = { unit: "K", per_kelvin: 1 };
 
 type ViewState = Pick<SessionState, "data" | "interpolation"> & {
   bandGapK?: number | undefined;
+  bandConfiguration?: SessionState["selection"]["bandConfiguration"];
   energy: EnergyDisplay;
 };
 
@@ -373,7 +378,9 @@ function chemicalPotentialView(
             { value: 0, label: text.band1Top },
             {
               value: bandGapK * state.energy.per_kelvin,
-              label: text.band2Bottom,
+              label: state.bandConfiguration
+                ? text.band2Edge
+                : text.band2Bottom,
             },
           ],
   };
@@ -599,6 +606,7 @@ function bandDiagramView(
   mode: FitModeDescription | undefined,
   diagram: BandDiagramResponse | null,
   energy: EnergyDisplay,
+  configuration?: SessionState["selection"]["bandConfiguration"],
 ): ChartTabView {
   const { fit } = STRINGS;
   const labels: Record<string, string> = text.diagramCurves;
@@ -611,16 +619,29 @@ function bandDiagramView(
     description: text.diagramDescription,
     empty: null,
     xAxis: {
-      title: text.wavevectorAxis,
+      title: diagram?.wavevector_unit
+        ? text.wavevectorWithUnit(diagram.wavevector_unit)
+        : text.wavevectorAxis,
+      ...(diagram?.wavevector_unit ? { unitless: false } : {}),
       span: first === undefined || last === undefined ? null : [first, last],
     },
     // Each name comes from the server, so a model with other bands needs no change here.
     curves: Object.entries(diagram?.curves ?? {}).map(([name, values]) => ({
       id: name,
-      label: labels[name] ?? name,
+      label:
+        configuration &&
+        (name === "band_1_energy_k" || name === "band_2_energy_k")
+          ? STRINGS.explicitDpb.bandLabel(
+              name === "band_1_energy_k" ? 1 : 2,
+              configuration
+                .split("_")
+                .at(name === "band_1_energy_k" ? 0 : 1)
+                ?.toUpperCase() ?? "",
+            )
+          : (labels[name] ?? name),
       temperatureK: diagram?.wavevector ?? [],
       values: energies(values, energy),
-      dashed: name === "fermi_energy_k",
+      dashed: name.startsWith("fermi_energy"),
     })),
     note:
       diagram === null || diagram.known_issues.length === 0
@@ -648,7 +669,12 @@ export function chartTabView(
 ): ChartTabView {
   switch (tab) {
     case "band_diagram":
-      return bandDiagramView(mode, diagram, state.energy);
+      return bandDiagramView(
+        mode,
+        diagram,
+        state.energy,
+        state.bandConfiguration,
+      );
     case "conductivity":
       return conductivityView(mode, state, measured, derived);
     case "thermal_conductivity":

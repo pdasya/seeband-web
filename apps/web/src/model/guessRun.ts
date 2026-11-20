@@ -51,6 +51,11 @@ export async function runGuess(
   measurement: Measurement,
   intent: "automatic" | "requested" = "requested",
 ): Promise<void> {
+  if (
+    store().selection.model === "dpb" &&
+    store().selection.parameterization === "explicit_density_v1"
+  )
+    return;
   controller?.abort();
   const own = new AbortController();
   controller = own;

@@ -1,3 +1,4 @@
+import { ExplicitDpbControls } from "@/model/ExplicitDpbControls";
 import { useQuery } from "@tanstack/react-query";
 import { AlertCircleIcon } from "lucide-react";
 import { useEffect, useId, useState } from "react";
@@ -21,6 +22,7 @@ import {
 } from "@/components/ui/tooltip";
 import {
   firstModel,
+  offersExplicitDpb,
   fitModeOf,
   settingsFor,
   type FitModeDescription,
@@ -327,6 +329,7 @@ function ModelControls({ models }: { models: readonly ModelDescription[] }) {
   const saved = useSessionStore((state) => state.savedModelSettings);
   const setSelection = useSessionStore((state) => state.setSelection);
   const chooseModel = useSessionStore((state) => state.chooseModel);
+  const resetParameters = useSessionStore((state) => state.resetParameters);
 
   const model = models.find(({ id }) => id === selection.model);
   const mode = fitModeOf(model, selection.fitMode);
@@ -348,7 +351,20 @@ function ModelControls({ models }: { models: readonly ModelDescription[] }) {
         onChange={(id) => {
           const next = models.find((candidate) => candidate.id === id);
           if (next !== undefined) {
+            if (
+              offersExplicitDpb(next) &&
+              selection.parameterization !== "explicit_density_v1"
+            ) {
+              for (const mode of next.fit_modes) resetParameters(mode.id);
+            }
             chooseModel(id, settingsFor(next, saved[id]));
+            if (offersExplicitDpb(next))
+              setSelection({
+                parameterization: "explicit_density_v1",
+                bandConfiguration: selection.bandConfiguration ?? "vb_cb",
+                netElectronDensityPerM3:
+                  selection.netElectronDensityPerM3 ?? 1e24,
+              });
           }
         }}
         options={models.map(({ id, name }) => ({
@@ -357,6 +373,12 @@ function ModelControls({ models }: { models: readonly ModelDescription[] }) {
           hint: name,
         }))}
       />
+
+      {offersExplicitDpb(model) && (
+        <ExplicitDpbControls
+          key={`${selection.bandConfiguration}-${selection.netElectronDensityPerM3}`}
+        />
+      )}
 
       <div className="flex flex-col gap-1.5">
         <ChoiceGroup
@@ -445,6 +467,13 @@ export function ModelPanel() {
     if (selected === null && model !== undefined) {
       setSelection({
         model: model.id,
+        ...(offersExplicitDpb(model)
+          ? {
+              parameterization: "explicit_density_v1" as const,
+              bandConfiguration: "vb_cb" as const,
+              netElectronDensityPerM3: 1e24,
+            }
+          : {}),
         ...settingsFor(model),
         minTemperatureK: model.default_min_temperature_k,
         maxTemperatureK: model.default_max_temperature_k,

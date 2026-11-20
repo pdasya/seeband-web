@@ -56,6 +56,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/dpb/migrate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Migrate Dpb */
+        post: operations["migrate_dpb"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/calc": {
         parameters: {
             query?: never;
@@ -177,6 +194,16 @@ export interface components {
         BandDiagramRequest: {
             /** Model */
             model: string;
+            /**
+             * Parameterization
+             * @default legacy_fermi
+             * @enum {string}
+             */
+            parameterization?: "legacy_fermi" | "explicit_density_v1";
+            /** Band Configuration */
+            band_configuration?: ("vb_vb" | "vb_cb" | "cb_cb") | null;
+            /** Net Electron Density Per M3 */
+            net_electron_density_per_m3?: number | null;
             /** Fit Mode */
             fit_mode: string;
             /** Parameters */
@@ -226,6 +253,8 @@ export interface components {
         BandDiagramResponse: {
             /** Wavevector */
             wavevector: number[];
+            /** Wavevector Unit */
+            wavevector_unit?: string | null;
             /** Curves */
             curves: {
                 [key: string]: (number | null)[];
@@ -294,6 +323,16 @@ export interface components {
         CalcRequest: {
             /** Model */
             model: string;
+            /**
+             * Parameterization
+             * @default legacy_fermi
+             * @enum {string}
+             */
+            parameterization?: "legacy_fermi" | "explicit_density_v1";
+            /** Band Configuration */
+            band_configuration?: ("vb_vb" | "vb_cb" | "cb_cb") | null;
+            /** Net Electron Density Per M3 */
+            net_electron_density_per_m3?: number | null;
             /** Fit Mode */
             fit_mode: string;
             /** Scattering */
@@ -348,7 +387,7 @@ export interface components {
          *     by name with its unit: `electrical_conductivity_s_per_m` is 1/rho, with null for a rho of 0 or
          *     below. They use no model, so they go with the data the request sent, interpolated or not.
          * @example {
-         *       "core_version": "0.3.0",
+         *       "core_version": "0.4.0",
          *       "curves": {
          *         "resistivity_ohm_m": [
          *           0.000036627,
@@ -399,7 +438,7 @@ export interface components {
             /**
              * Core Version
              * @description Core software version for provenance, not certification.
-             * @default 0.3.0
+             * @default 0.4.0
              */
             core_version?: string;
             /** Curves */
@@ -454,6 +493,26 @@ export interface components {
             role: "temperature" | "seebeck" | "resistivity" | "conductivity" | "hall";
             /** Unit */
             unit?: ("K" | "C" | "V/K" | "uV/K" | "mV/K" | "Ohm*m" | "Ohm*cm" | "mOhm*cm" | "uOhm*m" | "uOhm*cm" | "S/m" | "S/cm" | "m^3/C" | "cm^3/C") | null;
+        };
+        /** ConvertedDpbPoint */
+        ConvertedDpbPoint: {
+            /**
+             * Parameterization
+             * @default explicit_density_v1
+             * @constant
+             */
+            parameterization?: "explicit_density_v1";
+            /**
+             * Band Configuration
+             * @enum {string}
+             */
+            band_configuration: "vb_vb" | "vb_cb" | "cb_cb";
+            /** Net Electron Density Per M3 */
+            net_electron_density_per_m3: number;
+            /** Parameters */
+            parameters: {
+                [key: string]: number;
+            };
         };
         /**
          * CurveAvailabilityResponse
@@ -652,6 +711,16 @@ export interface components {
         FitApiRequest: {
             /** Model */
             model: string;
+            /**
+             * Parameterization
+             * @default legacy_fermi
+             * @enum {string}
+             */
+            parameterization?: "legacy_fermi" | "explicit_density_v1";
+            /** Band Configuration */
+            band_configuration?: ("vb_vb" | "vb_cb" | "cb_cb") | null;
+            /** Net Electron Density Per M3 */
+            net_electron_density_per_m3?: number | null;
             /** Fit Mode */
             fit_mode: string;
             /** Scattering */
@@ -865,7 +934,7 @@ export interface components {
          *     E_F are from that stage. Otherwise it is empty.
          * @example {
          *       "at_bounds": [],
-         *       "core_version": "0.3.0",
+         *       "core_version": "0.4.0",
          *       "held": [],
          *       "known_issues": [],
          *       "parameter_errors": {
@@ -895,7 +964,7 @@ export interface components {
             /**
              * Core Version
              * @description Core software version for provenance, not certification.
-             * @default 0.3.0
+             * @default 0.4.0
              */
             core_version?: string;
             /**
@@ -1073,6 +1142,16 @@ export interface components {
         GuessRequest: {
             /** Model */
             model: string;
+            /**
+             * Parameterization
+             * @default legacy_fermi
+             * @enum {string}
+             */
+            parameterization?: "legacy_fermi" | "explicit_density_v1";
+            /** Band Configuration */
+            band_configuration?: ("vb_vb" | "vb_cb" | "cb_cb") | null;
+            /** Net Electron Density Per M3 */
+            net_electron_density_per_m3?: number | null;
             /** Scattering */
             scattering?: string | null;
             /** Temperature K */
@@ -1098,7 +1177,7 @@ export interface components {
         /**
          * HealthResponse
          * @example {
-         *       "core_version": "0.3.0",
+         *       "core_version": "0.4.0",
          *       "status": "ok",
          *       "version": "1.0.0"
          *     }
@@ -1119,7 +1198,7 @@ export interface components {
             /**
              * Core Version
              * @description Core software version for provenance, not certification.
-             * @default 0.3.0
+             * @default 0.4.0
              */
             core_version?: string;
         };
@@ -1204,6 +1283,19 @@ export interface components {
             affects_fit: boolean;
             /** Condition */
             condition?: ("degeneracy_not_one" | "collapsed_m_eff" | "fermi_energy_in_gap" | "fermi_energy_outside_band" | "interpolation_extrapolated") | null;
+        };
+        /** LegacyDpbPoint */
+        LegacyDpbPoint: {
+            /** Parameters */
+            parameters: {
+                [key: string]: number;
+            };
+            /** M1 */
+            m1: number;
+            /** Band 1 Degeneracy */
+            band_1_degeneracy: number;
+            /** Band 2 Degeneracy */
+            band_2_degeneracy: number;
         };
         /**
          * MeasuredPointsResponse
@@ -1569,7 +1661,9 @@ export interface operations {
     };
     get_models: {
         parameters: {
-            query?: never;
+            query?: {
+                parameterization?: "legacy_fermi" | "explicit_density_v1";
+            };
             header?: {
                 "if-none-match"?: string | null;
             };
@@ -1597,6 +1691,39 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Default Response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    migrate_dpb: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LegacyDpbPoint"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConvertedDpbPoint"];
+                };
             };
             /** @description Default Response */
             default: {

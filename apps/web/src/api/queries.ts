@@ -24,8 +24,8 @@ export function createQueryClient(): QueryClient {
 }
 
 export const modelsQuery = queryOptions({
-  queryKey: ["models"],
-  queryFn: ({ signal }) => apiClient.getModels(signal),
+  queryKey: ["models", "explicit_density_v1"],
+  queryFn: ({ signal }) => apiClient.getModels(signal, "explicit_density_v1"),
 });
 
 export const demoQuery = queryOptions({

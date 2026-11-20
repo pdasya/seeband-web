@@ -142,6 +142,21 @@ export function exportHeader(context: ExportContext): string[] {
       context.curveCoreVersions,
     ),
     text.header.date(context.date),
+    ...(selection.model === "dpb" &&
+    selection.parameterization === "explicit_density_v1"
+      ? [
+          STRINGS.explicitDpb.identity(
+            selection.bandConfiguration ?? "vb_cb",
+            selection.netElectronDensityPerM3 ?? 1e24,
+          ),
+        ]
+      : []),
+    ...(selection.model === "dpb" && selection.legacySource
+      ? [
+          STRINGS.explicitDpb.legacyResult,
+          legacyProvenance(selection.legacySource),
+        ]
+      : []),
     ...(context.demo ? [text.header.demo] : []),
     text.header.model(context.modelId.toUpperCase(), context.modeLabel),
     ...(selection.scattering === null
@@ -330,7 +345,50 @@ function parameterRecords(
 type DegeneracySelection = Pick<
   Selection,
   "scattering" | "band1Degeneracy" | "band2Degeneracy"
->;
+> &
+  Partial<
+    Pick<
+      Selection,
+      | "model"
+      | "parameterization"
+      | "bandConfiguration"
+      | "netElectronDensityPerM3"
+    >
+  >;
+
+function explicitIdentityRows(selection: DegeneracySelection): string[][] {
+  if (
+    selection.model !== "dpb" ||
+    selection.parameterization !== "explicit_density_v1"
+  )
+    return [];
+  return [
+    [
+      "parameterization",
+      "parameterization",
+      STRINGS.explicitDpb.representationLabel,
+      "",
+      "explicit_density_v1",
+      text.status.fixed,
+    ],
+    [
+      "band_configuration",
+      "band_configuration",
+      STRINGS.explicitDpb.configuration,
+      "",
+      selection.bandConfiguration ?? "vb_cb",
+      text.status.fixed,
+    ],
+    [
+      "net_electron_density_per_m3",
+      "n − p",
+      STRINGS.explicitDpb.densityMeaning,
+      "m^-3",
+      numberText(selection.netElectronDensityPerM3 ?? 1e24),
+      text.status.fixed,
+    ],
+  ];
+}
 
 function hasDegeneracy(mode: FitModeDescription): boolean {
   return mode.degeneracy !== null && mode.degeneracy !== undefined;
@@ -367,7 +425,18 @@ export function parametersFile(
     : [];
   return (
     commented([...header, ...uncertaintyNotes(fit)]) +
-    [text.parameterColumns, ...lines, ...degeneracy].join("\n") +
+    [
+      text.parameterColumns,
+      ...explicitIdentityRows(selection).map((row) =>
+        [
+          text.parameter(row[1] ?? "", row[2] ?? "", row[3] ?? ""),
+          row[4],
+          row[5],
+        ].join("\t"),
+      ),
+      ...lines,
+      ...degeneracy,
+    ].join("\n") +
     "\n"
   );
 }
@@ -428,7 +497,13 @@ export function parametersCsv(
   );
   return (
     commented([...header, ...uncertaintyNotes(fit)]) +
-    [text.parameterCsvColumns, ...rows].join("\n") +
+    [
+      text.parameterCsvColumns,
+      ...explicitIdentityRows(selection).map((row) =>
+        row.map(csvField).join(","),
+      ),
+      ...rows,
+    ].join("\n") +
     "\n"
   );
 }
@@ -619,4 +694,42 @@ export function zipEntries(
     );
   }
   return entries;
+}
+
+/** Export provenance without repeating the original measurement files in every curve header. */
+function legacyProvenance(source: string): string {
+  try {
+    const saved = JSON.parse(source) as {
+      format?: string;
+      version?: number;
+      appVersion?: string;
+      apiVersion?: string;
+      content?: {
+        selection?: unknown;
+        parameters?: unknown;
+        fit?: unknown;
+        held?: unknown;
+        customBounds?: unknown;
+        fitStart?: unknown;
+        units?: unknown;
+      };
+    };
+    return JSON.stringify({
+      format: saved.format,
+      version: saved.version,
+      appVersion: saved.appVersion,
+      apiVersion: saved.apiVersion,
+      ...(saved.content && {
+        selection: saved.content.selection,
+        parameters: saved.content.parameters,
+        fit: saved.content.fit,
+        held: saved.content.held,
+        customBounds: saved.content.customBounds,
+        fitStart: saved.content.fitStart,
+        units: saved.content.units,
+      }),
+    });
+  } catch {
+    return source;
+  }
 }

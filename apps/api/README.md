@@ -372,3 +372,22 @@ Ionized fits require `verified-sequential-v2`; legacy requests are rejected.
 it, while ionized DPB requests return `unsupported` with reason
 `scattering_not_supported` without running the acoustic-trained neural net.
 See [the physical contract](../../packages/seeband_core/docs/ionized-impurities.md).
+
+### Explicit double parabolic bands (core 0.4.0)
+
+Request `GET /api/models?parameterization=explicit_density_v1` for the explicit
+parameter names and bounds. On calculation, fit and diagram requests send
+`model: "dpb"`, `parameterization: "explicit_density_v1"`, `band_configuration`
+(`vb_vb`, `vb_cb` or `cb_cb`), `net_electron_density_per_m3` and both positive
+`band_1_degeneracy` and `band_2_degeneracy`. Use `mass_ratio`, `band_offset_k`,
+`m1` and the mode's listed scattering parameters in the parameter vector.
+Fit requests supply bounds for each active free parameter. The explicit
+model uses verified sequential fitting with manual starts. Direct requests
+omitting the discriminator use the historical Fermi-energy parameterization.
+
+`POST /api/dpb/migrate` converts one legacy parameter vector. Supply
+`parameters`, the absolute `m1` and both multiplicities; the reply supplies
+the explicit vector, configuration and carrier excess. Old fit bounds must
+be chosen again in the new coordinates. The physical band diagram returns
+wavevector in Å⁻¹ and an interval of admissible zero-temperature energies
+for intrinsic samples with a positive gap.

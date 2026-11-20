@@ -21,11 +21,11 @@ import {
  * It holds the data as read, with the text of each file and how each column was read, the choices
  * of the fit screen, and the last finished fit with the request that made it. Loading it gives the
  * same session back; a fit it holds is shown as it was, never run again by a newer model on its
- * own. Each version of the format has a migration to the next, so an old file still loads. Fields
- * a version does not know are dropped as it is read.
+ * own. Version 1 remains readable for historical calculations; version 2 marks explicit density
+ * sessions so older clients reject them rather than reinterpret their physical inputs.
  */
 export const SESSION_FORMAT = "seeband-session";
-export const SESSION_VERSION = 1;
+export const SESSION_VERSION = 2;
 /**
  * The largest session file, in bytes of the file and characters of its text alike: the text of
  * three data files of 2 MB, their tables, and a fit, with room to spare.
@@ -64,10 +64,10 @@ export interface SessionContent {
   fit: { request: FitRequest | null; result: FitResult } | null;
 }
 
-/** What a session file holds, in version 1. */
-export interface SessionFileV1 {
+/** Versions 1 and 2 share the envelope; version 2 requires explicit DPB identity. */
+export interface SessionFile {
   format: typeof SESSION_FORMAT;
-  version: 1;
+  version: 1 | 2;
   /** When it was saved, as ISO 8601. */
   saved: string;
   /** The app's and the API's versions with their commits, as exports name them. */
@@ -81,8 +81,6 @@ export interface SessionFileV1 {
   content: SessionContent;
 }
 
-export type SessionFile = SessionFileV1;
-
 /** Why a file cannot be loaded, as a code for a text. */
 export type SessionFileProblem =
   | "too_large"
@@ -91,15 +89,6 @@ export type SessionFileProblem =
   | "newer_version"
   | "invalid"
   | "checksum";
-
-/**
- * Each migration takes a file of one version to the next, and must raise its version. Version 1
- * is the first, so there are none yet; a change of the format adds one here, with a test that a
- * file of the older version still loads.
- */
-export const MIGRATIONS: Readonly<
-  Record<number, (old: Record<string, unknown>) => Record<string, unknown>>
-> = {};
 
 /** JSON with the keys of each object sorted, so the same content gives the same text. */
 export function canonical(value: unknown): string {
@@ -188,7 +177,7 @@ export async function sessionFile(
   };
   return {
     format: SESSION_FORMAT,
-    version: SESSION_VERSION,
+    version: state.selection.parameterization === "explicit_density_v1" ? 2 : 1,
     saved: versions.saved,
     appVersion: versions.appVersion,
     apiVersion: versions.apiVersion,
@@ -316,6 +305,11 @@ const isSingleFile = orNull(
 );
 
 const isSelection = shape({
+  parameterization: optional(oneOf("explicit_density_v1")),
+  bandConfiguration: optional(oneOf("vb_vb", "vb_cb", "cb_cb")),
+  netElectronDensityPerM3: optional(isNumber),
+  fitAbsoluteMass: optional(isBoolean),
+  legacySource: optional(isString),
   algorithm: optional(oneOf("verified-sequential-v2", "legacy-sequential-v1")),
   model: orNull(isString),
   fitMode: orNull(isString),
@@ -416,29 +410,33 @@ export async function readSessionFile(
   if (!isObject(parsed) || parsed.format !== SESSION_FORMAT) {
     return { problem: "not_a_session" };
   }
-  let file = parsed;
+  const file = parsed;
   if (!isInteger(file.version)) {
     return { problem: "invalid" };
   }
   if ((file.version as number) > SESSION_VERSION) {
     return { problem: "newer_version" };
   }
-  while ((file.version as number) < SESSION_VERSION) {
-    const from = file.version as number;
-    const migrate = MIGRATIONS[from];
-    if (migrate === undefined) {
-      return { problem: "invalid" };
-    }
-    file = migrate(file);
-    // A migration that does not move the version on would loop for ever.
-    if (!isInteger(file.version) || (file.version as number) <= from) {
-      return { problem: "invalid" };
-    }
-  }
+  if ((file.version as number) < 1) return { problem: "invalid" };
   if (!isSessionFile(file)) {
     return { problem: "invalid" };
   }
   const session = file as unknown as SessionFile;
+  const selected = session.content.selection;
+  const explicit = selected.parameterization === "explicit_density_v1";
+  if (
+    (session.version === 1 && explicit) ||
+    (session.version === 2 && selected.model === "dpb" && !explicit)
+  )
+    return { problem: "invalid" };
+  if (
+    explicit &&
+    (selected.bandConfiguration === undefined ||
+      selected.netElectronDensityPerM3 === undefined ||
+      selected.band1Degeneracy <= 0 ||
+      selected.band2Degeneracy <= 0)
+  )
+    return { problem: "invalid" };
   if ((await checksum(session.content)) !== session.checksum) {
     return { problem: "checksum" };
   }

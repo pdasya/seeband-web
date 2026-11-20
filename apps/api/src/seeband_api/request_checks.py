@@ -9,7 +9,16 @@ from fastapi import Depends, Request
 from pydantic import BaseModel, BeforeValidator, Field, model_validator
 from pydantic_core import PydanticCustomError
 from seeband_core.model_catalog import registry
-from seeband_core.model_interface import FitMode, Measurement, ModelDescription, Quantity
+from seeband_core.model_descriptions import explicit_dpb_description
+from seeband_core.model_interface import (
+    BandConfiguration,
+    DpbParameterization,
+    ExplicitBands,
+    FitMode,
+    Measurement,
+    ModelDescription,
+    Quantity,
+)
 
 from seeband_api.errors import ApiError, ErrorDetail
 from seeband_api.settings import MAX_LISTED_POINTS
@@ -52,6 +61,38 @@ PointList = Annotated[
 ]
 ValueList = Annotated[list[FiniteFloat], *bounded(MAX_LISTED_POINTS, min_length=1, fail_fast=True)]
 ParameterValues = Annotated[dict[str, FiniteFloat], *bounded(MAX_PARAMETERS)]
+
+
+class BandInputs(BaseModel):
+    model: str
+    parameterization: DpbParameterization = "legacy_fermi"
+    band_configuration: BandConfiguration | None = None
+    net_electron_density_per_m3: FiniteFloat | None = None
+
+    def explicit_settings(self) -> ExplicitBands | None:
+        if self.parameterization == "legacy_fermi":
+            if self.band_configuration is not None or self.net_electron_density_per_m3 is not None:
+                raise ValueError("Band configuration and n − p require explicit_density_v1")
+            return None
+        if (
+            self.model != "dpb"
+            or self.band_configuration is None
+            or self.net_electron_density_per_m3 is None
+        ):
+            raise ValueError("Explicit DPB needs a band configuration and a signed density in m⁻³")
+        return ExplicitBands(self.band_configuration, self.net_electron_density_per_m3)
+
+    @model_validator(mode="after")
+    def _check_band_inputs(self) -> Self:
+        if self.explicit_settings() is not None:
+            values = getattr(self, "parameters", None) or getattr(self, "start", {})
+            for name in ("m1", "mass_ratio"):
+                if name in values and values[name] <= 0:
+                    raise ValueError(f"{name} must be positive in explicit DPB")
+            for name in ("band_1_degeneracy", "band_2_degeneracy"):
+                if name in type(self).model_fields and name not in self.model_fields_set:
+                    raise ValueError(f"Supply {name} explicitly for the density formulation")
+        return self
 
 
 class MeasurementInput(BaseModel):
@@ -99,7 +140,11 @@ def invalid(code: str, message: str, location: list[str | int]) -> ErrorDetail:
 
 
 def find_mode(
-    model_id: str, fit_mode_id: str, error_code: str, error_message: str
+    model_id: str,
+    fit_mode_id: str,
+    error_code: str,
+    error_message: str,
+    explicit: ExplicitBands | None = None,
 ) -> tuple[ModelDescription, FitMode]:
     """Finds a mode that can run, or refuses with this error or as disabled."""
     descriptions = {description.id: description for description in registry.descriptions()}
@@ -107,6 +152,8 @@ def find_mode(
     if description is None:
         detail = invalid("unknown_model", "This model does not exist", ["model"])
         raise ApiError(HTTPStatus.UNPROCESSABLE_CONTENT, error_code, error_message, [detail])
+    if explicit is not None:
+        description = explicit_dpb_description()
     try:
         fit_mode = description.fit_mode(fit_mode_id)
     except KeyError:

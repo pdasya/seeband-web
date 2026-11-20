@@ -12,6 +12,7 @@ from seeband_api.band_diagram import router as band_diagram_router
 from seeband_api.calc import router as calc_router
 from seeband_api.calc_pool import CalcPool
 from seeband_api.demo import router as demo_router
+from seeband_api.dpb_migration import router as migration_router
 from seeband_api.errors import add_error_handlers
 from seeband_api.fit import router as fit_router
 from seeband_api.fit_runner import FitRunner
@@ -113,6 +114,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.include_router(health_router)
     app.include_router(models_router)
+    app.include_router(migration_router)
     app.include_router(calc_router)
     app.include_router(band_diagram_router)
     app.include_router(parse_router)

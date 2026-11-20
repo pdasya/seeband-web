@@ -25,6 +25,11 @@ export function useGuess() {
   );
   const scattering = useSessionStore((state) => state.selection.scattering);
   const selected = useSessionStore((state) => state.selection.model);
+  const explicit = useSessionStore(
+    (state) =>
+      state.selection.parameterization === "explicit_density_v1" &&
+      state.selection.model === "dpb",
+  );
   const model = guessModel(models?.models, selected ?? "");
   const active = useSessionStore((state) => isFitActive(state.fit));
   const pending = useSessionStore((state) => state.guessPending);
@@ -37,6 +42,7 @@ export function useGuess() {
     // S in doubt does not count as loaded yet, so the guess comes once it is fixed or confirmed.
     if (
       model !== undefined &&
+      !explicit &&
       !doubted &&
       !(model.id === "dpb" && scattering === "ionized") &&
       isNewLoad(measurement, model.id) &&
@@ -44,19 +50,22 @@ export function useGuess() {
     ) {
       void runGuess(model, measurement, "automatic");
     }
-  }, [model, measurement, doubted, scattering]);
+  }, [model, measurement, doubted, scattering, explicit]);
 
   const offered = model !== undefined && selected === model.id;
-  const unsupported = selected === "dpb" && scattering === "ionized";
-  const title = unsupported
-    ? text.guessUnsupported.scattering_not_supported
-    : !offered
-      ? text.guessUnavailable
-      : measurement === undefined
-        ? text.guessNeedsData
-        : doubted
-          ? text.guessUnitInDoubt
-          : text.guessHint;
+  const unsupported =
+    explicit || (selected === "dpb" && scattering === "ionized");
+  const title = explicit
+    ? STRINGS.explicitDpb.manualStarts
+    : unsupported
+      ? text.guessUnsupported.scattering_not_supported
+      : !offered
+        ? text.guessUnavailable
+        : measurement === undefined
+          ? text.guessNeedsData
+          : doubted
+            ? text.guessUnitInDoubt
+            : text.guessHint;
 
   return {
     title,

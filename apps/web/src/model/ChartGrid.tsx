@@ -95,7 +95,16 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
       chartTabView(
         tab,
         mode,
-        { data, interpolation, bandGapK, energy },
+        {
+          data,
+          interpolation,
+          bandGapK,
+          energy,
+          ...(selection.parameterization === "explicit_density_v1" &&
+          selection.model === "dpb"
+            ? { bandConfiguration: selection.bandConfiguration }
+            : {}),
+        },
         measuredCurves,
         derived.result,
         diagramResult,
@@ -110,6 +119,9 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
       measuredCurves,
       derived.result,
       diagramResult,
+      selection.parameterization,
+      selection.model,
+      selection.bandConfiguration,
     ],
   );
   const fitRange = useMemo((): ChartFitRange | null => {
@@ -206,7 +218,9 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
         fitRange={view.xAxis === undefined ? fitRange : null}
         xAxisTitle={view.xAxis?.title ?? text.temperatureAxis}
         xAxisSpan={view.xAxis?.span ?? null}
-        xAxisUnitless={view.xAxis !== undefined}
+        xAxisUnitless={
+          view.xAxis !== undefined && (view.xAxis.unitless ?? true)
+        }
         yAxisTitle={view.yAxisTitle}
         description={view.description}
         failedText={text.failed}

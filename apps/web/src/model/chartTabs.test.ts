@@ -433,6 +433,29 @@ describe("the band diagram", () => {
     expect(empty).toBeNull();
   });
 
+  test("explicit diagram shows physical wavevector units and intrinsic Fermi endpoints", () => {
+    const { curves, xAxis } = view({
+      ...DIAGRAM,
+      wavevector_unit: "Å⁻¹",
+      curves: {
+        band_1_k: [0, 1, 0],
+        fermi_energy_lower_k: [0, 0, 0],
+        fermi_energy_upper_k: [100, 100, 100],
+      },
+    });
+    expect(xAxis).toEqual({
+      title: "k (Å⁻¹)",
+      unitless: false,
+      span: [-40, 40],
+    });
+    expect(
+      curves.slice(1).map(({ label, dashed }) => ({ label, dashed })),
+    ).toEqual([
+      { label: "E_F lower endpoint", dashed: true },
+      { label: "E_F upper endpoint", dashed: true },
+    ]);
+  });
+
   test("says what is known to be wrong, with no ids", () => {
     const { note } = view(DIAGRAM);
 

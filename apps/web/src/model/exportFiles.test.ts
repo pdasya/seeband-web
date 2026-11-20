@@ -703,3 +703,52 @@ test("historical stopped state without provenance remains unknown", () => {
     }),
   ).toContain("Fitting method: Unknown");
 });
+
+test("explicit parameter CSV carries typed density identity, and SPB exports omit DPB history", () => {
+  const base = modeOf("dpb_s_rho");
+  const explicitMode = {
+    ...base,
+    parameters: base.parameters
+      .filter((parameter) => parameter.name !== "fermi_energy")
+      .map((parameter) => ({
+        ...parameter,
+        name:
+          parameter.name === "m_eff"
+            ? "mass_ratio"
+            : parameter.name === "band_gap"
+              ? "band_offset_k"
+              : parameter.name,
+      })),
+  };
+  const selection = {
+    ...SELECTION,
+    parameterization: "explicit_density_v1" as const,
+    bandConfiguration: "cb_cb" as const,
+    netElectronDensityPerM3: 3e24,
+    legacySource: "historic DPB snapshot",
+  };
+  const csv = parametersCsv(
+    [],
+    explicitMode,
+    selection,
+    { mass_ratio: 2 },
+    { status: "idle" },
+  );
+  expect(csv).toContain(
+    "parameterization,parameterization,Representation,,explicit_density_v1,fixed",
+  );
+  expect(csv).toContain(
+    "band_configuration,band_configuration,Band configuration,,cb_cb,fixed",
+  );
+  expect(csv).toContain(
+    "net_electron_density_per_m3,n − p,Signed net electron density n − p,m^-3,3e+24,fixed",
+  );
+  expect(csv).toContain("mass_ratio,m₂/m₁");
+  expect(csv).toContain("band_1_degeneracy");
+  expect(
+    exportHeader({
+      ...CONTEXT,
+      selection: { ...selection, model: "spb" },
+    }).join("\n"),
+  ).not.toContain("historic DPB snapshot");
+});

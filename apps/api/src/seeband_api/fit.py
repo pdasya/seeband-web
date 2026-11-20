@@ -44,6 +44,7 @@ from seeband_api.fit_runner import (
 from seeband_api.fit_worker import run_fit
 from seeband_api.request_checks import (
     MAX_PARAMETERS,
+    BandInputs,
     FiniteFloat,
     MaxPointsDep,
     Measurements,
@@ -80,7 +81,7 @@ class BoundsInput(BaseModel):
         return self
 
 
-class FitApiRequest(BaseModel):
+class FitApiRequest(BandInputs):
     """What to fit.
 
     `start` holds every parameter of the mode in core units, including those of other scattering
@@ -114,7 +115,6 @@ class FitApiRequest(BaseModel):
         }
     )
 
-    model: str
     fit_mode: str
     scattering: str | None = None
     start: ParameterValues
@@ -312,6 +312,29 @@ def _check_bounds(body: FitApiRequest, fit_mode: FitMode) -> list[ErrorDetail]:
             details.append(
                 invalid("bounds_not_editable", "These bounds are fixed", ["bounds", name])
             )
+    if body.explicit_settings() is not None:
+        for name in ("mass_ratio", "m1", "A", "F", "B", "G"):
+            if name in body.bounds and body.bounds[name].lower < 0:
+                details.append(
+                    invalid(
+                        "negative_bound",
+                        "Use nonnegative bounds for magnitudes",
+                        ["bounds", name, "lower"],
+                    )
+                )
+        for spec in fit_mode.parameters_for(body.scattering):
+            if (
+                spec.role == "fitted"
+                and spec.name not in body.held
+                and spec.name not in body.bounds
+            ):
+                details.append(
+                    invalid(
+                        "missing_bounds",
+                        "Choose fit bounds for this parameter",
+                        ["bounds", spec.name],
+                    )
+                )
     return details
 
 
@@ -369,7 +392,9 @@ def _to_response(result: FitResult) -> FitResponse:
 
 
 def _to_core_request(body: FitApiRequest, max_points: int) -> tuple[str, FitRequest]:
-    description, fit_mode = find_mode(body.model, body.fit_mode, "invalid_fit", "Invalid fit")
+    description, fit_mode = find_mode(
+        body.model, body.fit_mode, "invalid_fit", "Invalid fit", body.explicit_settings()
+    )
     scattering_details = check_scattering(body.scattering, fit_mode)
     details = [
         *scattering_details,
@@ -378,7 +403,15 @@ def _to_core_request(body: FitApiRequest, max_points: int) -> tuple[str, FitRequ
         *_check_measurements(body, fit_mode),
         *check_point_counts(body.measurements, max_points),
     ]
-    if body.scattering == "ionized" and body.algorithm != "verified-sequential-v2":
+    if body.explicit_settings() is not None and body.algorithm != "verified-sequential-v2":
+        details.append(
+            invalid(
+                "unsupported_algorithm",
+                "Explicit bands require verified-sequential-v2",
+                ["algorithm"],
+            )
+        )
+    elif body.scattering == "ionized" and body.algorithm != "verified-sequential-v2":
         details.append(
             invalid(
                 "unsupported_algorithm",
@@ -414,6 +447,7 @@ def _to_core_request(body: FitApiRequest, max_points: int) -> tuple[str, FitRequ
         start=body.start,
         bounds={name: Bounds(b.lower, b.upper) for name, b in body.bounds.items()},
         scattering=body.scattering,
+        explicit_bands=body.explicit_settings(),
         band_1_degeneracy=body.band_1_degeneracy,
         band_2_degeneracy=body.band_2_degeneracy,
         extrapolated=body.extrapolated,

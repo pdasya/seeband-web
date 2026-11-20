@@ -6,6 +6,7 @@ Values in requests and results are in core units: the values the calculations ta
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
+from math import isfinite
 from typing import Literal, Protocol, get_args, runtime_checkable
 
 import numpy as np
@@ -252,6 +253,25 @@ class Measurement:
             raise ValueError(f"Measurement {quantity} needs temperatures above 0 K")
 
 
+BandConfiguration = Literal["vb_vb", "vb_cb", "cb_cb"]
+DpbParameterization = Literal["legacy_fermi", "explicit_density_v1"]
+
+
+@dataclass(frozen=True)
+class ExplicitBands:
+    band_configuration: BandConfiguration
+    net_electron_density_per_m3: float
+
+    def __post_init__(self) -> None:
+        d = self.net_electron_density_per_m3
+        if self.band_configuration not in get_args(BandConfiguration) or not isfinite(d):
+            raise ValueError("The band configuration and finite carrier excess are required")
+        if self.band_configuration == "cb_cb" and d <= 0:
+            raise ValueError("Two conduction bands require n − p > 0")
+        if self.band_configuration == "vb_vb" and d >= 0:
+            raise ValueError("Two valence bands require n − p < 0")
+
+
 @dataclass(frozen=True, eq=False)
 class CurveRequest:
     """Ask for curves. `parameters` holds every parameter of the mode, in core units.
@@ -270,6 +290,7 @@ class CurveRequest:
     band_1_degeneracy: float = 1.0
     band_2_degeneracy: float = 1.0
     extrapolated: bool = False
+    explicit_bands: ExplicitBands | None = None
 
 
 @dataclass(frozen=True)
@@ -280,6 +301,7 @@ class BandDiagramRequest:
     parameters: Mapping[str, float]
     band_1_degeneracy: float = 1.0
     band_2_degeneracy: float = 1.0
+    explicit_bands: ExplicitBands | None = None
 
 
 @dataclass(frozen=True, eq=False)
@@ -328,6 +350,7 @@ class FitRequest:
     extrapolated: bool = False
     held: frozenset[str] = frozenset()
     algorithm: FitAlgorithm = "verified-sequential-v2"
+    explicit_bands: ExplicitBands | None = None
 
 
 @dataclass(frozen=True)

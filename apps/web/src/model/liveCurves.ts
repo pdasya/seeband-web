@@ -1,3 +1,4 @@
+import { explicitDpbInputs } from "@/model/explicitDpb";
 import type { BandDiagramRequest, CalcRequest } from "@/api/client";
 import { parameterValues } from "@/model/parameters";
 import { fitModeOf, type ModelDescription } from "@/model/selection";
@@ -82,6 +83,7 @@ export function calcRequest(
 
   return {
     model: model.id,
+    ...explicitDpbInputs(selection),
     fit_mode: mode.id,
     scattering: selection.scattering,
     parameters: parameterValues(mode, state.parameters[mode.id]),
@@ -104,6 +106,7 @@ export function requestScope(request: CalcRequest): string {
     request.fit_mode,
     request.scattering,
     request.kind ?? "measured",
+    ...Object.values(explicitDpbInputsFromRequest(request)),
   ]);
 }
 
@@ -119,6 +122,7 @@ export function bandDiagramRequest(
     ? null
     : {
         model: model.id,
+        ...explicitDpbInputs(selection),
         fit_mode: mode.id,
         parameters: parameterValues(mode, state.parameters[mode.id]),
         band_1_degeneracy: selection.band1Degeneracy,
@@ -128,7 +132,11 @@ export function bandDiagramRequest(
 
 /** As `requestScope`: another mode has other bands, and must not pass for this one's. */
 export function bandDiagramScope(request: BandDiagramRequest): string {
-  return JSON.stringify([request.model, request.fit_mode]);
+  return JSON.stringify([
+    request.model,
+    request.fit_mode,
+    ...Object.values(explicitDpbInputsFromRequest(request)),
+  ]);
 }
 
 /** Other curves of the same values. These take no measurements, and need no data. */
@@ -200,4 +208,17 @@ export function rmseGaps(
     }
   }
   return gaps;
+}
+
+function explicitDpbInputsFromRequest(
+  request: CalcRequest | BandDiagramRequest,
+) {
+  if (request.parameterization !== "explicit_density_v1") return {};
+  return {
+    parameterization: request.parameterization,
+    band_configuration: request.band_configuration,
+    net_electron_density_per_m3: request.net_electron_density_per_m3,
+    band_1_degeneracy: request.band_1_degeneracy,
+    band_2_degeneracy: request.band_2_degeneracy,
+  };
 }

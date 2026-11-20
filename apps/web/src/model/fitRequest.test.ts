@@ -1,3 +1,9 @@
+import { visibleParameters } from "@/model/parameters";
+import {
+  calcRequest,
+  bandDiagramRequest,
+  requestScope,
+} from "@/model/liveCurves";
 // @vitest-environment node
 import { describe, expect, test } from "vitest";
 
@@ -403,4 +409,73 @@ test("algorithm defaults for older state and separates request identities", () =
   expect(verified.request.algorithm).toBe("verified-sequential-v2");
   expect(legacy.request.algorithm).toBe("legacy-sequential-v1");
   expect(fitInputsKey(verified.request)).not.toBe(fitInputsKey(legacy.request));
+});
+
+test("explicit fit, calculation and diagram agree on band identity, SI density and absolute mass", () => {
+  const legacy = models.find((model) => model.id === "dpb");
+  if (!legacy) throw new Error("Missing DPB fixture");
+  const base = legacy.fit_modes.find((mode) => mode.id === "dpb_s_rho");
+  if (!base) throw new Error("Missing mode fixture");
+  const mass = base.parameters.find((parameter) => parameter.name === "m_eff");
+  if (!mass) throw new Error("Missing mass fixture");
+  const mode = {
+    ...base,
+    parameters: [
+      ...base.parameters
+        .filter((parameter) => parameter.name !== "fermi_energy")
+        .map((parameter) => ({
+          ...parameter,
+          name:
+            parameter.name === "m_eff"
+              ? "mass_ratio"
+              : parameter.name === "band_gap"
+                ? "band_offset_k"
+                : parameter.name,
+        })),
+      { ...mass, name: "m1" },
+    ],
+  };
+  const explicitModels = [{ ...legacy, fit_modes: [mode] }];
+  const state = {
+    ...STATE,
+    selection: {
+      ...STATE.selection,
+      algorithm: "legacy-sequential-v1" as const,
+      parameterization: "explicit_density_v1" as const,
+      bandConfiguration: "cb_cb" as const,
+      netElectronDensityPerM3: 2e24,
+    },
+    parameters: { dpb_s_rho: { mass_ratio: 2, band_offset_k: -600, m1: 1.7 } },
+  };
+  const built = fitRequest(state, explicitModels);
+  expect("request" in built).toBe(true);
+  if (!("request" in built)) return;
+  const identity = {
+    parameterization: "explicit_density_v1",
+    band_configuration: "cb_cb",
+    net_electron_density_per_m3: 2e24,
+    band_1_degeneracy: 2,
+    band_2_degeneracy: 3,
+  };
+  expect(built.request).toMatchObject(identity);
+  expect(built.request.algorithm).toBe("verified-sequential-v2");
+  expect(built.request.held).toContain("m1");
+  expect(built.request.start).toMatchObject({
+    mass_ratio: 2,
+    band_offset_k: -600,
+    m1: 1.7,
+  });
+  expect(built.request.start).not.toHaveProperty("fermi_energy");
+  for (const parameter of visibleParameters(mode, "acPh").filter(
+    (parameter) => parameter.role === "fitted" && parameter.name !== "m1",
+  ))
+    expect(built.request.bounds).toHaveProperty(parameter.name);
+  expect(built.request.bounds).not.toHaveProperty("m1");
+  const calc = calcRequest(state, explicitModels);
+  if (!calc) throw new Error("Missing calculation request");
+  expect(calc).toMatchObject(identity);
+  expect(bandDiagramRequest(state, explicitModels)).toMatchObject(identity);
+  expect(requestScope({ ...calc, net_electron_density_per_m3: 3e24 })).not.toBe(
+    requestScope(calc),
+  );
 });

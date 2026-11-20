@@ -1,10 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router";
 
-import type { DemoResponse } from "@/api/client";
+import { apiClient, type DemoResponse } from "@/api/client";
+import { parameterValues } from "@/model/parameters";
 import { demoQuery, modelsQuery } from "@/api/queries";
-import { settingsFor, type ModelDescription } from "@/model/selection";
+import {
+  offersExplicitDpb,
+  settingsFor,
+  type ModelDescription,
+} from "@/model/selection";
 import {
   holdsFiles,
   QUANTITIES,
@@ -41,14 +46,60 @@ export function demoEntries(demo: DemoResponse): [Quantity, SessionData][] {
 }
 
 /** Opens the fit the demo was made for. Files of the user's are never replaced, or mixed with it. */
-function applyDemo(demo: DemoResponse, models: readonly ModelDescription[]) {
+export async function applyDemo(
+  demo: DemoResponse,
+  models: readonly ModelDescription[],
+  signal?: AbortSignal,
+) {
   const state = useSessionStore.getState();
   if (holdsFiles(state) || readsFiles(state)) {
     return;
   }
+  const model = models.find(({ id }) => id === demo.model);
+  let converted: Awaited<ReturnType<typeof apiClient.migrateDpb>> | null = null;
+  let band1 = 1;
+  let band2 = 1;
+  if (model && offersExplicitDpb(model)) {
+    // This project-owned synthetic source supplies its absolute scale; measurements never do.
+    const legacy = await apiClient.getModels(signal);
+    const mode = legacy.models
+      .find(({ id }) => id === demo.model)
+      ?.fit_modes.find(({ id }) => id === demo.fit_mode);
+    if (!mode) throw new Error("Synthetic source mode unavailable");
+    const values = {
+      ...parameterValues(mode, undefined),
+      ...demo.true_parameters,
+    };
+    const mass = values.m1;
+    if (mass === undefined || mass <= 0)
+      throw new Error("Synthetic source mass unavailable");
+    band1 = mode.degeneracy?.band_1_default ?? 1;
+    band2 = mode.degeneracy?.band_2_default ?? 1;
+    converted = await apiClient.migrateDpb(
+      {
+        parameters: values,
+        m1: mass,
+        band_1_degeneracy: band1,
+        band_2_degeneracy: band2,
+      },
+      signal,
+    );
+  }
+  const current = useSessionStore.getState();
+  if (
+    signal?.aborted ||
+    holdsFiles(current) ||
+    readsFiles(current) ||
+    current.data !== state.data ||
+    current.selection !== state.selection ||
+    current.parameters !== state.parameters ||
+    current.customBounds !== state.customBounds ||
+    current.held !== state.held ||
+    current.interpolation !== state.interpolation
+  )
+    return;
   // Interpolating a table needs its text, so the demo's slots must be the ones on screen.
   state.setDataMode("separate");
-  const model = models.find(({ id }) => id === demo.model);
   if (model !== undefined) {
     state.setSelection({
       model: model.id,
@@ -56,7 +107,32 @@ function applyDemo(demo: DemoResponse, models: readonly ModelDescription[]) {
         fitMode: demo.fit_mode,
         scattering: demo.scattering,
       }),
+      ...(converted
+        ? {
+            parameterization: "explicit_density_v1" as const,
+            bandConfiguration: converted.band_configuration,
+            netElectronDensityPerM3: converted.net_electron_density_per_m3,
+            band1Degeneracy: band1,
+            band2Degeneracy: band2,
+            fitAbsoluteMass: false,
+            algorithm: "verified-sequential-v2" as const,
+          }
+        : {}),
     });
+    if (converted) {
+      const mass = converted.parameters.m1;
+      if (mass === undefined)
+        throw new Error("Converted synthetic source mass unavailable");
+      for (const mode of model.fit_modes)
+        state.setParameters(mode.id, {
+          ...Object.fromEntries(
+            Object.entries(state.parameters[mode.id] ?? {}).filter(([name]) =>
+              mode.parameters.some((parameter) => parameter.name === name),
+            ),
+          ),
+          m1: mass,
+        });
+    }
   }
   for (const [quantity, data] of demoEntries(demo)) {
     state.setData(quantity, data);
@@ -70,6 +146,7 @@ function applyDemo(demo: DemoResponse, models: readonly ModelDescription[]) {
  */
 export function useDemoData() {
   const [params, setParams] = useSearchParams();
+  const [initializationFailed, setInitializationFailed] = useState(false);
   const wanted = params.get("demo") === "1";
   const { data: models, isError: modelsFailed } = useQuery(modelsQuery);
   const { data: demo, isError: demoFailed } = useQuery({
@@ -87,19 +164,28 @@ export function useDemoData() {
       demo !== undefined &&
       descriptions !== undefined
     ) {
-      applyDemo(demo, descriptions);
-      setParams(
-        (current) => {
-          const next = new URLSearchParams(current);
-          next.delete("demo");
-          return next;
-        },
-        { replace: true },
-      );
+      const controller = new AbortController();
+      void applyDemo(demo, descriptions, controller.signal)
+        .then(() => {
+          if (controller.signal.aborted) return;
+          setParams(
+            (current) => {
+              const next = new URLSearchParams(current);
+              next.delete("demo");
+              return next;
+            },
+            { replace: true },
+          );
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) setInitializationFailed(true);
+        });
+      return () => controller.abort();
     }
+    return undefined;
   }, [wanted, selected, demo, descriptions, setParams]);
 
   // With no descriptions it cannot open a fit, however the demo's own request went.
-  const failed = wanted && (demoFailed || modelsFailed);
+  const failed = wanted && (demoFailed || modelsFailed || initializationFailed);
   return { wanted, loading: wanted && !failed, failed };
 }

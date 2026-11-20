@@ -13,6 +13,39 @@ core differs from the desktop SeeBand, the core is what is described here, and
 [Results that changed](/results-changed/) lists why. A physicist has not yet
 confirmed the corrections.
 
+## Explicit double parabolic bands
+
+In core 0.4.0, choose VB+VB, VB+CB or CB+CB before fitting. The first edge
+defines zero energy, and the offset is the second edge minus the first.
+Changing the sign of the offset preserves the band labels. In VB+CB, a
+positive offset opens a gap and a negative offset gives band overlap.
+
+Enter the single-valley mass magnitude of band 1 in electron masses, the
+positive ratio of band 2 to band 1, both valley multiplicities (spin
+excluded), and the signed electron excess in m⁻³. Two conduction bands
+require positive excess and two valence bands require negative excess. A
+mixed pair admits either sign and exact compensation. At each temperature
+the core solves for the chemical potential that preserves this input.
+Electron populations contribute positively and hole populations negatively
+to this number density. A gapped compensated sample has an interval of
+allowed Fermi energies at zero temperature.
+
+The total Seebeck coefficient is conductivity-weighted and each weak-field
+Hall contribution is weighted by the square of its conductivity fraction.
+The electronic thermal conductivity includes the interband term whenever
+the single-band Seebeck coefficients differ. The three scattering choices
+are acoustic phonons, alloy disorder and ionized impurities. Use manual
+starting values and bounds for the explicit model.
+
+With S or S+ρ the mass scale stays fixed. With S+ρ+Hall it can be fitted,
+which changes the carrier balance solution and all three predictions.
+Opening an old S or S+ρ session for conversion requires the absolute mass
+and confirmation of both multiplicities. Its old Fermi energy specifies the
+new carrier excess only at that particular parameter vector.
+
+The signed-mass and zero-temperature Fermi-energy formulas below describe
+the legacy DPB parameterization.
+
 ## Units and signs
 
 - Energies ($E_F$, $E_g$, μ) are in kelvin in the core, that is $E/k_B$. The app
@@ -21,7 +54,7 @@ confirmed the corrections.
   (conduction) band, a negative mass a hole (valence) band.
 - For a band with signed mass m and edge E₀, the reduced potential is
   $\eta = \operatorname{sign}(m)\,(\mu - E_0)/T$.
-- In DPB, band 1 is a valence band with its top at zero, so
+- In legacy DPB, band 1 is a valence band with its top at zero, so
   $\eta_1 = -\mu/T$. Band 2 starts at $E_g$, and the sign of m₂/m₁ sets its type:
   $\eta_2 = \operatorname{sign}(R)\,(\mu - E_g)/T$.
 - $E_F$ sets the carrier density at T = 0. The chemical potential μ(T) is
@@ -80,7 +113,7 @@ $$
 
 with $n_0 = 0$ unless $\operatorname{sign}(m)\,E_F > 0$.
 
-SPB solves $n(\mu, m, T) = n_0(E_F, m)$. DPB conserves the signed carrier
+SPB solves $n(\mu, m, T) = n_0(E_F, m)$. Legacy DPB conserves the signed carrier
 balance, with $r = R/N$, $s = \operatorname{sign}(r)$ and band 2's density mass
 $rN^{5/3}$:
 
@@ -105,7 +138,7 @@ parameters fixed, the same carrier target gives the same finite-temperature
 $S$, $\rho$ and $R_H$ throughout the interval. SeeBand flags results in this
 range because the transport data cannot locate $E_F$ within it.
 
-## DPB mass and degeneracy
+## Legacy DPB mass and degeneracy
 
 Let N = N₂/N₁. The public parameter m₂/m₁ is the signed mass ratio
 R = m₂/|m₁|: its magnitude is the band-mass ratio and its sign the type of
@@ -236,15 +269,15 @@ $$
 + T\,\frac{\sigma_1\sigma_2}{\sigma_1 + \sigma_2}\,(S_1 - S_2)^2,
 $$
 
-where the second term is the bipolar part and $S_i$ is each band's own S. The
+where the second term is the interband contribution and $S_i$ is each band's own S. The
 lattice part is not modelled. The Lorenz number chart shows the effective
-$L = \kappa_e/(\sigma T)$, in units of L₀; for DPB it includes the bipolar part
+$L = \kappa_e/(\sigma T)$, in units of L₀; for DPB it includes the interband contribution
 and can rise far above either band's L, which are shown beside it. L needs σ,
 so S-only modes do not offer it.
 
 ## Which data fit which parameters
 
-| Fit mode      | SPB                                                  | DPB                                                               |
+| Fit mode      | SPB                                                  | Legacy DPB                                                        |
 | ------------- | ---------------------------------------------------- | ----------------------------------------------------------------- |
 | S             | $E_F$                                                | m₂/m₁, $E_g$, $E_F$                                               |
 | S + ρ         | $E_F$, then A (or F for alloy disorder), in one pass | m₂/m₁, $E_g$, $E_F$ and A, B (or F, G), repeated until they agree |
@@ -254,9 +287,16 @@ In SPB S and S + ρ, the band mass is not fitted and only its sign matters.
 Whether the data pin a parameter down is shown for each fit; a fit that
 converges does not show that the model suits the sample.
 
+For explicit DPB the S stage fits the positive mass ratio and signed offset.
+The ρ stage adds A and B (F and G for disorder). With Hall data, the user can
+release the absolute mass. Every trial keeps the specified carrier excess
+fixed. When the Hall mass or relative scattering weight couples the stages, a bounded search can seed
+them with a vector that improves their residuals together. The solver
+checks the separate stage objectives at the returned vector.
+
 ## Fitting methods
 
-The default method, `verified-sequential-v2`, fits each stage by least squares
+For SPB and historical DPB the default method, `verified-sequential-v2`, fits each stage by least squares
 in the order above, solves the conductivity or Hall amplitude exactly for the
 other parameters, works in public R throughout, and checks at the end that no
 stage refit improves the result. `legacy-sequential-v1` reproduces the
@@ -271,7 +311,7 @@ missing version is unknown and is not inferred.
 
 ## Initial values
 
-A neural net gives DPB starting values for acoustic phonons and alloy disorder,
+A neural net gives legacy DPB starting values for acoustic phonons and alloy disorder,
 from the first of its temperature ranges that the data cover. SPB starting
 values come from the chosen mechanism. An estimate is a starting value only, not
 evidence that a model fits the sample.

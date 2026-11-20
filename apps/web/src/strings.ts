@@ -4,6 +4,35 @@
  * Add new text here rather than in a component, so that U3 can move it all at once.
  */
 export const STRINGS = {
+  explicitDpb: {
+    representation: "Explicit bands · fixed carrier excess",
+    representationLabel: "Representation",
+    densityMeaning: "Signed net electron density n − p",
+    verifiedMethod: "Explicit bands use the verified joint method.",
+    configuration: "Band configuration",
+    bandLabel: (band: number, kind: string) => `Band ${band} (${kind})`,
+    configurations: { vb_vb: "VB + VB", vb_cb: "VB + CB", cb_cb: "CB + CB" },
+    density: "Net electron density n − p (m⁻³)",
+    densityHint:
+      "Fixed across temperature. CB + CB requires positive density; VB + VB requires negative density.",
+    invalidDensity:
+      "Enter a finite density with the sign required by the band configuration.",
+    fitMass: "Fit absolute mass m₁ jointly with S, ρ and Hall",
+    manualStarts:
+      "Explicit bands require manual starts and researcher-selected bounds.",
+    migrationTitle: "Convert historical DPB session",
+    migrationHint:
+      "Confirm the positive single-valley mass and both valley multiplicities, excluding spin. Saved multiplicities may have been defaults. Original inputs and fit results are preserved; new fits use fresh bounds.",
+    mass: "Single-valley |m₁| (mₑ)",
+    confirm: "Confirm scale and convert",
+    cancel: "Cancel",
+    migrationFailed:
+      "Conversion failed. Check the legacy mass ratio and absolute scale, then retry.",
+    legacyResult:
+      "Original historical session and fit (legacy parameterization)",
+    identity: (configuration: string, density: number) =>
+      `Parameterization: explicit_density_v1; configuration: ${configuration}; net electron density: ${density} m⁻³`,
+  },
   appName: "SeeBand",
   appStage: "web · prototype",
   skipToContent: "Skip to content",
@@ -24,6 +53,8 @@ export const STRINGS = {
     // How a parameter is written. Any other shows its name, so a new one needs no change here.
     symbols: {
       band_mass: "m",
+      mass_ratio: "m₂/m₁",
+      band_offset_k: "Δ",
       m_eff: "m₂/m₁",
       band_gap: "E_g",
       fermi_energy: "E_F",
@@ -415,9 +446,12 @@ export const STRINGS = {
       band_1_energy_k: "Band 1",
       band_2_energy_k: "Band 2",
       fermi_energy_k: "E_F",
+      fermi_energy_lower_k: "E_F lower endpoint",
+      fermi_energy_upper_k: "E_F upper endpoint",
     },
     diagramDescription: "Sketch of the band energies against wavevector",
     wavevectorAxis: "k",
+    wavevectorWithUnit: (unit: string) => `k (${unit})`,
     axes: {
       seebeck: "S, µV/K",
       resistivity: "ρ, µΩ·m",
@@ -458,6 +492,8 @@ export const STRINGS = {
     bandEdge: "band edge",
     band1Top: "band 1 top",
     band2Bottom: "band 2 bottom (E_g)",
+    band1Edge: "band 1 edge",
+    band2Edge: "band 2 edge (Δ)",
     bandsDescription:
       "Chart of the total S and the contribution of each band against temperature",
     totalS: "Total S",

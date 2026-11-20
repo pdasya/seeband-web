@@ -61,7 +61,14 @@ def integral(function, eta, tolerance=2e-10):
 
 def population(band, mu_k, temperature_k, tolerance=2e-10):
     eta = band.s * (mu_k - band.edge_k) / temperature_k
-    fhalf = integral(lambda x: np.sqrt(x) * expit(eta - x), eta, tolerance)
+    # Remove exp(eta) before integration: absolute quad tolerance must not
+    # dominate populations in a wide gap. The remaining integral is O(1).
+    if eta <= 0:
+        fhalf = np.exp(eta) * integral(
+            lambda x: np.sqrt(x) * np.exp(-x) * expit(x - eta), eta, tolerance
+        )
+    else:
+        fhalf = integral(lambda x: np.sqrt(x) * expit(eta - x), eta, tolerance)
     return band.dos_si * (KB * temperature_k) ** 1.5 * fhalf
 
 
@@ -88,7 +95,7 @@ def solve(bands, doping_per_m3, temperature_k, tolerance=2e-10):
 
     width = max(temperature_k, *(abs(b.edge_k) for b in bands), 1.0)
     for _ in range(40):
-        if balance(-width) < 0 < balance(width):
+        if balance(-width) <= 0 <= balance(width):
             break
         width *= 2
     else:
@@ -111,9 +118,12 @@ def transport(bands, mu_k, temperature_k, law, *, conductivity_only=False):
         eta = b.s * (mu_k - b.edge_k) / temperature_k
 
         def window(x, eta=eta):
+            if eta <= 0:
+                return np.exp(-x) * expit(x - eta) ** 2
             return expit(x - eta) * expit(eta - x)
 
         prefactor = b.dos_si * (KB * temperature_k) ** 1.5 * 2 / (3 * b.mass_me * m_e)
+        prefactor *= np.exp(min(eta, 0.0))
         tau = b.tau0_s * (temperature_k / 300) ** t
         moments = [
             integral(
@@ -278,6 +288,89 @@ def verify_synthetic():
     )
 
 
+def verify_wide_offsets():
+    """Independent momentum quadrature and asymptotic anchors at +/-3 eV."""
+
+    def momentum_population(band, mu, temperature):
+        eta = band.s * (mu - band.edge_k) / temperature
+
+        # x=u^2 removes the DOS square-root endpoint; scale Boltzmann tails.
+        def integrand(u):
+            occupation = np.exp(-u * u) * expit(u * u - eta) if eta <= 0 else expit(eta - u * u)
+            return 2 * u * u * occupation
+
+        center = np.sqrt(max(0.0, eta))
+        points = sorted({0.0, max(0.0, center - 3), center, center + 3})
+        value = sum(
+            quad(integrand, a, b, epsabs=1e-14, epsrel=2e-12)[0]
+            for a, b in zip(points, [*points[1:], np.inf], strict=True)
+        )
+        return band.dos_si * (KB * temperature) ** 1.5 * np.exp(min(eta, 0.0)) * value
+
+    vb = Band(-1, 0.0, 1.7, 2, 1e-14)
+    max_delta_k = max_residual = max_mb_k = 0.0
+    for offset_ev in (3.0, -3.0):
+        cb = Band(1, offset_ev * E / KB, 0.8, 6, 1.7e-14)
+        bands = (vb, cb)
+        # Nonzero D is fixed from a T=0 anchor, 1200 K inside the CB for a
+        # true gap, and 300 K above the VB edge for a strongly degenerate overlap.
+        doping = density_zero(bands, cb.edge_k + 1200 if offset_ev > 0 else 300)
+        for doping_value in (0.0, doping):
+            for temperature in (300.0, 800.0):
+                mu, residual = solve(bands, doping_value, temperature)
+                scale = max(
+                    abs(doping_value), sum(momentum_population(b, mu, temperature) for b in bands)
+                )
+
+                def independent_balance(
+                    value,
+                    bands=bands,
+                    temperature=temperature,
+                    doping_value=doping_value,
+                    scale=scale,
+                ):
+                    return (
+                        sum(b.s * momentum_population(b, value, temperature) for b in bands)
+                        - doping_value
+                    ) / scale
+
+                reference = brentq(
+                    independent_balance, mu - 1, mu + 1, xtol=1e-11, rtol=4 * np.finfo(float).eps
+                )
+                delta = abs(reference - mu)
+                assert delta < 2e-7
+                assert abs(independent_balance(mu)) < 2e-11
+                max_delta_k, max_residual = max(max_delta_k, delta), max(max_residual, residual)
+                if offset_ev > 0 and doping_value == 0:
+                    mb_mu = cb.edge_k / 2 + temperature / 2 * np.log(vb.dos_si / cb.dos_si)
+                    max_mb_k = max(max_mb_k, abs(mu - mb_mu))
+                    assert abs(mu - mb_mu) < 2e-6
+                for law in LAWS:
+                    transport(bands, mu, temperature, law)
+                etas = [b.s * (mu - b.edge_k) / temperature for b in bands]
+                print(
+                    f"wide offset={offset_ev:+g} eV, D={doping_value:+.6e} m^-3, "
+                    f"T={temperature:g} K: mu/k_B={mu:.9f} K, "
+                    f"eta={etas[0]:.3f}/{etas[1]:.3f}, residual={residual:.3e}"
+                )
+        # Endpoint-root regression: selected D makes mu=-initial_width exact.
+        endpoint = -max(300.0, abs(cb.edge_k))
+        endpoint_doping = density(bands, endpoint, 300.0)
+        endpoint_mu, _ = solve(bands, endpoint_doping, 300.0)
+        assert endpoint_mu == endpoint
+        if offset_ev < 0:
+            # Degenerate overlap intrinsic root approaches its analytic T=0 value.
+            a, b = vb.dos_si ** (2 / 3), cb.dos_si ** (2 / 3)
+            zero_mu = b * cb.edge_k / (a + b)
+            low_mu, _ = solve(bands, 0.0, 1.0)
+            assert abs(low_mu - zero_mu) < 1e-3
+    print(
+        f"wide-offset PASS: 8 roots/24 transport cases, exact endpoint roots; "
+        f"max residual={max_residual:.3e}, momentum-quadrature delta_mu={max_delta_k:.3e} K, "
+        f"intrinsic-gap MB delta_mu={max_mb_k:.3e} K; overlap T=1 K limit PASS"
+    )
+
+
 def verify_legacy():
     # Compatibility evidence only: current source core is never used for expected values.
     from seeband_core import math_module as mm
@@ -361,9 +454,11 @@ def verify_legacy():
 if __name__ == "__main__":
     print(f"P18 SYNTHETIC DESIGN ORACLE; NumPy {np.__version__}, SciPy {scipy.__version__}")
     verify_synthetic()
+    verify_wide_offsets()
     verify_legacy()
     print(
-        "Limits: finite positive T, moderate chosen eta, isotropic spin-2 parabolas; "
+        "Limits: selected finite positive T fixtures, including +/-3 eV at 300/800 K; "
+        "isotropic spin-2 parabolas; "
         "no anisotropy, screening, fit/identifiability or new production support asserted."
     )
     print(

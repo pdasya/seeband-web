@@ -75,6 +75,7 @@ def calculate(
                 request.band_1_degeneracy,
                 request.band_2_degeneracy,
                 rmse_points,
+                explicit_bands=request.explicit_bands,
             )
             if measurements
             else {}

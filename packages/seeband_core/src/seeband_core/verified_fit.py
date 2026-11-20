@@ -19,6 +19,7 @@ from seeband_core.known_issues import active_issue_ids, fermi_energy_in_gap
 from seeband_core.model_interface import (
     QUANTITY_UNITS,
     Bounds,
+    ExplicitBands,
     FitDiagnostics,
     FitMode,
     FitRequest,
@@ -112,7 +113,17 @@ def _evaluate_quantity(
     root_provider: _CheckedRootProvider | None = None,
     *,
     band_1_degeneracy: float = 1.0,
+    band_2_degeneracy: float = 1.0,
+    explicit_bands: ExplicitBands | None = None,
 ) -> np.ndarray:
+    if explicit_bands is not None:
+        from seeband_core.explicit_transport import explicit_curves
+        from seeband_core.fit_quality import CURVE_NAMES
+
+        curves = explicit_curves(
+            explicit_bands, fit_mode, p, t, scattering, band_1_degeneracy, band_2_degeneracy
+        )
+        return curves[CURVE_NAMES[q]]
     if scattering == "ionized":
         from seeband_core.transport import ionized_transport
 
@@ -205,7 +216,9 @@ class _Coordinates:
     ) -> None:
         self.names = names
         self.scale = np.array([max(abs(values[n]), 1.0) for n in names])
-        self.logarithmic = np.array([n in ("m_eff", "band_mass") for n in names])
+        self.logarithmic = np.array(
+            [n in ("m_eff", "band_mass", "mass_ratio", "m1") for n in names]
+        )
         self.sign = np.array([np.sign(values[n]) for n in names])
         self.public_lower = np.array([bound(n).lower for n in names])
         self.public_upper = np.array([bound(n).upper for n in names])
@@ -359,7 +372,11 @@ class _Engine:
             b = self.bound(name)
             if not b.lower <= self.values[name] <= b.upper:
                 raise ValueError("Start values outside bounds")
-        if self.dpb and self.values["m_eff"] == 0:
+        if request.explicit_bands is not None:
+            for name in ("m1", "mass_ratio"):
+                if self.values[name] <= 0 or (name in self.fitted and self.bound(name).lower < 0):
+                    raise ValueError(f"{name} must remain on the positive mass branch")
+        elif self.dpb and self.values["m_eff"] == 0:
             raise ValueError("Zero band mass has no finite density domain")
         if not self.dpb:
             mass = self.values["band_mass"]
@@ -397,6 +414,8 @@ class _Engine:
             self.n,
             root_provider=self._root_provider,
             band_1_degeneracy=self.request.band_1_degeneracy,
+            band_2_degeneracy=self.request.band_2_degeneracy,
+            explicit_bands=self.request.explicit_bands,
         ).copy()
         values.setflags(write=False)
         return values
@@ -421,7 +440,7 @@ class _Engine:
     def amplitude(self, q: Quantity) -> str | None:
         if q == "resistivity":
             return "F" if self.request.scattering == "dis" else "A"
-        if q == "hall":
+        if q == "hall" and self.request.explicit_bands is None:
             return "m1" if self.dpb else "band_mass"
         return None
 
@@ -607,6 +626,48 @@ class _Engine:
             return None
         return seed
 
+    def coupled_density_start(self) -> None:
+        """Find a common descent seed for parameters shared between stages.
+
+        Keep the public per-stage scales and require simultaneous improvement of
+        each objective. The subsequent independent stage audits decide convergence.
+        """
+        cross_stage = {"m1", "B", "G"} & self.free
+        if self.request.explicit_bands is None or not cross_stage or len(self.free) < 2:
+            return
+        base = dict(self.values)
+        coordinates = _Coordinates(sorted(self.free), base, self.bound)
+
+        def errors(z: np.ndarray) -> list[np.ndarray]:
+            p = base | coordinates.decode(z)
+            return [
+                (self.predict(q, p) - self.data[q][1]) * _SCALE[q] for q in self.mode.quantities
+            ]
+
+        def residual(z: np.ndarray) -> np.ndarray:
+            return np.concatenate(errors(z))
+
+        start_costs = np.asarray([np.dot(r, r) for r in errors(coordinates.point)])
+        if np.max(start_costs) <= _AUDIT_RTOL:
+            return
+        candidate = least_squares(
+            residual,
+            coordinates.point,
+            bounds=(coordinates.lower, coordinates.upper),
+            x_scale="jac",
+            max_nfev=30,
+            ftol=1e-11,
+            xtol=1e-11,
+            gtol=1e-8,
+        )
+        trial_costs = np.asarray([np.dot(r, r) for r in errors(candidate.x)])
+        tolerance = _AUDIT_RTOL * np.maximum(1.0, start_costs)
+        if np.all(trial_costs <= start_costs + tolerance) and np.any(
+            trial_costs < start_costs - tolerance
+        ):
+            self.values.update(coordinates.decode(candidate.x))
+            self.recoveries += 1
+
     def stage(self, q: Quantity, base: Mapping[str, float]) -> tuple[dict[str, float], float]:
         """Return the stage candidate and an audit measure that rejects unchecked improvements."""
         stage = next(s for s in self.mode.stages if s.quantity == q)
@@ -760,7 +821,9 @@ class _Engine:
         # outside the optimization budget, always at the exact retained endpoint.
         def final_prediction(q: Quantity, p: Mapping[str, float]) -> np.ndarray:
             self.evaluations += 1
-            with mm.independent_chemical_potential():
+            from seeband_core.explicit_transport import independent_explicit_potentials
+
+            with mm.independent_chemical_potential(), independent_explicit_potentials():
                 return _evaluate_quantity(
                     q,
                     self.data[q][0],
@@ -769,6 +832,8 @@ class _Engine:
                     self.request.scattering,
                     self.n,
                     band_1_degeneracy=self.request.band_1_degeneracy,
+                    band_2_degeneracy=self.request.band_2_degeneracy,
+                    explicit_bands=self.request.explicit_bands,
                 )
 
         unidentified: set[str] = set()
@@ -905,6 +970,12 @@ def fit_verified(
     callback_error: Exception | None = None
     try:
         engine = _Engine(request, mode)
+        # The S stage precedes rho, but an explicit measured vector includes rho.
+        # Profile a free zero conductivity amplitude before computing the first curve.
+        if request.explicit_bands is not None and "resistivity" in mode.quantities:
+            amplitude = engine.amplitude("resistivity")
+            if amplitude is not None and amplitude in engine.free and engine.values[amplitude] == 0:
+                engine.profile("resistivity", engine.values)
         # Require a valid start before the optimizer may reject invalid trial points.
         for q in mode.quantities:
             p = dict(engine.values)
@@ -913,6 +984,7 @@ def fit_verified(
             # Establish a finite profiled endpoint before any nonlinear stage can
             # consume the shared budget, including a permitted free A=0 start.
             engine.values = p
+        engine.coupled_density_start()
         history: list[np.ndarray] = []
         for iteration in range(1, (mode.max_iterations or 1) + 1):
             uncertified_improvement = False
@@ -976,6 +1048,8 @@ def evaluate(
     quantities: tuple[Quantity, ...] | None = None,
     check_finite: bool = True,
     band_1_degeneracy: float = 1.0,
+    band_2_degeneracy: float | None = None,
+    explicit_bands: ExplicitBands | None = None,
 ) -> dict[Quantity, np.ndarray]:
     """Evaluate built-in measured quantities on the supplied temperatures in core units."""
     from seeband_core.model_descriptions import load_desktop_descriptions
@@ -989,6 +1063,22 @@ def evaluate(
     selected = mode.quantities if quantities is None else quantities
     if any(q not in mode.quantities for q in selected):
         raise ValueError("Quantity is not available for this fit mode")
+    if explicit_bands is not None:
+        from seeband_core.explicit_transport import explicit_curves
+        from seeband_core.fit_quality import CURVE_NAMES
+
+        if model_id != "dpb" or band_2_degeneracy is None:
+            raise ValueError("Explicit DPB requires both absolute valley multiplicities")
+        curves = explicit_curves(
+            explicit_bands,
+            fit_mode,
+            parameters,
+            temperature_k,
+            scattering,
+            band_1_degeneracy,
+            band_2_degeneracy,
+        )
+        return {q: curves[CURVE_NAMES[q]] for q in selected}
     return {
         q: _evaluate_quantity(
             q,

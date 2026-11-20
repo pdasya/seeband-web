@@ -6,6 +6,13 @@ description: Corrections that change SeeBand Web results compared with the deskt
 
 # Results that changed
 
+Core `0.4.0` adds an explicit two-band calculation with a fixed signed
+electron excess. The fit can now use two conduction bands and an independent
+positive mass ratio. Converting a historical fit uses the mass and valley
+counts of that parameter vector. At fixed density, varying a mass or the
+offset gives different curves from holding its old Fermi energy fixed.
+[Conventions and model](/conventions/).
+
 Core `0.3.0` replaces the public mixed acPhDis option with ionized impurity
 power-law transport (lambda=2) for SPB and DPB. S, rho, Hall and electronic
 thermal conductivity use the same approximation. Historical mixed results

@@ -1,3 +1,4 @@
+import { heldForFit } from "@/model/explicitDpb";
 import { useQuery } from "@tanstack/react-query";
 import { InfoIcon, LockIcon, LockOpenIcon } from "lucide-react";
 import { useId, useState } from "react";
@@ -278,9 +279,16 @@ export function ParametersPanel() {
                 setParameter(mode.id, parameter.name, value);
               }}
               held={
-                parameter.role === "fitted"
+                parameter.role === "fitted" &&
+                !(
+                  selection.parameterization === "explicit_density_v1" &&
+                  parameter.name === "m1"
+                )
                   ? {
-                      value: (held[mode.id] ?? []).includes(parameter.name),
+                      value: heldForFit(
+                        selection,
+                        held[mode.id] ?? [],
+                      ).includes(parameter.name),
                       onChange: (next) => {
                         setHeld(mode.id, parameter.name, next);
                       },

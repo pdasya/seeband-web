@@ -170,6 +170,12 @@ export interface SingleFile {
 }
 
 export interface Selection {
+  parameterization?: "explicit_density_v1";
+  bandConfiguration?: "vb_vb" | "vb_cb" | "cb_cb";
+  netElectronDensityPerM3?: number;
+  fitAbsoluteMass?: boolean;
+  /** Original verified session, including its fit, holds, units and bounds. */
+  legacySource?: string;
   /** Absent in older in-memory state; new requests use the verified method. */
   algorithm?: Schemas["FitApiRequest"]["algorithm"];
   model: string | null;
@@ -206,7 +212,9 @@ export type FitState =
   | { status: "failed"; failure: FitFailure };
 
 function supportedSelection(selection: Selection): Selection {
-  return selection.scattering === "ionized"
+  return selection.scattering === "ionized" ||
+    (selection.model === "dpb" &&
+      selection.parameterization === "explicit_density_v1")
     ? { ...selection, algorithm: "verified-sequential-v2" }
     : selection;
 }
