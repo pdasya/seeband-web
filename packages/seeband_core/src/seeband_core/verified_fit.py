@@ -234,21 +234,45 @@ def _derivative_step(coordinate: float) -> float:
     return float(np.finfo(float).eps ** 0.2 * max(1.0, abs(coordinate)))
 
 
+# The held-Fermi gap search: an even mesh over the bounded gap interval, geometric ones that
+# approach the upper bound and, from both sides, the carrier onset at E_g = E_F, where the
+# objective is steep, and a polish of the brackets around the lowest mesh minima only. At most
+# about 89 + 6 × 16 evaluations.
+_GAP_MESH_EVEN = 17
+_GAP_MESH_GEOMETRIC = 24
+_GAP_POLISHED_MINIMA = 3
+_GAP_POLISH_ITERATIONS = 16
+
+
 def _held_fermi_gap_candidate(
     residual: Callable[[np.ndarray], np.ndarray],
     edge: np.ndarray,
     lower: float,
     initial_cost: float,
+    onset: float,
 ) -> tuple[np.ndarray, float]:
-    """Search the true gap objective before choosing a derivative-checked start."""
+    """The lowest true Seebeck cost found over [lower, edge] for the gap, and its point.
+
+    `onset` is the held E_F in the gap's coordinate, where band 2 starts to hold carriers.
+
+    A finite search: it compares the true objective on the mesh, then polishes the brackets of
+    the lowest discrete minima. It can miss a basin narrower than the mesh near no minimum, and
+    certifies no global optimum. The edge itself wins ties.
+    """
     upper = float(edge[0])
     if not np.isfinite(lower):
-        # The direct core API also permits unbounded starts. Retain its local search window.
-        lower = upper - _derivative_step(upper)
+        raise ValueError("The held-Fermi gap search needs a finite lower gap bound")
     extent = upper - lower
-    points = np.unique(
-        np.concatenate((np.linspace(lower, upper, 17), upper - extent * 0.5 ** np.arange(1, 25)))
+    approach = extent * 0.5 ** np.arange(1, _GAP_MESH_GEOMETRIC + 1)
+    points = np.concatenate(
+        (
+            np.linspace(lower, upper, _GAP_MESH_EVEN),
+            upper - approach,
+            onset - approach,
+            onset + approach,
+        )
     )
+    points = np.unique(points[(points >= lower) & (points <= upper)])
     best, best_cost = edge, initial_cost
 
     def compare(gap_coordinate: float) -> float:
@@ -260,14 +284,25 @@ def _held_fermi_gap_candidate(
             best, best_cost = point, cost
         return cost
 
-    for point in points[:-1]:
-        compare(float(point))
-    for left, right in zip(points[:-1], points[1:], strict=True):
-        if best_cost == 0.0:
-            break
-        # Adjacent mesh values can both miss a minimum inside the interval.
-        # Retain actual comparisons during polishing, regardless of scalar solver status.
-        minimize_scalar(compare, bounds=(left, right), method="bounded", options={"maxiter": 48})
+    costs = np.array([compare(float(point)) for point in points[:-1]] + [initial_cost])
+    if best_cost == 0.0:
+        return best, best_cost
+    # Discrete local minima of the mesh, lowest first; each brackets with its neighbours.
+    minima = [
+        k
+        for k in range(len(points))
+        if (k == 0 or costs[k] <= costs[k - 1])
+        and (k == len(points) - 1 or costs[k] <= costs[k + 1])
+    ]
+    for k in sorted(minima, key=lambda k: costs[k])[:_GAP_POLISHED_MINIMA]:
+        for left, right in ((k - 1, k), (k, k + 1)):
+            if 0 <= left and right < len(points):
+                minimize_scalar(
+                    compare,
+                    bounds=(float(points[left]), float(points[right])),
+                    method="bounded",
+                    options={"maxiter": _GAP_POLISH_ITERATIONS},
+                )
     return best, best_cost
 
 
@@ -570,9 +605,28 @@ class _Engine:
             return point
         return reference if np.array_equal(evaluate(point), evaluate(reference)) else point
 
+    def held_gap_search_applies(
+        self, q: Quantity, coordinates: _Coordinates, base: Mapping[str, float], point: np.ndarray
+    ) -> bool:
+        """A Seebeck stage that fits only the gap, from its upper bound, with E_F held in the gap.
+
+        Its local search can stop in the onset layer below the bound, a higher minimum than one
+        deeper in the interval, so the bounded interval is searched first.
+        """
+        return (
+            q == "seebeck"
+            and self.dpb
+            and coordinates.names == ["band_gap"]
+            and "fermi_energy" in self.request.held
+            and point[0] == coordinates.upper[0]
+            and fermi_energy_in_gap(dict(base) | coordinates.decode(point))
+        )
+
     def held_fermi_at_gap_limit(
         self, q: Quantity, coordinates: _Coordinates, base: Mapping[str, float], point: np.ndarray
     ) -> bool:
+        """The held E_F equals the gap at its upper bound, where one side of the derivative
+        crosses the carrier onset, so the zero-target plateau gives the derivative instead."""
         if not (
             q == "seebeck"
             and self.dpb
@@ -813,14 +867,18 @@ class _Engine:
         best, best_cost = x, initial_cost
         uncertified_cost = np.inf
         flat_fermi_only = self.dpb and names == ["fermi_energy"] and fermi_energy_in_gap(p)
-        held_fermi_edge = self.held_fermi_at_gap_limit(q, coordinates, base, x)
+        gap_searched = self.held_gap_search_applies(q, coordinates, base, x)
         origin = self.upper_gap_reference(evaluate, coordinates, base, x)
-        if held_fermi_edge and initial_cost > 0.0:
-            best, best_cost = _held_fermi_gap_candidate(residual, x, float(lower[0]), initial_cost)
+        if gap_searched and initial_cost > 0.0:
+            onset = p["fermi_energy"] / coordinates.scale[0]
+            best, best_cost = _held_fermi_gap_candidate(
+                residual, x, float(lower[0]), initial_cost, onset
+            )
+            # The local solve starts from the best searched point; the edge wins ties.
             origin = best
             if origin is not x:
                 self.recoveries += 1
-        stationary_edge = held_fermi_edge and origin is x and stationarity <= _STATIONARITY_TOL
+        stationary_edge = gap_searched and origin is x and stationarity <= _STATIONARITY_TOL
         if not flat_fermi_only and not stationary_edge:
             result = least_squares(
                 residual,
@@ -833,7 +891,9 @@ class _Engine:
                 max_nfev=250,
             )
             cost = float(np.dot(result.fun, result.fun))
-            if (origin is x and not held_fermi_edge) or cost < best_cost:
+            # Without a search, the local solve's result replaces the start; after one, only a
+            # lower cost does.
+            if (origin is x and not gap_searched) or cost < best_cost:
                 best, best_cost = result.x, cost
         # Flat initial derivatives can terminate immediately in a populated/hidden-band limit.
         # A stationary full-rank nonzero-residual optimum does not need recovery.

@@ -268,6 +268,8 @@ def _failure_message(error: Exception) -> str:
     if isinstance(error, ChemicalPotentialError):
         return "The chemical-potential balance could not be verified during the fit."
     text = str(error)
+    if isinstance(error, ValueError) and "finite lower gap bound" in text:
+        return "A gap fit with the Fermi energy held needs a finite lower bound of the gap."
     if isinstance(error, ValueError) and "bounds" in text:
         return "The start values do not fit the bounds."
     if isinstance(error, ValueError) and "contradicts the sign of R_H" in text:
