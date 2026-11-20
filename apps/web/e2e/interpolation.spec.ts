@@ -382,7 +382,7 @@ test("a single file asks once, with its mapping", async ({ page }) => {
 });
 
 test("with no fit range to use, it says so", async ({ page }) => {
-  await page.route("**/api/models", (route) =>
+  await page.route(/\/api\/models(?:\?.*)?$/, (route) =>
     route.fulfill({
       status: 500,
       json: { code: "x", message: "x", details: [] },

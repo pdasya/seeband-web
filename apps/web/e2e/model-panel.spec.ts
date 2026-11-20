@@ -446,7 +446,7 @@ test("the choices stay when moving to another screen and back", async ({
 });
 
 test("descriptions that cannot load say so", async ({ page }) => {
-  await page.route("**/api/models", (route) =>
+  await page.route(/\/api\/models(?:\?.*)?$/, (route) =>
     route.fulfill({
       status: 400,
       json: { code: "x", message: "SECRET-VALUE", details: [] },
