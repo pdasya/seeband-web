@@ -11,9 +11,17 @@ const sharp = createRequire(require.resolve("astro/package.json"))("sharp");
 const publicDir = new URL("../public/", import.meta.url);
 const svg = await readFile(new URL("favicon.svg", publicDir), "utf8");
 
+// sharp draws an SVG at 72 dpi for each of its units, so the density for `size` pixels follows
+// from the SVG's own size, read from its square viewBox.
+const viewBox = /viewBox="0 0 (\d+(?:\.\d+)?) (\d+(?:\.\d+)?)"/.exec(svg);
+if (viewBox === null || viewBox[1] !== viewBox[2]) {
+  throw new Error('favicon.svg needs a square viewBox="0 0 n n"');
+}
+const svgSize = Number(viewBox[1]);
+
 /** The SVG drawn square at `size` pixels, as PNG. */
 function png(source, size) {
-  return sharp(Buffer.from(source), { density: (72 * size) / 32 })
+  return sharp(Buffer.from(source), { density: (72 * size) / svgSize })
     .resize(size, size)
     .png({ compressionLevel: 9 })
     .toBuffer();
@@ -43,7 +51,12 @@ await writeFile(
 );
 
 // iOS rounds the corners itself and fills transparent ones with black, so the square is full.
-const square = svg.replace(/ rx="\d+"/, "");
+const square = svg.replace(/ rx="[^"]*"/, "");
+if (square === svg) {
+  throw new Error(
+    'favicon.svg has no rounded background (rx="…") to square for the touch icon',
+  );
+}
 await writeFile(
   new URL("apple-touch-icon.png", publicDir),
   await png(square, 180),
