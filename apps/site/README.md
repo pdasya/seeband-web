@@ -19,6 +19,8 @@ pnpm --filter @seeband/site serve     # builds it and previews it on port 4321, 
 
 **English only for now**, at `/`. Another language would get its own routes, and the shared header's language switch would then need to link to the page in that language, as a static page cannot read the language cookie.
 
+**The icons** in `public/` serve every page of the site and of the app, as Caddy serves the site at the root: `favicon.svg` is the header's logo, and `favicon.ico` (16, 32 and 48 px) and `apple-touch-icon.png` (180 px) are drawn from it by `pnpm --filter @seeband/site icons`. Run that after changing the SVG, and commit what it writes.
+
 **The header lists the same sections as the app's:** Overview, Model fit, Results and Conventions. Links from Markdown pages into the repository go to GitHub, as its files are not on the site.
 
 **No script is needed.** Pages work with JavaScript turned off. The only script is the shared header's language handler, about 300 bytes, which does nothing with one language. Plotly and Pyodide are not loaded here, and the build test checks it.

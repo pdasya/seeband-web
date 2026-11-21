@@ -38,11 +38,19 @@ before(() => {
 
 after(() => rmSync(outDir, { recursive: true, force: true }));
 
-test("every asset is requested under /assets/", () => {
-  const paths = [...html.matchAll(/(?:src|href)="([^"]+)"/g)].map((m) => m[1]);
+// The icons are the public site's, which Caddy serves at the root for every page.
+const SITE_ICONS = ["/favicon.ico", "/favicon.svg", "/apple-touch-icon.png"];
 
-  assert.ok(paths.length >= 2);
-  for (const path of paths) {
+test("every asset is requested under /assets/, but the site's icons", () => {
+  const paths = [...html.matchAll(/(?:src|href)="([^"]+)"/g)].map((m) => m[1]);
+  const own = paths.filter((path) => !SITE_ICONS.includes(path));
+
+  assert.deepEqual(
+    paths.filter((path) => SITE_ICONS.includes(path)).sort(),
+    [...SITE_ICONS].sort(),
+  );
+  assert.ok(own.length >= 2);
+  for (const path of own) {
     assert.match(path, /^\/assets\//);
   }
 });

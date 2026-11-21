@@ -2,6 +2,7 @@
 // The header for Astro. `SiteHeader.tsx` draws the same markup, and a test compares them.
 import {
   hasLanguageChoice,
+  HOME_HREF,
   linkClass,
   LOGO_PATHS,
   type HeaderModel,
@@ -9,29 +10,39 @@ import {
 
 type Props = HeaderModel;
 
-const { name, stage, navigationLabel, links, languages } = Astro.props;
+const {
+  name,
+  homeLabel,
+  homeHref = HOME_HREF,
+  stage,
+  navigationLabel,
+  links,
+  languages,
+} = Astro.props;
 const choice = hasLanguageChoice(languages) ? languages : null;
 ---
 
 <header class="sb-header">
   <div class="sb-header__inner">
     <div class="sb-header__brand">
-      <div class="sb-header__logo">
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          {LOGO_PATHS.map((path) => <path d={path} />)}
-        </svg>
-      </div>
-      <div class="sb-header__name">{name}</div>
+      <a href={homeHref} class="sb-header__home" aria-label={homeLabel}>
+        <span class="sb-header__logo">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            {LOGO_PATHS.map((path) => <path d={path} />)}
+          </svg>
+        </span>
+        <span class="sb-header__name">{name}</span>
+      </a>
       <span class="sb-header__stage">{stage}</span>
     </div>
     <nav aria-label={navigationLabel} class="sb-header__nav">

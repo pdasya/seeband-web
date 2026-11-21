@@ -23,12 +23,22 @@ export interface HeaderLanguages {
 
 export interface HeaderModel {
   name: string;
+  /**
+   * The name of the link that the logo and the name make, for a screen reader. It starts with
+   * `name`, so that a voice command naming what is on screen finds it, such as
+   * `SeeBand, overview`.
+   */
+  homeLabel: string;
+  /** Where the logo and the name lead: the overview. */
+  homeHref?: string;
   stage: string;
   navigationLabel: string;
   links: readonly HeaderLink[];
   /** Left out until there is more than one language to choose. */
   languages?: HeaderLanguages;
 }
+
+export const HOME_HREF = "/";
 
 export const LOGO_PATHS = [
   "M3 20c3-10 6-14 9-14s6 4 9 14",

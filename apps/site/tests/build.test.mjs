@@ -78,7 +78,23 @@ test("has its pages in English, as static HTML", () => {
     /<h1>Parabolic band models for transport measurements<\/h1>/,
   );
   assert.match(page("index.html"), /<link rel="icon" href="\/favicon.svg"/);
-  assert.ok(statSync(join(outDir, "favicon.svg")).isFile());
+  assert.match(page("index.html"), /<link rel="icon" href="\/favicon.ico"/);
+  assert.match(
+    page("index.html"),
+    /<link rel="apple-touch-icon" href="\/apple-touch-icon.png"/,
+  );
+  for (const icon of ["favicon.svg", "favicon.ico", "apple-touch-icon.png"]) {
+    assert.ok(statSync(join(outDir, icon)).isFile(), icon);
+  }
+  // The header's link to the overview is named by what it shows, then where it goes (WCAG 2.5.3).
+  const label = /class="sb-header__home"[^>]*aria-label="([^"]*)"/.exec(
+    page("index.html"),
+  )?.[1];
+  const name = /<span class="sb-header__name"[^>]*>([^<]*)<\/span>/.exec(
+    page("index.html"),
+  )?.[1];
+  assert.ok(name, "the header shows a name");
+  assert.ok(label?.startsWith(name), `${String(label)} starts with ${name}`);
   assert.match(
     page("index.html"),
     /<a href="\/"[^>]*aria-current="page"[^>]*>Overview<\/a>/,

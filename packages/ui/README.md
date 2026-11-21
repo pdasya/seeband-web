@@ -21,6 +21,8 @@ import "@seeband/ui/tokens.css"; // needed: the header takes its colours and wid
 import "@seeband/ui/header.css";
 ```
 
+**The logo and the name are one link to the overview,** `homeHref` (`/` by default). `homeLabel` names it for a screen reader and starts with the visible name, such as `SeeBand, overview`; the stage badge stays outside the link.
+
 Links between the site and the app are plain links, as they are separate builds. A dev server that was running when `exports` changed in `package.json` needs a restart to find a new file.
 
 **The language switch stays hidden until `languages` has more than one option,** as the app is in English only until [U3](https://github.com/pdasya/seeband-web/issues/36). Its options are plain buttons with `aria-pressed`. `language.ts` holds the one cookie, `seeband_language`, and `readLanguage` for the app to read it. A React user passes `onLanguageChange`.

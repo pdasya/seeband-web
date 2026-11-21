@@ -13,6 +13,7 @@ import { SiteHeader } from "../src/header/SiteHeader";
 
 const MODEL: HeaderModel = {
   name: "SeeBand",
+  homeLabel: "SeeBand, overview",
   stage: "web · prototype",
   navigationLabel: "Sections",
   links: [
@@ -71,6 +72,56 @@ describe("both wrappers", () => {
     expect(astro).toBe(react);
     expect(react).toContain("sb-header__link--current");
     expect(react).toContain('aria-current="page"');
+  });
+});
+
+/** The brand link: its attributes, in any order, and what it holds. */
+function homeLink(html: string) {
+  const match =
+    /<a\b([^>]*\bclass="sb-header__home"[^>]*)>([\s\S]*?)<\/a>/.exec(html);
+  if (match === null) {
+    return null;
+  }
+  const attributes = Object.fromEntries(
+    [...(match[1] ?? "").matchAll(/([\w-]+)="([^"]*)"/g)].map((m) => [
+      m[1],
+      m[2],
+    ]),
+  );
+  return { attributes, content: match[2] ?? "" };
+}
+
+describe("the logo and the name", () => {
+  test("are one link to the overview, with the stage outside it", async () => {
+    for (const html of [
+      renderToStaticMarkup(<SiteHeader {...MODEL} />),
+      await renderAstro(MODEL),
+    ]) {
+      const link = homeLink(html);
+
+      expect(link?.attributes).toMatchObject({
+        href: "/",
+        "aria-label": "SeeBand, overview",
+      });
+      expect(link?.content).toContain("sb-header__logo");
+      expect(link?.content).toMatch(
+        /<span class="sb-header__name"[^>]*>SeeBand<\/span>/,
+      );
+      expect(link?.content).not.toContain("sb-header__stage");
+      expect(html).toMatch(
+        /<span class="sb-header__stage"[^>]*>web · prototype<\/span>/,
+      );
+    }
+  });
+
+  test("lead where the model says", async () => {
+    const model = { ...MODEL, homeHref: "/en/" };
+
+    expect(
+      homeLink(renderToStaticMarkup(<SiteHeader {...model} />))?.attributes
+        .href,
+    ).toBe("/en/");
+    expect(homeLink(await renderAstro(model))?.attributes.href).toBe("/en/");
   });
 });
 

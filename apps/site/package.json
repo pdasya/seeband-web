@@ -9,7 +9,8 @@
     "preview": "astro preview",
     "serve": "astro build && astro preview --port 4321",
     "typecheck": "astro check",
-    "test": "node --test tests/build.test.mjs"
+    "test": "node --test tests/build.test.mjs",
+    "icons": "node scripts/icons.mjs"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.12",

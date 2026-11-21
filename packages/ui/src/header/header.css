@@ -26,6 +26,16 @@
   gap: 10px;
 }
 
+/* The logo and the name, one link to the overview, drawn as before it was a link. */
+.sb-header__home {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 8px;
+  color: inherit;
+  text-decoration: none;
+}
+
 .sb-header__logo {
   display: flex;
   align-items: center;

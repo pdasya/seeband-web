@@ -2,6 +2,7 @@ import { Fragment, type ReactNode } from "react";
 
 import {
   hasLanguageChoice,
+  HOME_HREF,
   linkClass,
   LOGO_PATHS,
   type HeaderLink,
@@ -29,6 +30,8 @@ function PlainLink(link: HeaderLink) {
 /** The header for React. `SiteHeader.astro` draws the same markup, and a test compares them. */
 export function SiteHeader({
   name,
+  homeLabel,
+  homeHref = HOME_HREF,
   stage,
   navigationLabel,
   links,
@@ -40,24 +43,26 @@ export function SiteHeader({
     <header className="sb-header">
       <div className="sb-header__inner">
         <div className="sb-header__brand">
-          <div className="sb-header__logo">
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              {LOGO_PATHS.map((path) => (
-                <path key={path} d={path} />
-              ))}
-            </svg>
-          </div>
-          <div className="sb-header__name">{name}</div>
+          <a href={homeHref} className="sb-header__home" aria-label={homeLabel}>
+            <span className="sb-header__logo">
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                {LOGO_PATHS.map((path) => (
+                  <path key={path} d={path} />
+                ))}
+              </svg>
+            </span>
+            <span className="sb-header__name">{name}</span>
+          </a>
           <span className="sb-header__stage">{stage}</span>
         </div>
         <nav aria-label={navigationLabel} className="sb-header__nav">
