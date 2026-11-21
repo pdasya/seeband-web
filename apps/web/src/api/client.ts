@@ -67,6 +67,21 @@ export class ApiClient {
     );
   }
 
+  getDpbDomain(
+    query: operations["get_dpb_parameter_domain"]["parameters"]["query"],
+    signal?: AbortSignal,
+  ) {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(query))
+      params.set(key, String(value));
+    return this.request<Schemas["ParameterDomain"]>(
+      "GET",
+      `/api/dpb/parameter-domain?${params}`,
+      undefined,
+      signal,
+    );
+  }
+
   getDemo(signal?: AbortSignal) {
     return this.request<DemoResponse>("GET", "/api/demo", undefined, signal);
   }

@@ -393,6 +393,15 @@ includes the detail code `fermi_energy_unoccupied_bands` for a same-type
 pair with zero carrier population, or `fermi_energy_carrier_mismatch` when
 the mixed-band excess has the opposite sign to the selected carrier type.
 
+`GET /api/dpb/parameter-domain` returns the admissible interval for one
+manual control (`fermi_energy`, `band_offset_k` or `mass_ratio`) at the
+current values of the other parameters. Energies use kelvin. A null endpoint
+is unbounded. The response distinguishes inclusive endpoints and empty intervals.
+In VB+CB the interval includes exact electron–hole compensation, including
+the whole gap when the bands are separated. With overlapping bands the
+compensation energy depends on the mass ratio and both valley multiplicities.
+The controls use these intervals for manual edits. Researchers set the fit bounds separately.
+
 Request `GET /api/models?parameterization=explicit_density_v1` for the saved fixed-density
 parameter names and bounds. On calculation, fit and diagram requests send
 `model: "dpb"`, `parameterization: "explicit_density_v1"`, `band_configuration`

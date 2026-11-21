@@ -3020,6 +3020,327 @@
         }
       }
     },
+    "/api/dpb/parameter-domain": {
+      "get": {
+        "tags": [
+          "dpb"
+        ],
+        "summary": "Get Dpb Parameter Domain",
+        "operationId": "get_dpb_parameter_domain",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "enum": [
+                "fermi_energy",
+                "band_offset_k",
+                "mass_ratio"
+              ],
+              "type": "string",
+              "title": "Name"
+            }
+          },
+          {
+            "name": "band_configuration",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "enum": [
+                "vb_vb",
+                "vb_cb",
+                "cb_cb"
+              ],
+              "type": "string",
+              "title": "Band Configuration"
+            }
+          },
+          {
+            "name": "carrier_type",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "enum": [
+                "p",
+                "n"
+              ],
+              "type": "string",
+              "title": "Carrier Type"
+            }
+          },
+          {
+            "name": "fermi_energy",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "title": "Fermi Energy"
+            }
+          },
+          {
+            "name": "band_offset_k",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "title": "Band Offset K"
+            }
+          },
+          {
+            "name": "mass_ratio",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "title": "Mass Ratio"
+            }
+          },
+          {
+            "name": "band_1_degeneracy",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "title": "Band 1 Degeneracy"
+            }
+          },
+          {
+            "name": "band_2_degeneracy",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "title": "Band 2 Degeneracy"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParameterDomain"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "internal_error": {
+                    "value": {
+                      "code": "internal_error",
+                      "message": "Internal server error",
+                      "details": []
+                    }
+                  },
+                  "not_found": {
+                    "value": {
+                      "code": "not_found",
+                      "message": "Not Found",
+                      "details": []
+                    }
+                  },
+                  "calculation_failed": {
+                    "value": {
+                      "code": "calculation_failed",
+                      "message": "The calculation has no result for these parameters and temperatures",
+                      "details": []
+                    }
+                  },
+                  "calculation_timeout": {
+                    "value": {
+                      "code": "calculation_timeout",
+                      "message": "The calculation took too long",
+                      "details": []
+                    }
+                  },
+                  "calculation_unavailable": {
+                    "value": {
+                      "code": "calculation_unavailable",
+                      "message": "The calculation stopped unexpectedly. Try again.",
+                      "details": []
+                    }
+                  },
+                  "fit_mode_disabled": {
+                    "value": {
+                      "code": "fit_mode_disabled",
+                      "message": "This fit mode is disabled until its known issue is fixed",
+                      "details": []
+                    }
+                  },
+                  "invalid_fit": {
+                    "value": {
+                      "code": "invalid_fit",
+                      "message": "Invalid fit",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "bounds",
+                            "m_eff"
+                          ],
+                          "code": "parameter_not_fitted",
+                          "message": "This fit does not fit it"
+                        }
+                      ]
+                    }
+                  },
+                  "fit_queue_full": {
+                    "value": {
+                      "code": "fit_queue_full",
+                      "message": "Too many fits are running. Try again shortly.",
+                      "details": []
+                    }
+                  },
+                  "rate_limited": {
+                    "value": {
+                      "code": "rate_limited",
+                      "message": "Too many requests",
+                      "details": []
+                    }
+                  },
+                  "request_too_large": {
+                    "value": {
+                      "code": "request_too_large",
+                      "message": "A request can hold at most 10000000 bytes",
+                      "details": []
+                    }
+                  },
+                  "calculation_busy": {
+                    "value": {
+                      "code": "calculation_busy",
+                      "message": "Too many calculations are waiting. Try again shortly.",
+                      "details": []
+                    }
+                  },
+                  "client_calc_limit": {
+                    "value": {
+                      "code": "client_calc_limit",
+                      "message": "At most 4 calculations of one client at once",
+                      "details": []
+                    }
+                  },
+                  "server_busy": {
+                    "value": {
+                      "code": "server_busy",
+                      "message": "Too many requests at once. Try again shortly.",
+                      "details": []
+                    }
+                  },
+                  "request_timeout": {
+                    "value": {
+                      "code": "request_timeout",
+                      "message": "A request's body must arrive within 60.0 s, with no pause over 10.0 s",
+                      "details": []
+                    }
+                  },
+                  "client_fit_limit": {
+                    "value": {
+                      "code": "client_fit_limit",
+                      "message": "This client has too many fits running or waiting",
+                      "details": []
+                    }
+                  },
+                  "invalid_parse_request": {
+                    "value": {
+                      "code": "invalid_parse_request",
+                      "message": "Invalid request",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "mapping"
+                          ],
+                          "code": "unknown_column",
+                          "message": "The text has no such column"
+                        }
+                      ]
+                    }
+                  },
+                  "invalid_guess": {
+                    "value": {
+                      "code": "invalid_guess",
+                      "message": "Invalid request",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "model"
+                          ],
+                          "code": "unknown_model",
+                          "message": "This model does not exist"
+                        }
+                      ]
+                    }
+                  },
+                  "guess_unavailable": {
+                    "value": {
+                      "code": "guess_unavailable",
+                      "message": "This model has no neural net guess",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "model"
+                          ],
+                          "code": "no_neural_net",
+                          "message": "See has_initial_guess in GET /api/models"
+                        }
+                      ]
+                    }
+                  },
+                  "invalid_calculation": {
+                    "value": {
+                      "code": "invalid_calculation",
+                      "message": "Invalid calculation",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "parameters",
+                            "m_eff"
+                          ],
+                          "code": "missing_parameter",
+                          "message": "This mode needs it"
+                        }
+                      ]
+                    }
+                  },
+                  "validation_error": {
+                    "value": {
+                      "code": "validation_error",
+                      "message": "Invalid request",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "seebeck_v_per_k",
+                            3
+                          ],
+                          "code": "float_parsing",
+                          "message": "Input should be a valid number, unable to parse string as a number"
+                        }
+                      ]
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        }
+      }
+    },
     "/api/calc": {
       "post": {
         "tags": [
@@ -8402,6 +8723,51 @@
         ],
         "title": "NumericalGuessFound",
         "description": "Seebeck-only estimate; mass magnitude remains a reference value."
+      },
+      "ParameterDomain": {
+        "properties": {
+          "lower": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lower"
+          },
+          "upper": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upper"
+          },
+          "inclusive": {
+            "type": "boolean",
+            "title": "Inclusive",
+            "default": true
+          },
+          "empty": {
+            "type": "boolean",
+            "title": "Empty",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "ParameterDomain",
+        "examples": [
+          {
+            "empty": false,
+            "inclusive": false,
+            "upper": 1000.0
+          }
+        ]
       },
       "ParameterResponse": {
         "properties": {

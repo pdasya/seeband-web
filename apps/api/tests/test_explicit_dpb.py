@@ -249,3 +249,34 @@ def test_ef_diagram_keeps_structural_input_validation(client, change):
         parameters=dict(m1=1, mass_ratio=1, band_offset_k=1000, fermi_energy=1100),
     )
     assert client.post("/api/band-diagram", json=body | change).status_code == 422
+
+
+def test_manual_parameter_domain_response_and_invalid_inputs(client):
+    url = "/api/dpb/parameter-domain"
+    query = dict(
+        name="fermi_energy",
+        band_configuration="vb_vb",
+        carrier_type="p",
+        fermi_energy=0,
+        band_offset_k=400,
+        mass_ratio=2,
+        band_1_degeneracy=1,
+        band_2_degeneracy=8,
+    )
+
+    def domain(**changes):
+        response = client.get(url, params=query | changes)
+        assert response.status_code == 200, response.text
+        return response.json()
+
+    assert domain() == dict(lower=None, upper=400, inclusive=False, empty=False)
+    assert domain(band_configuration="cb_cb", carrier_type="n", band_offset_k=-400) == dict(
+        lower=-400, upper=None, inclusive=False, empty=False
+    )
+    assert domain(band_configuration="vb_cb", band_offset_k=-180) == dict(
+        lower=None, upper=-160, inclusive=True, empty=False
+    )
+    assert domain(name="mass_ratio", band_configuration="vb_cb", band_offset_k=-180)["empty"]
+    assert domain(name="mass_ratio") == dict(lower=None, upper=None, inclusive=True, empty=False)
+    for changes in (dict(mass_ratio=0), dict(band_1_degeneracy="inf"), dict(fermi_energy="nan")):
+        assert client.get(url, params=query | changes).status_code == 422

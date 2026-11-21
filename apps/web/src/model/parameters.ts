@@ -8,6 +8,110 @@ import { STRINGS } from "@/strings";
 export type ParameterDescription = components["schemas"]["ParameterResponse"];
 export type FitBounds = components["schemas"]["BoundsInput"];
 
+/** Core-unit limits for manual exploration, independent of joint fit bounds. */
+export type ExplorationDomain = {
+  lower?: number;
+  upper?: number;
+  inclusive: boolean;
+};
+
+export function inExplorationDomain(
+  value: number,
+  domain?: ExplorationDomain,
+): boolean {
+  return (
+    Number.isFinite(value) &&
+    (domain === undefined ||
+      ((domain.lower === undefined ||
+        (domain.inclusive ? value >= domain.lower : value > domain.lower)) &&
+        (domain.upper === undefined ||
+          (domain.inclusive ? value <= domain.upper : value < domain.upper))))
+  );
+}
+
+/** Keep the usual conversion, but never round a valid typed value onto an excluded edge. */
+export function explorationCoreValue(
+  parameter: ParameterDescription,
+  displayed: number,
+  domain?: ExplorationDomain,
+): number | null {
+  const converted = displayToCore(parameter, displayed);
+  const raw = scaled(
+    displayed / parameter.display_factor,
+    parameter.fit_scale / parameter.display_scale,
+  );
+  if (domain !== undefined) {
+    // An energy entered in eV is stored with the same 12-digit conversion for EF and Δ.
+    // Keep that displayed edge excluded even if converting it back differs by a few ULPs.
+    if (
+      !domain.inclusive &&
+      [domain.lower, domain.upper].some(
+        (edge) =>
+          edge !== undefined &&
+          displayed === tidy(coreToDisplay(parameter, edge)),
+      )
+    )
+      return null;
+    if (
+      domain.inclusive &&
+      (converted === domain.lower || converted === domain.upper)
+    ) {
+      return inExplorationDomain(converted, domain) ? converted : null;
+    }
+    const displayDomain = {
+      ...(domain.lower === undefined
+        ? {}
+        : { lower: coreToDisplay(parameter, domain.lower) }),
+      ...(domain.upper === undefined
+        ? {}
+        : { upper: coreToDisplay(parameter, domain.upper) }),
+      inclusive: domain.inclusive,
+    };
+    if (!inExplorationDomain(displayed, displayDomain)) return null;
+  }
+  return inExplorationDomain(converted, domain)
+    ? converted
+    : inExplorationDomain(raw, domain)
+      ? raw
+      : null;
+}
+
+/** Slider grid remains anchored to the saved range; narrow ranges retain valid endpoints. */
+export function explorationSliderRange(
+  parameter: ParameterDescription,
+  domain?: ExplorationDomain,
+): { minimum: number; maximum: number } | null {
+  const { minimum, maximum } = parameter.display_range;
+  if (domain === undefined) return { minimum, maximum };
+  const step =
+    parameter.display_factor === 1
+      ? parameter.display_scale
+      : parameter.display_range.step;
+  const valid = (value: number) =>
+    value >= minimum &&
+    value <= maximum &&
+    explorationCoreValue(parameter, value, domain) !== null;
+  let lower = minimum;
+  let upper = maximum;
+  if (!valid(lower)) {
+    const edge = coreToDisplay(parameter, domain.lower ?? -Infinity);
+    const index = Math.max(0, Math.ceil((edge - minimum) / step));
+    lower = tidy(minimum + index * step);
+    if (!valid(lower)) lower = tidy(minimum + (index + 1) * step);
+    if (!valid(lower)) lower = maximum;
+  }
+  if (!valid(upper)) {
+    const edge = coreToDisplay(parameter, domain.upper ?? Infinity);
+    const index = Math.floor((edge - minimum) / step);
+    upper = tidy(minimum + index * step);
+    if (!valid(upper)) upper = tidy(minimum + (index - 1) * step);
+    if (!valid(upper)) upper = minimum;
+  }
+  return valid(lower) && valid(upper) && lower <= upper
+    ? { minimum: lower, maximum: upper }
+    : null;
+}
+
 /** How a parameter is written. Any other shows its name, so a new one needs no change. */
 export function parameterSymbol(name: string): string {
   const known: Record<string, string> = STRINGS.parameters.symbols;
@@ -183,13 +287,15 @@ export function shortened(value: number): number {
 export function typedDisplayValue(
   parameter: ParameterDescription,
   text: string,
+  domain?: ExplorationDomain,
 ): number | null {
   const value = parseNumber(text);
   const { minimum, maximum } = parameter.display_range;
   // Bounds as the screen shows them, so that a bound typed as shown counts, as that bound.
   return value !== null &&
-    value >= shownValue(parameter, minimum) &&
-    value <= shownValue(parameter, maximum)
+    explorationCoreValue(parameter, value, domain) !== null &&
+    value >= Math.min(minimum, shownValue(parameter, minimum)) &&
+    value <= Math.max(maximum, shownValue(parameter, maximum))
     ? Math.min(maximum, Math.max(minimum, value))
     : null;
 }

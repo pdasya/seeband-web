@@ -73,6 +73,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/dpb/parameter-domain": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Dpb Parameter Domain */
+        get: operations["get_dpb_parameter_domain"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/calc": {
         parameters: {
             query?: never;
@@ -1427,6 +1444,30 @@ export interface components {
             warnings: ("unsorted_temperature" | "underdetermined_fit" | "m_eff_rounds_to_zero" | "estimate_at_bound" | "large_estimate_residual" | "low_temperature_omitted")[];
         };
         /**
+         * ParameterDomain
+         * @example {
+         *       "empty": false,
+         *       "inclusive": false,
+         *       "upper": 1000
+         *     }
+         */
+        ParameterDomain: {
+            /** Lower */
+            lower?: number | null;
+            /** Upper */
+            upper?: number | null;
+            /**
+             * Inclusive
+             * @default true
+             */
+            inclusive?: boolean;
+            /**
+             * Empty
+             * @default false
+             */
+            empty?: boolean;
+        };
+        /**
          * ParameterResponse
          * @description One parameter of a fit mode.
          *
@@ -1754,6 +1795,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_dpb_parameter_domain: {
+        parameters: {
+            query: {
+                name: "fermi_energy" | "band_offset_k" | "mass_ratio";
+                band_configuration: "vb_vb" | "vb_cb" | "cb_cb";
+                carrier_type: "p" | "n";
+                fermi_energy: number;
+                band_offset_k: number;
+                mass_ratio: number;
+                band_1_degeneracy: number;
+                band_2_degeneracy: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParameterDomain"];
                 };
             };
             /** @description Default Response */

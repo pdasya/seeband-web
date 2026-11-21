@@ -223,63 +223,131 @@ test("explicit CB+CB curves and confirmed historical conversion round-trip", asy
   await expect(massLock).toHaveAttribute("aria-pressed", "false");
 });
 
-test("VB+VB updates at positive offset and explains the hole threshold", async ({
-  page,
-}) => {
-  await page.goto("/fit");
-  await page.getByLabel("Band configuration").selectOption("vb_vb");
-  const energy = page.getByRole("textbox", { name: "E_F", exact: true });
-  const offset = page.getByRole("textbox", { name: "Δ", exact: true });
-  const chart = page.getByRole("region", { name: "Chart 1", exact: true });
-  const dispersion = page.getByRole("region", { name: "Chart 4", exact: true });
-  await page
-    .locator('input[type="file"]')
-    .first()
-    .setInputFiles({
-      name: "positive-s.txt",
-      mimeType: "text/plain",
-      buffer: Buffer.from(
-        "T [K] S [V/K]\n100 0.0001\n300 0.0002\n500 0.0003\n",
-      ),
+for (const sample of [
+  {
+    configuration: "vb_vb",
+    carrier: "p",
+    offset: 0.06,
+    valid: 0.03,
+    rejected: 0.06,
+    again: 0.02,
+  },
+  {
+    configuration: "cb_cb",
+    carrier: "n",
+    offset: -0.06,
+    valid: -0.03,
+    rejected: -0.06,
+    again: -0.02,
+  },
+  {
+    configuration: "vb_cb",
+    carrier: "p",
+    offset: 0.06,
+    valid: 0.03,
+    rejected: 0.08,
+    again: 0.06,
+  },
+  {
+    configuration: "vb_cb",
+    carrier: "n",
+    offset: 0.06,
+    valid: 0.03,
+    rejected: -0.02,
+    again: 0,
+  },
+  {
+    configuration: "vb_cb",
+    carrier: "p",
+    offset: -0.06,
+    valid: -0.05,
+    rejected: -0.01,
+    again: -0.04,
+  },
+  {
+    configuration: "vb_cb",
+    carrier: "n",
+    offset: -0.06,
+    valid: -0.01,
+    rejected: -0.05,
+    again: -0.02,
+  },
+]) {
+  test(`manual EF limits for ${sample.configuration} ${sample.carrier}, offset ${sample.offset} eV`, async ({
+    page,
+  }) => {
+    await page.goto("/fit");
+    await page
+      .getByLabel("Band configuration")
+      .selectOption(sample.configuration);
+    await page
+      .getByRole("radio", {
+        name: sample.carrier === "p" ? "p: holes" : "n: electrons",
+      })
+      .click();
+    const energy = page.getByRole("textbox", { name: "E_F", exact: true });
+    const offset = page.getByRole("textbox", { name: "Δ", exact: true });
+    const sentEnergies: number[] = [];
+    page.on("request", (req) => {
+      if (req.url().endsWith("/api/calc"))
+        sentEnergies.push(
+          req.postDataJSON().parameters.fermi_energy * 8.617333262e-5,
+        );
     });
-  await offset.fill("0.06");
-  await offset.press("Enter");
-  const editEnergy = async (value: string) => {
-    const calc = page.waitForResponse(
-      (r) =>
-        r.url().endsWith("/api/calc") &&
-        Math.abs(
-          r.request().postDataJSON().parameters.fermi_energy * 8.617333262e-5 -
-            Number(value),
-        ) < 0.0002,
-    );
-    const diagram = page.waitForResponse(
-      (r) =>
-        r.url().endsWith("/api/band-diagram") &&
-        Math.abs(
-          r.request().postDataJSON().parameters.fermi_energy * 8.617333262e-5 -
-            Number(value),
-        ) < 0.0002,
-    );
-    await energy.fill(value);
+    await page
+      .locator('input[type="file"]')
+      .first()
+      .setInputFiles({
+        name: "s.txt",
+        mimeType: "text/plain",
+        buffer: Buffer.from(
+          "T [K] S [V/K]\n100 0.0001\n300 0.0002\n500 0.0003\n",
+        ),
+      });
+    await offset.fill(String(sample.offset));
+    await offset.press("Enter");
+
+    // Use the same mass and multiplicity in both pockets so compensation in overlap is at Δ/2.
+    if (sample.configuration === "vb_cb" && sample.offset < 0) {
+      const ratio = page.getByRole("textbox", { name: "m₂/m₁", exact: true });
+      await ratio.fill("1");
+      await ratio.press("Enter");
+    }
+    async function validEdit(value: number) {
+      const response = page.waitForResponse(
+        (r) =>
+          r.url().endsWith("/api/calc") &&
+          Math.abs(
+            r.request().postDataJSON().parameters.fermi_energy *
+              8.617333262e-5 -
+              value,
+          ) < 0.00001 &&
+          Math.abs(
+            r.request().postDataJSON().parameters.band_offset_k *
+              8.617333262e-5 -
+              sample.offset,
+          ) < 0.00001,
+      );
+      await energy.fill(String(value));
+      await energy.press("Enter");
+      const result = await response;
+      expect(result.status()).toBe(200);
+      const s = (await result.json()).curves.seebeck_v_per_k as number[];
+      expect(s.length).toBeGreaterThan(0);
+      expect(s.every(Number.isFinite)).toBe(true);
+      if (sample.configuration === "vb_vb")
+        expect(s.every((v) => v > 0)).toBe(true);
+      if (sample.configuration === "cb_cb")
+        expect(s.every((v) => v < 0)).toBe(true);
+    }
+    await validEdit(sample.valid);
+    await energy.fill(String(sample.rejected));
     await energy.press("Enter");
-    return Promise.all([calc, diagram]);
-  };
-  const [valid] = await editEnergy("0.03");
-  expect(valid.status()).toBe(200);
-  expect(
-    (await valid.json()).curves.seebeck_v_per_k.every(
-      (s: number) => Number.isFinite(s) && s > 0,
-    ),
-  ).toBe(true);
-  const [empty, geometry] = await editEnergy("0.10");
-  expect(empty.status()).toBe(422);
-  expect(geometry.status()).toBe(200);
-  await expect(chart.getByRole("alert")).toContainText(
-    "below the higher valence-band edge",
-  );
-  await expect(dispersion.getByRole("alert")).toHaveCount(0);
-  const [recovered] = await editEnergy("0.02");
-  expect(recovered.status()).toBe(200);
-  await expect(chart.getByRole("alert")).toHaveCount(0);
-});
+    await expect(energy).toHaveAttribute("aria-invalid", "true");
+    await validEdit(sample.again);
+    await expect(energy).toHaveAttribute("aria-invalid", "false");
+    expect(
+      sentEnergies.some((v) => Math.abs(v - sample.rejected) < 0.00001),
+    ).toBe(false);
+  });
+}

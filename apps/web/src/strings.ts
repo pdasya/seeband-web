@@ -114,6 +114,17 @@ export const STRINGS = {
       "The lower bound must be below the upper. The last valid bounds stay in use.",
     outOfRange: (minimum: string, maximum: string) =>
       `enter a number from ${minimum} to ${maximum}. The last valid value stays in use.`,
+    explorationDomain: (condition: string) =>
+      `Manual exploration: ${condition}.`,
+    outsideCarrierDomain:
+      "This value is outside the carrier range shown above. The last valid value stays in use.",
+    noDomainValues:
+      "No value is valid with the other current parameters. Adjust E_F or Δ to restore a valid state.",
+    explorationLoadFailed:
+      "Manual limits could not be loaded. Affected controls are unavailable until retry succeeds.",
+    retryExploration: "Retry limits",
+    noExplorationRange:
+      "No slider values in the saved range satisfy this condition. Edit the value or the other parameters to recover.",
   },
   model: {
     title: "Model",
