@@ -1,0 +1,16 @@
+SYNTHETIC DESIGN EVIDENCE; Python 3.13.18; stdlib only
+D=n-p [m^-3]; edges/mu/E_F [eV]; sigma fractions: constant tau only
+composition guard PASS: two positive-alpha Kane bands rejected
+gap-2 T=150 mu=+0.108651743 populations=['2.607514e+21', '2.607514e+21'] sigma_fraction=[0.210158, 0.789842] residual=1.01e-14
+gap-2 T=300 mu=+0.116820440 populations=['3.582445e+23', '3.582445e+23'] sigma_fraction=[0.220133, 0.779867] residual=1.96e-14
+gap-2 T=600 mu=+0.132455086 populations=['7.011146e+24', '7.011146e+24'] sigma_fraction=[0.240547, 0.759453] residual=4.36e-14
+gap-3 T=150 mu=+0.108679450 populations=['2.601931e+21', '2.613108e+21', '1.117619e+19'] sigma_fraction=[0.209125, 0.789335, 0.00154] residual=3.35e-14
+gap-3 T=300 mu=+0.117380472 populations=['3.505961e+23', '3.659846e+23', '1.538854e+22'] sigma_fraction=[0.209495, 0.774742, 0.015763] residual=1.30e-13
+gap-3 T=600 mu=+0.136068896 populations=['6.549270e+24', '7.479144e+24', '9.298740e+23'] sigma_fraction=[0.206324, 0.743457, 0.050219] residual=4.81e-14
+touch-3 T=150 mu=+0.010943868 populations=['4.382332e+24', '4.403782e+24', '2.145019e+22'] sigma_fraction=[0.211428, 0.786798, 0.001774] residual=9.07e-15
+touch-3 T=300 mu=+0.021654979 populations=['1.249409e+25', '1.310934e+25', '6.152500e+23'] sigma_fraction=[0.21261, 0.769442, 0.017948] residual=3.52e-14
+touch-3 T=600 mu=+0.042814674 populations=['3.563864e+25', '4.107268e+25', '5.434043e+24'] sigma_fraction=[0.210182, 0.734879, 0.054939] residual=1.31e-14
+limits PASS: alpha->0 relative delta=1.099e-10; mass x4 -> density x8.0; m=0 rejected; parabolic exact n relative error=2.220e-16; sigma=n e^2 tau/m
+one band: E_F=0.05 D=5.077496e+25 mu(300 K)=0.036219561; signed crossing D=[-6.674542018927374e+25, 0.0, 1.7953347156485313e+25]
+PASS: gap E_F equivalence, all permutations; max normalized residual=1.303e-13; 800->1600 panels: delta_mu=0.000e+00 eV, relative n/sigma delta=2.220e-16; separate 50->60 kBT tails: relative n/sigma delta=3.331e-16
+Limits: selected positive-T fixtures; alpha>=0; no anisotropy, finite bandwidth, Hall/Seebeck, production scattering, fitting or identifiability claims. Human physics confirmation remains separate.
