@@ -1,5 +1,6 @@
-# Builds the images of each merge to main, pushes them to GHCR, and deploys them over SSH. A run
-# by hand deploys a tag the registry already holds, which is also how to roll back.
+# Builds the images of each merge to main for amd64 and arm64, pushes them to GHCR, and deploys
+# them over SSH. A run by hand deploys a tag the registry already holds, which is also how to roll
+# back. A pull request that changes the deployment builds both architectures and pushes nothing.
 #
 # Deploying needs, in the "production" environment of the repository's settings:
 #   secrets  DEPLOY_SSH_KEY     a private key used only for deploying
@@ -14,6 +15,10 @@ name: Deploy
 on:
   push:
     branches: [main]
+  pull_request:
+    paths:
+      - deploy/**
+      - .github/workflows/deploy.yml
   workflow_dispatch:
     inputs:
       tag:
@@ -24,9 +29,9 @@ on:
 permissions:
   contents: read
 
-# One deploy at a time, and never cancelled halfway.
+# One deploy at a time, and never cancelled halfway; a pull request's build only within its own.
 concurrency:
-  group: deploy
+  group: deploy-${{ github.event_name == 'pull_request' && github.ref || 'main' }}
   cancel-in-progress: false
 
 env:
@@ -47,26 +52,30 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: tag
         run: echo "tag=sha-${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+      # arm64 for Ampere machines such as Oracle Cloud's free ones, amd64 for the planned host.
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+        with:
+          platforms: arm64
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-      - name: Build
+      - name: Build, and push unless a pull request
         env:
           SEEBAND_IMAGE_PREFIX: ${{ env.IMAGE_PREFIX }}
           SEEBAND_TAG: ${{ steps.tag.outputs.tag }}
           SEEBAND_COMMIT: ${{ github.sha }}
           SEEBAND_SITE_URL: ${{ vars.SEEBAND_SITE_URL }}
-        run: docker compose -f deploy/compose.yaml build
-      - name: Push
-        env:
-          SEEBAND_IMAGE_PREFIX: ${{ env.IMAGE_PREFIX }}
-          SEEBAND_TAG: ${{ steps.tag.outputs.tag }}
-        run: docker compose -f deploy/compose.yaml push
+          PUSH: ${{ github.event_name != 'pull_request' && '--push' || '' }}
+        run: |
+          docker buildx bake -f deploy/compose.yaml \
+            --set '*.platform=linux/amd64,linux/arm64' $PUSH
 
   deploy:
     name: Deploy
     needs: images
     # After the images, or alone for a tag given by hand; only once a host is configured.
-    if: always() && (needs.images.result == 'success' || (needs.images.result == 'skipped' && inputs.tag != '')) && vars.DEPLOY_HOST != ''
+    if: always() && github.event_name != 'pull_request' && (needs.images.result == 'success' || (needs.images.result == 'skipped' && inputs.tag != '')) && vars.DEPLOY_HOST != ''
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment:
