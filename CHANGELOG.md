@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- I3 (#55): the prototype runs at `https://seeband.duckdns.org` on an Oracle
+  Cloud Always Free machine (arm64, 2 OCPUs, 12 GB) at no cost, in place of
+  the Hetzner CX23 while F6 is open. It stays out of search engines, takes
+  daily security updates with a reboot at 04:00 UTC when needed, refuses SSH
+  passwords and root, and backs up its disk weekly. `deploy/host-setup.sh`
+  sets up the updates and SSH, and saves the firewall without Docker's
+  chains. The steps are in `deploy/README.md`.
+
 - I2 (#54): each merge to main builds the images, pushes them to GHCR as
   `sha-<commit>` and, once a host is configured, deploys them over SSH.
   `deploy/deploy.sh` checks that the public health route answers with the

@@ -143,33 +143,63 @@ settings, `SEEBAND_SITE_ADDRESS`, the ports and the API's limits, stay in its `.
 workflow touches. Until `DEPLOY_HOST` is set, as before the machine exists (I3), each merge builds
 and pushes the images and skips the deploy.
 
-## A temporary host: Oracle Cloud Always Free
+## The prototype host (I3): Oracle Cloud Always Free
 
-Until the planned host exists, an Always Free machine of Oracle Cloud can run the same images, to
-show results. Its free machines are Ampere, arm64, which is why the images are built for both
-architectures. It holds no data either: measurements are only used for the calculation asked for.
+The prototype runs on an Always Free machine of Oracle Cloud instead of the Hetzner CX23 the plan
+named, as who pays for a host (F6, #6) is still open. It costs nothing: the machine, its disk, the
+public address and the backups below are all within Oracle's Always Free limits, and the console
+marks the boot volume Always Free (2026-11-21). Oracle's free machines are Ampere, arm64, which is why the images are built for both
+architectures. The machine holds no data either: measurements are only used for the calculation
+asked for.
+
+| What           | Value                                                                   |
+| -------------- | ----------------------------------------------------------------------- |
+| Region         | Germany Central (Frankfurt), AD-3                                       |
+| Shape          | `VM.Standard.A1.Flex`, 2 OCPUs, 12 GB, Ubuntu 24.04 (aarch64)           |
+| Disk           | 47 GB boot volume, weekly backup kept 27 days                           |
+| Address        | `https://seeband.duckdns.org`, a DuckDNS name on an ephemeral public IP |
+| Cost           | 0 € (Always Free)                                                       |
+| Search engines | kept out: no `SEEBAND_SITE_URL`, so `noindex` and `Disallow: /`         |
 
 1. **The machine** (Oracle Cloud console, one time; needs an Oracle account):
    - Compute → Instances → Create: image Ubuntu 24.04, shape `VM.Standard.A1.Flex` (Ampere),
-     2 OCPUs and 12 GB, within the free allowance; a public IPv4 address; your own SSH key.
+     2 OCPUs and 12 GB, within the free allowance; your own SSH key.
+   - The instance's VNIC → IP administration → Edit: an ephemeral public IP. It stays while the
+     instance exists, through stops and reboots.
    - In the instance's subnet, Security List → Ingress Rules: TCP 80 and 443, and UDP 443,
      from `0.0.0.0/0`. SSH (TCP 22) is open already.
-2. **A name.** Until a domain is chosen (F7), `<ip with dashes>.sslip.io` resolves to the machine,
-   such as `203-0-113-7.sslip.io` for 203.0.113.7, and Caddy gets an HTTPS certificate for it.
+2. **A name.** A DuckDNS subdomain (duckdns.org, sign in with GitHub) set to the public IP, such
+   as `seeband.duckdns.org`. The IP does not change, so its update token is not needed anywhere.
+   Without one, `<ip with dashes>.sslip.io` also resolves to the machine. Caddy gets the HTTPS
+   certificate for the name itself.
 3. **A deploy key**, on your computer: `ssh-keygen -t ed25519 -N '' -C seeband-deploy -f seeband-deploy`.
 4. **The machine's setup**: copy `deploy/host-setup.sh` there and run
-   `sudo bash host-setup.sh "$(cat seeband-deploy.pub)" 203-0-113-7.sslip.io`. It installs
+   `sudo bash host-setup.sh "$(cat seeband-deploy.pub)" seeband.duckdns.org`. It installs
    Docker, creates the user `deploy` with only that key, opens the ports in the machine's own
-   firewall, and writes `/opt/seeband/.env`.
-5. **GitHub**, environment `production`, limited to `main`: the secret `DEPLOY_SSH_KEY` is the
+   firewall, turns on daily security updates with a reboot at 04:00 UTC when one needs it,
+   refuses SSH passwords and root, and writes `/opt/seeband/.env`.
+5. **Backups** (Storage → Block Storage): a backup policy with one weekly incremental schedule,
+   Monday 00:00 UTC, kept 27 days, assigned to the boot volume. That keeps at most four backups,
+   within the five free ones, and leaves one for a manual backup before a risky change. The disk
+   holds the system, `.env` and Caddy's certificates; everything else comes back from the images.
+6. **GitHub**, environment `production`, limited to `main`: the secret `DEPLOY_SSH_KEY` is the
    contents of `seeband-deploy`; `DEPLOY_KNOWN_HOSTS` is the output of
    `ssh-keyscan -t ed25519 <ip>`; the vars are `DEPLOY_USER` = `deploy`,
-   `DEPLOY_PATH` = `/opt/seeband` and `SEEBAND_PUBLIC_URL` = `https://203-0-113-7.sslip.io`. As a
+   `DEPLOY_PATH` = `/opt/seeband` and `SEEBAND_PUBLIC_URL` = `https://seeband.duckdns.org`. As a
    repository variable, `DEPLOY_HOST` = the IP; `SEEBAND_SITE_URL` stays unset, so the site stays
    out of search engines.
-6. **Deploy**: the next merge to main deploys, or run the Deploy workflow by hand with a tag.
+7. **Deploy**: the next merge to main deploys, or run the Deploy workflow by hand with a tag.
 
-Moving to the planned host later means repeating 4 and 5 there and changing the vars.
+**A new name or host** means changing `SEEBAND_SITE_ADDRESS` in the host's `.env` and
+`SEEBAND_PUBLIC_URL`, then deploying again. Moving to another machine means repeating 4 to 6
+there.
+
+**A free account's limits.** Oracle may reclaim an Always Free instance that stays idle for a
+week (low CPU, network and memory use), and the free A1 capacity of a region is sometimes
+exhausted, so a deleted machine may not be recreatable at once. Oracle does not reclaim the
+instances of an account upgraded to Pay As You Go, which stays free within the same limits; that
+upgrade needs a payment card and is the owner's decision. Neither has happened here; both are
+reasons to keep the paid host (F6) as the plan for anything beyond showing results.
 
 ## Operations
 
@@ -205,12 +235,18 @@ Moving to the planned host later means repeating 4 and 5 there and changing the 
   `deploy.sh` and checks that images of other tags were removed. It then deploys a tag whose API
   reports another commit, and checks that the script went back to the first tag and that this
   rollback passed its own check. Last, it deploys that tag with a new Compose file under which the
-  API cannot start, and checks that the rollback used the Compose file before it. Locally, with stand-ins for Docker and curl, it also kept a good tag,
-  recorded the previous one, rolled back from a tag whose API reported another commit, and failed
-  plainly when the rollback failed too.
-- **Not yet:** the Deploy workflow itself, which needs the host and its settings (I3), and a first
-  real deploy with a deliberately failing health check on it.
-- **Not yet, on the target machine (I3):**
+  API cannot start, and checks that the rollback used the Compose file before it. Locally, with
+  stand-ins for Docker and curl, it also kept a good tag, recorded the previous one, rolled back
+  from a tag whose API reported another commit, and failed plainly when the rollback failed too.
+- **On the prototype host, 2026-11-21.** The Deploy workflow built both architectures and deployed
+  `a7d8cf1` from main. From outside, `/api/health` answered with that commit and `/api/ready` with
+  `ready`; the site, the guide, `/fit`, `/results` and the conventions answered 200; a calculation
+  answered 200; the certificate is Let's Encrypt's for the DuckDNS name; `http://` redirects to
+  `https://`; every answer carries `X-Robots-Tag: noindex, nofollow`, and `robots.txt` says
+  `Disallow: /`. After a reboot, the stack answered again within 35 s with the same commit, and the
+  firewall rules were in place.
+- **Not yet:** a real deploy with a deliberately failing health check on the host.
+- **Not yet, on the prototype host:**
   - the review's mixed load, with its p50/p95/p99, memory and orphan processes;
   - that IPv4 and IPv6 visitors count as separate clients, by `curl -4` and `curl -6` from two
     hosts. Until that passes, publish no AAAA record.
