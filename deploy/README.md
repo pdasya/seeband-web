@@ -132,6 +132,33 @@ settings, `SEEBAND_SITE_ADDRESS`, the ports and the API's limits, stay in its `.
 workflow touches. Until `DEPLOY_HOST` is set, as before the machine exists (I3), each merge builds
 and pushes the images and skips the deploy.
 
+## A temporary host: Oracle Cloud Always Free
+
+Until the planned host exists, an Always Free machine of Oracle Cloud can run the same images, to
+show results. Its free machines are Ampere, arm64, which is why the images are built for both
+architectures. It holds no data either: measurements are only used for the calculation asked for.
+
+1. **The machine** (Oracle Cloud console, one time; needs an Oracle account):
+   - Compute → Instances → Create: image Ubuntu 24.04, shape `VM.Standard.A1.Flex` (Ampere),
+     2 OCPUs and 12 GB, within the free allowance; a public IPv4 address; your own SSH key.
+   - In the instance's subnet, Security List → Ingress Rules: TCP 80 and 443, and UDP 443,
+     from `0.0.0.0/0`. SSH (TCP 22) is open already.
+2. **A name.** Until a domain is chosen (F7), `<ip with dashes>.sslip.io` resolves to the machine,
+   such as `203-0-113-7.sslip.io` for 203.0.113.7, and Caddy gets an HTTPS certificate for it.
+3. **A deploy key**, on your computer: `ssh-keygen -t ed25519 -N '' -C seeband-deploy -f seeband-deploy`.
+4. **The machine's setup**: copy `deploy/host-setup.sh` there and run
+   `sudo bash host-setup.sh "$(cat seeband-deploy.pub)" 203-0-113-7.sslip.io`. It installs
+   Docker, creates the user `deploy` with only that key, opens the ports in the machine's own
+   firewall, and writes `/opt/seeband/.env`.
+5. **GitHub**, environment `production`: the secret `DEPLOY_SSH_KEY` is the contents of
+   `seeband-deploy`; `DEPLOY_KNOWN_HOSTS` is the output of `ssh-keyscan -t ed25519 <ip>`; the vars
+   are `DEPLOY_HOST` = the IP, `DEPLOY_USER` = `deploy`, `DEPLOY_PATH` = `/opt/seeband`,
+   `SEEBAND_PUBLIC_URL` = `https://203-0-113-7.sslip.io`, and `SEEBAND_SITE_URL` left empty, so
+   the site stays out of search engines.
+6. **Deploy**: the next merge to main deploys, or run the Deploy workflow by hand with a tag.
+
+Moving to the planned host later means repeating 4 and 5 there and changing the vars.
+
 ## Operations
 
 - **Update or roll back:** by the Deploy workflow, below. By hand on the host, in its deploy directory: `./deploy.sh "$(cat .previous-tag)" https://<domain>/api/health`.
