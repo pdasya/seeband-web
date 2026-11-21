@@ -164,6 +164,54 @@
       "replay_status": "reproduced_from_pr"
     },
     {
+      "id": "SKB-CORE",
+      "scope": "published masses and synthetic single-band transport",
+      "status": "passed",
+      "replay_status": "reproduced_from_pr",
+      "claim": "All SKBcal masses in Tables 1 and 2, SI acoustic transport at finite nonparabolicity, the SPB limit and equivalent-valley scaling.",
+      "command": "PYTHONPATH=packages/seeband_core/src .venv/bin/python scripts/verify_skb_design_reference.py --core",
+      "cwd": "REPO",
+      "output": "evidence/verify_skb_core.txt",
+      "output_sha256": "551d59075e19d170e1e1a50833e576355e7c7ba552c835c8aa6cbcc9278d0ad3",
+      "source": {
+        "doi": "10.1038/s41598-022-09734-4",
+        "pdf": "https://sdg.ncue.edu.tw/var/file/32/1032/img/1022/17.2.1B.pdf",
+        "pdf_sha256": "486c35ab9b65c0aae20f60fbea6f42ff6db26aea74fae02241746e4fd3c956ec",
+        "printed_pages": "1–5, 11–12"
+      },
+      "provenance": "Four SI constants imported from seeband_core.math_module. The table targets are the published SKBcal masses. The synthetic comparisons use dimensional velocity/DOS moments and an independent SPB Fermi-integral reference.",
+      "conditions": {
+        "temperatures_K": [150, 600],
+        "eta": [-8, 0, 12],
+        "carrier_types": ["CB", "VB"],
+        "equivalent_valleys": [1, 2, 6],
+        "epsilon": [0, 0.08, 0.4],
+        "near_parabolic_epsilon": [0.0001, 1e-6, 1e-8],
+        "single_valley_mass_me": 0.7,
+        "elastic_modulus_Pa": 100000000000.0,
+        "deformation_potential_eV": 10
+      },
+      "metrics": {
+        "table_rows": 11,
+        "max_relative_table_mass_error": 0.0002188,
+        "transport_cases": 108,
+        "max_relative_transport_error": 6.286e-13,
+        "exact_parabolic_cases": 36,
+        "max_relative_parabolic_error": 1.867e-11,
+        "max_relative_error_at_epsilon_1e_minus_8": 1.861e-7,
+        "max_relative_grid_change": 8.734e-11,
+        "max_relative_tail_change": 3.609e-12
+      },
+      "relative_tolerances": {
+        "table_mass": 0.002,
+        "two_core_regression_anchors": 1e-9,
+        "transport_and_exact_parabolic": 1e-8,
+        "near_parabolic_final": 2e-6,
+        "valley_scaling": 1e-12
+      },
+      "limitations": "Isolated, isotropic intravalley acoustic band with prescribed amplitude. Published tables have N=K=1. N>1 and absolute conductivity are synthetic checks. Mixed-channel weights, empirical amplitude calibration, production calculations and fit behavior remain open."
+    },
+    {
       "id": "MIX",
       "scope": "reference calculation",
       "status": "passed",
