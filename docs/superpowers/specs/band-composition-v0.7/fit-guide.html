@@ -572,6 +572,9 @@
           limits = new Map();
         let editBounds = false,
           page = "fit";
+        let bandIds = [1, 2, 3],
+          nextBandId = 4,
+          legacyState;
         let n = 3,
           types = [1, 0, 1],
           mechanism = "ac",
@@ -735,14 +738,33 @@
           return rows;
         }
         const strip = (html) => html.replace(/<[^>]*>/g, "");
-        function stateKey(row) {
-          const index = Number(row.id.match(/[0-2]$/)?.[0] ?? 0);
-          const bandContext = types[0] + "-" + types[index];
-          const scatteringContext =
-            row.id === "scale" || row.id.startsWith("ratio")
-              ? "/" + mechanism
-              : "";
-          return row.id + "/" + bandContext + scatteringContext;
+        // Keys follow a band and a physical quantity, not its current label.
+        function stateKey(row, bandTypes = types, scattering = mechanism) {
+          const id = row.id;
+          if (["ef", "tMin", "tMax"].includes(id)) return id;
+          const index = Number(id.match(/[0-2]$/)?.[0] ?? 0);
+          const band = "band/" + bandIds[index] + "/";
+          const reference = "/to/" + bandIds[0];
+          if (id.startsWith("N")) return band + "valleys";
+          if (id.startsWith("gap")) return band + "offset:eV" + reference;
+          if (id.startsWith("massRatio")) return band + "massRatio" + reference;
+          if (id.startsWith("ratio"))
+            return band + "ratio/" + scattering + reference;
+          if (id.startsWith("alpha")) return band + "alpha:eV-1";
+          if (id.startsWith("mix")) return band + "mix:300K";
+          if (id.startsWith("amplitude"))
+            return (
+              band +
+              (bandTypes[index] >= 2 ? "amplitude:Pa/eV2" : "scale/ac:S/m")
+            );
+          if (id === "scale")
+            return (
+              band +
+              "scale/" +
+              scattering +
+              (scattering === "dis" ? ":S/(m*K)" : ":S/m")
+            );
+          return band + id;
         }
         function icon(name, fallback) {
           return window.lucide
@@ -763,6 +785,10 @@
                 lastParabolic,
               },
               privateContent: {
+                stateVersion: 2,
+                bandIds: [...bandIds],
+                nextBandId,
+                legacyState,
                 held: [...held],
                 values: Object.fromEntries(values),
                 limits: Object.fromEntries(limits),
@@ -804,10 +830,11 @@
             input.type = "number";
             input.min = id.startsWith("N") ? "1" : "0.001";
             input.step = id.startsWith("N") ? "1" : "any";
-            input.value = values.get(id) ?? start;
+            const key = stateKey({ id });
+            input.value = values.get(key) ?? start;
             input.onchange = () => {
               if (input.value && input.checkValidity()) {
-                values.set(id, input.value);
+                values.set(key, input.value);
                 save();
               } else input.reportValidity();
             };
@@ -901,8 +928,12 @@
             : mechanism !== "ac"
               ? "Select acPh to enable Kane bands."
               : "";
-          const rows = form(),
-            list = el(".rows"),
+          const rows = form();
+          for (const row of rows) {
+            const key = stateKey(row);
+            if (!values.has(key)) values.set(key, String(row.initial));
+          }
+          const list = el(".rows"),
             body = el("tbody");
           list.replaceChildren();
           body.replaceChildren();
@@ -1253,12 +1284,15 @@
           for (let i = next; i < n; i++) {
             types[i] = 0;
             for (const state of [values, limits, held])
-              for (const key of state.keys()) {
-                if (key === "N" + i || key.split("/")[0].endsWith(String(i)))
+              for (const key of state.keys())
+                if (key.startsWith("band/" + bandIds[i] + "/"))
                   state.delete(key);
-              }
           }
-          if (next > n) types[n] = 1;
+          bandIds.length = Math.min(next, n);
+          if (next > n) {
+            types[n] = 1;
+            bandIds.push(nextBandId++);
+          }
           n = next;
           if (before && !hasKane()) mechanism = lastParabolic;
           changed();
@@ -1289,27 +1323,6 @@
         function restore(snapshot) {
           const s = snapshot?.modelContent;
           const p = snapshot?.privateContent;
-          if (p) {
-            held.clear();
-            for (const key of Array.isArray(p.held) ? p.held : [])
-              if (typeof key === "string") held.add(key);
-            values.clear();
-            for (const [key, v] of Object.entries(p.values ?? {}))
-              if (typeof v === "string" && Number.isFinite(Number(v)))
-                values.set(key, v);
-            limits.clear();
-            for (const [key, v] of Object.entries(p.limits ?? {}))
-              if (
-                Array.isArray(v) &&
-                v.length === 2 &&
-                v.every(
-                  (x) => typeof x === "string" && Number.isFinite(Number(x)),
-                )
-              )
-                limits.set(key, v);
-            editBounds = p.editBounds === true;
-            page = p.page === "guide" ? "guide" : "fit";
-          }
           if (
             s &&
             [1, 2, 3].includes(s.n) &&
@@ -1329,6 +1342,106 @@
             )
               ? s.lastParabolic
               : mechanism;
+          }
+          const validIds =
+            p?.stateVersion === 2 &&
+            Array.isArray(p.bandIds) &&
+            p.bandIds.length === n &&
+            p.bandIds.every((id) => Number.isSafeInteger(id) && id > 0) &&
+            new Set(p.bandIds).size === n;
+          bandIds = validIds
+            ? [...p.bandIds]
+            : Array.from({ length: n }, (_, i) => i + 1);
+          nextBandId = Math.max(...bandIds) + 1;
+          if (validIds && Number.isSafeInteger(p.nextBandId))
+            nextBandId = Math.max(nextBandId, p.nextBandId);
+          held.clear();
+          values.clear();
+          limits.clear();
+          legacyState = p?.legacyState;
+          editBounds = false;
+          page = "fit";
+          if (p) {
+            let source = p;
+            if (!validIds) {
+              // Old keys can collide after type changes. Choose one complete
+              // record, favouring the saved active context, including its hold.
+              legacyState = {
+                values: p.values,
+                limits: p.limits,
+                held: p.held,
+              };
+              const candidates = new Map();
+              const activeRows = new Set(form().map((row) => row.id));
+              const keys = new Set([
+                ...Object.keys(p.values ?? {}),
+                ...Object.keys(p.limits ?? {}),
+                ...(Array.isArray(p.held) ? p.held : []),
+              ]);
+              for (const oldKey of keys) {
+                if (typeof oldKey !== "string") continue;
+                let key,
+                  score = 0;
+                if (/^(ef|tMin|tMax|N[0-2])$/.test(oldKey)) {
+                  if (oldKey.startsWith("N") && +oldKey[1] >= n) continue;
+                  key = stateKey({ id: oldKey });
+                } else {
+                  const match = oldKey.match(
+                    /^(ef|mass|gap[12]|massRatio[12]|alpha[0-2]|amplitude[0-2]|scale|ratio[12]|mix[0-2])\/([0-3])-([0-3])(?:\/(ac|dis|mix|ion))?$/,
+                  );
+                  if (!match) continue;
+                  const [, id, first, own, scattering] = match;
+                  const index = Number(id.match(/[0-2]$/)?.[0] ?? 0);
+                  if (index >= n) continue;
+                  const oldTypes = [...types];
+                  oldTypes[0] = +first;
+                  oldTypes[index] = +own;
+                  key = stateKey({ id }, oldTypes, scattering ?? "ac");
+                  score =
+                    Number(+first === types[0]) * 8 +
+                    Number(+own === types[index]) * 4 +
+                    Number(activeRows.has(id));
+                }
+                if (!candidates.has(key) || candidates.get(key).score < score)
+                  candidates.set(key, { oldKey, score });
+              }
+              source = { values: {}, limits: {}, held: [] };
+              for (const [key, { oldKey }] of candidates) {
+                source.values[key] = p.values?.[oldKey];
+                source.limits[key] = p.limits?.[oldKey];
+                if (Array.isArray(p.held) && p.held.includes(oldKey))
+                  source.held.push(key);
+              }
+            }
+            const activeKey = (key) => {
+              if (["ef", "tMin", "tMax"].includes(key)) return true;
+              const match = key.match(/^band\/(\d+)\//);
+              if (!match || !bandIds.includes(+match[1])) return false;
+              const reference = key.match(/\/to\/(\d+)$/);
+              return !reference || +reference[1] === bandIds[0];
+            };
+            for (const key of Array.isArray(source.held) ? source.held : [])
+              if (typeof key === "string" && activeKey(key)) held.add(key);
+            for (const [key, value] of Object.entries(source.values ?? {}))
+              if (
+                activeKey(key) &&
+                typeof value === "string" &&
+                Number.isFinite(Number(value))
+              )
+                values.set(key, value);
+            for (const [key, pair] of Object.entries(source.limits ?? {}))
+              if (
+                activeKey(key) &&
+                Array.isArray(pair) &&
+                pair.length === 2 &&
+                pair.every(
+                  (value) =>
+                    typeof value === "string" && Number.isFinite(Number(value)),
+                )
+              )
+                limits.set(key, [...pair]);
+            editBounds = p.editBounds === true;
+            page = p.page === "guide" ? "guide" : "fit";
           }
           render();
         }

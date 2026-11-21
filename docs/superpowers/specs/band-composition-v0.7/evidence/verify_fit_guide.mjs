@@ -6,7 +6,7 @@ import path from "node:path";
 const loadPackage = createRequire(import.meta.url);
 const project = process.cwd();
 const kit = path.resolve(import.meta.dirname, "..");
-const file = path.join(kit, "fit-guide.html");
+const file = process.env.FIT_GUIDE_FILE ?? path.join(kit, "fit-guide.html");
 const dictionary = JSON.parse(
   fs.readFileSync(path.join(kit, "../band-parameter-labels.json")),
 ).fit_eligibility_rules;
@@ -232,14 +232,226 @@ for (const t of [0, 1]) {
   restore({ n: 3, types: [t, t, t], mechanism: "ac", selectedMode: 0 });
   assert.equal(one("#sb-gap-value").textContent, "Undetermined");
 }
-console.log(
-  "Signed gap, overlap, contact, extrema and reverse-order bounds passed.",
-);
+// Item 8: exercise edits through the rendered controls, without depending on
+// the private snapshot's parameter-key format.
+function verifyBandTransitions(w) {
+  const d = w.document;
+  const one = (selector) => d.querySelector(selector);
+  const field = (id, selector) => one('[data-field="' + id + '"] ' + selector);
+  const mode = (i) => one('[data-mode="' + i + '"]').click();
+  const set = (input, value) => {
+    input.value = value;
+    input.dispatchEvent(new w.Event("change"));
+  };
+  const equal = (actual, expected, message = "DOM state matches") => {
+    if (JSON.stringify(actual) !== JSON.stringify(expected))
+      throw new Error(
+        message +
+          ": expected " +
+          JSON.stringify(expected) +
+          ", received " +
+          JSON.stringify(actual),
+      );
+  };
+  const ok = (actual, message) => equal(Boolean(actual), true, message);
+  const restore = (modelContent, privateContent = {}) =>
+    w.dispatchEvent(
+      new w.CustomEvent("openai:set_globals", {
+        detail: { globals: { widgetState: { modelContent, privateContent } } },
+      }),
+    );
+  let saved;
+  w.openai = {
+    setWidgetState: (snapshot) => {
+      saved = snapshot;
+      return Promise.resolve();
+    },
+  };
+  const choose = (band, choice) =>
+    one('[data-band="' + band + '"] [data-choice="' + choice + '"]').click();
+  const bounds = (id) => [
+    field(id, ".limits label:first-child input"),
+    field(id, ".limits label:last-child input"),
+  ];
+  const edit = (id, value, low, high, locked = true) => {
+    const pair = bounds(id);
+    set(pair[0], String(low));
+    set(pair[1], String(high));
+    set(field(id, "input"), String(value));
+    if ((field(id, ".lock").getAttribute("aria-pressed") === "true") !== locked)
+      field(id, ".lock").click();
+  };
+  const expectField = (id, value, low, high, locked = true, forced = false) => {
+    ok(field(id, "input"), id + " is visible");
+    equal(+field(id, "input").value, value, id + " value survives transition");
+    equal(
+      bounds(id).map((input) => +input.value),
+      [low, high],
+      id + " bounds survive transition",
+    );
+    equal(
+      field(id, ".lock").getAttribute("aria-pressed"),
+      String(locked),
+      id + " lock survives transition",
+    );
+    equal(field(id, ".lock").disabled, forced, id + " manual eligibility");
+  };
+  restore({ n: 3, types: [0, 1, 0], mechanism: "ac", selectedMode: 2 });
+  one("#sb-bounds").click();
+  edit("ef", -0.045, -0.3, 0.2);
+  edit("mass", 2.7, 0.4, 7);
+  edit("gap1", 0.13, -0.25, 0.45);
+  edit("gap2", -0.07, -0.35, 0.2, false);
+  edit("massRatio1", 3.2, 0.3, 8);
+  edit("massRatio2", 4.4, 0.5, 9, false);
+  edit("scale", 27000, 1500, 90000);
+  edit("ratio1", 2.2, 0.2, 6);
+  edit("ratio2", 5.5, 0.6, 10, false);
+  for (const [band, choice] of [
+    [1, "VB"],
+    [0, "CB"],
+    [2, "CB"],
+  ]) {
+    choose(band, choice);
+    expectField("ef", -0.045, -0.3, 0.2);
+    expectField("mass", 2.7, 0.4, 7);
+    expectField("gap1", 0.13, -0.25, 0.45);
+    expectField("gap2", -0.07, -0.35, 0.2, false);
+    expectField("massRatio1", 3.2, 0.3, 8);
+    expectField("massRatio2", 4.4, 0.5, 9, false);
+    expectField("scale", 27000, 1500, 90000);
+    expectField("ratio1", 2.2, 0.2, 6);
+    expectField("ratio2", 5.5, 0.6, 10, false);
+  }
+  choose(1, "Kane");
+  expectField("amplitude0", 27000, 1500, 90000);
+  expectField("gap1", 0.13, -0.25, 0.45);
+  expectField("gap2", -0.07, -0.35, 0.2, false);
+  expectField("massRatio1", 3.2, 0.3, 8);
+  expectField("massRatio2", 4.4, 0.5, 9, false);
+  edit("alpha1", 1.8, 0.2, 4);
+  edit("amplitude0", 12000, 100, 50000);
+  edit("amplitude1", 23000, 200, 60000, false);
+  edit("amplitude2", 34000, 300, 70000);
+  mode(0);
+  expectField("mass", 2.7, 0.4, 7, true, true);
+  expectField("amplitude1", 23000, 200, 60000, true, true);
+  set(field("amplitude1", "input"), "24000");
+  mode(2);
+  expectField("amplitude1", 24000, 200, 60000, false);
+  choose(1, "CB");
+  expectField("alpha1", 1.8, 0.2, 4);
+  expectField("amplitude0", 12000, 100, 50000);
+  expectField("amplitude1", 24000, 200, 60000, false);
+  expectField("amplitude2", 34000, 300, 70000);
+  choose(1, "Parabolic");
+  equal(field("alpha1", "input"), null);
+  expectField("scale", 12000, 100, 50000);
+  expectField("ratio1", 2.2, 0.2, 6);
+  choose(1, "Kane");
+  expectField("alpha1", 1.8, 0.2, 4);
+  expectField("amplitude1", 24000, 200, 60000, false);
+  // The host serializes widget state when reopening the prototype.
+  const savedSnapshot = () => JSON.parse(JSON.stringify(saved));
+  const snapshot = savedSnapshot();
+  restore({ n: 1, types: [0, 0, 0], mechanism: "dis", selectedMode: 0 });
+  restore(snapshot.modelContent, snapshot.privateContent);
+  expectField("alpha1", 1.8, 0.2, 4);
+  expectField("massRatio2", 4.4, 0.5, 9, false);
+  expectField("amplitude1", 24000, 200, 60000, false);
+  one("#sb-remove").click();
+  one("#sb-add").click();
+  equal(field("massRatio2", "input").value, "1");
+  equal(
+    bounds("massRatio2").map((input) => input.value),
+    ["", ""],
+  );
+  equal(field("massRatio2", ".lock").getAttribute("aria-pressed"), "false");
+  expectField("alpha1", 1.8, 0.2, 4);
+  expectField("massRatio1", 3.2, 0.3, 8);
+
+  // Moving Kane must not reuse a prefactor with a different physical unit.
+  choose(1, "Parabolic");
+  choose(0, "Kane");
+  equal(field("amplitude0", "input").value, "");
+  equal(field("amplitude1", "input").value, "");
+  edit("alpha0", 0.6, 0.1, 2, false);
+  edit("amplitude0", 81000, 800, 180000, false);
+  edit("amplitude1", 15000, 150, 75000);
+  choose(0, "Parabolic");
+  expectField("scale", 12000, 100, 50000);
+  choose(1, "Kane");
+  expectField("alpha1", 1.8, 0.2, 4);
+  expectField("amplitude1", 24000, 200, 60000, false);
+  choose(1, "Parabolic");
+  choose(0, "Kane");
+  expectField("alpha0", 0.6, 0.1, 2, false);
+  expectField("amplitude0", 81000, 800, 180000, false);
+  expectField("amplitude1", 15000, 150, 75000);
+
+  restore({ n: 2, types: [0, 1, 0], mechanism: "ac", selectedMode: 2 });
+  one("#sb-bounds").click();
+  edit("gap1", -0.03, -0.2, 0.4);
+  choose(1, "Kane");
+  expectField("gap1", -0.03, -0.2, 0.4);
+  choose(1, "Parabolic");
+  expectField("gap1", -0.03, -0.2, 0.4);
+  choose(0, "CB");
+  expectField("gap1", -0.03, -0.2, 0.4);
+  choose(1, "VB");
+  expectField("gap1", 0.03, -0.4, 0.2);
+  const reversedSnapshot = savedSnapshot();
+  restore(reversedSnapshot.modelContent, reversedSnapshot.privateContent);
+  expectField("gap1", 0.03, -0.4, 0.2);
+  choose(0, "VB");
+  expectField("gap1", -0.03, -0.2, 0.4);
+  choose(1, "CB");
+  expectField("gap1", -0.03, -0.2, 0.4);
+
+  // Literal legacy input is the compatibility boundary. Expectations still
+  // observe DOM state, never the replacement snapshot's internal keys.
+  const legacy = {
+    values: {
+      "scale/0-0/ac": "11000",
+      "amplitude0/0-0": "22000",
+      "gap1/0-1": "0.08",
+      "gap1/0-3": "0.14",
+      "mass/1-1": "8",
+      "mass/0-0": "2.6",
+    },
+    limits: {
+      "scale/0-0/ac": ["110", "77000"],
+      "amplitude0/0-0": ["220", "88000"],
+      "gap1/0-1": ["-0.1", "0.3"],
+      "gap1/0-3": ["-0.2", "0.5"],
+      "mass/1-1": ["1", "10"],
+      "mass/0-0": ["0.4", "6"],
+    },
+    held: ["scale/0-0/ac", "gap1/0-1", "mass/1-1"],
+    editBounds: true,
+  };
+  restore({ n: 2, types: [0, 3, 0], mechanism: "ac", selectedMode: 2 }, legacy);
+  expectField("amplitude0", 22000, 220, 88000, false);
+  expectField("gap1", 0.14, -0.2, 0.5, false);
+  expectField("mass", 2.6, 0.4, 6, false);
+  // A user action saves the restored state through the public host callback.
+  mode(1);
+  const migratedSnapshot = savedSnapshot();
+  restore(migratedSnapshot.modelContent, migratedSnapshot.privateContent);
+  expectField("amplitude0", 22000, 220, 88000, false);
+  expectField("gap1", 0.14, -0.2, 0.5, false);
+  restore({ n: 2, types: [0, 1, 0], mechanism: "ac", selectedMode: 2 }, legacy);
+  expectField("scale", 11000, 110, 77000);
+  expectField("gap1", 0.08, -0.1, 0.3);
+  expectField("mass", 2.6, 0.4, 6, false);
+}
+verifyBandTransitions(w);
+console.log("Signed gaps and item 8 DOM state transitions passed.");
 console.log(
   checks +
     " matrix states match JSON. Lock, editable manual value, hidden bounds, tooltips and restore passed.",
 );
-if (process.argv[2]) {
+if (process.argv[2] || process.env.FIT_GUIDE_CHROME === "1") {
   (async () => {
     const { chromium } = loadPackage(
       path.join(project, "apps/web/node_modules/@playwright/test"),
@@ -256,9 +468,10 @@ if (process.argv[2]) {
       });
       await page.goto(pathToFileURL(file).href);
       await page.locator("#sb-gap-value").getByText("0.09 eV").waitFor();
-      await page
-        .locator("#sb-desktop-parameters")
-        .screenshot({ path: process.argv[2] });
+      if (process.argv[2])
+        await page
+          .locator("#sb-desktop-parameters")
+          .screenshot({ path: process.argv[2] });
       await page.getByRole("button", { name: "Guide", exact: true }).click();
       assert.equal(await page.getByRole("table").count(), 1);
       await page.getByRole("button", { name: "Fit", exact: true }).click();
@@ -274,8 +487,9 @@ if (process.argv[2]) {
       await page
         .locator("[data-field=gap1] .field-caption")
         .waitFor({ state: "visible" });
+      await page.evaluate("(" + verifyBandTransitions.toString() + ")(window)");
       console.log(
-        "Chrome rendered at 960 and 320 px; no overflow, help opens.",
+        "Chrome item 8 DOM transitions and 960/320 px layout passed.",
       );
     } finally {
       await browser.close();

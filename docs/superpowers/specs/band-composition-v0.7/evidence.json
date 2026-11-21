@@ -348,18 +348,30 @@
       "id": "UI-FIT-GUIDE",
       "scope": "v0.7 offline prototype",
       "status": "passed",
-      "claim": "Field visibility and eligibility, holds and bounds, Fit/Guide and three-band gap transitions.",
+      "claim": "Field visibility and eligibility, signed offsets, and preservation of values, bounds and holds across VB/CB and Parabolic/Kane changes for surviving bands.",
       "cwd": "REPO",
-      "command": "node \"$KIT/evidence/verify_fit_guide.mjs\" /tmp/seeband-fit-guide.png",
+      "command": "FIT_GUIDE_CHROME=1 node docs/superpowers/specs/band-composition-v0.7/evidence/verify_fit_guide.mjs",
       "output": "evidence/fit-guide-v0.7.txt",
       "metrics": {
         "allowed_ui_configurations": 270,
         "viewport_widths_px": [960, 320]
       },
       "limitations": "Browser and design-state checks only. No transport API is called.",
-      "provenance": "Output reproduced from the PR checkout.",
-      "output_sha256": "856607759d52c407d57b924e46a837b8e216e81d1639a0411568260c3431abd9",
-      "replay_status": "reproduced_from_pr"
+      "provenance": "The 270 field configurations run against the dictionary. The transition regression edits rendered controls in jsdom and Chrome, checks legacy and current widget snapshots, and fails on the pre-fix HTML.",
+      "output_sha256": "a4dfbcc9785d6b835273110510c8ae3b71d05002620ad4e5dbca2edcc66d6af4",
+      "replay_status": "reproduced_from_pr",
+      "regression": {
+        "pre_fix_revision": "4e4526c6821d6bf7a06630962b3a7d1bea038acc",
+        "pre_fix_expected_offset_eV": 0.13,
+        "pre_fix_observed_offset_eV": -0.09,
+        "scenarios": [
+          "VB/CB changes on each of three bands",
+          "Parabolic/Kane toggles with held offsets, mass ratios and acoustic amplitude",
+          "signed two-band offset and asymmetric interval",
+          "manual and hidden fields, independent physical prefactors",
+          "remove and re-add, widget save/restore and legacy collisions"
+        ]
+      }
     }
   ],
   "parameter_notation": "../band-parameter-labels.json",

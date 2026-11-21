@@ -1,3 +1,3 @@
-Signed gap, overlap, contact, extrema and reverse-order bounds passed.
+Signed gaps and item 8 DOM state transitions passed.
 270 matrix states match JSON. Lock, editable manual value, hidden bounds, tooltips and restore passed.
-Chrome rendered at 960 and 320 px; no overflow, help opens.
+Chrome item 8 DOM transitions and 960/320 px layout passed.
