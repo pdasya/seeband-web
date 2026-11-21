@@ -78,7 +78,14 @@ test("has its pages in English, as static HTML", () => {
     /<h1>Parabolic band models for transport measurements<\/h1>/,
   );
   assert.match(page("index.html"), /<link rel="icon" href="\/favicon.svg"/);
-  assert.ok(statSync(join(outDir, "favicon.svg")).isFile());
+  assert.match(page("index.html"), /<link rel="icon" href="\/favicon.ico"/);
+  assert.match(
+    page("index.html"),
+    /<link rel="apple-touch-icon" href="\/apple-touch-icon.png"/,
+  );
+  for (const icon of ["favicon.svg", "favicon.ico", "apple-touch-icon.png"]) {
+    assert.ok(statSync(join(outDir, icon)).isFile(), icon);
+  }
   assert.match(
     page("index.html"),
     /<a href="\/"[^>]*aria-current="page"[^>]*>Overview<\/a>/,
