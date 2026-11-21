@@ -171,15 +171,31 @@ jobs:
           SEEBAND_IMAGE_PREFIX: seeband
           SEEBAND_DEPLOY_PULL: "0"
         run: |
-          bash deploy.sh local http://localhost:8080/api/health
-          test "$(cat .deployed-tag)" = local
-          # Another tag whose check fails: the script must go back to the tag before it.
-          docker tag seeband-api:local seeband-api:broken
-          docker tag seeband-web:local seeband-web:broken
-          if bash deploy.sh broken http://localhost:8080/api/no-such-route; then exit 1; fi
-          test "$(cat .deployed-tag)" = local
-          test "$(docker compose -f compose.yaml ps --format '{{.Image}}' api)" = seeband-api:local
+          health=http://localhost:8080/api/health
+          # The images report this commit, so this tag passes the check of the commit.
+          good=sha-${GITHUB_SHA:0:12}
+          for name in api web; do docker tag "seeband-$name:local" "seeband-$name:$good"; done
+          bash deploy.sh "$good" "$health"
+          test "$(cat .deployed-tag)" = "$good"
+          # Removed after the deploy: images of tags other than the running and previous ones.
+          if docker image inspect seeband-api:local >/dev/null 2>&1; then exit 1; fi
+          # A tag whose API reports another commit: the script must go back to the tag before it,
+          # and that tag's check must pass.
+          bad=sha-000000000000
+          for name in api web; do docker tag "seeband-$name:$good" "seeband-$name:$bad"; done
+          if bash deploy.sh "$bad" "$health" 2>rollback.log; then exit 1; fi
+          cat rollback.log
+          grep -q "Rolled back to $good" rollback.log
+          test "$(cat .deployed-tag)" = "$good"
+          test "$(docker compose -f compose.yaml ps --format '{{.Image}}' api)" = "seeband-api:$good"
           curl -fsS http://localhost:8080/api/ready | grep -q '"ready"'
+          # A new Compose file waits beside the running one; a rollback uses the file it replaced.
+          sed 's/mem_limit: ${SEEBAND_MEM_LIMIT_API:-3g}/mem_limit: 1m/' compose.yaml > compose.yaml.new
+          if bash deploy.sh "$bad" "$health" 2>rollback.log; then exit 1; fi
+          grep -q "Rolled back to $good" rollback.log
+          test "$(cat .deployed-tag)" = "$good"
+          curl -fsS http://localhost:8080/api/ready | grep -q '"ready"'
+          git checkout -- compose.yaml
       - name: Logs
         if: always()
         run: docker compose -f deploy/compose.yaml logs --no-color
