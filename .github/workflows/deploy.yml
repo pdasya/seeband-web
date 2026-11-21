@@ -72,8 +72,11 @@ jobs:
           SEEBAND_COMMIT: ${{ github.sha }}
           SEEBAND_SITE_URL: ${{ vars.SEEBAND_SITE_URL }}
           PUSH: ${{ github.event_name != 'pull_request' && '--push' || '' }}
+        # The build context of both images is the repository, `..` of deploy/, which bake reads
+        # only when allowed to.
+        working-directory: deploy
         run: |
-          docker buildx bake -f deploy/compose.yaml \
+          docker buildx bake -f compose.yaml --allow=fs.read=.. \
             --set '*.platform=linux/amd64,linux/arm64' $PUSH
 
   deploy:
