@@ -212,6 +212,54 @@
       "limitations": "Isolated, isotropic intravalley acoustic band with prescribed amplitude. Published tables have N=K=1. N>1 and absolute conductivity are synthetic checks. Mixed-channel weights, empirical amplitude calibration, production calculations and fit behavior remain open."
     },
     {
+      "id": "MASS-SCALE",
+      "scope": "conditional parabolic mass identifiability",
+      "status": "passed",
+      "replay_status": "reproduced_from_pr",
+      "command": ".venv/bin/python scripts/verify_parabolic_mass_identifiability.py",
+      "cwd": "REPO",
+      "output": "evidence/mass_identifiability.txt",
+      "output_sha256": "c21a22303ea87b3e4d8c80d7970751c049e7647264f06dbc8de6aeff8687c662",
+      "claim": "Fermi-reference global mass scaling and informative Hall under empirical conductivity amplitudes. Three-band longitudinal sensitivity to ratios through charge balance, and truncation by chosen weight bounds.",
+      "conditions": {
+        "temperature_K": [100, 300, 800],
+        "common_mass_multipliers": [0.25, 0.7, 4],
+        "laws": ["acPh", "dis", "ionized (empirical)"],
+        "valley_counts_for_slices": [2, 3, 1],
+        "slice_EF_over_kB_K": 700,
+        "slice_edges_over_kB_K": [
+          [0, 0, 0],
+          [0, 1, -1],
+          [0, 450, -400]
+        ],
+        "b_bounds": [0.9, 1.1]
+      },
+      "common_scale_tolerances": {
+        "absolute_mu_over_kB_K": 1e-8,
+        "relative_rho": 1e-10,
+        "absolute_S_V_per_K": 1e-12,
+        "channel_scaled_RH": 1e-10
+      },
+      "slice_gates": {
+        "absolute_S_V_per_K": 1e-6,
+        "relative_rho": 0.01,
+        "relative_nonzero_RH": 0.02,
+        "criterion": "Mean squared scaled longitudinal residual <=1. Hall additionally requires its own mean squared scaled residual <=1. Bounds are applied separately to the longitudinal subset."
+      },
+      "metrics": {
+        "common_scale_cases": 54,
+        "max_common_scale_Hall_channel_scaled_error": 1.024e-15,
+        "max_independent_charge_mu_over_kB_error_K": 2.443e-11,
+        "slice_size": 39,
+        "accepted_longitudinal": [39, 39, 3],
+        "accepted_longitudinal_and_Hall": [7, 7, 3],
+        "accepted_longitudinal_and_b_bounds": [7, 7, 3],
+        "nearly_equal_edges_bounded_grid_M2": [1.325, 1.475]
+      },
+      "provenance": "Branch design harness, SciPy charge balance, independent radial-k charge check and standalone SPB transport integrals. See stdout for runtime versions.",
+      "limitations": "The three-band empirical weight law is proposed, including its ionized specialization. The grid holds the other coordinates prescribed. Counts under illustrative residual scales do not establish fitted intervals, global identifiability or production support."
+    },
+    {
       "id": "MIX",
       "scope": "reference calculation",
       "status": "passed",

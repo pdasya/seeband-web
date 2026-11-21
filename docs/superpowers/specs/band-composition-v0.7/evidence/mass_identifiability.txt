@@ -1,0 +1,17 @@
+SYNTHETIC CONDITIONAL MASS REFERENCE; Python 3.13.18, NumPy 2.5.4, SciPy 1.18.1
+T=(100.0, 300.0, 800.0) K; sigma0(300K)=100000 S/m; energies/kB [K], m [me], S [V/K], rho [ohm*m], RH [m^3/C].
+Illustrative residual scales: S=1 uV/K, rho=1%, RH=2% of nonzero synthetic reference. S/rho gate: mean(6 scaled squares)<=1; +Hall also requires mean(3 Hall scaled squares)<=1. Bounded S/rho is a separate subset.
+Common mass PASS: 54 cases, 2/3 bands, CB/VB/mixed, all 3 laws; c=0.25,0.7,4; max [mu K,rho rel,S V/K,RH channel-scaled]=[1.705e-13, 6.661e-16, 2.711e-19, 1.024e-15]
+Fixed EF/edges/N/ratios/b/sigma0: mu,S,rho invariant, RH scales c^-3/2. Density itself scales c^3/2; this claim does not fix measured n-p.
+Hall null PASS: symmetric VB+CB, EF=edges=0, b=(1,1): RH=0 at both masses; b2=1+1e-6 gives max |RH|/sum|RH_i*w_i^2|=1.000e-06.
+Absolute mass needs informative Hall conditional on other parameters. At RH=0 it is absent; near compensation fixed absolute Hall noise suppresses sensitivity (dRH/dlog(c)=-1.5 RH).
+b/M tradeoff PASS: m=(1,1.4,2)->(1,1.68,1.6), N=(2,3,1), edges=(0,450,-400)K, EF=700K, b=(1,1.2,0.8).
+  Fixed mu max [rho rel,S V/K,RH scaled]=[0.000e+00, 0.000e+00, 3.540e-02]; re-solved density max [mu K,rho rel,S V/K,RH scaled]=[1.232e+02, 1.306e-01, 1.031e-05, 1.033e-01].
+Conditional equal slice: max S/rho mean squared scaled residual=5.422e-27; <=1 points S/rho=39/39, S/rho AND Hall=7/39; bounded S/rho (b2,b3 in [0.9,1.1])=7/39, M2=[1.325,1.475].
+Conditional nearly equal slice: max S/rho mean squared scaled residual=1.098e-03; <=1 points S/rho=39/39, S/rho AND Hall=7/39; bounded S/rho (b2,b3 in [0.9,1.1])=7/39, M2=[1.325,1.475].
+Conditional contrasting slice: max S/rho mean squared scaled residual=3.042e+02; <=1 points S/rho=3/39, S/rho AND Hall=3/39; bounded S/rho (b2,b3 in [0.9,1.1])=3/39, M2=[1.375,1.425].
+Slices: CB+CB+CB, m1=1, N=(2,3,1), EF=700K, M2=0.8..1.75 step 0.025; M3=[(3*1.4^1.5+2^1.5)-3*M2^1.5]^(2/3), b=(1,M2/1.4,M3/2).
+Bounds truncate the prescribed ridge; they do not supply information from measurements. Contrasting edges can split S/rho already; Hall need not identify every mass, edge, weight or degeneracy jointly.
+Quadrature PASS: 1600->3200 panels and separate 50->60 kBT tail; max [mu K,rho rel,S V/K,RH scaled]=[0.000e+00, 9.321e-12, 3.399e-15, 1.732e-11]. Charge solver checks normalized residual <1e-11 at every solve.
+Independent radial-k charge PASS: FD vs 800/1600 panels, 50/60 kBT tails; max mu error=2.443e-11 K.
+PASS selected synthetic references only; no production numerical changes, statistical intervals, global identifiability or human physicist confirmation.
