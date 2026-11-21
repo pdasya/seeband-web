@@ -5,6 +5,8 @@
  */
 export const STRINGS = {
   appName: "SeeBand",
+  // The link that the header's logo and name make, for a screen reader.
+  appHomeLabel: "SeeBand, overview",
   appStage: "web · prototype",
   skipToContent: "Skip to content",
   navigation: {

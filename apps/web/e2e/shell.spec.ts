@@ -63,10 +63,9 @@ test("links inside the app stay in the page, and the current one moves", async (
 test("links to the public site leave the app", async ({ page }) => {
   await page.goto("/fit");
 
-  await expect(page.getByRole("link", { name: "Overview" })).toHaveAttribute(
-    "href",
-    "/",
-  );
+  await expect(
+    page.getByRole("link", { name: "Overview", exact: true }),
+  ).toHaveAttribute("href", "/");
   await expect(page.getByRole("link", { name: "Conventions" })).toHaveAttribute(
     "href",
     "/conventions/",
@@ -75,6 +74,51 @@ test("links to the public site leave the app", async ({ page }) => {
     "href",
     "/guide/",
   );
+});
+
+test("the logo and the name lead to the overview, by mouse and by keyboard", async ({
+  page,
+}) => {
+  const isOverview = (request: {
+    url(): string;
+    isNavigationRequest(): boolean;
+  }) =>
+    request.isNavigationRequest() && new URL(request.url()).pathname === "/";
+  await page.goto("/fit");
+  const home = page.getByRole("link", { name: "SeeBand, overview" });
+
+  await expect(home).toHaveAttribute("href", "/");
+  // The stage badge is not part of the link.
+  await expect(home).not.toContainText("prototype");
+  // The overview belongs to the public site, so the browser loads it as a new page.
+  await Promise.all([
+    page.waitForRequest(isOverview),
+    page.locator(".sb-header__name").click(),
+  ]);
+
+  // Next after the skip link, the first stop of the page.
+  await page.goto("/fit");
+  await page.getByRole("link", { name: "Skip to content" }).focus();
+  await page.keyboard.press("Tab");
+  await expect(home).toBeFocused();
+  await Promise.all([
+    page.waitForRequest(isOverview),
+    page.keyboard.press("Enter"),
+  ]);
+});
+
+test("every screen links the site's icons", async ({ page }) => {
+  await page.goto("/fit");
+
+  await expect(
+    page.locator('link[rel="icon"][href="/favicon.svg"]'),
+  ).toHaveCount(1);
+  await expect(
+    page.locator('link[rel="icon"][href="/favicon.ico"]'),
+  ).toHaveCount(1);
+  await expect(
+    page.locator('link[rel="apple-touch-icon"][href="/apple-touch-icon.png"]'),
+  ).toHaveCount(1);
 });
 
 test("there is no language switch while the app has one language", async ({

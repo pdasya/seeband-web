@@ -13,6 +13,7 @@ import { SiteHeader } from "../src/header/SiteHeader";
 
 const MODEL: HeaderModel = {
   name: "SeeBand",
+  homeLabel: "SeeBand, overview",
   stage: "web · prototype",
   navigationLabel: "Sections",
   links: [
@@ -71,6 +72,35 @@ describe("both wrappers", () => {
     expect(astro).toBe(react);
     expect(react).toContain("sb-header__link--current");
     expect(react).toContain('aria-current="page"');
+  });
+});
+
+describe("the logo and the name", () => {
+  test("are one link to the overview, with the stage outside it", () => {
+    const html = renderToStaticMarkup(<SiteHeader {...MODEL} />);
+    const link =
+      /<a href="\/" class="sb-header__home" aria-label="SeeBand, overview">(.*?)<\/a>/.exec(
+        html,
+      );
+
+    expect(link).not.toBeNull();
+    expect(link?.[1]).toContain("sb-header__logo");
+    expect(link?.[1]).toContain('<span class="sb-header__name">SeeBand</span>');
+    expect(link?.[1]).not.toContain("sb-header__stage");
+    expect(html).toContain(
+      '<span class="sb-header__stage">web · prototype</span>',
+    );
+  });
+
+  test("lead where the model says", async () => {
+    const model = { ...MODEL, homeHref: "/en/" };
+
+    expect(renderToStaticMarkup(<SiteHeader {...model} />)).toContain(
+      '<a href="/en/" class="sb-header__home"',
+    );
+    expect(await renderAstro(model)).toMatch(
+      /<a href="\/en\/" class="sb-header__home"/,
+    );
   });
 });
 

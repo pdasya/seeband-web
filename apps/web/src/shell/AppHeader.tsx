@@ -13,6 +13,7 @@ export function AppHeader() {
   return (
     <SiteHeader
       name={STRINGS.appName}
+      homeLabel={STRINGS.appHomeLabel}
       stage={STRINGS.appStage}
       navigationLabel={navigation.label}
       links={[
