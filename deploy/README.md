@@ -93,9 +93,48 @@ defaults, 2 and 2, are meant for the planned 2 vCPUs. The independent review of 
 that they oversubscribe such a machine under mixed load, so measure them on the machine itself
 (I3, #55) before changing them. Size the memory limit there too.
 
+## Deploying from GitHub
+
+`.github/workflows/deploy.yml` builds both images of each merge to main, pushes them to GHCR as
+`ghcr.io/pdasya/seeband-api` and `-web` with the tag `sha-<first 12 characters of the commit>`,
+and deploys that tag over SSH. Each tag stays in the registry, so any earlier one can be deployed
+again.
+
+On the host, `deploy.sh`, which the job copies there with `compose.yaml`:
+
+1. pulls the tag's images and starts them, waiting for the API's health check;
+2. asks `<SEEBAND_PUBLIC_URL>/api/health` for up to a minute, through Caddy, until it answers with
+   this tag's commit, so an old container still answering does not pass;
+3. records the tag in `.deployed-tag`, and the one before in `.previous-tag`;
+4. if 1 or 2 fails, starts the previous tag again, checks it the same way, and fails the job.
+
+The job then checks the health URL once more from outside. The host logs in to GHCR only for the
+pull, with the job's short-lived token, and logs out again; nothing long-lived is stored there.
+
+**Roll back:** run the Deploy workflow by hand (Actions → Deploy → Run workflow) with the tag to
+go back to, such as the one in `.previous-tag` on the host or any `sha-…` tag of the package. That
+skips the build and deploys the tag with the same checks.
+
+**Settings, in the repository's `production` environment.** Secrets live only there:
+
+| Kind   | Name                 | Holds                                                                 |
+| ------ | -------------------- | --------------------------------------------------------------------- |
+| secret | `DEPLOY_SSH_KEY`     | a private key used only for deploying, its public half on the host    |
+| secret | `DEPLOY_KNOWN_HOSTS` | the host's line from `ssh-keyscan`, so the job checks the host key    |
+| var    | `DEPLOY_HOST`        | the host's name or address; until it is set, no deploy runs           |
+| var    | `DEPLOY_USER`        | a user on the host in the `docker` group                              |
+| var    | `DEPLOY_PATH`        | the directory with the host's `.env`, such as `/opt/seeband`          |
+| var    | `SEEBAND_PUBLIC_URL` | the public address, such as `https://seeband.example`                 |
+| var    | `SEEBAND_SITE_URL`   | empty until the move to the final host (I6), so the site stays closed |
+
+Add required reviewers to the environment if a deploy should wait for approval. The host's own
+settings, `SEEBAND_SITE_ADDRESS`, the ports and the API's limits, stay in its `.env`, which no
+workflow touches. Until `DEPLOY_HOST` is set, as before the machine exists (I3), each merge builds
+and pushes the images and skips the deploy.
+
 ## Operations
 
-- **Update or roll back:** `SEEBAND_TAG=<tag> docker compose -f deploy/compose.yaml up -d`.
+- **Update or roll back:** by the Deploy workflow, below. By hand on the host, in its deploy directory: `./deploy.sh "$(cat .previous-tag)" https://<domain>/api/health`.
 - **A change of the `Caddyfile` recreates the `web` container,** as Caddy's admin endpoint is off.
   That ends the open fit streams, and with them their fits, so do it when nobody is fitting.
 - **Nothing restarts an API that turns unhealthy.** `restart` only covers an exit, and
@@ -123,6 +162,13 @@ that they oversubscribe such a machine under mixed load, so measure them on the 
   also for a missing page and the API down. A DPB S + ρ + R_H fit streamed its iterations through
   Caddy, and Stop ended it together with its process. Caddy's message about the closed stream held
   no address or header.
+- **The deploy script, in CI.** The `Containers` job deploys the running tag with `deploy.sh`,
+  then a second tag whose health check fails, and checks that the script went back to the first
+  tag, which answers again. Locally, with stand-ins for Docker and curl, it also kept a good tag,
+  recorded the previous one, rolled back from a tag whose API reported another commit, and failed
+  plainly when the rollback failed too.
+- **Not yet:** the Deploy workflow itself, which needs the host and its settings (I3), and a first
+  real deploy with a deliberately failing health check on it.
 - **Not yet, on the target machine (I3):**
   - the review's mixed load, with its p50/p95/p99, memory and orphan processes;
   - that IPv4 and IPv6 visitors count as separate clients, by `curl -4` and `curl -6` from two

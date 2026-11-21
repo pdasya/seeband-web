@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- I2 (#54): each merge to main builds the images, pushes them to GHCR as
+  `sha-<commit>` and, once a host is configured, deploys them over SSH.
+  `deploy/deploy.sh` checks that the public health route answers with the
+  new commit and otherwise starts the previous tag again. A run of the
+  Deploy workflow with a tag rolls back by hand. Deploy secrets live only in
+  the repository's `production` environment.
+
 - P17 (#108), core `0.3.3`: draw local parabolic bands, E = ħ²k²/(2m),
   with k in nm⁻¹, signed single-valley masses and a flat Fermi level, in
   place of the desktop's sketch, and drop the `band_diagram_formula` flag.
