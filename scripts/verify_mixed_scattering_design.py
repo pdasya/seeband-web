@@ -2,7 +2,7 @@
 """Synthetic acPh+dis design evidence for 1–3 isotropic spin-2 parabolas.
 
 Run: .venv/bin/python scripts/verify_mixed_scattering_design.py
-Optional retained-P18 comparison (not exposed explicit_curves support):
+Optional comparison with the legacy math_module functions in this checkout:
   PYTHONPATH=packages/seeband_core/src .venv/bin/python \
       scripts/verify_mixed_scattering_design.py --legacy
 Requires installed NumPy/SciPy. No production imports without --legacy.
@@ -187,7 +187,7 @@ def legacy():
         )
     assert max(maximum) < 3e-5
     print(
-        f"Retained P18 legacy comparison PASS [rho,S,RH] errors={maximum}; "
+        f"Legacy math_module comparison PASS [rho,S,RH] errors={maximum}; "
         "shared input mu/FD integrals, no legacy root/fit validation; inherited constants differ."
     )
 

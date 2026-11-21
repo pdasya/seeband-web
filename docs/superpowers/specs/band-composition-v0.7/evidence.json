@@ -1,10 +1,10 @@
 {
   "revision": "0.7",
-  "project_revision": "8e4f98d78c3868c65f5e22b4e359061aca3f7ece",
+  "archived_p18_revision": "8e4f98d78c3868c65f5e22b4e359061aca3f7ece",
   "design": "../2026-11-21-band-composition-design.md",
   "working_directories": {
     "REPO": "Repository root of the PR checkout. Set KIT to the absolute path of docs/superpowers/specs/band-composition-v0.7 in this checkout.",
-    "P18": "Separate checkout at project_revision with Python and JS dependencies. Use scripts/verify_spb_design_coefficients.py from the PR checkout in P18/scripts for the DPB-HALL oracle."
+    "P18": "Historical checkout at archived_p18_revision. Its explicit transport module and tests are absent from this PR. Commands with cwd=P18 document the archived runs."
   },
   "interface_contract": {
     "band_count": [1, 2, 3],
@@ -50,7 +50,7 @@
       "scope": "production baseline",
       "status": "passed",
       "claim": "Домены, явный DPB-транспорт и существующий двухзонный фит",
-      "command": "PYTHONPATH=packages/seeband_core/src .venv/bin/pytest -q packages/seeband_core/tests/test_carrier_domain.py packages/seeband_core/tests/test_explicit_transport.py packages/seeband_core/tests/test_explicit_dpb_fit.py",
+      "command": null,
       "cwd": "P18",
       "output": "evidence/p18-baseline.txt",
       "metrics": {
@@ -58,14 +58,16 @@
       },
       "limitations": "Выбранные тесты P18. Общий CI новой конфигурации не выполнялся.",
       "output_sha256": "e792f4a705b3d5374c5aa7fbcce8f42bd1cfdf337dc7f104739e55f8c3ef690a",
-      "provenance": "retained prior evidence"
+      "provenance": "retained prior evidence",
+      "replay_status": "archived_only",
+      "historical_command": "PYTHONPATH=packages/seeband_core/src .venv/bin/pytest -q packages/seeband_core/tests/test_carrier_domain.py packages/seeband_core/tests/test_explicit_transport.py packages/seeband_core/tests/test_explicit_dpb_fit.py"
     },
     {
       "id": "CHARGE",
       "scope": "reference calculation",
       "status": "passed",
       "claim": "Общий химпотенциал и постоянство n−p на контрольных конфигурациях",
-      "command": "python3 scripts/verify_band_composition_design.py",
+      "command": ".venv/bin/python scripts/verify_band_composition_design.py",
       "cwd": "REPO",
       "output": "evidence/verify_band_composition_design.txt",
       "metrics": {
@@ -73,14 +75,15 @@
       },
       "limitations": "Конечная выборка и постоянное время релаксации для демонстрации долей проводимости.",
       "output_sha256": "86f181d232f0bd46de0ba8d0de22c5e0c673b53c73d15065b83f902346a7a572",
-      "provenance": "retained prior evidence"
+      "provenance": "Output reproduced from the PR checkout.",
+      "replay_status": "reproduced_from_pr"
     },
     {
       "id": "SPB",
       "scope": "reference calculation",
       "status": "passed",
       "claim": "Сверка формул с радиальными транспортными интегралами",
-      "command": "python3 scripts/verify_spb_design_coefficients.py",
+      "command": ".venv/bin/python scripts/verify_spb_design_coefficients.py",
       "cwd": "REPO",
       "output": "evidence/verify_spb_design_coefficients.txt",
       "metrics": {
@@ -89,14 +92,15 @@
       },
       "limitations": "Параболы, заданные степенные механизмы, прямой расчёт.",
       "output_sha256": "8f156cf05bd1d1accda5d51f1c79dc48cfbdf765d2b591f977a17a309dd37417",
-      "provenance": "retained prior evidence"
+      "provenance": "Output reproduced from the PR checkout.",
+      "replay_status": "reproduced_from_pr"
     },
     {
       "id": "DPB-HALL",
       "scope": "production vs reference",
       "status": "exceeds_proposed_tolerance",
       "claim": "Наихудшая точка CB+CB, dis, S+ρ+Hall, 800 K",
-      "command": "PYTHONPATH=packages/seeband_core/src .venv/bin/python \"$KIT/evidence/verify_explicit_curves_spb.py\"",
+      "command": null,
       "cwd": "P18",
       "output": "evidence/explicit_curves_spb_result.txt",
       "metrics": {
@@ -110,14 +114,16 @@
       },
       "limitations": "Проходит порог сравнения 3e−6. Причина превышения проектного порога не установлена.",
       "output_sha256": "554396e11f31d60e8e824bf4fadf2367fe0fc7b3a9937e2c3fdf39fef9b80629",
-      "provenance": "retained prior evidence"
+      "provenance": "retained prior evidence",
+      "replay_status": "archived_only",
+      "historical_command": "PYTHONPATH=packages/seeband_core/src .venv/bin/python \"$KIT/evidence/verify_explicit_curves_spb.py\""
     },
     {
       "id": "SKB",
       "scope": "published benchmark",
       "status": "passed",
       "claim": "Восстановление DOS-массы по двум строкам из Lin и Liu",
-      "command": "python3 scripts/verify_skb_design_reference.py",
+      "command": ".venv/bin/python scripts/verify_skb_design_reference.py",
       "cwd": "REPO",
       "output": "evidence/verify_skb_design_reference.txt",
       "metrics": {
@@ -128,14 +134,50 @@
       },
       "limitations": "Одна изотропная долина, acPh, N=1. Оптимизация многозонной модели и абсолютная ρ отдельно не проверены.",
       "output_sha256": "79a4c60cff866abcd4e141e93df914f106540f3c2e1b33f7791c42592384e267",
-      "provenance": "retained prior evidence"
+      "provenance": "Output reproduced from the PR checkout.",
+      "replay_status": "reproduced_from_pr"
     },
     {
       "id": "MIX",
+      "scope": "reference calculation",
+      "status": "passed",
+      "replay_status": "reproduced_from_pr",
+      "claim": "Matthiessen rates, pure limits and three crossover temperatures.",
+      "command": ".venv/bin/python scripts/verify_mixed_scattering_design.py",
+      "cwd": "REPO",
+      "output": "evidence/mixed_reference.txt",
+      "metrics": {
+        "cases": 72,
+        "max_error_L": 1.4432899320127035e-14,
+        "max_pure_limit_error": 1.4625514577204513e-8
+      },
+      "limitations": "Прямые параболические кривые. Выбор наблюдаемых в тесте не запускает оптимизатор.",
+      "output_sha256": "9c7d8f38e9186565e4063d816451a16a270afce64b477c580a7a3e912fe1bda1",
+      "provenance": "Output captured from the PR checkout."
+    },
+    {
+      "id": "MIX-LEGACY",
+      "scope": "repository legacy functions vs reference",
+      "status": "passed",
+      "replay_status": "reproduced_from_pr",
+      "claim": "Legacy rho, S and Hall at 100, 300 and 800 K using shared chemical potentials and integrals.",
+      "command": "PYTHONPATH=packages/seeband_core/src .venv/bin/python scripts/verify_mixed_scattering_design.py --legacy",
+      "cwd": "REPO",
+      "output": "evidence/mixed_legacy_pr.txt",
+      "metrics": {
+        "max_scaled_error_Hall": 4.4948951790259384e-7,
+        "comparison_tolerance": 3e-5
+      },
+      "limitations": "Uses seeband_core.math_module from this checkout. Does not exercise the P18 solver or fitting.",
+      "output_sha256": "0ef2769a19b6c6c6978733e791980c5abbf1aa7b05ddfc7721567a307e942e4b",
+      "provenance": "Output captured from the PR checkout."
+    },
+    {
+      "id": "MIX-P18",
       "scope": "reference and archived functions",
       "status": "passed",
       "claim": "Сумма скоростей acPh + dis и чистые пределы, архивные функции P18",
-      "command": "PYTHONPATH=packages/seeband_core/src .venv/bin/python \"$KIT/../../../../scripts/verify_mixed_scattering_design.py\" --legacy",
+      "command": null,
       "cwd": "P18",
       "output": "evidence/verify_mixed_scattering_design.txt",
       "metrics": {
@@ -145,7 +187,9 @@
       },
       "limitations": "Прямые параболические кривые. Выбор наблюдаемых в тесте не запускает оптимизатор.",
       "output_sha256": "6b1bfbdd4a18707674e2366d47f14e2e2d5f540ac1ba7d1d68502fc0810780b3",
-      "provenance": "retained prior evidence"
+      "provenance": "retained prior evidence",
+      "replay_status": "archived_only",
+      "historical_command": "PYTHONPATH=packages/seeband_core/src .venv/bin/python \"$KIT/../../../../scripts/verify_mixed_scattering_design.py\" --legacy"
     },
     {
       "id": "UI-MODEL",
@@ -153,7 +197,7 @@
       "status": "passed",
       "claim": "Ограничение Kane, название состава, добавление, удаление и Nᵢ",
       "command": "node \"$KIT/evidence/verify_model.mjs\"",
-      "cwd": "P18",
+      "cwd": "REPO",
       "output": "evidence/mock_result.txt",
       "metrics": {
         "min_bands": 1,
@@ -162,7 +206,8 @@
       },
       "limitations": "Тест автономного Model. Parameters, запросы API, результаты и сохранение сессии описаны в TDD.",
       "output_sha256": "3c02db9c2b2417ab5302e9f0ac62ec62c93d2507d6878098a5549c1eb2c06fd5",
-      "provenance": "retained prior evidence"
+      "provenance": "Output reproduced from the PR checkout.",
+      "replay_status": "reproduced_from_pr"
     },
     {
       "id": "E2E",
@@ -174,7 +219,8 @@
       "output": null,
       "metrics": {},
       "limitations": "Запуск возможен после реализации. См. §1.4, §8 A6.",
-      "provenance": "planned"
+      "provenance": "planned",
+      "replay_status": "planned"
     },
     {
       "id": "UI-FIT-GUIDE",
@@ -189,8 +235,9 @@
         "viewport_widths_px": [960, 320]
       },
       "limitations": "Browser and design-state checks only. No transport API is called.",
-      "provenance": "rerun on packaged HTML",
-      "output_sha256": "856607759d52c407d57b924e46a837b8e216e81d1639a0411568260c3431abd9"
+      "provenance": "Output reproduced from the PR checkout.",
+      "output_sha256": "856607759d52c407d57b924e46a837b8e216e81d1639a0411568260c3431abd9",
+      "replay_status": "reproduced_from_pr"
     }
   ],
   "parameter_notation": "../band-parameter-labels.json",
