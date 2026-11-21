@@ -2,14 +2,16 @@
 # them over SSH. A run by hand deploys a tag the registry already holds, which is also how to roll
 # back. A pull request that changes the deployment builds both architectures and pushes nothing.
 #
-# Deploying needs, in the "production" environment of the repository's settings:
+# Deploying needs, in the "production" environment of the repository's settings, limited to main:
 #   secrets  DEPLOY_SSH_KEY     a private key used only for deploying
 #            DEPLOY_KNOWN_HOSTS the host's line from `ssh-keyscan`, checked, never trusted blindly
-#   vars     DEPLOY_HOST, DEPLOY_USER, DEPLOY_PATH (the directory with .env on the host)
+#   vars     DEPLOY_USER, DEPLOY_PATH (the directory with .env on the host)
 #            SEEBAND_PUBLIC_URL, such as https://seeband.example, where the health check goes
+# and, as repository variables, because a job's `if` and the images job see no environment:
+#            DEPLOY_HOST; until it is set, as before the machine exists, the images are built and
+#            pushed and the deploy job is skipped
 #            SEEBAND_SITE_URL, empty until the move to the final host, so the site stays closed
-# Until DEPLOY_HOST is set, as before the machine exists (I3), the images are built and pushed
-# and the deploy job is skipped.
+# Only main deploys: a manual run from another branch builds and pushes nothing to the host.
 name: Deploy
 
 on:
@@ -59,7 +61,10 @@ jobs:
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - name: Log in to GHCR
         if: github.event_name != 'pull_request'
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACTOR: ${{ github.actor }}
+        run: printf '%s' "$TOKEN" | docker login ghcr.io -u "$ACTOR" --password-stdin
       - name: Build, and push unless a pull request
         env:
           SEEBAND_IMAGE_PREFIX: ${{ env.IMAGE_PREFIX }}
@@ -74,23 +79,36 @@ jobs:
   deploy:
     name: Deploy
     needs: images
-    # After the images, or alone for a tag given by hand; only once a host is configured.
-    if: always() && github.event_name != 'pull_request' && (needs.images.result == 'success' || (needs.images.result == 'skipped' && inputs.tag != '')) && vars.DEPLOY_HOST != ''
+    # After the images, or alone for a tag given by hand; only from main, once a host is configured.
+    if: >-
+      ${{ !cancelled() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+      && (needs.images.result == 'success' || (needs.images.result == 'skipped' && inputs.tag != ''))
+      && vars.DEPLOY_HOST != '' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # A failing deploy pulls and waits twice, once for the new tag and once for the rollback.
+    timeout-minutes: 30
     environment:
       name: production
       url: ${{ vars.SEEBAND_PUBLIC_URL }}
     permissions:
       contents: read
       packages: read
+    # Settings reach the scripts as data, never as script text.
     env:
       TAG: ${{ inputs.tag || needs.images.outputs.tag }}
       TARGET: ${{ vars.DEPLOY_USER }}@${{ vars.DEPLOY_HOST }}
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+      PUBLIC_URL: ${{ vars.SEEBAND_PUBLIC_URL }}
+      ACTOR: ${{ github.actor }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: A tag of the expected form
-        run: '[[ $TAG =~ ^[A-Za-z0-9._-]+$ ]] || { echo "Not an image tag: $TAG" >&2; exit 1; }'
+      - name: Settings of the expected form
+        run: |
+          fail() { echo "$1" >&2; exit 1; }
+          [[ $TAG =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || fail "Not an image tag: $TAG"
+          [[ $TARGET =~ ^[a-z_][a-z0-9_-]*@[A-Za-z0-9.:-]+$ ]] || fail "Not a user@host: $TARGET"
+          [[ $DEPLOY_PATH =~ ^/[A-Za-z0-9._/-]+$ ]] || fail "Not an absolute path: $DEPLOY_PATH"
+          [[ $PUBLIC_URL =~ ^https?://[A-Za-z0-9.-]+(:[0-9]+)?$ ]] || fail "Not a site address: $PUBLIC_URL"
       - name: SSH key and the host's checked key
         env:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
@@ -100,23 +118,31 @@ jobs:
           printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy
           chmod 600 ~/.ssh/deploy
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          {
+            echo "Host seeband"
+            echo "  HostName ${TARGET#*@}"
+            echo "  User ${TARGET%%@*}"
+            echo "  IdentityFile ~/.ssh/deploy"
+            echo "  IdentitiesOnly yes"
+            echo "  StrictHostKeyChecking yes"
+            echo "  BatchMode yes"
+          } > ~/.ssh/config
       - name: Copy the Compose file and the deploy script
+        # The new Compose file arrives beside the running one; deploy.sh keeps the old for a rollback.
         run: |
-          scp -i ~/.ssh/deploy -o StrictHostKeyChecking=yes \
-            deploy/compose.yaml deploy/deploy.sh "$TARGET:${{ vars.DEPLOY_PATH }}/"
+          scp deploy/compose.yaml "seeband:$DEPLOY_PATH/compose.yaml.new"
+          scp deploy/deploy.sh "seeband:$DEPLOY_PATH/deploy.sh"
       - name: Deploy, check, and roll back on failure
         env:
           PULL_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # The host logs in to GHCR only for this pull, with this job's short-lived token.
-          ssh -i ~/.ssh/deploy -o StrictHostKeyChecking=yes "$TARGET" \
-            "cd '${{ vars.DEPLOY_PATH }}' \
-             && docker login ghcr.io -u '${{ github.actor }}' --password-stdin \
-             && trap 'docker logout ghcr.io >/dev/null' EXIT \
-             && SEEBAND_IMAGE_PREFIX='${{ env.IMAGE_PREFIX }}' bash deploy.sh '$TAG' '${{ vars.SEEBAND_PUBLIC_URL }}/api/health'" \
-            <<<"$PULL_TOKEN"
+          # Each value is quoted for the remote shell with %q, so none of them is read as a command.
+          # The host logs in to GHCR only for this pull, with this job's short-lived token on stdin.
+          remote=$(printf 'cd %q && docker login ghcr.io -u %q --password-stdin >/dev/null && trap "docker logout ghcr.io >/dev/null" EXIT && SEEBAND_IMAGE_PREFIX=%q bash deploy.sh %q %q' \
+            "$DEPLOY_PATH" "$ACTOR" "$IMAGE_PREFIX" "$TAG" "$PUBLIC_URL/api/health")
+          ssh seeband "$remote" <<<"$PULL_TOKEN"
       - name: Check from outside
-        run: curl -fsS --retry 10 --retry-delay 3 --retry-all-errors "${{ vars.SEEBAND_PUBLIC_URL }}/api/health"
+        run: curl -fsS --retry 10 --retry-delay 3 --retry-all-errors "$PUBLIC_URL/api/health"
       - name: Forget the key
         if: always()
-        run: rm -f ~/.ssh/deploy
+        run: rm -f ~/.ssh/deploy ~/.ssh/config
