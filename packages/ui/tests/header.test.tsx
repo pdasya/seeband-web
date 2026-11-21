@@ -75,32 +75,53 @@ describe("both wrappers", () => {
   });
 });
 
-describe("the logo and the name", () => {
-  test("are one link to the overview, with the stage outside it", () => {
-    const html = renderToStaticMarkup(<SiteHeader {...MODEL} />);
-    const link =
-      /<a href="\/" class="sb-header__home" aria-label="SeeBand, overview">(.*?)<\/a>/.exec(
-        html,
-      );
+/** The brand link: its attributes, in any order, and what it holds. */
+function homeLink(html: string) {
+  const match =
+    /<a\b([^>]*\bclass="sb-header__home"[^>]*)>([\s\S]*?)<\/a>/.exec(html);
+  if (match === null) {
+    return null;
+  }
+  const attributes = Object.fromEntries(
+    [...(match[1] ?? "").matchAll(/([\w-]+)="([^"]*)"/g)].map((m) => [
+      m[1],
+      m[2],
+    ]),
+  );
+  return { attributes, content: match[2] ?? "" };
+}
 
-    expect(link).not.toBeNull();
-    expect(link?.[1]).toContain("sb-header__logo");
-    expect(link?.[1]).toContain('<span class="sb-header__name">SeeBand</span>');
-    expect(link?.[1]).not.toContain("sb-header__stage");
-    expect(html).toContain(
-      '<span class="sb-header__stage">web · prototype</span>',
-    );
+describe("the logo and the name", () => {
+  test("are one link to the overview, with the stage outside it", async () => {
+    for (const html of [
+      renderToStaticMarkup(<SiteHeader {...MODEL} />),
+      await renderAstro(MODEL),
+    ]) {
+      const link = homeLink(html);
+
+      expect(link?.attributes).toMatchObject({
+        href: "/",
+        "aria-label": "SeeBand, overview",
+      });
+      expect(link?.content).toContain("sb-header__logo");
+      expect(link?.content).toMatch(
+        /<span class="sb-header__name"[^>]*>SeeBand<\/span>/,
+      );
+      expect(link?.content).not.toContain("sb-header__stage");
+      expect(html).toMatch(
+        /<span class="sb-header__stage"[^>]*>web · prototype<\/span>/,
+      );
+    }
   });
 
   test("lead where the model says", async () => {
     const model = { ...MODEL, homeHref: "/en/" };
 
-    expect(renderToStaticMarkup(<SiteHeader {...model} />)).toContain(
-      '<a href="/en/" class="sb-header__home"',
-    );
-    expect(await renderAstro(model)).toMatch(
-      /<a href="\/en\/" class="sb-header__home"/,
-    );
+    expect(
+      homeLink(renderToStaticMarkup(<SiteHeader {...model} />))?.attributes
+        .href,
+    ).toBe("/en/");
+    expect(homeLink(await renderAstro(model))?.attributes.href).toBe("/en/");
   });
 });
 
