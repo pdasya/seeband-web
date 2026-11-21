@@ -165,6 +165,21 @@ jobs:
           logs=$(docker compose -f deploy/compose.yaml logs --no-color web)
           echo "$logs" | grep -q '"uri":"/"'
           if echo "$logs" | grep -E 'secret-agent|remote_ip|client_ip|X-Forwarded-For'; then exit 1; fi
+      - name: The deploy script keeps a good tag and rolls back from a failing one
+        working-directory: deploy
+        env:
+          SEEBAND_IMAGE_PREFIX: seeband
+          SEEBAND_DEPLOY_PULL: "0"
+        run: |
+          bash deploy.sh local http://localhost:8080/api/health
+          test "$(cat .deployed-tag)" = local
+          # Another tag whose check fails: the script must go back to the tag before it.
+          docker tag seeband-api:local seeband-api:broken
+          docker tag seeband-web:local seeband-web:broken
+          if bash deploy.sh broken http://localhost:8080/api/no-such-route; then exit 1; fi
+          test "$(cat .deployed-tag)" = local
+          test "$(docker compose -f compose.yaml ps --format '{{.Image}}' api)" = seeband-api:local
+          curl -fsS http://localhost:8080/api/ready | grep -q '"ready"'
       - name: Logs
         if: always()
         run: docker compose -f deploy/compose.yaml logs --no-color
