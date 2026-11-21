@@ -79,32 +79,34 @@ test("links to the public site leave the app", async ({ page }) => {
 test("the logo and the name lead to the overview, by mouse and by keyboard", async ({
   page,
 }) => {
-  const isOverview = (request: {
-    url(): string;
-    isNavigationRequest(): boolean;
-  }) =>
-    request.isNavigationRequest() && new URL(request.url()).pathname === "/";
+  await serveModels(page);
+  // The overview belongs to the public site, which is not served here: a stand-in answers for it,
+  // so that the test sees the browser go there without loading the app again.
+  await page.route(
+    (url) => url.pathname === "/",
+    (route) =>
+      route.fulfill({
+        contentType: "text/html",
+        body: "<!doctype html><title>Overview</title>",
+      }),
+  );
   await page.goto("/fit");
   const home = page.getByRole("link", { name: "SeeBand, overview" });
 
   await expect(home).toHaveAttribute("href", "/");
   // The stage badge is not part of the link.
   await expect(home).not.toContainText("prototype");
-  // The overview belongs to the public site, so the browser loads it as a new page.
-  await Promise.all([
-    page.waitForRequest(isOverview),
-    page.locator(".sb-header__name").click(),
-  ]);
+  await page.locator(".sb-header__name").click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveTitle("Overview");
 
   // Next after the skip link, the first stop of the page.
   await page.goto("/fit");
   await page.getByRole("link", { name: "Skip to content" }).focus();
   await page.keyboard.press("Tab");
   await expect(home).toBeFocused();
-  await Promise.all([
-    page.waitForRequest(isOverview),
-    page.keyboard.press("Enter"),
-  ]);
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveTitle("Overview");
 });
 
 test("every screen links the site's icons", async ({ page }) => {
