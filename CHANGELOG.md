@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- I4 (#69): UptimeRobot watches `/api/ready` and the site every 5 minutes
+  and e-mails the owner on an outage and on recovery; a test outage reached
+  the owner. A log sample on the host showed no measurement data, client
+  address or user agent. `deploy/README.md` has a runbook for alerts, failed
+  deploys, rollback, updates, a full disk and restore.
+
 - I3 (#55): the prototype runs at `https://seeband.duckdns.org` on an Oracle
   Cloud Always Free machine (arm64, 2 OCPUs, 12 GB) at no cost, in place of
   the Hetzner CX23 while F6 is open. It stays out of search engines, takes
