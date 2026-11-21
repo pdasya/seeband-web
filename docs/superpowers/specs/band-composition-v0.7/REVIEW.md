@@ -18,7 +18,7 @@ PYTHONPATH=packages/seeband_core/src .venv/bin/python scripts/verify_mixed_scatt
 
 Первые четыре команды воспроизводят CHARGE, SPB, SKB и MIX. Пятая (MIX-LEGACY) дополнительно сравнивает ρ, S и Hall с функциями `seeband_core.math_module` из этой ветки при общих μ и интегралах. Команды для обоих макетов приведены в [индексе](evidence.json), для браузерной проверки нужен Chrome.
 
-**Архив P18.** Ревизия `8e4f98d` отсутствует в истории этой ветки и `main`. Три результата сохранены для сопоставления:
+**P18 archive.** This repository does not provide a ref for `8e4f98d`. Readers cannot recreate the historical checkout from this repository. The following three rows retain its recorded results:
 
 - **P18-BASE** — 113 прошедших тестов в историческом прогоне. Трёх тестовых файлов в этой ветке нет.
 - **DPB-HALL** — архивное превышение проектного допуска. Здесь сценарий останавливается на импорте `seeband_core.explicit_transport`.

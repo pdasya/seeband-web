@@ -2,7 +2,7 @@
 
 **Технический проект для рецензирования · 21 ноября 2026 · редакция 0.7**
 
-**Статус.** Концепция для ревью на базе P18, ревизия `8e4f98d`. Явное двухзонное параболическое ядро относится к архивной ревизии P18. Проверки, доступные из ветки PR, перечислены в [руководстве рецензента](band-composition-v0.7/REVIEW.md). Конструктор, обобщение до трёх зон и подключение акустической зоны Кейна требуют реализации. Численные проверки приведены в разделах 7 и 10–14.
+**Design status.** This proposal uses `main` at `e9b0fa3` as its repository baseline. The explicit two-band parabolic core tested at P18 revision `8e4f98d` is absent from that baseline and from this PR. The band builder, three-band transport and acoustic Kane integration are proposed extensions. Sections 7 and 10–14 describe the numerical checks. The [review guide](band-composition-v0.7/REVIEW.md) identifies which results readers can reproduce from this branch.
 
 **Принятое решение по интерфейсу · 21 ноября 2026.** Для трёх зон согласована постоянная строка **Band gap · E_g** вверху Parameters. Она показывает энергетическую щель выбранных зон и подписывает края, которые её определяют. Фит использует два независимых смещения относительно первой зоны. Поведение при смене определяющей зоны, перекрытии и неполных данных закреплено в §15.1. Решение относится к интерфейсу; допуск транспортного ядра рассматривается отдельно в §§7–8.
 
@@ -165,14 +165,13 @@
 
 Та же программа проверяет 2 зоны с щелью, 3 зоны с касанием и одну электронную зону с D > 0. Все перестановки трёх зон сохраняют μ. На девяти нейтральных точках максимальная нормированная невязка равна 1,303 × 10⁻¹³. Удвоение числа интервалов с 800 до 1600 изменило n и σ относительно не более чем на 2,220 × 10⁻¹⁶; отдельное удлинение хвоста с 50 до 60 k_BT — на 3,331 × 10⁻¹⁶. Это сходимость выбранных примеров. Дополнительные проверки воспроизводят σ = ne²τ/m для одной параболы, предел α → 0, закон плотности m³ᐟ² и отклонение двух непараболических зон.
 
-**Как повторить из корня checkout.** Для первого запуска достаточно Python 3.10+; отчёт получен в Python 3.13.18. Для второго нужна штатная среда проекта.
+**Replay CHARGE from the repository root** with Python 3.10 or later. The recorded run used Python 3.13.18.
 
 ```sh
 python3 scripts/verify_band_composition_design.py
-uv run pytest -q packages/seeband_core/tests/test_carrier_domain.py \
-  packages/seeband_core/tests/test_explicit_transport.py \
-  packages/seeband_core/tests/test_explicit_dpb_fit.py
 ```
+
+The 113-test P18-BASE result comes from the archived P18 checkout. Its three test files are absent here. The [evidence index](band-composition-v0.7/evidence.json) retains the historical command and the [test log](band-composition-v0.7/evidence/p18-baseline.txt) records its output.
 
 Эксперимент рассчитывает плотности, μ и σ при постоянном τ. Реализации S, Hall и оптимизации трёх зон в нём нет. Точные совпадения с конечными сетками не определяют допустимый диапазон всех параметров. Доказательства для механизма рассеяния и для физической применимости к реальному образцу рассматриваются отдельно.
 

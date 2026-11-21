@@ -4,7 +4,7 @@
   "design": "../2026-11-21-band-composition-design.md",
   "working_directories": {
     "REPO": "Repository root of the PR checkout. Set KIT to the absolute path of docs/superpowers/specs/band-composition-v0.7 in this checkout.",
-    "P18": "Historical checkout at archived_p18_revision. Its explicit transport module and tests are absent from this PR. Commands with cwd=P18 document the archived runs."
+    "P18": "Historical checkout at archived_p18_revision, unavailable from the published repository. Its explicit transport module and tests are absent from this PR. Commands with cwd=P18 document the archived runs."
   },
   "interface_contract": {
     "band_count": [1, 2, 3],
@@ -153,7 +153,7 @@
       },
       "limitations": "Прямые параболические кривые. Выбор наблюдаемых в тесте не запускает оптимизатор.",
       "output_sha256": "9c7d8f38e9186565e4063d816451a16a270afce64b477c580a7a3e912fe1bda1",
-      "provenance": "Output captured from the PR checkout."
+      "provenance": "Output reproduced from the PR checkout."
     },
     {
       "id": "MIX-LEGACY",
@@ -170,7 +170,7 @@
       },
       "limitations": "Uses seeband_core.math_module from this checkout. Does not exercise the P18 solver or fitting.",
       "output_sha256": "0ef2769a19b6c6c6978733e791980c5abbf1aa7b05ddfc7721567a307e942e4b",
-      "provenance": "Output captured from the PR checkout."
+      "provenance": "Output reproduced from the PR checkout."
     },
     {
       "id": "MIX-P18",
