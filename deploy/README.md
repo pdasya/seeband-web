@@ -229,16 +229,70 @@ plan for anything beyond showing results.
 
 ## Operations
 
-- **Update or roll back:** by the Deploy workflow, above. By hand on the host, in its deploy
-  directory: `./deploy.sh "$(cat .previous-tag)" https://<domain>/api/health`.
 - **A change of the `Caddyfile` recreates the `web` container,** as Caddy's admin endpoint is off.
   That ends the open fit streams, and with them their fits, so do it when nobody is fitting.
 - **Nothing restarts an API that turns unhealthy.** `restart` only covers an exit, and
-  `depends_on` only the first start. Watch `docker inspect -f '{{.State.Health.Status}}'` (I4).
+  `depends_on` only the first start. The monitor below notices it; the runbook restarts it.
   Readiness covers the calculation workers, not the fits' processes.
 - **Firewall:** open TCP 80 and 443, and UDP 443 for HTTP/3. Docker's published ports bypass `ufw`,
   so the provider's firewall decides what is reachable.
 - **Subnets:** `172.30.0.0/24` and `fd5e:eba0:d000::/64` must not overlap a network of the host.
+
+### Monitoring
+
+UptimeRobot (free plan) checks from outside every 5 minutes and e-mails the owner when a check
+fails and when it recovers:
+
+| Monitor               | Type    | Checks                                                             |
+| --------------------- | ------- | ------------------------------------------------------------------ |
+| `SeeBand API ready`   | keyword | `https://<domain>/api/ready` answers with `"status":"ready"` in it |
+| `seeband.duckdns.org` | HTTP    | `https://<domain>/` answers 2xx or 3xx                             |
+
+Only the ready answer contains `"status":"ready"`; the 503 of an API that is not ready carries
+`"code": "not_ready"` instead. The first monitor therefore catches a stopped API container, an
+API that does not answer, and calculation workers whose start-up hangs or fails. It does not
+catch a worker that dies while idle, which the API notices only when the next job meets the
+broken pool, nor a calculation queue at its limit, which still reports ready. The free plan does
+not watch the HTTPS certificate; Caddy renews it by itself, and a lapse shows as a failed check. The account belongs to the owner; its sign-in
+stays outside the repository.
+
+### Logs
+
+Docker keeps each container's log with the `local` driver, at most five files of 10 MB, so logs
+cannot fill the disk. Read them as `deploy`, in its deploy directory:
+
+```sh
+docker compose -f compose.yaml logs --since 1h api     # requests, calc jobs, failed calculations
+docker compose -f compose.yaml logs --since 1h web     # Caddy: host, protocol, URI, status, sizes
+```
+
+The API writes one line per request (method, route template, status, duration), one per
+calculation job (queue wait, run time, whether it timed out), one per failed calculation (the
+exception's type) and, for an unhandled error, its type and the code locations of its traceback
+(file, line, function). Caddy writes host, protocol, method, URI, status, bytes read and written,
+and duration. Neither holds request bodies, measurements, parameters, addresses or headers; see
+Checked for how that was sampled.
+
+### Runbook
+
+Each step below runs on the host as `deploy`, in `/opt/seeband`, unless it says otherwise.
+`restart`, `start`, `stop`, `ps` and `logs` act on the running containers. Never run
+`docker compose up` by hand: the host's `.env` names no image tag, so it would look for the local
+`seeband-*:local` images; `deploy.sh` sets the tag.
+
+| Situation                              | What to do                                                                                                                                                                                                                     |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Alert: API ready fails, site answers   | `docker compose -f compose.yaml ps` and `logs --since 30m api`; then `docker compose -f compose.yaml restart api`                                                                                                              |
+| Alert: both fail                       | Check the instance in the Oracle console and start it if stopped; then as for one alert. After a reboot the stack comes back by itself, unless it was stopped by hand before: then `docker compose -f compose.yaml start`      |
+| A deploy failed                        | The job's log says whether the rollback passed. If it did, nothing is down: fix and merge again                                                                                                                                |
+| A bad release is running               | Actions → Deploy → Run workflow with the tag in `.previous-tag`. Without GitHub: `SEEBAND_DEPLOY_PULL=0 ./deploy.sh "$(cat .previous-tag)" https://<domain>/api/health`, as the previous tag's images stay on the host         |
+| A deploy was cut by the nightly reboot | Run the Deploy workflow again with the tag that should run                                                                                                                                                                     |
+| Docker or containerd needs an update   | As `ubuntu`, when nobody is fitting, the command under Updates by hand above                                                                                                                                                   |
+| The disk fills                         | `df -h /`, `docker system df` and, as `ubuntu`, `journalctl --disk-usage` and `sudo apt-get clean`. `docker image prune` removes only untagged images; never add `-a`, which also removes the previous tag kept for a rollback |
+| The machine is lost                    | Restore from a backup, above                                                                                                                                                                                                   |
+
+The monitoring and these steps take about 1 to 2 hours a month, as the project doc estimates:
+reading the alert mails, an occasional Docker upgrade, and a look at `df -h` and the logs.
 
 ## Checked
 
@@ -272,6 +326,20 @@ plan for anything beyond showing results.
   `https://`; every answer carries `X-Robots-Tag: noindex, nofollow`, and `robots.txt` says
   `Disallow: /`. After a reboot, the stack answered again within 35 s with the same commit, and the
   firewall rules were in place.
+- **Logs on the prototype host, 2026-11-21.** Requests carried marker values: a parsed table
+  with a marker header, a table that fails to parse, a calculation with measurements, an invalid
+  calculation, and a DPB S fit of the synthetic demo that converged. None of the markers, no
+  client address and no user agent appeared in the API's or Caddy's logs. Apart from their
+  fields above, the only numbers in them were Caddy's own timers. To repeat it: send requests
+  whose bodies hold a value that occurs nowhere else, such as 271.8281828, then search for it as
+  `deploy` with
+  `docker compose -f compose.yaml logs --no-color --since 15m | grep -c 271.828`, which must
+  print 0, and look at the lines with
+  `docker compose -f compose.yaml logs --no-color --since 15m | grep -E 'parse|calc|fit'`.
+- **The outage alert, 2026-11-21.** With the API stopped from 17:47 to 17:57 UTC, `SeeBand API
+ready` went down with a 502 at its next check while the site's monitor stayed up, as Caddy still
+  served the pages. The owner received "Monitor is DOWN: SeeBand API ready" at 17:52 UTC and
+  "Monitor is UP" after the API was started again.
 - **Not yet:** a real deploy with a deliberately failing health check on the host.
 - **Not yet, on the prototype host:**
   - the review's mixed load, with its p50/p95/p99, memory and orphan processes;
