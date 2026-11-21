@@ -1,0 +1,9 @@
+SYNTHETIC SPB COEFFICIENT EVIDENCE; Python 3.13.18; stdlib only
+acPh: eta=0 T=300K CB m=0.7me N=3: sigma=9.254721164e+03 S/m; S=-2.045012293e-04 V/K; L=1.612983664e-08; RH=-2.099723502e-07 m^3/C; n=3.373534995e+25 m^-3; q*n*RH=1.134900331
+  PASS: CB/VB reflection; N x3 => sigma x3, RH /3; mass x4 => sigma x2, RH /8; fixed-eta sigma~T^0; Boltzmann rH=1.178097245, relative error=1.759e-10
+alloy/dis: eta=0 T=300K CB m=0.7me N=3: sigma=9.254721164e+03 S/m; S=-2.045012293e-04 V/K; L=1.612983664e-08; RH=-2.099723502e-07 m^3/C; n=3.373534995e+25 m^-3; q*n*RH=1.134900331
+  PASS: CB/VB reflection; N x3 => sigma x3, RH /3; mass x4 => sigma x2, RH /8; fixed-eta sigma~T^1; Boltzmann rH=1.178097245, relative error=1.759e-10
+ionized: eta=0 T=300K CB m=0.7me N=3: sigma=7.222298234e+04 S/m; S=-3.620859093e-04 V/K; L=2.903727330e-08; RH=-3.236749368e-07 m^3/C; n=3.373534995e+25 m^-3; q*n*RH=1.749462691
+  PASS: CB/VB reflection; N x3 => sigma x3, RH /3; mass x4 => sigma x2, RH /8; fixed-eta sigma~T^3; Boltzmann rH=1.932815793, relative error=3.045e-10
+PASS 36 independent comparisons; max relative errors [sigma,S,L,RH,n]=['5.084e-11', '3.381e-11', '1.526e-10', '1.017e-10', '2.220e-16']; 1600->3200 grid=4.766e-11; separate 50->60 kBT tail=1.398e-12
+Limits: selected synthetic parabolic fixtures, weak field, isotropic scalar tau; no production regression, Kane law, fitting or physicist approval asserted.

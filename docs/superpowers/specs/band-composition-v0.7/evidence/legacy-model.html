@@ -1,0 +1,648 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SeeBand · Model concept</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+      body {
+        margin: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="viz-dotted-background" id="sb-complete-model">
+      <section class="bc-card" lang="en" aria-label="Model settings">
+        <header>
+          <h2>Model</h2>
+          <output data-name aria-live="polite"></output>
+        </header>
+        <div class="bc-body">
+          <h3>Band configuration</h3>
+          <div data-rows></div>
+          <small data-kane-hint hidden></small>
+          <div class="bc-actions">
+            <button class="bc-add cursor-interaction" data-add type="button">
+              + Add band</button
+            ><button
+              class="bc-remove cursor-interaction"
+              data-remove
+              type="button"
+            >
+              Remove last band
+            </button>
+          </div>
+          <div class="settings">
+            <div class="setting">
+              <h3>Fit mode</h3>
+              <div class="bc-choices" role="group" aria-label="Fit mode">
+                <button data-mode="s">S</button
+                ><button data-mode="sr">S + ρ</button
+                ><button data-mode="srh">S + ρ + R<sub>H</sub></button>
+              </div>
+            </div>
+            <label class="setting"
+              ><strong>Scattering</strong
+              ><select data-scattering>
+                <option value="acPh">Acoustic phonons (acPh)</option>
+                <option value="dis">Alloy disorder (dis)</option>
+                <option value="ionized">Ionized impurities</option>
+                <option value="acPhDis">
+                  Acoustic phonons + alloy disorder
+                </option>
+              </select></label
+            >
+            <div class="setting">
+              <div data-degeneracies class="numbergrid"></div>
+              <small>Band degeneracies are not fitted.</small>
+            </div>
+            <div class="setting">
+              <h3>Fit range, K</h3>
+              <div class="numbergrid">
+                <label
+                  >Min<input
+                    data-temp="low"
+                    aria-label="Lower fit temperature, K"
+                    type="number"
+                    step="any" /></label
+                ><label
+                  >Max<input
+                    data-temp="high"
+                    aria-label="Upper fit temperature, K"
+                    type="number"
+                    step="any"
+                /></label>
+              </div>
+              <small data-error role="alert" hidden></small>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+    <style>
+      #sb-complete-model {
+        padding: 16px 5px;
+        --paper: light-dark(#fff, #191c21);
+        --ink: light-dark(#172130, #eef1f6);
+        --low: light-dark(#526071, #bbcadb);
+        --line: light-dark(#d9dfe7, #48515d);
+        --wash: light-dark(#f4f6f9, #262c35);
+        color: var(--ink);
+        font:
+          14px/1.4 Inter,
+          system-ui,
+          sans-serif;
+      }
+      #sb-complete-model * {
+        box-sizing: border-box;
+      }
+      #sb-complete-model .bc-card {
+        background: var(--paper);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        max-width: 740px;
+        margin: auto;
+        overflow: hidden;
+        box-shadow: 0 3px 14px #10182112;
+      }
+      #sb-complete-model header,
+      #sb-complete-model .bc-actions,
+      #sb-complete-model .bc-pair,
+      #sb-complete-model .bc-model {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      #sb-complete-model header {
+        padding: 15px 18px;
+        border-bottom: 1px solid var(--line);
+      }
+      #sb-complete-model h2 {
+        font:
+          650 18px/1.3 Inter,
+          system-ui,
+          sans-serif;
+        color: var(--ink);
+        margin: 0;
+      }
+      #sb-complete-model .bc-model {
+        justify-content: flex-start;
+        border-left: 2px solid var(--line);
+        padding-left: 9px;
+        color: var(--low);
+        font-size: 12px;
+      }
+      #sb-complete-model .bc-model output {
+        color: var(--ink);
+        font-weight: 650;
+        font-size: 14px;
+      }
+      #sb-complete-model .bc-body {
+        padding: 14px 18px;
+      }
+      #sb-complete-model .bc-columns {
+        display: grid;
+        grid-template-columns:
+          minmax(55px, 0.7fr) minmax(85px, 0.92fr) minmax(139px, 1.38fr)
+          minmax(112px, 1.04fr);
+        align-items: center;
+        gap: 12px;
+      }
+      #sb-complete-model .bc-head {
+        font-size: 12px;
+        color: var(--low);
+        padding: 0 0 3px;
+      }
+      #sb-complete-model .bc-row {
+        padding: 10px 0;
+        border-bottom: 1px solid var(--line);
+      }
+      #sb-complete-model .bc-id {
+        font-weight: 630;
+        white-space: nowrap;
+      }
+      #sb-complete-model .bc-id i {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--dot);
+        margin-right: 6px;
+      }
+      #sb-complete-model button,
+      #sb-complete-model input {
+        font: inherit;
+        color: var(--ink);
+      }
+      #sb-complete-model .bc-choices {
+        display: flex;
+        border-radius: 7px;
+        background: var(--wash);
+        padding: 2px;
+        gap: 1px;
+      }
+      #sb-complete-model .bc-choices button {
+        font-size: 13px;
+        flex: auto;
+        min-height: 30px;
+        background: transparent;
+        border: 1px solid transparent;
+        color: var(--low);
+        border-radius: 5px;
+        padding: 3px;
+      }
+      #sb-complete-model .bc-choices button[aria-pressed="true"] {
+        background: var(--paper);
+        color: var(--ink);
+        font-weight: 600;
+        border-color: var(--line);
+        box-shadow: 0 1px 2px #0001;
+      }
+      #sb-complete-model .bc-edge {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        color: var(--low);
+      }
+      #sb-complete-model .bc-edge input {
+        flex: 1;
+        width: 40px;
+        min-width: 0;
+        border: 1px solid var(--line);
+        background: var(--paper);
+        border-radius: 6px;
+        padding: 6px 8px;
+        font-variant-numeric: tabular-nums;
+      }
+      #sb-complete-model .bc-edge input[aria-invalid="true"] {
+        outline: 2px solid light-dark(#b23e22, #ee8468);
+      }
+      #sb-complete-model .bc-reference {
+        font-size: 13px;
+        color: var(--low);
+      }
+      #sb-complete-model .bc-actions {
+        margin-top: 12px;
+      }
+      #sb-complete-model .bc-actions button {
+        background: var(--paper);
+        border: 1px solid var(--line);
+        padding: 5px 9px;
+        border-radius: 6px;
+        font-size: 13px;
+        min-height: 33px;
+      }
+      #sb-complete-model .bc-actions .bc-remove {
+        border: 0;
+        color: var(--low);
+      }
+      #sb-complete-model [hidden] {
+        display: none !important;
+      }
+      #sb-complete-model .bc-result {
+        margin-top: 15px;
+        background: var(--wash);
+        padding: 10px 12px;
+        border-radius: 7px;
+      }
+      #sb-complete-model .bc-pair + .bc-pair {
+        margin-top: 6px;
+      }
+      #sb-complete-model .bc-pair {
+        font-size: 13px;
+        color: var(--low);
+      }
+      #sb-complete-model .bc-pair strong {
+        font-weight: 600;
+        color: var(--ink);
+        font-variant-numeric: tabular-nums;
+      }
+      #sb-complete-model .bc-mobile {
+        display: none;
+      }
+      @media (max-width: 570px) {
+        #sb-complete-model .bc-body,
+        #sb-complete-model header {
+          padding: 12px;
+        }
+        #sb-complete-model .bc-head {
+          display: none;
+        }
+        #sb-complete-model .bc-row {
+          grid-template-columns: minmax(86px, 1fr) minmax(134px, 1.3fr);
+          gap: 7px 12px;
+        }
+        #sb-complete-model .bc-id {
+          grid-column: 1;
+        }
+        #sb-complete-model .bc-energy {
+          grid-column: 2;
+          grid-row: 1;
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 5px;
+          justify-content: flex-end;
+        }
+        #sb-complete-model .bc-mobile {
+          display: inline;
+          color: var(--low);
+          font-size: 11px;
+        }
+        #sb-complete-model .bc-edge {
+          max-width: 102px;
+        }
+        #sb-complete-model .bc-actions button {
+          min-height: 36px;
+        }
+      }
+      @media (pointer: coarse) {
+        #sb-complete-model .bc-choices button,
+        #sb-complete-model .bc-edge input,
+        #sb-complete-model .bc-actions button {
+          min-height: 44px;
+        }
+      }
+      #sb-complete-model .bc-card {
+        max-width: 336px;
+      }
+      #sb-complete-model .bc-body {
+        padding: 12px;
+      }
+      #sb-complete-model header {
+        padding: 12px;
+      }
+      #sb-complete-model header output {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--low);
+      }
+      #sb-complete-model h3 {
+        margin: 0 0 9px;
+        font-size: 14px;
+      }
+      #sb-complete-model .bc-band {
+        border: 0;
+        border-bottom: 1px solid var(--line);
+        padding: 5px 0 10px;
+        margin: 0 0 8px;
+        min-width: 0;
+      }
+      #sb-complete-model legend {
+        padding: 0 0 3px;
+      }
+      #sb-complete-model .bc-picks {
+        display: grid;
+        grid-template-columns: minmax(64px, 0.75fr) minmax(132px, 1.25fr);
+        gap: 8px;
+      }
+      #sb-complete-model .settings {
+        margin-top: 16px;
+        display: grid;
+        gap: 13px;
+      }
+      #sb-complete-model .setting {
+        display: grid;
+        gap: 5px;
+      }
+      #sb-complete-model .setting h3 {
+        margin: 0;
+      }
+      #sb-complete-model .setting strong {
+        font-weight: 600;
+      }
+      #sb-complete-model .numbergrid {
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: minmax(0, 1fr);
+        gap: 8px;
+      }
+      #sb-complete-model .numbergrid label {
+        display: grid;
+        gap: 4px;
+        color: var(--low);
+        font-size: 13px;
+      }
+      #sb-complete-model .numbergrid input,
+      #sb-complete-model select {
+        width: 100%;
+        min-width: 0;
+        font: inherit;
+        color: var(--ink);
+        background: var(--paper);
+        padding: 6px 8px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+      }
+      #sb-complete-model small {
+        color: var(--low);
+        font-size: 12px;
+      }
+      #sb-complete-model button:disabled {
+        opacity: 0.4;
+      }
+      #sb-complete-model .setting [role="alert"],
+      #sb-complete-model .numbergrid input[aria-invalid="true"] {
+        color: light-dark(#a13422, #ff9988);
+      }
+    </style>
+    <script>
+      (() => {
+        const root = document.getElementById("sb-complete-model"),
+          q = (s) => root.querySelector(s),
+          rows = q("[data-rows]"),
+          ns = q("[data-degeneracies]"),
+          add = q("[data-add]"),
+          remove = q("[data-remove]");
+        const modeIds = ["s", "sr", "srh"],
+          laws = ["acPh", "dis", "ionized", "acPhDis"],
+          colors = ["#4472c7", "#c76224", "#188376"],
+          subs = ["₁", "₂", "₃"];
+        const fresh = (type = "CB") => ({ type, shape: "Parabolic", n: 1 });
+        let bands = [fresh("VB"), fresh(), fresh("VB")],
+          mode = "srh",
+          scattering = "acPh",
+          low = 50,
+          high = 800;
+        function restore(s) {
+          if (
+            !s ||
+            !Array.isArray(s.bands) ||
+            s.bands.length < 1 ||
+            s.bands.length > 3 ||
+            s.bands.filter((b) => b?.shape === "Kane").length > 1 ||
+            !s.bands.every(
+              (b) =>
+                b &&
+                ["CB", "VB"].includes(b.type) &&
+                ["Parabolic", "Kane"].includes(b.shape),
+            )
+          )
+            return;
+          if (
+            s.bands.some((b) => b.shape === "Kane") &&
+            s.scattering &&
+            s.scattering !== "acPh"
+          )
+            return;
+          bands = s.bands.map((b) => ({
+            ...fresh(b.type),
+            shape: b.shape,
+            n: Number.isFinite(b.n) && b.n > 0 ? b.n : 1,
+          }));
+          if (modeIds.includes(s.mode)) mode = s.mode;
+          if (laws.includes(s.scattering)) scattering = s.scattering;
+          if (
+            Number.isFinite(s.low) &&
+            Number.isFinite(s.high) &&
+            s.low > 0 &&
+            s.high > s.low
+          ) {
+            low = s.low;
+            high = s.high;
+          }
+        }
+        const snapshot = () => ({
+          bands: bands.map((b) => ({ ...b })),
+          mode,
+          scattering,
+          low,
+          high,
+        });
+        function save() {
+          if (window.openai?.setWidgetState)
+            window.openai
+              .setWidgetState({
+                modelContent: snapshot(),
+                privateContent: null,
+              })
+              .catch(() => {});
+        }
+        function groups(i, key, opts) {
+          return (
+            '<div class="bc-choices" role="group" aria-label="Band ' +
+            (i + 1) +
+            " " +
+            key +
+            '">' +
+            opts
+              .map(
+                (v) =>
+                  '<button type="button" data-i="' +
+                  i +
+                  '" data-key="' +
+                  key +
+                  '" data-v="' +
+                  v +
+                  '" ' +
+                  (key === "shape" &&
+                  v === "Kane" &&
+                  (scattering !== "acPh" ||
+                    bands.some((b, j) => j !== i && b.shape === "Kane"))
+                    ? "disabled "
+                    : "") +
+                  'aria-pressed="' +
+                  (bands[i][key] === v) +
+                  '">' +
+                  v +
+                  "</button>",
+              )
+              .join("") +
+            "</div>"
+          );
+        }
+        function render() {
+          const k = bands.filter((b) => b.shape === "Kane").length,
+            p = bands.length - k;
+          q("[data-name]").textContent =
+            bands.length === 1
+              ? k
+                ? "SKB"
+                : "SPB"
+              : p === 2 && !k
+                ? "DPB"
+                : [k && k + " SKB", p && p + " SPB"]
+                    .filter(Boolean)
+                    .join(" + ");
+          rows.innerHTML = bands
+            .map(
+              (b, i) =>
+                '<fieldset class="bc-band"><legend class="bc-id" style="--dot:' +
+                colors[i] +
+                '"><i></i>Band ' +
+                (i + 1) +
+                '</legend><div class="bc-picks">' +
+                groups(i, "type", ["VB", "CB"]) +
+                groups(i, "shape", ["Parabolic", "Kane"]) +
+                "</div></fieldset>",
+            )
+            .join("");
+          const hint = q("[data-kane-hint]");
+          hint.hidden = !k && scattering === "acPh";
+          hint.textContent = k
+            ? "Band " +
+              (bands.findIndex((b) => b.shape === "Kane") + 1) +
+              " uses Kane. Acoustic phonons apply to all bands."
+            : "Select acoustic phonons to use a Kane band.";
+          add.hidden = bands.length === 3;
+          remove.hidden = bands.length === 1;
+          for (const b of root.querySelectorAll("[data-mode]"))
+            b.setAttribute("aria-pressed", String(b.dataset.mode === mode));
+          for (const opt of q("[data-scattering]").options)
+            opt.disabled = Boolean(k) && opt.value !== "acPh";
+          q("[data-scattering]").value = scattering;
+          ns.innerHTML = bands
+            .map(
+              (b, i) =>
+                "<label>N" +
+                subs[i] +
+                '<input type="number" step="any" aria-label="N' +
+                subs[i] +
+                '" data-n="' +
+                i +
+                '" value="' +
+                b.n +
+                '"></label>',
+            )
+            .join("");
+          q("[data-temp=low]").value = low;
+          q("[data-temp=high]").value = high;
+          q("[data-temp=low]").removeAttribute("aria-invalid");
+          q("[data-temp=high]").removeAttribute("aria-invalid");
+          q("[data-error]").hidden = true;
+        }
+        root.addEventListener("click", (e) => {
+          const b = e.target.closest("button");
+          if (!b || b.disabled) return;
+          const { i, key, v } = b.dataset;
+          if (i !== undefined) {
+            if (
+              key === "shape" &&
+              v === "Kane" &&
+              bands.some((b, j) => j !== Number(i) && b.shape === "Kane")
+            )
+              return;
+            bands[i][key] = v;
+          } else if (b === add && bands.length < 3) bands.push(fresh());
+          else if (b === remove && bands.length > 1) bands.pop();
+          else if (b.dataset.mode) mode = b.dataset.mode;
+          else return;
+          render();
+          save();
+          if (i !== undefined)
+            rows
+              .querySelector(
+                '[data-i="' +
+                  i +
+                  '"][data-key="' +
+                  key +
+                  '"][data-v="' +
+                  v +
+                  '"]',
+              )
+              .focus();
+          else if (b === add && add.hidden)
+            rows.lastElementChild.querySelector("button").focus();
+          else if (b === remove && remove.hidden) add.focus();
+        });
+        root.addEventListener("change", (e) => {
+          const field = e.target;
+          if (field.hasAttribute("data-scattering")) {
+            if (
+              !laws.includes(field.value) ||
+              (field.value !== "acPh" && bands.some((b) => b.shape === "Kane"))
+            ) {
+              render();
+              return;
+            }
+            scattering = field.value;
+            render();
+          } else if (field.hasAttribute("data-n")) {
+            const n = field.valueAsNumber;
+            field.setCustomValidity(
+              Number.isFinite(n) && n > 0 ? "" : "Enter a positive degeneracy.",
+            );
+            if (!field.checkValidity()) {
+              field.reportValidity();
+              return;
+            }
+            bands[Number(field.dataset.n)].n = n;
+          } else if (field.hasAttribute("data-temp")) {
+            const lo = q("[data-temp=low]"),
+              hi = q("[data-temp=high]");
+            const a = lo.valueAsNumber,
+              b = hi.valueAsNumber;
+            const ok =
+              Number.isFinite(a) && Number.isFinite(b) && a > 0 && a < b;
+            const error = q("[data-error]");
+            error.hidden = ok;
+            error.textContent = ok
+              ? ""
+              : "Enter a positive minimum below the maximum.";
+            for (const f of [lo, hi])
+              f.setAttribute("aria-invalid", String(!ok));
+            if (!ok) return;
+            low = a;
+            high = b;
+          } else return;
+          save();
+        });
+        restore(window.openai?.widgetState?.modelContent);
+        render();
+        window.addEventListener("openai:set_globals", (e) => {
+          const next = e.detail?.globals?.widgetState?.modelContent;
+          if (next && JSON.stringify(next) !== JSON.stringify(snapshot())) {
+            restore(next);
+            render();
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>
