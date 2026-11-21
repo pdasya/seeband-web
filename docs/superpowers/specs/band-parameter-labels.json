@@ -20,6 +20,41 @@
       "hidden": "Hidden"
     }
   },
+  "identifiability": {
+    "contract": "band_composition_v1",
+    "scope": "Proposed strings.ts keys and core diagnostic IDs for the new composition contract.",
+    "parameters_caution": {
+      "key": "fit.diagnostics.multibandSeebeckCaution",
+      "text": "Seebeck data alone can leave several band parameters undetermined. Use independent measurements or hold parameters you know."
+    },
+    "status": {
+      "id": "parameter_nonidentifiability",
+      "key": "status.parameterNonidentifiability",
+      "label": "Parameters not uniquely determined"
+    },
+    "issues": [
+      {
+        "id": "band_composition_fermi_in_gap",
+        "message_key": "known_issue.band_composition_fermi_in_gap",
+        "text": "With these band edges, every E_F inside the gap gives the same curves."
+      },
+      {
+        "id": "band_composition_flat_profile",
+        "message_key": "known_issue.band_composition_flat_profile",
+        "text": "Several values of a free parameter reproduce the data equally well within the tested range."
+      },
+      {
+        "id": "band_composition_near_empty_band",
+        "message_key": "known_issue.band_composition_near_empty_band",
+        "text": "This band has very few carriers across the fitted temperature range. Check how strongly its parameters affect the measured curves."
+      },
+      {
+        "id": "band_composition_hall_compensation",
+        "message_key": "known_issue.band_composition_hall_compensation",
+        "text": "Electron and hole Hall contributions cancel within the resolution of these measurements. The Hall signal gives little information about the absolute mass scale here."
+      }
+    ]
+  },
   "scope": "proposed UI labels and fit eligibility; internal model identifiers and numerical results unchanged",
   "numbering": "i is the stable band row number (1–3); all offsets, mass ratios and relative transport weights reference Band 1; c/v follows CB/VB without renumbering",
   "fields": [

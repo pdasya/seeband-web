@@ -89,6 +89,19 @@
               Bounds
             </button>
           </div>
+          <p id="sb-identifiability-caution" class="note" hidden>
+            Seebeck data alone can leave several band parameters undetermined.
+            Use independent measurements or hold parameters you know.
+          </p>
+          <p
+            id="sb-in-gap-note"
+            class="note"
+            data-issue="band_composition_fermi_in_gap"
+            hidden
+          >
+            With these band edges, every E_F inside the gap gives the same
+            curves.
+          </p>
           <section id="sb-three-gap" aria-label="Band gap" hidden>
             <div class="gap-heading">
               <strong>Band gap · E<sub>g</sub></strong
@@ -103,6 +116,35 @@
             aria-live="polite"
             hidden
           ></div>
+          <details id="sb-flat-profile-example" hidden>
+            <summary>Example result for a flat profile</summary>
+            <section
+              id="sb-flat-profile-result"
+              aria-label="Example fit result"
+              data-result-code="parameter_nonidentifiability"
+              data-issue="band_composition_flat_profile"
+            >
+              <h4>Result · Parameters not uniquely determined</h4>
+              <p>
+                Illustrative example of a finished fit with synthetic Seebeck
+                data, independent of current values and locks.
+              </p>
+              <p>
+                For VB at 0 eV, CB at 0.02 eV and VB at −0.12 eV, any E<sub
+                  >F</sub
+                >
+                from 0 to 0.02 eV reproduces the same curve.
+              </p>
+              <p>
+                Several values of a free parameter reproduce the data equally
+                well within the tested range.
+              </p>
+              <p>
+                The band edges define this interval, not parameter bounds.
+                Statistical uncertainty was not estimated.
+              </p>
+            </section>
+          </details>
         </section>
       </div>
       <section id="sb-guide" class="compare" hidden>
@@ -199,6 +241,26 @@
       }
       #sb-desktop-parameters .note {
         margin: 5px 0 12px;
+      }
+      #sb-identifiability-caution {
+        padding: 10px 12px;
+        background: var(--soft);
+        border-radius: 7px;
+      }
+      #sb-flat-profile-example {
+        margin-top: 14px;
+        border-top: 1px solid var(--line);
+      }
+      #sb-flat-profile-example summary {
+        min-height: 44px;
+        padding: 12px 0;
+        cursor: pointer;
+      }
+      #sb-flat-profile-result {
+        overflow-wrap: anywhere;
+      }
+      #sb-flat-profile-result h4 {
+        margin: 0;
       }
       #sb-desktop-parameters .stage {
         display: grid;
@@ -802,6 +864,12 @@
           if (hasKane()) mechanism = "ac";
           el("#sb-fit").hidden = page !== "fit";
           el("#sb-guide").hidden = page !== "guide";
+          el("#sb-identifiability-caution").hidden =
+            n < 2 || selectedMode !== 0;
+          const flatProfileExample = el("#sb-flat-profile-example");
+          flatProfileExample.hidden = n !== 3 || selectedMode !== 0;
+          if (flatProfileExample.hidden || page !== "fit")
+            flatProfileExample.open = false;
           root
             .querySelectorAll("[data-page]")
             .forEach((b) =>
@@ -942,6 +1010,8 @@
           function updateGap() {
             const summary = el("#sb-gap-readout");
             summary.hidden = true;
+            const inGapNote = el("#sb-in-gap-note");
+            inGapNote.hidden = true;
             const three = el("#sb-three-gap"),
               value = el("#sb-gap-value"),
               origin = el("#sb-gap-origin");
@@ -980,6 +1050,19 @@
             const ec = Math.min(...cb),
               ev = Math.max(...vb),
               d = ec - ev;
+            const ef = list.querySelector(
+              '[data-field="ef"] input[type=number]',
+            )?.value;
+            inGapNote.hidden = !(
+              selectedMode === 0 &&
+              offsets.every(Number.isFinite) &&
+              ef !== undefined &&
+              ef !== "" &&
+              Number.isFinite(Number(ef)) &&
+              d > 0 &&
+              Number(ef) >= ev &&
+              Number(ef) <= ec
+            );
             if (n === 3) {
               const indices = (type, energy) =>
                 offsets
@@ -1170,7 +1253,7 @@
                   : "",
               );
             };
-            if (r.id.startsWith("gap"))
+            if (r.id.startsWith("gap") || r.id === "ef")
               input.addEventListener("input", updateGap);
             const storedBounds = limits.get(key) ?? ["", ""];
             const pair =
@@ -1205,14 +1288,14 @@
             slider.oninput = () => {
               input.value = slider.value;
               values.set(key, signedValue(input.value, sign));
-              if (r.id.startsWith("gap")) updateGap();
+              if (r.id.startsWith("gap") || r.id === "ef") updateGap();
             };
             slider.onchange = save;
             input.onchange = () => {
               if (input.validity.valid) {
                 values.set(key, signedValue(input.value, sign));
                 syncSlider();
-                if (r.id.startsWith("gap")) updateGap();
+                if (r.id.startsWith("gap") || r.id === "ef") updateGap();
                 save();
               } else input.reportValidity();
             };

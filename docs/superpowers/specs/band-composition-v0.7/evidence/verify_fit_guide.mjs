@@ -7,9 +7,10 @@ const loadPackage = createRequire(import.meta.url);
 const project = process.cwd();
 const kit = path.resolve(import.meta.dirname, "..");
 const file = process.env.FIT_GUIDE_FILE ?? path.join(kit, "fit-guide.html");
-const dictionary = JSON.parse(
+const labels = JSON.parse(
   fs.readFileSync(path.join(kit, "../band-parameter-labels.json")),
-).fit_eligibility_rules;
+);
+const dictionary = labels.fit_eligibility_rules;
 const jsdom = loadPackage(path.join(project, "apps/web/node_modules/jsdom"));
 const dom = new jsdom.JSDOM(fs.readFileSync(file, "utf8"), {
   runScripts: "dangerously",
@@ -445,6 +446,267 @@ function verifyBandTransitions(w) {
   expectField("gap1", 0.08, -0.1, 0.3);
   expectField("mass", 2.6, 0.4, 6, false);
 }
+// Item 9: configuration cautions and opt-in illustrative results are distinct.
+// This same DOM contract runs under jsdom and the installed Chrome browser.
+function verifyIdentifiability(w, copy) {
+  const d = w.document;
+  const one = (selector) => d.querySelector(selector);
+  const equal = (actual, expected, message) => {
+    if (JSON.stringify(actual) !== JSON.stringify(expected))
+      throw new Error(
+        message +
+          ": expected " +
+          JSON.stringify(expected) +
+          ", received " +
+          JSON.stringify(actual),
+      );
+  };
+  const visible = (element) =>
+    Boolean(
+      element &&
+      !element.closest("[hidden]") &&
+      !element.parentElement?.closest("details:not([open])"),
+    );
+  const text = (element) => element.textContent.replace(/\s+/g, " ").trim();
+  const restore = (modelContent) =>
+    w.dispatchEvent(
+      new w.CustomEvent("openai:set_globals", {
+        detail: {
+          globals: { widgetState: { modelContent, privateContent: {} } },
+        },
+      }),
+    );
+  const mode = (i) => one('[data-mode="' + i + '"]').click();
+  const field = (id) => one('[data-field="' + id + '"] input[type=number]');
+  const set = (input, value) => {
+    input.value = value;
+    input.dispatchEvent(new w.Event("change"));
+  };
+  const cautionText =
+    "Seebeck data alone can leave several band parameters undetermined. Use independent measurements or hold parameters you know.";
+  let count = 0;
+  for (const n of [1, 2, 3])
+    for (let mask = 0; mask < 2 ** n; mask++)
+      for (let k = -1; k < n; k++)
+        for (const mechanism of k < 0 ? ["ac", "dis", "ion", "mix"] : ["ac"])
+          for (let selectedMode = 0; selectedMode < 3; selectedMode++) {
+            const types = [0, 1, 2].map(
+              (i) => ((mask >> i) & 1) + (i === k ? 2 : 0),
+            );
+            restore({ n, types, mechanism, selectedMode });
+            const context = JSON.stringify({
+              n,
+              types,
+              mechanism,
+              selectedMode,
+            });
+            const caution = one("#sb-identifiability-caution");
+            equal(
+              visible(caution),
+              n >= 2 && selectedMode === 0,
+              "Parameters caution visibility " + context,
+            );
+            if (n >= 2 && selectedMode === 0) {
+              equal(
+                caution.closest(".params") !== null,
+                true,
+                "Caution belongs to Parameters",
+              );
+              equal(text(caution), cautionText, "Persistent caution copy");
+            }
+            const example = one("#sb-flat-profile-example");
+            equal(
+              visible(example),
+              n === 3 && selectedMode === 0,
+              "Illustrative example availability " + context,
+            );
+            equal(
+              Boolean(example && example.open),
+              false,
+              "Mode selection does not opt into a result",
+            );
+            equal(
+              visible(one("#sb-flat-profile-result")) &&
+                Boolean(example && example.open),
+              false,
+              "Mode alone supplies no non-identifiability diagnosis",
+            );
+            count++;
+          }
+  equal(count, 270, "All allowed configurations checked");
+  restore({ n: 3, types: [0, 1, 0], mechanism: "ac", selectedMode: 0 });
+  set(field("ef"), "0.011");
+  set(field("gap1"), "0.09");
+  set(field("mass"), "2.8");
+  one('[data-field="gap1"] .lock').click();
+  one("#sb-bounds").click();
+  const fieldState = () =>
+    [...d.querySelectorAll(".field")].map((row) => ({
+      id: row.dataset.field,
+      inputs: [...row.querySelectorAll("input")].map((input) => [
+        input.value,
+        input.hidden,
+        input.disabled,
+      ]),
+      lock: [
+        row.querySelector(".lock").getAttribute("aria-pressed"),
+        row.querySelector(".lock").disabled,
+      ],
+    }));
+  const before = fieldState();
+  equal(
+    copy.parameters_caution.text,
+    cautionText,
+    "Caution matches canonical dictionary",
+  );
+  const example = one("#sb-flat-profile-example");
+  // HTMLElement.click() does not implement details activation in jsdom.
+  // Toggle the native disclosure there; Chrome also drives its summary below.
+  example.open = true;
+  example.dispatchEvent(new w.Event("toggle"));
+  const result = one("#sb-flat-profile-result");
+  equal(visible(result), true, "Opt-in example exposes illustrative Result");
+  equal(
+    result.dataset.resultCode,
+    copy.status.id,
+    "Result has canonical status code",
+  );
+  equal(
+    result.dataset.issue,
+    "band_composition_flat_profile",
+    "Result has distinct flat-profile issue",
+  );
+  equal(
+    text(result).includes(copy.status.label),
+    true,
+    "Result matches canonical status label",
+  );
+  equal(
+    /illustrative/i.test(result.textContent),
+    true,
+    "Result identifies itself as illustrative",
+  );
+  equal(
+    result.textContent.includes("Parameters not uniquely determined"),
+    true,
+    "Distinct parameter status label",
+  );
+  equal(
+    /converged|\bconfident\b|\breliable parameters\b/i.test(result.textContent),
+    false,
+    "Result does not claim convergence or parameter confidence",
+  );
+  equal(
+    /0(?:\.0+)?\s*(?:to|–|—|\.\.|…|−|-)\s*0\.02\s*eV/.test(result.textContent),
+    true,
+    "Illustrative EF interval is 0 to 0.02 eV",
+  );
+  equal(
+    fieldState(),
+    before,
+    "Opening result preserves fields, bounds and locks",
+  );
+  example.open = false;
+  example.open = true;
+  equal(
+    fieldState(),
+    before,
+    "Reopening result preserves fields, bounds and locks",
+  );
+  mode(1);
+  equal(
+    visible(one("#sb-identifiability-caution")),
+    false,
+    "Other modes hide caution",
+  );
+  equal(
+    visible(one("#sb-flat-profile-example")),
+    false,
+    "Other modes hide example",
+  );
+  equal(
+    one("#sb-flat-profile-example").open,
+    false,
+    "Mode switch closes example",
+  );
+  mode(0);
+  equal(
+    one("#sb-flat-profile-example").open,
+    false,
+    "Returning to S does not revive result",
+  );
+  equal(fieldState(), before, "Round trip preserves fields, bounds and locks");
+  one("#sb-flat-profile-example").open = true;
+  one('[data-page="guide"]').click();
+  equal(
+    one("#sb-flat-profile-example").open,
+    false,
+    "Leaving Fit closes example",
+  );
+  one('[data-page="fit"]').click();
+  one("#sb-flat-profile-example").open = true;
+  one("#sb-remove").click();
+  equal(
+    visible(one("#sb-flat-profile-example")),
+    false,
+    "Two bands hide example",
+  );
+  equal(
+    one("#sb-flat-profile-example").open,
+    false,
+    "Removing band closes example",
+  );
+
+  const cueText =
+    "With these band edges, every E_F inside the gap gives the same curves.";
+  equal(
+    copy.issues.find((issue) => issue.id === "band_composition_fermi_in_gap")
+      .text,
+    cueText,
+    "In-gap cue matches canonical dictionary",
+  );
+  const cue = (expected, message) => {
+    equal(visible(one("#sb-in-gap-note")), expected, message);
+    if (expected)
+      equal(text(one("#sb-in-gap-note")), cueText, "Conditional in-gap copy");
+  };
+  restore({ n: 3, types: [0, 1, 0], mechanism: "ac", selectedMode: 0 });
+  set(field("ef"), "0.01");
+  set(field("gap1"), "0.09");
+  set(field("gap2"), "-0.02");
+  cue(true, "Positive mixed band gap shows conditional cue");
+  set(field("ef"), "0");
+  cue(true, "Valence gap endpoint is included");
+  set(field("ef"), "0.09");
+  cue(true, "Conduction gap endpoint is included");
+  set(field("ef"), "0.10");
+  cue(false, "EF outside gap hides cue");
+  set(field("ef"), "");
+  cue(false, "Missing EF hides cue");
+  set(field("ef"), "0.01");
+  set(field("gap1"), "-0.01");
+  cue(false, "Band overlap hides cue");
+  set(field("gap1"), "");
+  cue(false, "Missing band edge hides cue");
+  restore({ n: 3, types: [0, 0, 0], mechanism: "ac", selectedMode: 0 });
+  cue(false, "All conduction bands hide cue");
+  restore({ n: 2, types: [0, 1, 0], mechanism: "ac", selectedMode: 0 });
+  set(field("gap1"), "0.09");
+  set(field("ef"), "0.01");
+  cue(true, "Signed two-band Eg alias shows cue");
+  one('[data-band="0"] [data-choice="CB"]').click();
+  one('[data-band="1"] [data-choice="VB"]').click();
+  set(field("gap1"), "0.09");
+  set(field("ef"), "-0.01");
+  cue(true, "Reversed signed edge alias retains physical gap cue");
+  mode(1);
+  cue(false, "Other fit modes hide conditional cue");
+  return count;
+}
+verifyIdentifiability(w, labels.identifiability);
+console.log(
+  "Item 9: 270 caution states, opt-in Result, in-gap cues and stable parameter state passed.",
+);
 verifyBandTransitions(w);
 console.log("Signed gaps and item 8 DOM state transitions passed.");
 console.log(
@@ -488,6 +750,57 @@ if (process.argv[2] || process.env.FIT_GUIDE_CHROME === "1") {
         .locator("[data-field=gap1] .field-caption")
         .waitFor({ state: "visible" });
       await page.evaluate("(" + verifyBandTransitions.toString() + ")(window)");
+      await page.evaluate(
+        "(" +
+          verifyIdentifiability.toString() +
+          ")(window," +
+          JSON.stringify(labels.identifiability) +
+          ")",
+      );
+      await page.evaluate(() =>
+        globalThis.dispatchEvent(
+          new globalThis.CustomEvent("openai:set_globals", {
+            detail: {
+              globals: {
+                widgetState: {
+                  modelContent: {
+                    n: 3,
+                    types: [0, 1, 0],
+                    mechanism: "ac",
+                    selectedMode: 0,
+                  },
+                  privateContent: {},
+                },
+              },
+            },
+          }),
+        ),
+      );
+      const summary = page.locator("#sb-flat-profile-example > summary");
+      await summary.focus();
+      await summary.press("Enter");
+      assert.equal(
+        await page
+          .locator("#sb-flat-profile-example")
+          .evaluate((el) => el.open),
+        true,
+      );
+      await page
+        .locator("#sb-flat-profile-result")
+        .waitFor({ state: "visible" });
+      assert.ok(
+        await page.evaluate(
+          () => globalThis.document.documentElement.scrollWidth <= 320,
+        ),
+        "expanded flat-profile result fits mobile viewport",
+      );
+      await page.locator('[data-mode="1"]').click();
+      await page
+        .locator("#sb-flat-profile-result")
+        .waitFor({ state: "hidden" });
+      console.log(
+        "Chrome item 9: 270 caution states and native opt-in Result disclosure passed.",
+      );
       console.log(
         "Chrome item 8 DOM transitions and 960/320 px layout passed.",
       );

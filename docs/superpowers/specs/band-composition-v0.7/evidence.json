@@ -212,6 +212,38 @@
       "limitations": "Isolated, isotropic intravalley acoustic band with prescribed amplitude. Published tables have N=K=1. N>1 and absolute conductivity are synthetic checks. Mixed-channel weights, empirical amplitude calibration, production calculations and fit behavior remain open."
     },
     {
+      "id": "S-PROFILE",
+      "scope": "synthetic three-band S-only profile",
+      "status": "passed",
+      "replay_status": "reproduced_from_pr",
+      "command": ".venv/bin/python scripts/verify_three_band_s_profile.py",
+      "cwd": "REPO",
+      "output": "evidence/three_band_s_profile.txt",
+      "claim": "A finite admissible interval for a free Fermi energy gives indistinguishable Seebeck curves. For noiseless data the witness reaches the global lower bound of zero squared residual.",
+      "conditions": {
+        "edges_eV": [0, 0.02, -0.12],
+        "bands": ["VB", "CB", "VB"],
+        "masses_me": [1, 1.4, 0.8],
+        "temperature_K": [100, 300, 800],
+        "in_gap_eV": [0, 0.005, 0.01, 0.015, 0.02],
+        "control_eV": [-0.01, 0.03],
+        "scattering": "acPh",
+        "valley_counts": [1, 1, 1],
+        "relative_weights": [1, 1, 1]
+      },
+      "metrics": {
+        "max_in_gap_delta_S_V_per_K": 0,
+        "max_in_gap_scaled_loss": 0,
+        "outside_max_delta_S_uV_per_K": [62.98315, 216.80619]
+      },
+      "tolerances": {
+        "max_in_gap_delta_S_V_per_K": 1e-12,
+        "min_outside_delta_S_V_per_K": 1e-6
+      },
+      "output_sha256": "31978fa39763bcfd5e8789e75d6957fb08953acd55759b03225aab78874c0365",
+      "limitations": "The profile minimum follows from exact charge invariance and zero loss. Outside-gap controls hold nuisance parameters fixed. This run does not estimate uncertainty or exercise the application optimizer or API."
+    },
+    {
       "id": "MASS-SCALE",
       "scope": "conditional parabolic mass identifiability",
       "status": "passed",
@@ -358,7 +390,7 @@
       },
       "limitations": "Browser and design-state checks only. No transport API is called.",
       "provenance": "The 270 field configurations run against the dictionary. The transition regression edits rendered controls in jsdom and Chrome, checks legacy and current widget snapshots, and fails on the pre-fix HTML.",
-      "output_sha256": "a4dfbcc9785d6b835273110510c8ae3b71d05002620ad4e5dbca2edcc66d6af4",
+      "output_sha256": "df485c306c59644533cfd4fdabdd7bc5ff028513d4dc8d905a037da0785278c7",
       "replay_status": "reproduced_from_pr",
       "regression": {
         "pre_fix_revision": "4e4526c6821d6bf7a06630962b3a7d1bea038acc",
@@ -370,6 +402,27 @@
           "signed two-band offset and asymmetric interval",
           "manual and hidden fields, independent physical prefactors",
           "remove and re-add, widget save/restore and legacy collisions"
+        ]
+      },
+      "identifiability": {
+        "configurations_checked": 270,
+        "parameters_caution": "all multiband S-only configurations",
+        "result_example": "three-band S-only, explicit disclosure",
+        "issue_ids_exercised": [
+          "band_composition_fermi_in_gap",
+          "band_composition_flat_profile"
+        ],
+        "result_status": "parameter_nonidentifiability",
+        "pre_fix_revision": "dbe26eae6161c12c43d2ffd2d94516b191eb8537",
+        "negative_controls": [
+          "single-band S-only and all modes including resistivity",
+          "contact, overlap, single polarity and incomplete edges",
+          "no automatic outcome from mode selection"
+        ],
+        "browser_checks": [
+          "native keyboard disclosure",
+          "expanded content within 320 px",
+          "draft values, bounds and holds preserved"
         ]
       }
     }
