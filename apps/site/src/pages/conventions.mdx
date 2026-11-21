@@ -36,6 +36,12 @@ the single-band Seebeck coefficients differ. The three scattering choices
 are acoustic phonons, alloy disorder and ionized impurities. Use manual
 starting values and bounds for the explicit model.
 
+For acoustic phonons and alloy disorder, the dimensionless Hall moment is
+$\int_0^\infty \sqrt{x}(-\partial f/\partial x)\,dx = F_{-1/2}(\eta)/2$,
+where $F$ is the unnormalized Fermi integral. P18 uses $x=t^2$ when the
+integration window includes the band edge, so the derivative of the square
+root at zero does not limit the accuracy of the quadrature.
+
 With S or S+ρ the mass scale stays fixed. With S+ρ+Hall it can be fitted,
 which sets the absolute concentration scale. At fixed Fermi energy and
 mass ratio, rescaling both masses preserves the balance for the same

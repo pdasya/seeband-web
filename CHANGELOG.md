@@ -16,6 +16,11 @@ deploy/compose.yaml up --build`. The API image installs exactly `uv.lock`
   Saved fixed-density sessions keep their original parametrization. Historical
   signed-mass requests retain their versioned behavior. See [P18](docs/superpowers/specs/2026-11-20-p18-explicit-dpb-bands-design.md).
 
+- P18: correct the band-edge quadrature for the acoustic and alloy-disorder
+  Hall moments in explicit DPB curves. The previous rule biased the magnitude
+  of the CB+CB disorder Hall coefficient by 1.17 parts per million at 800 K
+  in the reference case.
+
 - Results ZIP exports calculate one curve at a time and retry temporary
   capacity errors. This lets an archive finish while the Results page is
   still calculating its plots.

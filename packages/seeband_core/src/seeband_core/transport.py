@@ -46,15 +46,34 @@ _NODES.setflags(write=False)
 _WEIGHTS.setflags(write=False)
 
 
+def _quadrature(
+    lower: float | np.ndarray, upper: float | np.ndarray, *, smooth_edge: bool = False
+) -> tuple[np.ndarray, np.ndarray]:
+    x = lower + (upper - lower) * (_NODES + 1.0) / 2.0
+    weights = _WEIGHTS * (upper - lower) / 2.0
+    if smooth_edge:
+        # x=t^2 removes the sqrt(x) endpoint derivative singularity. Retain
+        # the centered x-window when its lower bound is above the band edge.
+        t_upper = np.sqrt(upper)
+        t = t_upper * (_NODES + 1.0) / 2.0
+        x = np.where(lower == 0.0, t**2, x)
+        weights = np.where(lower == 0.0, _WEIGHTS * t_upper * t, weights)
+    return x, weights
+
+
 def fermi_integral(order: float, reduced_mu: float) -> float:
     """Unnormalized F_order without exponentiating a positive chemical potential."""
     if order <= -1:
         raise ValueError("Fermi integral order must exceed -1")
     eta = reduced_mu
     lower, upper = max(0.0, eta - 48.0), max(0.0, eta) + 48.0
-    x = lower + (upper - lower) * (_NODES + 1.0) / 2.0
+    x, weights = _quadrature(lower, upper, smooth_edge=order == -0.5)
+    if order == -0.5 and eta <= 0.0:
+        # Scale before integration so the far tail cannot underflow first.
+        window = np.exp(-x) * expit(x - eta) ** 2
+        return float(np.sum(weights * x**0.5 * window) * np.exp(eta) / 0.5)
     window = expit(x - eta) * expit(eta - x)
-    return float(np.sum(_WEIGHTS * (upper - lower) / 2.0 * x ** (order + 1) * window) / (order + 1))
+    return float(np.sum(weights * x ** (order + 1) * window) / (order + 1))
 
 
 def band_transport(
@@ -79,13 +98,13 @@ def band_transport(
         raise ValueError("The transport exponent must be finite and nonnegative")
     eta = np.asarray(reduced_mu, dtype=float)[:, None]
     lower, upper = np.maximum(0.0, eta - 48.0), np.maximum(0.0, eta) + 48.0
-    x = lower + (upper - lower) * (_NODES + 1.0) / 2.0
+    x, weights = _quadrature(lower, upper, smooth_edge=lam == 0.0)
     # Scale out the Boltzmann exponential to retain ratios at large negative eta.
     scale = np.exp(np.minimum(eta, 0.0))
     # For positive eta, expit products avoid overflow; for negative eta this
     # equivalent expression divides out exp(eta) before underflow can occur.
     window = np.where(eta <= 0.0, np.exp(-x) * expit(x - eta) ** 2, expit(x - eta) * expit(eta - x))
-    weight = _WEIGHTS * (upper - lower) / 2.0 * window
+    weight = weights * window
     longitudinal = weight * x ** (lam + 1.0)
     j0 = np.sum(longitudinal, axis=1)
     # Center at mu in the degenerate regime, at the edge otherwise. This

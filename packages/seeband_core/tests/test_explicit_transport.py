@@ -235,6 +235,15 @@ def test_transport_matches_independent_si_relaxation_time_moments(
         )
 
 
+def test_depleted_alloy_hall_matches_independent_p18_reference():
+    p = dict(m1=1.7, mass_ratio=0.8 / 1.7, band_offset_k=450.0, F=2e4, G=1.2)
+    actual = explicit_curves(
+        ExplicitBands("cb_cb", 2e24), "dpb_s_rho_rh", p, np.array([800.0]), "dis", 2, 6
+    )["hall_m3_per_c"]
+    # Independent P18 oracle with inherited core constants, in m^3/C.
+    np.testing.assert_allclose(actual, [-7.038039355547361e-6], rtol=1e-7, atol=0.0)
+
+
 def test_seebeck_only_does_not_require_unused_resistivity_or_hall_scale():
     settings = ExplicitBands("vb_cb", 0.0)
     p = dict(m1=1.7, mass_ratio=0.8 / 1.7, band_offset_k=35000.0)
