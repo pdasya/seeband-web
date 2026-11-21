@@ -14,6 +14,20 @@ key=${1:?usage: host-setup.sh '<deploy public key>' <site address>}
 address=${2:?usage: host-setup.sh '<deploy public key>' <site address>}
 [[ $(id -u) == 0 ]] || { echo "Run as root, with sudo" >&2; exit 1; }
 [[ $key == ssh-* ]] || { echo "The first argument must be an SSH public key" >&2; exit 1; }
+[[ $address =~ ^[A-Za-z0-9.-]+$ ]] || { echo "The second argument must be a host name" >&2; exit 1; }
+
+# Oracle's Ubuntu images reject everything but SSH in iptables; open the web ports before that.
+# Saved before Docker is installed, so Docker's own chains, which it recreates on each start, are
+# not saved with them.
+if command -v iptables >/dev/null; then
+  for rule in "-p tcp --dport 80" "-p tcp --dport 443" "-p udp --dport 443"; do
+    # shellcheck disable=SC2086
+    iptables -C INPUT $rule -j ACCEPT 2>/dev/null || iptables -I INPUT $rule -j ACCEPT
+  done
+  if command -v netfilter-persistent >/dev/null; then
+    netfilter-persistent save
+  fi
+fi
 
 # Docker, from Docker's own repository, as Ubuntu's is older.
 if ! command -v docker >/dev/null; then
@@ -41,17 +55,6 @@ grep -qxF "$key" /home/deploy/.ssh/authorized_keys 2>/dev/null ||
   echo "$key" >>/home/deploy/.ssh/authorized_keys
 chown deploy:deploy /home/deploy/.ssh/authorized_keys
 chmod 600 /home/deploy/.ssh/authorized_keys
-
-# Oracle's Ubuntu images reject everything but SSH in iptables; open the web ports before that.
-if command -v iptables >/dev/null; then
-  for rule in "-p tcp --dport 80" "-p tcp --dport 443" "-p udp --dport 443"; do
-    # shellcheck disable=SC2086
-    iptables -C INPUT $rule -j ACCEPT 2>/dev/null || iptables -I INPUT $rule -j ACCEPT
-  done
-  if command -v netfilter-persistent >/dev/null; then
-    netfilter-persistent save
-  fi
-fi
 
 # The host's settings; the deploy job adds compose.yaml and deploy.sh next to it.
 install -d -m 750 -o deploy -g deploy /opt/seeband
