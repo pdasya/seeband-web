@@ -148,47 +148,71 @@ and pushes the images and skips the deploy.
 The prototype runs on an Always Free machine of Oracle Cloud instead of the Hetzner CX23 the plan
 named, as who pays for a host (F6, #6) is still open. It costs nothing: the machine, its disk, the
 public address and the backups below are all within Oracle's Always Free limits, and the console
-marks the boot volume Always Free (2026-11-21). Oracle's free machines are Ampere, arm64, which is why the images are built for both
-architectures. The machine holds no data either: measurements are only used for the calculation
+marks the boot volume Always Free (2026-11-21). Oracle's free machines are Ampere, arm64, which
+is why the images are built for both architectures. The machine holds no data either: measurements are only used for the calculation
 asked for.
 
-| What           | Value                                                                   |
-| -------------- | ----------------------------------------------------------------------- |
-| Region         | Germany Central (Frankfurt), AD-3                                       |
-| Shape          | `VM.Standard.A1.Flex`, 2 OCPUs, 12 GB, Ubuntu 24.04 (aarch64)           |
-| Disk           | 47 GB boot volume, weekly backup kept 27 days                           |
-| Address        | `https://seeband.duckdns.org`, a DuckDNS name on an ephemeral public IP |
-| Cost           | 0 € (Always Free)                                                       |
-| Search engines | kept out: no `SEEBAND_SITE_URL`, so `noindex` and `Disallow: /`         |
+| What           | Value                                                                                                                             |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Region         | Germany Central (Frankfurt), AD-3                                                                                                 |
+| Shape          | `VM.Standard.A1.Flex`, 2 OCPUs, 12 GB, Ubuntu 24.04 (aarch64)                                                                     |
+| Disk           | 47 GB boot volume, weekly backup kept 27 days                                                                                     |
+| Address        | `https://seeband.duckdns.org`, a DuckDNS name on an ephemeral public IP                                                           |
+| Cost           | 0 € (Always Free)                                                                                                                 |
+| Search engines | kept out: no `SEEBAND_SITE_URL`, so `noindex` and `Disallow: /`                                                                   |
+| Accounts       | Oracle: the tenancy created for this; DuckDNS: the repository owner's GitHub sign-in. Their sign-ins stay outside the repository. |
 
 1. **The machine** (Oracle Cloud console, one time; needs an Oracle account):
    - Compute → Instances → Create: image Ubuntu 24.04, shape `VM.Standard.A1.Flex` (Ampere),
      2 OCPUs and 12 GB, within the free allowance; your own SSH key.
-   - The instance's VNIC → IP administration → Edit: an ephemeral public IP. It stays while the
-     instance exists, through stops and reboots.
+   - The instance's VNIC → IP administration → Edit: an ephemeral public IP. It stays through
+     stops and reboots, and is released when the instance is terminated or rebuilt from a backup.
+     A reserved public IP would survive a rebuild; check in the console that it is free first.
    - In the instance's subnet, Security List → Ingress Rules: TCP 80 and 443, and UDP 443,
      from `0.0.0.0/0`. SSH (TCP 22) is open already.
 2. **A name.** A DuckDNS subdomain (duckdns.org, sign in with GitHub) set to the public IP, such
-   as `seeband.duckdns.org`. The IP does not change, so its update token is not needed anywhere.
+   as `seeband.duckdns.org`. The IP changes only with a new instance, so the name is set by hand
+   and its update token is not needed anywhere.
    Without one, `<ip with dashes>.sslip.io` also resolves to the machine. Caddy gets the HTTPS
    certificate for the name itself.
 3. **A deploy key**, on your computer: `ssh-keygen -t ed25519 -N '' -C seeband-deploy -f seeband-deploy`.
-4. **The machine's setup**: copy `deploy/host-setup.sh` there and run
+4. **The machine's setup**: copy `deploy/host-setup.sh` there and, logged in as `ubuntu`, run
    `sudo bash host-setup.sh "$(cat seeband-deploy.pub)" seeband.duckdns.org`. It installs
    Docker, creates the user `deploy` with only that key, opens the ports in the machine's own
-   firewall, turns on daily security updates with a reboot at 04:00 UTC when one needs it,
-   refuses SSH passwords and root, and writes `/opt/seeband/.env`.
+   firewall, sets the clock to UTC, turns on daily security updates with a reboot at 04:00 UTC
+   when one needs it, refuses SSH passwords and root, and writes `/opt/seeband/.env`. It stops
+   before changing anything unless the user who runs it logs in by key and uses sudo, and it
+   checks that sshd applies its settings. Running it again with a new key replaces the old one.
 5. **Backups** (Storage → Block Storage): a backup policy with one weekly incremental schedule,
    Monday 00:00 UTC, kept 27 days, assigned to the boot volume. That keeps at most four backups,
    within the five free ones, and leaves one for a manual backup before a risky change. The disk
    holds the system, `.env` and Caddy's certificates; everything else comes back from the images.
 6. **GitHub**, environment `production`, limited to `main`: the secret `DEPLOY_SSH_KEY` is the
-   contents of `seeband-deploy`; `DEPLOY_KNOWN_HOSTS` is the output of
-   `ssh-keyscan -t ed25519 <ip>`; the vars are `DEPLOY_USER` = `deploy`,
+   contents of `seeband-deploy`. `DEPLOY_KNOWN_HOSTS` is `<ip> ` followed by the host's own
+   `/etc/ssh/ssh_host_ed25519_key.pub`, read over the admin's SSH session rather than taken from
+   `ssh-keyscan`, which trusts whatever answers first. The vars are `DEPLOY_USER` = `deploy`,
    `DEPLOY_PATH` = `/opt/seeband` and `SEEBAND_PUBLIC_URL` = `https://seeband.duckdns.org`. As a
    repository variable, `DEPLOY_HOST` = the IP; `SEEBAND_SITE_URL` stays unset, so the site stays
    out of search engines.
+   Once the secret is stored, delete the local `seeband-deploy` private key; a new one is cheap.
 7. **Deploy**: the next merge to main deploys, or run the Deploy workflow by hand with a tag.
+
+**Restore from a backup.** Storage → Boot Volume Backups → the backup → Restore gives a boot
+volume; Compute → Instances → Create with that boot volume as its source gives the machine back,
+with `.env`, the deploy user, the host key and Caddy's certificates. It gets a new public IP: set
+it in DuckDNS, in `DEPLOY_HOST` and at the start of `DEPLOY_KNOWN_HOSTS`, whose key stays the
+same. Add the security list rules again if the network is new. Then run the
+Deploy workflow by hand with the tag in `.deployed-tag`, or let the next merge deploy.
+
+**Updates by hand.** Unattended upgrades install Ubuntu's security updates only. Docker's own
+packages (`docker-ce`, `containerd.io` and the plugins) come from Docker's repository and are
+upgraded by hand, when nobody is fitting: `sudo apt-get update && sudo apt-get install
+--only-upgrade docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin`.
+Docker restarts with them, and the stack comes back by itself.
+
+**The nightly reboot** happens only when an update needs one, at 04:00 UTC. It ends a fit running
+then, and a deploy caught by it stops half-way: the containers come back on whichever tag they
+had, and running the Deploy workflow again puts everything in order.
 
 **A new name or host** means changing `SEEBAND_SITE_ADDRESS` in the host's `.env` and
 `SEEBAND_PUBLIC_URL`, then deploying again. Moving to another machine means repeating 4 to 6
@@ -196,14 +220,17 @@ there.
 
 **A free account's limits.** Oracle may reclaim an Always Free instance that stays idle for a
 week (low CPU, network and memory use), and the free A1 capacity of a region is sometimes
-exhausted, so a deleted machine may not be recreatable at once. Oracle does not reclaim the
-instances of an account upgraded to Pay As You Go, which stays free within the same limits; that
-upgrade needs a payment card and is the owner's decision. Neither has happened here; both are
-reasons to keep the paid host (F6) as the plan for anything beyond showing results.
+exhausted, so a deleted machine may not be recreatable at once. A demo that sits idle most of
+the week meets that idle rule, so this is a real risk here. Oracle does not reclaim the instances
+of an account upgraded to Pay As You Go, which stays free within the same limits but bills
+anything beyond them, such as a sixth backup; that upgrade needs a payment card and is the
+owner's decision. Neither has happened here; both are reasons to keep the paid host (F6) as the
+plan for anything beyond showing results.
 
 ## Operations
 
-- **Update or roll back:** by the Deploy workflow, below. By hand on the host, in its deploy directory: `./deploy.sh "$(cat .previous-tag)" https://<domain>/api/health`.
+- **Update or roll back:** by the Deploy workflow, above. By hand on the host, in its deploy
+  directory: `./deploy.sh "$(cat .previous-tag)" https://<domain>/api/health`.
 - **A change of the `Caddyfile` recreates the `web` container,** as Caddy's admin endpoint is off.
   That ends the open fit streams, and with them their fits, so do it when nobody is fitting.
 - **Nothing restarts an API that turns unhealthy.** `restart` only covers an exit, and
