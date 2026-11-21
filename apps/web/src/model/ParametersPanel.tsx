@@ -278,10 +278,10 @@ function ParameterControl({
                 [
                   domain.lower === undefined
                     ? ""
-                    : `${label} ${domain.inclusive ? "≥" : ">"} ${formatNumber(coreToDisplay(parameter, domain.lower))}`,
+                    : `${label} ${domain.inclusive ? "≥" : ">"} ${formatNumber(tidy(coreToDisplay(parameter, domain.lower)))}`,
                   domain.upper === undefined
                     ? ""
-                    : `${label} ${domain.inclusive ? "≤" : "<"} ${formatNumber(coreToDisplay(parameter, domain.upper))}`,
+                    : `${label} ${domain.inclusive ? "≤" : "<"} ${formatNumber(tidy(coreToDisplay(parameter, domain.upper)))}`,
                 ]
                   .filter(Boolean)
                   .join(", "),

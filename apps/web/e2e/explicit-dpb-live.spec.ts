@@ -262,7 +262,7 @@ for (const sample of [
     offset: -0.06,
     valid: -0.05,
     rejected: -0.01,
-    again: -0.04,
+    again: -0.03,
   },
   {
     configuration: "vb_cb",
@@ -270,7 +270,7 @@ for (const sample of [
     offset: -0.06,
     valid: -0.01,
     rejected: -0.05,
-    again: -0.02,
+    again: -0.03,
   },
 ]) {
   test(`manual EF limits for ${sample.configuration} ${sample.carrier}, offset ${sample.offset} eV`, async ({

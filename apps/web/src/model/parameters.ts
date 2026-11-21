@@ -41,22 +41,14 @@ export function explorationCoreValue(
     parameter.fit_scale / parameter.display_scale,
   );
   if (domain !== undefined) {
-    // An energy entered in eV is stored with the same 12-digit conversion for EF and Δ.
-    // Keep that displayed edge excluded even if converting it back differs by a few ULPs.
-    if (
-      !domain.inclusive &&
-      [domain.lower, domain.upper].some(
-        (edge) =>
-          edge !== undefined &&
-          displayed === tidy(coreToDisplay(parameter, edge)),
-      )
-    )
-      return null;
-    if (
-      domain.inclusive &&
-      (converted === domain.lower || converted === domain.upper)
-    ) {
-      return inExplorationDomain(converted, domain) ? converted : null;
+    // A displayed endpoint selects the exact server value, even when a round trip
+    // through eV would move EF just to one side of compensation.
+    for (const edge of [domain.lower, domain.upper]) {
+      if (edge === undefined || !Number.isFinite(edge)) continue;
+      const displayEdge = coreToDisplay(parameter, edge);
+      if (displayed === displayEdge || displayed === tidy(displayEdge)) {
+        return domain.inclusive ? edge : null;
+      }
     }
     const displayDomain = {
       ...(domain.lower === undefined

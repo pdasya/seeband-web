@@ -266,6 +266,15 @@ describe("manual exploration domains", () => {
     },
   );
 
+  test("selects the inclusive compensation energy from either side in display units", () => {
+    const boundary = displayToCore(energy, -0.06) / 2;
+    for (const bounds of [{ lower: boundary }, { upper: boundary }]) {
+      expect(
+        explorationCoreValue(energy, -0.03, { ...bounds, inclusive: true }),
+      ).toBe(boundary);
+    }
+  });
+
   test("keeps custom narrow ranges and disables a disjoint slider without changing fit bounds", () => {
     const custom = withCustomRange(energy, { lower: 99, upper: 101 });
     const before = structuredClone(custom);
