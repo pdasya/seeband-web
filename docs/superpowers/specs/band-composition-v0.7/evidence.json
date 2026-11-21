@@ -4,7 +4,8 @@
   "design": "../2026-11-21-band-composition-design.md",
   "working_directories": {
     "REPO": "Repository root of the PR checkout. Set KIT to the absolute path of docs/superpowers/specs/band-composition-v0.7 in this checkout.",
-    "P18": "Historical checkout at archived_p18_revision, unavailable from the published repository. Its explicit transport module and tests are absent from this PR. Commands with cwd=P18 document the archived runs."
+    "P18": "Historical checkout at archived_p18_revision, now published as an ancestor of codex/p18-hall-quadrature. Historical commands and outputs describe their original environment.",
+    "P18_FIXED": "Separate P18 checkout at corrected_p18_revision. Set KIT to the absolute path of docs/superpowers/specs/band-composition-v0.7 in the current review checkout. See REVIEW.md for commands."
   },
   "interface_contract": {
     "band_count": [1, 2, 3],
@@ -59,7 +60,7 @@
       "limitations": "Selected P18 tests only. The full CI suite for the proposed configuration was not run.",
       "output_sha256": "e792f4a705b3d5374c5aa7fbcce8f42bd1cfdf337dc7f104739e55f8c3ef690a",
       "provenance": "retained prior evidence",
-      "replay_status": "archived_only",
+      "replay_status": "historical_output_from_separate_p18",
       "historical_command": "PYTHONPATH=packages/seeband_core/src .venv/bin/pytest -q packages/seeband_core/tests/test_carrier_domain.py packages/seeband_core/tests/test_explicit_transport.py packages/seeband_core/tests/test_explicit_dpb_fit.py"
     },
     {
@@ -112,11 +113,36 @@
         "core_m3_per_C": -7.038047601642028e-6,
         "reference_m3_per_C": -7.038039355547361e-6
       },
-      "limitations": "The archived run met the 3e−6 comparison threshold and did not establish why the proposed tolerance was exceeded.",
+      "limitations": "Archived output uses the original audit and 3e−6 comparison threshold. The current strict script exits nonzero at the 1e−6 design budget on this revision. See DPB-HALL-FIX for the corrected run.",
       "output_sha256": "554396e11f31d60e8e824bf4fadf2367fe0fc7b3a9937e2c3fdf39fef9b80629",
       "provenance": "retained prior evidence",
-      "replay_status": "archived_only",
-      "historical_command": "PYTHONPATH=packages/seeband_core/src .venv/bin/python \"$KIT/evidence/verify_explicit_curves_spb.py\""
+      "replay_status": "historical_output_from_separate_p18",
+      "historical_command": "PYTHONPATH=packages/seeband_core/src .venv/bin/python \"$KIT/evidence/verify_explicit_curves_spb.py\"",
+      "historical_audit_revision": "3e93c7fdbfbdaa6758e3a2cf8be849585b6a8a6b"
+    },
+    {
+      "id": "DPB-HALL-FIX",
+      "scope": "P18 explicit DPB forward curves vs independent SPB channel sums",
+      "status": "passed",
+      "replay_status": "reproduced_from_separate_p18",
+      "claim": "The corrected quadrature meets the Hall budget and regression target across the same cases as DPB-HALL.",
+      "cwd": "P18_FIXED",
+      "command": "PYTHONPATH=packages/seeband_core/src uv run --frozen python \"$KIT/evidence/verify_explicit_curves_spb.py\"",
+      "output": "evidence/dpb_hall_p18_fixed.txt",
+      "metrics": {
+        "cases": 27,
+        "temperature_points": 81,
+        "hall_points": 27,
+        "hall_design_budget": 1e-6,
+        "hall_regression_target": 1e-7,
+        "scaled_error_Hall": 5.0771265704844325e-11,
+        "before_scaled_error_Hall": 1.1716465694490075e-6,
+        "core_m3_per_C": -7.038039355904691e-6,
+        "reference_m3_per_C": -7.038039355547361e-6
+      },
+      "limitations": "The explicit core lives on the linked P18 branch. This forward-curve comparison uses shared physical constants and does not exercise the fit optimizer.",
+      "output_sha256": "f615baccec0bf89fb6537f1d285abb3ca4f8918f0ced1130464bd4e05c515a8b",
+      "provenance": "Captured from a clean P18 checkout at corrected_p18_revision with the audit in this review branch."
     },
     {
       "id": "SKB",
@@ -188,7 +214,7 @@
       "limitations": "Forward curves for parabolic bands. Selecting observables in this check does not run an optimizer.",
       "output_sha256": "6b1bfbdd4a18707674e2366d47f14e2e2d5f540ac1ba7d1d68502fc0810780b3",
       "provenance": "retained prior evidence",
-      "replay_status": "archived_only",
+      "replay_status": "historical_output_from_separate_p18",
       "historical_command": "PYTHONPATH=packages/seeband_core/src .venv/bin/python \"$KIT/../../../../scripts/verify_mixed_scattering_design.py\" --legacy"
     },
     {
@@ -241,5 +267,6 @@
     }
   ],
   "parameter_notation": "../band-parameter-labels.json",
-  "prototype": "fit-guide.html"
+  "prototype": "fit-guide.html",
+  "corrected_p18_revision": "a7943506412eb82856ad2459984632190315bb64"
 }

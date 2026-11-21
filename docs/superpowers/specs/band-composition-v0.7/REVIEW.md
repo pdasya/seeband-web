@@ -16,13 +16,31 @@ PYTHONPATH=packages/seeband_core/src .venv/bin/python scripts/verify_mixed_scatt
 
 The first four commands reproduce CHARGE, SPB, SKB and MIX. The fifth (MIX-LEGACY) compares ρ, S and Hall with this branch's `seeband_core.math_module` using the same chemical potentials and integrals as inputs. The [index](evidence.json) also gives the commands for the two prototypes. The Fit and Guide browser check requires Chrome.
 
-**P18 archive.** This repository has no published ref for `8e4f98d`. Three rows retain results from that historical checkout:
+**P18 archive.** The [original P18 revision](https://github.com/pdasya/seeband-web/commit/8e4f98d78c3868c65f5e22b4e359061aca3f7ece) is now reachable from the [separate P18 branch](https://github.com/pdasya/seeband-web/tree/codex/p18-hall-quadrature). Three rows retain the original outputs:
 
 - **P18-BASE** recorded 113 passing tests. The three test files are absent from this branch.
-- **DPB-HALL** exceeded the proposed tolerance. On this branch the script stops at the import of `seeband_core.explicit_transport`.
+- **DPB-HALL** exceeded the proposed tolerance. The strict audit reproduces the failure on the original P18 revision. DPB-HALL-FIX records the result with corrected quadrature.
 - **MIX-P18** preserves the historical `--legacy` output. The branch replay of the same comparison (MIX-LEGACY) uses the version of the core in this PR. The last digits of the S and Hall errors differ. Both logs are linked below.
 
 Use the SHA-256 digest to check a saved file's integrity. The manifest's `replay_status` identifies runs reproduced from this branch. Archive entries retain their historical command. E2E is planned.
+
+## Replaying the P18 Hall comparison
+
+From the root of this review branch, fetch P18 and run the same audit against both revisions. The expected outcome for the first run is a nonzero exit at the 10⁻⁶ Hall budget. The second must pass both that budget and the 10⁻⁷ regression target.
+
+```sh
+audit="$PWD/docs/superpowers/specs/band-composition-v0.7/evidence/verify_explicit_curves_spb.py"
+git fetch origin refs/heads/codex/p18-hall-quadrature
+git worktree add --detach ../p18-hall-before 8e4f98d78c3868c65f5e22b4e359061aca3f7ece
+git worktree add --detach ../p18-hall-after a7943506412eb82856ad2459984632190315bb64
+(cd ../p18-hall-before && PYTHONPATH=packages/seeband_core/src uv run --frozen python "$audit")
+(cd ../p18-hall-after && PYTHONPATH=packages/seeband_core/src uv run --frozen python "$audit")
+(cd ../p18-hall-after && uv run --frozen pytest -q packages/seeband_core/tests/test_transport_hall_quadrature.py)
+```
+
+For λ = 0 (acPh and dis), the Hall integrand contains √x at the band edge. The substitution x = t² gives √x dx = 2t² dt. The kernel retains the linear energy grid when the integration window lies entirely above the edge. The moment test compares with ½ F₋½(η) in the unnormalized Fermi-integral convention at a relative tolerance of 10⁻¹⁰, including depleted and degenerate bands. At η = −40, −6, −2, 0, 3, 10 and 60, the maximum relative moment error fell from 1.174 × 10⁻⁶ to 3.908 × 10⁻¹⁴ against a 60-digit polylogarithm reference.
+
+The end-to-end audit covers 27 configuration/scattering/mode combinations at 100, 300 and 800 K. Of its 81 evaluated points, 27 use the fit mode that returns Hall. The Hall error is scaled by the sum of absolute channel Hall contributions, including near compensation.
 
 ## Using Fit and Guide
 
@@ -42,6 +60,7 @@ The [Parameters and Model field dictionary](../band-parameter-labels.json) lists
 | CHARGE       | Shared μ(T), densities and band permutations                          | Maximum normalized residual 1.303 × 10⁻¹³.                                                                                            | [Output](evidence/verify_band_composition_design.txt)               |
 | SPB          | Integrals and analytical formulas                                     | 36 cases. Maximum Hall error 1.017 × 10⁻¹⁰.                                                                                           | [Output](evidence/verify_spb_design_coefficients.txt)               |
 | DPB-HALL     | P18 archive · core vs. independent formulas                           | 27 combinations and 81 temperature points. The Hall error of 1.172 × 10⁻⁶ at CB+CB / dis / 800 K exceeds the proposed 10⁻⁶ tolerance. | [Inputs and values](evidence/explicit_curves_spb_result.txt)        |
+| DPB-HALL-FIX | Published P18 · corrected endpoint quadrature                         | Maximum scaled Hall error 5.0771 × 10⁻¹¹, down from 1.1716 × 10⁻⁶ for CB+CB / dis / 800 K.                                            | [Corrected run](evidence/dpb_hall_p18_fixed.txt)                    |
 | SKB          | Acoustic SKB against Tables 1 and 2 of Lin and Liu                    | Calculated m_D/mₑ values of 0.952275 and 0.0387615, compared with the published 0.9523 and 0.03877.                                   | [Output](evidence/verify_skb_design_reference.txt)                  |
 | MIX          | acPh + dis for parabolic bands                                        | 72 cases, both pure-scattering limits and three independent crossover temperatures.                                                   | [Output](evidence/mixed_reference.txt)                              |
 | MIX-LEGACY   | Comparison with this PR's math_module at shared μ and integral values | 100, 300 and 800 K. Maximum Hall error 4.495 × 10⁻⁷ for a tolerance of 3 × 10⁻⁵.                                                      | [Branch output](evidence/mixed_legacy_pr.txt)                       |

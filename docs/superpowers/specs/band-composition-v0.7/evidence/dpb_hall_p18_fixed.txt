@@ -1,0 +1,33 @@
+PASS vb_vb/acPh/dpb_s: 3 temperatures, N=(2,6)
+PASS vb_vb/acPh/dpb_s_rho: 3 temperatures, N=(2,6)
+PASS vb_vb/acPh/dpb_s_rho_rh: 3 temperatures, N=(2,6)
+PASS vb_vb/dis/dpb_s: 3 temperatures, N=(2,6)
+PASS vb_vb/dis/dpb_s_rho: 3 temperatures, N=(2,6)
+PASS vb_vb/dis/dpb_s_rho_rh: 3 temperatures, N=(2,6)
+PASS vb_vb/ionized/dpb_s: 3 temperatures, N=(2,6)
+PASS vb_vb/ionized/dpb_s_rho: 3 temperatures, N=(2,6)
+PASS vb_vb/ionized/dpb_s_rho_rh: 3 temperatures, N=(2,6)
+PASS vb_cb/acPh/dpb_s: 3 temperatures, N=(2,6)
+PASS vb_cb/acPh/dpb_s_rho: 3 temperatures, N=(2,6)
+PASS vb_cb/acPh/dpb_s_rho_rh: 3 temperatures, N=(2,6)
+PASS vb_cb/dis/dpb_s: 3 temperatures, N=(2,6)
+PASS vb_cb/dis/dpb_s_rho: 3 temperatures, N=(2,6)
+PASS vb_cb/dis/dpb_s_rho_rh: 3 temperatures, N=(2,6)
+PASS vb_cb/ionized/dpb_s: 3 temperatures, N=(2,6)
+PASS vb_cb/ionized/dpb_s_rho: 3 temperatures, N=(2,6)
+PASS vb_cb/ionized/dpb_s_rho_rh: 3 temperatures, N=(2,6)
+PASS cb_cb/acPh/dpb_s: 3 temperatures, N=(2,6)
+PASS cb_cb/acPh/dpb_s_rho: 3 temperatures, N=(2,6)
+PASS cb_cb/acPh/dpb_s_rho_rh: 3 temperatures, N=(2,6)
+PASS cb_cb/dis/dpb_s: 3 temperatures, N=(2,6)
+PASS cb_cb/dis/dpb_s_rho: 3 temperatures, N=(2,6)
+CB+CB dis 800 K: R_H [m^3/C], oracle [m^3/C], scaled error -7.038039355904691e-06 -7.038039355547361e-06 5.0771265704844325e-11
+PASS cb_cb/dis/dpb_s_rho_rh: 3 temperatures, N=(2,6)
+PASS cb_cb/ionized/dpb_s: 3 temperatures, N=(2,6)
+PASS cb_cb/ionized/dpb_s_rho: 3 temperatures, N=(2,6)
+PASS cb_cb/ionized/dpb_s_rho_rh: 3 temperatures, N=(2,6)
+ORACLE 1600->3200 GRID MAX 1.1915912700999343e-10
+MAX ERRORS {'S': 2.1453065054343013e-11, 'rho': 2.5401680758818657e-11, 'RH': 5.0771265704844325e-11, 'L': 1.2573009300353988e-10, 'sigma': 2.5401680758818657e-11, 'kappa': 1.51097800937805e-10, 'density_residual': 3.3554431999999887e-15}
+WORST HALL (config,law,mode,T,mu_K,actual,oracle,abs_channel_scale) ('cb_cb', 'dis', 'dpb_s_rho_rh', 800.0, -4742.7575109363015, -7.038039355904691e-06, -7.038039355547361e-06, 7.038039355547361e-06)
+PASS: 27 mode/configuration/scattering combinations; 81 temperature vectors; Hall error scaled by sum of absolute channel Hall terms, Seebeck similarly; same inherited constants; no optimizer or production compatibility claim beyond fixtures.
+DPB-HALL passed: 27 Hall points; scaled error < 1e-7; design budget 1e-6.
