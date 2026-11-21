@@ -49,14 +49,14 @@
       "id": "P18-BASE",
       "scope": "production baseline",
       "status": "passed",
-      "claim": "Домены, явный DPB-транспорт и существующий двухзонный фит",
+      "claim": "Domain checks, explicit DPB transport and the existing two-band fit.",
       "command": null,
       "cwd": "P18",
       "output": "evidence/p18-baseline.txt",
       "metrics": {
         "tests_passed": 113
       },
-      "limitations": "Выбранные тесты P18. Общий CI новой конфигурации не выполнялся.",
+      "limitations": "Selected P18 tests only. The full CI suite for the proposed configuration was not run.",
       "output_sha256": "e792f4a705b3d5374c5aa7fbcce8f42bd1cfdf337dc7f104739e55f8c3ef690a",
       "provenance": "retained prior evidence",
       "replay_status": "archived_only",
@@ -66,14 +66,14 @@
       "id": "CHARGE",
       "scope": "reference calculation",
       "status": "passed",
-      "claim": "Общий химпотенциал и постоянство n−p на контрольных конфигурациях",
+      "claim": "A common chemical potential and conservation of n−p across the reference configurations.",
       "command": ".venv/bin/python scripts/verify_band_composition_design.py",
       "cwd": "REPO",
       "output": "evidence/verify_band_composition_design.txt",
       "metrics": {
         "max_normalized_residual": 1.303e-13
       },
-      "limitations": "Конечная выборка и постоянное время релаксации для демонстрации долей проводимости.",
+      "limitations": "Finite sample of configurations. The demonstration of conductivity fractions assumes a constant relaxation time.",
       "output_sha256": "86f181d232f0bd46de0ba8d0de22c5e0c673b53c73d15065b83f902346a7a572",
       "provenance": "Output reproduced from the PR checkout.",
       "replay_status": "reproduced_from_pr"
@@ -82,7 +82,7 @@
       "id": "SPB",
       "scope": "reference calculation",
       "status": "passed",
-      "claim": "Сверка формул с радиальными транспортными интегралами",
+      "claim": "Comparison of closed-form coefficients with radial transport integrals.",
       "command": ".venv/bin/python scripts/verify_spb_design_coefficients.py",
       "cwd": "REPO",
       "output": "evidence/verify_spb_design_coefficients.txt",
@@ -90,7 +90,7 @@
         "cases": 36,
         "max_relative_error_Hall": 1.017e-10
       },
-      "limitations": "Параболы, заданные степенные механизмы, прямой расчёт.",
+      "limitations": "Forward calculations for parabolic bands with the specified power-law scattering mechanisms.",
       "output_sha256": "8f156cf05bd1d1accda5d51f1c79dc48cfbdf765d2b591f977a17a309dd37417",
       "provenance": "Output reproduced from the PR checkout.",
       "replay_status": "reproduced_from_pr"
@@ -99,7 +99,7 @@
       "id": "DPB-HALL",
       "scope": "production vs reference",
       "status": "exceeds_proposed_tolerance",
-      "claim": "Наихудшая точка CB+CB, dis, S+ρ+Hall, 800 K",
+      "claim": "Largest discrepancy for CB+CB, dis, S+ρ+Hall at 800 K.",
       "command": null,
       "cwd": "P18",
       "output": "evidence/explicit_curves_spb_result.txt",
@@ -112,7 +112,7 @@
         "core_m3_per_C": -7.038047601642028e-6,
         "reference_m3_per_C": -7.038039355547361e-6
       },
-      "limitations": "Проходит порог сравнения 3e−6. Причина превышения проектного порога не установлена.",
+      "limitations": "The archived run met the 3e−6 comparison threshold and did not establish why the proposed tolerance was exceeded.",
       "output_sha256": "554396e11f31d60e8e824bf4fadf2367fe0fc7b3a9937e2c3fdf39fef9b80629",
       "provenance": "retained prior evidence",
       "replay_status": "archived_only",
@@ -122,7 +122,7 @@
       "id": "SKB",
       "scope": "published benchmark",
       "status": "passed",
-      "claim": "Восстановление DOS-массы по двум строкам из Lin и Liu",
+      "claim": "Recovery of the density-of-states mass for two tabulated cases from Lin and Liu.",
       "command": ".venv/bin/python scripts/verify_skb_design_reference.py",
       "cwd": "REPO",
       "output": "evidence/verify_skb_design_reference.txt",
@@ -132,7 +132,7 @@
         "VB_published_me": 0.9523,
         "CB_published_me": 0.03877
       },
-      "limitations": "Одна изотропная долина, acPh, N=1. Оптимизация многозонной модели и абсолютная ρ отдельно не проверены.",
+      "limitations": "One isotropic valley, acPh, N=1. The check did not test multiband optimization or independently validate absolute resistivity.",
       "output_sha256": "79a4c60cff866abcd4e141e93df914f106540f3c2e1b33f7791c42592384e267",
       "provenance": "Output reproduced from the PR checkout.",
       "replay_status": "reproduced_from_pr"
@@ -151,7 +151,7 @@
         "max_error_L": 1.4432899320127035e-14,
         "max_pure_limit_error": 1.4625514577204513e-8
       },
-      "limitations": "Прямые параболические кривые. Выбор наблюдаемых в тесте не запускает оптимизатор.",
+      "limitations": "Forward curves for parabolic bands. Selecting observables in this check does not run an optimizer.",
       "output_sha256": "9c7d8f38e9186565e4063d816451a16a270afce64b477c580a7a3e912fe1bda1",
       "provenance": "Output reproduced from the PR checkout."
     },
@@ -176,7 +176,7 @@
       "id": "MIX-P18",
       "scope": "reference and archived functions",
       "status": "passed",
-      "claim": "Сумма скоростей acPh + dis и чистые пределы, архивные функции P18",
+      "claim": "Sum of acPh and dis rates, pure limits and the archived P18 legacy functions.",
       "command": null,
       "cwd": "P18",
       "output": "evidence/verify_mixed_scattering_design.txt",
@@ -185,7 +185,7 @@
         "max_error_L": 1.4432899320127035e-14,
         "max_pure_limit_error": 1.4625514577204513e-8
       },
-      "limitations": "Прямые параболические кривые. Выбор наблюдаемых в тесте не запускает оптимизатор.",
+      "limitations": "Forward curves for parabolic bands. Selecting observables in this check does not run an optimizer.",
       "output_sha256": "6b1bfbdd4a18707674e2366d47f14e2e2d5f540ac1ba7d1d68502fc0810780b3",
       "provenance": "retained prior evidence",
       "replay_status": "archived_only",
@@ -195,7 +195,7 @@
       "id": "UI-MODEL",
       "scope": "interactive prototype",
       "status": "passed",
-      "claim": "Ограничение Kane, название состава, добавление, удаление и Nᵢ",
+      "claim": "Single-Kane constraint, composition label, adding and removing bands, and valley degeneracies Nᵢ.",
       "command": "node \"$KIT/evidence/verify_model.mjs\"",
       "cwd": "REPO",
       "output": "evidence/mock_result.txt",
@@ -204,7 +204,7 @@
         "max_bands": 3,
         "max_kane": 1
       },
-      "limitations": "Тест автономного Model. Parameters, запросы API, результаты и сохранение сессии описаны в TDD.",
+      "limitations": "Standalone Model prototype. The TDD specifies Parameters, API requests, results and session persistence.",
       "output_sha256": "3c02db9c2b2417ab5302e9f0ac62ec62c93d2507d6878098a5549c1eb2c06fd5",
       "provenance": "Output reproduced from the PR checkout.",
       "replay_status": "reproduced_from_pr"
@@ -213,12 +213,12 @@
       "id": "E2E",
       "scope": "planned integration",
       "status": "not_run",
-      "claim": "Изменить состав с сохранением параметров, выполнить calc, fit, экспорт и восстановление сессии",
+      "claim": "Change composition while preserving parameters, calculate curves, fit, export and restore the session.",
       "command": null,
       "cwd": null,
       "output": null,
       "metrics": {},
-      "limitations": "Запуск возможен после реализации. См. §1.4, §8 A6.",
+      "limitations": "Planned after implementation. See §1.4 and acceptance criterion A6 in §8.",
       "provenance": "planned",
       "replay_status": "planned"
     },
@@ -241,6 +241,5 @@
     }
   ],
   "parameter_notation": "../band-parameter-labels.json",
-  "prototype": "fit-guide.html",
-  "word": "SeeBand-band-composition-review-v0.7-ru.docx"
+  "prototype": "fit-guide.html"
 }

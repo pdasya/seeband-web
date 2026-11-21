@@ -1,12 +1,10 @@
-# Результаты для рецензента · SeeBand Web
+# Reviewing the SeeBand Web band-composition design v0.7
 
-Технический проект v0.7. [Машиночитаемый индекс](evidence.json) содержит условия, команды, единицы, допуски и SHA-256 файлов вывода. [Технический проект](../2026-11-21-band-composition-design.md) содержит формулы и описание изменений к P18.
+Read the [technical design document](../2026-11-21-band-composition-design.md) for the formulas and proposed changes to P18. The [evidence index](evidence.json) lists commands, conditions, units, tolerances and the SHA-256 digests of saved outputs. To try the [interactive Fit and Guide prototype](fit-guide.html), select **Download raw file** on GitHub and open the downloaded HTML in a browser.
 
-[Word-копия для комментариев](SeeBand-band-composition-review-v0.7-ru.docx). Для интерактивной проверки скачайте [fit-guide.html](fit-guide.html) через Download raw file и откройте файл в браузере.
+## Replaying the checks from this branch
 
-## Что можно воспроизвести из ветки PR
-
-Из корня checkout после установки зависимостей проекта (`uv sync`, `pnpm install --frozen-lockfile`) выполните:
+From the repository root, install the project dependencies with `uv sync` and `pnpm install --frozen-lockfile`, then run:
 
 ```sh
 .venv/bin/python scripts/verify_band_composition_design.py
@@ -16,46 +14,42 @@
 PYTHONPATH=packages/seeband_core/src .venv/bin/python scripts/verify_mixed_scattering_design.py --legacy
 ```
 
-Первые четыре команды воспроизводят CHARGE, SPB, SKB и MIX. Пятая (MIX-LEGACY) дополнительно сравнивает ρ, S и Hall с функциями `seeband_core.math_module` из этой ветки при общих μ и интегралах. Команды для обоих макетов приведены в [индексе](evidence.json), для браузерной проверки нужен Chrome.
+The first four commands reproduce CHARGE, SPB, SKB and MIX. The fifth (MIX-LEGACY) compares ρ, S and Hall with this branch's `seeband_core.math_module` using the same chemical potentials and integrals as inputs. The [index](evidence.json) also gives the commands for the two prototypes. The Fit and Guide browser check requires Chrome.
 
-**P18 archive.** This repository does not provide a ref for `8e4f98d`. Readers cannot recreate the historical checkout from this repository. The following three rows retain its recorded results:
+**P18 archive.** This repository has no published ref for `8e4f98d`. Three rows retain results from that historical checkout:
 
-- **P18-BASE** — 113 прошедших тестов в историческом прогоне. Трёх тестовых файлов в этой ветке нет.
-- **DPB-HALL** — архивное превышение проектного допуска. Здесь сценарий останавливается на импорте `seeband_core.explicit_transport`.
-- **MIX-P18** — прежний вывод `--legacy` на P18. Ветка PR воспроизводит сравнение на своей версии ядра (MIX-LEGACY). Последние цифры ошибок S и Hall различаются. Оба файла вывода доступны ниже.
+- **P18-BASE** recorded 113 passing tests. The three test files are absent from this branch.
+- **DPB-HALL** exceeded the proposed tolerance. On this branch the script stops at the import of `seeband_core.explicit_transport`.
+- **MIX-P18** preserves the historical `--legacy` output. The branch replay of the same comparison (MIX-LEGACY) uses the version of the core in this PR. The last digits of the S and Hall errors differ. Both logs are linked below.
 
-SHA-256 позволяет проверить сохранность каждого файла вывода. В индексе поле `replay_status` указывает, воспроизведён ли результат из этой ветки. Для архивных строк указана историческая команда. E2E остаётся планом.
+Use the SHA-256 digest to check a saved file's integrity. The manifest's `replay_status` identifies runs reproduced from this branch. Archive entries retain their historical command. E2E is planned.
 
-## Согласованный интерфейс v0.7
+## Using Fit and Guide
 
-В [Fit](fit-guide.html) можно собрать от одной до трёх зон и проверить параметры каждого режима. Guide показывает сравнительную таблицу. При трёх зонах строка Band gap показывает щель и определяющие её края. В §15.1 TDD приведены проверочные примеры для смены нижней CB, равенства краёв и перекрытия. В макете значения условные.
+The [prototype](fit-guide.html) lets you build a model with one to three bands and inspect the fields for each fit mode. Guide shows the comparison across modes. With three bands, the Band gap row identifies the edges that determine the gap. TDD §15.1 gives examples where the lowest conduction band changes, edges coincide, or the bands overlap. Prototype input values are illustrative.
 
-## Обозначения полей
+FitPage has two areas. On the left, Data sits alongside four ChartGrid slots. On the right, FitPanel is followed by Parameters, Model and Result. In Model, each of the one to three rows specifies VB or CB and Parabolic or Kane. This composition determines the model name. Fit mode, a shared scattering mechanism, valley degeneracies and the temperature range stay in Model. The researcher enters parameter values, holds and fit bounds in Parameters.
 
-[Словарь строк Parameters и Model](../band-parameter-labels.json) содержит названия, размерности, определения, подсказки и таблицу SPB для каждого fit mode и варианта рассеяния. В §15 технического проекта описаны все шесть семейств. Это проект подписей. Происхождение численных результатов указано выше для каждого набора проверок.
+For example, set Band 1 to VB Parabolic, Band 2 to CB Parabolic and Band 3 to VB Parabolic. The label reads **3 SPB**. Remove Band 3 to obtain **DPB**, then change Band 2 to Kane for **1 SKB + 1 SPB**. Model now offers only acPh, and Parameters gains the Band 2 nonparabolicity field. The planned E2E check covers preserving bounds and recalculating curves through these transitions.
 
-## Как понимать интерфейс без иллюстраций
+The [Parameters and Model field dictionary](../band-parameter-labels.json) lists labels, units, definitions, tooltips and the SPB matrix for every fit mode and scattering mechanism. TDD §15 covers all six model families.
 
-FitPage содержит две области. Слева Data и четыре слота ChartGrid. Справа FitPanel, затем Parameters и Model, ниже Result. В Model список из 1–3 строк задаёт VB/CB и Parabolic/Kane. Состав определяет название. Здесь же остаются режим измерений, одно общее рассеяние, кратности и диапазон T. В Parameters исследователь задаёт численные значения, фиксации и границы.
+## Results and open checks
 
-Пример с фотографии: Band 1 VB Parabolic, Band 2 CB Parabolic, Band 3 VB Parabolic → 3 SPB. Удалить последнюю → DPB. Выбрать Kane у Band 2 → 1 SKB + 1 SPB. Тогда в Model доступен только acPh, а в Parameters появляется непараболичность Band 2. Логику Model демонстрирует [интерактивный макет Fit и Guide](fit-guide.html). Сохранение границ и пересчёт графиков при этих переходах входят в будущую проверку E2E.
+| ID           | Scope                                                                 | Result                                                                                                                                | Evidence                                                            |
+| ------------ | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| P18-BASE     | P18 archive · domains, transport and explicit DPB fitting             | 113 tests passed in the historical checkout.                                                                                          | [pytest log](evidence/p18-baseline.txt)                             |
+| CHARGE       | Shared μ(T), densities and band permutations                          | Maximum normalized residual 1.303 × 10⁻¹³.                                                                                            | [Output](evidence/verify_band_composition_design.txt)               |
+| SPB          | Integrals and analytical formulas                                     | 36 cases. Maximum Hall error 1.017 × 10⁻¹⁰.                                                                                           | [Output](evidence/verify_spb_design_coefficients.txt)               |
+| DPB-HALL     | P18 archive · core vs. independent formulas                           | 27 combinations and 81 temperature points. The Hall error of 1.172 × 10⁻⁶ at CB+CB / dis / 800 K exceeds the proposed 10⁻⁶ tolerance. | [Inputs and values](evidence/explicit_curves_spb_result.txt)        |
+| SKB          | Acoustic SKB against Tables 1 and 2 of Lin and Liu                    | Calculated m_D/mₑ values of 0.952275 and 0.0387615, compared with the published 0.9523 and 0.03877.                                   | [Output](evidence/verify_skb_design_reference.txt)                  |
+| MIX          | acPh + dis for parabolic bands                                        | 72 cases, both pure-scattering limits and three independent crossover temperatures.                                                   | [Output](evidence/mixed_reference.txt)                              |
+| MIX-LEGACY   | Comparison with this PR's math_module at shared μ and integral values | 100, 300 and 800 K. Maximum Hall error 4.495 × 10⁻⁷ for a tolerance of 3 × 10⁻⁵.                                                      | [Branch output](evidence/mixed_legacy_pr.txt)                       |
+| MIX-P18      | P18 archive · historical run with --legacy                            | The comparison passed in the historical checkout.                                                                                     | [Archived output](evidence/verify_mixed_scattering_design.txt)      |
+| UI-FIT-GUIDE | Packaged v0.7 prototype                                               | 270 field configurations, holds, bounds, Guide and the three-band gap. Chrome at widths of 960 and 320 px.                            | [Output](evidence/fit-guide-v0.7.txt)                               |
+| UI-MODEL     | Earlier Model prototype                                               | Checked labels, row counts and Kane restrictions.                                                                                     | [Output](evidence/mock_result.txt)                                  |
+| E2E          | New band builder → Parameters → calculate → fit → session             | Pending implementation. The full end-to-end matrix of 270 allowed configurations has yet to run.                                      | [Criteria in §1.4 and §8](../2026-11-21-band-composition-design.md) |
 
-## Выполненные проверки и открытые результаты
+## Giving feedback
 
-| ID           | Что проверялось                                      | Результат                                                                                                                 | Доказательство                                                   |
-| ------------ | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| P18-BASE     | Архив P18 · домены, транспорт и явный DPB-фит        | 113 тестов прошли                                                                                                         | [pytest](evidence/p18-baseline.txt)                              |
-| CHARGE       | Общий μ(T), плотности и перестановки                 | Максимум нормированной невязки 1.303 × 10⁻¹³                                                                              | [Вывод](evidence/verify_band_composition_design.txt)             |
-| SPB          | Интегралы и аналитические формулы                    | 36 случаев, ошибка Hall до 1.017 × 10⁻¹⁰                                                                                  | [Вывод](evidence/verify_spb_design_coefficients.txt)             |
-| DPB-HALL     | Архив P18 · ядро против независимых формул           | 27 сочетаний и 81 температурная точка. Ошибка Hall 1.172 × 10⁻⁶ при CB+CB / dis / 800 K превышает предложенный порог 10⁻⁶ | [Значения и входы](evidence/explicit_curves_spb_result.txt)      |
-| SKB          | Акустическая SKB по таблицам 1 и 2 Lin и Liu         | m_D/mₑ = 0.952275 и 0.0387615 при опубликованных 0.9523 и 0.03877                                                         | [Вывод](evidence/verify_skb_design_reference.txt)                |
-| MIX          | acPh + dis в параболах                               | 72 случая, оба чистых предела, три независимых температуры перехода                                                       | [Вывод](evidence/mixed_reference.txt)                            |
-| MIX-LEGACY   | Сравнение с math_module из PR, общие μ и интегралы   | 100, 300 и 800 K. Максимальная ошибка Hall 4.495 × 10⁻⁷ при допуске 3 × 10⁻⁵                                              | [Вывод PR](evidence/mixed_legacy_pr.txt)                         |
-| MIX-P18      | Архив P18 · прежний запуск с --legacy                | Сравнение прошло в историческом checkout                                                                                  | [Архивный вывод](evidence/verify_mixed_scattering_design.txt)    |
-| UI-FIT-GUIDE | Упакованный макет v0.7                               | 270 состояний полей, замки, границы, Guide и трёхзонная щель. Chrome при 960 и 320 px                                     | [Вывод](evidence/fit-guide-v0.7.txt)                             |
-| UI-MODEL     | Элементы управления предшествующего макета           | Проверены названия, количество строк и запреты для Kane                                                                   | [Вывод](evidence/mock_result.txt)                                |
-| E2E          | Новый конструктор → Parameters → calc → fit → сессия | Ещё не реализовано и не запускалось. Полная матрица из 270 допустимых сочетаний остаётся планом                           | [Критерии в §1.4 и §8](../2026-11-21-band-composition-design.md) |
-
-## Как дать замечание
-
-Укажите ID проверки или раздел, утверждение, конкретные входы, ожидаемое и наблюдаемое поведение и ссылку на файл или первоисточник. Для будущей функции укажите условие приёмки. Независимое численное совпадение подтверждает формулу в проверенных точках. Вывод о конкретном образце требует физических предпосылок исследователя.
+Include the check ID or section, the claim under review, the inputs, and the expected and observed behavior. Link to the file or primary source. For a proposed feature, specify an acceptance criterion. Agreement between independent calculations supports a formula at the points tested. Interpreting a particular sample still depends on the researcher's physical assumptions.

@@ -142,7 +142,7 @@ assert.deepEqual(
   all(".lock").map((b) => b.getAttribute("aria-pressed")),
   beforeLocks,
 );
-assert.ok(!/[А-Яа-яЁё]/.test(fs.readFileSync(file, "utf8")));
+assert.ok(!/\p{Script=Cyrillic}/u.test(fs.readFileSync(file, "utf8")));
 one("#sb-add").click();
 set(field("massRatio2", "input"), "4");
 field("massRatio2", ".lock").click();
