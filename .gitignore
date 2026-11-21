@@ -17,6 +17,12 @@ dist/
 .env.*
 !.env.example
 
+# The deploy script's record of the running and previous image tags and Compose files
+deploy/.deployed-tag
+deploy/.previous-tag
+deploy/.previous-compose.yaml
+deploy/compose.yaml.new
+
 # Claude Code: machine-specific link and personal settings
 .claude/skills/fastapi
 .claude/settings.local.json

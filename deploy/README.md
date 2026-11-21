@@ -93,9 +93,87 @@ defaults, 2 and 2, are meant for the planned 2 vCPUs. The independent review of 
 that they oversubscribe such a machine under mixed load, so measure them on the machine itself
 (I3, #55) before changing them. Size the memory limit there too.
 
+## Deploying from GitHub
+
+`.github/workflows/deploy.yml` builds both images of each merge to main, pushes them to GHCR as
+`ghcr.io/pdasya/seeband-api` and `-web` with the tag `sha-<first 12 characters of the commit>`,
+and deploys that tag over SSH. Each tag stays in the registry, so any earlier one can be deployed
+again.
+
+On the host, `deploy.sh`, which the job copies there with the new `compose.yaml` as
+`compose.yaml.new`:
+
+1. puts the new Compose file in place, keeping the running one as `.previous-compose.yaml`;
+2. pulls the tag's images and starts them, waiting for the API's health check;
+3. asks `<SEEBAND_PUBLIC_URL>/api/health` for up to a minute, through Caddy, until it answers with
+   this tag's commit, so an old container still answering does not pass. The site's name resolves
+   to the host itself for this check, so it does not depend on the host reaching its own public
+   address;
+4. records the tag in `.deployed-tag`, and the one before in `.previous-tag`, and removes the
+   images of every other tag, so the disk does not fill up;
+5. if 2 or 3 fails, starts the previous tag again with the previous Compose file, checks it the
+   same way, and fails the job.
+
+The job then checks the health URL once more from outside. The host logs in to GHCR only for the
+pull, with the job's short-lived token, and logs out again; nothing long-lived is stored there.
+
+**Roll back:** run the Deploy workflow by hand (Actions → Deploy → Run workflow) with the tag to
+go back to, such as the one in `.previous-tag` on the host or any `sha-…` tag of the package. That
+skips the build and deploys the tag with the same checks.
+
+**Settings.** Secrets live only in the repository's `production` environment. Two variables are
+repository variables instead, because GitHub decides whether a job runs, and builds the images,
+before any environment applies:
+
+| Where       | Kind   | Name                 | Holds                                                                 |
+| ----------- | ------ | -------------------- | --------------------------------------------------------------------- |
+| environment | secret | `DEPLOY_SSH_KEY`     | a private key used only for deploying, its public half on the host    |
+| environment | secret | `DEPLOY_KNOWN_HOSTS` | the host's line from `ssh-keyscan`, so the job checks the host key    |
+| environment | var    | `DEPLOY_USER`        | a user on the host in the `docker` group                              |
+| environment | var    | `DEPLOY_PATH`        | the directory with the host's `.env`, such as `/opt/seeband`          |
+| environment | var    | `SEEBAND_PUBLIC_URL` | the public address, such as `https://seeband.example`                 |
+| repository  | var    | `DEPLOY_HOST`        | the host's name or address; until it is set, no deploy runs           |
+| repository  | var    | `SEEBAND_SITE_URL`   | empty until the move to the final host (I6), so the site stays closed |
+
+**Limit the environment to `main`** (Settings → Environments → production → Deployment branches).
+The deploy key belongs to a member of the `docker` group, so it is root on the host. The workflow
+deploys only from main as well, but only the environment rule keeps the key from a workflow
+changed on another branch. Add required reviewers if a deploy should wait for approval. The host's own
+settings, `SEEBAND_SITE_ADDRESS`, the ports and the API's limits, stay in its `.env`, which no
+workflow touches. Until `DEPLOY_HOST` is set, as before the machine exists (I3), each merge builds
+and pushes the images and skips the deploy.
+
+## A temporary host: Oracle Cloud Always Free
+
+Until the planned host exists, an Always Free machine of Oracle Cloud can run the same images, to
+show results. Its free machines are Ampere, arm64, which is why the images are built for both
+architectures. It holds no data either: measurements are only used for the calculation asked for.
+
+1. **The machine** (Oracle Cloud console, one time; needs an Oracle account):
+   - Compute → Instances → Create: image Ubuntu 24.04, shape `VM.Standard.A1.Flex` (Ampere),
+     2 OCPUs and 12 GB, within the free allowance; a public IPv4 address; your own SSH key.
+   - In the instance's subnet, Security List → Ingress Rules: TCP 80 and 443, and UDP 443,
+     from `0.0.0.0/0`. SSH (TCP 22) is open already.
+2. **A name.** Until a domain is chosen (F7), `<ip with dashes>.sslip.io` resolves to the machine,
+   such as `203-0-113-7.sslip.io` for 203.0.113.7, and Caddy gets an HTTPS certificate for it.
+3. **A deploy key**, on your computer: `ssh-keygen -t ed25519 -N '' -C seeband-deploy -f seeband-deploy`.
+4. **The machine's setup**: copy `deploy/host-setup.sh` there and run
+   `sudo bash host-setup.sh "$(cat seeband-deploy.pub)" 203-0-113-7.sslip.io`. It installs
+   Docker, creates the user `deploy` with only that key, opens the ports in the machine's own
+   firewall, and writes `/opt/seeband/.env`.
+5. **GitHub**, environment `production`, limited to `main`: the secret `DEPLOY_SSH_KEY` is the
+   contents of `seeband-deploy`; `DEPLOY_KNOWN_HOSTS` is the output of
+   `ssh-keyscan -t ed25519 <ip>`; the vars are `DEPLOY_USER` = `deploy`,
+   `DEPLOY_PATH` = `/opt/seeband` and `SEEBAND_PUBLIC_URL` = `https://203-0-113-7.sslip.io`. As a
+   repository variable, `DEPLOY_HOST` = the IP; `SEEBAND_SITE_URL` stays unset, so the site stays
+   out of search engines.
+6. **Deploy**: the next merge to main deploys, or run the Deploy workflow by hand with a tag.
+
+Moving to the planned host later means repeating 4 and 5 there and changing the vars.
+
 ## Operations
 
-- **Update or roll back:** `SEEBAND_TAG=<tag> docker compose -f deploy/compose.yaml up -d`.
+- **Update or roll back:** by the Deploy workflow, below. By hand on the host, in its deploy directory: `./deploy.sh "$(cat .previous-tag)" https://<domain>/api/health`.
 - **A change of the `Caddyfile` recreates the `web` container,** as Caddy's admin endpoint is off.
   That ends the open fit streams, and with them their fits, so do it when nobody is fitting.
 - **Nothing restarts an API that turns unhealthy.** `restart` only covers an exit, and
@@ -123,6 +201,15 @@ that they oversubscribe such a machine under mixed load, so measure them on the 
   also for a missing page and the API down. A DPB S + ρ + R_H fit streamed its iterations through
   Caddy, and Stop ended it together with its process. Caddy's message about the closed stream held
   no address or header.
+- **The deploy script, in CI.** The `Containers` job deploys a `sha-` tag of the commit with
+  `deploy.sh` and checks that images of other tags were removed. It then deploys a tag whose API
+  reports another commit, and checks that the script went back to the first tag and that this
+  rollback passed its own check. Last, it deploys that tag with a new Compose file under which the
+  API cannot start, and checks that the rollback used the Compose file before it. Locally, with stand-ins for Docker and curl, it also kept a good tag,
+  recorded the previous one, rolled back from a tag whose API reported another commit, and failed
+  plainly when the rollback failed too.
+- **Not yet:** the Deploy workflow itself, which needs the host and its settings (I3), and a first
+  real deploy with a deliberately failing health check on it.
 - **Not yet, on the target machine (I3):**
   - the review's mixed load, with its p50/p95/p99, memory and orphan processes;
   - that IPv4 and IPv6 visitors count as separate clients, by `curl -4` and `curl -6` from two
