@@ -570,19 +570,20 @@ test("Reset goes back to the defaults, and to manual", async ({ page }) => {
   await expect(fitBadges(page)).toHaveCount(0);
 });
 
-test("Reset touches only this fit mode", async ({ page }) => {
+test("Reset restores the defaults in view, which another fit mode then takes", async ({
+  page,
+}) => {
   await openWithData(page);
   await field(page, "Eg").fill("0,05");
   await field(page, "Eg").blur();
   await page.getByRole("radio", { name: "S", exact: true }).click();
-  await field(page, "Eg").fill("0,06");
-  await field(page, "Eg").blur();
+  await expect(field(page, "Eg")).toHaveValue("0,05");
 
   await reset(page).click();
   await expect(field(page, "Eg")).toHaveValue("0,09");
 
   await page.getByRole("radio", { name: "S + ρ", exact: true }).click();
-  await expect(field(page, "Eg")).toHaveValue("0,05");
+  await expect(field(page, "Eg")).toHaveValue("0,09");
 });
 
 test("Reset during a fit stops it", async ({ page }) => {

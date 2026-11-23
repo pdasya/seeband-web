@@ -515,22 +515,21 @@ test("bounds of another scattering neither go with a fit nor stop it", async ({
   expect(bodies[0]?.bounds).toBeUndefined();
 });
 
-test("each mode has its own, and they stay when coming back", async ({
+test("they follow to another fit mode, and back with what was changed there", async ({
   page,
 }) => {
   await open(page);
   await setBounds(page, "Eg", "0,04", "0,13");
 
   await page.getByRole("radio", { name: "S", exact: true }).click();
-  await expect(row(page, "Eg")).toContainText("-0,26 … 0,26");
-  await openEditor(page);
-  await expect(lower(page, "Eg")).toHaveValue("-0,26");
-  await done(page);
-
-  await page.getByRole("radio", { name: "S + ρ", exact: true }).click();
   await expect(row(page, "Eg")).toContainText("0,04 … 0,13");
   await openEditor(page);
   await expect(lower(page, "Eg")).toHaveValue("0,04");
+  await done(page);
+  await setBounds(page, "Eg", "0,05", "0,12");
+
+  await page.getByRole("radio", { name: "S + ρ", exact: true }).click();
+  await expect(row(page, "Eg")).toContainText("0,05 … 0,12");
 });
 
 test("Default bounds ends a change and what was being typed, and keeps the values", async ({

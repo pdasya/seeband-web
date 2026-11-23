@@ -128,7 +128,7 @@ test("the SPB mass spans both signs, and is marked as not fitted", async ({
   await field(page, "m").press("Enter");
 
   await expect(slider(page, "m")).toHaveAttribute("aria-valuenow", "-2.5");
-  expect(await stored(page, "spb_s")).toEqual({ band_mass: -2.5 });
+  expect(await stored(page, "spb_s")).toMatchObject({ band_mass: -2.5 });
 });
 
 test("a typed value counts on leaving the field, and moves the slider", async ({
@@ -230,7 +230,7 @@ test("ionized amplitude controls retain their values", async ({ page }) => {
   await field(page, "A").fill("42000");
   await field(page, "A").press("Enter");
   await slider(page, "A").press("ArrowRight");
-  expect(await stored(page, "spb_s_rho")).toEqual({ A: 43000 });
+  expect(await stored(page, "spb_s_rho")).toMatchObject({ A: 43000 });
   await expect(field(page, "A")).toHaveValue("43000");
 });
 
@@ -312,23 +312,29 @@ test("ionized scattering has no mixed-scattering controls", async ({
   await expect(field(page, "D")).toHaveCount(0);
 });
 
-test("each fit mode keeps its own values and defaults", async ({ page }) => {
+test("values follow to another fit mode and model, by parameter", async ({
+  page,
+}) => {
   await open(page);
   await choose(page, "SPB");
   await field(page, "EF").fill("0,06");
   await field(page, "EF").blur();
 
+  // SPB S + ρ starts from m = -1 on its own, but takes the m shown in S.
   await choose(page, "S + ρ");
-  await expect(field(page, "EF")).toHaveValue("-0,01");
-  await expect(field(page, "m")).toHaveValue("-1");
-
-  await choose(page, "S");
   await expect(field(page, "EF")).toHaveValue("0,06");
+  await expect(field(page, "m")).toHaveValue("1,01");
+  await field(page, "EF").fill("0,05");
+  await field(page, "EF").blur();
 
   await choose(page, "DPB");
-  await expect(field(page, "EF")).toHaveValue("-0,01");
+  await expect(field(page, "EF")).toHaveValue("0,05");
+  await expect(field(page, "m₂/m₁")).toHaveValue("1,01");
+  await field(page, "EF").fill("0,04");
+  await field(page, "EF").blur();
+
   await choose(page, "SPB");
-  await expect(field(page, "EF")).toHaveValue("0,06");
+  await expect(field(page, "EF")).toHaveValue("0,04");
 });
 
 test("a refused number does not follow to another fit mode", async ({

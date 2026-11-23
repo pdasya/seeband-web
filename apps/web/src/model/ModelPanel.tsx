@@ -333,6 +333,7 @@ function ModelControls({ models }: { models: readonly ModelDescription[] }) {
   const selection = useSessionStore((state) => state.selection);
   const saved = useSessionStore((state) => state.savedModelSettings);
   const setSelection = useSessionStore((state) => state.setSelection);
+  const chooseFitMode = useSessionStore((state) => state.chooseFitMode);
   const chooseModel = useSessionStore((state) => state.chooseModel);
 
   const model = models.find(({ id }) => id === selection.model);
@@ -355,7 +356,15 @@ function ModelControls({ models }: { models: readonly ModelDescription[] }) {
         onChange={(id) => {
           const next = models.find((candidate) => candidate.id === id);
           if (next !== undefined) {
-            chooseModel(id, settingsFor(next, saved[id]));
+            const settings = settingsFor(next, saved[id]);
+            const to = fitModeOf(next, settings.fitMode);
+            chooseModel(
+              id,
+              settings,
+              mode === undefined || to === undefined
+                ? undefined
+                : { from: mode, to },
+            );
           }
         }}
         options={models.map(({ id, name }) => ({
@@ -370,14 +379,18 @@ function ModelControls({ models }: { models: readonly ModelDescription[] }) {
           label={text.fitMode}
           value={mode?.id ?? null}
           onChange={(id) => {
-            setSelection(
-              settingsFor(model, {
-                fitMode: id,
-                scattering: selection.scattering,
-                band1Degeneracy: selection.band1Degeneracy,
-                band2Degeneracy: selection.band2Degeneracy,
-              }),
-            );
+            const next = settingsFor(model, {
+              fitMode: id,
+              scattering: selection.scattering,
+              band1Degeneracy: selection.band1Degeneracy,
+              band2Degeneracy: selection.band2Degeneracy,
+            });
+            const to = fitModeOf(model, next.fitMode);
+            if (mode === undefined || to === undefined) {
+              setSelection(next);
+            } else {
+              chooseFitMode(next, mode, to);
+            }
           }}
           options={model.fit_modes.map((candidate) => ({
             id: candidate.id,

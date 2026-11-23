@@ -3,6 +3,8 @@ import { create } from "zustand";
 
 import type { FitEvent } from "@/api/fitStream";
 import type { UnitDoubtIssue } from "@/data/units";
+import type { FitModeDescription } from "@/model/selection";
+import { carryParameters } from "@/session/carry";
 
 type Schemas = components["schemas"];
 
@@ -305,11 +307,15 @@ export interface SessionState {
   data: Partial<Record<Quantity, SessionData>>;
   selection: Selection;
   /**
-   * What was set, per fit mode, in core units as the API takes them. Modes have their own defaults
-   * and ranges, so a value of one does not carry to another. `parameterValues` adds the defaults.
+   * What was set, per fit mode, in core units as the API takes them. Modes have their own defaults;
+   * a change of mode or model carries the values they share (`carryParameters`).
+   * `parameterValues` adds the defaults.
    */
   parameters: Record<string, Record<string, number>>;
-  /** Last estimates, so automatic guesses can distinguish them from manual starts. */
+  /**
+   * Values an automatic guess may replace, unlike manual starts: its last estimates, and defaults
+   * that a change of mode carried from another.
+   */
   guessedParameters: Record<string, Record<string, number>>;
   fit: FitState;
   dataMode: DataMode;
@@ -346,8 +352,15 @@ export interface SessionState {
   runs: readonly FitRun[];
 
   setChartPanel: (index: number, tab: ChartTab) => void;
-  /** Keeps the current model's settings, and takes up these for the new one. */
-  chooseModel: (model: string, settings: ModelSettings) => void;
+  /**
+   * Keeps the current model's settings, and takes up these for the new one. With the fit modes it
+   * goes from and to, it takes along the parameters both have, as `chooseFitMode` does.
+   */
+  chooseModel: (
+    model: string,
+    settings: ModelSettings,
+    modes?: { from: FitModeDescription; to: FitModeDescription },
+  ) => void;
   setInterpolationEnabled: (enabled: boolean) => void;
   startInterpolation: () => void;
   stopInterpolation: () => void;
@@ -371,6 +384,12 @@ export interface SessionState {
   /** The user says the values of a quantity are right despite a doubt about their unit. */
   confirmUnit: (quantity: Quantity) => void;
   setSelection: (selection: Partial<Selection>) => void;
+  /** A change of fit mode within the model, which takes along the parameters both modes have. */
+  chooseFitMode: (
+    selection: Partial<Selection>,
+    from: FitModeDescription,
+    to: FitModeDescription,
+  ) => void;
   setParameters: (fitMode: string, values: Record<string, number>) => void;
   setParameter: (fitMode: string, name: string, value: number) => void;
   /** Back to the defaults of a fit mode, also for a number being typed. */
@@ -608,7 +627,7 @@ export function holdsFiles(
  * longer matches them, so that goes back to `idle`.
  */
 export const createSessionStore = () =>
-  create<SessionState>()((set) => {
+  create<SessionState>()((set, get) => {
     // Late events of an old run must not reach a newer one, or the wrong result would show.
     let currentRun = 0;
     let currentFitMode: string | null = null;
@@ -786,13 +805,16 @@ export const createSessionStore = () =>
           ),
         }));
       },
-      chooseModel: (model, settings) => {
+      chooseModel: (model, settings, modes) => {
         set((state) => {
           const { selection } = state;
           if (selection.model === model) {
             return state;
           }
           return {
+            ...(modes === undefined
+              ? {}
+              : carryParameters(state, modes.from, modes.to)),
             savedModelSettings:
               selection.model === null
                 ? state.savedModelSettings
@@ -945,6 +967,10 @@ export const createSessionStore = () =>
               ? state.fit
               : withoutOldResult(state.fit),
         }));
+      },
+      chooseFitMode: (selection, from, to) => {
+        set((state) => carryParameters(state, from, to));
+        get().setSelection(selection);
       },
       setParameters: (fitMode, values) => {
         set((state) => ({

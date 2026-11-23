@@ -277,7 +277,7 @@ test("the button is for a model with nets and S data, and says so", async ({
   );
 });
 
-test("a fully held S mode stays usable when another mode receives estimates", async ({
+test("a fully held S mode stays usable, and its held values follow to another mode", async ({
   page,
 }) => {
   await open(page);
@@ -293,9 +293,12 @@ test("a fully held S mode stays usable when another mode receives estimates", as
   await expect(button(page)).toBeEnabled();
   await expect(badge(page, "Initial guess")).toHaveCount(0);
   await expect(field(page, "Eg")).toHaveValue("0,09");
+  // The estimates went to the other modes, but the values in view, held, follow there.
   await choose(page, "S + ρ + RH");
-  await expect(badge(page, "Initial guess")).toBeVisible();
-  await expect(field(page, "Eg")).toHaveValue("0,05");
+  await expect(field(page, "Eg")).toHaveValue("0,09");
+  await expect(
+    page.getByRole("button", { name: "Hold Eg at its value in a fit" }),
+  ).toHaveAttribute("aria-pressed", "true");
 });
 
 test("the button applies the net again after edits", async ({ page }) => {
