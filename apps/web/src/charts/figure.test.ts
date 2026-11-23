@@ -339,6 +339,17 @@ describe("a wavevector axis", () => {
     expect(wavevector).not.toHaveProperty("dtick");
   });
 
+  test("with no title, shows no scale: no title, values or tick marks", () => {
+    const bare = xaxis({ xAxisSpan: [-2, 2], xAxisTitle: null });
+    expect(bare).toMatchObject({
+      range: [-2, 2],
+      showticklabels: false,
+      ticks: "",
+      showline: true,
+    });
+    expect(bare).not.toHaveProperty("title");
+  });
+
   test("leaves a temperature axis as it was", () => {
     expect(xaxis({})).toMatchObject({ range: [0, 800], dtick: 100 });
     expect(xaxis({})).not.toHaveProperty("showticklabels");

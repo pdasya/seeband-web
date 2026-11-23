@@ -36,7 +36,8 @@ export interface FigureInput {
   interpolated?: ChartMeasurements | null;
   fitRange: ChartFitRange | null;
   referenceLines: readonly ReferenceLine[];
-  xAxisTitle: string;
+  /** Null for an axis drawn with no scale: no title, no values and no tick marks. */
+  xAxisTitle: string | null;
   yAxisTitle: string;
   /** For an axis that is not temperature: its span, once known. */
   xAxisSpan?: readonly [number, number] | null | undefined;
@@ -255,16 +256,20 @@ export function buildFigure(
     showlegend: false,
     hovermode: "closest",
     xaxis: {
-      title: { text: input.xAxisTitle, font: titleFont },
       range: input.xAxisSpan == null ? [0, maxK] : [...input.xAxisSpan],
       showgrid: false,
       zeroline: false,
       showline: true,
       linecolor: theme.axis,
-      ticks: "outside",
-      ticklen: 5,
-      tickcolor: theme.axis,
-      tickfont: tickFont,
+      ...(input.xAxisTitle === null
+        ? { showticklabels: false, ticks: "" as const }
+        : {
+            title: { text: input.xAxisTitle, font: titleFont },
+            ticks: "outside" as const,
+            ticklen: 5,
+            tickcolor: theme.axis,
+            tickfont: tickFont,
+          }),
       ...(input.xAxisSpan == null && maxK <= MAX_TICKED_K
         ? { dtick: AXIS_STEP_K }
         : {}),

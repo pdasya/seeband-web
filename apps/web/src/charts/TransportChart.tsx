@@ -32,7 +32,7 @@ export interface TransportChartProps {
   interpolated?: ChartMeasurements | null;
   fitRange?: ChartFitRange | null;
   referenceLines?: readonly ReferenceLine[];
-  xAxisTitle: string;
+  xAxisTitle: string | null;
   xAxisSpan?: readonly [number, number] | null | undefined;
   yAxisTitle: string;
   /** What a screen reader says about the chart, as it cannot read the drawing. */
@@ -129,7 +129,7 @@ function Plot({
   interpolated: ChartMeasurements | null;
   fitRange: ChartFitRange | null;
   referenceLines: readonly ReferenceLine[];
-  xAxisTitle: string;
+  xAxisTitle: string | null;
   xAxisSpan?: readonly [number, number] | null | undefined;
   yAxisTitle: string;
   description: string;

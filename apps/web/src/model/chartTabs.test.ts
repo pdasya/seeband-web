@@ -428,7 +428,7 @@ describe("the band diagram", () => {
     ]);
     expect(curves.map(({ dashed }) => dashed)).toEqual([false, false, true]);
     expect(curves[0]?.temperatureK).toEqual([-2, 0, 2]);
-    expect(xAxis).toEqual({ title: "k, nm⁻¹", span: [-2, 2] });
+    expect(xAxis).toEqual({ title: null, span: [-2, 2] });
     expect(yAxisTitle).toBe("E, K");
     expect(measurements).toBeNull();
     expect(empty).toBeNull();
@@ -453,7 +453,7 @@ describe("the band diagram", () => {
     const { curves, xAxis, note } = view(null);
 
     expect(curves).toEqual([]);
-    expect(xAxis).toEqual({ title: "k, nm⁻¹", span: [-2, 2] });
+    expect(xAxis).toEqual({ title: null, span: [-2, 2] });
     expect(note).toBeNull();
   });
 
