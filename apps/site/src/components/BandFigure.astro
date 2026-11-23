@@ -1,12 +1,13 @@
 ---
 // The hero's sketch (F8, option A): two parabolic bands, E_g and E_F. A sketch, not a calculation.
 import { STRINGS } from "../strings";
+import { plainSubscripts, subscripts } from "../subscripts";
 
 const text = STRINGS.home.figure;
 ---
 
 <figure class="figure">
-  <svg viewBox="0 0 480 320" role="img" aria-label={text.label}>
+  <svg viewBox="0 0 480 320" role="img" aria-label={plainSubscripts(text.label)}>
     <line x1="40" x2="40" y1="16" y2="300" class="figure__axis"></line>
     <text x="48" y="24" class="figure__label">{text.energy}</text>
     <line x1="40" x2="464" y1="300" y2="300" class="figure__axis"></line>
@@ -42,5 +43,5 @@ const text = STRINGS.home.figure;
       {text.band2[0]}<tspan class="figure__kind">{text.band2[1]}</tspan>
     </text>
   </svg>
-  <figcaption>{text.caption}</figcaption>
+  <figcaption set:html={subscripts(text.caption)} />
 </figure>

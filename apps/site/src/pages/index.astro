@@ -9,6 +9,7 @@ import {
   RESULTS_CHANGED_URL,
   STRINGS,
 } from "../strings";
+import { subscripts } from "../subscripts";
 
 const text = STRINGS.home;
 const app = STRINGS.application;
@@ -40,7 +41,7 @@ const application = {
       <div class="hero__text">
         <span class="eyebrow">{text.eyebrow}</span>
         <h1>{text.heading}</h1>
-        <p class="lead">{text.lead}</p>
+        <p class="lead" set:html={subscripts(text.lead)} />
         <div class="actions">
           <a class="button" href={APP_FIT_URL}>{text.startFit}</a>
           <a class="button button--outline" href={CONVENTIONS_URL}>
@@ -60,7 +61,7 @@ const application = {
             <li class="step">
               <span class="step__number">{`0${String(index + 1)}`}</span>
               <span class="step__title">{step.title}</span>
-              <span class="step__text">{step.text}</span>
+              <span class="step__text" set:html={subscripts(step.text)} />
             </li>
           ))
         }
@@ -83,21 +84,21 @@ const application = {
               {
                 text.inputs.rows.map((row) => (
                   <tr>
-                    <th scope="row">{row.quantity}</th>
+                    <th scope="row" set:html={subscripts(row.quantity)} />
                     <td class="mono">{row.unit}</td>
-                    <td>{row.determines}</td>
+                    <td set:html={subscripts(row.determines)} />
                   </tr>
                 ))
               }
             </tbody>
           </table>
         </div>
-        {text.inputs.notes.map((note) => <p class="note">{note}</p>)}
+        {text.inputs.notes.map((note) => <p class="note" set:html={subscripts(note)} />)}
       </section>
       <section class="panel" aria-labelledby="outputs">
         <h2 id="outputs">{text.outputs.title}</h2>
         <ul class="outputs">
-          {text.outputs.items.map((item) => <li>{item}</li>)}
+          {text.outputs.items.map((item) => <li set:html={subscripts(item)} />)}
         </ul>
       </section>
     </div>
