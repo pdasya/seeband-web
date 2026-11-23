@@ -1016,6 +1016,197 @@ function verifyFitReplay(w) {
     null,
   );
 }
+// Item 12: public notation, holds and integer valley validation through real controls.
+function verifyParameterNotation(w) {
+  const d = w.document;
+  const one = (s) => d.querySelector(s);
+  const field = (id, s) => one('[data-field="' + id + '"] ' + s);
+  const equal = (a, b, message) => {
+    if (a !== b)
+      throw new Error(message + ": expected " + b + ", received " + a);
+  };
+  const restore = (modelContent, privateContent = {}) =>
+    w.dispatchEvent(
+      new w.CustomEvent("openai:set_globals", {
+        detail: { globals: { widgetState: { modelContent, privateContent } } },
+      }),
+    );
+  const set = (input, value) => {
+    input.value = value;
+    input.dispatchEvent(new w.Event("change", { bubbles: true }));
+  };
+  let saved;
+  w.openai = {
+    setWidgetState: (s) => {
+      saved = JSON.parse(JSON.stringify(s));
+      return Promise.resolve();
+    },
+  };
+  for (const [mechanism, kind, unit] of [
+    ["ac", "acPh", "scale: S/m"],
+    ["dis", "dis", "scale: S/(m·K)"],
+    ["ion", "ii", "S/m"],
+    ["mix", "acPh", "scale: S/m"],
+  ]) {
+    for (const n of [1, 2, 3])
+      for (const selectedMode of [0, 1, 2]) {
+        restore({ n, types: [0, 1, 0], mechanism, selectedMode });
+        if (selectedMode) {
+          equal(
+            field("scale", "label").textContent,
+            "τ" +
+              kind +
+              ",1" +
+              (mechanism !== "ion" && n > 1 && selectedMode === 1
+                ? " / mb,1"
+                : ""),
+            "absolute notation",
+          );
+          equal(
+            field("scale", ".unit").textContent,
+            unit,
+            "coefficient SI units",
+          );
+          if (n > 1)
+            equal(
+              field("ratio" + (n - 1), "label").textContent,
+              "τ" + kind + "," + n + " / τ" + kind + ",1",
+              "relative band indices",
+            );
+        }
+        if (mechanism === "mix" && (n > 1 || selectedMode))
+          equal(
+            field("mix" + (n - 1), "label").textContent,
+            "τacPh," + n + " / τdis," + n,
+            "mixed ratio",
+          );
+        for (const input of d.querySelectorAll("#sb-valleys input")) {
+          set(input, "1.5");
+          equal(
+            input.validationMessage,
+            "Enter a positive integer valley count.",
+            "fractional edit diagnostic",
+          );
+          one("#sb-replay-start").click();
+          equal(
+            one("#sb-replay-status").textContent,
+            "Cannot replay · enter a positive integer valley count.",
+            "fractional replay rejected",
+          );
+          set(input, "2");
+          equal(input.checkValidity(), true, "valid integer recovers");
+        }
+      }
+  }
+  restore({ n: 2, types: [0, 1, 0], mechanism: "ion", selectedMode: 2 });
+  field("scale", ".lock").click();
+  equal(
+    field("scale", ".lock").textContent.endsWith("Held"),
+    true,
+    "researcher hold caption",
+  );
+  equal(
+    field("scale", ".lock").dataset.tooltip.includes("researcher"),
+    true,
+    "researcher hold reason",
+  );
+  one('[data-mode="0"]').click();
+  equal(
+    field("mass", ".lock").textContent.endsWith("Held"),
+    true,
+    "mode hold caption",
+  );
+  equal(field("mass", ".lock").disabled, true, "mode hold cannot be toggled");
+  one('[data-mode="2"]').click();
+  equal(
+    field("scale", ".lock").getAttribute("aria-pressed"),
+    "true",
+    "hold survives mode",
+  );
+  const snapshot = saved;
+  restore(snapshot.modelContent, snapshot.privateContent);
+  equal(
+    field("scale", ".lock").textContent.endsWith("Held"),
+    true,
+    "hold survives restore",
+  );
+  for (const imported of ["1.5", "0", "-2", "", "9007199254740993"]) {
+    restore(
+      { n: 2, types: [0, 1, 0], mechanism: "ac", selectedMode: 2 },
+      { values: { N0: imported } },
+    );
+    const input = one("#sb-valleys input");
+    equal(input.value, imported, "import preserved without rounding");
+    equal(
+      input.validationMessage,
+      "Enter a positive integer valley count.",
+      "import diagnostic",
+    );
+    one("#sb-replay-start").click();
+    equal(
+      one("#sb-replay-status").textContent,
+      "Cannot replay · enter a positive integer valley count.",
+      "invalid import rejected",
+    );
+    one('[data-mode="1"]').click();
+    equal(
+      one("#sb-valleys input").value,
+      imported,
+      "mode preserves invalid historical value",
+    );
+    restore(saved.modelContent, saved.privateContent);
+    equal(
+      one("#sb-valleys input").value,
+      imported,
+      "save/restore preserves historical value",
+    );
+    set(one("#sb-valleys input"), "3");
+    one("#sb-replay-start").click();
+    equal(
+      one("#sb-replay-status").textContent,
+      "Fit…",
+      "corrected integer allows replay",
+    );
+    one("#sb-replay-cancel").click();
+  }
+  restore({ n: 1, types: [0, 1, 0], mechanism: "ac", selectedMode: 2 });
+  set(one("#sb-valleys input"), "8");
+  set(one("#sb-valleys input"), "2.5");
+  one('[data-mode="1"]').click();
+  equal(
+    one("#sb-valleys input").value,
+    "8",
+    "invalid edit does not replace saved integer",
+  );
+  restore({ n: 2, types: [2, 1, 0], mechanism: "ac", selectedMode: 2 });
+  equal(
+    field("amplitude0", "label").textContent,
+    "(Cl/Edef²)1",
+    "Kane physical input retained",
+  );
+  equal(
+    field("amplitude0", ".unit").textContent,
+    "Pa/eV²",
+    "Kane units retained",
+  );
+}
+const parameterLabels = Object.fromEntries(
+  labels.fields.map((entry) => [entry.key, entry]),
+);
+for (const [key, label, unit] of [
+  ["amp", "τ_acPh,1", "S/m"],
+  ["alloy_amp", "τ_dis,1", "S/(m·K)"],
+  ["ionized_amp", "τ_ii,1", "S/m"],
+  ["ionized_relative", "τ_ii,i/τ_ii,1", "1"],
+  ["mixed_ratio", "τ_acPh,i/τ_dis,i", "1"],
+]) {
+  assert.equal(parameterLabels[key].label_en, label, key + " schema label");
+  assert.equal(parameterLabels[key].display_unit, unit, key + " schema units");
+}
+verifyParameterNotation(w);
+console.log(
+  "Item 12: channel notation, SI units, holds, integer N and imported-value replay rejection passed.",
+);
 verifyFitReplay(w);
 console.log(
   "Item 11: isolated accepted snapshots, switched final defining pair, cancellation/failure, holds/bounds, same polarity and keyboard focus passed.",
@@ -1137,6 +1328,12 @@ if (process.argv[2] || process.env.FIT_GUIDE_CHROME === "1") {
       );
       console.log(
         "Chrome item 11: native disclosure/Tab/Enter, isolated replay, final vector, rerender and mobile layout passed.",
+      );
+      await page.evaluate(
+        "(" + verifyParameterNotation.toString() + ")(window)",
+      );
+      console.log(
+        "Chrome item 12: mechanism notation, holds, integer N and imported-value replay rejection passed.",
       );
       await page.evaluate("(" + verifyMassConvention.toString() + ")(window)");
       await page.locator("#sb-valleys input").first().fill("8");

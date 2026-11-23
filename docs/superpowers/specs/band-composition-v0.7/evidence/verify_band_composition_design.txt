@@ -1,6 +1,8 @@
 SYNTHETIC DESIGN EVIDENCE; Python 3.13.18; stdlib only
 D=n-p [m^-3]; edges/mu/E_F [eV]; sigma fractions: constant tau only
 composition guard PASS: two positive-alpha Kane bands rejected
+diagram scale PASS: dimensionless +/-0.1 = +/-1 nm^-1; parabolic and Kane
+valley count PASS: positive integers required; fractional, zero and negative rejected
 gap-2 T=150 mu=+0.108651743 populations=['2.607514e+21', '2.607514e+21'] sigma_fraction=[0.210158, 0.789842] residual=1.01e-14
 gap-2 T=300 mu=+0.116820440 populations=['3.582445e+23', '3.582445e+23'] sigma_fraction=[0.220133, 0.779867] residual=1.96e-14
 gap-2 T=600 mu=+0.132455086 populations=['7.011146e+24', '7.011146e+24'] sigma_fraction=[0.240547, 0.759453] residual=4.36e-14

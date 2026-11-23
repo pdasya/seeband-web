@@ -1,9 +1,11 @@
+Item 12: channel notation, SI units, holds, integer N and imported-value replay rejection passed.
 Item 11: isolated accepted snapshots, switched final defining pair, cancellation/failure, holds/bounds, same polarity and keyboard focus passed.
 Item 10: derived DOS mass, Jacquot Table I (p-Bi2Te3), invalid inputs, held/restored state and immutable P17 earlier-run example passed.
 Item 9: 270 caution states, opt-in Result, in-gap cues and stable parameter state passed.
 Signed gaps and item 8 DOM state transitions passed.
 270 matrix states match JSON. Lock, editable manual value, hidden bounds, tooltips and restore passed.
 Chrome item 11: native disclosure/Tab/Enter, isolated replay, final vector, rerender and mobile layout passed.
+Chrome item 12: mechanism notation, holds, integer N and imported-value replay rejection passed.
 Chrome item 10: mass conventions, native editing and immutable earlier-run metadata passed.
 Chrome item 9: 270 caution states and native opt-in Result disclosure passed.
 Chrome item 8 DOM transitions and 960/320 px layout passed.

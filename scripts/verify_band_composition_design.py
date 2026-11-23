@@ -41,8 +41,8 @@ class Band:
     def __post_init__(self):
         if self.s not in (-1, 1) or self.mass_me <= 0 or self.alpha_per_ev < 0:
             raise ValueError("require s=+/-1, positive mass, nonnegative alpha")
-        if self.valleys < 1:
-            raise ValueError("require a positive valley count excluding spin")
+        if isinstance(self.valleys, bool) or not isinstance(self.valleys, int) or self.valleys < 1:
+            raise ValueError("require a positive integer valley count excluding spin")
 
 
 def zero_density(bands, ef_ev):
@@ -131,6 +131,24 @@ def main():
     else:
         raise AssertionError("two positive-alpha Kane bands must be rejected")
     print("composition guard PASS: two positive-alpha Kane bands rejected")
+    # At one inverse nanometre, a free-electron parabola rises by 38.10 meV.
+    # The public horizontal coordinate divides the physical value by 10 / nm.
+    for plotted_k in (-0.1, 0.1):
+        k_per_m = plotted_k * 1.0e10
+        kinetic_ev = HBAR_J_S**2 * k_per_m**2 / (2 * ME_KG * EV_J)
+        assert math.isclose(kinetic_ev, 0.03809982, rel_tol=1e-6)
+        for alpha_per_ev in (0.0, 1.0):
+            u = 2 * kinetic_ev / (1 + math.sqrt(1 + 4 * alpha_per_ev * kinetic_ev))
+            assert math.isclose(u * (1 + alpha_per_ev * u), kinetic_ev, rel_tol=1e-12)
+    print("diagram scale PASS: dimensionless +/-0.1 = +/-1 nm^-1; parabolic and Kane")
+    for invalid in (0, -1, 1.5, True):
+        try:
+            replace(vb, valleys=invalid)
+        except ValueError as error:
+            assert "positive integer" in str(error)
+        else:
+            raise AssertionError(f"invalid valley count accepted: {invalid!r}")
+    print("valley count PASS: positive integers required; fractional, zero and negative rejected")
     max_residual = max_grid_mu = max_grid_observable = max_tail_observable = 0.0
     for name, bands in (
         ("gap-2", (vb, cb)),

@@ -438,8 +438,11 @@
       }
       #sb-desktop-parameters .field-head .lock {
         min-width: 32px;
-        display: inline-grid;
-        place-content: center;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+        white-space: nowrap;
         min-height: 30px;
       }
       #sb-desktop-parameters .field-head .lock svg,
@@ -731,6 +734,16 @@
           refreshGap();
         }
         el("#sb-replay-start").onclick = () => {
+          const invalidValley = [
+            ...root.querySelectorAll("#sb-valleys input"),
+          ].find((input) => !input.checkValidity());
+          if (invalidValley) {
+            stopReplay(
+              "Cannot replay · enter a positive integer valley count.",
+            );
+            invalidValley.reportValidity();
+            return;
+          }
           replayStart = form()
             .filter((r) => r.id.startsWith("gap"))
             .map((r) => {
@@ -908,13 +921,13 @@
           const dis = mechanism === "dis",
             ion = mechanism === "ion",
             mix = mechanism === "mix",
-            kind = dis ? "dis" : "ph";
+            kind = dis ? "dis" : ion ? "ii" : "acPh";
           const scaleSymbol = ion
-            ? "σ<sub>0,1</sub><sup>(ii)</sup>"
+            ? tau("ii", 0)
             : tau(kind, 0) +
               (n > 1 && selectedMode === 1 ? " / " + mass(0) : "");
           const scaleHelp = ion
-            ? "Scale A in the ionized-impurity model. Multiplies (T/300 K)³ F₂."
+            ? "Normalized conductivity coefficient (legacy A) in the empirical ionized-impurity power-law model. Multiplies (T/300 K)³ F₂, with units S/m, not seconds. The τ label introduces no microscopic relaxation-time assumption."
             : "Desktop notation for the normalized coefficient " +
               (dis ? "F multiplying T·F₀" : "A multiplying F₀") +
               (mix ? " in the acoustic limit" : "") +
@@ -932,15 +945,13 @@
             0,
           );
           for (let i = 1; i < n; i++) {
-            const sym = ion
-              ? "b<sub>" + (i + 1) + "</sub><sup>(ii)</sup>"
-              : tau(kind, i) + " / " + tau(kind, 0);
+            const sym = tau(kind, i) + " / " + tau(kind, 0);
             row(
               "ratio" + i,
               sym,
               "Relative transport prefactor of Band " +
                 (i + 1) +
-                " referenced to Band 1." +
+                " referenced to Band 1. The τ ratio denotes the existing empirical transport weight, not a measured conductivity ratio." +
                 (i === 1 ? " Coefficient " + (dis ? "G" : "B") + "." : "") +
                 " The conductivity also depends on mass, valley degeneracy and band filling.",
               "1",
@@ -953,7 +964,7 @@
             for (let i = 0; i < n; i++) {
               row(
                 "mix" + i,
-                tau("ph", i) + " / " + tau("dis", i),
+                tau("acPh", i) + " / " + tau("dis", i),
                 "Ratio of acoustic-phonon to alloy-disorder relaxation times at 300 K for Band " +
                   (i + 1) +
                   "." +
@@ -1095,7 +1106,22 @@
             input.step = id.startsWith("N") ? "1" : "any";
             const key = stateKey({ id });
             input.value = values.get(key) ?? start;
+            const validate = () => {
+              if (id.startsWith("N")) {
+                const valid =
+                  input.value !== "" &&
+                  Number.isSafeInteger(Number(input.value)) &&
+                  Number(input.value) > 0;
+                input.setCustomValidity(
+                  valid ? "" : "Enter a positive integer valley count.",
+                );
+                input.setAttribute("aria-invalid", String(!valid));
+              }
+            };
+            validate();
+            input.oninput = validate;
             input.onchange = () => {
+              validate();
               if (input.value && input.checkValidity()) {
                 values.set(key, input.value);
                 save();
@@ -1362,7 +1388,7 @@
             }
             const tr = document.createElement("tr");
             const dualLabel = r.id === "scale" && mechanism !== "ion" && n > 1;
-            const ts = tau(mechanism === "dis" ? "dis" : "ph", 0);
+            const ts = tau(mechanism === "dis" ? "dis" : "acPh", 0);
             tr.innerHTML =
               '<th scope="row">' +
               (gapAlias
@@ -1428,10 +1454,9 @@
               help.setAttribute("aria-expanded", String(!caption.hidden));
             };
             lock.disabled = forced;
-            lock.innerHTML = icon(
-              locked ? "lock" : "lock-open",
-              locked ? "🔒" : "🔓",
-            );
+            lock.innerHTML =
+              icon(locked ? "lock" : "lock-open", locked ? "🔒" : "🔓") +
+              (locked ? " Held" : "");
             const action = forced
               ? "Fixed in this mode"
               : held.has(key)
@@ -1439,7 +1464,11 @@
                 : "Hold during fit";
             lock.setAttribute("aria-label", action + ": " + strip(r.symbol));
             lock.setAttribute("aria-pressed", String(locked));
-            lock.dataset.tooltip = forced ? reason : action;
+            lock.dataset.tooltip = forced
+              ? "Held by mode. " + reason
+              : held.has(key)
+                ? "Held by the researcher. Unlock to allow fitting."
+                : action;
             lock.onclick = () => {
               if (held.has(key)) held.delete(key);
               else held.add(key);

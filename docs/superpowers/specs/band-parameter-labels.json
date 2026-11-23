@@ -2,6 +2,13 @@
   "version": "0.7",
   "interface": {
     "language": "en",
+    "band_diagram_axis": {
+      "label_en": "k",
+      "unit": "1",
+      "definition": "(k_phys - k_edge) / k_ref along the plotted direction",
+      "reference_per_m": 10000000000,
+      "scope": "One fixed display scale for every band and temperature. Transport uses physical wavevectors."
+    },
     "three_band_gap": {
       "design_status": "accepted",
       "panel": "Parameters",
@@ -114,18 +121,18 @@
     {
       "key": "amp",
       "legacy_or_tdd": "A",
-      "label_en": "τ_ph,1",
+      "label_en": "τ_acPh,1",
       "display_unit": "S/m",
-      "tooltip_en": "Desktop acoustic scale label τ_ph,1 (legacy A). This is the normalized conductivity coefficient multiplying F₀, with units S/m, not a raw relaxation time in seconds. In all-parabolic models with multiple bands, S + ρ displays τ_ph,1/m_b,1; Hall displays τ_ph,1. These labels refer to the same stored normalized coefficient.",
+      "tooltip_en": "Desktop acoustic scale label τ_acPh,1 (legacy A). This is the normalized conductivity coefficient multiplying F₀, with units S/m, not a raw relaxation time in seconds. In all-parabolic models with multiple bands, S + ρ displays τ_acPh,1/m_b,1; Hall displays τ_acPh,1. These labels refer to the same stored normalized coefficient.",
       "definition": "acPh: sigma_1=A*F0; acPhDis: A is the acoustic-limit scale",
       "applicability": {
         "all_parabolic_scattering": ["acPh", "acPhDis"],
         "kane_present": false
       },
       "label_by_context": {
-        "single_band": "τ_ph,1",
-        "multiple_bands_S+rho": "τ_ph,1/m_b,1",
-        "multiple_bands_S+rho+R_H": "τ_ph,1"
+        "single_band": "τ_acPh,1",
+        "multiple_bands_S+rho": "τ_acPh,1/m_b,1",
+        "multiple_bands_S+rho+R_H": "τ_acPh,1"
       }
     },
     {
@@ -150,7 +157,7 @@
       "legacy_or_tdd": "B / G; b_i",
       "label_en": "τ_x,i/τ_x,1",
       "display_unit": "1",
-      "tooltip_en": "Relative transport weight referenced to Band 1: x = ph for acPh and acPh + dis (legacy B), x = dis for pure dis (legacy G). The full conductivity ratio also depends on masses, valley counts and filling; this is not the ratio of measured band conductivities.",
+      "tooltip_en": "Relative transport weight referenced to Band 1: x = acPh for acPh and acPh + dis (legacy B), x = dis for pure dis (legacy G). The full conductivity ratio also depends on masses, valley counts and filling; this is not the ratio of measured band conductivities.",
       "definition": "prefactor_i/prefactor_1=(N_i/N_1)*(m_b,1/m_b,i)*b_i",
       "applicability": {
         "all_parabolic_scattering": ["acPh", "dis", "acPhDis"],
@@ -158,8 +165,8 @@
         "kane_present": false
       },
       "label_by_scattering": {
-        "acPh": "τ_ph,i/τ_ph,1",
-        "acPhDis": "τ_ph,i/τ_ph,1",
+        "acPh": "τ_acPh,i/τ_acPh,1",
+        "acPhDis": "τ_acPh,i/τ_acPh,1",
         "dis": "τ_dis,i/τ_dis,1"
       }
     },
@@ -180,7 +187,7 @@
       "legacy_or_tdd": "N_i",
       "label_en": "Valley degeneracy · Band {i}",
       "display_unit": "1",
-      "tooltip_en": "Number of equivalent valleys in this band. Spin is counted separately.",
+      "tooltip_en": "Positive integer number of equivalent valleys in this band. Spin is counted separately. Invalid imported values remain preserved and are rejected for fit replay until corrected.",
       "definition": "N_i"
     },
     {
@@ -215,7 +222,7 @@
     {
       "key": "mixed_ratio",
       "legacy_or_tdd": "C (Band 1); D (Band 2); no desktop letter for Band 3",
-      "label_en": "τ_ph,i/τ_dis,i",
+      "label_en": "τ_acPh,i/τ_dis,i",
       "display_unit": "1",
       "tooltip_en": "Acoustic-to-disorder relaxation-time ratio at 300 K for Band {i}. Legacy C for Band 1 and D for Band 2. The corresponding crossover temperature is 300 K times this ratio. Pure dis uses its own scale and relative weight.",
       "definition": "r_i=tau_ph,i(T0)/tau_dis,i(T0); T0=300 K; crossover_temperature_k=T0*r_i",
@@ -228,9 +235,9 @@
     {
       "key": "ionized_amp",
       "legacy_or_tdd": "A (web ionized power-law model)",
-      "label_en": "σ₀,₁^(ii)",
+      "label_en": "τ_ii,1",
       "display_unit": "S/m",
-      "tooltip_en": "Conductivity scale of Band 1 for the web ionized-impurity power-law model (legacy A). Multiplies (T/300 K)³ F₂; this is a conductivity coefficient, not a relaxation time.",
+      "tooltip_en": "Conductivity scale of Band 1 for the web ionized-impurity power-law model (legacy A). Multiplies (T/300 K)³ F₂; this is a normalized conductivity coefficient in S/m, not a relaxation time in seconds. The τ label preserves the empirical law and introduces no microscopic assumption.",
       "definition": "sigma_1=sigma_0,1^(ii)*(T/T0)^3*F2; T0=300 K",
       "applicability": {
         "all_parabolic_scattering": ["ionized"],
@@ -240,9 +247,9 @@
     {
       "key": "ionized_relative",
       "legacy_or_tdd": "B / b_i (web ionized power-law model)",
-      "label_en": "bᵢ^(ii)",
+      "label_en": "τ_ii,i/τ_ii,1",
       "display_unit": "1",
-      "tooltip_en": "Relative ionized-impurity transport weight for Band {i} referenced to Band 1 (legacy B). Conductivity ratios also depend on masses, valley counts and filling.",
+      "tooltip_en": "Normalized empirical ionized-impurity transport weight τ_ii,i/τ_ii,1 for Band {i} referenced to Band 1 (legacy B), not a ratio of microscopic relaxation times. Conductivity ratios also depend on masses, valley counts and filling.",
       "definition": "prefactor_i/prefactor_1=(N_i/N_1)*(m_b,1/m_b,i)*b_i^(ii)",
       "applicability": {
         "all_parabolic_scattering": ["ionized"],
@@ -380,13 +387,14 @@
   "label_rules": {
     "visible_fields": "Use physics symbols. Legacy desktop letters A–G belong in tooltips only, never visible labels. Internal legacy identifiers remain available as metadata.",
     "fermi_reference": "Visible label E_F; the 0 K and Band 1 edge reference belong in its tooltip.",
-    "desktop_scale": "For x = ph or dis, SPB uses τ_x,1. Multiple all-parabolic bands use τ_x,1/m_b,1 in S+rho and τ_x,1 in S+rho+R_H. Labels do not change the normalized stored coefficient or its units.",
+    "desktop_scale": "For x = acPh or dis, SPB uses τ_x,1. Multiple all-parabolic bands use τ_x,1/m_b,1 in S+rho and τ_x,1 in S+rho+R_H. Labels do not change the normalized stored coefficient or its units.",
     "scale_units": {
       "acPh": "S/m",
       "acPhDis": "S/m (acoustic-limit scale)",
       "dis": "S/(m·K)",
       "ionized": "S/m"
     },
+    "ionized_scale": "Ionized uses τ_ii,1 in every visible mode and τ_ii,i/τ_ii,1 for the existing empirical relative weight. Keep the S/m coefficient, (T/300 K)^3 F2 law and original limits; these symbols add no microscopic assumption.",
     "scale_warning": "The desktop τ labels denote normalized transport coefficients, not raw seconds. Do not infer a new mass conversion from a label change.",
     "kane": "At most one Kane band; its presence forces acPh for the whole composition. Each band has its own absolute prefactor; no duplicate relative field."
   },
@@ -460,7 +468,7 @@
     "editable_fields": ["amp", "relative", "mixed_ratio"],
     "applies_to": "all-parabolic acPhDis only; relative exists only for bands i > 1",
     "P_i": "P_i is the effective conductivity prefactor at 300 K, not the editable acoustic-limit scale. It includes the mixed-mechanism reduction and the band mass/valley weight.",
-    "f_i": "f_i is the acoustic fraction of the total scattering rate at 300 K; it is an alternate coordinate to the editable relaxation-time ratio r_i = τ_ph,i/τ_dis,i.",
+    "f_i": "f_i is the acoustic fraction of the total scattering rate at 300 K; it is an alternate coordinate to the editable relaxation-time ratio r_i = τ_acPh,i/τ_dis,i.",
     "mapping": "For positive rates at T0 = 300 K, f_i = 1/(1+r_i). P_i = acoustic_limit_prefactor_i/(1+r_i). Pure-mechanism endpoints are limits; do not divide by a zero Fermi integral when deriving coordinates.",
     "storage": "Do not fit P_i/f_i alongside the corresponding editable scales/ratios; they describe the same degrees of freedom."
   }

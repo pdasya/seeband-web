@@ -75,7 +75,12 @@
         "max_normalized_residual": 1.303e-13
       },
       "limitations": "Finite sample of configurations. The demonstration of conductivity fractions assumes a constant relaxation time.",
-      "output_sha256": "86f181d232f0bd46de0ba8d0de22c5e0c673b53c73d15065b83f902346a7a572",
+      "item_12": {
+        "reference_wavevector_per_m": 10000000000.0,
+        "test_display_coordinates": [-0.1, 0.1],
+        "quantity": "single-valley energy; radial transport keeps physical k"
+      },
+      "output_sha256": "3fefc162b5a38be576fb843f9543f71837821fadd984c4b4f7d462babd923225",
       "provenance": "Output reproduced from the PR checkout.",
       "replay_status": "reproduced_from_pr"
     },
@@ -431,7 +436,14 @@
           "holds, bounds, both polarities and keyboard use"
         ]
       },
-      "output_sha256": "670ffb2e05375ce5e5dc7c2771fde9dbe0442f19e75ede02146bb91661d6f1cb",
+      "item_12": {
+        "all_parabolic_labels": ["acPh", "dis", "ii"],
+        "closed_lock_label": "Held",
+        "integer_valley_counts": true,
+        "legacy_fractional": "preserve history, block new replay",
+        "scope": "proposed labels and UI; scattering laws unchanged"
+      },
+      "output_sha256": "9d5ec517d32c2eb5b88d10ca6ec9efd6fee636929db9ae112ffeea0481d5299c",
       "replay_status": "reproduced_from_pr",
       "regression": {
         "pre_fix_revision": "4e4526c6821d6bf7a06630962b3a7d1bea038acc",
