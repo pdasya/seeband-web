@@ -512,4 +512,21 @@ test("renders formulas in MDX when built, with KaTeX's styles and no script", ()
     files(mathOutDir).filter((path) => path.endsWith(".js")).length,
     0,
   );
+  // Each size of a subscript or superscript has its rule: KaTeX renamed the class between
+  // versions, and with no rule an index is drawn at full size and clipped.
+  const sizes = new Set(
+    [
+      ...html.matchAll(/class="((?:katex-)?sizing) (reset-size\d+) (size\d+)/g),
+    ].map((m) => `.${m[1]}.${m[2]}.${m[3]}{`),
+  );
+  assert.ok(sizes.size > 0);
+  for (const rule of sizes) {
+    assert.ok(css.replaceAll(" ", "").includes(rule), rule);
+  }
+});
+
+test("KaTeX's styles come from the version that renders the formulas", () => {
+  const site = createRequire(join(SITE_DIR, "package.json"));
+  const renderer = createRequire(site.resolve("rehype-katex"));
+  assert.equal(site("katex").version, renderer("katex").version);
 });
