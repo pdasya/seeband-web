@@ -116,6 +116,42 @@
             aria-live="polite"
             hidden
           ></div>
+          <details id="sb-p17-migration-preview">
+            <summary>Preview · Results and Earlier runs mass labels</summary>
+            <p class="note">
+              Illustrative P17 migration design; no saved run is changed.
+            </p>
+            <section id="sb-p17-current-run" aria-label="Results mass preview">
+              <h4>Results · Draft / illustrative</h4>
+              <p>
+                Band 1 · Single-valley DOS mass: 0.5 mₑ.<br />
+                DOS mass (all equivalent valleys): 2 mₑ · N = 8.
+              </p>
+              <p class="note">
+                Illustrative values, independent of the editor. For Kane,
+                single-valley DOS mass means the band-edge mass.
+              </p>
+            </section>
+            <section
+              id="sb-p17-earlier-run"
+              aria-label="Earlier runs mass preview"
+            >
+              <h4>Earlier runs · Illustrative historical run</h4>
+              <p>
+                Band 1 · DOS mass (all equivalent valleys): 2 mₑ.<br />
+                Original saved value · preserved historical N = 8.
+              </p>
+              <p>
+                Single-valley DOS mass: 0.5 mₑ · derived for display.<br />
+                2 mₑ ÷ 8<sup>2/3</sup> = 0.5 mₑ.
+              </p>
+              <p class="note">
+                Derived from the original DOS mass and that run’s saved valley
+                count, not the current editor. Original value and units remain
+                preserved; the derived value is not a new fitted parameter.
+              </p>
+            </section>
+          </details>
           <details id="sb-flat-profile-example" hidden>
             <summary>Example result for a flat profile</summary>
             <section
@@ -656,7 +692,7 @@
           );
         }
         function mass(i) {
-          return "m<sub>" + (i + 1) + "</sub><sup>*</sup>";
+          return "m<sub>b," + (i + 1) + "</sub>";
         }
         function tau(mech, i) {
           return "τ<sub>" + mech + "," + (i + 1) + "</sub>";
@@ -710,9 +746,9 @@
             );
           row(
             "mass",
-            mass(0),
-            "Positive single-valley effective mass at the edge of Band 1.",
-            "m₀",
+            "Single-valley DOS mass · " + mass(0),
+            "Positive single-valley DOS mass of Band 1. For a Kane band this is the band-edge mass. The total DOS mass includes all equivalent valleys. For an imported P17 DPB Hall mass, divide the saved total DOS mass by the saved valley count raised to the power 2/3.",
+            "mₑ",
             1,
             ["manual", "manual", "fit"],
             0,
@@ -860,6 +896,32 @@
             })
             ?.catch(() => {});
         }
+        function updateDosMass() {
+          const output = el("#sb-total-dos-mass");
+          if (!output) return;
+          const massInput = el("#sb-p-mass");
+          const valleyInput = el("#sb-valleys input");
+          const count = Number(valleyInput.value);
+          const single = Number(massInput.value);
+          output.hidden = valleyInput.value !== "" && count === 1;
+          const valid =
+            massInput.value !== "" &&
+            massInput.validity.valid &&
+            valleyInput.value !== "" &&
+            valleyInput.validity.valid &&
+            Number.isFinite(single) &&
+            single > 0 &&
+            Number.isSafeInteger(count) &&
+            count >= 1;
+          const total = single * count ** (2 / 3);
+          output.textContent =
+            "DOS mass (all equivalent valleys): " +
+            (valid && Number.isFinite(total)
+              ? Number(total.toPrecision(8)) + " mₑ"
+              : "— · Enter a positive mass and a valid valley count.");
+        }
+        root.addEventListener("input", updateDosMass);
+        root.addEventListener("change", updateDosMass);
         function render() {
           if (hasKane()) mechanism = "ac";
           el("#sb-fit").hidden = page !== "fit";
@@ -1230,6 +1292,14 @@
               changed();
               el('[data-field="' + r.id + '"] .lock').focus();
             };
+            if (r.id === "mass") {
+              const output = document.createElement("output");
+              output.id = "sb-total-dos-mass";
+              output.dataset.testid = "derived-dos-mass";
+              output.className = "field-caption";
+              output.setAttribute("aria-live", "polite");
+              field.append(output);
+            }
             const input = field.querySelector("input");
             if (r.min !== undefined) input.min = r.min;
             input.value = signedValue(values.get(key) ?? r.initial, sign);
@@ -1287,6 +1357,7 @@
             syncSlider();
             slider.oninput = () => {
               input.value = slider.value;
+              input.oninput();
               values.set(key, signedValue(input.value, sign));
               if (r.id.startsWith("gap") || r.id === "ef") updateGap();
             };
@@ -1344,6 +1415,7 @@
             list.append(field);
           });
           updateGap();
+          updateDosMass();
           el("#sb-bounds").setAttribute("aria-pressed", String(editBounds));
           window.lucide?.createIcons({ attrs: { width: 16, height: 16 } });
         }

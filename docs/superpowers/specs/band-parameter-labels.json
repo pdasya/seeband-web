@@ -57,6 +57,14 @@
   },
   "scope": "proposed UI labels and fit eligibility; internal model identifiers and numerical results unchanged",
   "numbering": "i is the stable band row number (1–3); all offsets, mass ratios and relative transport weights reference Band 1; c/v follows CB/VB without renumbering",
+  "mass_reporting": {
+    "new_primary": "Single-valley DOS mass",
+    "all_valleys_label": "DOS mass (all equivalent valleys)",
+    "all_valleys_definition": "m_DOS,i = N_i^(2/3) m_b,i",
+    "parameters": "Show the derived Band 1 value alongside its single-valley field when N_1 differs from one. It has no separate bounds or lock.",
+    "p17_inverse": "m_b,1 = m_1(P17) / N_1^(2/3)",
+    "earlier_runs": "Preserve the saved DOS mass, units and valley count. Label the single-valley conversion as derived. Missing source metadata leaves the conversion unavailable."
+  },
   "fields": [
     {
       "key": "fermi",
@@ -82,18 +90,18 @@
     {
       "key": "mass",
       "legacy_or_tdd": "m1; band_mass (legacy signed)",
-      "label_en": "m₁*",
-      "display_unit": "m₀",
-      "tooltip_en": "Positive single-valley band-edge effective mass of Band 1, in free-electron masses m₀. For VB this is the hole mass. The legacy internal E coefficient is converted to this mass; E is not a visible field label.",
-      "definition": "m*_1"
+      "label_en": "Single-valley DOS mass · m_b,1",
+      "display_unit": "mₑ",
+      "tooltip_en": "Positive single-valley DOS mass at the Band 1 edge, in free-electron masses. A P17 DOS mass converts as m_b,1 = m_1(P17) / N_1^(2/3), using the saved valley count. Decode a raw legacy E coefficient by its original convention first.",
+      "definition": "m_b,1"
     },
     {
       "key": "mass_ratio",
       "legacy_or_tdd": "mass_ratio; M_i",
-      "label_en": "mᵢ*/m₁*",
+      "label_en": "m_b,i/m_b,1",
       "display_unit": "1",
       "tooltip_en": "Ratio of positive single-valley band-edge masses. Valley counts are entered separately.",
-      "definition": "m*_i / m*_1"
+      "definition": "m_b,i / m_b,1"
     },
     {
       "key": "kane",
@@ -108,7 +116,7 @@
       "legacy_or_tdd": "A",
       "label_en": "τ_ph,1",
       "display_unit": "S/m",
-      "tooltip_en": "Desktop acoustic scale label τ_ph,1 (legacy A). This is the normalized conductivity coefficient multiplying F₀, with units S/m, not a raw relaxation time in seconds. In all-parabolic models with multiple bands, S + ρ displays τ_ph,1/m₁*; Hall displays τ_ph,1. These labels refer to the same stored normalized coefficient.",
+      "tooltip_en": "Desktop acoustic scale label τ_ph,1 (legacy A). This is the normalized conductivity coefficient multiplying F₀, with units S/m, not a raw relaxation time in seconds. In all-parabolic models with multiple bands, S + ρ displays τ_ph,1/m_b,1; Hall displays τ_ph,1. These labels refer to the same stored normalized coefficient.",
       "definition": "acPh: sigma_1=A*F0; acPhDis: A is the acoustic-limit scale",
       "applicability": {
         "all_parabolic_scattering": ["acPh", "acPhDis"],
@@ -116,7 +124,7 @@
       },
       "label_by_context": {
         "single_band": "τ_ph,1",
-        "multiple_bands_S+rho": "τ_ph,1/m₁*",
+        "multiple_bands_S+rho": "τ_ph,1/m_b,1",
         "multiple_bands_S+rho+R_H": "τ_ph,1"
       }
     },
@@ -125,7 +133,7 @@
       "legacy_or_tdd": "F",
       "label_en": "τ_dis,1",
       "display_unit": "S/(m·K)",
-      "tooltip_en": "Desktop disorder scale label τ_dis,1 (legacy F). This normalized coefficient multiplies T in kelvin and F₀; its units are S/(m·K), not seconds. In all-parabolic models with multiple bands, S + ρ displays τ_dis,1/m₁*; Hall displays τ_dis,1. These labels refer to the same stored normalized coefficient.",
+      "tooltip_en": "Desktop disorder scale label τ_dis,1 (legacy F). This normalized coefficient multiplies T in kelvin and F₀; its units are S/(m·K), not seconds. In all-parabolic models with multiple bands, S + ρ displays τ_dis,1/m_b,1; Hall displays τ_dis,1. These labels refer to the same stored normalized coefficient.",
       "definition": "sigma_1=F*T*F0",
       "applicability": {
         "all_parabolic_scattering": ["dis"],
@@ -133,7 +141,7 @@
       },
       "label_by_context": {
         "single_band": "τ_dis,1",
-        "multiple_bands_S+rho": "τ_dis,1/m₁*",
+        "multiple_bands_S+rho": "τ_dis,1/m_b,1",
         "multiple_bands_S+rho+R_H": "τ_dis,1"
       }
     },
@@ -143,7 +151,7 @@
       "label_en": "τ_x,i/τ_x,1",
       "display_unit": "1",
       "tooltip_en": "Relative transport weight referenced to Band 1: x = ph for acPh and acPh + dis (legacy B), x = dis for pure dis (legacy G). The full conductivity ratio also depends on masses, valley counts and filling; this is not the ratio of measured band conductivities.",
-      "definition": "prefactor_i/prefactor_1=(N_i/N_1)*(m*_1/m*_i)*b_i",
+      "definition": "prefactor_i/prefactor_1=(N_i/N_1)*(m_b,1/m_b,i)*b_i",
       "applicability": {
         "all_parabolic_scattering": ["acPh", "dis", "acPhDis"],
         "band_indices": [2, 3],
@@ -235,7 +243,7 @@
       "label_en": "bᵢ^(ii)",
       "display_unit": "1",
       "tooltip_en": "Relative ionized-impurity transport weight for Band {i} referenced to Band 1 (legacy B). Conductivity ratios also depend on masses, valley counts and filling.",
-      "definition": "prefactor_i/prefactor_1=(N_i/N_1)*(m*_1/m*_i)*b_i^(ii)",
+      "definition": "prefactor_i/prefactor_1=(N_i/N_1)*(m_b,1/m_b,i)*b_i^(ii)",
       "applicability": {
         "all_parabolic_scattering": ["ionized"],
         "band_indices": [2, 3],
@@ -372,7 +380,7 @@
   "label_rules": {
     "visible_fields": "Use physics symbols. Legacy desktop letters A–G belong in tooltips only, never visible labels. Internal legacy identifiers remain available as metadata.",
     "fermi_reference": "Visible label E_F; the 0 K and Band 1 edge reference belong in its tooltip.",
-    "desktop_scale": "For x = ph or dis, SPB uses τ_x,1. Multiple all-parabolic bands use τ_x,1/m₁* in S+rho and τ_x,1 in S+rho+R_H. Labels do not change the normalized stored coefficient or its units.",
+    "desktop_scale": "For x = ph or dis, SPB uses τ_x,1. Multiple all-parabolic bands use τ_x,1/m_b,1 in S+rho and τ_x,1 in S+rho+R_H. Labels do not change the normalized stored coefficient or its units.",
     "scale_units": {
       "acPh": "S/m",
       "acPhDis": "S/m (acoustic-limit scale)",

@@ -703,6 +703,146 @@ function verifyIdentifiability(w, copy) {
   cue(false, "Other fit modes hide conditional cue");
   return count;
 }
+// Item 10: literal N=8 examples distinguish single-valley and total DOS mass.
+// Only rendered controls, visible results and the public host restore are used.
+function verifyMassConvention(w) {
+  const d = w.document;
+  const one = (selector) => d.querySelector(selector);
+  const text = (selector) =>
+    one(selector)?.textContent.replace(/\s+/g, " ").trim();
+  const equal = (actual, expected, message) => {
+    if (actual !== expected)
+      throw new Error(
+        message + ": expected " + expected + ", received " + actual,
+      );
+  };
+  const contains = (selector, expected) =>
+    equal(
+      text(selector)?.includes(expected),
+      true,
+      selector + " includes " + expected,
+    );
+  const restore = (modelContent, privateContent = {}) =>
+    w.dispatchEvent(
+      new w.CustomEvent("openai:set_globals", {
+        detail: { globals: { widgetState: { modelContent, privateContent } } },
+      }),
+    );
+  const set = (selector, value) => {
+    const input = one(selector);
+    input.value = value;
+    input.dispatchEvent(new w.Event("change", { bubbles: true }));
+  };
+  let saved;
+  w.openai = {
+    setWidgetState: (snapshot) => {
+      saved = JSON.parse(JSON.stringify(snapshot));
+      return Promise.resolve();
+    },
+  };
+  const mass = '[data-field="mass"] input[type=number]';
+  const valleys = "#sb-valleys input";
+  const output = "#sb-total-dos-mass";
+  restore({ n: 2, types: [0, 1, 0], mechanism: "ac", selectedMode: 2 });
+  contains('[data-field="mass"] label', "Single-valley DOS mass");
+  set(valleys, "8");
+  set(mass, "0.5");
+  equal(one(output)?.hidden, false, "N=8 exposes derived total DOS mass");
+  contains(output, "DOS mass (all equivalent valleys): 2 mₑ");
+  set(mass, "2");
+  contains(output, "DOS mass (all equivalent valleys): 8 mₑ");
+  one('[data-field="mass"] .lock').click();
+  one('[data-mode="0"]').click();
+  contains(output, "8 mₑ");
+  one('[data-mode="2"]').click();
+  equal(
+    one('[data-field="mass"] .lock').getAttribute("aria-pressed"),
+    "true",
+    "Held mass survives modes",
+  );
+  const snapshot = saved;
+  restore({ n: 1, types: [0, 0, 0], mechanism: "ac", selectedMode: 0 });
+  restore(snapshot.modelContent, snapshot.privateContent);
+  contains(output, "8 mₑ");
+  equal(one(mass).value, "2", "Restored editable mass is single-valley");
+  equal(
+    one('[data-field="mass"] .lock').getAttribute("aria-pressed"),
+    "true",
+    "Held mass survives restore",
+  );
+  set(valleys, "1");
+  equal(one(output)?.hidden, true, "N=1 suppresses redundant total DOS mass");
+  for (const invalid of ["0", "1.5", ""]) {
+    set(valleys, invalid);
+    equal(one(output)?.hidden, false, "Invalid N keeps diagnostic visible");
+    contains(output, "—");
+  }
+  set(valleys, "8");
+  for (const invalid of ["0", "-1", ""]) {
+    set(mass, invalid);
+    contains(output, "—");
+  }
+  set(mass, "0.5");
+  contains(output, "2 mₑ");
+
+  set(valleys, "6");
+  set(mass, "0.209");
+  const published = /: ([0-9.]+) mₑ/.exec(text(output));
+  equal(
+    Number(published?.[1]).toFixed(3),
+    "0.690",
+    "Jacquot Table I, p-Bi2Te3",
+  );
+  set(valleys, "8");
+  set(mass, "0.5");
+
+  const preview = one("#sb-p17-migration-preview");
+  equal(Boolean(preview), true, "P17 migration example exists");
+  preview.open = true;
+  contains("#sb-p17-current-run", "Single-valley DOS mass");
+  contains("#sb-p17-earlier-run", "DOS mass (all equivalent valleys)");
+  contains("#sb-p17-earlier-run", "2 mₑ");
+  contains("#sb-p17-earlier-run", "0.5 mₑ");
+  contains("#sb-p17-earlier-run", "historical N = 8");
+  equal(
+    /Results/.test(text("#sb-p17-migration-preview")),
+    true,
+    "Results heading is explicit",
+  );
+  equal(
+    /Earlier runs/.test(text("#sb-p17-migration-preview")),
+    true,
+    "Earlier runs heading is explicit",
+  );
+  equal(
+    /÷|\//.test(text("#sb-p17-earlier-run")),
+    true,
+    "P17 conversion divides historical total DOS mass",
+  );
+  equal(
+    /preserv|original|historical/i.test(text("#sb-p17-earlier-run")),
+    true,
+    "Earlier mass provenance is explicit",
+  );
+  const earlier = text("#sb-p17-earlier-run");
+  set(valleys, "27");
+  set(mass, "2");
+  equal(
+    text("#sb-p17-earlier-run"),
+    earlier,
+    "Earlier run uses immutable metadata, independent of editor N and mass",
+  );
+  one('[data-mode="1"]').click();
+  equal(
+    text("#sb-p17-earlier-run"),
+    earlier,
+    "Earlier metadata survives mode changes",
+  );
+}
+verifyMassConvention(w);
+console.log(
+  "Item 10: derived DOS mass, Jacquot Table I (p-Bi2Te3), invalid inputs, held/restored state and immutable P17 earlier-run example passed.",
+);
 verifyIdentifiability(w, labels.identifiability);
 console.log(
   "Item 9: 270 caution states, opt-in Result, in-gap cues and stable parameter state passed.",
@@ -750,6 +890,29 @@ if (process.argv[2] || process.env.FIT_GUIDE_CHROME === "1") {
         .locator("[data-field=gap1] .field-caption")
         .waitFor({ state: "visible" });
       await page.evaluate("(" + verifyBandTransitions.toString() + ")(window)");
+      await page.evaluate("(" + verifyMassConvention.toString() + ")(window)");
+      await page.locator("#sb-valleys input").first().fill("8");
+      await page.locator("#sb-p-mass").fill("0.5");
+      await page.locator("#sb-p-mass").press("Tab");
+      assert.match(
+        await page.locator("#sb-total-dos-mass").innerText(),
+        /: 2 mₑ/,
+      );
+      await page.locator("#sb-p17-migration-preview").evaluate((el) => {
+        el.open = false;
+      });
+      await page.locator("#sb-p17-migration-preview > summary").focus();
+      await page.locator("#sb-p17-migration-preview > summary").press("Enter");
+      await page.locator("#sb-p17-earlier-run").waitFor({ state: "visible" });
+      assert.ok(
+        await page.evaluate(
+          () => globalThis.document.documentElement.scrollWidth <= 320,
+        ),
+        "expanded P17 mass example fits mobile viewport",
+      );
+      console.log(
+        "Chrome item 10: mass conventions, native editing and immutable earlier-run metadata passed.",
+      );
       await page.evaluate(
         "(" +
           verifyIdentifiability.toString() +

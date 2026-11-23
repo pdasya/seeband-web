@@ -390,7 +390,25 @@
       },
       "limitations": "Browser and design-state checks only. No transport API is called.",
       "provenance": "The 270 field configurations run against the dictionary. The transition regression edits rendered controls in jsdom and Chrome, checks legacy and current widget snapshots, and fails on the pre-fix HTML.",
-      "output_sha256": "df485c306c59644533cfd4fdabdd7bc5ff028513d4dc8d905a037da0785278c7",
+      "mass_convention": {
+        "editable": "Single-valley DOS mass",
+        "derived": "DOS mass (all equivalent valleys)",
+        "published_benchmark": {
+          "source": "Jacquot et al., Table I, p-Bi2Te3",
+          "doi": "10.1007/s11664-009-1059-x",
+          "single_valley_me": 0.209,
+          "valleys": 6,
+          "tabulated_total_me": 0.69,
+          "decimal_places": 3
+        },
+        "illustrative_p17": {
+          "saved_total_me": 2,
+          "saved_valleys": 8,
+          "derived_single_valley_me": 0.5
+        },
+        "scope": "Prototype display and immutable example. Production import is specified in the TDD."
+      },
+      "output_sha256": "f8bc9cc43486386a91684a26d55d5b77a7990aca86827f32ce69a05ec29fecee",
       "replay_status": "reproduced_from_pr",
       "regression": {
         "pre_fix_revision": "4e4526c6821d6bf7a06630962b3a7d1bea038acc",
