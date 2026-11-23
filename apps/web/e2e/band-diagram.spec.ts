@@ -107,14 +107,14 @@ test("Eg over the chart shows in eV, as its field does, and follows it", async (
   await expect(field(page, "Eg")).toHaveValue("0,12");
 });
 
-test("it draws each band and EF over a bare k axis without fit range shading", async ({
+test("it draws each band and EF over a k axis with no values, without fit range shading", async ({
   page,
 }) => {
   await open(page);
 
   await expect(traces(page)).toHaveCount(3);
   await expect(legend(page)).toHaveText(["Band 1", "Band 2", "EF"]);
-  await expect(diagram(page).locator(".xtitle")).toHaveCount(0);
+  await expect(diagram(page).locator(".xtitle")).toHaveText("k");
   await expect(diagram(page).locator(".ytitle")).toHaveText("E, eV");
   await expect(diagram(page).locator(".xtick text")).toHaveCount(0);
   await expect(diagram(page).locator(".shapelayer path")).toHaveCount(0);
@@ -234,7 +234,7 @@ test("a band with no finite values leaves a gap, and the rest stay", async ({
   expect(ys).toEqual(Object.values(curves).map(inEv));
 });
 
-test("the k axis stays bare while awaiting the first answer", async ({
+test("the k axis keeps its title and no values while awaiting the first answer", async ({
   page,
 }) => {
   const gate = hold();
@@ -244,7 +244,7 @@ test("the k axis stays bare while awaiting the first answer", async ({
   });
 
   await expect(diagram(page).locator(".js-plotly-plot")).toBeVisible();
-  await expect(diagram(page).locator(".xtitle")).toHaveCount(0);
+  await expect(diagram(page).locator(".xtitle")).toHaveText("k");
   await expect(diagram(page).locator(".xtick text")).toHaveCount(0);
   gate.release();
   await expect(traces(page)).toHaveCount(3);

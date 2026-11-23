@@ -209,9 +209,8 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
         interpolated={view.interpolated}
         referenceLines={view.referenceLines}
         fitRange={view.xAxis === undefined ? fitRange : null}
-        xAxisTitle={
-          view.xAxis === undefined ? text.temperatureAxis : view.xAxis.title
-        }
+        xAxisTitle={view.xAxis?.title ?? text.temperatureAxis}
+        xAxisScale={view.xAxis?.scale ?? true}
         xAxisSpan={view.xAxis?.span ?? null}
         yAxisTitle={view.yAxisTitle}
         description={view.description}

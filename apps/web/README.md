@@ -160,8 +160,8 @@ SEEBAND_API_TARGET=http://127.0.0.1:8000 pnpm --filter @seeband/web exec playwri
 ## Band diagram
 
 The E(k) tab draws local parabolic bands and a flat Fermi level using
-`POST /api/band-diagram`. Its k axis has no title and no values, as only the
-shape of the bands is meant, and the energies are in the selected display unit. In DPB modes without Hall data, a note gives the
+`POST /api/band-diagram`. Its k axis has its name but no units or values, as
+only the shape of the bands is meant, and the energies are in the selected display unit. In DPB modes without Hall data, a note gives the
 assumed reference mass. It requests the current parameters while a diagram is
 open and can draw without uploaded data.
 

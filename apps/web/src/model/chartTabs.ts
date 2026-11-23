@@ -224,8 +224,12 @@ export interface ChartTabView {
   description: string;
   /** Says what a chart with points only leaves out, or what is known to be wrong with it. */
   note: string | null;
-  /** For a chart that is not against temperature. A null title draws the axis with no scale. */
-  xAxis?: { title: string | null; span: readonly [number, number] | null };
+  /** For a chart that is not against temperature. `scale: false` leaves out its values. */
+  xAxis?: {
+    title: string;
+    scale: boolean;
+    span: readonly [number, number] | null;
+  };
 }
 
 const NO_CHART = {
@@ -621,8 +625,9 @@ function bandDiagramView(
     description: text.diagramDescription,
     empty: null,
     xAxis: {
-      // Only the shape of the bands matters here, so k has no title and no values.
-      title: null,
+      // Only the shape of the bands matters here, so k has no units and no values.
+      title: text.wavevectorAxis,
+      scale: false,
       // Before the first answer, the core's own k range, _DIAGRAM_K_RANGE_NM_INV in band_models.
       span: first === undefined || last === undefined ? [-2, 2] : [first, last],
     },

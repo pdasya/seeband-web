@@ -33,7 +33,8 @@ export interface TransportChartProps {
   interpolated?: ChartMeasurements | null;
   fitRange?: ChartFitRange | null;
   referenceLines?: readonly ReferenceLine[];
-  xAxisTitle: string | null;
+  xAxisTitle: string;
+  xAxisScale?: boolean | undefined;
   xAxisSpan?: readonly [number, number] | null | undefined;
   yAxisTitle: string;
   /** What a screen reader says about the chart, as it cannot read the drawing. */
@@ -122,6 +123,7 @@ function Plot({
   fitRange,
   referenceLines,
   xAxisTitle,
+  xAxisScale,
   xAxisSpan,
   yAxisTitle,
   description,
@@ -134,7 +136,8 @@ function Plot({
   interpolated: ChartMeasurements | null;
   fitRange: ChartFitRange | null;
   referenceLines: readonly ReferenceLine[];
-  xAxisTitle: string | null;
+  xAxisTitle: string;
+  xAxisScale?: boolean | undefined;
   xAxisSpan?: readonly [number, number] | null | undefined;
   yAxisTitle: string;
   description: string;
@@ -180,6 +183,7 @@ function Plot({
       fitRange,
       referenceLines,
       xAxisTitle,
+      xAxisScale,
       xAxisSpan,
       yAxisTitle,
     }),
@@ -190,6 +194,7 @@ function Plot({
       fitRange,
       referenceLines,
       xAxisTitle,
+      xAxisScale,
       xAxisSpan,
       yAxisTitle,
     ],
@@ -268,6 +273,7 @@ export function TransportChart({
   fitRange = null,
   referenceLines = NO_REFERENCE_LINES,
   xAxisTitle,
+  xAxisScale,
   xAxisSpan,
   yAxisTitle,
   description,
@@ -292,6 +298,7 @@ export function TransportChart({
         fitRange={fitRange}
         referenceLines={referenceLines}
         xAxisTitle={xAxisTitle}
+        xAxisScale={xAxisScale}
         xAxisSpan={xAxisSpan}
         yAxisTitle={yAxisTitle}
         description={description}

@@ -339,15 +339,19 @@ describe("a wavevector axis", () => {
     expect(wavevector).not.toHaveProperty("dtick");
   });
 
-  test("with no title, shows no scale: no title, values or tick marks", () => {
-    const bare = xaxis({ xAxisSpan: [-2, 2], xAxisTitle: null });
+  test("with no scale, keeps its title but shows no values or tick marks", () => {
+    const bare = xaxis({
+      xAxisSpan: [-2, 2],
+      xAxisTitle: "k",
+      xAxisScale: false,
+    });
     expect(bare).toMatchObject({
       range: [-2, 2],
+      title: { text: "k" },
       showticklabels: false,
       ticks: "",
       showline: true,
     });
-    expect(bare).not.toHaveProperty("title");
   });
 
   test("leaves a temperature axis as it was", () => {

@@ -38,8 +38,9 @@ export interface FigureInput {
   interpolated?: ChartMeasurements | null;
   fitRange: ChartFitRange | null;
   referenceLines: readonly ReferenceLine[];
-  /** Null for an axis drawn with no scale: no title, no values and no tick marks. */
-  xAxisTitle: string | null;
+  xAxisTitle: string;
+  /** False for an axis with a title only: no values, units or tick marks. */
+  xAxisScale?: boolean | undefined;
   yAxisTitle: string;
   /** For an axis that is not temperature: its span, once known. */
   xAxisSpan?: readonly [number, number] | null | undefined;
@@ -263,13 +264,10 @@ export function buildFigure(
       zeroline: false,
       showline: true,
       linecolor: theme.axis,
-      ...(input.xAxisTitle === null
+      title: { text: plotlySubscripts(input.xAxisTitle), font: titleFont },
+      ...(input.xAxisScale === false
         ? { showticklabels: false, ticks: "" as const }
         : {
-            title: {
-              text: plotlySubscripts(input.xAxisTitle),
-              font: titleFont,
-            },
             ticks: "outside" as const,
             ticklen: 5,
             tickcolor: theme.axis,
