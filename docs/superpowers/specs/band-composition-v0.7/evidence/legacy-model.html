@@ -18,7 +18,7 @@
       <section class="bc-card" lang="en" aria-label="Model settings">
         <header>
           <h2>Model</h2>
-          <output data-name aria-live="polite"></output>
+          <span data-name></span>
         </header>
         <div class="bc-body">
           <h3>Band configuration</h3>
@@ -76,7 +76,7 @@
                     step="any"
                 /></label>
               </div>
-              <small data-error role="alert" hidden></small>
+              <small data-error hidden></small>
             </div>
           </div>
         </div>
@@ -137,7 +137,7 @@
         color: var(--low);
         font-size: 12px;
       }
-      #sb-complete-model .bc-model output {
+      #sb-complete-model .bc-model [data-name] {
         color: var(--ink);
         font-weight: 650;
         font-size: 14px;
@@ -318,7 +318,7 @@
       #sb-complete-model header {
         padding: 12px;
       }
-      #sb-complete-model header output {
+      #sb-complete-model header [data-name] {
         font-size: 13px;
         font-weight: 600;
         color: var(--low);
@@ -387,7 +387,7 @@
       #sb-complete-model button:disabled {
         opacity: 0.4;
       }
-      #sb-complete-model .setting [role="alert"],
+      #sb-complete-model .setting [data-error],
       #sb-complete-model .numbergrid input[aria-invalid="true"] {
         color: light-dark(#a13422, #ff9988);
       }

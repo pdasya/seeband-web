@@ -839,6 +839,187 @@ function verifyMassConvention(w) {
     "Earlier metadata survives mode changes",
   );
 }
+function verifyFitReplay(w) {
+  const assert = {
+    equal(actual, expected) {
+      if (actual !== expected)
+        throw new Error(JSON.stringify({ actual, expected }));
+    },
+    deepEqual(actual, expected) {
+      this.equal(JSON.stringify(actual), JSON.stringify(expected));
+    },
+    match(actual, expected) {
+      if (!expected.test(actual))
+        throw new Error(actual + " does not match " + expected);
+    },
+  };
+  const d = w.document;
+  const one = (s) => d.querySelector(s);
+  const click = (id) => one("#sb-replay-" + id).click();
+  const restore = (types, n = 3) =>
+    w.dispatchEvent(
+      new w.CustomEvent("openai:set_globals", {
+        detail: {
+          globals: {
+            widgetState: {
+              modelContent: { n, types, mechanism: "ac", selectedMode: 2 },
+              privateContent: {},
+            },
+          },
+        },
+      }),
+    );
+  const edit = (id, value) => {
+    const input = one('[data-field="' + id + '"] input[type=number]');
+    input.value = value;
+    input.dispatchEvent(new w.Event("change", { bubbles: true }));
+  };
+  const startValues = () =>
+    ["gap1", "gap2"].map((id) => one('[data-field="' + id + '"] input')?.value);
+  restore([0, 1, 0]);
+  assert.equal(one("#sb-fit-replay").tagName, "DETAILS");
+  assert.equal(one("#sb-fit-replay").open, false);
+  one("#sb-fit-replay").open = true;
+  edit("gap1", "0.1");
+  edit("gap2", "0.04");
+  const starts = startValues();
+  assert.match(one("#sb-gap-origin").textContent, /CB₂ and VB₃/);
+  assert.match(one("#sb-three-gap strong").title, /directness/);
+  click("start");
+  assert.equal(one("#sb-replay-status").textContent, "Fit…");
+  assert.equal(one("#sb-three-gap .gap-fit-marker").textContent, "Fit…");
+  assert.equal(one("#sb-gap-value").textContent, "0.06 eV");
+  one("#sb-replay-next").focus();
+  click("next");
+  assert.equal(one("#sb-gap-value").textContent, "0.07 eV");
+  assert.equal(d.activeElement.id, "sb-replay-next");
+  assert.deepEqual(startValues(), starts);
+  click("next");
+  click("next");
+  assert.equal(one("#sb-replay-status").textContent, "Fit…");
+  assert.equal(one("#sb-replay-next").textContent, "Return final vector");
+  assert.equal(one("#sb-gap-value").textContent, "0.06 eV");
+  assert.match(one("#sb-gap-origin").textContent, /CB₂ and VB₃/);
+  click("next");
+  assert.equal(one("#sb-replay-status").textContent, "Complete");
+  assert.equal(one("#sb-gap-value").textContent, "0.075 eV");
+  assert.equal(one("#sb-three-gap .gap-fit-marker").textContent, "");
+  assert.match(
+    one("#sb-replay-result").textContent,
+    /0.075 eV. Defined by CB₂ and VB₁/,
+  );
+  assert.deepEqual(startValues(), starts);
+  // Cancel and failure discard preview offsets and restore researcher starts.
+  for (const stop of ["cancel", "fail"]) {
+    click("start");
+    click("next");
+    click(stop);
+    click("next");
+    assert.equal(
+      one("#sb-replay-status").textContent,
+      (stop === "cancel" ? "Cancelled" : "Failed") +
+        " · starting values retained",
+    );
+    assert.equal(one("#sb-gap-value").textContent, "0.06 eV");
+    assert.deepEqual(startValues(), starts);
+    assert.equal(one("#sb-replay-result").textContent, "");
+  }
+  // Edits and rerenders invalidate a run; a stale replay cannot resume.
+  click("start");
+  click("next");
+  edit("gap1", "0.2");
+  click("next");
+  assert.equal(one('[data-field="gap1"] input').value, "0.2");
+  assert.match(one("#sb-replay-status").textContent, /^Cancelled/);
+  click("start");
+  one('[data-mode="1"]').click();
+  assert.equal(
+    one("#sb-replay-status").textContent,
+    "Cancelled · model changed",
+  );
+  assert.equal(one("#sb-gap-value").textContent, "0.16 eV");
+  // Held edges remain at their start value while previewing other edges.
+  one('[data-field="gap1"] .lock').click();
+  click("start");
+  click("next");
+  assert.equal(one("#sb-gap-value").textContent, "0.18 eV");
+  assert.deepEqual(startValues(), ["0.2", "0.04"]);
+  click("cancel");
+  one("#sb-bounds").click();
+  const low = one('[data-field="gap2"] .limits label:first-child input');
+  low.value = "0.03";
+  low.dispatchEvent(new w.Event("change", { bubbles: true }));
+  click("start");
+  click("next");
+  assert.match(one("#sb-replay-status").textContent, /^Failed/);
+  assert.equal(one("#sb-gap-value").textContent, "0.16 eV");
+  assert.deepEqual(startValues(), ["0.2", "0.04"]);
+  // Both two-band orientations show the computed value on the actual field,
+  // alongside the fitting marker, while the editable start remains untouched.
+  for (const types of [
+    [0, 1, 0],
+    [1, 0, 0],
+  ]) {
+    restore(types, 2);
+    edit("gap1", "0.1");
+    click("start");
+    assert.equal(
+      one('[data-field="gap1"] .gap-fit-marker').textContent,
+      "Fit…",
+    );
+    assert.equal(
+      one('[data-field="gap1"] .gap-current').textContent,
+      "Current gap = 0.1 eV",
+    );
+    click("next");
+    assert.equal(
+      one('[data-field="gap1"] .gap-current').textContent,
+      "Current gap = 0.09 eV",
+    );
+    assert.equal(one('[data-field="gap1"] input').value, "0.1");
+    click("next");
+    click("next");
+    click("next");
+    assert.equal(
+      one('[data-field="gap1"] .gap-current').textContent,
+      "Current gap = 0.075 eV",
+    );
+    assert.equal(one('[data-field="gap1"] input').value, "0.1");
+    one("#sb-bounds").click();
+    assert.equal(one('[data-field="gap1"] .gap-current'), null);
+    assert.equal(one('[data-field="gap1"] input').value, "0.1");
+    click("start");
+    click("next");
+    one('[data-mode="1"]').click();
+    assert.equal(one('[data-field="gap1"] .gap-current'), null);
+    assert.equal(one('[data-field="gap1"] input').value, "0.1");
+    assert.equal(
+      one("#sb-replay-status").textContent,
+      "Cancelled · model changed",
+    );
+  }
+  assert.equal(d.querySelector("input[aria-describedby]"), null);
+  const help = one('[data-field="gap1"] .help');
+  help.click();
+  assert.equal(one('[data-field="gap1"] .field-caption').hidden, false);
+  help.click();
+  assert.equal(one('[data-field="gap1"] .field-caption').hidden, true);
+  restore([1, 1, 1]);
+  click("start");
+  click("next");
+  assert.equal(one("#sb-replay-gap").hidden, true);
+  assert.equal(one("#sb-replay-gap").textContent, "");
+  assert.equal(
+    d.querySelector(
+      "output, [aria-live], [role=status], [role=alert], .sr-only",
+    ),
+    null,
+  );
+}
+verifyFitReplay(w);
+console.log(
+  "Item 11: isolated accepted snapshots, switched final defining pair, cancellation/failure, holds/bounds, same polarity and keyboard focus passed.",
+);
 verifyMassConvention(w);
 console.log(
   "Item 10: derived DOS mass, Jacquot Table I (p-Bi2Te3), invalid inputs, held/restored state and immutable P17 earlier-run example passed.",
@@ -890,6 +1071,73 @@ if (process.argv[2] || process.env.FIT_GUIDE_CHROME === "1") {
         .locator("[data-field=gap1] .field-caption")
         .waitFor({ state: "visible" });
       await page.evaluate("(" + verifyBandTransitions.toString() + ")(window)");
+      await page.evaluate("(" + verifyFitReplay.toString() + ")(window)");
+      await page.evaluate(() =>
+        globalThis.dispatchEvent(
+          new globalThis.CustomEvent("openai:set_globals", {
+            detail: {
+              globals: {
+                widgetState: {
+                  modelContent: {
+                    n: 3,
+                    types: [0, 1, 0],
+                    mechanism: "ac",
+                    selectedMode: 2,
+                  },
+                  privateContent: {},
+                },
+              },
+            },
+          }),
+        ),
+      );
+      await page.locator("#sb-p-gap1").fill("0.1");
+      await page.locator("#sb-p-gap2").fill("0.04");
+      await page.locator("#sb-p-gap2").press("Tab");
+      const replaySummary = page.locator("#sb-fit-replay > summary");
+      if (await page.locator("#sb-fit-replay").evaluate((el) => el.open))
+        await replaySummary.press("Enter");
+      await replaySummary.focus();
+      await replaySummary.press("Enter");
+      await replaySummary.press("Tab");
+      assert.equal(
+        await page.evaluate(() => globalThis.document.activeElement.id),
+        "sb-replay-start",
+      );
+      await page.keyboard.press("Enter");
+      await page.keyboard.press("Tab");
+      assert.equal(
+        await page.evaluate(() => globalThis.document.activeElement.id),
+        "sb-replay-next",
+      );
+      await page.keyboard.press("Enter");
+      assert.equal(
+        await page.locator("#sb-gap-value").textContent(),
+        "0.07 eV",
+      );
+      assert.equal(
+        await page.evaluate(() => globalThis.document.activeElement.id),
+        "sb-replay-next",
+      );
+      await page.keyboard.press("Tab");
+      assert.equal(
+        await page.evaluate(() => globalThis.document.activeElement.id),
+        "sb-replay-cancel",
+      );
+      await page.keyboard.press("Enter");
+      assert.equal(
+        await page.locator("#sb-gap-value").textContent(),
+        "0.06 eV",
+      );
+      assert.ok(
+        await page.evaluate(
+          () => globalThis.document.documentElement.scrollWidth <= 320,
+        ),
+        "expanded offline replay fits mobile viewport",
+      );
+      console.log(
+        "Chrome item 11: native disclosure/Tab/Enter, isolated replay, final vector, rerender and mobile layout passed.",
+      );
       await page.evaluate("(" + verifyMassConvention.toString() + ")(window)");
       await page.locator("#sb-valleys input").first().fill("8");
       await page.locator("#sb-p-mass").fill("0.5");

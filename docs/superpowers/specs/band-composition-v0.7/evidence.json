@@ -408,7 +408,30 @@
         },
         "scope": "Prototype display and immutable example. Production import is specified in the TDD."
       },
-      "output_sha256": "f8bc9cc43486386a91684a26d55d5b77a7990aca86827f32ce69a05ec29fecee",
+      "gap_during_fit": {
+        "stream": "Offline replay of isolated synthetic fit vectors",
+        "status_marker": "Fit…",
+        "three_band_example": {
+          "types": ["VB", "CB", "VB"],
+          "start_offsets_eV": [0.1, 0.04],
+          "last_accepted_gap_eV": 0.06,
+          "last_accepted_pair": ["CB2", "VB3"],
+          "returned_gap_eV": 0.075,
+          "returned_pair": ["CB2", "VB1"]
+        },
+        "two_band_example": {
+          "start_eV": 0.1,
+          "first_iteration_eV": 0.09,
+          "returned_eV": 0.075
+        },
+        "checks": [
+          "current gap beside its active marker",
+          "final pair from the returned vector",
+          "input values survive cancellation or failure",
+          "holds, bounds, both polarities and keyboard use"
+        ]
+      },
+      "output_sha256": "670ffb2e05375ce5e5dc7c2771fde9dbe0442f19e75ede02146bb91661d6f1cb",
       "replay_status": "reproduced_from_pr",
       "regression": {
         "pre_fix_revision": "4e4526c6821d6bf7a06630962b3a7d1bea038acc",

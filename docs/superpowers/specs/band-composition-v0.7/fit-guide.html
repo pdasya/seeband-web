@@ -38,7 +38,7 @@
         <section class="model-panel">
           <div class="preview-head">
             <h3>Model</h3>
-            <output id="sb-model-name"></output>
+            <span id="sb-model-name"></span>
           </div>
           <div class="band-section">
             <h4>Band configuration</h4>
@@ -104,18 +104,45 @@
           </p>
           <section id="sb-three-gap" aria-label="Band gap" hidden>
             <div class="gap-heading">
-              <strong>Band gap · E<sub>g</sub></strong
-              ><output id="sb-gap-value" aria-live="polite"></output>
+              <strong
+                title="Lowest conduction edge minus highest valence edge. Momentum-space directness is not inferred."
+                >Band gap · E<sub>g</sub></strong
+              ><span id="sb-gap-value"></span
+              ><span class="gap-fit-marker"></span>
             </div>
             <div id="sb-gap-origin" class="gap-origin"></div>
           </section>
+          <details id="sb-fit-replay">
+            <summary>Offline fit example</summary>
+            <p class="note">
+              Synthetic accepted snapshots and a separately returned final
+              vector; no solver runs. Preview offsets are isolated from your
+              parameter inputs. The example moves the last band edge across the
+              reference edge when free. Held offsets stay fixed; entered bounds
+              apply. Cancel or failure returns to your starting display.
+            </p>
+            <p>
+              <strong id="sb-replay-status">Ready</strong>
+              <span id="sb-replay-gap"></span>
+            </p>
+            <div class="band-actions">
+              <button type="button" id="sb-replay-start">
+                Start fit example
+              </button>
+              <button type="button" id="sb-replay-next" disabled>
+                Next accepted snapshot
+              </button>
+              <button type="button" id="sb-replay-cancel" disabled>
+                Cancel
+              </button>
+              <button type="button" id="sb-replay-fail" disabled>
+                Simulate failure
+              </button>
+            </div>
+            <p id="sb-replay-result" class="note"></p>
+          </details>
           <div class="rows"></div>
-          <div
-            id="sb-gap-readout"
-            class="field-caption"
-            aria-live="polite"
-            hidden
-          ></div>
+          <div id="sb-gap-readout" class="field-caption" hidden></div>
           <details id="sb-p17-migration-preview">
             <summary>Preview · Results and Earlier runs mass labels</summary>
             <p class="note">
@@ -383,6 +410,9 @@
         justify-content: space-between;
         gap: 8px;
         flex-wrap: wrap;
+      }
+      .gap-fit-marker {
+        margin-left: 0.5em;
       }
       #sb-gap-value {
         font-weight: 600;
@@ -678,6 +708,109 @@
           mechanism = "ac",
           selectedMode = 2,
           lastParabolic = "ac";
+        let replayRunning = false,
+          replayStep = 0,
+          replayStart = [],
+          replayPreview = null,
+          replayPair = "",
+          refreshGap = () => {};
+        function replayControls() {
+          root.querySelectorAll(".gap-fit-marker").forEach((marker) => {
+            marker.textContent = replayRunning ? "Fit…" : "";
+          });
+          el("#sb-replay-start").disabled = replayRunning;
+          for (const id of ["next", "cancel", "fail"])
+            el("#sb-replay-" + id).disabled = !replayRunning;
+        }
+        function stopReplay(status) {
+          replayRunning = false;
+          el("#sb-replay-status").textContent = status;
+          el("#sb-replay-result").textContent = "";
+          replayPreview = null;
+          replayControls();
+          refreshGap();
+        }
+        el("#sb-replay-start").onclick = () => {
+          replayStart = form()
+            .filter((r) => r.id.startsWith("gap"))
+            .map((r) => {
+              const input = el(
+                '[data-field="' + r.id + '"] input[type=number]',
+              );
+              return {
+                id: r.id,
+                value: input.value,
+                held: held.has(stateKey(r)),
+              };
+            });
+          replayStep = 0;
+          replayPreview = replayStart.map((r) => r.value);
+          replayRunning = true;
+          el("#sb-replay-next").textContent = "Next accepted snapshot";
+          el("#sb-replay-status").textContent = "Fit…";
+          el("#sb-replay-result").textContent = "";
+          replayControls();
+          refreshGap();
+        };
+        el("#sb-replay-next").onclick = () => {
+          if (!replayRunning) return;
+          const factor = [0.9, 0.8, 0.7, 0.75][replayStep];
+          const snapshot = replayStart.map((r, index) => {
+            const key = stateKey({ id: r.id });
+            const sign = n === 2 && types[0] % 2 === 1 ? -1 : 1;
+            const multiplier =
+              index === 1 ? [0.5, 0.1, 0.25, -0.5][replayStep] : factor;
+            const value = r.held
+              ? Number(r.value)
+              : Number(r.value) * multiplier;
+            const bounds = limits.get(key) ?? ["", ""];
+            return {
+              ...r,
+              key,
+              sign,
+              value,
+              valid:
+                r.value !== "" &&
+                Number.isFinite(value) &&
+                (bounds[0] === "" || value * sign >= Number(bounds[0])) &&
+                (bounds[1] === "" || value * sign <= Number(bounds[1])),
+            };
+          });
+          if (snapshot.some((r) => !r.valid)) {
+            stopReplay("Failed · starting values retained");
+            return;
+          }
+          replayPreview = snapshot.map((r) =>
+            r.held ? r.value : String(Number(r.value.toPrecision(8))),
+          );
+          refreshGap();
+          replayStep++;
+          if (replayStep === 3)
+            el("#sb-replay-next").textContent = "Return final vector";
+          if (replayStep === 4) {
+            replayRunning = false;
+            replayControls();
+            el("#sb-replay-status").textContent = "Complete";
+            el("#sb-replay-result").textContent = replayPair
+              ? "Final · " +
+                el("#sb-replay-gap").textContent +
+                ". Defined by " +
+                replayPair +
+                ". Your starting inputs are unchanged."
+              : "Final · no conduction–valence gap in this model. Your starting inputs are unchanged.";
+          }
+        };
+        el("#sb-replay-cancel").onclick = () =>
+          stopReplay("Cancelled · starting values retained");
+        el("#sb-replay-fail").onclick = () =>
+          stopReplay("Failed · starting values retained");
+        for (const eventName of ["input", "change"])
+          root.addEventListener(eventName, (event) => {
+            if (!event.target.matches("input")) return;
+            if (replayRunning)
+              stopReplay("Cancelled · starting values retained");
+            else if (el("#sb-replay-result").textContent) stopReplay("Ready");
+          });
         function hasKane() {
           return types.slice(0, n).some((t) => t >= 2);
         }
@@ -1070,6 +1203,10 @@
           const mixed = types.slice(0, n).some((t) => t % 2 !== types[0] % 2);
           const gapSymbol = "E<sub>g</sub>";
           function updateGap() {
+            const replayGap = el("#sb-replay-gap");
+            replayGap.hidden = true;
+            replayGap.textContent = "";
+            replayPair = "";
             const summary = el("#sb-gap-readout");
             summary.hidden = true;
             const inGapNote = el("#sb-in-gap-note");
@@ -1093,6 +1230,7 @@
               ...Array.from(
                 { length: n - 1 },
                 (_, j) =>
+                  replayPreview?.[j] ??
                   list.querySelector(
                     '[data-field="gap' + (j + 1) + '"] input[type=number]',
                   )?.value,
@@ -1112,6 +1250,23 @@
             const ec = Math.min(...cb),
               ev = Math.max(...vb),
               d = ec - ev;
+            const indices = (type, energy) =>
+              offsets
+                .map((e, i) =>
+                  types[i] % 2 === type && e === energy
+                    ? (type ? "CB" : "VB") + ["₁", "₂", "₃"][i]
+                    : null,
+                )
+                .filter(Boolean)
+                .join(" / ");
+            replayPair = indices(1, ec) + " and " + indices(0, ev);
+            replayGap.hidden = false;
+            replayGap.textContent =
+              d < 0
+                ? "Closed · overlap " +
+                  Number(Math.abs(d).toPrecision(8)) +
+                  " eV"
+                : Number(d.toPrecision(8)) + " eV";
             const ef = list.querySelector(
               '[data-field="ef"] input[type=number]',
             )?.value;
@@ -1126,16 +1281,7 @@
               Number(ef) <= ec
             );
             if (n === 3) {
-              const indices = (type, energy) =>
-                offsets
-                  .map((e, i) =>
-                    types[i] % 2 === type && e === energy
-                      ? (type ? "CB" : "VB") + ["₁", "₂", "₃"][i]
-                      : null,
-                  )
-                  .filter(Boolean)
-                  .join(" / ");
-              const pair = indices(1, ec) + " and " + indices(0, ev);
+              const pair = replayPair;
               const magnitude = Number(Math.abs(d).toPrecision(8)) + " eV";
               value.textContent = d < 0 ? "Closed" : magnitude;
               origin.textContent =
@@ -1158,6 +1304,16 @@
                     edge(types[0] % 2 ? 1 : 0);
               const field = list.querySelector("[data-field=gap1]");
               field.querySelector("label").innerHTML = symbol;
+              const marker = document.createElement("span");
+              marker.className = "gap-fit-marker";
+              marker.textContent = replayRunning ? "Fit…" : "";
+              field.querySelector("label").append(marker);
+              if (replayPreview) {
+                const current = document.createElement("span");
+                current.className = "gap-current";
+                current.textContent = "Current gap = " + replayGap.textContent;
+                field.querySelector("label").append(" · ", current);
+              }
               field
                 .querySelector(".help")
                 .setAttribute("aria-label", "About " + strip(symbol));
@@ -1252,9 +1408,7 @@
               icon("info", "ⓘ") +
               '</button><button type="button" class="lock"></button><input id="sb-p-' +
               r.id +
-              '" type="number" step="any" aria-describedby="' +
-              captionId +
-              '"><span class="unit">' +
+              '" type="number" step="any"><span class="unit">' +
               unitText +
               '</span></div><div id="' +
               captionId +
@@ -1293,11 +1447,10 @@
               el('[data-field="' + r.id + '"] .lock').focus();
             };
             if (r.id === "mass") {
-              const output = document.createElement("output");
+              const output = document.createElement("div");
               output.id = "sb-total-dos-mass";
               output.dataset.testid = "derived-dos-mass";
               output.className = "field-caption";
-              output.setAttribute("aria-live", "polite");
               field.append(output);
             }
             const input = field.querySelector("input");
@@ -1414,12 +1567,16 @@
             }
             list.append(field);
           });
+          refreshGap = updateGap;
           updateGap();
+          replayControls();
           updateDosMass();
           el("#sb-bounds").setAttribute("aria-pressed", String(editBounds));
           window.lucide?.createIcons({ attrs: { width: 16, height: 16 } });
         }
         function changed() {
+          if (replayRunning) stopReplay("Cancelled · model changed");
+          else if (el("#sb-replay-result").textContent) stopReplay("Ready");
           render();
           save();
         }
@@ -1476,6 +1633,8 @@
             }),
         );
         function restore(snapshot) {
+          refreshGap = () => {};
+          stopReplay("Ready");
           const s = snapshot?.modelContent;
           const p = snapshot?.privateContent;
           if (
