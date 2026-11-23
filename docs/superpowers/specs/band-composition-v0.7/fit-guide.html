@@ -435,6 +435,8 @@
         background: transparent;
         color: var(--sub);
         padding-inline: 4px;
+        min-width: 24px;
+        min-height: 24px;
       }
       #sb-desktop-parameters .field-head .lock {
         min-width: 32px;
@@ -451,7 +453,7 @@
         height: 16px;
         display: block;
       }
-      #sb-desktop-parameters .field-head .lock:disabled {
+      #sb-desktop-parameters .field-head .lock[aria-disabled="true"] {
         color: var(--sub);
         background: var(--soft);
         border-style: dashed;
@@ -524,7 +526,7 @@
       }
       #sb-desktop-parameters sub,
       #sb-desktop-parameters sup {
-        font-size: 75%;
+        font-size: 85%;
         line-height: 0;
       }
       @container (max-width:600px) {
@@ -733,7 +735,7 @@
           nextBandId = 4,
           legacyState;
         let n = 3,
-          types = [1, 0, 1],
+          types = [0, 1, 0],
           mechanism = "ac",
           selectedMode = 2,
           lastParabolic = "ac";
@@ -768,6 +770,18 @@
               "Cannot replay · enter a positive integer valley count.",
             );
             invalidValley.reportValidity();
+            return;
+          }
+          const invalidWeight = [
+            ...root.querySelectorAll(
+              '[data-field^="weight"] input[data-number]',
+            ),
+          ].find((input) => !input.checkValidity());
+          if (invalidWeight) {
+            stopReplay(
+              "Cannot replay · enter nonnegative relative channel strengths.",
+            );
+            invalidWeight.reportValidity();
             return;
           }
           replayStart = form()
@@ -926,6 +940,17 @@
             0,
           );
           if (k >= 0) {
+            if (n > 1)
+              for (let i = 1; i < n; i++)
+                row(
+                  "weight" + i,
+                  "σ<sub>0," + (i + 1) + "</sub> / σ<sub>0,1</sub>",
+                  "Nonnegative dimensionless ratio of conductivity prefactors, referenced to Band 1 (its weight is fixed to 1). For a parabolic band, σ₀ multiplies F₀. For Kane, σ₀ = [2 e² ℏ N / (π m_b)] (C_l/E_def² in SI) multiplies J₀. These manual S-only weights are independent of the dimensional prefactors used with resistivity and Hall; no automatic conversion is made.",
+                  "1",
+                  1,
+                  ["manual", "hidden", "hidden"],
+                  0,
+                );
             for (let i = 0; i < n; i++) {
               const kane = i === k;
               row(
@@ -938,7 +963,7 @@
                   : "Acoustic conductivity prefactor for this parabolic band. Equivalent to A for this band.",
                 kane ? "Pa/eV²" : "S/m",
                 "",
-                n === 1 ? later : assumed,
+                later,
                 0,
               );
             }
@@ -1016,6 +1041,8 @@
           if (id.startsWith("N")) return band + "valleys";
           if (id.startsWith("gap")) return band + "offset:eV" + reference;
           if (id.startsWith("massRatio")) return band + "massRatio" + reference;
+          if (id.startsWith("weight"))
+            return band + "relativeStrength/ac:dimensionless" + reference;
           if (id.startsWith("ratio"))
             return band + "ratio/" + scattering + reference;
           if (id.startsWith("alpha")) return band + "alpha:eV-1";
@@ -1029,7 +1056,7 @@
             return (
               band +
               "scale/" +
-              scattering +
+              (scattering === "mix" ? "ac" : scattering) +
               (scattering === "dis" ? ":S/(m*K)" : ":S/m")
             );
           return band + id;
@@ -1048,29 +1075,35 @@
               ? canonical(value).slice(1)
               : "-" + canonical(value).replace(/^\+/, "");
         }
+        const storageKey = "seeband.fit-guide.v4";
+        function snapshot() {
+          return {
+            modelContent: {
+              n,
+              types: [...types],
+              mechanism,
+              selectedMode,
+              lastParabolic,
+            },
+            privateContent: {
+              stateVersion: 4,
+              bandIds: [...bandIds],
+              nextBandId,
+              legacyState,
+              held: [...held],
+              values: Object.fromEntries(values),
+              limits: Object.fromEntries(limits),
+              editBounds,
+              page,
+            },
+          };
+        }
         function save() {
-          window.openai
-            ?.setWidgetState?.({
-              modelContent: {
-                n,
-                types: [...types],
-                mechanism,
-                selectedMode,
-                lastParabolic,
-              },
-              privateContent: {
-                stateVersion: 2,
-                bandIds: [...bandIds],
-                nextBandId,
-                legacyState,
-                held: [...held],
-                values: Object.fromEntries(values),
-                limits: Object.fromEntries(limits),
-                editBounds,
-                page,
-              },
-            })
-            ?.catch(() => {});
+          try {
+            localStorage.setItem(storageKey, JSON.stringify(snapshot()));
+          } catch {
+            // Browsers may deny storage for local files; the editor still works.
+          }
         }
         function updateDosMass() {
           const output = el("#sb-total-dos-mass");
@@ -1298,7 +1331,7 @@
             note = "Ionized impurities use the web power-law model. " + note;
           if (hasKane())
             note =
-              "Kane bands support acoustic phonons only. The absolute conductivity scale is pending validation.";
+              "Kane bands support acoustic phonons only. S-only uses independent dimensionless σ₀ ratios referenced to Band 1; absolute prefactors appear with resistivity and Hall. The absolute Kane scale is pending validation.";
           else if (mechanism !== "ac")
             note += " Select acPh before choosing a Kane band.";
           el("#sb-note").textContent =
@@ -1558,7 +1591,7 @@
               caption.hidden = !caption.hidden;
               help.setAttribute("aria-expanded", String(!caption.hidden));
             };
-            lock.disabled = forced;
+            lock.setAttribute("aria-disabled", String(forced));
             lock.innerHTML =
               icon(locked ? "lock" : "lock-open", locked ? "🔒" : "🔓") +
               (locked ? " Held" : "");
@@ -1575,6 +1608,11 @@
                 ? "Held by the researcher. Unlock to allow fitting."
                 : action;
             lock.onclick = () => {
+              if (forced) {
+                caption.hidden = false;
+                help.setAttribute("aria-expanded", "true");
+                return;
+              }
               if (held.has(key)) held.delete(key);
               else held.add(key);
               changed();
@@ -1589,6 +1627,7 @@
             }
             const input = field.querySelector("input");
             decimalInput(input);
+            input.required = r.id.startsWith("weight");
             if (r.min !== undefined) input.min = r.min;
             input.value = shown(
               signedValue(values.get(key) ?? r.initial, sign),
@@ -1600,7 +1639,9 @@
                 input.value !== "" &&
                   (!Number.isFinite(numeric) ||
                     (r.min !== undefined && numeric < r.min))
-                  ? "Enter a valid number within the allowed range."
+                  ? r.id.startsWith("weight")
+                    ? "Enter a nonnegative relative channel strength."
+                    : "Enter a valid number within the allowed range."
                   : input.value !== "" &&
                       numeric === 0 &&
                       [
@@ -1791,6 +1832,11 @@
           stopReplay("Ready");
           const s = snapshot?.modelContent;
           const p = snapshot?.privateContent;
+          // Invalid or absent composition starts from the documented default.
+          n = 3;
+          types = [0, 1, 0];
+          mechanism = lastParabolic = "ac";
+          selectedMode = 2;
           if (
             s &&
             [1, 2, 3].includes(s.n) &&
@@ -1812,7 +1858,7 @@
               : mechanism;
           }
           const validIds =
-            p?.stateVersion === 2 &&
+            [2, 3, 4].includes(p?.stateVersion) &&
             Array.isArray(p.bandIds) &&
             p.bandIds.length === n &&
             p.bandIds.every((id) => Number.isSafeInteger(id) && id > 0) &&
@@ -1864,7 +1910,10 @@
                   const oldTypes = [...types];
                   oldTypes[0] = +first;
                   oldTypes[index] = +own;
-                  key = stateKey({ id }, oldTypes, scattering ?? "ac");
+                  key =
+                    id === "scale" && scattering === "mix"
+                      ? "band/" + bandIds[0] + "/scale/mix:S/m"
+                      : stateKey({ id }, oldTypes, scattering ?? "ac");
                   score =
                     Number(+first === types[0]) * 8 +
                     Number(+own === types[index]) * 4 +
@@ -1880,6 +1929,54 @@
                 if (Array.isArray(p.held) && p.held.includes(oldKey))
                   source.held.push(key);
               }
+            }
+            // Acoustic and mixed scattering share the same acoustic-limit
+            // coefficient. Migrate one complete value/bounds/hold record,
+            // preferring the saved active context and archiving conflicts.
+            source = {
+              values: { ...source.values },
+              limits: { ...source.limits },
+              held: Array.isArray(source.held) ? [...source.held] : [],
+            };
+            for (const id of bandIds) {
+              const acoustic = "band/" + id + "/scale/ac:S/m";
+              const mixed = "band/" + id + "/scale/mix:S/m";
+              const has = (key) =>
+                Object.hasOwn(source.values, key) ||
+                Object.hasOwn(source.limits, key) ||
+                source.held.includes(key);
+              if (!has(mixed)) continue;
+              const winner =
+                mechanism === "mix" || !has(acoustic) ? mixed : acoustic;
+              legacyState = {
+                ...legacyState,
+                acousticScaleRecords: {
+                  ...legacyState?.acousticScaleRecords,
+                  [id]: Object.fromEntries(
+                    [acoustic, mixed].filter(has).map((key) => [
+                      key,
+                      {
+                        value: source.values[key],
+                        limits: source.limits[key],
+                        held: source.held.includes(key),
+                      },
+                    ]),
+                  ),
+                },
+              };
+              const value = source.values[winner];
+              const bounds = source.limits[winner];
+              const locked = source.held.includes(winner);
+              delete source.values[acoustic];
+              delete source.values[mixed];
+              delete source.limits[acoustic];
+              delete source.limits[mixed];
+              source.held = source.held.filter(
+                (key) => key !== acoustic && key !== mixed,
+              );
+              if (value !== undefined) source.values[acoustic] = value;
+              if (bounds !== undefined) source.limits[acoustic] = bounds;
+              if (locked) source.held.push(acoustic);
             }
             const activeKey = (key) => {
               if (["ef", "tMin", "tMax"].includes(key)) return true;
@@ -1934,11 +2031,22 @@
           }
           render();
         }
-        window.addEventListener("openai:set_globals", (e) => {
-          if (e.detail?.globals?.widgetState)
-            restore(e.detail.globals.widgetState);
-        });
-        restore(window.openai?.widgetState);
+        // Explicit fixture/import seam for this standalone prototype.
+        window.fitGuide = {
+          restore(state) {
+            restore(state);
+            save();
+          },
+          snapshot,
+          storageKey,
+        };
+        let saved;
+        try {
+          saved = JSON.parse(localStorage.getItem(storageKey));
+        } catch {
+          // Missing, malformed or inaccessible storage starts a fresh editor.
+        }
+        restore(saved);
       })();
     </script>
   </body>

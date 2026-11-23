@@ -14,11 +14,18 @@ const dictionary = labels.fit_eligibility_rules;
 const jsdom = loadPackage(path.join(project, "apps/web/node_modules/jsdom"));
 const dom = new jsdom.JSDOM(fs.readFileSync(file, "utf8"), {
   runScripts: "dangerously",
+  url: "https://fit-guide.test/",
 });
 const w = dom.window,
   d = w.document,
   one = (s) => d.querySelector(s),
   all = (s) => [...d.querySelectorAll(s)];
+assert.equal(w.openai, undefined, "standalone prototype needs no host bridge");
+assert.deepEqual(
+  [...w.fitGuide.snapshot().modelContent.types],
+  [0, 1, 0],
+  "default band composition is VB/CB/VB",
+);
 const states = (n, k, mech, m) => {
   const result = {},
     c = dictionary.common,
@@ -34,6 +41,8 @@ const states = (n, k, mech, m) => {
   }
   if (k >= 0) {
     add("alpha" + k, c.kane_alpha_if_present);
+    for (let i = 1; i < n; i++)
+      add("weight" + i, dictionary.kane_present.relative_prefactor_i_gt_1);
     for (let i = 0; i < n; i++)
       add(
         "amplitude" + i,
@@ -62,13 +71,7 @@ const states = (n, k, mech, m) => {
   return result;
 };
 const restore = (s, p = {}) =>
-  w.dispatchEvent(
-    new w.CustomEvent("openai:set_globals", {
-      detail: {
-        globals: { widgetState: { modelContent: s, privateContent: p } },
-      },
-    }),
-  );
+  w.fitGuide.restore({ modelContent: s, privateContent: p });
 let checks = 0;
 for (const n of [1, 2, 3])
   for (let mask = 0; mask < 2 ** n; mask++)
@@ -79,9 +82,10 @@ for (const n of [1, 2, 3])
           restore({ n, types, mechanism, selectedMode });
           const actual = {};
           for (const r of all(".field")) {
-            actual[r.dataset.field] = r.querySelector(".lock").disabled
-              ? "manual"
-              : "fit";
+            actual[r.dataset.field] =
+              r.querySelector(".lock").getAttribute("aria-disabled") === "true"
+                ? "manual"
+                : "fit";
             assert.equal(r.querySelector(".field-caption").hidden, true);
             assert.ok(r.querySelector(".help").getAttribute("aria-controls"));
             assert.ok(!/^[A-G]$/.test(r.querySelector("label").textContent));
@@ -92,13 +96,7 @@ for (const n of [1, 2, 3])
           checks++;
         }
     }
-let saved;
-w.openai = {
-  setWidgetState: (s) => {
-    saved = s;
-    return Promise.resolve();
-  },
-};
+
 restore({ n: 2, types: [0, 1, 0], mechanism: "mix", selectedMode: 2 });
 const field = (id, s) => one("[data-field=" + id + "] " + s);
 const mode = (i) => one('[data-mode="' + i + '"]').click();
@@ -119,7 +117,7 @@ field("mass", ".lock").click();
 assert.equal(field("mass", ".lock").getAttribute("aria-pressed"), "true");
 set(field("mass", "input"), "2,5");
 mode(0);
-assert.equal(field("mass", ".lock").disabled, true);
+assert.equal(field("mass", ".lock").getAttribute("aria-disabled"), "true");
 set(field("mass", "input"), "3");
 mode(2);
 assert.equal(field("mass", ".lock").getAttribute("aria-pressed"), "true");
@@ -133,7 +131,10 @@ mode(0);
 assert.equal(field("scale", ".lock"), null);
 mode(1);
 assert.equal(field("scale", ".lock").getAttribute("aria-pressed"), "true");
-restore(saved.modelContent, saved.privateContent);
+restore(
+  w.fitGuide.snapshot().modelContent,
+  w.fitGuide.snapshot().privateContent,
+);
 assert.equal(field("scale", ".limits label:first-child input").value, "1500");
 assert.equal(field("mass", "input").value, "3");
 field("scale", ".lock").click();
@@ -275,18 +276,8 @@ function verifyBandTransitions(w) {
   };
   const ok = (actual, message) => equal(Boolean(actual), true, message);
   const restore = (modelContent, privateContent = {}) =>
-    w.dispatchEvent(
-      new w.CustomEvent("openai:set_globals", {
-        detail: { globals: { widgetState: { modelContent, privateContent } } },
-      }),
-    );
-  let saved;
-  w.openai = {
-    setWidgetState: (snapshot) => {
-      saved = snapshot;
-      return Promise.resolve();
-    },
-  };
+    w.fitGuide.restore({ modelContent, privateContent });
+
   const choose = (band, choice) =>
     one('[data-band="' + band + '"] [data-choice="' + choice + '"]').click();
   const bounds = (id) => [
@@ -318,7 +309,11 @@ function verifyBandTransitions(w) {
       String(locked),
       id + " lock survives transition",
     );
-    equal(field(id, ".lock").disabled, forced, id + " manual eligibility");
+    equal(
+      field(id, ".lock").getAttribute("aria-disabled") === "true",
+      forced,
+      id + " manual eligibility",
+    );
   };
   restore({ n: 3, types: [0, 1, 0], mechanism: "ac", selectedMode: 2 });
   one("#sb-bounds").click();
@@ -359,14 +354,18 @@ function verifyBandTransitions(w) {
   edit("amplitude2", 34000, 300, 70000);
   mode(0);
   expectField("mass", 2.7, 0.4, 7, true, true);
-  expectField("amplitude1", 23000, 200, 60000, true, true);
-  set(field("amplitude1", "input"), "24000");
+  equal(field("amplitude0", "input"), null);
+  equal(field("amplitude1", "input"), null);
+  equal(field("amplitude2", "input"), null);
+  equal(field("weight1", "input").value, "1");
+  equal(field("weight1", ".lock").getAttribute("aria-disabled"), "true");
+  set(field("weight1", "input"), "2.4");
   mode(2);
-  expectField("amplitude1", 24000, 200, 60000, false);
+  expectField("amplitude1", 23000, 200, 60000, false);
   choose(1, "CB");
   expectField("alpha1", 1.8, 0.2, 4);
   expectField("amplitude0", 12000, 100, 50000);
-  expectField("amplitude1", 24000, 200, 60000, false);
+  expectField("amplitude1", 23000, 200, 60000, false);
   expectField("amplitude2", 34000, 300, 70000);
   choose(1, "Parabolic");
   equal(field("alpha1", "input"), null);
@@ -374,15 +373,15 @@ function verifyBandTransitions(w) {
   expectField("ratio1", 2.2, 0.2, 6);
   choose(1, "Kane");
   expectField("alpha1", 1.8, 0.2, 4);
-  expectField("amplitude1", 24000, 200, 60000, false);
-  // The host serializes widget state when reopening the prototype.
-  const savedSnapshot = () => JSON.parse(JSON.stringify(saved));
+  expectField("amplitude1", 23000, 200, 60000, false);
+  // Round-trip the standalone browser snapshot.
+  const savedSnapshot = () => JSON.parse(JSON.stringify(w.fitGuide.snapshot()));
   const snapshot = savedSnapshot();
   restore({ n: 1, types: [0, 0, 0], mechanism: "dis", selectedMode: 0 });
   restore(snapshot.modelContent, snapshot.privateContent);
   expectField("alpha1", 1.8, 0.2, 4);
   expectField("massRatio2", 4.4, 0.5, 9, false);
-  expectField("amplitude1", 24000, 200, 60000, false);
+  expectField("amplitude1", 23000, 200, 60000, false);
   one("#sb-remove").click();
   one("#sb-add").click();
   equal(field("massRatio2", "input").value, "1");
@@ -406,7 +405,7 @@ function verifyBandTransitions(w) {
   expectField("scale", 12000, 100, 50000);
   choose(1, "Kane");
   expectField("alpha1", 1.8, 0.2, 4);
-  expectField("amplitude1", 24000, 200, 60000, false);
+  expectField("amplitude1", 23000, 200, 60000, false);
   choose(1, "Parabolic");
   choose(0, "Kane");
   expectField("alpha0", 0.6, 0.1, 2, false);
@@ -458,7 +457,7 @@ function verifyBandTransitions(w) {
   expectField("amplitude0", 22000, 220, 88000, false);
   expectField("gap1", 0.14, -0.2, 0.5, false);
   expectField("mass", 2.6, 0.4, 6, false);
-  // A user action saves the restored state through the public host callback.
+  // A user action saves the restored state through the standalone persistence.
   mode(1);
   const migratedSnapshot = savedSnapshot();
   restore(migratedSnapshot.modelContent, migratedSnapshot.privateContent);
@@ -492,13 +491,7 @@ function verifyIdentifiability(w, copy) {
     );
   const text = (element) => element.textContent.replace(/\s+/g, " ").trim();
   const restore = (modelContent) =>
-    w.dispatchEvent(
-      new w.CustomEvent("openai:set_globals", {
-        detail: {
-          globals: { widgetState: { modelContent, privateContent: {} } },
-        },
-      }),
-    );
+    w.fitGuide.restore({ modelContent, privateContent: {} });
   const mode = (i) => one('[data-mode="' + i + '"]').click();
   const field = (id) => one('[data-field="' + id + '"] input[data-number]');
   const set = (input, value) => {
@@ -734,7 +727,7 @@ function verifyIdentifiability(w, copy) {
   return count;
 }
 // Item 10: literal N=8 examples distinguish single-valley and total DOS mass.
-// Only rendered controls, visible results and the public host restore are used.
+// Rendered controls and the standalone fixture API form the test boundary.
 function verifyMassConvention(w) {
   const d = w.document;
   const one = (selector) => d.querySelector(selector);
@@ -753,11 +746,7 @@ function verifyMassConvention(w) {
       selector + " includes " + expected,
     );
   const restore = (modelContent, privateContent = {}) =>
-    w.dispatchEvent(
-      new w.CustomEvent("openai:set_globals", {
-        detail: { globals: { widgetState: { modelContent, privateContent } } },
-      }),
-    );
+    w.fitGuide.restore({ modelContent, privateContent });
   const set = (selector, value) => {
     const input = one(selector);
     input.dispatchEvent(
@@ -770,13 +759,7 @@ function verifyMassConvention(w) {
     input.dispatchEvent(new w.Event("input", { bubbles: true }));
     input.dispatchEvent(new w.Event("change", { bubbles: true }));
   };
-  let saved;
-  w.openai = {
-    setWidgetState: (snapshot) => {
-      saved = JSON.parse(JSON.stringify(snapshot));
-      return Promise.resolve();
-    },
-  };
+
   const mass = '[data-field="mass"] input[data-number]';
   const valleys = "#sb-valleys input";
   const output = "#sb-total-dos-mass";
@@ -797,7 +780,7 @@ function verifyMassConvention(w) {
     "true",
     "Held mass survives modes",
   );
-  const snapshot = saved;
+  const snapshot = w.fitGuide.snapshot();
   restore({ n: 1, types: [0, 0, 0], mechanism: "ac", selectedMode: 0 });
   restore(snapshot.modelContent, snapshot.privateContent);
   contains(output, "8 mₑ");
@@ -894,18 +877,10 @@ function verifyFitReplay(w) {
   const one = (s) => d.querySelector(s);
   const click = (id) => one("#sb-replay-" + id).click();
   const restore = (types, n = 3) =>
-    w.dispatchEvent(
-      new w.CustomEvent("openai:set_globals", {
-        detail: {
-          globals: {
-            widgetState: {
-              modelContent: { n, types, mechanism: "ac", selectedMode: 2 },
-              privateContent: {},
-            },
-          },
-        },
-      }),
-    );
+    w.fitGuide.restore({
+      modelContent: { n, types, mechanism: "ac", selectedMode: 2 },
+      privateContent: {},
+    });
   const edit = (id, value) => {
     const input = one('[data-field="' + id + '"] input[data-number]');
     input.dispatchEvent(
@@ -1070,11 +1045,7 @@ function verifyParameterNotation(w) {
       throw new Error(message + ": expected " + b + ", received " + a);
   };
   const restore = (modelContent, privateContent = {}) =>
-    w.dispatchEvent(
-      new w.CustomEvent("openai:set_globals", {
-        detail: { globals: { widgetState: { modelContent, privateContent } } },
-      }),
-    );
+    w.fitGuide.restore({ modelContent, privateContent });
   const set = (input, value) => {
     input.dispatchEvent(
       new w.InputEvent("beforeinput", {
@@ -1086,13 +1057,7 @@ function verifyParameterNotation(w) {
     input.dispatchEvent(new w.Event("input", { bubbles: true }));
     input.dispatchEvent(new w.Event("change", { bubbles: true }));
   };
-  let saved;
-  w.openai = {
-    setWidgetState: (s) => {
-      saved = JSON.parse(JSON.stringify(s));
-      return Promise.resolve();
-    },
-  };
+
   for (const [mechanism, kind, unit] of [
     ["ac", "acPh", "scale: S/m"],
     ["dis", "dis", "scale: S/(m·K)"],
@@ -1167,14 +1132,18 @@ function verifyParameterNotation(w) {
     true,
     "mode hold caption",
   );
-  equal(field("mass", ".lock").disabled, true, "mode hold cannot be toggled");
+  equal(
+    field("mass", ".lock").getAttribute("aria-disabled"),
+    "true",
+    "mode hold cannot be toggled",
+  );
   one('[data-mode="2"]').click();
   equal(
     field("scale", ".lock").getAttribute("aria-pressed"),
     "true",
     "hold survives mode",
   );
-  const snapshot = saved;
+  const snapshot = w.fitGuide.snapshot();
   restore(snapshot.modelContent, snapshot.privateContent);
   equal(
     field("scale", ".lock").textContent.endsWith("Held"),
@@ -1205,7 +1174,10 @@ function verifyParameterNotation(w) {
       "",
       "mode preserves invalid imported state",
     );
-    restore(saved.modelContent, saved.privateContent);
+    restore(
+      w.fitGuide.snapshot().modelContent,
+      w.fitGuide.snapshot().privateContent,
+    );
     equal(
       one("#sb-valleys input").value,
       "",
@@ -1241,7 +1213,7 @@ function verifyParameterNotation(w) {
     "Kane units retained",
   );
 }
-// Item 13: visible decimals stay comma-formatted while host state stays numeric.
+// Item 13: visible decimals stay comma-formatted while browser state stays numeric.
 // Shared by jsdom and Chrome; native keyboard/paste coverage follows below.
 function verifyDecimalInputs(w) {
   const d = w.document;
@@ -1265,31 +1237,17 @@ function verifyDecimalInputs(w) {
     input.dispatchEvent(new w.Event("change", { bubbles: true }));
   };
   const restore = (privateContent = {}, model = {}) =>
-    w.dispatchEvent(
-      new w.CustomEvent("openai:set_globals", {
-        detail: {
-          globals: {
-            widgetState: {
-              modelContent: {
-                n: 3,
-                types: [0, 1, 0],
-                mechanism: "ac",
-                selectedMode: 2,
-                ...model,
-              },
-              privateContent,
-            },
-          },
-        },
-      }),
-    );
-  let saved;
-  w.openai = {
-    setWidgetState: (s) => {
-      saved = JSON.parse(JSON.stringify(s));
-      return Promise.resolve();
-    },
-  };
+    w.fitGuide.restore({
+      modelContent: {
+        n: 3,
+        types: [0, 1, 0],
+        mechanism: "ac",
+        selectedMode: 2,
+        ...model,
+      },
+      privateContent,
+    });
+
   restore({}, { n: 2, types: [1, 0, 0] });
   for (const sign of ["-", "+"]) {
     const input = field("gap1");
@@ -1347,16 +1305,12 @@ function verifyDecimalInputs(w) {
         "snapshot scalar remains numeric",
       );
   };
-  Object.values(saved.privateContent.values).forEach(canonical);
-  Object.values(saved.privateContent.limits).flat().forEach(canonical);
-  const snapshot = saved;
-  w.dispatchEvent(
-    new w.CustomEvent("openai:set_globals", {
-      detail: {
-        globals: { widgetState: snapshot },
-      },
-    }),
-  );
+  Object.values(w.fitGuide.snapshot().privateContent.values).forEach(canonical);
+  Object.values(w.fitGuide.snapshot().privateContent.limits)
+    .flat()
+    .forEach(canonical);
+  const snapshot = w.fitGuide.snapshot();
+  w.fitGuide.restore(snapshot);
   equal(field("mass").value, "0,25", "canonical snapshot restores comma value");
   equal(
     one('[data-field="mass"] .limits label:last-child input').value,
@@ -1437,11 +1391,11 @@ function verifyDecimalInputs(w) {
       "non-positive or unsafe N refused in live editor",
     );
     equal(
-      Object.entries(saved.privateContent.values)
+      Object.entries(w.fitGuide.snapshot().privateContent.values)
         .filter(([key]) => key.endsWith("/valleys"))
         .some(([, value]) => value === invalid),
       false,
-      "invalid N absent from active host payload",
+      "invalid N absent from active browser payload",
     );
   }
   // A persisted editor with a missing required N cannot fall back to one.
@@ -1462,10 +1416,10 @@ function verifyDecimalInputs(w) {
       "missing saved N blocks replay",
     );
     edit(d.querySelectorAll("#sb-valleys input")[band], "2");
-    const active = Object.entries(saved.privateContent.values).filter(([key]) =>
-      key.endsWith("/valleys"),
-    );
-    equal(active.length, 3, "new host snapshot includes every active N");
+    const active = Object.entries(
+      w.fitGuide.snapshot().privateContent.values,
+    ).filter(([key]) => key.endsWith("/valleys"));
+    equal(active.length, 3, "new browser snapshot includes every active N");
     equal(
       active.every(
         ([, value]) => value === "" || /^[1-9]\d*$/.test(String(value)),
@@ -1504,16 +1458,16 @@ function verifyDecimalInputs(w) {
         "invalid count produces no result",
       );
       one('[data-mode="1"]').click();
-      const activeValues = Object.entries(saved.privateContent.values).filter(
-        ([key]) => key.endsWith("/valleys"),
-      );
+      const activeValues = Object.entries(
+        w.fitGuide.snapshot().privateContent.values,
+      ).filter(([key]) => key.endsWith("/valleys"));
       equal(
         activeValues.some(
           ([, value]) =>
             String(value).includes(".") || String(value).includes(","),
         ),
         false,
-        "no fractional count in active host payload",
+        "no fractional count in active browser payload",
       );
       equal(
         activeValues.some(([, value]) => value === ""),
@@ -1526,17 +1480,11 @@ function verifyDecimalInputs(w) {
         true,
         "mode change cannot revive invalid imported count",
       );
-      w.dispatchEvent(
-        new w.CustomEvent("openai:set_globals", {
-          detail: {
-            globals: { widgetState: saved },
-          },
-        }),
-      );
+      w.fitGuide.restore(w.fitGuide.snapshot());
       equal(
         d.querySelectorAll("#sb-valleys input")[band].value,
         "",
-        "invalid imported state survives host restore",
+        "invalid imported state survives fixture restore",
       );
       const corrected = d.querySelectorAll("#sb-valleys input")[band];
       edit(corrected, "3");
@@ -1549,6 +1497,191 @@ function verifyDecimalInputs(w) {
       one("#sb-replay-cancel").click();
     }
 }
+
+// Item 14: standalone persistence and parameter meaning through real controls.
+function verifyStandaloneParameters(w) {
+  const d = w.document;
+  const one = (s) => d.querySelector(s);
+  const field = (id, s = "input[data-number]") =>
+    one('[data-field="' + id + '"] ' + s);
+  const equal = (a, b, message) => {
+    if (JSON.stringify(a) !== JSON.stringify(b))
+      throw new Error(
+        message +
+          ": expected " +
+          JSON.stringify(b) +
+          ", received " +
+          JSON.stringify(a),
+      );
+  };
+  const set = (input, value) => {
+    input.dispatchEvent(
+      new w.InputEvent("beforeinput", {
+        bubbles: true,
+        inputType: "deleteContentBackward",
+      }),
+    );
+    input.value = value;
+    input.dispatchEvent(new w.Event("input", { bubbles: true }));
+    input.dispatchEvent(new w.Event("change", { bubbles: true }));
+  };
+  const mode = (i) => one('[data-mode="' + i + '"]').click();
+  const restore = (n, types, selectedMode = 2) =>
+    w.fitGuide.restore({
+      modelContent: { n, types, selectedMode, mechanism: "ac" },
+      privateContent: {},
+    });
+  const numbers = (id) => [
+    field(id).value,
+    field(id, ".limits label:first-child input").value,
+    field(id, ".limits label:last-child input").value,
+    field(id, ".lock").getAttribute("aria-pressed"),
+  ];
+  for (const selectedMode of [1, 2]) {
+    restore(3, [0, 1, 0], selectedMode);
+    one("#sb-bounds").click();
+    set(field("scale", ".limits label:first-child input"), "1500");
+    set(field("scale", ".limits label:last-child input"), "90000");
+    set(field("scale"), "27000");
+    field("scale", ".lock").click();
+    const acoustic = numbers("scale");
+    set(one("#sb-scatter"), "mix");
+    equal(
+      numbers("scale"),
+      acoustic,
+      "pure to mixed shares acoustic value, bounds and hold",
+    );
+    set(field("scale"), "28000");
+    set(field("scale", ".limits label:first-child input"), "1700");
+    field("scale", ".lock").click();
+    const mixed = numbers("scale");
+    set(one("#sb-scatter"), "ac");
+    equal(
+      numbers("scale"),
+      mixed,
+      "mixed to pure retains acoustic edits reversibly",
+    );
+    set(one("#sb-scatter"), "dis");
+    set(field("scale"), "35000");
+    set(one("#sb-scatter"), "ac");
+    equal(numbers("scale"), mixed, "disorder coefficient stays independent");
+  }
+  for (const n of [1, 2, 3])
+    for (let kane = 0; kane < n; kane++) {
+      const types = [0, 1, 0];
+      types[kane] += 2;
+      restore(n, types);
+      set(field("amplitude" + kane), "12345");
+      mode(0);
+      equal(
+        d.querySelectorAll('[data-field^="amplitude"]').length,
+        0,
+        "S-only exposes no dimensional amplitude",
+      );
+      equal(
+        d.querySelectorAll('[data-field^="weight"]').length,
+        n - 1,
+        "S-only exposes exactly n-1 relative strengths",
+      );
+      equal(
+        field("weight0"),
+        null,
+        "reference strength is fixed to one, with no zero control",
+      );
+      for (let i = 1; i < n; i++) {
+        equal(
+          field("weight" + i, ".unit").textContent,
+          "1",
+          "relative strength is dimensionless",
+        );
+        equal(
+          field("weight" + i).value,
+          "1",
+          "relative strength starts independently of calibrated U",
+        );
+        const lock = field("weight" + i, ".lock");
+        equal(lock.disabled, false, "forced hold remains keyboard focusable");
+        equal(
+          lock.getAttribute("aria-disabled"),
+          "true",
+          "S-only strength is manually fixed",
+        );
+        lock.click();
+        equal(
+          field("weight" + i, ".field-caption").hidden,
+          false,
+          "forced hold explains itself on activation",
+        );
+        equal(
+          lock.getAttribute("aria-pressed"),
+          "true",
+          "forced hold cannot be toggled",
+        );
+        for (const invalid of ["-1", "", "NaN"]) {
+          set(field("weight" + i), invalid);
+          one("#sb-replay-start").click();
+          equal(
+            one("#sb-replay-status").textContent,
+            "Cannot replay · enter nonnegative relative channel strengths.",
+            "nonphysical S-only strength blocks replay",
+          );
+        }
+        for (const valid of ["0", "+0", "+2"]) {
+          set(field("weight" + i), valid);
+          one("#sb-replay-start").click();
+          equal(
+            one("#sb-replay-status").textContent,
+            "Fit…",
+            "nonnegative relative strength permits replay, including signed zero",
+          );
+          one("#sb-replay-cancel").click();
+        }
+        set(field("weight" + i), String(i + 0.5));
+      }
+      mode(1);
+      equal(
+        field("amplitude" + kane).value,
+        "12345",
+        "rho retains independent calibrated U",
+      );
+      equal(
+        d.querySelectorAll('[data-field^="weight"]').length,
+        0,
+        "rho hides S-only weights",
+      );
+      mode(0);
+      for (let i = 1; i < n; i++)
+        equal(
+          field("weight" + i).value,
+          String(i + 0.5).replace(".", ","),
+          "manual S-only strength survives mode round trip",
+        );
+    }
+  restore(3, [0, 1, 0]);
+  one("#sb-fit-replay").open = true;
+  set(field("gap1"), "0,1");
+  set(field("gap2"), "0,04");
+  one("#sb-replay-start").click();
+  one("#sb-replay-next").click();
+  one('[data-band="2"] [data-choice="CB"]').click();
+  equal(
+    one("#sb-replay-status").textContent.startsWith("Cancelled"),
+    true,
+    "composition edit cancels the active fit example",
+  );
+  equal(field("gap1").value, "0,1", "composition edit retains initial guess");
+  equal(
+    field("gap2").value,
+    "0,04",
+    "composition edit retains other initial guesses",
+  );
+  one("#sb-fit-replay").open = false;
+  equal(w.openai, undefined, "interactions never create a host bridge");
+}
+verifyStandaloneParameters(w);
+console.log(
+  "Item 14: standalone fixtures, shared acoustic state, dimensionless S-only strengths, independent rho U and composition cancellation passed.",
+);
 
 const parameterLabels = Object.fromEntries(
   labels.fields.map((entry) => [entry.key, entry]),
@@ -1565,7 +1698,7 @@ for (const [key, label, unit] of [
 }
 verifyDecimalInputs(w);
 console.log(
-  "Item 13: decimal controls, bounds, slider, canonical host state, live/final/DOS captions and invalid N import/mobile recovery passed.",
+  "Item 13: decimal controls, bounds, slider, canonical browser state, live/final/DOS captions and invalid N import/mobile recovery passed.",
 );
 verifyParameterNotation(w);
 console.log(
@@ -1614,23 +1747,15 @@ if (process.argv[2] || process.env.FIT_GUIDE_CHROME === "1") {
           );
           const reset = () =>
             decimalPage.evaluate(() =>
-              globalThis.dispatchEvent(
-                new globalThis.CustomEvent("openai:set_globals", {
-                  detail: {
-                    globals: {
-                      widgetState: {
-                        modelContent: {
-                          n: 3,
-                          types: [0, 1, 0],
-                          mechanism: "ac",
-                          selectedMode: 2,
-                        },
-                        privateContent: {},
-                      },
-                    },
-                  },
-                }),
-              ),
+              globalThis.fitGuide.restore({
+                modelContent: {
+                  n: 3,
+                  types: [0, 1, 0],
+                  mechanism: "ac",
+                  selectedMode: 2,
+                },
+                privateContent: {},
+              }),
             );
           for (const fractional of ["1.1", "1,1"]) {
             await reset();
@@ -1716,6 +1841,88 @@ if (process.argv[2] || process.env.FIT_GUIDE_CHROME === "1") {
       });
       await page.goto(pathToFileURL(file).href);
       await page.locator("#sb-gap-value").getByText("0,09 eV").waitFor();
+      assert.equal(await page.evaluate(() => globalThis.openai), undefined);
+      assert.deepEqual(
+        await page.evaluate(
+          () => globalThis.fitGuide.snapshot().modelContent.types,
+        ),
+        [0, 1, 0],
+      );
+      await page.locator('[data-mode="2"]').click();
+      await page.locator("#sb-bounds").click();
+      await page.locator("#sb-p-mass").fill("2,75");
+      await page.locator("#sb-p-mass").press("Tab");
+      await page.locator('[data-field="mass"] .lock').click();
+      await page
+        .locator('[data-field="mass"] .limits label:first-child input')
+        .fill("0,5");
+      await page
+        .locator('[data-field="mass"] .limits label:first-child input')
+        .press("Tab");
+      assert.equal(
+        await page.evaluate(
+          () =>
+            JSON.parse(globalThis.localStorage.getItem("seeband.fit-guide.v4"))
+              .privateContent.stateVersion,
+        ),
+        4,
+      );
+      await page.reload();
+      assert.equal(await page.locator("#sb-p-mass").inputValue(), "2,75");
+      assert.equal(
+        await page
+          .locator('[data-field="mass"] .lock')
+          .getAttribute("aria-pressed"),
+        "true",
+      );
+      assert.equal(
+        await page
+          .locator('[data-field="mass"] .limits label:first-child input')
+          .inputValue(),
+        "0,5",
+      );
+      await page.locator('[data-mode="0"]').click();
+      const forcedHold = page.locator('[data-field="mass"] .lock');
+      await forcedHold.focus();
+      await forcedHold.press("Enter");
+      assert.equal(await forcedHold.getAttribute("aria-pressed"), "true");
+      await page.locator("#sb-tip-mass").waitFor({ state: "visible" });
+      assert.ok(
+        await page.locator('[data-field="mass"] .help').evaluate((el) => {
+          const box = el.getBoundingClientRect();
+          return box.width >= 24 && box.height >= 24;
+        }),
+        "help target is at least 24 px",
+      );
+      assert.ok(
+        await page
+          .locator("sub")
+          .first()
+          .evaluate(
+            (el) =>
+              parseFloat(globalThis.getComputedStyle(el).fontSize) /
+                parseFloat(
+                  globalThis.getComputedStyle(el.parentElement).fontSize,
+                ) >=
+              0.8,
+          ),
+        "subscripts stay legible",
+      );
+      console.log(
+        "Chrome item 14: real reload retains browser value/hold/bounds; forced hold Enter and help targets passed.",
+      );
+
+      await page.evaluate(() =>
+        globalThis.fitGuide.restore({
+          modelContent: {
+            n: 3,
+            types: [0, 1, 0],
+            mechanism: "ac",
+            selectedMode: 2,
+          },
+          privateContent: {},
+        }),
+      );
       if (process.argv[2])
         await page
           .locator("#sb-desktop-parameters")
@@ -1735,26 +1942,21 @@ if (process.argv[2] || process.env.FIT_GUIDE_CHROME === "1") {
       await page
         .locator("[data-field=gap1] .field-caption")
         .waitFor({ state: "visible" });
+      await page.evaluate(
+        "(" + verifyStandaloneParameters.toString() + ")(window)",
+      );
       await page.evaluate("(" + verifyBandTransitions.toString() + ")(window)");
       await page.evaluate("(" + verifyFitReplay.toString() + ")(window)");
       await page.evaluate(() =>
-        globalThis.dispatchEvent(
-          new globalThis.CustomEvent("openai:set_globals", {
-            detail: {
-              globals: {
-                widgetState: {
-                  modelContent: {
-                    n: 3,
-                    types: [0, 1, 0],
-                    mechanism: "ac",
-                    selectedMode: 2,
-                  },
-                  privateContent: {},
-                },
-              },
-            },
-          }),
-        ),
+        globalThis.fitGuide.restore({
+          modelContent: {
+            n: 3,
+            types: [0, 1, 0],
+            mechanism: "ac",
+            selectedMode: 2,
+          },
+          privateContent: {},
+        }),
       );
       await page.locator("#sb-p-gap1").fill("0,1");
       await page.locator("#sb-p-gap2").fill("0,04");
@@ -1840,23 +2042,15 @@ if (process.argv[2] || process.env.FIT_GUIDE_CHROME === "1") {
           ")",
       );
       await page.evaluate(() =>
-        globalThis.dispatchEvent(
-          new globalThis.CustomEvent("openai:set_globals", {
-            detail: {
-              globals: {
-                widgetState: {
-                  modelContent: {
-                    n: 3,
-                    types: [0, 1, 0],
-                    mechanism: "ac",
-                    selectedMode: 0,
-                  },
-                  privateContent: {},
-                },
-              },
-            },
-          }),
-        ),
+        globalThis.fitGuide.restore({
+          modelContent: {
+            n: 3,
+            types: [0, 1, 0],
+            mechanism: "ac",
+            selectedMode: 0,
+          },
+          privateContent: {},
+        }),
       );
       const summary = page.locator("#sb-flat-profile-example > summary");
       await summary.focus();

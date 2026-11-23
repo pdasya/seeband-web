@@ -24,6 +24,17 @@ FIT_GUIDE_CHROME=1 node docs/superpowers/specs/band-composition-v0.7/evidence/ve
 PYTHONPATH=scripts .venv/bin/python docs/superpowers/specs/band-composition-v0.7/evidence/verify_valley_counts.py
 ```
 
+**Item 14.** Open the standalone Fit prototype. On a first visit it shows VB/CB/VB. Select acoustic phonons, set the acoustic scale to 12345, edit its bounds and select **Held**. Switch to acoustic phonons + alloy disorder and back. All three settings follow the shared coefficient. Select acPh, make one band Kane and select S. A two-band model now asks for one relative conductivity prefactor, a three-band model for two. The single Kane model needs none. In a mode with resistivity, each band regains its own dimensional amplitude. Use Tab and Enter on a mode-set lock to read why it is held. Reload the page to reopen the browser draft when local storage is available. The offline replay demonstrates cancellation on composition edits. Real API cancellation, estimator registration and import of a complete v3 file are application acceptance cases.
+
+Run these additional checks from the PR root:
+
+```sh
+node docs/superpowers/specs/band-composition-v0.7/evidence/verify_hold_migration.mjs
+PYTHONPATH=scripts uv run --frozen python docs/superpowers/specs/band-composition-v0.7/evidence/verify_kane_weights.py
+```
+
+The [migration result](evidence/hold-migration.txt) covers per-mode hold decisions, including an untouched active mode and conflicting inactive modes. The [Kane weight result](evidence/kane-weights.txt) compares dimensional and relative thermopower at prescribed filling and includes a nonconducting additional channel. The [current figures](../2026-11-21-band-composition-design.md#12-what-changes-inside-model-and-parameters) show the same default and mixed compositions as the interactive example.
+
 To inspect item 13, enter `0.09` or `0,09` as an edge offset. The field and derived gap both display `0,09`. Repeat with the opposite edge ordering to check the overlap magnitude. Try typing and pasting `1.1` and `1,1` into a valley count. Neither is a valid count, and neither becomes 11. On the band diagram only the energy axis carries numbers.
 
 To inspect item 12, choose DPB, switch between acoustic, disorder and ionized scattering, and compare the absolute field and the Band 2 ratio in Parameters with the Guide. Close a user lock and compare its **Held** caption with the mode-set mass lock in S + ρ. Set a band’s valley count to 2, then try pasting 1,5. Confirm the fractional value cannot enter the model. The numeric diagram check uses $k=0,1$ for a physical displacement of 1 inverse nanometre. The same scale applies to Kane and parabolic bands. Regenerate the current illustrations with `node docs/superpowers/specs/figures/render-reviewed-figures.mjs`. [Conventions and field mapping](../../../../apps/site/src/pages/conventions.mdx#reading-the-proposed-band-composition-labels)

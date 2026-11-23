@@ -1,4 +1,5 @@
-Item 13: decimal controls, bounds, slider, canonical host state, live/final/DOS captions and invalid N import/mobile recovery passed.
+Item 14: standalone fixtures, shared acoustic state, dimensionless S-only strengths, independent rho U and composition cancellation passed.
+Item 13: decimal controls, bounds, slider, canonical browser state, live/final/DOS captions and invalid N import/mobile recovery passed.
 Item 12: channel notation, SI units, holds, integer N and imported-value replay rejection passed.
 Item 11: isolated accepted snapshots, switched final defining pair, cancellation/failure, holds/bounds, same polarity and keyboard focus passed.
 Item 10: derived DOS mass, Jacquot Table I (p-Bi2Te3), invalid inputs, held/restored state and immutable P17 earlier-run example passed.
@@ -7,6 +8,7 @@ Signed gaps and item 8 DOM state transitions passed.
 270 matrix states match JSON. Lock, editable manual value, hidden bounds, tooltips and restore passed.
 Chrome item 13 en-US: decimal display/state, native sequential N refusal, paste/mobile equivalent and correction passed.
 Chrome item 13 de-DE: decimal display/state, native sequential N refusal, paste/mobile equivalent and correction passed.
+Chrome item 14: real reload retains browser value/hold/bounds; forced hold Enter and help targets passed.
 Chrome item 11: native disclosure/Tab/Enter, isolated replay, final vector, rerender and mobile layout passed.
 Chrome item 12: mechanism notation, holds, integer N and imported-value replay rejection passed.
 Chrome item 10: mass conventions, native editing and immutable earlier-run metadata passed.

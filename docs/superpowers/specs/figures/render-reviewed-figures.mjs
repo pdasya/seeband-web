@@ -82,20 +82,25 @@ try {
         path.join(directory, "../band-composition-v0.7/fit-guide.html"),
       ).href,
     );
-    const restore = async (modelContent) =>
-      page.evaluate((s) => {
-        globalThis.dispatchEvent(
-          new globalThis.CustomEvent("openai:set_globals", {
-            detail: {
-              globals: { widgetState: { modelContent: s, privateContent: {} } },
-            },
-          }),
-        );
-      }, modelContent);
+    const restore = (modelContent) =>
+      page.evaluate(
+        (s) =>
+          globalThis.fitGuide.restore({ modelContent: s, privateContent: {} }),
+        modelContent,
+      );
     const capture = async (name) =>
       page
         .locator("#sb-desktop-parameters")
         .screenshot({ path: path.join(directory, name) });
+    assert.equal(await page.locator("#sb-model-name").innerText(), "3 SPB");
+    await capture("fit-parameters-and-model.png");
+    await restore({ n: 2, types: [0, 3, 0], mechanism: "ac", selectedMode: 0 });
+    assert.equal(
+      await page.locator("#sb-model-name").innerText(),
+      "1 SKB + 1 SPB",
+    );
+    assert.equal(await page.locator('[data-field="weight1"]').count(), 1);
+    await capture("fit-mixed-kane-model.png");
     await restore({
       n: 2,
       types: [0, 1, 0],

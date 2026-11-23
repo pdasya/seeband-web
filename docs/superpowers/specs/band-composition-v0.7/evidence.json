@@ -443,7 +443,7 @@
         "legacy_fractional": "preserve history, block new replay",
         "scope": "proposed labels and UI; scattering laws unchanged"
       },
-      "output_sha256": "33c6236760fd613c0b37958d4f3601c717e95f326f4595ee10b830c7f9376d70",
+      "output_sha256": "73b746def752888f98b2cd59b6310f0d81bdc7de0fc39a8de70bb4b34d6f1e2b",
       "replay_status": "reproduced_from_pr",
       "regression": {
         "pre_fix_revision": "4e4526c6821d6bf7a06630962b3a7d1bea038acc",
@@ -483,6 +483,12 @@
         "tested_locales": ["en-US", "de-DE"],
         "numeric_k_ticks": false,
         "valley_input": "digits only; reject fractional edits, paste, drop and imports; require missing counts before replay"
+      },
+      "item_14": {
+        "first_visit": ["VB", "CB", "VB"],
+        "acoustic_scale": "shared value, bounds and hold in acPh and acPhDis",
+        "mixed_kane_s": "n-1 dimensionless nonnegative prefactor ratios; positive reference",
+        "browser": "local draft restored on reload; keyboard help for mode-set holds; composition edit cancels offline replay"
       }
     },
     {
@@ -493,6 +499,28 @@
       "command": "PYTHONPATH=scripts .venv/bin/python docs/superpowers/specs/band-composition-v0.7/evidence/verify_valley_counts.py",
       "output": "evidence/valley-inputs.txt",
       "output_sha256": "94b9cba470982683b29e0aab2327739fd146a701d610ebe6a54f870df3e4ebbd",
+      "replay_status": "reproduced_from_pr"
+    },
+    {
+      "id": "KANE-WEIGHTS",
+      "scope": "design reference",
+      "status": "passed",
+      "claim": "72 synthetic fixed-filling comparisons, including the parabolic limit, N > 1 and zero nonreference weight; absolute tolerance 1e-14 V/K.",
+      "cwd": "REPO",
+      "command": "PYTHONPATH=scripts uv run --frozen python docs/superpowers/specs/band-composition-v0.7/evidence/verify_kane_weights.py",
+      "output": "evidence/kane-weights.txt",
+      "output_sha256": "eb6672c16d693f790f297fdc50a9bc455a86b53e50ceee4194eb218fd48a02f3",
+      "replay_status": "reproduced_from_pr"
+    },
+    {
+      "id": "HOLD-MIGRATION",
+      "scope": "design reference",
+      "status": "passed",
+      "claim": "Hold decisions on validated source content with mapped identities. File decoding, checksum and the production v3 importer are outside this fixture.",
+      "cwd": "REPO",
+      "command": "node docs/superpowers/specs/band-composition-v0.7/evidence/verify_hold_migration.mjs",
+      "output": "evidence/hold-migration.txt",
+      "output_sha256": "9c63997b356ec2a9ed7ef7499f2593627a732851f929ad6c88b309784c1fd9e3",
       "replay_status": "reproduced_from_pr"
     }
   ],

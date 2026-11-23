@@ -264,6 +264,18 @@
         "band_indices": [2, 3],
         "kane_present": false
       }
+    },
+    {
+      "key": "relative_acoustic_prefactor",
+      "label_en": "σ₀,ᵢ/σ₀,₁",
+      "display_unit": "1",
+      "definition": "Ratio of acoustic conductivity prefactors in S/m; g_i=F0 for a parabola and J0 for Kane.",
+      "tooltip_en": "Conductivity prefactor of this band relative to Band 1. The common scale cancels from Seebeck.",
+      "applicability": {
+        "kane_present": true,
+        "band_index_greater_than": 1,
+        "fit_mode": "S"
+      }
     }
   ],
   "model_families": [
@@ -404,7 +416,7 @@
     },
     "ionized_scale": "Ionized uses τ_ii,1 in every visible mode and τ_ii,i/τ_ii,1 for the existing empirical relative weight. Keep the S/m coefficient, (T/300 K)^3 F2 law and original limits; these symbols add no microscopic assumption.",
     "scale_warning": "The desktop τ labels denote normalized transport coefficients, not raw seconds. Do not infer a new mass conversion from a label change.",
-    "kane": "At most one Kane band; its presence forces acPh for the whole composition. Each band has its own absolute prefactor; no duplicate relative field."
+    "kane": "One Kane band at most, acoustic scattering. S-only uses one manual sigma_0,i/sigma_0,1 per additional band. Resistivity modes use one dimensional amplitude per band."
   },
   "fit_eligibility_rules": {
     "mode_order": ["S", "S+rho", "S+rho+R_H"],
@@ -451,13 +463,13 @@
       "scattering": ["acPh"],
       "per_band_absolute_prefactor": {
         "single_band": ["hidden", "fit", "fit"],
-        "multiple_bands": ["manual", "fit", "fit"]
+        "multiple_bands": ["hidden", "fit", "fit"]
       },
       "prefactor_key_by_band_type": {
         "Kane": "kane_amp",
         "parabolic": "mixed_parabolic_acoustic_amp"
       },
-      "separate_relative_weight": false
+      "relative_prefactor_i_gt_1": ["manual", "hidden", "hidden"]
     },
     "model_settings": {
       "valleys": "Manual positive integers; not fit variables.",

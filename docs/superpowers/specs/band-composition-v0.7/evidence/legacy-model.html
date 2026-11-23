@@ -455,14 +455,13 @@
           low,
           high,
         });
+        const draftKey = "seeband.model-review.v1";
         function save() {
-          if (window.openai?.setWidgetState)
-            window.openai
-              .setWidgetState({
-                modelContent: snapshot(),
-                privateContent: null,
-              })
-              .catch(() => {});
+          try {
+            localStorage.setItem(draftKey, JSON.stringify(snapshot()));
+          } catch {
+            // Standalone file previews can run with storage disabled.
+          }
         }
         function groups(i, key, opts) {
           return (
@@ -681,15 +680,12 @@
           } else return;
           save();
         });
-        restore(window.openai?.widgetState?.modelContent);
+        try {
+          restore(JSON.parse(localStorage.getItem(draftKey)));
+        } catch {
+          // The defaults also work with blocked storage or an unreadable draft.
+        }
         render();
-        window.addEventListener("openai:set_globals", (e) => {
-          const next = e.detail?.globals?.widgetState?.modelContent;
-          if (next && JSON.stringify(next) !== JSON.stringify(snapshot())) {
-            restore(next);
-            render();
-          }
-        });
       })();
     </script>
   </body>
