@@ -44,6 +44,7 @@ import {
 } from "@/session/store";
 import { Panel } from "@/shell/layout";
 import { STRINGS } from "@/strings";
+import { Subscripted } from "@/lib/subscripts";
 
 const text = STRINGS.runs;
 const { data: dataText, model: modelText, fit: fitText } = STRINGS;
@@ -458,9 +459,15 @@ export function RunComparison() {
             <TableBody>
               {facts.map((fact) => (
                 <TableRow key={fact.label}>
-                  <TableCell className="font-medium">{fact.label}</TableCell>
-                  <TableCell>{fact.a}</TableCell>
-                  <TableCell>{fact.b}</TableCell>
+                  <TableCell className="font-medium">
+                    <Subscripted text={fact.label} />
+                  </TableCell>
+                  <TableCell>
+                    <Subscripted text={fact.a} />
+                  </TableCell>
+                  <TableCell>
+                    <Subscripted text={fact.b} />
+                  </TableCell>
                 </TableRow>
               ))}
               {parameterNames.map((name) => (

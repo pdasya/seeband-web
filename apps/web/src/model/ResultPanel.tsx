@@ -34,6 +34,7 @@ import type { LiveCurves } from "@/model/useLiveCurves";
 import { QUANTITIES, useSessionStore, type Quantity } from "@/session/store";
 import { Panel } from "@/shell/layout";
 import { STRINGS } from "@/strings";
+import { Subscripted } from "@/lib/subscripts";
 
 const { fit, data: dataText } = STRINGS;
 
@@ -44,7 +45,11 @@ function symbols(quantities: readonly Quantity[]): string {
 }
 
 function Note({ children }: { children: string }) {
-  return <p className="mt-3 mb-0 text-xs text-muted-foreground">{children}</p>;
+  return (
+    <p className="mt-3 mb-0 text-xs text-muted-foreground">
+      <Subscripted text={children} />
+    </p>
+  );
 }
 
 function Metric({
@@ -61,12 +66,14 @@ function Metric({
   return (
     <div className="min-w-0 rounded-lg border px-3 py-2.5">
       <dt className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-        {label}
+        <Subscripted text={label} />
         {mark}
       </dt>
       <dd className="m-0 text-base font-semibold tabular-nums">{children}</dd>
       {detail !== undefined && (
-        <dd className="m-0 text-[11px] text-muted-foreground">{detail}</dd>
+        <dd className="m-0 text-[11px] text-muted-foreground">
+          <Subscripted text={detail} />
+        </dd>
       )}
     </div>
   );
@@ -229,7 +236,7 @@ export function ResultPanel({ live }: { live: LiveCurves }) {
                 <TableRow key={row.name}>
                   <TableCell>
                     <span className="inline-flex flex-wrap items-center gap-1.5">
-                      {row.symbol}
+                      <Subscripted text={row.symbol} />
                       {/* Only what says something is wrong with a value, as the panel is narrow. A
                           bound is marked from the result's bounds too, for a server that sends no
                           statuses. */}

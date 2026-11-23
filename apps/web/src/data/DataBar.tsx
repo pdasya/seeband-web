@@ -16,6 +16,7 @@ import {
   useSessionStore,
 } from "@/session/store";
 import { STRINGS } from "@/strings";
+import { Subscripted } from "@/lib/subscripts";
 
 const { data: text } = STRINGS;
 
@@ -149,11 +150,15 @@ export function DataBar() {
                   {doubt && (
                     <TriangleAlertIcon className="size-3" aria-hidden="true" />
                   )}
-                  {points === undefined
-                    ? text.bar.notLoaded(symbol)
-                    : doubt
-                      ? text.bar.checkUnit(symbol, points)
-                      : text.bar.points(symbol, points)}
+                  <Subscripted
+                    text={
+                      points === undefined
+                        ? text.bar.notLoaded(symbol)
+                        : doubt
+                          ? text.bar.checkUnit(symbol, points)
+                          : text.bar.points(symbol, points)
+                    }
+                  />
                 </li>
               );
             })}

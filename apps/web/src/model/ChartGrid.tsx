@@ -32,6 +32,7 @@ import { fitModeOf } from "@/model/selection";
 import type { LiveCalc, LiveCurves } from "@/model/useLiveCurves";
 import { useSessionStore, type ChartTab } from "@/session/store";
 import { STRINGS } from "@/strings";
+import { Subscripted } from "@/lib/subscripts";
 
 const { chart: text } = STRINGS;
 
@@ -180,7 +181,7 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
           <SelectContent>
             {CHART_TABS.map((option) => (
               <SelectItem key={option} value={option}>
-                {text.tabs[option]}
+                <Subscripted text={text.tabs[option]} />
               </SelectItem>
             ))}
           </SelectContent>
@@ -188,13 +189,17 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
         <div className="flex items-center gap-2 text-xs whitespace-nowrap text-muted-foreground">
           {/* In the head, so a chart keeps its height while it waits. */}
           <span role="status">{busy ? text.updating : ""}</span>
-          <span className="font-mono">{metric}</span>
+          <span className="font-mono">
+            <Subscripted text={metric} />
+          </span>
         </div>
       </div>
       {failures.map((failure) => (
         <Alert key={failure} variant="destructive">
           <AlertCircleIcon aria-hidden="true" />
-          <AlertDescription>{failure}</AlertDescription>
+          <AlertDescription>
+            <Subscripted text={failure} />
+          </AlertDescription>
         </Alert>
       ))}
       <TransportChart
@@ -215,7 +220,9 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
         changedAtMs={drawnFrom.length === 0 ? null : changedAtMs}
       />
       {view.note !== null && (
-        <p className="m-0 text-xs text-muted-foreground">{view.note}</p>
+        <p className="m-0 text-xs text-muted-foreground">
+          <Subscripted text={view.note} />
+        </p>
       )}
     </section>
   );

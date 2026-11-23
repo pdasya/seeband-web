@@ -461,8 +461,8 @@ test("one file failing names it, and leaves the other's flags", async ({
 
   const alerts = page.getByRole("alert");
   await expect(alerts.filter({ hasText: "Too many files" })).toBeVisible();
-  const flags = alerts.filter({ hasText: "R_H:" });
-  await expect(flags).toContainText("R_H: could not be interpolated");
+  const flags = alerts.filter({ hasText: "RH:" });
+  await expect(flags).toContainText("RH: could not be interpolated");
   await expect(flags).toContainText("S: the grid goes beyond the data");
 });
 

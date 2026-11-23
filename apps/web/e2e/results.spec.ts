@@ -81,7 +81,7 @@ async function openFit(
   await stub(page);
   await more(page);
   await page.goto("/fit");
-  await expect(page.getByRole("slider", { name: "E_F" })).toBeVisible();
+  await expect(page.getByRole("slider", { name: "EF" })).toBeVisible();
   for (const filled of [0, 1]) {
     await page
       .locator('input[type="file"]')
@@ -178,18 +178,18 @@ test("a fit sums up: status, KPIs and each parameter with its status", async ({
   );
   await expect(kpi(page, "RMSE S")).toContainText("111 µV/K");
   await expect(kpi(page, "RMSE ρ")).toContainText("22 %");
-  await expect(kpi(page, "RMSE R_H")).toHaveCount(0);
+  await expect(kpi(page, "RMSE RH")).toHaveCount(0);
   await expect(kpi(page, "Iterations")).toContainText("5");
   await expect(kpi(page, "Iterations")).toContainText("limit 1000");
 
   await expect(row(page, "m₂/m₁")).toContainText("band mass ratio");
   await expect(row(page, "m₂/m₁")).toContainText("0,5");
   await expect(row(page, "m₂/m₁")).toContainText("estimated");
-  await expect(row(page, "E_g")).toContainText("0,08 eV");
+  await expect(row(page, "Eg")).toContainText("0,08 eV");
   await expect(row(page, "N₁, N₂")).toContainText("1, 1");
   await expect(row(page, "N₁, N₂")).toContainText("fixed");
   await expect(row(page, "m₁")).toContainText("absolute mass");
-  await expect(row(page, "m₁")).toContainText("needs R_H");
+  await expect(row(page, "m₁")).toContainText("needs RH");
 
   // The design's stand-ins are gone.
   await expect(page.getByText("[N]")).toHaveCount(0);
@@ -219,8 +219,8 @@ test("known issues and bounds reached are named", async ({ page }) => {
       .getByRole("region", { name: "Additional graphs" })
       .getByText(/^Caution: In the legacy method with N₂\/N₁ other than 1/),
   ).toHaveCount(6);
-  await expect(statusOf(page, "E_g")).toHaveText("at bound");
-  await expect(row(page, "E_F")).not.toContainText("at bound");
+  await expect(statusOf(page, "Eg")).toHaveText("at bound");
+  await expect(row(page, "EF")).not.toContainText("at bound");
 });
 
 test("a fit under way, or one that gave no values, has no summary", async ({
@@ -267,7 +267,7 @@ test("a failed Results curve explains the admissible Fermi energy", async ({
     page
       .getByRole("region", { name: "Additional graphs" })
       .getByRole("alert")
-      .filter({ hasText: "Set E_F below the higher band edge, max(0, E_g)." })
+      .filter({ hasText: "Set EF below the higher band edge, max(0, Eg)." })
       .first(),
   ).toBeVisible();
 });
@@ -325,7 +325,7 @@ test("a change after the fit leaves no summary, for values it did not fit", asyn
 }) => {
   await openFit(page);
   await finishWith(page);
-  await page.getByRole("slider", { name: "E_g" }).press("ArrowRight");
+  await page.getByRole("slider", { name: "Eg" }).press("ArrowRight");
   await toResults(page);
 
   await expect(
@@ -367,8 +367,8 @@ test("each parameter shows how the fit found it, and none in green", async ({
   await expect(statusOf(page, "m₂/m₁")).toHaveText(
     "did not move from its start",
   );
-  await expect(statusOf(page, "E_g")).toHaveText("estimated");
-  await expect(statusOf(page, "E_F")).toHaveText("not determined by the data");
+  await expect(statusOf(page, "Eg")).toHaveText("estimated");
+  await expect(statusOf(page, "EF")).toHaveText("not determined by the data");
   await expect(statusOf(page, "A")).toHaveText("not assessed");
   await expect(statusOf(page, "B")).toHaveText("at bound");
   await expect(statusOf(page, "N₁, N₂")).toHaveText("fixed");
@@ -403,7 +403,7 @@ test("the fit screen shows the warnings beside the values, as the results do", a
   const panel = page.getByRole("table", { name: "Parameters in use" });
   await expect(
     panel
-      .getByRole("row", { name: /E_F/ })
+      .getByRole("row", { name: /EF/ })
       .getByText("not determined by the data"),
   ).toBeVisible();
   // An estimated value gets no badge there, as the panel is narrow.
@@ -428,7 +428,7 @@ test("a fit stopped here assesses nothing, and a held value says so", async ({
   await toResults(page);
 
   await expect(statusOf(page, "m₂/m₁")).toHaveText("not assessed");
-  await expect(statusOf(page, "E_g")).toHaveText("not assessed");
+  await expect(statusOf(page, "Eg")).toHaveText("not assessed");
 });
 
 test("two fits with other scattering compare side by side after a value changed", async ({
@@ -446,8 +446,8 @@ test("two fits with other scattering compare side by side after a value changed"
     parameters: { m_eff: 0.7, band_gap: 800, fermi_energy: -40, F: 3e4, G: 1 },
   });
   // A value changed: the current result ends, and the runs stay.
-  await page.getByRole("textbox", { name: "E_F", exact: true }).fill("-0,001");
-  await page.getByRole("textbox", { name: "E_F", exact: true }).press("Enter");
+  await page.getByRole("textbox", { name: "EF", exact: true }).fill("-0,001");
+  await page.getByRole("textbox", { name: "EF", exact: true }).press("Enter");
   await toResults(page);
 
   // The page names no result for the values now in use, and the runs apart from it.
@@ -549,7 +549,7 @@ test("the fit log follows the stages of the mode and how the fit ended", async (
 
   await expect(logSteps(page)).toHaveText([
     /^\dStart values\s*The values on the fit screen$/,
-    /^\dFit to S\s*Finds m₂\/m₁, E_g, E_F, in each of 3 iterations$/,
+    /^\dFit to S\s*Finds m₂\/m₁, Eg, EF, in each of 3 iterations$/,
     /^\dFit to ρ\s*Finds A, B, in each of 3 iterations$/,
     /^\dStopped by its rule\s*The legacy fit met its stop rule: each parameter of its loop changed by at most 10 % in iteration 3\.$/,
   ]);
@@ -664,7 +664,7 @@ test("the additional graphs draw each curve the mode offers", async ({
   for (const name of [
     "Chemical potential μ(T)",
     "Conductivity σ(T)",
-    "Thermal conductivity κ_e(T)",
+    "Thermal conductivity κe(T)",
     "Band contributions",
     "Carrier concentration by band",
   ]) {
@@ -714,7 +714,7 @@ test("a measured S warning follows its total into the band graph", async ({
     "A known error applies to this result.",
   );
   await expect(graph(page, "Band contributions")).not.toContainText(
-    "DPB R_H is half",
+    "DPB RH is half",
   );
 });
 
@@ -991,10 +991,10 @@ test("a ZIP of a fit with bounds of the user's holds them, the start values and 
   await openFit(page, serveCurves);
   await page.getByRole("button", { name: "Edit bounds" }).click();
   await page
-    .getByRole("textbox", { name: "E_g, lower bound", exact: true })
+    .getByRole("textbox", { name: "Eg, lower bound", exact: true })
     .fill("0,05");
   await page
-    .getByRole("textbox", { name: "E_g, upper bound", exact: true })
+    .getByRole("textbox", { name: "Eg, upper bound", exact: true })
     .fill("0,12");
   await page.getByRole("button", { name: "Done" }).click();
   await finishWith(page);
@@ -1032,10 +1032,10 @@ test("a session saved to file opens in a new tab as it was, and fits again with 
   await openFit(page);
   await page.getByRole("button", { name: "Edit bounds" }).click();
   await page
-    .getByRole("textbox", { name: "E_g, lower bound", exact: true })
+    .getByRole("textbox", { name: "Eg, lower bound", exact: true })
     .fill("0,05");
   await page
-    .getByRole("textbox", { name: "E_g, upper bound", exact: true })
+    .getByRole("textbox", { name: "Eg, upper bound", exact: true })
     .fill("0,12");
   await page.getByRole("button", { name: "Done" }).click();
   await finishWith(page);
@@ -1056,7 +1056,7 @@ test("a session saved to file opens in a new tab as it was, and fits again with 
   const other = await page.context().newPage();
   await stub(other);
   await other.goto("/fit");
-  await expect(other.getByRole("slider", { name: "E_F" })).toBeVisible();
+  await expect(other.getByRole("slider", { name: "EF" })).toBeVisible();
   await openSession(other, {
     name: "seeband-session.json",
     mimeType: "application/json",
@@ -1072,7 +1072,7 @@ test("a session saved to file opens in a new tab as it was, and fits again with 
       .locator('[data-slot="badge"]')
       .filter({ hasText: /^Stopped by its rule/ }),
   ).toBeVisible();
-  for (const name of ["m₂/m₁", "E_g", "E_F"]) {
+  for (const name of ["m₂/m₁", "Eg", "EF"]) {
     await expect(other.getByRole("textbox", { name, exact: true })).toHaveValue(
       await page.getByRole("textbox", { name, exact: true }).inputValue(),
     );
@@ -1326,7 +1326,7 @@ test("during a fit, the curve before it still comes from its start, and the file
     parameters: { band_gap: 950 },
   });
   await expect(
-    page.getByRole("textbox", { name: "E_g", exact: true }),
+    page.getByRole("textbox", { name: "Eg", exact: true }),
   ).toHaveValue("0,08");
 
   const lines = (await inFormat(page, "Text")).toString("utf8").split("\n");
@@ -1471,7 +1471,7 @@ test("a report names each chart the mode does not draw, and why", async ({
     "Conductivity σ(T): not drawn. Needs ρ(T):",
   );
   await expect(report).toContainText(
-    "Thermal conductivity κ_e(T): not drawn. Needs ρ(T):",
+    "Thermal conductivity κe(T): not drawn. Needs ρ(T):",
   );
 });
 

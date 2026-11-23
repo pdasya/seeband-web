@@ -1,5 +1,7 @@
 import type { Config, Data, Layout, Shape } from "plotly.js";
 
+import { plotlySubscripts } from "@/lib/subscripts";
+
 export type CurveColor = "blue" | "orange" | "teal";
 
 /** Values come from the server, and null marks one that is not finite, which leaves a gap. */
@@ -197,7 +199,7 @@ export function buildFigure(
   const lines: Data[] = input.curves.map((curve, index) => ({
     type: "scatter",
     mode: "lines",
-    name: curve.label,
+    name: plotlySubscripts(curve.label),
     x: [...curve.temperatureK],
     y: [...curve.values],
     connectgaps: false,
@@ -216,7 +218,7 @@ export function buildFigure(
             mode: "markers",
             // A point at the end of the axis would otherwise be cut in half.
             cliponaxis: false,
-            name: measurements.label,
+            name: plotlySubscripts(measurements.label),
             x: [...measurements.temperatureK],
             y: [...measurements.values],
             marker: {
@@ -264,7 +266,10 @@ export function buildFigure(
       ...(input.xAxisTitle === null
         ? { showticklabels: false, ticks: "" as const }
         : {
-            title: { text: input.xAxisTitle, font: titleFont },
+            title: {
+              text: plotlySubscripts(input.xAxisTitle),
+              font: titleFont,
+            },
             ticks: "outside" as const,
             ticklen: 5,
             tickcolor: theme.axis,
@@ -277,7 +282,7 @@ export function buildFigure(
     yaxis: {
       // An SI letter such as µ would read as part of the unit in the axis title.
       exponentformat: "e",
-      title: { text: input.yAxisTitle, font: titleFont },
+      title: { text: plotlySubscripts(input.yAxisTitle), font: titleFont },
       gridcolor: theme.grid,
       zeroline: false,
       tickfont: tickFont,
@@ -306,7 +311,7 @@ export function buildFigure(
       xanchor: "right",
       yanchor: "bottom",
       showarrow: false,
-      text: line.label,
+      text: plotlySubscripts(line.label),
       font: { size: 11, color: theme.titleText, family: theme.fontFamily },
     })),
   };
@@ -318,7 +323,7 @@ export function buildFigure(
             type: "scatter",
             mode: "markers",
             cliponaxis: false,
-            name: input.interpolated.label,
+            name: plotlySubscripts(input.interpolated.label),
             x: [...input.interpolated.temperatureK],
             y: [...input.interpolated.values],
             marker: { size: 5, color: theme.curves.orange },

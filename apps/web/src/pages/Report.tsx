@@ -27,6 +27,7 @@ import {
   type ChartTab,
 } from "@/session/store";
 import { STRINGS } from "@/strings";
+import { plainSubscripts, Subscripted } from "@/lib/subscripts";
 
 const { report: text, chart: chartText, data: dataText } = STRINGS;
 
@@ -252,7 +253,7 @@ export function ReportHeader({
       {coreVersionLines(serverCoreVersion, fit, curveCoreVersions).map(
         (line) => (
           <p key={line} className="m-0 text-xs text-muted-foreground">
-            {line}
+            <Subscripted text={line} />
           </p>
         ),
       )}
@@ -266,13 +267,15 @@ export function ReportHeader({
           const { measurement, source } = entry;
           return [
             <li key={quantity}>
-              {text.file(
-                dataText.quantities[loadedAs(quantity, entry)].symbol,
-                source.kind === "file" ? source.name : dataText.demoSource,
-                measurement.points,
-                measurement.min_temperature_k,
-                measurement.max_temperature_k,
-              )}
+              <Subscripted
+                text={text.file(
+                  dataText.quantities[loadedAs(quantity, entry)].symbol,
+                  source.kind === "file" ? source.name : dataText.demoSource,
+                  measurement.points,
+                  measurement.min_temperature_k,
+                  measurement.max_temperature_k,
+                )}
+              />
             </li>,
           ];
         })}
@@ -282,7 +285,9 @@ export function ReportHeader({
           <h2 className="m-0 mt-3 text-sm font-semibold">{text.run}</h2>
           <ul className="m-0 mt-1 list-none p-0 text-xs">
             {run.map((line) => (
-              <li key={line}>{line}</li>
+              <li key={line}>
+                <Subscripted text={line} />
+              </li>
             ))}
           </ul>
         </>
@@ -311,26 +316,32 @@ export function ReportCharts({
         {charts.map((chart) =>
           chart.src === null ? (
             <p key={chart.tab} className="m-0 text-xs">
-              <span className="font-medium">{chart.title}</span>
+              <span className="font-medium">
+                <Subscripted text={chart.title} />
+              </span>
               {": "}
-              <span className="text-muted-foreground">{chart.missing}</span>
+              <span className="text-muted-foreground">
+                <Subscripted text={chart.missing} />
+              </span>
             </p>
           ) : (
             <figure key={chart.tab} className="m-0 break-inside-avoid">
               <figcaption className="text-xs">
-                <span className="font-medium">{chart.title}</span>
+                <span className="font-medium">
+                  <Subscripted text={chart.title} />
+                </span>
                 <span className="block text-[10px] text-muted-foreground">
-                  {chart.legend}
+                  <Subscripted text={chart.legend} />
                 </span>
               </figcaption>
               <img
                 src={chart.src}
-                alt={text.chartAlt(chart.title)}
+                alt={plainSubscripts(text.chartAlt(chart.title))}
                 className="w-full"
               />
               {chart.note !== null && (
                 <p className="m-0 text-[10px] text-muted-foreground">
-                  {chart.note}
+                  <Subscripted text={chart.note} />
                 </p>
               )}
             </figure>

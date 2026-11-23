@@ -32,6 +32,7 @@ import {
 } from "@/session/store";
 import { withDecimalComma } from "@/lib/numbers";
 import { STRINGS } from "@/strings";
+import { plainSubscripts, Subscripted } from "@/lib/subscripts";
 
 const TEMPERATURE_FORMAT = new Intl.NumberFormat("en", {
   maximumFractionDigits: 1,
@@ -46,7 +47,7 @@ function Symbol({ children, filled }: { children: string; filled: boolean }) {
         filled ? "bg-muted" : "border bg-background",
       )}
     >
-      {children}
+      <Subscripted text={children} />
     </div>
   );
 }
@@ -263,7 +264,7 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label={`${text.cancel} ${names.symbol}`}
+            aria-label={plainSubscripts(`${text.cancel} ${names.symbol}`)}
             onClick={onRemove}
           >
             <XIcon aria-hidden="true" />
@@ -292,7 +293,7 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
             <Button
               variant="ghost"
               size="icon-sm"
-              aria-label={`${text.remove} ${names.symbol}`}
+              aria-label={plainSubscripts(`${text.remove} ${names.symbol}`)}
               onClick={onRemove}
             >
               <XIcon aria-hidden="true" />
@@ -341,7 +342,7 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
             ref={removeButton}
             variant="ghost"
             size="icon-sm"
-            aria-label={`${text.remove} ${names.symbol}`}
+            aria-label={plainSubscripts(`${text.remove} ${names.symbol}`)}
             onClick={onRemove}
           >
             <XIcon aria-hidden="true" />
@@ -393,13 +394,15 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
               <ul className="m-0 list-none p-0">
                 {data.unitDoubts.map((doubt) => (
                   <li key={doubt.code}>
-                    {unitDoubtMessage(
-                      doubt,
-                      loadedAs(quantity, data),
-                      data.readAs?.find(
-                        ({ role }) => role === loadedAs(quantity, data),
-                      ),
-                    )}
+                    <Subscripted
+                      text={unitDoubtMessage(
+                        doubt,
+                        loadedAs(quantity, data),
+                        data.readAs?.find(
+                          ({ role }) => role === loadedAs(quantity, data),
+                        ),
+                      )}
+                    />
                   </li>
                 ))}
               </ul>
@@ -408,7 +411,7 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
                 variant="outline"
                 size="sm"
                 className="mt-2"
-                aria-label={text.confirmUnitOf(names.symbol)}
+                aria-label={plainSubscripts(text.confirmUnitOf(names.symbol))}
                 onClick={() => {
                   confirmUnit(quantity);
                 }}
@@ -433,7 +436,9 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
               <AlertDescription>
                 <ul className="m-0 list-none p-0">
                   {state.failures.map((failure, index) => (
-                    <li key={index}>{failure}</li>
+                    <li key={index}>
+                      <Subscripted text={failure} />
+                    </li>
                   ))}
                 </ul>
               </AlertDescription>
@@ -442,7 +447,9 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
         {state.status === "idle" && state.warnings.length > 0 && (
           <ul className="m-0 list-none p-0 text-xs text-muted-foreground">
             {state.warnings.map((warning, index) => (
-              <li key={index}>{warning}</li>
+              <li key={index}>
+                <Subscripted text={warning} />
+              </li>
             ))}
           </ul>
         )}
@@ -474,7 +481,9 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
             )}
             <ul className="m-0 list-none p-0">
               {state.errors.map((error, index) => (
-                <li key={index}>{error}</li>
+                <li key={index}>
+                  <Subscripted text={error} />
+                </li>
               ))}
             </ul>
           </AlertDescription>

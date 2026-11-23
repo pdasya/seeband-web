@@ -60,6 +60,7 @@ import {
   writtenRow,
 } from "@/session/store";
 import { STRINGS } from "@/strings";
+import { plainSubscripts, Subscripted } from "@/lib/subscripts";
 
 const IGNORE = "ignore";
 const PREVIEW_ROWS = 3;
@@ -163,7 +164,7 @@ function ColumnMapping({
               <SelectContent>
                 {ROLES.map((option) => (
                   <SelectItem key={option} value={option}>
-                    {roleSymbol(option)}
+                    <Subscripted text={roleSymbol(option)} />
                   </SelectItem>
                 ))}
                 <SelectItem value={IGNORE}>{text.single.ignore}</SelectItem>
@@ -221,9 +222,13 @@ function ParsedChips() {
             key={quantity}
             variant={measurement === undefined ? "neutral" : "success"}
           >
-            {measurement === undefined
-              ? `${symbol} · ${text.single.notFound}`
-              : `${symbol} · ${String(measurement.points)} ${text.points}${read}`}
+            <Subscripted
+              text={
+                measurement === undefined
+                  ? `${symbol} · ${text.single.notFound}`
+                  : `${symbol} · ${String(measurement.points)} ${text.points}${read}`
+              }
+            />
           </Badge>
         );
       })}
@@ -314,7 +319,9 @@ function Problems({ table, usable }: { table: ParsedTable; usable: boolean }) {
       <AlertDescription>
         <ul className="m-0 list-none p-0">
           {messages.map((message, index) => (
-            <li key={index}>{message}</li>
+            <li key={index}>
+              <Subscripted text={message} />
+            </li>
           ))}
         </ul>
       </AlertDescription>
@@ -469,7 +476,11 @@ export function SingleFilePanel() {
           <AlertDescription>
             <ul className="m-0 list-none p-0">
               {unitWarnings.map((warning, index) => (
-                <li key={index}>{unitWarningMessage(warning, file.mapping)}</li>
+                <li key={index}>
+                  <Subscripted
+                    text={unitWarningMessage(warning, file.mapping)}
+                  />
+                </li>
               ))}
             </ul>
             {/* A size can be right, as ρ above 1 Ω·m in a lightly doped sample. */}
@@ -477,10 +488,12 @@ export function SingleFilePanel() {
               variant="outline"
               size="sm"
               className="mt-2"
-              aria-label={text.confirmUnitOf(
-                doubted
-                  .map((q) => text.quantities[loadedAs(q, data[q])].symbol)
-                  .join(", "),
+              aria-label={plainSubscripts(
+                text.confirmUnitOf(
+                  doubted
+                    .map((q) => text.quantities[loadedAs(q, data[q])].symbol)
+                    .join(", "),
+                ),
               )}
               onClick={() => {
                 for (const quantity of doubted) {
@@ -505,7 +518,9 @@ export function SingleFilePanel() {
       {settled && usable && otherWarnings.length > 0 && (
         <ul className="m-0 list-none p-0 text-xs text-muted-foreground">
           {otherWarnings.map((warning, index) => (
-            <li key={index}>{issueMessage(warning)}</li>
+            <li key={index}>
+              <Subscripted text={issueMessage(warning)} />
+            </li>
           ))}
         </ul>
       )}

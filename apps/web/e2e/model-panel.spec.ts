@@ -72,24 +72,24 @@ test("starts as the design does, with options from the API", async ({
   await expect(page.getByLabel("Upper bound, K")).toHaveValue("800");
 });
 
-test("SPB S + ρ + R_H can be chosen after P4 and P12", async ({ page }) => {
+test("SPB S + ρ + RH can be chosen after P4 and P12", async ({ page }) => {
   await open(page);
 
   await page.getByRole("radio", { name: "SPB" }).click();
 
-  const hall = mode(page, "S + ρ + R_H");
+  const hall = mode(page, "S + ρ + RH");
   await expect(hall).toBeEnabled();
   await hall.click();
   await expect(hall).toBeChecked();
   await expect(page.getByText(/fails on the desktop/)).toHaveCount(0);
 });
 
-test("DPB's S + ρ + R_H can be chosen, with no such text", async ({ page }) => {
+test("DPB's S + ρ + RH can be chosen, with no such text", async ({ page }) => {
   await open(page);
 
-  await mode(page, "S + ρ + R_H").click();
+  await mode(page, "S + ρ + RH").click();
 
-  await expect(mode(page, "S + ρ + R_H")).toBeChecked();
+  await expect(mode(page, "S + ρ + RH")).toBeChecked();
   await expect(page.getByText(/known error/)).toHaveCount(0);
 });
 
@@ -110,7 +110,7 @@ test("S-only modes offer scattering and SPB has no degeneracy", async ({
 
 test("each model keeps its own choices", async ({ page }) => {
   await open(page);
-  await mode(page, "S + ρ + R_H").click();
+  await mode(page, "S + ρ + RH").click();
   await page.getByRole("combobox", { name: "Scattering" }).click();
   await page.getByRole("option", { name: /Ionized impurities/ }).click();
   await page.getByLabel("N₂").fill("3");
@@ -121,7 +121,7 @@ test("each model keeps its own choices", async ({ page }) => {
   await mode(page, "S + ρ").click();
 
   await page.getByRole("radio", { name: "DPB" }).click();
-  await expect(mode(page, "S + ρ + R_H")).toBeChecked();
+  await expect(mode(page, "S + ρ + RH")).toBeChecked();
   await expect(
     page.getByRole("combobox", { name: "Scattering" }),
   ).toContainText("Ionized impurities");
@@ -177,8 +177,8 @@ test("missing data are named for the mode, and go as data load", async ({
   await expect(page.getByRole("note")).toHaveCount(0);
   await expect(note).toHaveText("Missing data: S, ρ");
 
-  await mode(page, "S + ρ + R_H").click();
-  await expect(note).toHaveText("Missing data: S, ρ, R_H");
+  await mode(page, "S + ρ + RH").click();
+  await expect(note).toHaveText("Missing data: S, ρ, RH");
 
   await page
     .locator('input[type="file"]')
@@ -188,7 +188,7 @@ test("missing data are named for the mode, and go as data load", async ({
       mimeType: "text/plain",
       buffer: Buffer.from("T S\n100 1\n"),
     });
-  await expect(note).toHaveText("Missing data: ρ, R_H");
+  await expect(note).toHaveText("Missing data: ρ, RH");
 
   await mode(page, "S").click();
   await expect(note).toHaveCount(0);

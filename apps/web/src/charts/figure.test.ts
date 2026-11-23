@@ -310,7 +310,7 @@ test("a reference line is dashed across the plot, with its label", () => {
   expect(layout.shapes).toMatchObject([
     { type: "line", xref: "paper", y0: 900, y1: 900, line: { dash: "dash" } },
   ]);
-  expect(layout.annotations).toMatchObject([{ y: 900, text: "E_g" }]);
+  expect(layout.annotations).toMatchObject([{ y: 900, text: "E<sub>g</sub>" }]);
 });
 
 test("the figure does not share arrays with its input", () => {

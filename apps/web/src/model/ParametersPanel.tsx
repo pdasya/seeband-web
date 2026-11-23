@@ -32,6 +32,7 @@ import { fitModeOf } from "@/model/selection";
 import { isFitActive, useSessionStore } from "@/session/store";
 import { Panel } from "@/shell/layout";
 import { STRINGS } from "@/strings";
+import { plainSubscripts, Subscripted } from "@/lib/subscripts";
 
 const { parameters: text } = STRINGS;
 
@@ -110,14 +111,14 @@ function ParameterControl({
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
           <label htmlFor={id} className="text-[13px] font-medium">
-            {label}
+            <Subscripted text={label} />
           </label>
           {/* Hover and focus open it, and so does a tap, as a touch screen has no hover. */}
           <Tooltip open={hintOpen} onOpenChange={setHintOpen}>
             <TooltipTrigger asChild>
               <button
                 type="button"
-                aria-label={text.about(label)}
+                aria-label={plainSubscripts(text.about(label))}
                 onClick={(event) => {
                   // The trigger would close it on a click.
                   event.preventDefault();
@@ -129,7 +130,7 @@ function ParameterControl({
               </button>
             </TooltipTrigger>
             <TooltipContent className="max-w-64">
-              {hint(parameter)}
+              <Subscripted text={hint(parameter)} />
             </TooltipContent>
           </Tooltip>
           {parameter.role === "fixed" && (
@@ -148,7 +149,7 @@ function ParameterControl({
             disabled={disabled}
             pressed={held.value}
             onPressedChange={held.onChange}
-            aria-label={text.hold(label)}
+            aria-label={plainSubscripts(text.hold(label))}
           >
             {held.value ? (
               <LockIcon aria-hidden="true" />
@@ -185,7 +186,7 @@ function ParameterControl({
         {hint(parameter)}
       </span>
       <Slider
-        aria-label={label}
+        aria-label={plainSubscripts(label)}
         disabled={disabled}
         min={minimum}
         max={maximum}
@@ -225,10 +226,12 @@ function ParameterControl({
       </div>
       {invalid && (
         <span id={errorId} role="alert" className="text-xs text-destructive">
-          {`${label}: ${text.outOfRange(
-            formatNumber(shownValue(parameter, minimum)),
-            formatNumber(shownValue(parameter, maximum)),
-          )}`}
+          <Subscripted
+            text={`${label}: ${text.outOfRange(
+              formatNumber(shownValue(parameter, minimum)),
+              formatNumber(shownValue(parameter, maximum)),
+            )}`}
+          />
         </span>
       )}
     </div>

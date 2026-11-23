@@ -68,7 +68,7 @@ async function open(
   });
   await page.route("**/api/parse", (route) => route.fulfill({ json: PARSED }));
   await page.goto("/fit");
-  await expect(page.getByRole("slider", { name: "E_F" })).toBeVisible();
+  await expect(page.getByRole("slider", { name: "EF" })).toBeVisible();
   return bodies;
 }
 
@@ -110,8 +110,8 @@ test("a new file of S applies the net's values, and shows its real range", async
 
   await expect(field(page, "m₂/m₁")).toHaveValue("1,57");
   // 554 K and 1170 K, in eV.
-  await expect(field(page, "E_g")).toHaveValue("0,05");
-  await expect(field(page, "E_F")).toHaveValue("0,1");
+  await expect(field(page, "Eg")).toHaveValue("0,05");
+  await expect(field(page, "EF")).toHaveValue("0,1");
   await expect(badge(page, "Initial guess · net 25–750 K")).toBeVisible();
   // Every row of S, also outside the fit range, in V/K.
   expect(bodies).toEqual([
@@ -162,7 +162,7 @@ test("the DPB S guess keeps the held 1000 K gap in the calculated curve", async 
   });
   await choose(page, "S");
   const lock = page.getByRole("button", {
-    name: "Hold E_g at its value in a fit",
+    name: "Hold Eg at its value in a fit",
   });
   await lock.click();
   await page
@@ -173,13 +173,13 @@ test("the DPB S guess keeps the held 1000 K gap in the calculated curve", async 
       mimeType: "text/plain",
       buffer: Buffer.from("T S\n100 10\n200 20\n300 30\n400 40\n"),
     });
-  await expect(field(page, "E_F")).toHaveValue("0,1");
+  await expect(field(page, "EF")).toHaveValue("0,1");
   expect(bodies[0]).toMatchObject({
     temperature_k: temperatures,
     seebeck_v_per_k: seebeck,
   });
   await expect(lock).toHaveAttribute("aria-pressed", "true");
-  await expect(field(page, "E_g")).toHaveValue("0,09");
+  await expect(field(page, "Eg")).toHaveValue("0,09");
   await expect
     .poll(() => calcs.at(-1)?.parameters)
     .toMatchObject({ band_gap: 1000, fermi_energy: 1170 });
@@ -217,15 +217,15 @@ test("the values go to every mode of the model, and stay out of others", async (
 }) => {
   await open(page);
   await load(page);
-  await expect(field(page, "E_g")).toHaveValue("0,05");
+  await expect(field(page, "Eg")).toHaveValue("0,05");
 
   await choose(page, "S");
-  await expect(field(page, "E_g")).toHaveValue("0,05");
-  await choose(page, "S + ρ + R_H");
-  await expect(field(page, "E_g")).toHaveValue("0,05");
+  await expect(field(page, "Eg")).toHaveValue("0,05");
+  await choose(page, "S + ρ + RH");
+  await expect(field(page, "Eg")).toHaveValue("0,05");
 
   await choose(page, "SPB");
-  await expect(field(page, "E_F")).toHaveValue("-0,06");
+  await expect(field(page, "EF")).toHaveValue("-0,06");
   await expect(badge(page, "Initial guess")).toBeVisible();
 });
 
@@ -236,7 +236,7 @@ test("the other parameters keep their values", async ({ page }) => {
 
   await load(page);
 
-  await expect(field(page, "E_g")).toHaveValue("0,05");
+  await expect(field(page, "Eg")).toHaveValue("0,05");
   await expect(field(page, "A")).toHaveValue("50000");
 });
 
@@ -247,13 +247,13 @@ test("loading while SPB is open estimates SPB and preserves DPB values", async (
   await choose(page, "SPB");
   await load(page);
   await expect(button(page)).toBeEnabled();
-  await expect(field(page, "E_F")).toHaveValue("-0,06");
+  await expect(field(page, "EF")).toHaveValue("-0,06");
   expect(bodies[0]?.model).toBe("spb");
   await expect(
     badge(page, "Initial guess · numerical S(T) estimate"),
   ).toBeVisible();
   await choose(page, "DPB");
-  await expect(field(page, "E_g")).toHaveValue("0,05");
+  await expect(field(page, "Eg")).toHaveValue("0,05");
   expect(bodies.map(({ model }) => model)).toEqual(["spb", "dpb"]);
 });
 
@@ -282,7 +282,7 @@ test("a fully held S mode stays usable when another mode receives estimates", as
 }) => {
   await open(page);
   await choose(page, "S");
-  for (const symbol of ["m₂/m₁", "E_g", "E_F"]) {
+  for (const symbol of ["m₂/m₁", "Eg", "EF"]) {
     await page
       .getByRole("button", { name: `Hold ${symbol} at its value in a fit` })
       .click();
@@ -292,22 +292,22 @@ test("a fully held S mode stays usable when another mode receives estimates", as
   await answered;
   await expect(button(page)).toBeEnabled();
   await expect(badge(page, "Initial guess")).toHaveCount(0);
-  await expect(field(page, "E_g")).toHaveValue("0,09");
-  await choose(page, "S + ρ + R_H");
+  await expect(field(page, "Eg")).toHaveValue("0,09");
+  await choose(page, "S + ρ + RH");
   await expect(badge(page, "Initial guess")).toBeVisible();
-  await expect(field(page, "E_g")).toHaveValue("0,05");
+  await expect(field(page, "Eg")).toHaveValue("0,05");
 });
 
 test("the button applies the net again after edits", async ({ page }) => {
   const bodies = await open(page);
   await load(page);
-  await field(page, "E_g").fill("0,06");
-  await field(page, "E_g").blur();
+  await field(page, "Eg").fill("0,06");
+  await field(page, "Eg").blur();
   await expect(badge(page, "Initial guess")).toHaveCount(0);
 
   await button(page).click();
 
-  await expect(field(page, "E_g")).toHaveValue("0,05");
+  await expect(field(page, "Eg")).toHaveValue("0,05");
   await expect(badge(page, "Initial guess · net 25–750 K")).toBeVisible();
   expect(bodies).toHaveLength(2);
 });
@@ -319,7 +319,7 @@ test("an edit ends the badge, and the values count as manual", async ({
   await load(page);
   await expect(badge(page, "Initial guess")).toBeVisible();
 
-  await page.getByRole("slider", { name: "E_g" }).press("ArrowRight");
+  await page.getByRole("slider", { name: "Eg" }).press("ArrowRight");
 
   await expect(badge(page, "Initial guess")).toHaveCount(0);
   await expect(fitBadges(page)).toHaveText("Missing data: ρ");
@@ -335,13 +335,13 @@ test("edits after the file are kept, if the answer comes later", async ({
   });
   await load(page);
 
-  await field(page, "E_g").fill("0,06");
-  await field(page, "E_g").blur();
+  await field(page, "Eg").fill("0,06");
+  await field(page, "Eg").blur();
   gate.release();
 
   await expect(button(page)).toBeEnabled();
-  await expect(field(page, "E_g")).toHaveValue("0,06");
-  await expect(field(page, "E_F")).toHaveValue("-0,01");
+  await expect(field(page, "Eg")).toHaveValue("0,06");
+  await expect(field(page, "EF")).toHaveValue("-0,01");
   await expect(badge(page, "Initial guess")).toHaveCount(0);
 });
 
@@ -349,13 +349,13 @@ test("automatic guesses preserve manual starts and update free starts", async ({
   page,
 }) => {
   await open(page);
-  await field(page, "E_g").fill("0,06");
-  await field(page, "E_g").blur();
+  await field(page, "Eg").fill("0,06");
+  await field(page, "Eg").blur();
 
   await load(page);
 
-  await expect(field(page, "E_F")).toHaveValue("0,1");
-  await expect(field(page, "E_g")).toHaveValue("0,06");
+  await expect(field(page, "EF")).toHaveValue("0,1");
+  await expect(field(page, "Eg")).toHaveValue("0,06");
 });
 
 test("coming back to a tab does not guess again, or undo edits", async ({
@@ -363,9 +363,9 @@ test("coming back to a tab does not guess again, or undo edits", async ({
 }) => {
   const bodies = await open(page);
   await load(page);
-  await expect(field(page, "E_g")).toHaveValue("0,05");
-  await field(page, "E_g").fill("0,06");
-  await field(page, "E_g").blur();
+  await expect(field(page, "Eg")).toHaveValue("0,05");
+  await field(page, "Eg").fill("0,06");
+  await field(page, "Eg").blur();
 
   await page.getByRole("tab", { name: "Single file" }).click();
   await page.getByRole("tab", { name: "Separate files" }).click();
@@ -375,15 +375,15 @@ test("coming back to a tab does not guess again, or undo edits", async ({
   await page.waitForTimeout(300);
 
   expect(bodies).toHaveLength(1);
-  await expect(field(page, "E_g")).toHaveValue("0,06");
+  await expect(field(page, "Eg")).toHaveValue("0,06");
 });
 
 test("a removed file loaded again guesses again", async ({ page }) => {
   const bodies = await open(page);
   await load(page);
-  await expect(field(page, "E_g")).toHaveValue("0,05");
-  await field(page, "E_g").fill("0,06");
-  await field(page, "E_g").blur();
+  await expect(field(page, "Eg")).toHaveValue("0,05");
+  await field(page, "Eg").fill("0,06");
+  await field(page, "Eg").blur();
 
   await page
     .getByRole("button", { name: /Remove/ })
@@ -393,7 +393,7 @@ test("a removed file loaded again guesses again", async ({ page }) => {
   await load(page);
 
   await expect(button(page)).toBeEnabled();
-  await expect(field(page, "E_g")).toHaveValue("0,06");
+  await expect(field(page, "Eg")).toHaveValue("0,06");
   expect(bodies).toHaveLength(2);
 });
 
@@ -422,7 +422,7 @@ test("a late answer about a file that was replaced does not count", async ({
   gate.release();
   await page.waitForTimeout(300);
 
-  await expect(field(page, "E_g")).toHaveValue("0,09");
+  await expect(field(page, "Eg")).toHaveValue("0,09");
   await expect(page.getByText(/No neural net covers/)).toBeVisible();
 });
 
@@ -444,12 +444,12 @@ test("a late answer about a removed file changes nothing", async ({ page }) => {
   await answered;
   await page.waitForTimeout(300);
 
-  await expect(field(page, "E_g")).toHaveValue("0,09");
-  await expect(field(page, "E_F")).toHaveValue("-0,01");
+  await expect(field(page, "Eg")).toHaveValue("0,09");
+  await expect(field(page, "EF")).toHaveValue("-0,01");
 
   // The file can still be loaded and guessed from.
   await load(page);
-  await expect(field(page, "E_g")).toHaveValue("0,05");
+  await expect(field(page, "Eg")).toHaveValue("0,05");
   expect(bodies).toHaveLength(2);
 });
 
@@ -475,10 +475,10 @@ test("switching models guesses each and retries a cancelled request", async ({
   });
   await load(page);
   await choose(page, "SPB");
-  await expect(field(page, "E_F")).toHaveValue("-0,06");
+  await expect(field(page, "EF")).toHaveValue("-0,06");
   gate.release();
   await choose(page, "DPB");
-  await expect(field(page, "E_g")).toHaveValue("0,05");
+  await expect(field(page, "Eg")).toHaveValue("0,05");
   await expect(badge(page, "Initial guess · net 25–750 K")).toBeVisible();
 });
 
@@ -498,7 +498,7 @@ test("an answer that comes while another screen is open still counts", async ({
   await answered;
   await page.getByRole("link", { name: "Model fit" }).click();
 
-  await expect(field(page, "E_g")).toHaveValue("0,05");
+  await expect(field(page, "Eg")).toHaveValue("0,05");
   await expect(badge(page, "Initial guess · net 25–750 K")).toBeVisible();
   expect(bodies).toHaveLength(1);
 });
@@ -513,7 +513,7 @@ test("no net keeps the values, and names the real ranges", async ({ page }) => {
       "No neural net covers 100–200 K, so the values stay as they are. The nets cover 300–800 K.",
     ),
   ).toBeVisible();
-  await expect(field(page, "E_g")).toHaveValue("0,09");
+  await expect(field(page, "Eg")).toHaveValue("0,09");
   await expect(badge(page, "Initial guess")).toHaveCount(0);
   await expect(fitBadges(page)).toHaveText("Missing data: ρ");
 });
@@ -528,7 +528,7 @@ test("a prediction that is not finite keeps the values", async ({ page }) => {
   await load(page);
 
   await expect(page.getByText("no usable values")).toBeVisible();
-  await expect(field(page, "E_g")).toHaveValue("0,09");
+  await expect(field(page, "Eg")).toHaveValue("0,09");
 });
 
 test("a mass of about 0 is not applied, and asks for one", async ({ page }) => {
@@ -546,7 +546,7 @@ test("a mass of about 0 is not applied, and asks for one", async ({ page }) => {
 
   await expect(page.getByText("Set a mass by hand.")).toBeVisible();
   await expect(field(page, "m₂/m₁")).toHaveValue("1,01");
-  await expect(field(page, "E_g")).toHaveValue("0,09");
+  await expect(field(page, "Eg")).toHaveValue("0,09");
 });
 
 test("a weak guess is applied, and says so", async ({ page }) => {
@@ -558,7 +558,7 @@ test("a weak guess is applied, and says so", async ({ page }) => {
 
   await load(page);
 
-  await expect(field(page, "E_g")).toHaveValue("0,05");
+  await expect(field(page, "Eg")).toHaveValue("0,05");
   await expect(page.getByText("too few temperatures")).toBeVisible();
 });
 
@@ -580,7 +580,7 @@ test("a failure keeps the values and says so, without the server's text", async 
 
   await expect(page.getByText("could not be calculated")).toBeVisible();
   await expect(page.getByText("SECRET-VALUE")).toHaveCount(0);
-  await expect(field(page, "E_g")).toHaveValue("0,09");
+  await expect(field(page, "Eg")).toHaveValue("0,09");
   await expect(button(page)).toBeEnabled();
   await expect(page.getByRole("alert")).toHaveCount(0);
 });
@@ -597,7 +597,7 @@ test("a limit keeps the values and says so", async ({ page }) => {
 
   await expect(page.getByText("Too many initial guesses")).toBeVisible();
   await expect(page.getByText("SECRET-VALUE")).toHaveCount(0);
-  await expect(field(page, "E_g")).toHaveValue("0,09");
+  await expect(field(page, "Eg")).toHaveValue("0,09");
   await expect(button(page)).toBeEnabled();
 });
 
@@ -620,7 +620,7 @@ test("a fit started while the answer is on its way keeps its values", async ({
   await page.waitForTimeout(300);
   await page.getByRole("button", { name: "Stop" }).click();
 
-  await expect(field(page, "E_g")).toHaveValue("0,09");
+  await expect(field(page, "Eg")).toHaveValue("0,09");
   await expect(badge(page, "Initial guess")).toHaveCount(0);
   await expect(button(page)).toBeEnabled();
 });
@@ -648,7 +648,7 @@ test("a fit that fails before the answer keeps its message", async ({
   await page.waitForTimeout(300);
 
   await expect(page.getByRole("alert")).toBeVisible();
-  await expect(field(page, "E_g")).toHaveValue("0,09");
+  await expect(field(page, "Eg")).toHaveValue("0,09");
 });
 
 test("the button cannot be pressed during a fit", async ({ page }) => {
@@ -684,10 +684,10 @@ test("the curve follows the values it applies", async ({ page }) => {
 test("Reset goes back to the defaults, not to the guess", async ({ page }) => {
   await open(page);
   await load(page);
-  await expect(field(page, "E_g")).toHaveValue("0,05");
+  await expect(field(page, "Eg")).toHaveValue("0,05");
 
   await page.getByRole("button", { name: "Reset" }).click();
 
-  await expect(field(page, "E_g")).toHaveValue("0,09");
+  await expect(field(page, "Eg")).toHaveValue("0,09");
   await expect(badge(page, "Initial guess")).toHaveCount(0);
 });

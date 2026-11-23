@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Subscripted } from "@/lib/subscripts";
 
 /** The title of a screen. `status` is the slot for its status badge, and `actions` for buttons. */
 export function PageHeading({
@@ -22,7 +23,9 @@ export function PageHeading({
           {status}
         </div>
         {subtitle !== undefined && (
-          <p className="mt-1 mb-0 text-muted-foreground">{subtitle}</p>
+          <p className="mt-1 mb-0 text-muted-foreground">
+            <Subscripted text={subtitle} />
+          </p>
         )}
       </div>
       {actions !== undefined && (
@@ -50,13 +53,13 @@ export function Panel({
       <div className="p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="m-0 text-base font-semibold tracking-[-0.01em]">
-            {title}
+            <Subscripted text={title} />
           </h2>
           {action}
         </div>
         {subtitle !== undefined && (
           <p className="mt-1 mb-0 text-[13px] text-muted-foreground">
-            {subtitle}
+            <Subscripted text={subtitle} />
           </p>
         )}
         {children}

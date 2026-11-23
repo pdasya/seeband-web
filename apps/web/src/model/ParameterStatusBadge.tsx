@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import type { FoundStatus, ParameterStatus } from "@/model/resultSummary";
 import { STRINGS } from "@/strings";
+import { Subscripted } from "@/lib/subscripts";
 
 const text = STRINGS.results.status;
 
@@ -52,11 +53,13 @@ export function ParameterStatusBadge({ status }: { status: ParameterStatus }) {
     default:
       return (
         <Badge variant="warning">
-          {text.needs(
-            status.quantities
-              .map((quantity) => STRINGS.data.quantities[quantity].symbol)
-              .join(", "),
-          )}
+          <Subscripted
+            text={text.needs(
+              status.quantities
+                .map((quantity) => STRINGS.data.quantities[quantity].symbol)
+                .join(", "),
+            )}
+          />
         </Badge>
       );
   }

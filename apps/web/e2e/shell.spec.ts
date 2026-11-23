@@ -141,7 +141,7 @@ test("a move to another screen starts at its top, with the header in view", asyn
   await page.goto("/results");
 
   await link("Model fit").click();
-  await expect(page.getByRole("slider", { name: "E_F" })).toBeVisible();
+  await expect(page.getByRole("slider", { name: "EF" })).toBeVisible();
   // Focus goes to the screen, for a screen reader, without scrolling the header away.
   await expect(page.locator("main")).toBeFocused();
   expect(await page.evaluate(() => scrollY)).toBe(0);
@@ -160,6 +160,6 @@ test("a move to another screen starts at its top, with the header in view", asyn
 
   // Back keeps the place the browser gives it.
   await page.goBack();
-  await expect(page.getByRole("slider", { name: "E_F" })).toBeVisible();
+  await expect(page.getByRole("slider", { name: "EF" })).toBeVisible();
   await expect.poll(() => page.evaluate(() => scrollY)).toBe(200);
 });

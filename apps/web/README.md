@@ -25,6 +25,7 @@ pnpm --filter @seeband/web preview  # the production build
 - **A move inside the app takes focus to `main`,** so that a screen reader follows it, without scrolling. A move by link starts the new screen at its top, and back and forward keep the scroll the browser gives them.
 - **Headings on the fit screen follow its layout:** the data and charts on the left come before the `h1` of the fit panel on the right. V2 should check this with a screen reader.
 - **All text is in `src/strings.ts`** until [U3](https://github.com/pdasya/seeband-web/issues/36) brings i18n. Add new text there.
+- **A symbol's index is written with `_` in the strings, such as `E_g` or `R_H`, and drawn lowered.** `Subscripted` in `src/lib/subscripts.tsx` draws it in the page, `plotlySubscripts` in a chart, and `plainSubscripts` gives an `aria-label` or `alt` the same text a screen reader reads from the page, `Eg`. A new place that shows such text needs one of them. Exported files keep the `_`, and a column name from a user's file is shown as written.
 - **The header comes from `packages/ui`,** shared with the site. `shell/AppHeader.tsx` only gives it the app's links. The language switch stays hidden until [U3](https://github.com/pdasya/seeband-web/issues/36). The four-chart design of the fit screen has no Export button in the header, so exports are on the Result panel and the results page instead.
 
 ## Talking to the API

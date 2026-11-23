@@ -8,6 +8,7 @@ import {
 import { formatNumber } from "@/lib/numbers";
 import { loadedAs, QUANTITIES, useSessionStore } from "@/session/store";
 import { STRINGS } from "@/strings";
+import { Subscripted } from "@/lib/subscripts";
 
 const { data: text } = STRINGS;
 
@@ -40,11 +41,13 @@ export function TemperatureRangeWarning({ className }: { className?: string }) {
         <ul className="m-0 list-none p-0">
           {mismatches.map(({ lower, higher }) => (
             <li key={`${lower}-${higher}`}>
-              {text.temperatureRanges.shifted(
-                named(lower),
-                named(higher),
-                text.quantities[loadedAs(lower, data[lower])].symbol,
-              )}
+              <Subscripted
+                text={text.temperatureRanges.shifted(
+                  named(lower),
+                  named(higher),
+                  text.quantities[loadedAs(lower, data[lower])].symbol,
+                )}
+              />
             </li>
           ))}
         </ul>

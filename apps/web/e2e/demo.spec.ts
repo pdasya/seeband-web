@@ -92,7 +92,7 @@ test("it opens the fit the demo was made for", async ({ page }) => {
   await seeNotice(page);
 
   await expect(radio(page, "DPB")).toBeChecked();
-  await expect(radio(page, "S + ρ + R_H")).toBeChecked();
+  await expect(radio(page, "S + ρ + RH")).toBeChecked();
   await expect(
     page.getByRole("combobox", { name: "Scattering" }),
   ).toContainText("acPh");
@@ -117,7 +117,7 @@ test("a demo that comes before the model descriptions still opens its fit", asyn
   gate.release();
 
   await seeNotice(page);
-  await expect(radio(page, "S + ρ + R_H")).toBeChecked();
+  await expect(radio(page, "S + ρ + RH")).toBeChecked();
 });
 
 test("the link in the panel loads the demo, and comes back once it is cleared", async ({
@@ -139,7 +139,7 @@ test("the link in the panel loads the demo, and comes back once it is cleared", 
   await expect(slots(page).getByText("Demo data")).toHaveCount(0);
   await link.click();
   await expect(slots(page).getByText("Demo data")).toHaveCount(3);
-  await expect(radio(page, "S + ρ + R_H")).toBeChecked();
+  await expect(radio(page, "S + ρ + RH")).toBeChecked();
 });
 
 test("the link is there only with no files, of either way of loading", async ({
@@ -364,7 +364,7 @@ test("the chart says its points are demo data", async ({ page }) => {
 
 test("a fit screen with no link asks for no demo", async ({ page }) => {
   const demos = await open(page, "/fit");
-  await expect(page.getByRole("slider", { name: "E_F" })).toBeVisible();
+  await expect(page.getByRole("slider", { name: "EF" })).toBeVisible();
 
   await page.waitForTimeout(200);
 
