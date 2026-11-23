@@ -34,7 +34,6 @@ const answerWith =
   (route: Route) =>
     route.fulfill({ status, json: body });
 
-// The name also appears in a hidden status for a screen reader, so this looks only at the cards.
 const slots = (page: Page) => page.locator("[data-file-slot]");
 
 const seebeckInput = (page: Page) => page.locator('input[type="file"]').nth(0);
@@ -183,7 +182,7 @@ test("several files dropped at once are refused, with no request", async ({
     );
   });
 
-  await expect(page.getByRole("alert")).toContainText(
+  await expect(page.locator('[data-feedback="error"]')).toContainText(
     "Drop one file at a time",
   );
   expect(requests).toBe(0);
@@ -248,7 +247,7 @@ test("a broken file shows a specific error, with its line", async ({
 
   await choose(page, "broken.txt");
 
-  const alert = page.getByRole("alert");
+  const alert = page.locator('[data-feedback="error"]');
   await expect(alert).toContainText("broken.txt");
   await expect(alert).toContainText("Line 3: This looks like decimal commas");
   await expect(page.locator('input[type="file"]')).toHaveCount(3);
@@ -266,8 +265,12 @@ test("many errors show the first few and a count", async ({ page }) => {
 
   await choose(page, "broken.txt");
 
-  await expect(page.getByRole("alert").locator("li")).toHaveCount(4);
-  await expect(page.getByRole("alert")).toContainText("More problems: 4");
+  await expect(
+    page.locator('[data-feedback="error"]').locator("li"),
+  ).toHaveCount(4);
+  await expect(page.locator('[data-feedback="error"]')).toContainText(
+    "More problems: 4",
+  );
 });
 
 test("a file with no column for the quantity says so", async ({ page }) => {
@@ -280,7 +283,7 @@ test("a file with no column for the quantity says so", async ({ page }) => {
 
   await choose(page, "other.txt");
 
-  await expect(page.getByRole("alert")).toContainText(
+  await expect(page.locator('[data-feedback="error"]')).toContainText(
     "no column for this quantity",
   );
 });
@@ -344,8 +347,10 @@ for (const { name, status, body, text } of REFUSALS) {
 
     await choose(page, "a.txt");
 
-    await expect(page.getByRole("alert")).toContainText(text);
-    await expect(page.getByRole("alert")).not.toContainText("SECRET-VALUE");
+    await expect(page.locator('[data-feedback="error"]')).toContainText(text);
+    await expect(page.locator('[data-feedback="error"]')).not.toContainText(
+      "SECRET-VALUE",
+    );
   });
 }
 
@@ -356,10 +361,12 @@ test("a server that is down does not blame the file", async ({ page }) => {
 
   await choose(page, "fine.txt");
 
-  await expect(page.getByRole("alert")).toContainText(
+  await expect(page.locator('[data-feedback="error"]')).toContainText(
     "server is not responding",
   );
-  await expect(page.getByRole("alert")).not.toContainText("could not be read");
+  await expect(page.locator('[data-feedback="error"]')).not.toContainText(
+    "could not be read",
+  );
 });
 
 test("two columns with the same problem are told apart, with no console error", async ({
@@ -411,23 +418,22 @@ test("a file of another quantity says so, without unrelated warnings", async ({
 
   await choose(page, "rho.txt");
 
-  await expect(page.getByRole("alert")).toContainText(
+  await expect(page.locator('[data-feedback="error"]')).toContainText(
     "no column for this quantity",
   );
-  await expect(page.getByRole("alert")).not.toContainText("neural net");
+  await expect(page.locator('[data-feedback="error"]')).not.toContainText(
+    "neural net",
+  );
 });
 
-test("a load is told to a screen reader, in a place that was already there", async ({
-  page,
-}) => {
+test("a loaded file shows its name and summary", async ({ page }) => {
   await page.route("**/api/parse", answerWith(parsed()));
-  const status = page.getByRole("status").first();
-  await expect(status).toBeEmpty();
-
   await choose(page, "a.txt");
-
-  await expect(status).toContainText("Seebeck coefficient: a.txt");
-  await expect(status).toContainText("3 points");
+  await expect(slots(page).getByText("a.txt")).toBeVisible();
+  await expect(slots(page).getByText(/3 points/)).toBeVisible();
+  await expect(
+    page.locator('[aria-live], [role="status"], [role="alert"], output'),
+  ).toHaveCount(0);
 });
 
 test("focus stays in the slot through a choice and a removal", async ({
@@ -452,7 +458,7 @@ test("focus comes back to the slot after a failure", async ({ page }) => {
 
   await choose(page, "a.txt");
 
-  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(page.locator('[data-feedback="error"]')).toBeVisible();
   await expect(seebeckInput(page)).toBeFocused();
 });
 
@@ -461,7 +467,9 @@ test("a lost connection has its message", async ({ page }) => {
 
   await choose(page, "a.txt");
 
-  await expect(page.getByRole("alert")).toContainText("could not be reached");
+  await expect(page.locator('[data-feedback="error"]')).toContainText(
+    "could not be reached",
+  );
 });
 
 test("a wrong kind of file is refused with no request", async ({ page }) => {
@@ -473,7 +481,9 @@ test("a wrong kind of file is refused with no request", async ({ page }) => {
 
   await choose(page, "sheet.xlsx");
 
-  await expect(page.getByRole("alert")).toContainText(".txt, .csv or .dat");
+  await expect(page.locator('[data-feedback="error"]')).toContainText(
+    ".txt, .csv or .dat",
+  );
   expect(requests).toBe(0);
 });
 
@@ -486,7 +496,7 @@ test("a read under way shows, and a second file takes over from it", async ({
   });
 
   await choose(page, "first.txt");
-  const seebeckStatus = page.getByRole("status").first();
+  const seebeckStatus = page.locator('[data-file-slot="seebeck"]');
   await expect(seebeckStatus).toContainText("first.txt");
   await expect(seebeckStatus).toContainText("Reading");
 
@@ -527,7 +537,7 @@ test("a read can be cancelled, which stops its request and leaves the slot empty
   expect((await failed).failure()?.errorText).toContain("ABORTED");
   await expect(slots(page).getByText("slow.txt")).toHaveCount(0);
   await expect(page.locator('input[type="file"]')).toHaveCount(3);
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(page.locator('[data-feedback="error"]')).toHaveCount(0);
   await expect(seebeckInput(page)).toBeFocused();
   await answer?.().catch(() => undefined);
   await expect(slots(page).getByText("3 points")).toHaveCount(0);
@@ -557,11 +567,11 @@ test("after a failure, the same file can be chosen again", async ({ page }) => {
   });
 
   await choose(page, "same.txt");
-  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(page.locator('[data-feedback="error"]')).toBeVisible();
   await choose(page, "same.txt");
 
   await expect(slots(page).getByText("3 points")).toBeVisible();
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(page.locator('[data-feedback="error"]')).toHaveCount(0);
 });
 
 test("data stay when moving to another screen and back", async ({ page }) => {

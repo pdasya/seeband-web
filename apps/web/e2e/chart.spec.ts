@@ -128,16 +128,6 @@ test("new values update the same drawing rather than a new one", async ({
   );
 });
 
-test("a screen reader gets the description, as the drawing is one image", async ({
-  page,
-}) => {
-  await openChart(page);
-
-  await expect(
-    page.getByRole("img", { name: "Chart of S against temperature" }),
-  ).toBeVisible();
-});
-
 test("the chart follows the width of its container", async ({ page }) => {
   await openChart(page);
   const widthAt = () =>

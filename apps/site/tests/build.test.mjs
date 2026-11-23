@@ -205,8 +205,7 @@ test("Conventions renders its formulas, lists its sections and ties issues to th
   // KaTeX at build time: math as HTML, no failures, and the page's own styles for it.
   assert.ok((conventions.match(/class="katex"/g) ?? []).length >= 40);
   assert.doesNotMatch(conventions, /katex-error/);
-  // MathML stays beside the visible formula, for screen readers.
-  assert.match(conventions, /class="katex-mathml"/);
+  assert.doesNotMatch(conventions, /class="katex-mathml"/);
   // Wide tables and formulas scroll in a box a keyboard can reach, and tables stay tables.
   const tables = (conventions.match(/<table>/g) ?? []).length;
   assert.ok(tables >= 5);
@@ -499,10 +498,11 @@ test("renders formulas in MDX when built, with KaTeX's styles and no script", ()
   const html = readFileSync(join(mathOutDir, "index.html"), "utf8");
   assert.match(html, /class="katex"/);
   assert.match(html, /class="katex-display"/);
-  assert.match(
-    html,
-    /<annotation encoding="application\/x-tex">L = \\frac\{\\kappa_e\}\{\\sigma T\}/,
-  );
+  const display = html.split('class="katex-display"')[1].split("</article>")[0];
+  assert.match(display, /class="frac-line"/);
+  for (const symbol of ["L", "=", "κ", "e", "σ", "T"]) {
+    assert.ok(display.includes(`>${symbol}<`), symbol);
+  }
   const css = files(mathOutDir)
     .filter((path) => path.endsWith(".css"))
     .map((path) => readFileSync(path, "utf8"))

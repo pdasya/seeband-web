@@ -142,7 +142,6 @@ test("a move to another screen starts at its top, with the header in view", asyn
 
   await link("Model fit").click();
   await expect(page.getByRole("slider", { name: "E_F" })).toBeVisible();
-  // Focus goes to the screen, for a screen reader, without scrolling the header away.
   await expect(page.locator("main")).toBeFocused();
   expect(await page.evaluate(() => scrollY)).toBe(0);
   await expect(page.getByRole("banner")).toBeInViewport();

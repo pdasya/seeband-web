@@ -221,7 +221,6 @@ export interface ChartTabView {
   interpolated: ChartMeasurements | null;
   referenceLines: ReferenceLine[];
   yAxisTitle: string;
-  description: string;
   /** Says what a chart with points only leaves out, or what is known to be wrong with it. */
   note: string | null;
   /** For a chart that is not against temperature. */
@@ -283,7 +282,7 @@ function quantityView(
 ): ChartTabView {
   const { curve, factor, axis } = QUANTITY_TABS[quantity];
   const words = text.quantityTabs[quantity];
-  const base = { yAxisTitle: axis, description: words.description };
+  const base = { yAxisTitle: axis };
   const data = state.data[quantity];
   const entry = data?.measurement;
   if (entry === undefined) {
@@ -345,7 +344,6 @@ function chemicalPotentialView(
 ): ChartTabView {
   const base = {
     yAxisTitle: text.axes.chemicalPotential(state.energy.unit),
-    description: text.chemicalPotentialDescription,
   };
   if (derivedKind("chemical_potential", mode) === null) {
     return {
@@ -388,7 +386,6 @@ function conductivityView(
 ): ChartTabView {
   const base = {
     yAxisTitle: text.axes.conductivity,
-    description: text.conductivityDescription,
   };
   if (derivedKind("conductivity", mode) === null) {
     return {
@@ -460,13 +457,11 @@ function derivedView(
   shown: {
     curves: (result: CalcResponse | null) => ChartCurve[];
     yAxisTitle: string;
-    description: string;
     note: string | null;
   },
 ): ChartTabView {
   const base = {
     yAxisTitle: shown.yAxisTitle,
-    description: shown.description,
   };
   const kind = DERIVED_KINDS[tab];
   if (kind === undefined || derivedKind(tab, mode) === null) {
@@ -493,7 +488,6 @@ function thermalConductivityView(
     curves: (result) =>
       curveOf(result, THERMAL_CONDUCTIVITY, 1, text.thermalConductivity),
     yAxisTitle: text.axes.thermalConductivity,
-    description: text.thermalConductivityDescription,
     note: text.thermalConductivityNote,
   });
 }
@@ -527,7 +521,6 @@ function lorenzView(
       }),
     ],
     yAxisTitle: text.axes.lorenz,
-    description: text.lorenzDescription,
     note: bands ? text.lorenzTwoBandsNote : text.lorenzNote,
   });
 }
@@ -552,7 +545,6 @@ function carrierConcentrationView(
       }),
     ],
     yAxisTitle: text.axes.carrierConcentration,
-    description: text.carrierConcentrationDescription,
     note: relative ? text.carrierConcentrationRelative : null,
   });
 }
@@ -564,7 +556,6 @@ function bandsView(
 ): ChartTabView {
   const base = {
     yAxisTitle: text.axes.seebeck,
-    description: text.bandsDescription,
   };
   if (derivedKind("bands", mode) === null) {
     return {
@@ -618,7 +609,6 @@ function bandDiagramView(
   return {
     ...NO_CHART,
     yAxisTitle: text.axes.energy(energy.unit),
-    description: text.diagramDescription,
     empty: null,
     xAxis: {
       title: text.wavevectorAxis,

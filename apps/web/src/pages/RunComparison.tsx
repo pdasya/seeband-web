@@ -302,11 +302,6 @@ function QuantityChart({
         interpolated={own ? null : pointsOf(requestB, nameB)}
         xAxisTitle={STRINGS.chart.temperatureAxis}
         yAxisTitle={axis}
-        description={text.chartDescription(
-          dataText.quantities[quantity].title,
-          nameA,
-          nameB,
-        )}
         failedText={STRINGS.chart.failed}
       />
     </figure>

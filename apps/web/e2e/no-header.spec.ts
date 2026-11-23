@@ -298,7 +298,9 @@ test("a unit chosen after a problem reads the choice again", async ({
   });
   await choose(page, "mine.txt");
   await pick(page, 2, "S");
-  await expect(page.getByRole("alert")).toContainText("Line 1:");
+  await expect(page.locator('[data-feedback="error"]')).toContainText(
+    "Line 1:",
+  );
 
   await page.getByRole("combobox", { name: "Unit of Column 1" }).click();
   await page.getByRole("option", { name: "°C", exact: true }).click();
@@ -359,7 +361,7 @@ test("what the server finds wrong with a choice shows, and the file waits", asyn
   await choose(page, "x.txt");
   await pick(page, 2, "ρ");
 
-  await expect(page.getByRole("alert")).toContainText(
+  await expect(page.locator('[data-feedback="error"]')).toContainText(
     "Line 2: A resistivity below 0, which no measurement gives.",
   );
   await expect(question(page)).toBeVisible();
@@ -442,7 +444,7 @@ test("a negative resistivity in a file with a header is refused on its line", as
   await page.goto("/fit");
   await choose(page, "rho.txt", 1, true);
 
-  await expect(page.getByRole("alert")).toContainText(
+  await expect(page.locator('[data-feedback="error"]')).toContainText(
     "Line 3: A resistivity below 0, which no measurement gives.",
   );
 });
@@ -529,7 +531,7 @@ test("values below 0 in the ρ slot leave the choice open, and S can take them",
     page.getByText("Some values are below 0, which a resistivity cannot have."),
   ).toBeVisible();
   await expect(role(page, 2)).toHaveText("Ignore");
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(page.locator('[data-feedback="error"]')).toHaveCount(0);
 
   await pick(page, 2, "S");
 
@@ -594,7 +596,7 @@ test("a lost connection while the choice is read says so, and the file waits", a
 
   await pick(page, 2, "S");
 
-  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(page.locator('[data-feedback="error"]')).toBeVisible();
   await expect(question(page)).toBeVisible();
   await expect(role(page, 2)).toBeEnabled();
   await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();

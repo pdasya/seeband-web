@@ -18,7 +18,6 @@ const PROPS: TransportChartProps = {
   measurements: { label: "Data", temperatureK: [100], values: [1] },
   xAxisTitle: "T, K",
   yAxisTitle: "S",
-  description: "Chart of S against temperature",
   failedText: "The chart could not load",
 };
 
@@ -42,14 +41,14 @@ test("an empty state shows instead, and Plotly does not load", () => {
   expect(screen.queryByRole("img")).toBeNull();
 });
 
-test("a chart has its description for a screen reader, and draws once loaded", async () => {
-  render(<TransportChart {...PROPS} />);
-
-  const chart = screen.getByRole("img", { name: PROPS.description });
+test("a chart draws once loaded", async () => {
+  const { container } = render(<TransportChart {...PROPS} />);
   await waitFor(() => {
     expect(react).toHaveBeenCalledTimes(1);
   });
-  expect(react.mock.calls[0]?.at(0)).toBe(chart);
+  expect(react.mock.calls[0]?.at(0)).toBe(
+    container.querySelector("figure")?.lastElementChild,
+  );
 });
 
 test("new data updates the same drawing, and the end clears it", async () => {

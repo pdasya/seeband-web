@@ -246,7 +246,7 @@ function MoreGraph({
         </Button>
       </div>
       {failed !== null && (
-        <p role="alert" className="m-0 text-xs text-destructive">
+        <p data-feedback="error" className="m-0 text-xs text-destructive">
           {failureText(failed)}
         </p>
       )}
@@ -260,7 +260,6 @@ function MoreGraph({
         xAxisTitle={chartText.temperatureAxis}
         xAxisSpan={null}
         yAxisTitle={view.yAxisTitle}
-        description={view.description}
         failedText={chartText.failed}
       />
       {view.note !== null && (
@@ -437,10 +436,9 @@ export function ResultsPage() {
           </>
         }
       />
-      {/* Why the button waits, and that it works, said on screen and to a screen reader. */}
       <p
         id={reportStatusId}
-        role="status"
+        data-feedback="status"
         className="m-0 text-xs text-muted-foreground empty:hidden print:hidden"
       >
         {report.preparing
@@ -451,12 +449,18 @@ export function ResultsPage() {
       </p>
       <NumericalDiagnostics fit={fit} />
       {report.failed && (
-        <p role="alert" className="m-0 text-xs text-destructive print:hidden">
+        <p
+          data-feedback="error"
+          className="m-0 text-xs text-destructive print:hidden"
+        >
           {reportText.failed}
         </p>
       )}
       {exporter.failed && (
-        <p role="alert" className="m-0 text-xs text-destructive print:hidden">
+        <p
+          data-feedback="error"
+          className="m-0 text-xs text-destructive print:hidden"
+        >
           {exportText.failed}
         </p>
       )}

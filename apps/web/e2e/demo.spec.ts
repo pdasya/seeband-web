@@ -246,7 +246,7 @@ for (const [name, answer, shows] of [
         status: 422,
         json: { code: "calculation_failed", message: "x", details: [] },
       }),
-    (page: Page) => page.getByRole("alert"),
+    (page: Page) => page.locator('[data-feedback="error"]'),
   ],
 ] as const) {
   test(`a demo that arrives during a read leaves the file alone, ${name}`, async ({
@@ -331,7 +331,7 @@ test("the link goes away during a read, and comes back if the file fails", async
 
   // A file that failed left nothing, so the link is on offer again.
   gate.release();
-  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(page.locator('[data-feedback="error"]')).toBeVisible();
   await expect(link).toBeVisible();
 });
 

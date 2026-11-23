@@ -342,20 +342,7 @@ export function SingleFilePanel() {
   const doubted = QUANTITIES.filter((quantity) =>
     hasOpenUnitDoubt(data[quantity]),
   );
-  const loaded = QUANTITIES.filter((q) => data[q] !== undefined)
-    .map((q) => text.quantities[loadedAs(q, data[q])].title)
-    .join(", ");
-  let announcement = "";
-  if (file?.loading === true) {
-    announcement = `${file.name}: ${text.reading}`;
-  } else if (file !== null && loaded !== "") {
-    announcement = `${file.name}: ${loaded}`;
-  }
-  const status = (
-    <div role="status" className="sr-only">
-      {announcement}
-    </div>
-  );
+
   const failure = file?.failure != null && (
     <Alert variant="destructive">
       <AlertCircleIcon aria-hidden="true" />
@@ -371,7 +358,6 @@ export function SingleFilePanel() {
   if (table === null || file === null) {
     return (
       <div className="flex flex-col gap-2.5">
-        {status}
         {file?.loading === true ? (
           <div
             data-file-slot="table"
@@ -423,7 +409,6 @@ export function SingleFilePanel() {
   const otherWarnings = table.warnings.filter(({ code }) => !isUnitDoubt(code));
   return (
     <div className="flex flex-col gap-2.5">
-      {status}
       <div
         data-file-slot="table"
         className={cn(
@@ -493,9 +478,8 @@ export function SingleFilePanel() {
           </AlertDescription>
         </Alert>
       )}
-      {/* Always there, so that a screen reader reads the confirmation when it comes. */}
       <p
-        role="status"
+        data-feedback="status"
         className="m-0 text-xs text-muted-foreground empty:hidden"
       >
         {settled && usable && QUANTITIES.some((q) => data[q]?.unitConfirmed)

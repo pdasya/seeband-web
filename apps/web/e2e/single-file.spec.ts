@@ -204,8 +204,10 @@ test("a mapping with no temperature shows its error, and keeps the choice", asyn
 
   await pickRole(page, "T", "Ignore");
 
-  await expect(page.getByRole("alert")).toContainText("Check the mapping.");
-  await expect(page.getByRole("alert")).toContainText(
+  await expect(page.locator('[data-feedback="error"]')).toContainText(
+    "Check the mapping.",
+  );
+  await expect(page.locator('[data-feedback="error"]')).toContainText(
     "No column holds the temperature",
   );
   await expect(page.getByText("S · not found")).toBeVisible();
@@ -234,7 +236,7 @@ test("a quantity used twice shows its error", async ({ page }) => {
 
   await pickRole(page, "rho", "S");
 
-  await expect(page.getByRole("alert")).toContainText(
+  await expect(page.locator('[data-feedback="error"]')).toContainText(
     "A quantity is assigned twice",
   );
 });
@@ -255,7 +257,7 @@ test("a repeated temperature is a warning, and the data load", async ({
 
   await expect(page.getByText("A temperature is repeated.")).toBeVisible();
   await expect(page.getByText("S · 3 points")).toBeVisible();
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(page.locator('[data-feedback="error"]')).toHaveCount(0);
 });
 
 test("a file with no header names its columns by number", async ({ page }) => {
@@ -302,7 +304,9 @@ test("a broken file shows its error, with no columns to map", async ({
 
   await choose(page);
 
-  await expect(page.getByRole("alert")).toContainText("No rows of numbers");
+  await expect(page.locator('[data-feedback="error"]')).toContainText(
+    "No rows of numbers",
+  );
   await expect(
     page.getByRole("combobox", { name: /^Quantity for column/ }),
   ).toHaveCount(0);
@@ -322,11 +326,13 @@ test("a server that is down says so, and a wrong type sends nothing", async ({
   await openSingleFile(page);
 
   await choose(page, "sheet.xlsx");
-  await expect(page.getByRole("alert")).toContainText(".txt, .csv or .dat");
+  await expect(page.locator('[data-feedback="error"]')).toContainText(
+    ".txt, .csv or .dat",
+  );
   expect(requests).toBe(0);
 
   await choose(page);
-  await expect(page.getByRole("alert")).toContainText(
+  await expect(page.locator('[data-feedback="error"]')).toContainText(
     "server is not responding",
   );
 });
@@ -344,7 +350,7 @@ test("a failed change of mapping shows no data as loaded", async ({ page }) => {
 
   await pickRole(page, "R_H", "Ignore");
 
-  await expect(page.getByRole("alert")).toContainText(
+  await expect(page.locator('[data-feedback="error"]')).toContainText(
     "server is not responding",
   );
   await expect(page.getByText("S · not found")).toBeVisible();
@@ -372,7 +378,7 @@ test("a table with no quantity assigned asks for one, in an alert", async ({
 
   await choose(page);
 
-  const alert = page.getByRole("alert");
+  const alert = page.locator('[data-feedback="error"]');
   await expect(alert).toContainText("Check the mapping.");
   await expect(alert).toContainText("No column holds a quantity yet");
   await expect(alert).toContainText("More than two columns with no header");
@@ -394,8 +400,10 @@ test("an error in the file is not called a problem of the mapping", async ({
 
   await choose(page);
 
-  await expect(page.getByRole("alert")).toContainText("Check the file.");
-  await expect(page.getByRole("alert")).toContainText("Line 3");
+  await expect(page.locator('[data-feedback="error"]')).toContainText(
+    "Check the file.",
+  );
+  await expect(page.locator('[data-feedback="error"]')).toContainText("Line 3");
 });
 
 test("each column used twice is named", async ({ page }) => {
@@ -414,9 +422,15 @@ test("each column used twice is named", async ({ page }) => {
 
   await choose(page);
 
-  await expect(page.getByRole("alert")).toContainText("Check the mapping.");
-  await expect(page.getByRole("alert")).toContainText("Column 2: A quantity");
-  await expect(page.getByRole("alert")).toContainText("Column 3: A quantity");
+  await expect(page.locator('[data-feedback="error"]')).toContainText(
+    "Check the mapping.",
+  );
+  await expect(page.locator('[data-feedback="error"]')).toContainText(
+    "Column 2: A quantity",
+  );
+  await expect(page.locator('[data-feedback="error"]')).toContainText(
+    "Column 3: A quantity",
+  );
 });
 
 test("a file still being read does not come back after a change of source", async ({
@@ -504,7 +518,7 @@ test("a read can be cancelled, which stops its request", async ({ page }) => {
 
   expect((await failed).failure()?.errorText).toContain("ABORTED");
   await expect(page.getByText("A table with several columns")).toBeVisible();
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(page.locator('[data-feedback="error"]')).toHaveCount(0);
   await answer?.().catch(() => undefined);
   await expect(
     page.getByRole("combobox", { name: /^Quantity for column/ }),

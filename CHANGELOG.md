@@ -5,7 +5,7 @@
 - U8 (#277): every page of the site and the app has the same favicon, as
   SVG, ICO and an Apple touch icon, drawn from the header's logo by
   `pnpm --filter @seeband/site icons`. The logo and the name in the header
-  are one link to the overview, named "SeeBand, overview" for screen readers.
+  are one link to the overview, named "SeeBand, overview".
 
 - I4 (#69): UptimeRobot watches `/api/ready` and the site every 5 minutes
   and e-mails the owner on an outage and on recovery; a test outage reached

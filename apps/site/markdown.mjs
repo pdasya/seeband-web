@@ -11,8 +11,7 @@ const hasClass = (node, name) => {
 
 /**
  * A wide table or formula scrolls in its own box, which takes keyboard focus so that it can be
- * scrolled without a mouse. A table stays a table, as a screen reader loses its role if the table
- * itself scrolls.
+ * scrolled without a mouse. The wrapper handles overflow for tables.
  */
 export function rehypeScrollBoxes() {
   const walk = (node) => {
@@ -45,6 +44,6 @@ export function rehypeScrollBoxes() {
 export const markdown = {
   processor: unified({
     remarkPlugins: [remarkMath],
-    rehypePlugins: [rehypeKatex, rehypeScrollBoxes],
+    rehypePlugins: [[rehypeKatex, { output: "html" }], rehypeScrollBoxes],
   }),
 };

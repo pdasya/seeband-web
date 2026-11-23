@@ -183,7 +183,10 @@ export function SessionOpen() {
           {busy ? text.opening : text.open}
         </Button>
       </div>
-      <p role="status" className="m-0 text-xs text-destructive empty:hidden">
+      <p
+        data-feedback="status"
+        className="m-0 text-xs text-destructive empty:hidden"
+      >
         {problem === null ? "" : text.problems[problem]}
       </p>
       {restored !== null && (

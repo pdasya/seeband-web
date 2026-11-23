@@ -5,7 +5,6 @@
  */
 export const STRINGS = {
   appName: "SeeBand",
-  // The link that the header's logo and name make, for a screen reader.
   appHomeLabel: "SeeBand, overview",
   appStage: "web · prototype",
   skipToContent: "Skip to content",
@@ -113,8 +112,6 @@ export const STRINGS = {
       "These runs were fit to different points: other data, another fit range, or interpolation. Their RMSE and parameters are not of the same points, and each chart shows the points of each.",
     bothRuns: "both runs",
     pointsOf: (run: string) => `Points fitted, ${run}`,
-    chartDescription: (quantity: string, a: string, b: string) =>
-      `${quantity} against temperature: the points each run was fit to, the curve of ${a} as a solid line, and that of ${b} dashed.`,
     curveFailed:
       "The curve of a run could not be calculated, so its RMSE and curve are missing.",
   },
@@ -401,10 +398,8 @@ export const STRINGS = {
       carrier_concentration: "Carrier concentration by band",
       band_diagram: "Band diagram E(k)",
     },
-    panelLabel: (index: number) => `Chart ${String(index)}`,
     panelSelect: (index: number) => `Quantity shown in chart ${String(index)}`,
     bandGapMetric: (gap: string, unit: string) => `E_g = ${gap} ${unit}`,
-    conductivityDescription: "Chart of σ against temperature",
     conductivityPoints: "1/ρ of the data",
     conductivityPointsFromSigma: "σ data",
     conductivityPointsFromSigmaNote:
@@ -419,7 +414,6 @@ export const STRINGS = {
       band_2_energy_k: "Band 2",
       fermi_energy_k: "E_F",
     },
-    diagramDescription: "Local parabolic band energies against wavevector",
     diagramReferenceMass:
       "The curvature scale is illustrative. Without Hall data the size of band 1's mass is not set by the data, so it is assumed to be mₑ.",
     wavevectorAxis: "k, nm⁻¹",
@@ -436,21 +430,18 @@ export const STRINGS = {
     },
     quantityTabs: {
       seebeck: {
-        description: "Chart of S against temperature",
         noDataTitle: "No data for this quantity",
         noDataText:
           "Load a file or assign a column in the single-file mapping.",
         notInMode: "The S model is not calculated in this fit mode.",
       },
       resistivity: {
-        description: "Chart of ρ against temperature",
         noDataTitle: "No data for this quantity",
         noDataText:
           "Load a file or assign a column in the single-file mapping.",
         notInMode: "The ρ model is not calculated in this fit mode.",
       },
       hall: {
-        description: "Chart of R_H against temperature",
         noDataTitle: "No R_H(T) data",
         noDataText:
           "Load a Hall coefficient file (m³/C). R_H sets the overall scale E = m₁^(3/2) and determines the absolute mass m₁.",
@@ -458,13 +449,9 @@ export const STRINGS = {
       },
     },
     chemicalPotential: "μ",
-    chemicalPotentialDescription:
-      "Chart of the chemical potential μ against temperature, with band edges",
     bandEdge: "band edge",
     band1Top: "band 1 top",
     band2Bottom: "band 2 bottom (E_g)",
-    bandsDescription:
-      "Chart of the total S and the contribution of each band against temperature",
     totalS: "Total S",
     band1Contribution: "band 1 contribution",
     band2Contribution: "band 2 contribution",
@@ -487,19 +474,14 @@ export const STRINGS = {
       },
     },
     thermalConductivity: "κ_e",
-    thermalConductivityDescription: "Chart of κ_e against temperature",
     lorenz: "L",
     lorenzEffective: "Effective L = κ_e/(σT)",
-    lorenzDescription:
-      "Chart of the Lorenz number against temperature, in units of L₀",
     lorenzNote:
       "L = κ_e/(σT), in units of L₀ = π²/3 (k_B/e)² = 2,44 × 10⁻⁸ W·Ω/K². It tends to L₀ for a degenerate band, and for a nondegenerate one to 2 (k_B/e)² with acoustic phonons or alloy disorder and to 4 (k_B/e)² with ionized impurities.",
     lorenzTwoBandsNote:
       "The solid line is the effective L = κ_e/(σT), with the bipolar part, which can rise far above either band's; the dashed lines are each band's own L. All in units of L₀ = π²/3 (k_B/e)² = 2,44 × 10⁻⁸ W·Ω/K².",
     thermalConductivityNote:
       "The electronic part only, with the bipolar part in a two-band model. The lattice part is not modelled.",
-    carrierConcentrationDescription:
-      "Chart of the carrier concentration of each band against temperature",
     carrierConcentrationRelative:
       "With no R_H data, n uses m₁ = 1, so its size is not measured. Compare the bands, not the values.",
     band1: "band 1",

@@ -134,7 +134,7 @@ test("loaded data ask for a whole request, and draw the curve", async ({
   await expect(modelLine(page)).toBeVisible();
   await expect(page.getByText("RMSE, S")).toBeVisible();
   await expect(page.getByText("108,4 µV/K", { exact: true })).toBeVisible();
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(page.locator('[data-feedback="error"]')).toHaveCount(0);
 });
 
 test("S-only sends its selected scattering", async ({ page }) => {
@@ -321,10 +321,12 @@ test("an error keeps the chart, says so without the server's text, and passes", 
 
   await eg(page).press("ArrowRight");
 
-  await expect(page.getByRole("alert")).toContainText(
+  await expect(page.locator('[data-feedback="error"]')).toContainText(
     "no result for these parameters",
   );
-  await expect(page.getByRole("alert")).toContainText("last curve stays");
+  await expect(page.locator('[data-feedback="error"]')).toContainText(
+    "last curve stays",
+  );
   await expect(page.getByText("SECRET-VALUE")).toHaveCount(0);
   await expect(modelLine(page)).toBeVisible();
   await expect(page.getByText("111 µV/K", { exact: true })).toBeVisible();
@@ -332,7 +334,7 @@ test("an error keeps the chart, says so without the server's text, and passes", 
   await eg(page).press("ArrowRight");
 
   await expect(page.getByText("113 µV/K", { exact: true })).toBeVisible();
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(page.locator('[data-feedback="error"]')).toHaveCount(0);
 });
 
 test("a server failure and no network say so", async ({ page }) => {
@@ -348,12 +350,18 @@ test("a server failure and no network say so", async ({ page }) => {
   });
   await load(page);
 
-  await expect(page.getByRole("alert")).toContainText("not responding");
+  await expect(page.locator('[data-feedback="error"]')).toContainText(
+    "not responding",
+  );
   // With no curve yet, nothing is said about the last one.
-  await expect(page.getByRole("alert")).not.toContainText("last curve");
+  await expect(page.locator('[data-feedback="error"]')).not.toContainText(
+    "last curve",
+  );
 
   await eg(page).press("ArrowRight");
-  await expect(page.getByRole("alert")).toContainText("could not be reached");
+  await expect(page.locator('[data-feedback="error"]')).toContainText(
+    "could not be reached",
+  );
 });
 
 test("a limit with Retry-After tries again by itself", async ({ page }) => {
@@ -369,11 +377,13 @@ test("a limit with Retry-After tries again by itself", async ({ page }) => {
   );
   await load(page);
 
-  await expect(page.getByRole("alert")).toContainText("Trying again shortly");
+  await expect(page.locator('[data-feedback="error"]')).toContainText(
+    "Trying again shortly",
+  );
   await expect(page.getByText("111 µV/K", { exact: true })).toBeVisible({
     timeout: 3000,
   });
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(page.locator('[data-feedback="error"]')).toHaveCount(0);
   expect(bodies).toHaveLength(2);
 });
 
@@ -425,7 +435,9 @@ test("a limit with no time says to change a value, and does not repeat", async (
   );
   await load(page);
 
-  await expect(page.getByRole("alert")).toContainText("Change a value");
+  await expect(page.locator('[data-feedback="error"]')).toContainText(
+    "Change a value",
+  );
   await page.waitForTimeout(1200);
   expect(bodies).toHaveLength(1);
 });

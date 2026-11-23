@@ -68,7 +68,6 @@ function ParameterControl({
   held?: { value: boolean; onChange: (held: boolean) => void } | undefined;
 }) {
   const id = useId();
-  const hintId = useId();
   const errorId = useId();
   // Text only while it is being typed, or while it cannot be used.
   const [draft, setDraft] = useState<string | null>(null);
@@ -163,7 +162,7 @@ function ParameterControl({
           // As a text field, it shows the same format everywhere. Some keypads for decimals have no minus.
           inputMode={minimum < 0 ? "text" : "decimal"}
           autoComplete="off"
-          aria-describedby={invalid ? `${hintId} ${errorId}` : hintId}
+          aria-describedby={invalid ? errorId : undefined}
           className="h-7 w-28 flex-none text-right font-mono text-[13px]"
           aria-invalid={invalid}
           title={formatNumber(displayed)}
@@ -180,10 +179,6 @@ function ParameterControl({
           }}
         />
       </div>
-      {/* The tooltip shows it on demand, and the field keeps it as its description. */}
-      <span id={hintId} className="sr-only">
-        {hint(parameter)}
-      </span>
       <Slider
         aria-label={label}
         disabled={disabled}
@@ -224,7 +219,11 @@ function ParameterControl({
         <span>{formatNumber(shownValue(parameter, maximum))}</span>
       </div>
       {invalid && (
-        <span id={errorId} role="alert" className="text-xs text-destructive">
+        <span
+          id={errorId}
+          data-feedback="error"
+          className="text-xs text-destructive"
+        >
           {`${label}: ${text.outOfRange(
             formatNumber(shownValue(parameter, minimum)),
             formatNumber(shownValue(parameter, maximum)),

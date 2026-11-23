@@ -312,7 +312,7 @@ test("a fit that fails after iterations does not call its values start values", 
     error: { code: "calculation_failed", message: "x", details: [] },
   });
 
-  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(page.locator('[data-feedback="error"]')).toBeVisible();
   await expect(row(page, "E_g")).toContainText("0,07 eV");
   await expect(
     page.getByText(/they are its start values or those of its last iteration/),

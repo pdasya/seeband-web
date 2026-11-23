@@ -355,10 +355,12 @@ test("a failed curve of a tab says so there, and not on the others", async ({
   });
 
   await show(page, "Chemical potential μ(T)");
-  await expect(page.getByRole("alert")).toContainText("no result");
+  await expect(page.locator('[data-feedback="error"]')).toContainText(
+    "no result",
+  );
 
   await show(page, "Seebeck S(T)");
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(page.locator('[data-feedback="error"]')).toHaveCount(0);
 });
 
 test("a failure of S does not show on μ, and the RMSE says it is old", async ({
@@ -400,9 +402,11 @@ test("a failure of S does not show on μ, and the RMSE says it is old", async ({
   await page.getByRole("slider", { name: "E_g" }).press("ArrowRight");
 
   await expect(page.getByText("not from the current values")).toBeVisible();
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(page.locator('[data-feedback="error"]')).toHaveCount(0);
   await show(page, "Seebeck S(T)");
-  await expect(page.getByRole("alert")).toContainText("no result");
+  await expect(page.locator('[data-feedback="error"]')).toContainText(
+    "no result",
+  );
 });
 
 test("known errors of a tab's curves are named while it is open", async ({
@@ -479,11 +483,15 @@ test("known errors of a tab go with it at once, also if the next curve fails", a
   );
 
   gate.release();
-  await expect(page.getByRole("alert")).toContainText("no result");
+  await expect(page.locator('[data-feedback="error"]')).toContainText(
+    "no result",
+  );
   await expect(page.getByText(/the fit can be poorly conditioned/)).toHaveCount(
     0,
   );
-  await expect(page.getByRole("alert")).not.toContainText("last curve");
+  await expect(page.locator('[data-feedback="error"]')).not.toContainText(
+    "last curve",
+  );
 });
 
 test("a change of mode takes the old curve away at once, and says it waits", async ({
@@ -538,12 +546,14 @@ for (const detail of [null, "chemical_potential_dpb_fermi_energy"]) {
 
     await page.getByRole("radio", { name: "S", exact: true }).click();
 
-    await expect(page.getByRole("alert")).toContainText(
+    await expect(page.locator('[data-feedback="error"]')).toContainText(
       detail === null
         ? "no result"
         : "Set E_F below the higher band edge, max(0, E_g).",
     );
-    await expect(page.getByRole("alert")).not.toContainText("last curve");
+    await expect(page.locator('[data-feedback="error"]')).not.toContainText(
+      "last curve",
+    );
     await expect(lines(page)).toHaveCount(0);
   });
 }
@@ -559,7 +569,9 @@ test("a failure of the last mode goes at once with the change of mode", async ({
     }),
   );
   await load(page, 0);
-  await expect(page.getByRole("alert")).toContainText("no result");
+  await expect(page.locator('[data-feedback="error"]')).toContainText(
+    "no result",
+  );
   const gate = hold();
   await page.route("**/api/calc", async (route) => {
     const body = route.request().postDataJSON() as CalcBody;
@@ -569,7 +581,7 @@ test("a failure of the last mode goes at once with the change of mode", async ({
 
   await page.getByRole("radio", { name: "S", exact: true }).click();
 
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(page.locator('[data-feedback="error"]')).toHaveCount(0);
   gate.release();
 });
 
@@ -590,8 +602,12 @@ test("failed contributions beside the total do not call it the last curve", asyn
   await show(page, "Band contributions");
 
   await expect(lines(page)).toHaveCount(1);
-  await expect(page.getByRole("alert")).toContainText("no result");
-  await expect(page.getByRole("alert")).not.toContainText("last curve");
+  await expect(page.locator('[data-feedback="error"]')).toContainText(
+    "no result",
+  );
+  await expect(page.locator('[data-feedback="error"]')).not.toContainText(
+    "last curve",
+  );
 });
 
 test("a new value keeps the curve while waiting", async ({ page }) => {
@@ -635,13 +651,15 @@ test("a tab says nothing about curves it does not draw", async ({ page }) => {
   await expect(page.getByText("Updating…")).toBeVisible();
 
   gate.release();
-  await expect(page.getByRole("alert")).toContainText("no result");
+  await expect(page.locator('[data-feedback="error"]')).toContainText(
+    "no result",
+  );
 
   // With the failure known to have arrived, the tabs that do not draw it stay quiet.
   await show(page, "Resistivity ρ(T)");
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(page.locator('[data-feedback="error"]')).toHaveCount(0);
   await show(page, "Band contributions");
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(page.locator('[data-feedback="error"]')).toHaveCount(0);
 });
 
 const countRedraws = (page: Page) =>
@@ -848,7 +866,7 @@ test("σ says each failure of the requests it draws from, as one hides no other"
   });
   await page.getByRole("slider", { name: "E_g" }).press("ArrowRight");
 
-  const alerts = chart(page).getByRole("alert");
+  const alerts = chart(page).locator('[data-feedback="error"]');
   await expect(alerts).toHaveCount(2);
   await expect(alerts.nth(0)).toContainText(
     "The calculation has no result for these parameters.",

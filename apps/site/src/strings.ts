@@ -31,7 +31,6 @@ export const STRINGS = {
     operatingSystem: "Any, in a web browser",
     licence: "https://opensource.org/license/mit",
   },
-  // The link that the header's logo and name make, for a screen reader.
   homeLabel: "SeeBand, overview",
   stage: "web · prototype",
   navigationLabel: "Sections",

@@ -59,10 +59,11 @@ test("starts with the mode's parameters, defaults and ranges", async ({
     "0.25851999786",
   );
   await expect(page.getByText("-0,26", { exact: true }).first()).toBeVisible();
-  await expect(field(page, "E_F")).toHaveAccessibleDescription(
+  await page.getByRole("button", { name: "About E_F" }).hover();
+  await expect(page.getByRole("tooltip")).toHaveText(
     "Fermi energy at T = 0, in eV",
   );
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(page.locator('[data-feedback="error"]')).toHaveCount(0);
 });
 
 test("a parameter's meaning shows on its (i), not under it", async ({
@@ -165,7 +166,7 @@ for (const typed of ["0,27", "-0,27", "", "abc", "1,2,3"]) {
     await field(page, "E_g").blur();
 
     await expect(field(page, "E_g")).toHaveAttribute("aria-invalid", "true");
-    await expect(page.getByRole("alert")).toContainText(
+    await expect(page.locator('[data-feedback="error"]')).toContainText(
       "E_g: enter a number from -0,26 to 0,26",
     );
     expect(await stored(page, "dpb_s_rho")).toEqual({
@@ -174,7 +175,7 @@ for (const typed of ["0,27", "-0,27", "", "abc", "1,2,3"]) {
 
     await moveAway(page);
     await expect(field(page, "E_g")).toHaveValue("0,05");
-    await expect(page.getByRole("alert")).toHaveCount(0);
+    await expect(page.locator('[data-feedback="error"]')).toHaveCount(0);
   });
 }
 
@@ -182,11 +183,11 @@ test("moving the slider replaces a refused number", async ({ page }) => {
   await open(page);
   await field(page, "E_g").fill("9999");
   await field(page, "E_g").blur();
-  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(page.locator('[data-feedback="error"]')).toBeVisible();
 
   await slider(page, "E_g").press("ArrowRight");
 
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(page.locator('[data-feedback="error"]')).toHaveCount(0);
   // One step of 0,01 eV from 1000 K.
   await expect(field(page, "E_g")).toHaveValue("0,1");
 });
@@ -218,7 +219,7 @@ test("a message about a number is tied to its field", async ({ page }) => {
   await field(page, "E_F").blur();
 
   await expect(field(page, "E_F")).toHaveAccessibleDescription(
-    /Fermi energy.*enter a number from -0,26 to 0,26/,
+    /E_F: enter a number from -0,26 to 0,26/,
   );
 });
 
@@ -337,12 +338,12 @@ test("a refused number does not follow to another fit mode", async ({
   await open(page);
   await field(page, "E_g").fill("9999");
   await field(page, "E_g").blur();
-  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(page.locator('[data-feedback="error"]')).toBeVisible();
 
   await choose(page, "S");
 
   await expect(field(page, "E_g")).toHaveValue("0,09");
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(page.locator('[data-feedback="error"]')).toHaveCount(0);
 });
 
 test("leaving a field unchanged keeps a result and the exact value", async ({

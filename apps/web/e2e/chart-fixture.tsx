@@ -45,7 +45,6 @@ function Fixture() {
         referenceLines={[{ value: 60, label: "Band edge" }]}
         xAxisTitle="T, K"
         yAxisTitle="S, µV/K"
-        description="Chart of S against temperature"
         failedText="The chart could not load"
       />
     </main>

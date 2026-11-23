@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { AlertCircleIcon } from "lucide-react";
-import { useId, useMemo } from "react";
+import { useMemo } from "react";
 
 import type { ApiError } from "@/api/errors";
 import { NETWORK_ERROR } from "@/api/errors";
@@ -64,7 +64,6 @@ export function failureText(error: ApiError): string {
 /** One chart of the grid, with its own choice of what it shows. */
 function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
   const { measured, diagram } = live;
-  const labelId = useId();
   const { data: models } = useQuery(modelsQuery);
   const energy = models?.energy_display ?? ENERGY_IN_K;
   const tab = useSessionStore((state) => state.chartPanels[index] ?? "seebeck");
@@ -157,12 +156,9 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
 
   return (
     <section
-      aria-labelledby={labelId}
+      data-chart-panel={index + 1}
       className="flex min-w-0 flex-col gap-2 rounded-xl border bg-card p-3 shadow-card"
     >
-      <h2 id={labelId} className="sr-only">
-        {text.panelLabel(index + 1)}
-      </h2>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Select
           value={tab}
@@ -187,7 +183,7 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
         </Select>
         <div className="flex items-center gap-2 text-xs whitespace-nowrap text-muted-foreground">
           {/* In the head, so a chart keeps its height while it waits. */}
-          <span role="status">{busy ? text.updating : ""}</span>
+          <span data-feedback="status">{busy ? text.updating : ""}</span>
           <span className="font-mono">{metric}</span>
         </div>
       </div>
@@ -207,7 +203,6 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
         xAxisTitle={view.xAxis?.title ?? text.temperatureAxis}
         xAxisSpan={view.xAxis?.span ?? null}
         yAxisTitle={view.yAxisTitle}
-        description={view.description}
         failedText={text.failed}
         timing={`chart:${tab}`}
         changedAtMs={drawnFrom.length === 0 ? null : changedAtMs}

@@ -39,7 +39,7 @@ export function DemoNotice() {
   return (
     <div className="mt-2.5 flex flex-col gap-2 empty:hidden">
       {loading && (
-        <p role="status" className="m-0 text-xs text-muted-foreground">
+        <p data-feedback="status" className="m-0 text-xs text-muted-foreground">
           {text.demoLoading}
         </p>
       )}
@@ -51,7 +51,7 @@ export function DemoNotice() {
       )}
       {source?.kind === "demo" && (
         <div
-          role="status"
+          data-feedback="status"
           className="flex flex-col items-start gap-2 rounded-lg border px-3 py-2.5"
         >
           <Line>{noticeText(source.messageKey)}</Line>

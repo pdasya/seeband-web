@@ -241,7 +241,11 @@ function DegeneracyFields({
         />
       </div>
       {band1Invalid || band2Invalid ? (
-        <span id={errorId} role="alert" className="text-xs text-destructive">
+        <span
+          id={errorId}
+          data-feedback="error"
+          className="text-xs text-destructive"
+        >
           {text.degeneracyInvalid}
         </span>
       ) : (
@@ -314,7 +318,11 @@ function FitRangeFields({
         />
       </div>
       {invalid && (
-        <span id={errorId} role="alert" className="text-xs text-destructive">
+        <span
+          id={errorId}
+          data-feedback="error"
+          className="text-xs text-destructive"
+        >
           {text.rangeInvalid}
         </span>
       )}
@@ -455,7 +463,10 @@ export function ModelPanel() {
   return (
     <Panel title={text.title}>
       {isPending && (
-        <p role="status" className="mt-3 mb-0 text-xs text-muted-foreground">
+        <p
+          data-feedback="status"
+          className="mt-3 mb-0 text-xs text-muted-foreground"
+        >
           {text.loading}
         </p>
       )}

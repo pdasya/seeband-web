@@ -221,7 +221,7 @@ test("a range that holds reaches interpolation, and one that does not says so", 
   const before = bodies.length;
   await page.getByLabel("Upper bound, K").fill("10");
   await page.getByLabel("Upper bound, K").press("Enter");
-  await expect(page.getByRole("alert")).toContainText(
+  await expect(page.locator('[data-feedback="error"]')).toContainText(
     "lower bound must be below the upper",
   );
   await page.waitForTimeout(500);
@@ -240,7 +240,7 @@ for (const value of ["0.5", "2.5"]) {
       "aria-invalid",
       "false",
     );
-    await expect(page.getByRole("alert")).toHaveCount(0);
+    await expect(page.locator('[data-feedback="error"]')).toHaveCount(0);
 
     await page.getByRole("link", { name: "Results", exact: true }).click();
     await page.getByRole("link", { name: "Model fit" }).click();
@@ -264,12 +264,14 @@ for (const value of ["0", "-1", "", "abc"]) {
       "aria-invalid",
       "false",
     );
-    await expect(page.getByRole("alert")).toContainText("must be above 0");
+    await expect(page.locator('[data-feedback="error"]')).toContainText(
+      "must be above 0",
+    );
 
     await page.getByRole("link", { name: "Results", exact: true }).click();
     await page.getByRole("link", { name: "Model fit" }).click();
     await expect(page.getByLabel("N₁")).toHaveValue("2");
-    await expect(page.getByRole("alert")).toHaveCount(0);
+    await expect(page.locator('[data-feedback="error"]')).toHaveCount(0);
   });
 }
 
@@ -279,11 +281,11 @@ test("typing a correction clears the message about a degeneracy", async ({
   await open(page);
   await page.getByLabel("N₁").fill("0");
   await page.getByLabel("N₁").blur();
-  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(page.locator('[data-feedback="error"]')).toBeVisible();
 
   await page.getByLabel("N₁").fill("3");
 
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(page.locator('[data-feedback="error"]')).toHaveCount(0);
   await expect(page.getByText("not fitted")).toBeVisible();
 });
 
@@ -342,7 +344,7 @@ test("a fractional range is kept", async ({ page }) => {
   await page.getByLabel("Upper bound, K").fill("600.25");
   await page.getByLabel("Upper bound, K").blur();
 
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(page.locator('[data-feedback="error"]')).toHaveCount(0);
 
   await page.getByRole("link", { name: "Results", exact: true }).click();
   await page.getByRole("link", { name: "Model fit" }).click();
@@ -373,7 +375,7 @@ test("a range being typed sends nothing until it is finished", async ({
   await upper.pressSequentially("60");
   await page.waitForTimeout(500);
   expect(bodies).toHaveLength(2);
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(page.locator('[data-feedback="error"]')).toHaveCount(0);
 
   await upper.pressSequentially("0");
   await upper.press("Enter");
@@ -455,7 +457,9 @@ test("descriptions that cannot load say so", async ({ page }) => {
 
   await page.goto("/fit");
 
-  await expect(page.getByRole("alert")).toContainText("could not be loaded");
+  await expect(page.locator('[data-feedback="error"]')).toContainText(
+    "could not be loaded",
+  );
   await expect(page.getByText("SECRET-VALUE")).toHaveCount(0);
 });
 
