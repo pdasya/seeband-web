@@ -19,6 +19,8 @@ const VARIANTS = {
  * `converged` means that a fit stopped by its rule, not that its result is sound, so it is not
  * green.
  *
+ * It is not a live region: with an iteration in `detail`, a screen reader would read out each one.
+ * FS8 decides what to announce.
  */
 export function StatusBadge({
   status,

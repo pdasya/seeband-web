@@ -222,7 +222,7 @@ test("a band with no finite values leaves a gap, and the rest stay", async ({
   await open(page, (route) => route.fulfill({ json: { ...DPB, curves } }));
 
   await expect(legend(page)).toHaveText(["Band 1", "Band 2", "E_F"]);
-  await expect(diagram(page).locator('[data-feedback="error"]')).toHaveCount(0);
+  await expect(diagram(page).getByRole("alert")).toHaveCount(0);
   const ys = await diagram(page)
     .locator(".js-plotly-plot")
     .evaluate((element) => {
@@ -266,13 +266,13 @@ test("a failure says so, and the last diagram stays", async ({ page }) => {
   await field(page, "E_g").fill("0,05");
   await field(page, "E_g").blur();
 
-  await expect(diagram(page).locator('[data-feedback="error"]')).toContainText(
+  await expect(diagram(page).getByRole("alert")).toContainText(
     "The last curve stays on the chart.",
   );
   await expect(traces(page)).toHaveCount(3);
 
   await show(page, "Seebeck S(T)", 4);
-  await expect(diagram(page).locator('[data-feedback="error"]')).toHaveCount(0);
+  await expect(diagram(page).getByRole("alert")).toHaveCount(0);
 });
 
 test("a failure of the curves does not show on it", async ({ page }) => {
@@ -320,10 +320,10 @@ test("a failure of the curves does not show on it", async ({ page }) => {
       mimeType: "text/plain",
       buffer: Buffer.from("T S\n100 1\n"),
     });
-  await expect(chart(page).locator('[data-feedback="error"]')).toBeVisible();
+  await expect(chart(page).getByRole("alert")).toBeVisible();
 
   await expect(traces(page)).toHaveCount(3);
-  await expect(diagram(page).locator('[data-feedback="error"]')).toHaveCount(0);
+  await expect(diagram(page).getByRole("alert")).toHaveCount(0);
   expect(asked.length).toBeGreaterThan(0);
 });
 

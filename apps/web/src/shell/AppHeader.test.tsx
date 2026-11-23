@@ -5,7 +5,7 @@ import { describe, expect, test } from "vitest";
 import { AppHeader } from "./AppHeader";
 
 describe("the header's link to the overview", () => {
-  test("uses the visible name followed by its destination", () => {
+  test("is named for a screen reader by what it shows, then where it goes", () => {
     const html = renderToStaticMarkup(
       <MemoryRouter initialEntries={["/fit"]}>
         <AppHeader />

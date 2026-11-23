@@ -148,11 +148,7 @@ function BoundsRow({
         />
       </div>
       {invalid && (
-        <span
-          id={errorId}
-          data-feedback="error"
-          className="text-xs text-destructive"
-        >
+        <span id={errorId} role="alert" className="text-xs text-destructive">
           {text.boundsInvalid}
         </span>
       )}

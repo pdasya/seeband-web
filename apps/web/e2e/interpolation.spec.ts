@@ -47,6 +47,7 @@ function parsed(overrides: object = {}) {
   };
 }
 
+// The summary also appears in a hidden status for a screen reader, so this looks at the cards.
 const slots = (page: Page) => page.locator("[data-file-slot]");
 
 async function setUp(
@@ -97,10 +98,10 @@ test("a fit range beyond the measurements shows that interpolation was limited",
   await interpolationSwitch(page).click();
 
   // The range a fit uses is named, as the fit range alone would claim more.
-  await expect(page.locator('[data-feedback="error"]')).toContainText(
+  await expect(page.getByRole("alert")).toContainText(
     "S: the measured range limits interpolation to 100–300 K",
   );
-  await expect(page.locator('[data-feedback="error"]')).not.toContainText(
+  await expect(page.getByRole("alert")).not.toContainText(
     "some values are made up",
   );
 });
@@ -129,7 +130,7 @@ test("a window between measurements with no measured point says the polynomial a
   await interpolationSwitch(page).click();
 
   // Between sparse measurements a degree-10 polynomial can be far off, as beyond them.
-  await expect(page.locator('[data-feedback="error"]')).toContainText(
+  await expect(page.getByRole("alert")).toContainText(
     "every value comes from the polynomial alone",
   );
 });
@@ -213,7 +214,7 @@ test("each flag is shown for its quantity", async ({ page }) => {
 
   await interpolationSwitch(page).click();
 
-  const alert = page.locator('[data-feedback="error"]');
+  const alert = page.getByRole("alert");
   await expect(alert).toContainText("S: the grid goes beyond the data");
   await expect(alert).toContainText("S: too few points set the polynomial");
 
@@ -245,12 +246,10 @@ test("data a client marked as extrapolated, with no measured point, say the poly
 
   await interpolationSwitch(page).click();
 
-  await expect(page.locator('[data-feedback="error"]')).toContainText(
+  await expect(page.getByRole("alert")).toContainText(
     "every value comes from the polynomial alone",
   );
-  await expect(page.locator('[data-feedback="error"]')).not.toContainText(
-    "some values",
-  );
+  await expect(page.getByRole("alert")).not.toContainText("some values");
 });
 
 test("a quantity that fails or overflows is named", async ({ page }) => {
@@ -272,7 +271,7 @@ test("a quantity that fails or overflows is named", async ({ page }) => {
 
   await interpolationSwitch(page).click();
 
-  await expect(page.locator('[data-feedback="error"]')).toContainText(
+  await expect(page.getByRole("alert")).toContainText(
     "S: could not be interpolated",
   );
 });
@@ -302,10 +301,8 @@ for (const [reason, says] of [
 
     await interpolationSwitch(page).click();
 
-    await expect(page.locator('[data-feedback="error"]')).toContainText(says);
-    await expect(page.locator('[data-feedback="error"]')).not.toContainText(
-      "20 K",
-    );
+    await expect(page.getByRole("alert")).toContainText(says);
+    await expect(page.getByRole("alert")).not.toContainText("20 K");
   });
 }
 
@@ -339,19 +336,17 @@ test("a range it cannot use, and a server that is down, have their messages", as
   await interpolationSwitch(page).click();
 
   const refusal = page
-    .locator('[data-feedback="error"]')
+    .getByRole("alert")
     .filter({ hasText: "span 20 to 200000 K" });
   await expect(refusal).toBeVisible();
   await expect(page.getByText("SECRET-VALUE")).toHaveCount(0);
 
   down = true;
   await interpolationSwitch(page).click();
-  await expect(page.locator('[data-feedback="error"]')).toHaveCount(0);
+  await expect(page.getByRole("alert")).toHaveCount(0);
   await interpolationSwitch(page).click();
   await expect(
-    page
-      .locator('[data-feedback="error"]')
-      .filter({ hasText: "server is not responding" }),
+    page.getByRole("alert").filter({ hasText: "server is not responding" }),
   ).toBeVisible();
 });
 
@@ -464,7 +459,7 @@ test("one file failing names it, and leaves the other's flags", async ({
 
   await interpolationSwitch(page).click();
 
-  const alerts = page.locator('[data-feedback="error"]');
+  const alerts = page.getByRole("alert");
   await expect(alerts.filter({ hasText: "Too many files" })).toBeVisible();
   const flags = alerts.filter({ hasText: "R_H:" });
   await expect(flags).toContainText("R_H: could not be interpolated");
@@ -519,9 +514,7 @@ test("a table with no data sends no request for values it cannot have", async ({
   await expect(page.getByText("S · 3 points")).toBeVisible();
   await page.getByRole("combobox", { name: "Quantity for column T" }).click();
   await page.getByRole("option", { name: "Ignore", exact: true }).click();
-  await expect(page.locator('[data-feedback="error"]')).toContainText(
-    "Check the mapping.",
-  );
+  await expect(page.getByRole("alert")).toContainText("Check the mapping.");
 
   await interpolationSwitch(page).click();
   await page.waitForTimeout(600);

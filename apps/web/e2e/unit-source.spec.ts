@@ -459,6 +459,7 @@ test("two quantities in doubt are confirmed each by its own named button", async
   await expect(
     page.getByText("Check the unit of S, ρ first", { exact: false }),
   ).toBeVisible();
+  // The reason is Run fit's description, and a screen reader hears it as it changes.
   await expect(run).toHaveAccessibleDescription(/Check the unit of S, ρ first/);
 
   await page.getByRole("button", { name: "Values are right for S" }).click();
@@ -473,9 +474,7 @@ test("two quantities in doubt are confirmed each by its own named button", async
 
   await expect(run).toBeEnabled();
   await expect(
-    page
-      .locator('[data-feedback="status"]')
-      .filter({ hasText: /You confirmed these values/ }),
+    page.getByRole("status").filter({ hasText: /You confirmed these values/ }),
   ).toHaveCount(2);
 });
 

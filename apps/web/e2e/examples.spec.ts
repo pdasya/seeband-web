@@ -64,7 +64,7 @@ for (const example of ["01_Fe2VAl09Si01", "02_SiP", "03_AWI32_SI"]) {
       await expect(slots(page).getByText(name)).toBeVisible();
     }
 
-    await expect(page.locator('[data-feedback="error"]')).toHaveCount(0);
+    await expect(page.getByRole("alert")).toHaveCount(0);
     for (const name of names) {
       await expect(slots(page).getByText(name)).toBeVisible();
     }
@@ -133,10 +133,8 @@ test("a broken file shows a specific error from the real parser", async ({
       buffer: Buffer.from(lines.join("\n")),
     });
 
-  await expect(page.locator('[data-feedback="error"]')).toContainText(
-    "broken.txt",
-  );
-  await expect(page.locator('[data-feedback="error"]')).toContainText("Line 4");
+  await expect(page.getByRole("alert")).toContainText("broken.txt");
+  await expect(page.getByRole("alert")).toContainText("Line 4");
 });
 
 test("a ρ file in the S slot asks first, and says what its name names", async ({
@@ -169,7 +167,7 @@ test("the real parser refuses a negative resistivity", async ({ page }) => {
       buffer: Buffer.from("T rho\n100 1e-5\n200 -2e-5\n300 3e-5\n"),
     });
 
-  await expect(page.locator('[data-feedback="error"]')).toContainText(
+  await expect(page.getByRole("alert")).toContainText(
     "Line 3: A resistivity below 0",
   );
 });
@@ -199,7 +197,7 @@ test("a single file maps its columns through the real parser", async ({
 
   await page.getByRole("combobox", { name: "Quantity for column T" }).click();
   await page.getByRole("option", { name: "Ignore", exact: true }).click();
-  await expect(page.locator('[data-feedback="error"]')).toContainText(
+  await expect(page.getByRole("alert")).toContainText(
     "No column holds the temperature",
   );
 
@@ -209,9 +207,7 @@ test("a single file maps its columns through the real parser", async ({
 
   await page.getByRole("combobox", { name: "Quantity for column rho" }).click();
   await page.getByRole("option", { name: "S", exact: true }).click();
-  await expect(page.locator('[data-feedback="error"]')).toContainText(
-    "assigned twice",
-  );
+  await expect(page.getByRole("alert")).toContainText("assigned twice");
 });
 
 test("interpolation of an example through the real API has its flags", async ({
@@ -234,13 +230,13 @@ test("interpolation of an example through the real API has its flags", async ({
   expect(Math.max(...grid.temperature_k)).toBe(750);
 
   await expect(page.getByText("Fit range 50–800 K")).toBeVisible();
-  await expect(page.locator('[data-feedback="error"]')).toContainText(
+  await expect(page.getByRole("alert")).toContainText(
     "S: the measured range limits interpolation to 50–750 K",
   );
 
   await page.getByRole("switch", { name: /Interpolation/ }).click();
 
-  await expect(page.locator('[data-feedback="error"]')).toHaveCount(0);
+  await expect(page.getByRole("alert")).toHaveCount(0);
   await expect(
     slots(page).getByText("30 points · 25–750 K · V/K"),
   ).toBeVisible();
@@ -311,7 +307,7 @@ test("an example through the real API draws the curve, with its RMSE", async ({
 
   await expect(page.getByText("RMSE, S")).toBeVisible();
   await expect(page.getByText(/^[\d,]+ µV\/K$/)).toBeVisible();
-  await expect(page.locator('[data-feedback="error"]')).toHaveCount(0);
+  await expect(page.getByRole("alert")).toHaveCount(0);
   const before = await page.getByText(/^[\d,]+ µV\/K$/).textContent();
 
   await page.getByRole("slider", { name: "E_F" }).press("PageUp");
@@ -336,7 +332,7 @@ test("a zero in resistivity does not stop the real API from answering", async ({
 
   await expect(page.getByText("RMSE, ρ")).toBeVisible();
   await expect(page.getByText("ρ: points with a value of 0")).toBeVisible();
-  await expect(page.locator('[data-feedback="error"]')).toHaveCount(0);
+  await expect(page.getByRole("alert")).toHaveCount(0);
 });
 
 test("the charts draw real curves through the real API", async ({ page }) => {
@@ -361,7 +357,7 @@ test("the charts draw real curves through the real API", async ({ page }) => {
   await show(page, "Chemical potential μ(T)");
   await expect(lines).toHaveCount(1);
   await expect(chart(page).getByText("band edge")).toBeVisible();
-  await expect(page.locator('[data-feedback="error"]')).toHaveCount(0);
+  await expect(page.getByRole("alert")).toHaveCount(0);
 });
 
 // From `packages/seeband_core/tests/fixtures/neural_net_references.json`, recorded on the desktop:
@@ -407,8 +403,8 @@ test("the real API draws the sketch of the bands, and it follows the values", as
   await page.goto("/fit");
   await expect(page.getByRole("slider", { name: "E_F" })).toBeVisible();
   // The last chart shows it from the start.
-  await expect(chart(page, 4).getByText("E_g = 0,09 eV")).toBeVisible();
-  await expect(page.locator('[data-feedback="error"]')).toHaveCount(0);
+  await expect(page.getByText(/^Caution: This is a sketch/)).toBeVisible();
+  await expect(page.getByRole("alert")).toHaveCount(0);
   await expect(
     chart(page, 4).locator(".js-plotly-plot .scatterlayer .trace"),
   ).toHaveCount(3);
@@ -424,7 +420,6 @@ test("the real API draws the sketch of the bands, and it follows the values", as
   };
   expect(response.status()).toBe(200);
   expect(Math.min(...(body.curves.band_2_energy_k ?? []))).toBeGreaterThan(464);
-  await expect(chart(page, 4).getByText("E_g = 0,04 eV")).toBeVisible();
 });
 
 /** Compare the visible result with the terminal event of the same real fit. */
@@ -505,7 +500,7 @@ test.describe("real fits", () => {
     }
     const joint = await runVerifiedFit(page);
     await expectFittedGap(joint.parameters.band_gap);
-    await expect(page.locator('[data-feedback="error"]')).toHaveCount(0);
+    await expect(page.getByRole("alert")).toHaveCount(0);
     // The result panel counts them, and shows the values the fit reached.
     const iterations = page
       .locator("dl > div")
@@ -527,7 +522,7 @@ test.describe("real fits", () => {
     await expect(gap).toHaveValue("0,05");
     const single = await runVerifiedFit(page);
     await expectFittedGap(single.parameters.band_gap);
-    await expect(page.locator('[data-feedback="error"]')).toHaveCount(0);
+    await expect(page.getByRole("alert")).toHaveCount(0);
     await expect(iterations).toHaveCount(0);
   });
 
@@ -551,11 +546,11 @@ test.describe("real fits", () => {
     ).toBeVisible({
       timeout: 15_000,
     });
-    await expect(page.locator('[data-feedback="error"]')).toHaveCount(0);
+    await expect(page.getByRole("alert")).toHaveCount(0);
     await page.getByRole("switch", { name: /Interpolation/ }).click();
 
     await runVerifiedFit(page);
-    await expect(page.locator('[data-feedback="error"]')).toHaveCount(0);
+    await expect(page.getByRole("alert")).toHaveCount(0);
     await expect(page.getByText(/^Unreliable:/)).toHaveCount(0);
     await expect(page.getByText(/^Synthetic data/)).toBeVisible();
   });

@@ -86,7 +86,7 @@ export function InterpolationSwitch() {
           onCheckedChange={setEnabled}
         />
       </div>
-      <div data-feedback="status" className="text-xs text-muted-foreground">
+      <div role="status" className="text-xs text-muted-foreground">
         {interpolation.enabled && interpolation.loading
           ? text.interpolation.working
           : ""}

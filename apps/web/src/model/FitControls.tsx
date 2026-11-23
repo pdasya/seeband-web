@@ -29,7 +29,7 @@ const { fit: text } = STRINGS;
 
 type Control = ReturnType<typeof useFitControl>;
 
-/** The current fit or initial-guess status. */
+/** The badge, which changes with each iteration, and one quiet line that a screen reader reads. */
 export function FitStatusBadge({
   control,
   guess,
@@ -46,6 +46,14 @@ export function FitStatusBadge({
     <>
       {badge !== null && <StatusBadge {...badge} />}
       {missing !== null && <Badge variant="warning">{missing}</Badge>}
+      <span role="status" className="sr-only">
+        {/* The detail of an ended fit, as its stop rule, but no running count, read at each step. */}
+        {badge === null
+          ? ""
+          : badge.status === "running" || badge.detail === undefined
+            ? STRINGS.status[badge.status]
+            : `${STRINGS.status[badge.status]} ${badge.detail}`}
+      </span>
     </>
   );
 }
@@ -134,13 +142,19 @@ export function FitMessages({
   return (
     <>
       {guessMessages(guess.outcome).map((message) => (
-        <p key={message} className="m-0 text-xs text-muted-foreground">
+        <p
+          key={message}
+          aria-live="polite"
+          className="m-0 text-xs text-muted-foreground"
+        >
           {message}
         </p>
       ))}
+      {/* Always there, so a screen reader reads a new reason, and Run fit names it as its
+          description. */}
       <p
         id={BLOCKER_ID}
-        data-feedback="status"
+        role="status"
         className="m-0 text-xs text-muted-foreground empty:hidden"
       >
         {blockerMessage(control) ?? ""}

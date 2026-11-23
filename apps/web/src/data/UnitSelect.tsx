@@ -33,7 +33,7 @@ export function UnitSelect({
 }: {
   role: Role;
   value: Unit;
-  /** Names the quantity controlled by this unit selector. */
+  /** The name of what the unit is for, for a screen reader. */
   label: string;
   assumed?: boolean;
   disabled?: boolean;
@@ -54,6 +54,7 @@ export function UnitSelect({
         size="sm"
         // Dashed and muted, as the unit is the placeholder: the card's note says why.
         className={cn("w-full font-mono", assumed && "border-dashed")}
+        // The name replaces the shown unit for a screen reader, so it names the unit too.
         aria-label={
           assumed
             ? text.unitAssumedOf(label, text.units[value])

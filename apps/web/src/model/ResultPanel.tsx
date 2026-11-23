@@ -269,7 +269,7 @@ export function ResultPanel({ live }: { live: LiveCurves }) {
         <ExportButtons exporter={exporter} />
       </div>
       {exporter.failed && (
-        <p data-feedback="error" className="mt-2 mb-0 text-xs text-destructive">
+        <p role="alert" className="mt-2 mb-0 text-xs text-destructive">
           {STRINGS.export.failed}
         </p>
       )}

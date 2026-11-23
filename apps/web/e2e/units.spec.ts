@@ -332,9 +332,7 @@ test("a read in another unit that fails says so as an alert, and keeps the data"
 
   await pick(page, seebeckUnit(page), "µV/K");
 
-  await expect(page.locator('[data-feedback="error"]')).toContainText(
-    "Line 2:",
-  );
+  await expect(page.getByRole("alert")).toContainText("Line 2:");
   await expect(seebeckUnit(page)).toHaveText("V/K");
   await expect(seebeckUnit(page)).toBeEnabled();
 });

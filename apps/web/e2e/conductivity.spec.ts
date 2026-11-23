@@ -211,6 +211,7 @@ test("the ρ slot reads a file as σ once σ is chosen, and the card says ρ = 1
   await sigmaSwitch(page).click();
   await expect(sigmaSwitch(page)).toBeChecked();
   await expect(rhoSlot(page).getByText("Conductivity")).toBeVisible();
+  // Before a file, the slot says what the fit will use, also to a screen reader.
   await expect(sigmaSwitch(page)).toHaveAccessibleDescription(
     "The fit uses ρ = 1/σ, which the server computes.",
   );

@@ -2,7 +2,7 @@ import { expect, type Page } from "@playwright/test";
 
 /** One of the four charts, counted from 1. */
 export const chart = (page: Page, index = 1) =>
-  page.locator(`[data-chart-panel="${String(index)}"]`);
+  page.getByRole("region", { name: `Chart ${String(index)}` });
 
 /** Sets what a chart shows, by the name in its select. */
 export async function show(page: Page, label: string, index = 1) {

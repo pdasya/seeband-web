@@ -582,7 +582,7 @@ test("a failure keeps the values and says so, without the server's text", async 
   await expect(page.getByText("SECRET-VALUE")).toHaveCount(0);
   await expect(field(page, "E_g")).toHaveValue("0,09");
   await expect(button(page)).toBeEnabled();
-  await expect(page.locator('[data-feedback="error"]')).toHaveCount(0);
+  await expect(page.getByRole("alert")).toHaveCount(0);
 });
 
 test("a limit keeps the values and says so", async ({ page }) => {
@@ -642,12 +642,12 @@ test("a fit that fails before the answer keeps its message", async ({
   await load(page);
   await choose(page, "S");
   await page.getByRole("button", { name: "Run fit" }).click();
-  await expect(page.locator('[data-feedback="error"]')).toBeVisible();
+  await expect(page.getByRole("alert")).toBeVisible();
 
   gate.release();
   await page.waitForTimeout(300);
 
-  await expect(page.locator('[data-feedback="error"]')).toBeVisible();
+  await expect(page.getByRole("alert")).toBeVisible();
   await expect(field(page, "E_g")).toHaveValue("0,09");
 });
 

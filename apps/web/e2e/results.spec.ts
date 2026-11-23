@@ -266,7 +266,7 @@ test("a failed Results curve explains the admissible Fermi energy", async ({
   await expect(
     page
       .getByRole("region", { name: "Additional graphs" })
-      .locator('[data-feedback="error"]')
+      .getByRole("alert")
       .filter({ hasText: "Set E_F below the higher band edge, max(0, E_g)." })
       .first(),
   ).toBeVisible();

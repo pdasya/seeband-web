@@ -223,9 +223,27 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
   const dropTarget = { "data-file-slot": quantity, ...drop };
   const dropping = dragging && "border-ring bg-muted";
 
+  // Always there, as a screen reader may not read out a live region that arrives filled.
+  let announcement = "";
+  if (state.status === "loading") {
+    announcement = `${state.name}: ${text.reading}`;
+  } else if (state.status === "choose") {
+    announcement = `${state.name}: ${text.noHeaderQuestion}`;
+  } else if (state.status === "idle" && state.rereading === true) {
+    announcement = `${names.title}: ${text.reading}`;
+  } else if (data !== undefined) {
+    announcement = `${names.title}: ${dataName(data)}, ${fileSummary(quantity, data)}`;
+  }
+  const status = (
+    <div role="status" className="sr-only">
+      {announcement}
+    </div>
+  );
+
   if (state.status === "loading") {
     return (
       <>
+        {status}
         <div
           className={cn(
             "flex items-center gap-3 rounded-lg border px-3 py-2.5",
@@ -258,6 +276,7 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
   if (state.status === "choose") {
     return (
       <div className="flex flex-col gap-1.5">
+        {status}
         <div
           className="flex flex-col gap-2.5 rounded-lg border px-3 py-2.5"
           data-file-slot={quantity}
@@ -303,6 +322,7 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
     const firstRow = firstRowLine(quantity, data);
     return (
       <div className="flex flex-col gap-1.5">
+        {status}
         <div
           className={cn(
             "flex items-center gap-3 rounded-lg border px-3 py-2.5",
@@ -398,8 +418,9 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
             </AlertDescription>
           </Alert>
         )}
+        {/* Always there, so that a screen reader reads the confirmation when it comes. */}
         <p
-          data-feedback="status"
+          role="status"
           className="m-0 text-xs text-muted-foreground empty:hidden"
         >
           {data.unitConfirmed === true ? text.unitConfirmed : ""}
@@ -431,6 +452,7 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
 
   return (
     <div className="flex flex-col gap-1.5">
+      {status}
       <DropArea
         slotId={quantity}
         icon={<Symbol filled={false}>{names.symbol}</Symbol>}

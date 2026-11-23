@@ -28,7 +28,7 @@ function Alert({
   return (
     <div
       data-slot="alert"
-      data-feedback="error"
+      role="alert"
       className={cn(alertVariants({ variant }), className)}
       {...props}
     />

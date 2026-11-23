@@ -10,12 +10,12 @@ export interface HeaderLanguage {
   code: string;
   /** Short, as on the button, such as `EN`. */
   label: string;
-  /** Full language name, such as `English`. */
+  /** Full, for a screen reader, such as `English`. */
   name: string;
 }
 
 export interface HeaderLanguages {
-  /** The label of the language group. */
+  /** The label of the group, for a screen reader. */
   label: string;
   options: readonly HeaderLanguage[];
   current: string;
@@ -24,7 +24,7 @@ export interface HeaderLanguages {
 export interface HeaderModel {
   name: string;
   /**
-   * The label of the link containing the logo and name. It starts with
+   * The name of the link that the logo and the name make, for a screen reader. It starts with
    * `name`, so that a voice command naming what is on screen finds it, such as
    * `SeeBand, overview`.
    */

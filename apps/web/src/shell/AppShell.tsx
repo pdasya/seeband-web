@@ -17,6 +17,7 @@ export function AppShell() {
   const main = useRef<HTMLElement>(null);
   const shownPath = useRef(pathname);
 
+  // After a move inside the app, focus would stay on a link, and a screen reader would say nothing.
   // A new screen starts at its top, with the header in view: focus alone would scroll it away.
   // Back and forward keep where the browser puts them, and so does a link to a place on the page.
   useEffect(() => {

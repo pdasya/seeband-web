@@ -241,6 +241,7 @@ test("an iterative fit: status, counter, moving values and Stop", async ({
 
   await stop(page).click();
 
+  // The badge, as the screen reader's line says the same.
   await expect(
     page.locator('[data-slot="badge"]').getByText("Stopped at iteration 2"),
   ).toBeVisible();
@@ -250,7 +251,7 @@ test("an iterative fit: status, counter, moving values and Stop", async ({
   await expect(field(page, "E_g")).toHaveValue("0,07");
   await expect(field(page, "E_g")).toBeEnabled();
   await expect(run(page)).toBeEnabled();
-  await expect(page.locator('[data-feedback="error"]')).toHaveCount(0);
+  await expect(page.getByRole("alert")).toHaveCount(0);
 });
 
 test("a double click on Run does not stop the fit", async ({ page }) => {
@@ -365,7 +366,7 @@ test("reaching the limit says so, and keeps the values", async ({ page }) => {
 
   await expect(badge(page, "Iteration limit reached")).toBeVisible();
   await expect(field(page, "E_g")).toHaveValue("0,08");
-  await expect(page.locator('[data-feedback="error"]')).toHaveCount(0);
+  await expect(page.getByRole("alert")).toHaveCount(0);
 });
 
 test("a value that is not finite leaves the last one", async ({ page }) => {
@@ -427,7 +428,7 @@ test("a value that a fit moves ends a refused number", async ({ page }) => {
   await openWithData(page);
   await field(page, "E_g").fill("9999");
   await field(page, "E_g").blur();
-  await expect(page.locator('[data-feedback="error"]')).toBeVisible();
+  await expect(page.getByRole("alert")).toBeVisible();
   await startFit(page);
 
   await send(page, {
@@ -437,7 +438,7 @@ test("a value that a fit moves ends a refused number", async ({ page }) => {
   });
 
   await expect(field(page, "E_g")).toHaveValue("0,07");
-  await expect(page.locator('[data-feedback="error"]')).toHaveCount(0);
+  await expect(page.getByRole("alert")).toHaveCount(0);
 });
 
 test("a value beyond the control's range shows, with the slider at its end", async ({
@@ -473,7 +474,7 @@ test("a fit that ends with no result says why", async ({ page }) => {
     },
   });
 
-  await expect(page.locator('[data-feedback="error"]')).toContainText(
+  await expect(page.getByRole("alert")).toContainText(
     "The start values do not fit the bounds.",
   );
   await expect(badge(page, "Failed")).toBeVisible();
@@ -491,13 +492,11 @@ test("a failure event says so in our words, and a new run clears it", async ({
     error: { code: "fit_timeout", message: "SECRET-VALUE", details: [] },
   });
 
-  await expect(page.locator('[data-feedback="error"]')).toContainText(
-    "time limit",
-  );
+  await expect(page.getByRole("alert")).toContainText("time limit");
   await expect(page.getByText("SECRET-VALUE")).toHaveCount(0);
 
   await run(page).click();
-  await expect(page.locator('[data-feedback="error"]')).toHaveCount(0);
+  await expect(page.getByRole("alert")).toHaveCount(0);
 });
 
 test("a stream that ends by itself is a failure, not a Stop", async ({
@@ -510,9 +509,7 @@ test("a stream that ends by itself is a failure, not a Stop", async ({
     window.fitTest.end();
   });
 
-  await expect(page.locator('[data-feedback="error"]')).toContainText(
-    "connection was lost",
-  );
+  await expect(page.getByRole("alert")).toContainText("connection was lost");
   await expect(page.getByText("Stopped")).toHaveCount(0);
 });
 
@@ -524,9 +521,7 @@ test("a lost connection is a failure too", async ({ page }) => {
     window.fitTest.fail();
   });
 
-  await expect(page.locator('[data-feedback="error"]')).toContainText(
-    "connection was lost",
-  );
+  await expect(page.getByRole("alert")).toContainText("connection was lost");
 });
 
 test("a refusal says so, with nothing left running", async ({ page }) => {
@@ -540,9 +535,7 @@ test("a refusal says so, with nothing left running", async ({ page }) => {
 
   await run(page).click();
 
-  await expect(page.locator('[data-feedback="error"]')).toContainText(
-    "Too many fits",
-  );
+  await expect(page.getByRole("alert")).toContainText("Too many fits");
   await expect(page.getByText("SECRET-VALUE")).toHaveCount(0);
   await expect(run(page)).toBeEnabled();
 });
@@ -558,9 +551,7 @@ test("the limit of fits for one client says so", async ({ page }) => {
 
   await run(page).click();
 
-  await expect(page.locator('[data-feedback="error"]')).toContainText(
-    "too many fits running",
-  );
+  await expect(page.getByRole("alert")).toContainText("too many fits running");
 });
 
 test("Reset goes back to the defaults, and to manual", async ({ page }) => {
@@ -569,13 +560,13 @@ test("Reset goes back to the defaults, and to manual", async ({ page }) => {
   await field(page, "E_g").blur();
   await field(page, "E_F").fill("9999");
   await field(page, "E_F").blur();
-  await expect(page.locator('[data-feedback="error"]')).toBeVisible();
+  await expect(page.getByRole("alert")).toBeVisible();
 
   await reset(page).click();
 
   await expect(field(page, "E_g")).toHaveValue("0,09");
   await expect(field(page, "E_F")).toHaveValue("-0,01");
-  await expect(page.locator('[data-feedback="error"]')).toHaveCount(0);
+  await expect(page.getByRole("alert")).toHaveCount(0);
   await expect(fitBadges(page)).toHaveCount(0);
 });
 
@@ -699,15 +690,13 @@ test("a move of a slider after a result goes back to manual", async ({
   await expect(fitBadges(page)).toHaveCount(0);
 });
 
-test("fit progress stays visible without live announcements", async ({
+test("a screen reader hears the status, and not each iteration", async ({
   page,
 }) => {
   await openWithData(page);
   await startFit(page);
-  await expect(page.getByText("Fitting…", { exact: true })).toBeVisible();
-  await expect(
-    page.locator('[aria-live], [role="status"], [role="alert"], output'),
-  ).toHaveCount(0);
+  const status = page.getByRole("status").filter({ hasText: /^Fitting…$/ });
+  await expect(status).toHaveCount(1);
 
   await send(page, {
     type: "iteration",
@@ -716,9 +705,7 @@ test("fit progress stays visible without live announcements", async ({
   });
 
   await expect(page.getByText("Fitting… iteration 7")).toBeVisible();
-  await expect(
-    page.locator('[aria-live], [role="status"], [role="alert"], output'),
-  ).toHaveCount(0);
+  await expect(status).toHaveCount(1);
   await expect(heading(page)).toBeVisible();
 });
 

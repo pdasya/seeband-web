@@ -35,6 +35,8 @@ export interface TransportChartProps {
   xAxisTitle: string;
   xAxisSpan?: readonly [number, number] | null | undefined;
   yAxisTitle: string;
+  /** What a screen reader says about the chart, as it cannot read the drawing. */
+  description: string;
   /** Shown if Plotly cannot load, or cannot draw this data. */
   failedText: string;
   /**
@@ -117,6 +119,7 @@ function Plot({
   xAxisTitle,
   xAxisSpan,
   yAxisTitle,
+  description,
   failedText,
   timing,
   changedAtMs,
@@ -129,6 +132,7 @@ function Plot({
   xAxisTitle: string;
   xAxisSpan?: readonly [number, number] | null | undefined;
   yAxisTitle: string;
+  description: string;
   failedText: string;
   timing?: string | undefined;
   changedAtMs?: number | null | undefined;
@@ -237,7 +241,14 @@ function Plot({
       </Alert>
     );
   }
-  return <div ref={container} style={{ minHeight: CHART_HEIGHT_PX }} />;
+  return (
+    <div
+      ref={container}
+      role="img"
+      aria-label={description}
+      style={{ minHeight: CHART_HEIGHT_PX }}
+    />
+  );
 }
 
 /**
@@ -254,6 +265,7 @@ export function TransportChart({
   xAxisTitle,
   xAxisSpan,
   yAxisTitle,
+  description,
   failedText,
   timing,
   changedAtMs,
@@ -277,6 +289,7 @@ export function TransportChart({
         xAxisTitle={xAxisTitle}
         xAxisSpan={xAxisSpan}
         yAxisTitle={yAxisTitle}
+        description={description}
         failedText={failedText}
         timing={timing}
         changedAtMs={changedAtMs}
