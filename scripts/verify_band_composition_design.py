@@ -30,6 +30,11 @@ ME_KG = 9.1093837139e-31
 TAU_S = 1e-14
 
 
+def require_valley_count(count):
+    if isinstance(count, bool) or not isinstance(count, int) or count < 1:
+        raise ValueError("require a positive integer valley count excluding spin")
+
+
 @dataclass(frozen=True)
 class Band:
     s: int
@@ -41,8 +46,7 @@ class Band:
     def __post_init__(self):
         if self.s not in (-1, 1) or self.mass_me <= 0 or self.alpha_per_ev < 0:
             raise ValueError("require s=+/-1, positive mass, nonnegative alpha")
-        if isinstance(self.valleys, bool) or not isinstance(self.valleys, int) or self.valleys < 1:
-            raise ValueError("require a positive integer valley count excluding spin")
+        require_valley_count(self.valleys)
 
 
 def zero_density(bands, ef_ev):

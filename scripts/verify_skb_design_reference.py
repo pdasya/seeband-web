@@ -20,6 +20,7 @@ The inference of eta from measured S applies only to an isolated Kane band.
 import argparse
 from math import exp, pi, sqrt
 
+from verify_band_composition_design import require_valley_count
 from verify_spb_design_coefficients import occupation, simpson
 
 KB = 1.380649e-23
@@ -143,6 +144,7 @@ ELASTIC_PA, DEFORMATION_EV = 1e11, 10.0
 
 def kane(eta, temperature, sign, mass_me, valleys, epsilon, panels=1600, tail=55):
     """K2–K4; return sigma, signed S, L, signed RH, occupancy C (SI)."""
+    require_valley_count(valleys)
     mass, q, thermal = mass_me * ME, -sign * E, KB * temperature
     mass_dos = valleys ** (2 / 3) * mass
     tau_pref = (
@@ -176,6 +178,7 @@ def velocity_dos(eta, temperature, sign, mass_me, valleys, epsilon, panels=1600,
     tau=K1; integrate in y=sqrt(u/kBT) to remove endpoint singularities.
     Scale tau by tau_pref to avoid tiny quadrature integrands.
     """
+    require_valley_count(valleys)
     mass, q, thermal = mass_me * ME, -sign * E, KB * temperature
     dos_pref = valleys / (2 * pi**2) * (2 * mass / HBAR**2) ** 1.5
     # N cancels in K1 at fixed single-valley mass: m_D**1.5=N*m_b**1.5.

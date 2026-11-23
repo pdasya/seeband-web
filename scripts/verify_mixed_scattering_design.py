@@ -39,6 +39,7 @@ import scipy
 from scipy.integrate import quad
 from scipy.optimize import brentq
 from scipy.special import expit
+from verify_band_composition_design import require_valley_count
 
 KB, E, ME, HBAR = 1.380649e-23, 1.602176634e-19, 9.1093837139e-31, 1.054571817e-34
 
@@ -50,6 +51,9 @@ class Band:
     mass_me: float
     valleys: int
     crossover_k: float
+
+    def __post_init__(self):
+        require_valley_count(self.valleys)
 
     @property
     def dos(self):

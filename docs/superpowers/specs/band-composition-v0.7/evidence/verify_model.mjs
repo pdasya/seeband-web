@@ -61,6 +61,46 @@ for (const count of [3, 2, 1]) {
   if (count > 1) q("[data-remove]").click();
   else assert.equal(q("[data-remove]").hidden, true);
 }
+// Even the archived Model-only fixture rejects pasted and restored fractional counts.
+const count = () => q('[data-n="0"]');
+const edit = (field, value) => {
+  field.value = value;
+  field.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+  field.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+};
+let snapshot;
+dom.window.openai = {
+  setWidgetState: (state) => {
+    snapshot = state.modelContent;
+    return Promise.resolve();
+  },
+};
+edit(count(), "2");
+for (const raw of ["1.1", "1,1"]) {
+  edit(count(), raw);
+  assert.equal(count().value, "");
+  assert.equal(snapshot.bands[0].n, null);
+}
+dom.window.dispatchEvent(
+  new dom.window.CustomEvent("openai:set_globals", {
+    detail: {
+      globals: {
+        widgetState: {
+          modelContent: {
+            ...snapshot,
+            bands: [{ ...snapshot.bands[0], n: 1.1 }],
+          },
+        },
+      },
+    },
+  }),
+);
+assert.equal(count().value, "");
+edit(count(), "6");
+assert.equal(snapshot.bands[0].n, 6);
+edit(q("[data-temp=low]"), "51.25");
+assert.equal(q("[data-temp=low]").value, "51,25");
+assert.equal(snapshot.low, 51.25);
 console.log(
   "PASS: VB/CB/VB 3 SPB, DPB, 1 SKB + 1 SPB, 1 SKB + 2 SPB, SKB, SPB; 1–3 degeneracy fields; single Kane and global acPh constraint. Model mock only.",
 );

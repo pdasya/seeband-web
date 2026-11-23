@@ -77,7 +77,7 @@ A new band is created as parabolic. If a Kane band is already selected, Kane is 
 
 Consider independent three-dimensional isotropic valleys with hard edges. Let sᵢ = +1 for CB and −1 for VB, e > 0, and carrier charge qᵢ = −sᵢe. Kinetic energy u ≥ 0 is measured into the band; total electron energy is Eᵢ + sᵢu. In this and the next section, energies are in joules, mᵢ in kilograms, and αᵢ in J⁻¹. At the API boundary, energies with the `_k` suffix mean E/k_B. Convert α from eV⁻¹ to J⁻¹ by dividing its numerical value by the number of joules in one eV.
 
-**Diagram coordinate (item 12).** Label the horizontal axis **k**. Its signed, dimensionless value is $\kappa=(k_{\rm phys}-k_{\rm edge})/k_{\rm ref}$ along the plotted direction. Use the same constant $k_{\rm ref}=10^{10}\,\mathrm{m}^{-1}$ for every band, model and temperature. A displacement of $1\,\mathrm{nm}^{-1}$ therefore appears at 0.1. The scale is a drawing convention with no fit control. In the dispersion use $x=\hbar^2(k_{\rm ref}\kappa)^2/(2m_i)$ for both band shapes. For the transport integrals and velocities below, $k$ retains its physical inverse-length units. Each extremum is drawn at zero on its own local coordinate.
+**Diagram coordinate (item 12).** Label the horizontal axis **k** and omit all numeric ticks and labels, including zero. The vertical energy axis retains its scale and units. Its signed, dimensionless value is $\kappa=(k_{\rm phys}-k_{\rm edge})/k_{\rm ref}$ along the plotted direction. Use the same constant $k_{\rm ref}=10^{10}\,\mathrm{m}^{-1}$ for every band, model and temperature. A displacement of $1\,\mathrm{nm}^{-1}$ therefore appears at 0.1. The scale is a drawing convention with no fit control. In the dispersion use $x=\hbar^2(k_{\rm ref}\kappa)^2/(2m_i)$ for both band shapes. For the transport integrals and velocities below, $k$ retains its physical inverse-length units. Each extremum is drawn at zero on its own local coordinate.
 
 **Geometry.** Set γᵢ(u) = u(1 + αᵢu) = ℏ²k²/(2mᵢ). At αᵢ = 0 this is parabolic. For an unbounded branch, the proposed domain is αᵢ ≥ 0. A numerically stable inverse is u = 2x/(1 + √(1 + 4αᵢx)), where x = ℏ²k²/(2mᵢ). The diagram, density of states, and velocities must all use this same dispersion.
 
@@ -260,7 +260,7 @@ For curve comparisons, we propose a starting budget against the same constants a
 | Q4. Which measurement resolutions and profile scan criteria are adequate for real samples?                                                              | §6.2 fixes the flat-profile status and interval display. Experimental sensitivity thresholds require scientific-owner review. |
 | Q5. Are the A2–A4 accuracy bounds sufficient, and which independent benchmarks or materials should be added?                                            | Numerical budgets, regression cases, and publication criteria.                                                                |
 
-**Q2 resolved.** Each active band requires $N_i=1,2,3,\ldots$, excluding spin. Keep any old fractional effective multiplicity and its results in the historical record. Before calculating or fitting with the new composition, the researcher must give that band a positive integer. Never round a saved value or substitute 1. The ratio $N_i/N_1$ itself may be fractional.
+**Q2 resolved.** Each active band requires $N_i=1,2,3,\ldots$, excluding spin. An old record can be viewed as submitted. Its fractional multiplicity is never a new model input. The corresponding field opens empty and requires an explicit integer. Before calculating or fitting with the new composition, the researcher must give that band a positive integer. Never round a saved value or substitute 1. The ratio $N_i/N_1$ itself may be fractional.
 
 When commenting, identify the question or check number, band composition, observable, and an example supporting the conclusion or serving as a counterexample. The most useful comment is a concrete situation in which the proposed interpretation would give an incorrect curve or an overconfident parameter interpretation.
 
@@ -429,6 +429,10 @@ In **Fit**, the **Model** panel contains Band configuration, Fit mode, Scatterin
 
 **Mockup D. Physical fields and locks.** DPB, VB₁ + CB₂, acPh + dis, S + ρ. The closed user lock on E_F illustrates a hold; the closed lock on the single-valley mass is mode-set. In both cases the value remains manually editable. Values are illustrative. Previous mockups A–C serve as references for the overall layout; the current labels and states are defined here.
 
+**Numbers on screen (review item 13).** Use a decimal comma throughout Fit, Guide and result examples, independent of browser language. The same offset appears as **0,09** in the editor and **0,09 eV** in the gap row. Apply the rule to bounds, temperatures, slider readouts, overlap, derived DOS mass, fit progress and the returned result. Use no thousands separators. Accept a comma or a point when entering an ordinary decimal parameter. Preserve sign, exponent, edit precision and the distinction between empty and zero. Use canonical numeric values for computation and a decimal point in machine-readable numeric strings. A formula, source citation or saved JSON example may use a decimal point.
+
+**Valley input.** Each active band requires a positive integer. A new band may start at 1. For a restored band whose count is invalid or missing, leave its field empty and request a value. Typing, pasting or dropping `1.1` or `1,1` must never produce a fractional count, a rounded value or the concatenated count 11. The same validation applies to programmatic state, including counts for other bands. A missing count blocks calculation with that composition. The ratio of two valid integers can itself be fractional.
+
 ### 15.1 Shared physical fields and tooltips
 
 | Parameters row                                                                | Unit  | Row tooltip                                                                                                                                                                                                         |
@@ -460,15 +464,15 @@ The session’s source coordinate remains $E_2-E_1$. If CB is first, the display
 
 Use the existing fit event stream. At start, show the gap of the submitted starting vector. On each iteration, replace it using the parameters from that event and the submitted band configuration, including the fixed edge at zero. An incomplete vector gets the existing missing-data display. Gaps, overlaps and tied edges follow the same rule as manual edits. A single-pass fit may go straight from its starting vector to its final result. No intermediate value is interpolated. On completion, derive the displayed value and defining band IDs afresh from the returned result vector. Record them together with the fit outcome in Results and Earlier runs, even if the final pair differs from the last iteration. A terminal event without a result clears the marker and returns to the editable state. Intermediate values never become a saved result. [Existing fit event types](../../../apps/api/src/seeband_api/fit.py)
 
-**Acceptance for the three-band row.** For CB₁ + VB₂ + CB₃, set E_c,1 = 0 eV and E_v,2 = −0.09 eV. Change only the position of CB₃. Band numbers, holds, and bounds for both offsets remain unchanged.
+**Acceptance for the three-band row.** For CB₁ + VB₂ + CB₃, set E_c,1 = 0 eV and E_v,2 = −0,09 eV. Change only the position of CB₃. Band numbers, holds, and bounds for both offsets remain unchanged.
 
 | E_c,3 relative to CB₁, eV | Band gap · E_g | Edges and explanation                             |
 | ------------------------- | -------------- | ------------------------------------------------- |
-| +0.08                     | 0.09 eV        | CB₁ and VB₂                                       |
-| 0                         | 0.09 eV        | CB₁ and CB₃ coincide. Both CBs and VB₂ are shown. |
-| −0.04                     | 0.05 eV        | CB₃ and VB₂                                       |
-| −0.09                     | 0 eV           | The CB₃ and VB₂ edge energies are equal.          |
-| −0.11                     | Closed         | Band overlap: 0.02 eV. Edges: CB₃ and VB₂.        |
+| +0,08                     | 0,09 eV        | CB₁ and VB₂                                       |
+| 0                         | 0,09 eV        | CB₁ and CB₃ coincide. Both CBs and VB₂ are shown. |
+| −0,04                     | 0,05 eV        | CB₃ and VB₂                                       |
+| −0,09                     | 0 eV           | The CB₃ and VB₂ edge energies are equal.          |
+| −0,11                     | Closed         | Band overlap: 0,02 eV. Edges: CB₃ and VB₂.        |
 | Empty field               | —              | Enter both band-edge offsets.                     |
 
 For two VBs and one CB, check the symmetric case by changing the upper VB. For three CBs or three VBs, the row shows **Undetermined** and identifies the missing band type. All states apply to S, S + ρ, and S + ρ + R_H, including when the only permitted Kane band is present. The mockup check covers display of the row; calculated S, ρ, and R_H are checked separately.

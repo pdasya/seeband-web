@@ -151,7 +151,7 @@
             <section id="sb-p17-current-run" aria-label="Results mass preview">
               <h4>Results · Draft / illustrative</h4>
               <p>
-                Band 1 · Single-valley DOS mass: 0.5 mₑ.<br />
+                Band 1 · Single-valley DOS mass: 0,5 mₑ.<br />
                 DOS mass (all equivalent valleys): 2 mₑ · N = 8.
               </p>
               <p class="note">
@@ -169,8 +169,8 @@
                 Original saved value · preserved historical N = 8.
               </p>
               <p>
-                Single-valley DOS mass: 0.5 mₑ · derived for display.<br />
-                2 mₑ ÷ 8<sup>2/3</sup> = 0.5 mₑ.
+                Single-valley DOS mass: 0,5 mₑ · derived for display.<br />
+                2 mₑ ÷ 8<sup>2/3</sup> = 0,5 mₑ.
               </p>
               <p class="note">
                 Derived from the original DOS mass and that run’s saved valley
@@ -193,10 +193,10 @@
                 data, independent of current values and locks.
               </p>
               <p>
-                For VB at 0 eV, CB at 0.02 eV and VB at −0.12 eV, any E<sub
+                For VB at 0 eV, CB at 0,02 eV and VB at −0,12 eV, any E<sub
                   >F</sub
                 >
-                from 0 to 0.02 eV reproduces the same curve.
+                from 0 to 0,02 eV reproduces the same curve.
               </p>
               <p>
                 Several values of a free parameter reproduce the data equally
@@ -682,6 +682,32 @@
       (() => {
         const root = document.getElementById("sb-desktop-parameters");
         const el = (s) => root.querySelector(s);
+        // Same display/entry convention as apps/web/src/lib/numbers.ts.
+        const canonical = (value) =>
+          String(value).replaceAll(",", ".").replace("−", "-");
+        const shown = (value) => String(value).replaceAll(".", ",");
+        const number = (value) => {
+          const text = canonical(value).trim();
+          return /^[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?$/.test(text)
+            ? Number(text)
+            : NaN;
+        };
+        const integer = (value) =>
+          /^\d+$/.test(String(value)) &&
+          Number.isSafeInteger(Number(value)) &&
+          Number(value) > 0;
+        function decimalInput(input) {
+          input.type = "text";
+          input.inputMode = "decimal";
+          input.dataset.number = "";
+          input.addEventListener("input", () => {
+            const start = input.selectionStart,
+              end = input.selectionEnd;
+            input.value = shown(input.value);
+            input.setSelectionRange(start, end);
+          });
+        }
+
         const add = el("#sb-add"),
           remove = el("#sb-remove"),
           scatter = el("#sb-scatter"),
@@ -748,11 +774,11 @@
             .filter((r) => r.id.startsWith("gap"))
             .map((r) => {
               const input = el(
-                '[data-field="' + r.id + '"] input[type=number]',
+                '[data-field="' + r.id + '"] input[data-number]',
               );
               return {
                 id: r.id,
-                value: input.value,
+                value: canonical(input.value),
                 held: held.has(stateKey(r)),
               };
             });
@@ -1014,7 +1040,13 @@
             : fallback;
         }
         function signedValue(value, sign) {
-          return value === "" || sign === 1 ? value : String(-Number(value));
+          if (sign === -1 && (value === "+" || value === "-"))
+            return value === "+" ? "-" : "+";
+          return value === "" || sign === 1
+            ? canonical(value)
+            : canonical(value).startsWith("-")
+              ? canonical(value).slice(1)
+              : "-" + canonical(value).replace(/^\+/, "");
         }
         function save() {
           window.openai
@@ -1045,8 +1077,8 @@
           if (!output) return;
           const massInput = el("#sb-p-mass");
           const valleyInput = el("#sb-valleys input");
-          const count = Number(valleyInput.value);
-          const single = Number(massInput.value);
+          const count = number(valleyInput.value);
+          const single = number(massInput.value);
           output.hidden = valleyInput.value !== "" && count === 1;
           const valid =
             massInput.value !== "" &&
@@ -1061,7 +1093,7 @@
           output.textContent =
             "DOS mass (all equivalent valleys): " +
             (valid && Number.isFinite(total)
-              ? Number(total.toPrecision(8)) + " mₑ"
+              ? shown(Number(total.toPrecision(8))) + " mₑ"
               : "— · Enter a positive mass and a valid valley count.");
         }
         root.addEventListener("input", updateDosMass);
@@ -1101,31 +1133,99 @@
             const label = document.createElement("label");
             label.textContent = title;
             const input = document.createElement("input");
-            input.type = "number";
-            input.min = id.startsWith("N") ? "1" : "0.001";
-            input.step = id.startsWith("N") ? "1" : "any";
+            decimalInput(input);
+            const isValley = id.startsWith("N");
+            if (isValley) {
+              input.inputMode = "numeric";
+              input.pattern = "[0-9]+";
+              input.required = true;
+            }
             const key = stateKey({ id });
-            input.value = values.get(key) ?? start;
+            if (!values.has(key)) values.set(key, String(start));
+            const stored = values.get(key);
+            input.value = isValley
+              ? integer(stored)
+                ? stored
+                : ""
+              : shown(stored);
+            if (isValley && !integer(stored)) values.set(key, "");
+            let rejectedSequence = false;
             const validate = () => {
-              if (id.startsWith("N")) {
-                const valid =
-                  input.value !== "" &&
-                  Number.isSafeInteger(Number(input.value)) &&
-                  Number(input.value) > 0;
-                input.setCustomValidity(
-                  valid ? "" : "Enter a positive integer valley count.",
-                );
-                input.setAttribute("aria-invalid", String(!valid));
-              }
+              const valid = isValley
+                ? integer(input.value)
+                : number(input.value) >= 0.001;
+              input.setCustomValidity(
+                valid
+                  ? ""
+                  : isValley
+                    ? "Enter a positive integer valley count."
+                    : "Enter a positive temperature.",
+              );
+              input.setAttribute("aria-invalid", String(!valid));
+              return valid;
             };
-            validate();
-            input.oninput = validate;
-            input.onchange = () => {
+            const rejectInteger = () => {
+              input.value = "";
+              values.set(key, "");
+              rejectedSequence = true;
+              if (replayRunning)
+                stopReplay("Cancelled · starting values retained");
               validate();
-              if (input.value && input.checkValidity()) {
-                values.set(key, input.value);
-                save();
-              } else input.reportValidity();
+              save();
+              updateDosMass();
+            };
+            if (isValley) {
+              input.addEventListener("focus", () => {
+                rejectedSequence = false;
+              });
+              input.addEventListener("keydown", (event) => {
+                if (["Backspace", "Delete"].includes(event.key))
+                  rejectedSequence = false;
+              });
+              input.addEventListener("beforeinput", (event) => {
+                if (event.inputType?.startsWith("delete")) {
+                  rejectedSequence = false;
+                  return;
+                }
+                if (
+                  event.data != null &&
+                  (!/^\d*$/.test(event.data) || rejectedSequence)
+                ) {
+                  event.preventDefault();
+                  rejectInteger();
+                }
+              });
+              for (const eventName of ["paste", "drop"])
+                input.addEventListener(eventName, (event) => {
+                  const text =
+                    (event.clipboardData ?? event.dataTransfer)?.getData(
+                      "text/plain",
+                    ) ?? "";
+                  event.preventDefault();
+                  if (!integer(text)) {
+                    rejectInteger();
+                    return;
+                  }
+                  rejectedSequence = false;
+                  input.value = text;
+                  input.dispatchEvent(new Event("input", { bubbles: true }));
+                });
+            }
+            validate();
+            input.oninput = () => {
+              if (
+                isValley &&
+                input.value !== "" &&
+                (rejectedSequence || !integer(input.value))
+              )
+                rejectInteger();
+              validate();
+              values.set(key, canonical(input.value));
+              save();
+            };
+            input.onchange = () => {
+              input.oninput();
+              if (!input.checkValidity()) input.reportValidity();
             };
             label.append(input);
             (id.startsWith("N") ? valleys : temperatures).append(label);
@@ -1258,11 +1358,15 @@
                 (_, j) =>
                   replayPreview?.[j] ??
                   list.querySelector(
-                    '[data-field="gap' + (j + 1) + '"] input[type=number]',
+                    '[data-field="gap' + (j + 1) + '"] input[data-number]',
                   )?.value,
               ),
             ];
-            if (energies.slice(1).some((x) => x === undefined || x === "")) {
+            if (
+              energies
+                .slice(1)
+                .some((x) => x === undefined || !Number.isFinite(number(x)))
+            ) {
               if (n === 3) {
                 value.textContent = "—";
                 origin.textContent = "Enter both band-edge offsets.";
@@ -1270,7 +1374,7 @@
               return;
             }
             const sign = n === 2 && types[0] % 2 === 1 ? -1 : 1;
-            const offsets = energies.map((x) => sign * Number(x));
+            const offsets = energies.map((x) => sign * number(x));
             const cb = offsets.filter((_, i) => types[i] % 2 === 1),
               vb = offsets.filter((_, i) => types[i] % 2 === 0);
             const ec = Math.min(...cb),
@@ -1290,25 +1394,26 @@
             replayGap.textContent =
               d < 0
                 ? "Closed · overlap " +
-                  Number(Math.abs(d).toPrecision(8)) +
+                  shown(Number(Math.abs(d).toPrecision(8))) +
                   " eV"
-                : Number(d.toPrecision(8)) + " eV";
+                : shown(Number(d.toPrecision(8))) + " eV";
             const ef = list.querySelector(
-              '[data-field="ef"] input[type=number]',
+              '[data-field="ef"] input[data-number]',
             )?.value;
             inGapNote.hidden = !(
               selectedMode === 0 &&
               offsets.every(Number.isFinite) &&
               ef !== undefined &&
               ef !== "" &&
-              Number.isFinite(Number(ef)) &&
+              Number.isFinite(number(ef)) &&
               d > 0 &&
-              Number(ef) >= ev &&
-              Number(ef) <= ec
+              number(ef) >= ev &&
+              number(ef) <= ec
             );
             if (n === 3) {
               const pair = replayPair;
-              const magnitude = Number(Math.abs(d).toPrecision(8)) + " eV";
+              const magnitude =
+                shown(Number(Math.abs(d).toPrecision(8))) + " eV";
               value.textContent = d < 0 ? "Closed" : magnitude;
               origin.textContent =
                 (d < 0
@@ -1363,7 +1468,7 @@
             summary.innerHTML =
               (d < 0 ? "Band overlap" : gapSymbol) +
               " = " +
-              Number(Math.abs(d).toPrecision(8)) +
+              shown(Number(Math.abs(d).toPrecision(8))) +
               " eV";
           }
           root
@@ -1434,7 +1539,7 @@
               icon("info", "ⓘ") +
               '</button><button type="button" class="lock"></button><input id="sb-p-' +
               r.id +
-              '" type="number" step="any"><span class="unit">' +
+              '" type="text" inputmode="decimal" data-number><span class="unit">' +
               unitText +
               '</span></div><div id="' +
               captionId +
@@ -1483,28 +1588,39 @@
               field.append(output);
             }
             const input = field.querySelector("input");
+            decimalInput(input);
             if (r.min !== undefined) input.min = r.min;
-            input.value = signedValue(values.get(key) ?? r.initial, sign);
+            input.value = shown(
+              signedValue(values.get(key) ?? r.initial, sign),
+            );
             input.placeholder = "Enter value";
             input.oninput = () => {
+              const numeric = number(input.value);
               input.setCustomValidity(
                 input.value !== "" &&
-                  Number(input.value) === 0 &&
-                  [
-                    "mass",
-                    "massRatio1",
-                    "massRatio2",
-                    "scale",
-                    "ratio1",
-                    "ratio2",
-                    "amplitude0",
-                    "amplitude1",
-                    "amplitude2",
-                  ].includes(r.id)
-                  ? "Enter a positive value."
-                  : "",
+                  (!Number.isFinite(numeric) ||
+                    (r.min !== undefined && numeric < r.min))
+                  ? "Enter a valid number within the allowed range."
+                  : input.value !== "" &&
+                      numeric === 0 &&
+                      [
+                        "mass",
+                        "massRatio1",
+                        "massRatio2",
+                        "scale",
+                        "ratio1",
+                        "ratio2",
+                        "amplitude0",
+                        "amplitude1",
+                        "amplitude2",
+                      ].includes(r.id)
+                    ? "Enter a positive value."
+                    : "",
               );
+              values.set(key, signedValue(input.value, sign));
+              save();
             };
+            input.oninput();
             if (r.id.startsWith("gap") || r.id === "ef")
               input.addEventListener("input", updateGap);
             const storedBounds = limits.get(key) ?? ["", ""];
@@ -1526,19 +1642,19 @@
               slider.hidden =
                 pair.some((x) => x === "") ||
                 Number(pair[0]) >= Number(pair[1]) ||
-                input.value === "" ||
-                +input.value < +pair[0] ||
-                +input.value > +pair[1];
+                !Number.isFinite(number(input.value)) ||
+                number(input.value) < number(pair[0]) ||
+                number(input.value) > number(pair[1]);
               if (!slider.hidden) {
                 slider.min = pair[0];
                 slider.max = pair[1];
-                slider.value = input.value;
+                slider.value = canonical(input.value);
               }
             }
             field.append(slider);
             syncSlider();
             slider.oninput = () => {
-              input.value = slider.value;
+              input.value = shown(slider.value);
               input.oninput();
               values.set(key, signedValue(input.value, sign));
               if (r.id.startsWith("gap") || r.id === "ef") updateGap();
@@ -1559,13 +1675,22 @@
                 const label = document.createElement("label");
                 label.textContent = name;
                 const limit = document.createElement("input");
-                limit.type = "number";
-                limit.step = "any";
-                limit.value = pair[j];
-                limit.oninput = () => limit.setCustomValidity("");
+                decimalInput(limit);
+                limit.value = shown(pair[j]);
+                limit.oninput = () =>
+                  limit.setCustomValidity(
+                    limit.value === "" || Number.isFinite(number(limit.value))
+                      ? ""
+                      : "Enter a valid number.",
+                  );
                 limit.onchange = () => {
                   const next = [...pair];
-                  next[j] = limit.value;
+                  limit.oninput();
+                  if (!limit.checkValidity()) {
+                    limit.reportValidity();
+                    return;
+                  }
+                  next[j] = canonical(limit.value);
                   if (
                     next.every((x) => x !== "") &&
                     Number(next[0]) >= Number(next[1])
@@ -1576,7 +1701,7 @@
                     limit.reportValidity();
                     return;
                   }
-                  pair[j] = limit.value;
+                  pair[j] = canonical(limit.value);
                   limits.set(
                     key,
                     sign === 1
@@ -1768,10 +1893,22 @@
             for (const [key, value] of Object.entries(source.values ?? {}))
               if (
                 activeKey(key) &&
-                typeof value === "string" &&
-                Number.isFinite(Number(value))
-              )
-                values.set(key, value);
+                (key.endsWith("/valleys") ||
+                  (typeof value === "string" &&
+                    (value === "" ||
+                      /^[+-]?(\d*([.,]\d*)?)([eE][+-]?\d*)?$/.test(value))))
+              ) {
+                if (key.endsWith("/valleys") && !integer(value)) {
+                  legacyState = {
+                    ...legacyState,
+                    invalidValleys: {
+                      ...legacyState?.invalidValleys,
+                      [key]: value,
+                    },
+                  };
+                  values.set(key, "");
+                } else values.set(key, canonical(value));
+              }
             for (const [key, pair] of Object.entries(source.limits ?? {}))
               if (
                 activeKey(key) &&
@@ -1779,10 +1916,19 @@
                 pair.length === 2 &&
                 pair.every(
                   (value) =>
-                    typeof value === "string" && Number.isFinite(Number(value)),
+                    typeof value === "string" &&
+                    (value === "" || Number.isFinite(number(value))),
                 )
               )
-                limits.set(key, [...pair]);
+                limits.set(key, pair.map(canonical));
+            // A saved editor must restore missing required counts as missing.
+            // Layout-only presets (without a values map) start fresh instead.
+            if (p.values && typeof p.values === "object") {
+              for (let i = 0; i < n; i++) {
+                const key = stateKey({ id: "N" + i });
+                if (!values.has(key)) values.set(key, "");
+              }
+            }
             editBounds = p.editBounds === true;
             page = p.page === "guide" ? "guide" : "fit";
           }

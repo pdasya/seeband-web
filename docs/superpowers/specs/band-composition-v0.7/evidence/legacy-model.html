@@ -66,14 +66,14 @@
                   >Min<input
                     data-temp="low"
                     aria-label="Lower fit temperature, K"
-                    type="number"
-                    step="any" /></label
+                    type="text"
+                    inputmode="decimal" /></label
                 ><label
                   >Max<input
                     data-temp="high"
                     aria-label="Upper fit temperature, K"
-                    type="number"
-                    step="any"
+                    type="text"
+                    inputmode="decimal"
                 /></label>
               </div>
               <small data-error hidden></small>
@@ -434,7 +434,7 @@
           bands = s.bands.map((b) => ({
             ...fresh(b.type),
             shape: b.shape,
-            n: Number.isFinite(b.n) && b.n > 0 ? b.n : 1,
+            n: Number.isSafeInteger(b.n) && b.n > 0 ? b.n : null,
           }));
           if (modeIds.includes(s.mode)) mode = s.mode;
           if (laws.includes(s.scattering)) scattering = s.scattering;
@@ -542,17 +542,17 @@
               (b, i) =>
                 "<label>N" +
                 subs[i] +
-                '<input type="number" step="any" aria-label="N' +
+                '<input type="text" inputmode="numeric" pattern="[0-9]+" required aria-label="N' +
                 subs[i] +
                 '" data-n="' +
                 i +
                 '" value="' +
-                b.n +
+                (b.n ?? "") +
                 '"></label>',
             )
             .join("");
-          q("[data-temp=low]").value = low;
-          q("[data-temp=high]").value = high;
+          q("[data-temp=low]").value = String(low).replace(".", ",");
+          q("[data-temp=high]").value = String(high).replace(".", ",");
           q("[data-temp=low]").removeAttribute("aria-invalid");
           q("[data-temp=high]").removeAttribute("aria-invalid");
           q("[data-error]").hidden = true;
@@ -591,6 +591,55 @@
             rows.lastElementChild.querySelector("button").focus();
           else if (b === remove && remove.hidden) add.focus();
         });
+        function setCount(field, raw) {
+          const count = Number(raw);
+          const valid =
+            /^[0-9]+$/.test(raw) && Number.isSafeInteger(count) && count > 0;
+          bands[Number(field.dataset.n)].n = valid ? count : null;
+          field.value = valid ? raw : "";
+          field.setCustomValidity(
+            valid ? "" : "Enter a positive integer valley count.",
+          );
+          save();
+        }
+        ns.addEventListener("beforeinput", (e) => {
+          const field = e.target;
+          if (!field.matches("input[data-n]")) return;
+          if (e.inputType?.startsWith("delete")) delete field.dataset.rejected;
+          if (
+            e.data != null &&
+            (field.dataset.rejected || !/^[0-9]+$/.test(e.data))
+          ) {
+            e.preventDefault();
+            field.dataset.rejected = "true";
+            setCount(field, "");
+          }
+        });
+        ns.addEventListener("focusin", (e) => delete e.target.dataset.rejected);
+        ns.addEventListener("keydown", (e) => {
+          if (["Backspace", "Delete"].includes(e.key))
+            delete e.target.dataset.rejected;
+        });
+        for (const event of ["paste", "drop"])
+          ns.addEventListener(event, (e) => {
+            if (!e.target.matches("input[data-n]")) return;
+            e.preventDefault();
+            const raw = (e.clipboardData ?? e.dataTransfer).getData(
+              "text/plain",
+            );
+            delete e.target.dataset.rejected;
+            setCount(e.target, raw);
+          });
+        ns.addEventListener("input", (e) => {
+          const field = e.target;
+          if (!field.matches("input[data-n]")) return;
+          if (/[^0-9]/.test(field.value)) field.dataset.rejected = "true";
+          setCount(field, field.dataset.rejected ? "" : field.value);
+        });
+        root.addEventListener("input", (e) => {
+          if (e.target.hasAttribute("data-temp"))
+            e.target.value = e.target.value.replace(".", ",");
+        });
         root.addEventListener("change", (e) => {
           const field = e.target;
           if (field.hasAttribute("data-scattering")) {
@@ -604,20 +653,19 @@
             scattering = field.value;
             render();
           } else if (field.hasAttribute("data-n")) {
-            const n = field.valueAsNumber;
-            field.setCustomValidity(
-              Number.isFinite(n) && n > 0 ? "" : "Enter a positive degeneracy.",
-            );
-            if (!field.checkValidity()) {
-              field.reportValidity();
-              return;
-            }
-            bands[Number(field.dataset.n)].n = n;
+            setCount(field, field.dataset.rejected ? "" : field.value);
+            return;
           } else if (field.hasAttribute("data-temp")) {
             const lo = q("[data-temp=low]"),
               hi = q("[data-temp=high]");
-            const a = lo.valueAsNumber,
-              b = hi.valueAsNumber;
+            const read = (field) => {
+              const raw = field.value.replace(",", ".");
+              return /^\d+(?:\.\d+)?(?:e[+-]?\d+)?$/i.test(raw)
+                ? Number(raw)
+                : NaN;
+            };
+            const a = read(lo),
+              b = read(hi);
             const ok =
               Number.isFinite(a) && Number.isFinite(b) && a > 0 && a < b;
             const error = q("[data-error]");

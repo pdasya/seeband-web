@@ -1,0 +1,1 @@
+6 design references: 42 invalid valley inputs rejected; N=2 accepted by all.

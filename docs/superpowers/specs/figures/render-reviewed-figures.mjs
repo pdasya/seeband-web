@@ -21,7 +21,7 @@ try {
   const kRefPerNanometre = 10;
   assert.equal(kRefPerAngstrom * 10, kRefPerNanometre);
   // The earlier sketch used reciprocal angstroms; k_ref = 1 Å⁻¹ preserves
-  // its numerical ticks and geometry. A reciprocal-nm coordinate divides by 10.
+  // its geometry. A reciprocal-nm coordinate divides by 10.
   assert.equal(0.6 / kRefPerNanometre, 0.06);
   const panels = [144, 867]
     .map((left, panel) => {
@@ -39,10 +39,9 @@ try {
       return `<text x="${left}" y="78" font-size="30" font-weight="700">${panel ? "(b) 20 meV gap" : "(a) Touching band edges"}</text>
       <path d="M${left},90 V450 H${left + 624}" fill="none" stroke="#a8b2c2" stroke-width="1.7"/>
       ${[100, 0, -100].map((e) => `<path d="M${left - 8},${y(e)}h8" stroke="black" stroke-width="1.5"/>${panel ? "" : `<text x="${left - 15}" y="${y(e) + 8}" text-anchor="end">${e < 0 ? "−" + -e : e}</text>`}`).join("")}
-      ${[-0.06, 0, 0.06].map((k) => `<path d="M${cx + (k / 0.085) * 283},450v8" stroke="black" stroke-width="1.5"/><text x="${cx + (k / 0.085) * 283}" y="483" text-anchor="middle">${k < 0 ? "−0.06" : k === 0 ? "0.00" : "0.06"}</text>`).join("")}
       ${curve(0.7, -1, 0, "#255fbc")}${curve(0.4, 1, panel ? 20 : 0, "#bd4500")}${curve(0.9, -1, -120, "#00877d")}
       <path d="M${left},${y(panel ? 10 : 0)}h624" stroke="#293244" stroke-width="2.8" stroke-dasharray="11 9"/>
-      <text x="${cx}" y="521" text-anchor="middle" font-style="italic">k <tspan font-style="normal">(dimensionless)</tspan></text>`;
+      <g data-axis="k"><text x="${cx}" y="495" text-anchor="middle" font-style="italic">k <tspan font-style="normal">(dimensionless)</tspan></text></g>`;
     })
     .join("");
   await page.setViewportSize({ width: 1520, height: 608 });
@@ -53,6 +52,25 @@ try {
     <path d="M785,574h50" stroke="#00877d" stroke-width="5.5"/><text x="850" y="582">3 · VB</text>
     <path d="M960,574h50" stroke="#293244" stroke-width="2.8" stroke-dasharray="11 9"/><text x="1025" y="582" font-style="italic">E<tspan baseline-shift="sub" font-size="17">F</tspan></text>
     </svg><style>body{margin:0}</style>`);
+  const horizontalLabels = await page
+    .locator('g[data-axis="k"] text')
+    .allTextContents();
+  assert.deepEqual(horizontalLabels, [
+    "k (dimensionless)",
+    "k (dimensionless)",
+  ]);
+  const numbersBelowPlots = await page
+    .locator("svg text[y]")
+    .evaluateAll(
+      (nodes) =>
+        nodes.filter(
+          (el) =>
+            Number(el.getAttribute("y")) >= 450 &&
+            Number(el.getAttribute("y")) < 550 &&
+            /[0-9]/.test(el.textContent),
+        ).length,
+    );
+  assert.equal(numbersBelowPlots, 0);
   await page.locator("svg").screenshot({
     path: path.join(directory, "three-band-edges.png"),
     scale: "css",
@@ -99,7 +117,7 @@ try {
     await page.getByRole("button", { name: "Guide", exact: true }).click();
     await capture("parameters-guide-matrix.png");
     await restore({ n: 3, types: [1, 0, 1], mechanism: "ac", selectedMode: 2 });
-    assert.equal(await page.locator("#sb-gap-value").innerText(), "0.09 eV");
+    assert.equal(await page.locator("#sb-gap-value").innerText(), "0,09 eV");
     await capture("three-band-gap-parameters.png");
   }
 } finally {

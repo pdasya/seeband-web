@@ -22,6 +22,8 @@ so R_H=[1/(sigma*Tesla)]=m^3/C. The dimensionless Hall factor is q*n*R_H.
 import math
 import platform
 
+from verify_band_composition_design import require_valley_count
+
 E_C = 1.602176634e-19
 KB_J_K = 1.380649e-23
 HBAR_J_S = 1.054571817e-34
@@ -56,6 +58,7 @@ def fd(order, eta, panels=1600, tail=50.0):
 
 
 def closed(eta, temperature_k, sign, mass_me, valleys, law, panels=1600, tail=50.0):
+    require_valley_count(valleys)
     lam, t = LAWS[law]
     mass, q = mass_me * ME_KG, -sign * E_C
     thermal = KB_J_K * temperature_k
@@ -79,6 +82,7 @@ def closed(eta, temperature_k, sign, mass_me, valleys, law, panels=1600, tail=50
 
 def momentum(eta, temperature_k, sign, mass_me, valleys, law, panels=1600, tail=50.0):
     """Direct k-space formulation; no FD integral or integration by parts."""
+    require_valley_count(valleys)
     lam, t = LAWS[law]
     mass, q = mass_me * ME_KG, -sign * E_C
     thermal = KB_J_K * temperature_k

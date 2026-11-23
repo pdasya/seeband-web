@@ -7,7 +7,15 @@
       "unit": "1",
       "definition": "(k_phys - k_edge) / k_ref along the plotted direction",
       "reference_per_m": 10000000000,
+      "show_numeric_ticks": false,
       "scope": "One fixed display scale for every band and temperature. Transport uses physical wavevectors."
+    },
+    "numeric_display": {
+      "decimal_separator": ",",
+      "grouping": false,
+      "example_ev": "0,09 eV",
+      "persistence": "JSON numbers and canonical numeric strings use a decimal point.",
+      "valley_count": "ASCII decimal digits forming a positive safe integer. Reject fractional input in full. Restore an invalid or missing count as unset and require explicit correction."
     },
     "three_band_gap": {
       "design_status": "accepted",
@@ -187,7 +195,7 @@
       "legacy_or_tdd": "N_i",
       "label_en": "Valley degeneracy · Band {i}",
       "display_unit": "1",
-      "tooltip_en": "Positive integer number of equivalent valleys in this band. Spin is counted separately. Invalid imported values remain preserved and are rejected for fit replay until corrected.",
+      "tooltip_en": "Positive integer number of equivalent valleys in this band. Spin is counted separately. An invalid imported count leaves this input empty and blocks replay until the researcher supplies an integer.",
       "definition": "N_i"
     },
     {

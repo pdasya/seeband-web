@@ -443,7 +443,7 @@
         "legacy_fractional": "preserve history, block new replay",
         "scope": "proposed labels and UI; scattering laws unchanged"
       },
-      "output_sha256": "9d5ec517d32c2eb5b88d10ca6ec9efd6fee636929db9ae112ffeea0481d5299c",
+      "output_sha256": "33c6236760fd613c0b37958d4f3601c717e95f326f4595ee10b830c7f9376d70",
       "replay_status": "reproduced_from_pr",
       "regression": {
         "pre_fix_revision": "4e4526c6821d6bf7a06630962b3a7d1bea038acc",
@@ -477,7 +477,23 @@
           "expanded content within 320 px",
           "draft values, bounds and holds preserved"
         ]
+      },
+      "item_13": {
+        "decimal_separator": ",",
+        "tested_locales": ["en-US", "de-DE"],
+        "numeric_k_ticks": false,
+        "valley_input": "digits only; reject fractional edits, paste, drop and imports; require missing counts before replay"
       }
+    },
+    {
+      "id": "VALLEY-INPUTS",
+      "scope": "design reference calculations",
+      "status": "passed",
+      "cwd": "REPO",
+      "command": "PYTHONPATH=scripts .venv/bin/python docs/superpowers/specs/band-composition-v0.7/evidence/verify_valley_counts.py",
+      "output": "evidence/valley-inputs.txt",
+      "output_sha256": "94b9cba470982683b29e0aab2327739fd146a701d610ebe6a54f870df3e4ebbd",
+      "replay_status": "reproduced_from_pr"
     }
   ],
   "parameter_notation": "../band-parameter-labels.json",

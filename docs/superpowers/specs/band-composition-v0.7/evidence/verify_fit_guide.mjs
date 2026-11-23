@@ -85,7 +85,7 @@ for (const n of [1, 2, 3])
             assert.equal(r.querySelector(".field-caption").hidden, true);
             assert.ok(r.querySelector(".help").getAttribute("aria-controls"));
             assert.ok(!/^[A-G]$/.test(r.querySelector("label").textContent));
-            assert.ok(!r.querySelector("input[type=number]").disabled);
+            assert.ok(!r.querySelector("input[data-number]").disabled);
           }
           assert.deepEqual(actual, states(n, k, mechanism, selectedMode));
           assert.equal(one("[data-field=ef] label").textContent, "EF");
@@ -103,14 +103,21 @@ restore({ n: 2, types: [0, 1, 0], mechanism: "mix", selectedMode: 2 });
 const field = (id, s) => one("[data-field=" + id + "] " + s);
 const mode = (i) => one('[data-mode="' + i + '"]').click();
 const set = (input, v) => {
+  input.dispatchEvent(
+    new w.InputEvent("beforeinput", {
+      bubbles: true,
+      inputType: "deleteContentBackward",
+    }),
+  );
   input.value = v;
+  input.dispatchEvent(new w.Event("input", { bubbles: true }));
   input.dispatchEvent(new w.Event("change"));
 };
 field("scale", ".help").click();
 assert.equal(field("scale", ".field-caption").hidden, false);
 field("mass", ".lock").click();
 assert.equal(field("mass", ".lock").getAttribute("aria-pressed"), "true");
-set(field("mass", "input"), "2.5");
+set(field("mass", "input"), "2,5");
 mode(0);
 assert.equal(field("mass", ".lock").disabled, true);
 set(field("mass", "input"), "3");
@@ -174,20 +181,25 @@ for (const t of [
 ]) {
   restore({ n: 2, types: t, mechanism: "ac", selectedMode: 1 });
   assert.equal(field("gap1", "label").textContent, "Eg");
-  assert.equal(field("gap1", "input").value, "0.09");
+  assert.equal(field("gap1", "input").value, "0,09");
   one("#sb-bounds").click();
-  set(field("gap1", ".limits label:first-child input"), "-0.2");
-  set(field("gap1", ".limits label:last-child input"), "0.4");
-  set(field("gap1", "input"), "-0.03");
-  assert.equal(one("#sb-gap-readout").textContent, "Band overlap = 0.03 eV");
+  set(field("gap1", ".limits label:first-child input"), "-0,2");
+  set(field("gap1", ".limits label:last-child input"), "0,4");
+  set(field("gap1", "input"), "-0,03");
+  assert.equal(one("#sb-gap-readout").textContent, "Band overlap = 0,03 eV");
   mode(2);
-  assert.equal(field("gap1", "input").value, "-0.03");
-  assert.equal(field("gap1", ".limits label:first-child input").value, "-0.2");
+  assert.equal(field("gap1", "input").value, "-0,03");
+  assert.equal(field("gap1", ".limits label:first-child input").value, "-0,2");
   field("gap1", ".lock").click();
   one("#sb-add").click();
-  assert.equal(+field("gap1", "input").value, t[0] % 2 ? 0.03 : -0.03);
   assert.equal(
-    +field("gap1", ".limits label:first-child input").value,
+    Number(field("gap1", "input").value.replace(",", ".")),
+    t[0] % 2 ? 0.03 : -0.03,
+  );
+  assert.equal(
+    Number(
+      field("gap1", ".limits label:first-child input").value.replace(",", "."),
+    ),
     t[0] % 2 ? -0.4 : -0.2,
   );
   one("#sb-remove").click();
@@ -196,9 +208,9 @@ for (const t of [
   assert.equal(field("gap1", "label").textContent, "Eg");
 }
 restore({ n: 3, types: [0, 1, 1], mechanism: "ac", selectedMode: 0 });
-set(field("gap1", "input"), "0.1");
-set(field("gap2", "input"), "0.035");
-assert.equal(one("#sb-gap-value").textContent, "0.035 eV");
+set(field("gap1", "input"), "0,1");
+set(field("gap2", "input"), "0,035");
+assert.equal(one("#sb-gap-value").textContent, "0,035 eV");
 restore({ n: 3, types: [1, 1, 1], mechanism: "ac", selectedMode: 2 });
 assert.ok(one("#sb-gap-readout").hidden);
 assert.ok(!all(".field label").some((l) => l.textContent === "Eg"));
@@ -212,9 +224,9 @@ for (const shape of [
     const v = shape[0] % 2 === 1 ? -1 : 1;
     set(field("gap1", "input"), String(v * 0.09));
     set(field("gap2", "input"), String(-v * 0.08));
-    assert.equal(one("#sb-gap-value").textContent, "0.09 eV");
+    assert.equal(one("#sb-gap-value").textContent, "0,09 eV");
     set(field("gap2", "input"), String(v * 0.04));
-    assert.equal(one("#sb-gap-value").textContent, "0.05 eV");
+    assert.equal(one("#sb-gap-value").textContent, "0,05 eV");
     assert.ok(
       one("#sb-gap-origin").textContent.includes("₃"),
       JSON.stringify([shape, m, one("#sb-gap-origin").textContent]),
@@ -225,7 +237,7 @@ for (const shape of [
     assert.equal(one("#sb-gap-value").textContent, "0 eV");
     set(field("gap2", "input"), String(v * 0.11));
     assert.equal(one("#sb-gap-value").textContent, "Closed");
-    assert.match(one("#sb-gap-origin").textContent, /0.02 eV/);
+    assert.match(one("#sb-gap-origin").textContent, /0,02 eV/);
     set(field("gap2", "input"), "");
     assert.equal(one("#sb-gap-value").textContent, "—");
   }
@@ -241,7 +253,14 @@ function verifyBandTransitions(w) {
   const field = (id, selector) => one('[data-field="' + id + '"] ' + selector);
   const mode = (i) => one('[data-mode="' + i + '"]').click();
   const set = (input, value) => {
+    input.dispatchEvent(
+      new w.InputEvent("beforeinput", {
+        bubbles: true,
+        inputType: "deleteContentBackward",
+      }),
+    );
     input.value = value;
+    input.dispatchEvent(new w.Event("input", { bubbles: true }));
     input.dispatchEvent(new w.Event("change"));
   };
   const equal = (actual, expected, message = "DOM state matches") => {
@@ -284,9 +303,13 @@ function verifyBandTransitions(w) {
   };
   const expectField = (id, value, low, high, locked = true, forced = false) => {
     ok(field(id, "input"), id + " is visible");
-    equal(+field(id, "input").value, value, id + " value survives transition");
     equal(
-      bounds(id).map((input) => +input.value),
+      Number(field(id, "input").value.replace(",", ".")),
+      value,
+      id + " value survives transition",
+    );
+    equal(
+      bounds(id).map((input) => Number(input.value.replace(",", "."))),
       [low, high],
       id + " bounds survive transition",
     );
@@ -477,9 +500,16 @@ function verifyIdentifiability(w, copy) {
       }),
     );
   const mode = (i) => one('[data-mode="' + i + '"]').click();
-  const field = (id) => one('[data-field="' + id + '"] input[type=number]');
+  const field = (id) => one('[data-field="' + id + '"] input[data-number]');
   const set = (input, value) => {
+    input.dispatchEvent(
+      new w.InputEvent("beforeinput", {
+        bubbles: true,
+        inputType: "deleteContentBackward",
+      }),
+    );
     input.value = value;
+    input.dispatchEvent(new w.Event("input", { bubbles: true }));
     input.dispatchEvent(new w.Event("change"));
   };
   const cautionText =
@@ -535,9 +565,9 @@ function verifyIdentifiability(w, copy) {
           }
   equal(count, 270, "All allowed configurations checked");
   restore({ n: 3, types: [0, 1, 0], mechanism: "ac", selectedMode: 0 });
-  set(field("ef"), "0.011");
-  set(field("gap1"), "0.09");
-  set(field("mass"), "2.8");
+  set(field("ef"), "0,011");
+  set(field("gap1"), "0,09");
+  set(field("mass"), "2,8");
   one('[data-field="gap1"] .lock').click();
   one("#sb-bounds").click();
   const fieldState = () =>
@@ -597,9 +627,9 @@ function verifyIdentifiability(w, copy) {
     "Result does not claim convergence or parameter confidence",
   );
   equal(
-    /0(?:\.0+)?\s*(?:to|–|—|\.\.|…|−|-)\s*0\.02\s*eV/.test(result.textContent),
+    /0(?:,0+)?\s*(?:to|–|—|\.\.|…|−|-)\s*0,02\s*eV/.test(result.textContent),
     true,
-    "Illustrative EF interval is 0 to 0.02 eV",
+    "Illustrative EF interval is 0 to 0,02 eV",
   );
   equal(
     fieldState(),
@@ -671,33 +701,33 @@ function verifyIdentifiability(w, copy) {
       equal(text(one("#sb-in-gap-note")), cueText, "Conditional in-gap copy");
   };
   restore({ n: 3, types: [0, 1, 0], mechanism: "ac", selectedMode: 0 });
-  set(field("ef"), "0.01");
-  set(field("gap1"), "0.09");
-  set(field("gap2"), "-0.02");
+  set(field("ef"), "0,01");
+  set(field("gap1"), "0,09");
+  set(field("gap2"), "-0,02");
   cue(true, "Positive mixed band gap shows conditional cue");
   set(field("ef"), "0");
   cue(true, "Valence gap endpoint is included");
-  set(field("ef"), "0.09");
+  set(field("ef"), "0,09");
   cue(true, "Conduction gap endpoint is included");
-  set(field("ef"), "0.10");
+  set(field("ef"), "0,10");
   cue(false, "EF outside gap hides cue");
   set(field("ef"), "");
   cue(false, "Missing EF hides cue");
-  set(field("ef"), "0.01");
-  set(field("gap1"), "-0.01");
+  set(field("ef"), "0,01");
+  set(field("gap1"), "-0,01");
   cue(false, "Band overlap hides cue");
   set(field("gap1"), "");
   cue(false, "Missing band edge hides cue");
   restore({ n: 3, types: [0, 0, 0], mechanism: "ac", selectedMode: 0 });
   cue(false, "All conduction bands hide cue");
   restore({ n: 2, types: [0, 1, 0], mechanism: "ac", selectedMode: 0 });
-  set(field("gap1"), "0.09");
-  set(field("ef"), "0.01");
+  set(field("gap1"), "0,09");
+  set(field("ef"), "0,01");
   cue(true, "Signed two-band Eg alias shows cue");
   one('[data-band="0"] [data-choice="CB"]').click();
   one('[data-band="1"] [data-choice="VB"]').click();
-  set(field("gap1"), "0.09");
-  set(field("ef"), "-0.01");
+  set(field("gap1"), "0,09");
+  set(field("ef"), "-0,01");
   cue(true, "Reversed signed edge alias retains physical gap cue");
   mode(1);
   cue(false, "Other fit modes hide conditional cue");
@@ -730,7 +760,14 @@ function verifyMassConvention(w) {
     );
   const set = (selector, value) => {
     const input = one(selector);
+    input.dispatchEvent(
+      new w.InputEvent("beforeinput", {
+        bubbles: true,
+        inputType: "deleteContentBackward",
+      }),
+    );
     input.value = value;
+    input.dispatchEvent(new w.Event("input", { bubbles: true }));
     input.dispatchEvent(new w.Event("change", { bubbles: true }));
   };
   let saved;
@@ -740,13 +777,13 @@ function verifyMassConvention(w) {
       return Promise.resolve();
     },
   };
-  const mass = '[data-field="mass"] input[type=number]';
+  const mass = '[data-field="mass"] input[data-number]';
   const valleys = "#sb-valleys input";
   const output = "#sb-total-dos-mass";
   restore({ n: 2, types: [0, 1, 0], mechanism: "ac", selectedMode: 2 });
   contains('[data-field="mass"] label', "Single-valley DOS mass");
   set(valleys, "8");
-  set(mass, "0.5");
+  set(mass, "0,5");
   equal(one(output)?.hidden, false, "N=8 exposes derived total DOS mass");
   contains(output, "DOS mass (all equivalent valleys): 2 mₑ");
   set(mass, "2");
@@ -772,7 +809,7 @@ function verifyMassConvention(w) {
   );
   set(valleys, "1");
   equal(one(output)?.hidden, true, "N=1 suppresses redundant total DOS mass");
-  for (const invalid of ["0", "1.5", ""]) {
+  for (const invalid of ["0", "1,5", ""]) {
     set(valleys, invalid);
     equal(one(output)?.hidden, false, "Invalid N keeps diagnostic visible");
     contains(output, "—");
@@ -782,19 +819,19 @@ function verifyMassConvention(w) {
     set(mass, invalid);
     contains(output, "—");
   }
-  set(mass, "0.5");
+  set(mass, "0,5");
   contains(output, "2 mₑ");
 
   set(valleys, "6");
-  set(mass, "0.209");
-  const published = /: ([0-9.]+) mₑ/.exec(text(output));
+  set(mass, "0,209");
+  const published = /: ([0-9,]+) mₑ/.exec(text(output));
   equal(
-    Number(published?.[1]).toFixed(3),
+    Number(published?.[1].replace(",", ".")).toFixed(3),
     "0.690",
     "Jacquot Table I, p-Bi2Te3",
   );
   set(valleys, "8");
-  set(mass, "0.5");
+  set(mass, "0,5");
 
   const preview = one("#sb-p17-migration-preview");
   equal(Boolean(preview), true, "P17 migration example exists");
@@ -802,7 +839,7 @@ function verifyMassConvention(w) {
   contains("#sb-p17-current-run", "Single-valley DOS mass");
   contains("#sb-p17-earlier-run", "DOS mass (all equivalent valleys)");
   contains("#sb-p17-earlier-run", "2 mₑ");
-  contains("#sb-p17-earlier-run", "0.5 mₑ");
+  contains("#sb-p17-earlier-run", "0,5 mₑ");
   contains("#sb-p17-earlier-run", "historical N = 8");
   equal(
     /Results/.test(text("#sb-p17-migration-preview")),
@@ -870,8 +907,15 @@ function verifyFitReplay(w) {
       }),
     );
   const edit = (id, value) => {
-    const input = one('[data-field="' + id + '"] input[type=number]');
+    const input = one('[data-field="' + id + '"] input[data-number]');
+    input.dispatchEvent(
+      new w.InputEvent("beforeinput", {
+        bubbles: true,
+        inputType: "deleteContentBackward",
+      }),
+    );
     input.value = value;
+    input.dispatchEvent(new w.Event("input", { bubbles: true }));
     input.dispatchEvent(new w.Event("change", { bubbles: true }));
   };
   const startValues = () =>
@@ -880,33 +924,33 @@ function verifyFitReplay(w) {
   assert.equal(one("#sb-fit-replay").tagName, "DETAILS");
   assert.equal(one("#sb-fit-replay").open, false);
   one("#sb-fit-replay").open = true;
-  edit("gap1", "0.1");
-  edit("gap2", "0.04");
+  edit("gap1", "0,1");
+  edit("gap2", "0,04");
   const starts = startValues();
   assert.match(one("#sb-gap-origin").textContent, /CB₂ and VB₃/);
   assert.match(one("#sb-three-gap strong").title, /directness/);
   click("start");
   assert.equal(one("#sb-replay-status").textContent, "Fit…");
   assert.equal(one("#sb-three-gap .gap-fit-marker").textContent, "Fit…");
-  assert.equal(one("#sb-gap-value").textContent, "0.06 eV");
+  assert.equal(one("#sb-gap-value").textContent, "0,06 eV");
   one("#sb-replay-next").focus();
   click("next");
-  assert.equal(one("#sb-gap-value").textContent, "0.07 eV");
+  assert.equal(one("#sb-gap-value").textContent, "0,07 eV");
   assert.equal(d.activeElement.id, "sb-replay-next");
   assert.deepEqual(startValues(), starts);
   click("next");
   click("next");
   assert.equal(one("#sb-replay-status").textContent, "Fit…");
   assert.equal(one("#sb-replay-next").textContent, "Return final vector");
-  assert.equal(one("#sb-gap-value").textContent, "0.06 eV");
+  assert.equal(one("#sb-gap-value").textContent, "0,06 eV");
   assert.match(one("#sb-gap-origin").textContent, /CB₂ and VB₃/);
   click("next");
   assert.equal(one("#sb-replay-status").textContent, "Complete");
-  assert.equal(one("#sb-gap-value").textContent, "0.075 eV");
+  assert.equal(one("#sb-gap-value").textContent, "0,075 eV");
   assert.equal(one("#sb-three-gap .gap-fit-marker").textContent, "");
   assert.match(
     one("#sb-replay-result").textContent,
-    /0.075 eV. Defined by CB₂ and VB₁/,
+    /0,075 eV. Defined by CB₂ and VB₁/,
   );
   assert.deepEqual(startValues(), starts);
   // Cancel and failure discard preview offsets and restore researcher starts.
@@ -920,16 +964,16 @@ function verifyFitReplay(w) {
       (stop === "cancel" ? "Cancelled" : "Failed") +
         " · starting values retained",
     );
-    assert.equal(one("#sb-gap-value").textContent, "0.06 eV");
+    assert.equal(one("#sb-gap-value").textContent, "0,06 eV");
     assert.deepEqual(startValues(), starts);
     assert.equal(one("#sb-replay-result").textContent, "");
   }
   // Edits and rerenders invalidate a run; a stale replay cannot resume.
   click("start");
   click("next");
-  edit("gap1", "0.2");
+  edit("gap1", "0,2");
   click("next");
-  assert.equal(one('[data-field="gap1"] input').value, "0.2");
+  assert.equal(one('[data-field="gap1"] input').value, "0,2");
   assert.match(one("#sb-replay-status").textContent, /^Cancelled/);
   click("start");
   one('[data-mode="1"]').click();
@@ -937,23 +981,23 @@ function verifyFitReplay(w) {
     one("#sb-replay-status").textContent,
     "Cancelled · model changed",
   );
-  assert.equal(one("#sb-gap-value").textContent, "0.16 eV");
+  assert.equal(one("#sb-gap-value").textContent, "0,16 eV");
   // Held edges remain at their start value while previewing other edges.
   one('[data-field="gap1"] .lock').click();
   click("start");
   click("next");
-  assert.equal(one("#sb-gap-value").textContent, "0.18 eV");
-  assert.deepEqual(startValues(), ["0.2", "0.04"]);
+  assert.equal(one("#sb-gap-value").textContent, "0,18 eV");
+  assert.deepEqual(startValues(), ["0,2", "0,04"]);
   click("cancel");
   one("#sb-bounds").click();
   const low = one('[data-field="gap2"] .limits label:first-child input');
-  low.value = "0.03";
+  low.value = "0,03";
   low.dispatchEvent(new w.Event("change", { bubbles: true }));
   click("start");
   click("next");
   assert.match(one("#sb-replay-status").textContent, /^Failed/);
-  assert.equal(one("#sb-gap-value").textContent, "0.16 eV");
-  assert.deepEqual(startValues(), ["0.2", "0.04"]);
+  assert.equal(one("#sb-gap-value").textContent, "0,16 eV");
+  assert.deepEqual(startValues(), ["0,2", "0,04"]);
   // Both two-band orientations show the computed value on the actual field,
   // alongside the fitting marker, while the editable start remains untouched.
   for (const types of [
@@ -961,7 +1005,7 @@ function verifyFitReplay(w) {
     [1, 0, 0],
   ]) {
     restore(types, 2);
-    edit("gap1", "0.1");
+    edit("gap1", "0,1");
     click("start");
     assert.equal(
       one('[data-field="gap1"] .gap-fit-marker').textContent,
@@ -969,30 +1013,30 @@ function verifyFitReplay(w) {
     );
     assert.equal(
       one('[data-field="gap1"] .gap-current').textContent,
-      "Current gap = 0.1 eV",
+      "Current gap = 0,1 eV",
     );
     click("next");
     assert.equal(
       one('[data-field="gap1"] .gap-current').textContent,
-      "Current gap = 0.09 eV",
+      "Current gap = 0,09 eV",
     );
-    assert.equal(one('[data-field="gap1"] input').value, "0.1");
+    assert.equal(one('[data-field="gap1"] input').value, "0,1");
     click("next");
     click("next");
     click("next");
     assert.equal(
       one('[data-field="gap1"] .gap-current').textContent,
-      "Current gap = 0.075 eV",
+      "Current gap = 0,075 eV",
     );
-    assert.equal(one('[data-field="gap1"] input').value, "0.1");
+    assert.equal(one('[data-field="gap1"] input').value, "0,1");
     one("#sb-bounds").click();
     assert.equal(one('[data-field="gap1"] .gap-current'), null);
-    assert.equal(one('[data-field="gap1"] input').value, "0.1");
+    assert.equal(one('[data-field="gap1"] input').value, "0,1");
     click("start");
     click("next");
     one('[data-mode="1"]').click();
     assert.equal(one('[data-field="gap1"] .gap-current'), null);
-    assert.equal(one('[data-field="gap1"] input').value, "0.1");
+    assert.equal(one('[data-field="gap1"] input').value, "0,1");
     assert.equal(
       one("#sb-replay-status").textContent,
       "Cancelled · model changed",
@@ -1032,7 +1076,14 @@ function verifyParameterNotation(w) {
       }),
     );
   const set = (input, value) => {
+    input.dispatchEvent(
+      new w.InputEvent("beforeinput", {
+        bubbles: true,
+        inputType: "deleteContentBackward",
+      }),
+    );
     input.value = value;
+    input.dispatchEvent(new w.Event("input", { bubbles: true }));
     input.dispatchEvent(new w.Event("change", { bubbles: true }));
   };
   let saved;
@@ -1081,7 +1132,7 @@ function verifyParameterNotation(w) {
             "mixed ratio",
           );
         for (const input of d.querySelectorAll("#sb-valleys input")) {
-          set(input, "1.5");
+          set(input, "1,5");
           equal(
             input.validationMessage,
             "Enter a positive integer valley count.",
@@ -1133,10 +1184,10 @@ function verifyParameterNotation(w) {
   for (const imported of ["1.5", "0", "-2", "", "9007199254740993"]) {
     restore(
       { n: 2, types: [0, 1, 0], mechanism: "ac", selectedMode: 2 },
-      { values: { N0: imported } },
+      { values: { N0: imported, N1: "1" } },
     );
     const input = one("#sb-valleys input");
-    equal(input.value, imported, "import preserved without rounding");
+    equal(input.value, "", "invalid import cleared without rounding");
     equal(
       input.validationMessage,
       "Enter a positive integer valley count.",
@@ -1151,14 +1202,14 @@ function verifyParameterNotation(w) {
     one('[data-mode="1"]').click();
     equal(
       one("#sb-valleys input").value,
-      imported,
-      "mode preserves invalid historical value",
+      "",
+      "mode preserves invalid imported state",
     );
     restore(saved.modelContent, saved.privateContent);
     equal(
       one("#sb-valleys input").value,
-      imported,
-      "save/restore preserves historical value",
+      "",
+      "save/restore preserves invalid imported state",
     );
     set(one("#sb-valleys input"), "3");
     one("#sb-replay-start").click();
@@ -1171,12 +1222,12 @@ function verifyParameterNotation(w) {
   }
   restore({ n: 1, types: [0, 1, 0], mechanism: "ac", selectedMode: 2 });
   set(one("#sb-valleys input"), "8");
-  set(one("#sb-valleys input"), "2.5");
+  set(one("#sb-valleys input"), "2,5");
   one('[data-mode="1"]').click();
   equal(
     one("#sb-valleys input").value,
-    "8",
-    "invalid edit does not replace saved integer",
+    "",
+    "invalid edit cannot revive saved integer",
   );
   restore({ n: 2, types: [2, 1, 0], mechanism: "ac", selectedMode: 2 });
   equal(
@@ -1190,6 +1241,315 @@ function verifyParameterNotation(w) {
     "Kane units retained",
   );
 }
+// Item 13: visible decimals stay comma-formatted while host state stays numeric.
+// Shared by jsdom and Chrome; native keyboard/paste coverage follows below.
+function verifyDecimalInputs(w) {
+  const d = w.document;
+  const one = (s) => d.querySelector(s);
+  const field = (id) => one('[data-field="' + id + '"] input[data-number]');
+  const equal = (actual, expected, message) => {
+    if (actual !== expected)
+      throw new Error(
+        message + ": expected " + expected + ", received " + actual,
+      );
+  };
+  const edit = (input, value) => {
+    input.dispatchEvent(
+      new w.InputEvent("beforeinput", {
+        bubbles: true,
+        inputType: "deleteContentBackward",
+      }),
+    );
+    input.value = value;
+    input.dispatchEvent(new w.Event("input", { bubbles: true }));
+    input.dispatchEvent(new w.Event("change", { bubbles: true }));
+  };
+  const restore = (privateContent = {}, model = {}) =>
+    w.dispatchEvent(
+      new w.CustomEvent("openai:set_globals", {
+        detail: {
+          globals: {
+            widgetState: {
+              modelContent: {
+                n: 3,
+                types: [0, 1, 0],
+                mechanism: "ac",
+                selectedMode: 2,
+                ...model,
+              },
+              privateContent,
+            },
+          },
+        },
+      }),
+    );
+  let saved;
+  w.openai = {
+    setWidgetState: (s) => {
+      saved = JSON.parse(JSON.stringify(s));
+      return Promise.resolve();
+    },
+  };
+  restore({}, { n: 2, types: [1, 0, 0] });
+  for (const sign of ["-", "+"]) {
+    const input = field("gap1");
+    input.value = sign;
+    input.dispatchEvent(new w.Event("input", { bubbles: true }));
+    one("#sb-bounds").click();
+    equal(
+      field("gap1").value,
+      sign,
+      "CB-first offset retains incomplete signed draft",
+    );
+  }
+  restore();
+  equal(field("mass").type, "text", "locale-independent decimal control");
+  equal(field("mass").inputMode, "decimal", "decimal mobile keyboard");
+  edit(field("mass"), "0.5");
+  equal(field("mass").value, "0,5", "dot input displays comma");
+  edit(one("#sb-valleys input"), "8");
+  equal(
+    one("#sb-total-dos-mass").textContent.includes(": 2 mₑ"),
+    true,
+    "valid N derives total DOS mass",
+  );
+  edit(field("mass"), "0,125");
+  equal(
+    one("#sb-total-dos-mass").textContent.includes(": 0,5 mₑ"),
+    true,
+    "DOS caption uses comma",
+  );
+  edit(field("gap1"), "0,1");
+  edit(field("gap2"), "0.04");
+  equal(one("#sb-gap-value").textContent, "0,06 eV", "derived gap uses comma");
+  one("#sb-bounds").click();
+  const low = one('[data-field="mass"] .limits label:first-child input');
+  const high = one('[data-field="mass"] .limits label:last-child input');
+  edit(low, "0,01");
+  edit(high, "0.9");
+  equal(low.value, "0,01", "comma lower bound");
+  equal(high.value, "0,9", "dot upper bound displays comma");
+  const slider = one('[data-field="mass"] input[type=range]');
+  equal(slider.hidden, false, "decimal bounds expose slider");
+  edit(slider, "0.25");
+  equal(field("mass").value, "0,25", "slider updates visible comma value");
+  const canonical = (value) => {
+    equal(
+      typeof value === "number" || typeof value === "string",
+      true,
+      "numeric snapshot scalar",
+    );
+    equal(String(value).includes(","), false, "snapshot has no decimal comma");
+    if (value !== "")
+      equal(
+        Number.isFinite(Number(value)),
+        true,
+        "snapshot scalar remains numeric",
+      );
+  };
+  Object.values(saved.privateContent.values).forEach(canonical);
+  Object.values(saved.privateContent.limits).flat().forEach(canonical);
+  const snapshot = saved;
+  w.dispatchEvent(
+    new w.CustomEvent("openai:set_globals", {
+      detail: {
+        globals: { widgetState: snapshot },
+      },
+    }),
+  );
+  equal(field("mass").value, "0,25", "canonical snapshot restores comma value");
+  equal(
+    one('[data-field="mass"] .limits label:last-child input').value,
+    "0,9",
+    "canonical bound restores comma",
+  );
+  one("#sb-replay-start").click();
+  equal(
+    one("#sb-replay-status").textContent,
+    "Fit…",
+    "comma values allow replay",
+  );
+  one("#sb-replay-next").click();
+  equal(one("#sb-gap-value").textContent, "0,07 eV", "live gap uses comma");
+  for (let i = 0; i < 3; i++) one("#sb-replay-next").click();
+  equal(one("#sb-replay-status").textContent, "Complete", "replay completes");
+  equal(one("#sb-gap-value").textContent, "0,075 eV", "final gap uses comma");
+  equal(
+    one("#sb-replay-result").textContent.includes("0,075 eV"),
+    true,
+    "final caption uses comma",
+  );
+  // The input event is also the fallback seam for mobile/IME insertion.
+  for (const invalid of ["1.1", "1,1"]) {
+    restore();
+    const input = one("#sb-valleys input");
+    edit(input, invalid);
+    equal(input.value, "", "fractional mobile input refused");
+    equal(input.checkValidity(), false, "refusal requires correction");
+    one("#sb-replay-start").click();
+    equal(
+      one("#sb-replay-status").textContent.startsWith("Cannot replay"),
+      true,
+      "no replay with fractional N",
+    );
+  }
+  // Some mobile/IME beforeinput events cannot be cancelled. Their trailing
+  // digit must not revive a rejected fractional sequence as a valid integer.
+  restore();
+  const suffix = one("#sb-valleys input");
+  edit(suffix, "1");
+  suffix.dispatchEvent(
+    new w.InputEvent("beforeinput", {
+      bubbles: true,
+      cancelable: true,
+      data: ".",
+      inputType: "insertText",
+    }),
+  );
+  suffix.dispatchEvent(
+    new w.InputEvent("beforeinput", {
+      bubbles: true,
+      cancelable: false,
+      data: "1",
+      inputType: "insertText",
+    }),
+  );
+  suffix.value = "1";
+  suffix.dispatchEvent(
+    new w.InputEvent("input", {
+      bubbles: true,
+      data: "1",
+      inputType: "insertText",
+    }),
+  );
+  equal(
+    suffix.value,
+    "",
+    "noncancelable suffix cannot revive rejected fractional sequence",
+  );
+  equal(suffix.checkValidity(), false, "noncancelable suffix stays invalid");
+  for (const invalid of ["0", "9007199254740993", "-1"]) {
+    restore();
+    edit(one("#sb-valleys input"), invalid);
+    equal(
+      one("#sb-valleys input").value,
+      "",
+      "non-positive or unsafe N refused in live editor",
+    );
+    equal(
+      Object.entries(saved.privateContent.values)
+        .filter(([key]) => key.endsWith("/valleys"))
+        .some(([, value]) => value === invalid),
+      false,
+      "invalid N absent from active host payload",
+    );
+  }
+  // A persisted editor with a missing required N cannot fall back to one.
+  for (const band of [0, 1, 2]) {
+    const counts = Object.fromEntries(
+      [0, 1, 2].filter((i) => i !== band).map((i) => ["N" + i, "1"]),
+    );
+    restore({ values: counts });
+    equal(
+      d.querySelectorAll("#sb-valleys input")[band].value,
+      "",
+      "missing saved N stays required",
+    );
+    one("#sb-replay-start").click();
+    equal(
+      one("#sb-replay-status").textContent.startsWith("Cannot replay"),
+      true,
+      "missing saved N blocks replay",
+    );
+    edit(d.querySelectorAll("#sb-valleys input")[band], "2");
+    const active = Object.entries(saved.privateContent.values).filter(([key]) =>
+      key.endsWith("/valleys"),
+    );
+    equal(active.length, 3, "new host snapshot includes every active N");
+    equal(
+      active.every(
+        ([, value]) => value === "" || /^[1-9]\d*$/.test(String(value)),
+      ),
+      true,
+      "saved active counts are integers or empty",
+    );
+    one("#sb-replay-start").click();
+    equal(
+      one("#sb-replay-status").textContent,
+      "Fit…",
+      "corrected missing count permits replay",
+    );
+    one("#sb-replay-cancel").click();
+  }
+  // Every band must reject invalid imported counts, including inactive DOS bands.
+  for (const band of [0, 1, 2])
+    for (const invalid of ["1.1", "1,1", 1.1, "9007199254740993"]) {
+      restore({ values: { N0: "1", N1: "1", N2: "1", ["N" + band]: invalid } });
+      const input = d.querySelectorAll("#sb-valleys input")[band];
+      equal(
+        input.value,
+        "",
+        "import refuses fractional/unsafe N without rounding",
+      );
+      equal(input.checkValidity(), false, "import requires valid count");
+      one("#sb-replay-start").click();
+      equal(
+        one("#sb-replay-status").textContent.startsWith("Cannot replay"),
+        true,
+        "non-primary invalid import blocks replay",
+      );
+      equal(
+        one("#sb-replay-result").textContent,
+        "",
+        "invalid count produces no result",
+      );
+      one('[data-mode="1"]').click();
+      const activeValues = Object.entries(saved.privateContent.values).filter(
+        ([key]) => key.endsWith("/valleys"),
+      );
+      equal(
+        activeValues.some(
+          ([, value]) =>
+            String(value).includes(".") || String(value).includes(","),
+        ),
+        false,
+        "no fractional count in active host payload",
+      );
+      equal(
+        activeValues.some(([, value]) => value === ""),
+        true,
+        "invalid count is not replaced by a rounded/default integer in payload",
+      );
+      one("#sb-replay-start").click();
+      equal(
+        one("#sb-replay-status").textContent.startsWith("Cannot replay"),
+        true,
+        "mode change cannot revive invalid imported count",
+      );
+      w.dispatchEvent(
+        new w.CustomEvent("openai:set_globals", {
+          detail: {
+            globals: { widgetState: saved },
+          },
+        }),
+      );
+      equal(
+        d.querySelectorAll("#sb-valleys input")[band].value,
+        "",
+        "invalid imported state survives host restore",
+      );
+      const corrected = d.querySelectorAll("#sb-valleys input")[band];
+      edit(corrected, "3");
+      one("#sb-replay-start").click();
+      equal(
+        one("#sb-replay-status").textContent,
+        "Fit…",
+        "correction permits replay",
+      );
+      one("#sb-replay-cancel").click();
+    }
+}
+
 const parameterLabels = Object.fromEntries(
   labels.fields.map((entry) => [entry.key, entry]),
 );
@@ -1203,6 +1563,10 @@ for (const [key, label, unit] of [
   assert.equal(parameterLabels[key].label_en, label, key + " schema label");
   assert.equal(parameterLabels[key].display_unit, unit, key + " schema units");
 }
+verifyDecimalInputs(w);
+console.log(
+  "Item 13: decimal controls, bounds, slider, canonical host state, live/final/DOS captions and invalid N import/mobile recovery passed.",
+);
 verifyParameterNotation(w);
 console.log(
   "Item 12: channel notation, SI units, holds, integer N and imported-value replay rejection passed.",
@@ -1235,13 +1599,123 @@ if (process.argv[2] || process.env.FIT_GUIDE_CHROME === "1") {
       headless: true,
     });
     try {
+      for (const locale of ["en-US", "de-DE"]) {
+        const context = await browser.newContext({
+          locale,
+          viewport: { width: 320, height: 850 },
+          isMobile: true,
+          hasTouch: true,
+        });
+        try {
+          const decimalPage = await context.newPage();
+          await decimalPage.goto(pathToFileURL(file).href);
+          await decimalPage.evaluate(
+            "(" + verifyDecimalInputs.toString() + ")(window)",
+          );
+          const reset = () =>
+            decimalPage.evaluate(() =>
+              globalThis.dispatchEvent(
+                new globalThis.CustomEvent("openai:set_globals", {
+                  detail: {
+                    globals: {
+                      widgetState: {
+                        modelContent: {
+                          n: 3,
+                          types: [0, 1, 0],
+                          mechanism: "ac",
+                          selectedMode: 2,
+                        },
+                        privateContent: {},
+                      },
+                    },
+                  },
+                }),
+              ),
+            );
+          for (const fractional of ["1.1", "1,1"]) {
+            await reset();
+            const count = decimalPage.locator("#sb-valleys input").first();
+            await count.fill("");
+            await count.pressSequentially(fractional);
+            assert.equal(
+              await count.inputValue(),
+              "",
+              locale + " sequential fraction refused rather than becoming 11",
+            );
+            assert.equal(
+              await count.evaluate((input) => input.checkValidity()),
+              false,
+            );
+            await decimalPage.locator("#sb-fit-replay").evaluate((el) => {
+              el.open = true;
+            });
+            await decimalPage.locator("#sb-replay-start").click();
+            assert.match(
+              await decimalPage.locator("#sb-replay-status").textContent(),
+              /^Cannot replay/,
+            );
+            await count.fill("3");
+            await count.press("Tab");
+            await decimalPage.locator("#sb-replay-start").click();
+            assert.equal(
+              await decimalPage.locator("#sb-replay-status").textContent(),
+              "Fit…",
+            );
+            await reset();
+            await count.focus();
+            await count.evaluate((input, text) => {
+              const clipboardData = new globalThis.DataTransfer();
+              clipboardData.setData("text/plain", text);
+              input.dispatchEvent(
+                new globalThis.ClipboardEvent("paste", {
+                  bubbles: true,
+                  cancelable: true,
+                  clipboardData,
+                }),
+              );
+            }, fractional);
+            assert.equal(
+              await count.inputValue(),
+              "",
+              locale + " pasted fractional count refused",
+            );
+            assert.equal(
+              await count.evaluate((input) => input.checkValidity()),
+              false,
+            );
+          }
+          await reset();
+          const mass = decimalPage.locator("#sb-p-mass");
+          await mass.fill("");
+          await mass.pressSequentially("0.125");
+          await mass.press("Tab");
+          assert.equal(
+            await mass.inputValue(),
+            "0,125",
+            locale + " native decimal editing",
+          );
+          assert.ok(
+            await decimalPage.evaluate(
+              () => globalThis.document.documentElement.scrollWidth <= 320,
+            ),
+            locale + " decimal mobile layout",
+          );
+          console.log(
+            "Chrome item 13 " +
+              locale +
+              ": decimal display/state, native sequential N refusal, paste/mobile equivalent and correction passed.",
+          );
+        } finally {
+          await context.close();
+        }
+      }
       const page = await browser.newPage({
         viewport: { width: 960, height: 900 },
         deviceScaleFactor: 1.5,
         colorScheme: "light",
       });
       await page.goto(pathToFileURL(file).href);
-      await page.locator("#sb-gap-value").getByText("0.09 eV").waitFor();
+      await page.locator("#sb-gap-value").getByText("0,09 eV").waitFor();
       if (process.argv[2])
         await page
           .locator("#sb-desktop-parameters")
@@ -1282,8 +1756,8 @@ if (process.argv[2] || process.env.FIT_GUIDE_CHROME === "1") {
           }),
         ),
       );
-      await page.locator("#sb-p-gap1").fill("0.1");
-      await page.locator("#sb-p-gap2").fill("0.04");
+      await page.locator("#sb-p-gap1").fill("0,1");
+      await page.locator("#sb-p-gap2").fill("0,04");
       await page.locator("#sb-p-gap2").press("Tab");
       const replaySummary = page.locator("#sb-fit-replay > summary");
       if (await page.locator("#sb-fit-replay").evaluate((el) => el.open))
@@ -1304,7 +1778,7 @@ if (process.argv[2] || process.env.FIT_GUIDE_CHROME === "1") {
       await page.keyboard.press("Enter");
       assert.equal(
         await page.locator("#sb-gap-value").textContent(),
-        "0.07 eV",
+        "0,07 eV",
       );
       assert.equal(
         await page.evaluate(() => globalThis.document.activeElement.id),
@@ -1318,7 +1792,7 @@ if (process.argv[2] || process.env.FIT_GUIDE_CHROME === "1") {
       await page.keyboard.press("Enter");
       assert.equal(
         await page.locator("#sb-gap-value").textContent(),
-        "0.06 eV",
+        "0,06 eV",
       );
       assert.ok(
         await page.evaluate(
@@ -1337,7 +1811,7 @@ if (process.argv[2] || process.env.FIT_GUIDE_CHROME === "1") {
       );
       await page.evaluate("(" + verifyMassConvention.toString() + ")(window)");
       await page.locator("#sb-valleys input").first().fill("8");
-      await page.locator("#sb-p-mass").fill("0.5");
+      await page.locator("#sb-p-mass").fill("0,5");
       await page.locator("#sb-p-mass").press("Tab");
       assert.match(
         await page.locator("#sb-total-dos-mass").innerText(),
