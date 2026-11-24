@@ -34,6 +34,7 @@
           Guide
         </button>
       </nav>
+      <p id="sb-compatibility-error" class="note" hidden></p>
       <div class="stage viz-dotted-background" id="sb-fit">
         <section class="model-panel">
           <div class="preview-head">
@@ -1076,6 +1077,7 @@
               : "-" + canonical(value).replace(/^\+/, "");
         }
         const storageKey = "seeband.fit-guide.v4";
+        let retainedIncompatibleDraft = false;
         function snapshot() {
           return {
             modelContent: {
@@ -1098,7 +1100,35 @@
             },
           };
         }
+        function compatibilityError(content) {
+          if (
+            [1, 2, 3].includes(content?.n) &&
+            Array.isArray(content.types) &&
+            content.types.slice(0, content.n).some((type) => type >= 2) &&
+            ["dis", "ion", "mix"].includes(content.mechanism)
+          )
+            return {
+              code: "incompatible_scattering",
+              path: "modelContent.mechanism",
+              message:
+                "Kane bands support acoustic phonon scattering only. Choose acoustic phonons or use parabolic bands.",
+            };
+        }
+        function showCompatibilityError(error) {
+          const notice = el("#sb-compatibility-error");
+          notice.hidden = !error;
+          notice.textContent = error?.message ?? "";
+          if (error) {
+            notice.dataset.code = error.code;
+            notice.dataset.path = error.path;
+          } else {
+            delete notice.dataset.code;
+            delete notice.dataset.path;
+          }
+        }
         function save() {
+          retainedIncompatibleDraft = false;
+          showCompatibilityError();
           try {
             localStorage.setItem(storageKey, JSON.stringify(snapshot()));
           } catch {
@@ -1132,7 +1162,6 @@
         root.addEventListener("input", updateDosMass);
         root.addEventListener("change", updateDosMass);
         function render() {
-          if (hasKane()) mechanism = "ac";
           el("#sb-fit").hidden = page !== "fit";
           el("#sb-guide").hidden = page !== "guide";
           el("#sb-identifiability-caution").hidden =
@@ -1633,7 +1662,7 @@
               signedValue(values.get(key) ?? r.initial, sign),
             );
             input.placeholder = "Enter value";
-            input.oninput = () => {
+            const validateInput = () => {
               const numeric = number(input.value);
               input.setCustomValidity(
                 input.value !== "" &&
@@ -1659,9 +1688,13 @@
                     : "",
               );
               values.set(key, signedValue(input.value, sign));
+            };
+            // Validate initial values without saving over a refused draft.
+            validateInput();
+            input.oninput = () => {
+              validateInput();
               save();
             };
-            input.oninput();
             if (r.id.startsWith("gap") || r.id === "ef")
               input.addEventListener("input", updateGap);
             const storedBounds = limits.get(key) ?? ["", ""];
@@ -1769,22 +1802,22 @@
           el("#sb-bounds").setAttribute("aria-pressed", String(editBounds));
           window.lucide?.createIcons({ attrs: { width: 16, height: 16 } });
         }
-        function changed() {
+        function changed(viewOnly = false) {
           if (replayRunning) stopReplay("Cancelled · model changed");
           else if (el("#sb-replay-result").textContent) stopReplay("Ready");
           render();
-          save();
+          if (!viewOnly || !retainedIncompatibleDraft) save();
         }
         root.querySelectorAll("[data-page]").forEach(
           (b) =>
             (b.onclick = () => {
               page = b.dataset.page;
-              changed();
+              changed(true);
             }),
         );
         el("#sb-bounds").onclick = () => {
           editBounds = !editBounds;
-          changed();
+          changed(true);
         };
         function changeBandCount(next) {
           const before = hasKane();
@@ -1817,6 +1850,17 @@
           }
         };
         scatter.onchange = () => {
+          const error = compatibilityError({
+            n,
+            types,
+            mechanism: scatter.value,
+          });
+          if (error) {
+            scatter.value = mechanism;
+            showCompatibilityError(error);
+            return;
+          }
+          showCompatibilityError();
           lastParabolic = mechanism = scatter.value;
           changed();
         };
@@ -1828,6 +1872,12 @@
             }),
         );
         function restore(snapshot) {
+          const error = compatibilityError(snapshot?.modelContent);
+          if (error) {
+            showCompatibilityError(error);
+            return error;
+          }
+          showCompatibilityError();
           refreshGap = () => {};
           stopReplay("Ready");
           const s = snapshot?.modelContent;
@@ -2034,7 +2084,8 @@
         // Explicit fixture/import seam for this standalone prototype.
         window.fitGuide = {
           restore(state) {
-            restore(state);
+            const error = restore(state);
+            if (error) return error;
             save();
           },
           snapshot,
@@ -2046,7 +2097,12 @@
         } catch {
           // Missing, malformed or inaccessible storage starts a fresh editor.
         }
-        restore(saved);
+        const error = restore(saved);
+        if (error) {
+          restore();
+          retainedIncompatibleDraft = true;
+          showCompatibilityError(error);
+        }
       })();
     </script>
   </body>

@@ -41,7 +41,8 @@
   "planned_matrix": {
     "allowed": 270,
     "invalid_scattering": 306,
-    "status": "270 allowed field configurations exercised in the prototype; end-to-end transport and fitting remain planned."
+    "status": "The standalone Fit/Guide exercised all 576 ordered requests in Chromium. Production API transport and fitting remain planned.",
+    "total": 576
   },
   "checks": [
     {
@@ -524,6 +525,50 @@
       "replay_status": "planned"
     },
     {
+      "id": "UI-SCATTER",
+      "scope": "canonical standalone Fit/Guide in Chromium",
+      "status": "passed",
+      "claim": "Exercise every ordered band composition, scattering mechanism and fit mode through the editor restore boundary and inspect rendered controls. Preserve the editor and stored draft on incompatible requests.",
+      "cwd": "REPO",
+      "command": "node docs/superpowers/specs/band-composition-v0.7/evidence/verify_scattering_matrix.mjs",
+      "output": "evidence/scattering-matrix.txt",
+      "metrics": {
+        "distinct_requests": 576,
+        "accepted": 270,
+        "rejected": 306,
+        "by_band_count": [
+          {
+            "bands": 1,
+            "accepted": 30,
+            "rejected": 18
+          },
+          {
+            "bands": 2,
+            "accepted": 72,
+            "rejected": 72
+          },
+          {
+            "bands": 3,
+            "accepted": 168,
+            "rejected": 216
+          }
+        ],
+        "invalid_per_fit_mode": 102,
+        "invalid_per_nonacoustic_mechanism": 102
+      },
+      "failure": {
+        "code": "incompatible_scattering",
+        "path": "modelContent.mechanism",
+        "pre_fix_revision": "d7550119fe63552907cf9d405dae29030e5429d2",
+        "pre_fix_reproduction": "One VB Kane band, S, disorder: restore applied acoustic scattering and returned no error."
+      },
+      "case_output_option": "--cases",
+      "limitations": "Browser compatibility only. The production 422 response, transport and fitting are separate acceptance cases. Configurations with multiple Kane bands are outside this matrix.",
+      "provenance": "Replayed on the canonical offline HTML with the locked Playwright Chromium. Expected eligibility follows the v1 acoustic-only restriction for any declared Kane band.",
+      "replay_status": "reproduced_from_pr",
+      "output_sha256": "479040e2b48130d0aec9a7a0bdbbff8c3a388a254fd1acad7c96dcc3a9a5efb5"
+    },
+    {
       "id": "UI-FIT-GUIDE",
       "scope": "v0.7 offline prototype",
       "status": "passed",
@@ -710,9 +755,9 @@
     }
   },
   "review_package": {
-    "tag": "review-pr272-v0.7-item17",
-    "archive": "https://github.com/pdasya/seeband-web/releases/download/review-pr272-v0.7-item17/seeband-band-composition-v0.7-review.zip",
+    "tag": "review-pr272-v0.7-item18",
+    "archive": "https://github.com/pdasya/seeband-web/releases/download/review-pr272-v0.7-item18/seeband-band-composition-v0.7-review.zip",
     "builder": "build_review_bundle.py",
-    "current_branch_replay_rows": 12
+    "current_branch_replay_rows": 13
   }
 }

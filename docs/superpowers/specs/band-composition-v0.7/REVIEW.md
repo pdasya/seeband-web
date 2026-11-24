@@ -4,7 +4,7 @@ Read the [technical design document](../2026-11-21-band-composition-design.md) f
 
 ## Download the review package
 
-[Download the review ZIP](https://github.com/pdasya/seeband-web/releases/download/review-pr272-v0.7-item17/seeband-band-composition-v0.7-review.zip). Extract it and open `README.md` for the illustrated English TDD, interactive Fit/Guide, field dictionary and recorded results. The included images and prototype open offline. The README identifies the source commit. Links to implementation files on GitHub use that revision.
+[Download the review ZIP](https://github.com/pdasya/seeband-web/releases/download/review-pr272-v0.7-item18/seeband-band-composition-v0.7-review.zip). Extract it and open `README.md` for the illustrated English TDD, interactive Fit/Guide, field dictionary and recorded results. The included images and prototype open offline. The README identifies the source commit. Links to implementation files on GitHub use that revision.
 
 For comments, use the Markdown in PR #272. The six current figures are rendered from the checked-in source and published alongside the ZIP. To build a package from a clean checkout with the dependencies below, choose a destination outside the checkout:
 
@@ -54,11 +54,24 @@ On a minimal Linux machine, use `playwright install --with-deps chromium` in the
 uv run --frozen pytest -q packages/seeband_core/tests/test_band_design_evidence.py
 node docs/superpowers/specs/band-composition-v0.7/evidence/verify_fit_guide.mjs --browser
 node docs/superpowers/specs/band-composition-v0.7/evidence/verify_hold_migration.mjs
+node docs/superpowers/specs/band-composition-v0.7/evidence/verify_scattering_matrix.mjs
 ```
 
 The [manifest](evidence.json) gives individual commands, units, tolerances and the software versions used for the clean replay. The JavaScript checks resolve dependencies through this checkout's web package. The browser command uses the Chromium revision installed by its locked Playwright version. The separate P18 replay command appears below.
 
-**Clean checkout result.** The item 16 replay passed all 13 then-current rows on macOS arm64 and all five P18 checks. Item 17 moved the separate Model checks into the canonical Fit/Guide verifier. The current manifest has 12 runnable current-branch rows. The separately planned production E2E row has no replay command.
+**Clean checkout result.** The item 16 replay passed all 13 then-current rows on macOS arm64 and all five P18 checks. Item 17 moved the separate Model checks into the canonical Fit/Guide verifier. Item 18 added the scattering matrix, bringing the current manifest to 13 runnable current-branch rows. The separately planned production E2E row has no replay command.
+
+### Scattering eligibility in the editor
+
+The [Chromium check](evidence/verify_scattering_matrix.mjs) drives the same standalone Fit/Guide HTML that reviewers open. It enumerates band polarities, Kane positions, mechanisms and fit modes independently of the field dictionary. On the item 17 revision, restoring a single VB Kane band with disorder in S mode applied acoustic scattering without an error. The new check fails on that revision.
+
+The [saved summary](evidence/scattering-matrix.txt) gives the counts by band count. The review ZIP includes the 576 observations in `evidence/scattering-cases.jsonl` beside the saved summary. To regenerate them, run the command below after installing the locked web dependencies and Chromium. It prints one JSON object per case, including the ordered bands, mode, mechanism and observed outcome. The same assertions run in the web test suite and GitHub CI.
+
+```sh
+node docs/superpowers/specs/band-composition-v0.7/evidence/verify_scattering_matrix.mjs --cases > scattering-cases.jsonl
+```
+
+For a manual reproduction, enter dis with an all-parabolic composition. The Kane controls are disabled. Start with a Kane band and acoustic scattering and the scattering selector is disabled. Restoring an incompatible draft displays the reason and preserves the current state. HTTP rejection, calculated curves and fitted outputs for the proposed production model remain separate acceptance criteria.
 
 ### Comparing a MIX replay
 
@@ -139,6 +152,7 @@ The [Parameters and Model field dictionary](../band-parameter-labels.json) lists
 | MIX          | acPh + dis for parabolic bands                                                                         | 72 cases, both pure-scattering limits and three independent crossover temperatures.                                                                                                                                                             | [Output](evidence/mixed_reference.txt)                              |
 | MIX-LEGACY   | Comparison with this PR's math_module at shared μ and integral values                                  | 100, 300 and 800 K. Maximum Hall error 4.495 × 10⁻⁷ for a tolerance of 3 × 10⁻⁵.                                                                                                                                                                | [Branch output](evidence/mixed_legacy_pr.txt)                       |
 | MIX-P18      | P18 archive · historical run with --legacy                                                             | The comparison passed in the historical checkout.                                                                                                                                                                                               | [Archived output](evidence/verify_mixed_scattering_design.txt)      |
+| UI-SCATTER   | Canonical editor in Chromium                                                                           | 576 distinct requests, 270 accepted and 306 explicitly refused. Checks include the visible reason and preservation of the editor and stored draft.                                                                                              | [Output](evidence/scattering-matrix.txt)                            |
 | UI-FIT-GUIDE | Packaged v0.7 prototype                                                                                | 270 configurations. Checks cover retained settings, the S-only caution, signed in-gap cues and the flat-profile example, both DOS mass conventions, historical conversion and the live gap across fit events, including keyboard use at 320 px. | [Output](evidence/fit-guide-v0.7.txt)                               |
 | E2E          | New band builder → Parameters → calculate → fit → session                                              | Pending implementation. The full end-to-end matrix of 270 allowed configurations has yet to run.                                                                                                                                                | [Criteria in §1.4 and §8](../2026-11-21-band-composition-design.md) |
 

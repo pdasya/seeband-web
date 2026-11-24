@@ -10,7 +10,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run && node --test tests/build.test.mjs && playwright test"
+    "test": "vitest run && node --test tests/build.test.mjs && node ../../docs/superpowers/specs/band-composition-v0.7/evidence/verify_scattering_matrix.mjs && playwright test"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",

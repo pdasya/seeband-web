@@ -31,7 +31,7 @@ FIGURES = (
     "parameters-guide-matrix.png",
     "three-band-gap-parameters.png",
 )
-RELEASE = "https://github.com/pdasya/seeband-web/releases/download/review-pr272-v0.7-item17/"
+RELEASE = "https://github.com/pdasya/seeband-web/releases/download/review-pr272-v0.7-item18/"
 LINK = re.compile(r"(?<=\]\()([^\s)]+)(?=\))")
 
 
@@ -155,6 +155,10 @@ def build(args):
             if not data.startswith(b"\x89PNG\r\n\x1a\n"):
                 raise ValueError(f"Renderer output is not PNG: {figure}")
             files[f"{SPECS}/figures/{figure}"] = data
+    # Ship the individual observations in the review asset without tracking generated rows.
+    files[f"{KIT}/evidence/scattering-cases.jsonl"] = subprocess.check_output(
+        ["node", f"{KIT}/evidence/verify_scattering_matrix.mjs", "--cases"], cwd=root
+    )
     for name in list(files):
         if name.endswith(".md"):
             files[name] = rewrite_links(name, files[name], files, revision)
@@ -176,6 +180,7 @@ bundle point to the immutable source revision. External publications need intern
 The evidence index and recorded transcripts/fixtures are copied unchanged; its
 SHA-256 values identify those saved outputs, not newly executed numerical checks.
 The six PNGs were regenerated with the committed renderer and local locked Chromium.
+The [576 editor outcomes]({KIT}/evidence/scattering-cases.jsonl) were replayed for this archive.
 This bundle does not claim a new numerical replay or production integration result.
 
 Verification helpers are supplied for inspection and copying into a full source
