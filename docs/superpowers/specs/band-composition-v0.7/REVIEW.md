@@ -1,10 +1,10 @@
 # Reviewing the SeeBand Web band-composition design v0.7
 
-Read the [technical design document](../2026-11-21-band-composition-design.md) for the formulas and proposed changes to P18. The [evidence index](evidence.json) lists commands, conditions, units, tolerances and the SHA-256 digests of saved outputs. To try the [interactive Fit and Guide prototype](fit-guide.html), select **Download raw file** on GitHub and open the downloaded HTML in a browser.
+Start with the [point-by-point responses to both PR reviews](REVIEW-RESPONSES.md). Read the [technical design document](../2026-11-21-band-composition-design.md) for the formulas and proposed changes to P18. The [evidence index](evidence.json) lists commands, conditions, units, tolerances and the SHA-256 digests of saved outputs. To try the [interactive Fit and Guide prototype](fit-guide.html), select **Download raw file** on GitHub and open the downloaded HTML in a browser.
 
 ## Download the review package
 
-[Download the review ZIP](https://github.com/pdasya/seeband-web/releases/download/review-pr272-v0.7-kane-scope/seeband-band-composition-v0.7-review.zip). Extract it and open `README.md` for the illustrated English TDD, interactive Fit/Guide, field dictionary and recorded results. The included images and prototype open offline. The README identifies the source commit. Links to implementation files on GitHub use that revision.
+[Download the review ZIP](https://github.com/pdasya/seeband-web/releases/download/review-pr272-v0.7-kane-scope/seeband-pr272-review-responses-v0.7.zip). Extract it and open `README.md` for the illustrated English TDD, interactive Fit/Guide, field dictionary and recorded results. The included images and prototype open offline. The README identifies the source commit. Links to implementation files on GitHub use that revision.
 
 For comments, use the Markdown in PR #272. The six current figures are rendered from the checked-in source and published alongside the ZIP. To build a package from a clean checkout with the dependencies below, choose a destination outside the checkout:
 
@@ -14,11 +14,22 @@ uv run --frozen python docs/superpowers/specs/band-composition-v0.7/build_review
 
 ## Q3 experimental comparison with p-PbSe
 
-One Kane L pocket and one parabolic Σ pocket are evaluated against digitized Seebeck and Hall markers at three Na concentrations. The best joint constant per specimen misses the observed Hall downturn in both tested structures. The figure compares it with a reconstruction using the weight reported by Chasapis et al. The linked release ZIP above predates this Q3 experiment. The current PR contains its inputs, results and replay scripts.
+One Kane L pocket and one parabolic Σ pocket are evaluated against digitized Seebeck and Hall markers at three Na concentrations. The best joint constant per specimen misses the observed Hall downturn in both tested structures. The figure compares it with a reconstruction using the weight reported by Chasapis et al. The review ZIP includes the digitized observations, conditional predictions, residuals and replay scripts.
 
 ![Measured and calculated p-PbSe thermopower and Hall curves](evidence/chasapis/curves.png)
 
 [Method, assumptions and replay](evidence/chasapis/METHOD.md) · [Numerical results](evidence/chasapis/results.txt) · [Pointwise residuals](evidence/chasapis/curves.csv).
+
+### Evidence still needed for Q3
+
+The PbSe comparison tests **one constant relative prefactor per specimen** with independently prescribed structure. The test suite replays 112 observations under two structural assumptions. The single-band Lin–Liu tables, parabolic limit and multiplicity checks cover the Kane channel; the scale-invariance check covers the change of coordinates in the mixed pair. [PbSe method](evidence/chasapis/METHOD.md) · [Single-band results](evidence/verify_skb_core.txt) · [Mixed prefactor check](evidence/verify_kane_weights.py).
+
+| Open claim                                                                                                                    | Evidence that would let a reviewer decide                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ----------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The mixed pair gives the correct absolute conductivity in SI.                                                                 | At fixed material inputs, compare each partial conductivity and their sum against an independent dimensional transport integral for both channels. Record units, the Kane-to-parabolic limit, valley multiplicities, and the band permutation. For an experimental check, use measured resistivity or conductivity of the same compositions and temperatures together with S and Hall. Chasapis Fig. 4(b) is a candidate. Document which dimensional amplitudes were supplied independently and which were fitted.                 |
+| The data constrain nonparabolicity α and a single-valley mass separately from filling, edge spacing and transport amplitudes. | State the measured inputs, valley counts, mass convention, independently known band information and researcher-selected bounds. Profile α and the mass in turn, reoptimizing other free parameters. Compare S, S + ρ and S + ρ + Hall on matched observations. Report residuals, flat or bound-limited directions and which extra measurement supplies sensitivity. Confidence intervals require an experimental error model. An independent direct gap or a band-edge mass measurement can constrain a parameter held in the fit. |
+
+The scale ambiguity follows directly from the mixing equations. Multiplying both partial conductivities by the same positive constant leaves their fractions unchanged. Those fractions enter S linearly and weak-field Hall quadratically. Both curves therefore survive this rescaling while resistivity changes by its inverse. Measured ρ supplies the missing common scale; a single ρ value alone cannot separate the two channel amplitudes. The current PbSe calculation holds α and the DOS masses at prescribed structures, so its residuals do not establish their individual precision. [TDD §9, PbSe benchmark](../2026-11-21-band-composition-design.md#q3--one-kane-and-one-parabolic-pocket-in-p-pbse).
 
 ## Automated numerical checks
 
@@ -67,7 +78,7 @@ node docs/superpowers/specs/band-composition-v0.7/evidence/verify_scattering_mat
 
 The [manifest](evidence.json) gives individual commands, units, tolerances and the software versions used for the clean replay. The JavaScript checks resolve dependencies through this checkout's web package. The browser command uses the Chromium revision installed by its locked Playwright version. The separate P18 replay command appears below.
 
-**Clean checkout result.** The item 16 replay passed all 13 then-current rows on macOS arm64 and all five P18 checks. Item 17 moved the separate Model checks into the canonical Fit/Guide verifier. Item 18 added the scattering matrix, bringing the current manifest to 13 runnable current-branch rows. The separately planned production E2E row has no replay command.
+**Clean checkout result.** The item 16 replay passed all 13 then-current rows on macOS arm64 and all five P18 checks. Item 17 moved the separate Model checks into the canonical Fit/Guide verifier. Item 18 added the scattering matrix. Q3-PBSE brings the manifest to 14 runnable current-branch rows. The separately planned production E2E row has no replay command.
 
 ### Scattering eligibility in the editor
 

@@ -107,6 +107,7 @@ def build(args):
     names = {
         TDD,
         f"{KIT}/REVIEW.md",
+        f"{KIT}/REVIEW-RESPONSES.md",
         f"{KIT}/fit-guide.html",
         f"{KIT}/evidence.json",
         f"{SPECS}/band-parameter-labels.json",
@@ -169,7 +170,8 @@ def build(args):
 
 Source revision: `{revision}` ([immutable source](https://github.com/pdasya/seeband-web/tree/{revision})).
 
-1. Read the [English technical design]({TDD}).
+1. Read the [responses to both GitHub reviews]({KIT}/REVIEW-RESPONSES.md)
+   and the [English technical design]({TDD}).
 2. Follow the [review guide and recorded replay instructions]({KIT}/REVIEW.md).
 3. Open the [interactive Fit/Guide HTML]({KIT}/fit-guide.html) directly in a browser.
 4. Inspect the [evidence index]({KIT}/evidence.json) and

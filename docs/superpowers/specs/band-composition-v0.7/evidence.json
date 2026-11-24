@@ -789,9 +789,10 @@
     }
   },
   "review_package": {
+    "review_responses": "REVIEW-RESPONSES.md",
     "tag": "review-pr272-v0.7-kane-scope",
-    "archive": "https://github.com/pdasya/seeband-web/releases/download/review-pr272-v0.7-kane-scope/seeband-band-composition-v0.7-review.zip",
+    "archive": "https://github.com/pdasya/seeband-web/releases/download/review-pr272-v0.7-kane-scope/seeband-pr272-review-responses-v0.7.zip",
     "builder": "build_review_bundle.py",
-    "current_branch_replay_rows": 13
+    "current_branch_replay_rows": 14
   }
 }

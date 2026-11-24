@@ -2,7 +2,7 @@
 
 **Technical design for review · 21 November 2026 · revision 0.7**
 
-[Download the review ZIP](https://github.com/pdasya/seeband-web/releases/download/review-pr272-v0.7-kane-scope/seeband-band-composition-v0.7-review.zip) for the illustrated TDD, interactive Fit/Guide and recorded results.
+[Download the review ZIP](https://github.com/pdasya/seeband-web/releases/download/review-pr272-v0.7-kane-scope/seeband-pr272-review-responses-v0.7.zip) for the illustrated TDD, interactive Fit/Guide and recorded results.
 
 **Design status.** This proposal uses `main` at `e9b0fa3` as its repository baseline. The explicit two-band parabolic core tested at P18 revision `8e4f98d` is absent from that baseline and from this PR. The band builder, three-band transport and acoustic Kane integration are proposed extensions. Sections 7 and 10–14 describe the numerical checks. The [review guide](band-composition-v0.7/REVIEW.md) identifies which results readers can reproduce from this branch.
 
