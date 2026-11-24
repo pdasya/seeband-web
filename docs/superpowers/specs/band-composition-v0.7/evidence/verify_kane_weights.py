@@ -1,7 +1,12 @@
 """Check mixed S-only coordinates against positive dimensional acoustic prefactors."""
 
+import sys
 from itertools import product
 from math import exp, fsum, isclose, log1p, pi
+from pathlib import Path
+
+# These standalone examples use the review checkout's numerical references.
+sys.path.insert(0, str(Path(__file__).resolve().parents[5] / "scripts"))
 
 from verify_skb_design_reference import DEFORMATION_EV, ELASTIC_PA, HBAR, KB, ME, E, integral, kane
 from verify_spb_design_coefficients import fd

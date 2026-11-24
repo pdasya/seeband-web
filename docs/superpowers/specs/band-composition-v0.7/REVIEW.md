@@ -49,6 +49,8 @@ node docs/superpowers/specs/band-composition-v0.7/evidence/verify_hold_migration
 
 The [manifest](evidence.json) gives individual commands, units, tolerances and the software versions used for the clean replay. The JavaScript checks resolve dependencies through this checkout's web package. The browser command uses the Chromium revision installed by its locked Playwright version. The separate P18 replay command appears below.
 
+**Clean checkout result.** All 13 runnable current-branch rows passed on macOS arm64, along with all five checks in the P18 driver. The Model and Fit/Guide scripts also passed when invoked from a directory outside the repository. The separately planned production E2E row has no replay command.
+
 ### Comparing a MIX replay
 
 Run `uv run --frozen python scripts/verify_mixed_scattering_design.py` to print numerical results. The existing direct-integral, analytical and pure-limit checks run first. The script then checks the four transport quantities in each of 72 original input configurations and one exactly compensated configuration against the [stored reference](evidence/mixed_reference.json). The reference records the band inputs, temperature, mode and constants. It was captured from the direct integral for regression testing.

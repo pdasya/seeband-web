@@ -1,6 +1,11 @@
-"""Execute with PYTHONPATH=scripts from the PR checkout. Check the design reference inputs."""
+"""Check the allowed valley counts at each design reference entry point."""
 
+import sys
 from functools import partial
+from pathlib import Path
+
+# These standalone examples use the review checkout's numerical references.
+sys.path.insert(0, str(Path(__file__).resolve().parents[5] / "scripts"))
 
 from verify_band_composition_design import Band as ChargeBand
 from verify_mixed_scattering_design import Band as MixedBand
