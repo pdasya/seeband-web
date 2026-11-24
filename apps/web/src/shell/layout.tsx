@@ -18,7 +18,7 @@ export function PageHeading({
       <div>
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="m-0 text-2xl font-semibold tracking-[-0.02em]">
-            {title}
+            <Subscripted text={title} />
           </h1>
           {status}
         </div>
