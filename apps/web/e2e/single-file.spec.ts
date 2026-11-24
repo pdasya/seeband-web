@@ -95,7 +95,7 @@ test("detected columns show, with chips and a preview", async ({ page }) => {
     page.getByRole("combobox", { name: "Quantity for column rho" }),
   ).toHaveText("ρ");
   await expect(page.getByText("S · 3 points")).toBeVisible();
-  await expect(page.getByText("R_H · 3 points")).toBeVisible();
+  await expect(page.getByText("RH · 3 points")).toBeVisible();
   await expect(page.getByRole("columnheader", { name: "T ← T" })).toBeVisible();
   await expect(
     page
@@ -121,7 +121,7 @@ test("the panel says what each source expects, with its units", async ({
   ).toBeVisible();
   await expect(
     page.getByText(
-      /or the ones you choose\. With neither: T in K, S in V\/K, ρ in Ω·m or σ in S\/m, R_H in m³\/C\./,
+      /or the ones you choose\. With neither: T in K, S in V\/K, ρ in Ω·m or σ in S\/m, RH in m³\/C\./,
     ),
   ).toBeVisible();
   await expect(page.getByText("Each file: T and the value")).toHaveCount(0);
@@ -169,11 +169,11 @@ test("a change sends the text again with the new mapping, and ignoring drops a c
   });
   await openSingleFile(page);
   await choose(page);
-  await expect(page.getByText("R_H · 3 points")).toBeVisible();
+  await expect(page.getByText("RH · 3 points")).toBeVisible();
 
   await pickRole(page, "R_H", "Ignore");
 
-  await expect(page.getByText("R_H · not found")).toBeVisible();
+  await expect(page.getByText("RH · not found")).toBeVisible();
   await expect(
     page.getByRole("combobox", { name: "Quantity for column R_H" }),
   ).toHaveText("Ignore");
@@ -571,7 +571,7 @@ test("a late answer to an older mapping does not overwrite a newer one", async (
   await expect(page.getByText("S · 3 points")).toBeVisible();
   await waiting[0]?.fulfill();
 
-  await expect(page.getByText("R_H · not found")).toBeVisible();
+  await expect(page.getByText("RH · not found")).toBeVisible();
   await expect(page.getByText("S · 3 points")).toBeVisible();
 });
 

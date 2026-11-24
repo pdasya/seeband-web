@@ -70,7 +70,7 @@ async function open(page: Page) {
     return route.fulfill({ json: parsedFor(expected) });
   });
   await page.goto("/fit");
-  await expect(page.getByRole("slider", { name: "E_F" })).toBeVisible();
+  await expect(page.getByRole("slider", { name: "EF" })).toBeVisible();
   return bodies;
 }
 
@@ -110,9 +110,9 @@ test("each chart has a choice of what it shows, by name", async ({ page }) => {
     "Seebeck S(T)",
     "Conductivity σ(T)",
     "Resistivity ρ(T)",
-    "Hall coefficient R_H(T)",
+    "Hall coefficient RH(T)",
     "Chemical potential μ(T)",
-    "Thermal conductivity κ_e(T)",
+    "Thermal conductivity κe(T)",
     "Lorenz number L(T)",
     "Band contributions",
     "Carrier concentration by band",
@@ -132,8 +132,8 @@ test("each empty state matches its cause", async ({ page }) => {
     chart(page).getByText("No data for this quantity"),
   ).toBeVisible();
 
-  await show(page, "Hall coefficient R_H(T)");
-  await expect(chart(page).getByText("No R_H(T) data")).toBeVisible();
+  await show(page, "Hall coefficient RH(T)");
+  await expect(chart(page).getByText("No RH(T) data")).toBeVisible();
   await expect(
     chart(page).getByText("determines the absolute mass"),
   ).toBeVisible();
@@ -147,7 +147,7 @@ test("each empty state matches its cause", async ({ page }) => {
   await expect(chart(page).getByText("two-parabolic-band model")).toBeVisible();
 });
 
-test("ρ and R_H draw their own curves, units and points", async ({ page }) => {
+test("ρ and RH draw their own curves, units and points", async ({ page }) => {
   await open(page);
   await load(page, 1);
 
@@ -162,25 +162,25 @@ test("ρ and R_H draw their own curves, units and points", async ({ page }) => {
   await expect(page.getByText("No data for this quantity")).toBeVisible();
 });
 
-test("R_H has a curve only in the mode with it", async ({ page }) => {
+test("RH has a curve only in the mode with it", async ({ page }) => {
   await open(page);
   await load(page, 2);
-  await show(page, "Hall coefficient R_H(T)");
+  await show(page, "Hall coefficient RH(T)");
 
-  await expect(yTitle(page)).toHaveText("R_H, m³/C");
+  await expect(yTitle(page)).toHaveText("RH, m³/C");
   await expect(legend(page, "Measurements")).toBeVisible();
   await expect(legend(page, "Model")).toHaveCount(0);
   await expect(
-    chart(page).getByText("The R_H model is not calculated in this fit mode."),
+    chart(page).getByText("The RH model is not calculated in this fit mode."),
   ).toBeVisible();
 
-  await page.getByRole("radio", { name: "S + ρ + R_H", exact: true }).click();
+  await page.getByRole("radio", { name: "S + ρ + RH", exact: true }).click();
 
   await expect(legend(page, "Model")).toBeVisible();
-  await expect(page.getByText(/R_H model is not calculated/)).toHaveCount(0);
+  await expect(page.getByText(/RH model is not calculated/)).toHaveCount(0);
 });
 
-test("μ needs no data, has band edges, and follows E_g", async ({ page }) => {
+test("μ needs no data, has band edges, and follows Eg", async ({ page }) => {
   const bodies = await open(page);
 
   await show(page, "Chemical potential μ(T)");
@@ -192,10 +192,10 @@ test("μ needs no data, has band edges, and follows E_g", async ({ page }) => {
   await expect(yTitle(page)).toHaveText("μ, eV");
   await expect(lines(page)).toHaveCount(1);
   await expect(page.getByText("band 1 top")).toBeVisible();
-  await expect(page.getByText("band 2 bottom (E_g)")).toBeVisible();
+  await expect(page.getByText("band 2 bottom (Eg)")).toBeVisible();
 
   await page.getByRole("radio", { name: "SPB" }).click();
-  await expect(page.getByText("band edge")).toBeVisible();
+  await expect(page.getByText("band edge", { exact: true })).toBeVisible();
   await expect(page.getByText("band 1 top")).toHaveCount(0);
 });
 
@@ -262,18 +262,18 @@ test("two charts of the same curve ask for it once", async ({ page }) => {
   const asked = () =>
     bodies.filter(({ kind }) => kind === "chemical_potential").length;
   const before = asked();
-  await page.getByRole("slider", { name: "E_g" }).press("ArrowRight");
+  await page.getByRole("slider", { name: "Eg" }).press("ArrowRight");
   await expect.poll(asked).toBe(before + 1);
   await page.waitForTimeout(400);
   expect(asked()).toBe(before + 1);
 
   // A chart that stops showing it leaves the request to the other.
   await show(page, "Seebeck S(T)", 1);
-  await page.getByRole("slider", { name: "E_g" }).press("ArrowRight");
+  await page.getByRole("slider", { name: "Eg" }).press("ArrowRight");
   await expect.poll(asked).toBe(before + 2);
   await show(page, "Seebeck S(T)", 2);
   const last = asked();
-  await page.getByRole("slider", { name: "E_g" }).press("ArrowRight");
+  await page.getByRole("slider", { name: "Eg" }).press("ArrowRight");
   await page.waitForTimeout(400);
   expect(asked()).toBe(last);
 });
@@ -299,7 +299,7 @@ test("other curves are asked for only while their tab is open", async ({
 
   await show(page, "Seebeck S(T)");
   const count = bodies.length;
-  await page.getByRole("slider", { name: "E_g" }).press("ArrowRight");
+  await page.getByRole("slider", { name: "Eg" }).press("ArrowRight");
   await expect.poll(() => bodies.length).toBe(count + 1);
   await page.waitForTimeout(400);
   expect(bodies).toHaveLength(count + 1);
@@ -319,7 +319,7 @@ test("a change on a tab asks for both, and the RMSE stays live", async ({
     .toHaveLength(1);
   const count = bodies.length;
 
-  await page.getByRole("slider", { name: "E_g" }).press("ArrowRight");
+  await page.getByRole("slider", { name: "Eg" }).press("ArrowRight");
 
   await expect.poll(() => bodies.length).toBe(count + 2);
   await page.waitForTimeout(400);
@@ -397,7 +397,7 @@ test("a failure of S does not show on μ, and the RMSE says it is old", async ({
         });
   });
 
-  await page.getByRole("slider", { name: "E_g" }).press("ArrowRight");
+  await page.getByRole("slider", { name: "Eg" }).press("ArrowRight");
 
   await expect(page.getByText("not from the current values")).toBeVisible();
   await expect(page.getByRole("alert")).toHaveCount(0);
@@ -541,7 +541,7 @@ for (const detail of [null, "chemical_potential_dpb_fermi_energy"]) {
     await expect(page.getByRole("alert")).toContainText(
       detail === null
         ? "no result"
-        : "Set E_F below the higher band edge, max(0, E_g).",
+        : "Set EF below the higher band edge, max(0, Eg).",
     );
     await expect(page.getByRole("alert")).not.toContainText("last curve");
     await expect(lines(page)).toHaveCount(0);
@@ -605,7 +605,7 @@ test("a new value keeps the curve while waiting", async ({ page }) => {
     await route.fulfill({ json: answerFor(body) });
   });
 
-  await page.getByRole("slider", { name: "E_g" }).press("ArrowRight");
+  await page.getByRole("slider", { name: "Eg" }).press("ArrowRight");
   await page.waitForTimeout(400);
 
   await expect(lines(page)).toHaveCount(1);
@@ -674,7 +674,7 @@ test("a slider does not redraw a chart whose values have not changed", async ({
   await countRedraws(page);
 
   for (let move = 0; move < 5; move += 1) {
-    await page.getByRole("slider", { name: "E_g" }).press("ArrowRight");
+    await page.getByRole("slider", { name: "Eg" }).press("ArrowRight");
   }
   await page.waitForTimeout(300);
 
@@ -708,7 +708,7 @@ test("on μ, an answer about S does not redraw the chart", async ({ page }) => {
   await countRedraws(page);
 
   // E_F does not reach this tab's lines, unlike E_g.
-  await page.getByRole("slider", { name: "E_F" }).press("ArrowRight");
+  await page.getByRole("slider", { name: "EF" }).press("ArrowRight");
 
   await expect(page.getByText("333 µV/K", { exact: true })).toBeVisible();
   expect(await redraws(page)).toBe(0);
@@ -846,7 +846,7 @@ test("σ says each failure of the requests it draws from, as one hides no other"
           json: { code: "internal_error", message: "x", details: [] },
         });
   });
-  await page.getByRole("slider", { name: "E_g" }).press("ArrowRight");
+  await page.getByRole("slider", { name: "Eg" }).press("ArrowRight");
 
   const alerts = chart(page).getByRole("alert");
   await expect(alerts).toHaveCount(2);

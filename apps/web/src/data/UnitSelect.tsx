@@ -13,6 +13,7 @@ import type { Role } from "@/data/columnChoice";
 import { UNITS_OF, type Unit } from "@/data/units";
 import { cn } from "@/lib/utils";
 import { STRINGS } from "@/strings";
+import { plainSubscripts } from "@/lib/subscripts";
 
 const { data: text } = STRINGS;
 
@@ -55,11 +56,11 @@ export function UnitSelect({
         // Dashed and muted, as the unit is the placeholder: the card's note says why.
         className={cn("w-full font-mono", assumed && "border-dashed")}
         // The name replaces the shown unit for a screen reader, so it names the unit too.
-        aria-label={
+        aria-label={plainSubscripts(
           assumed
             ? text.unitAssumedOf(label, text.units[value])
-            : text.unitOf(label)
-        }
+            : text.unitOf(label),
+        )}
       >
         <SelectValue placeholder={text.units[value]} />
       </SelectTrigger>

@@ -30,6 +30,7 @@ import {
 import type { FitModeDescription } from "@/model/selection";
 import { isFitActive, useSessionStore } from "@/session/store";
 import { STRINGS } from "@/strings";
+import { plainSubscripts, Subscripted } from "@/lib/subscripts";
 
 const { parameters: text } = STRINGS;
 
@@ -127,10 +128,12 @@ function BoundsRow({
           }
         }}
       >
-        <span className="text-[13px] font-medium">{symbol}</span>
+        <span className="text-[13px] font-medium">
+          <Subscripted text={symbol} />
+        </span>
         <Input
           {...fieldProps}
-          aria-label={text.boundLower(symbol)}
+          aria-label={plainSubscripts(text.boundLower(symbol))}
           value={lowerDraft ?? shown(bounds.lower)}
           onChange={(event) => {
             setLowerDraft(event.target.value);
@@ -139,7 +142,7 @@ function BoundsRow({
         />
         <Input
           {...fieldProps}
-          aria-label={text.boundUpper(symbol)}
+          aria-label={plainSubscripts(text.boundUpper(symbol))}
           value={upperDraft ?? shown(bounds.upper)}
           onChange={(event) => {
             setUpperDraft(event.target.value);

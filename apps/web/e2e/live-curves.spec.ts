@@ -47,7 +47,7 @@ async function open(page: Page) {
   await serveModels(page);
   await page.route("**/api/parse", (route) => route.fulfill({ json: PARSED }));
   await page.goto("/fit");
-  await expect(page.getByRole("slider", { name: "E_F" })).toBeVisible();
+  await expect(page.getByRole("slider", { name: "EF" })).toBeVisible();
 }
 
 async function load(page: Page) {
@@ -76,7 +76,7 @@ async function collect(
 }
 
 const eg = (page: Page) =>
-  page.getByRole("slider", { name: "E_g", exact: true });
+  page.getByRole("slider", { name: "Eg", exact: true });
 const modelLine = (page: Page) =>
   page.locator(".scatterlayer .trace path.js-line").first();
 

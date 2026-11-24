@@ -25,6 +25,7 @@ pnpm --filter @seeband/web preview  # the production build
 - **A move inside the app takes focus to `main`,** so that a screen reader follows it, without scrolling. A move by link starts the new screen at its top, and back and forward keep the scroll the browser gives them.
 - **Headings on the fit screen follow its layout:** the data and charts on the left come before the `h1` of the fit panel on the right. V2 should check this with a screen reader.
 - **All text is in `src/strings.ts`** until [U3](https://github.com/pdasya/seeband-web/issues/36) brings i18n. Add new text there.
+- **A symbol's index is written with `_` in the strings, such as `E_g` or `R_H`, and drawn lowered.** `Subscripted` in `src/lib/subscripts.tsx` draws it in the page, `plotlySubscripts` in a chart, and `plainSubscripts` gives an `aria-label` or `alt` the same text a screen reader reads from the page, `Eg`. A new place that shows such text needs one of them. Exported files keep the `_`, and a column name from a user's file is shown as written.
 - **The header comes from `packages/ui`,** shared with the site. `shell/AppHeader.tsx` only gives it the app's links. The language switch stays hidden until [U3](https://github.com/pdasya/seeband-web/issues/36). The four-chart design of the fit screen has no Export button in the header, so exports are on the Result panel and the results page instead.
 
 ## Talking to the API
@@ -159,8 +160,8 @@ SEEBAND_API_TARGET=http://127.0.0.1:8000 pnpm --filter @seeband/web exec playwri
 ## Band diagram
 
 The E(k) tab draws local parabolic bands and a flat Fermi level using
-`POST /api/band-diagram`. It shows wavevector in nm⁻¹ and converts the energies
-to the selected display unit. In DPB modes without Hall data, a note gives the
+`POST /api/band-diagram`. Its k axis has its name but no units or values, as
+only the shape of the bands is meant, and the energies are in the selected display unit. In DPB modes without Hall data, a note gives the
 assumed reference mass. It requests the current parameters while a diagram is
 open and can draw without uploaded data.
 
@@ -200,6 +201,7 @@ The app shows numbers with a decimal comma, in fields, labels, messages and char
 `model/ParametersPanel.tsx` shows the parameters of the chosen fit mode and scattering type from their descriptions, so a new parameter needs no change here. Without a line in `strings.ts`, it shows its name.
 
 - **Values are in core units, per fit mode.** `model/parameters.ts` holds the only conversion to what a user sees, and `parameterValues` gives every parameter of a mode for a request, with defaults from `core_range`.
+- **Values follow a change of fit mode or model, by parameter name** (`session/carry.ts`), with their bounds and holds: E_F, A and F also from SPB to DPB and back. A name has one core unit and scale in every mode, so nothing is converted, though SPB counts E_F from the band edge and DPB from the top of band 1. A parameter only the new mode has keeps its own value or default. Bounds go only to parameters whose bounds the new mode lets the user set, holds only to fitted ones, and a value outside the new mode's range stays behind. A default carried to a mode whose own default differs counts as no one's choice, so an automatic guess may replace it; it never replaces a fixed parameter, so SPB S + ρ now starts from the mass shown in S, not the desktop's −1. A change of model says under Parameters what it took along. A carry that changes nothing keeps the applied guess and its badge, and a guess on its way still fills what is not the user's, as a change of mode is not an edit.
 - **The slider moves by whole control units,** as on the desktop. Arrow keys move by the description's `step`, and Page keys or Shift with an arrow by ten. `step` is not a grid, so values between steps stay as they are.
 - **A field shows 6 digits,** with the full value on hover, as a fit's values have more than fit. The session and requests keep them all.
 - **A typed number** counts on leaving the field or on Enter, and only within the range. It may lie between whole control units, unlike on the desktop (D26). Advanced ranges come in FS13.

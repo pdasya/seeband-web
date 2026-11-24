@@ -224,8 +224,12 @@ export interface ChartTabView {
   description: string;
   /** Says what a chart with points only leaves out, or what is known to be wrong with it. */
   note: string | null;
-  /** For a chart that is not against temperature. */
-  xAxis?: { title: string; span: readonly [number, number] | null };
+  /** For a chart that is not against temperature. `scale: false` leaves out its values. */
+  xAxis?: {
+    title: string;
+    scale: boolean;
+    span: readonly [number, number] | null;
+  };
 }
 
 const NO_CHART = {
@@ -615,13 +619,17 @@ function bandDiagramView(
   if (diagram?.reference_mass_assumed === true) {
     notes.unshift(text.diagramReferenceMass);
   }
+  // In every mode, as the k axis has no values.
+  notes.unshift(text.diagramShape);
   return {
     ...NO_CHART,
     yAxisTitle: text.axes.energy(energy.unit),
     description: text.diagramDescription,
     empty: null,
     xAxis: {
+      // Only the shape of the bands matters here, so k has no units and no values.
       title: text.wavevectorAxis,
+      scale: false,
       // Before the first answer, the core's own k range, _DIAGRAM_K_RANGE_NM_INV in band_models.
       span: first === undefined || last === undefined ? [-2, 2] : [first, last],
     },
@@ -633,7 +641,7 @@ function bandDiagramView(
       values: energies(values, energy),
       dashed: name === "fermi_energy_k",
     })),
-    note: notes.join(" ") || null,
+    note: notes.join(" "),
   };
 }
 

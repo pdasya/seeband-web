@@ -22,6 +22,10 @@ export const STRINGS = {
     fixed: "not fitted",
     held: "held",
     hold: (symbol: string) => `Hold ${symbol} at its value in a fit`,
+    carried: (symbols: string, model: string) =>
+      `${symbols} taken from ${model}, with any bounds and holds.`,
+    fermiReference:
+      "E_F counts from the band edge in SPB and from the top of band 1 in DPB, so check it.",
     about: (symbol: string) => `About ${symbol}`,
     // How a parameter is written. Any other shows its name, so a new one needs no change here.
     symbols: {
@@ -419,10 +423,11 @@ export const STRINGS = {
       band_2_energy_k: "Band 2",
       fermi_energy_k: "E_F",
     },
+    wavevectorAxis: "k",
     diagramDescription: "Local parabolic band energies against wavevector",
+    diagramShape: "The diagram shows the shape of the bands; k has no scale.",
     diagramReferenceMass:
       "The curvature scale is illustrative. Without Hall data the size of band 1's mass is not set by the data, so it is assumed to be mₑ.",
-    wavevectorAxis: "k, nm⁻¹",
     axes: {
       seebeck: "S, µV/K",
       resistivity: "ρ, µΩ·m",

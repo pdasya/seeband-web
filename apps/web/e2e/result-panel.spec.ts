@@ -65,7 +65,7 @@ async function open(
     return route.fulfill({ json: PARSED(expected) });
   });
   await page.goto("/fit");
-  await expect(page.getByRole("slider", { name: "E_F" })).toBeVisible();
+  await expect(page.getByRole("slider", { name: "EF" })).toBeVisible();
   for (const filled of [0, 1]) {
     await page
       .locator('input[type="file"]')
@@ -126,8 +126,8 @@ test("the metrics, and the table with values and bounds, as the design has them"
   await expect(iterations(page)).toContainText("—");
   await expect(iterations(page)).toContainText("limit 1000");
 
-  await expect(row(page, "E_g")).toContainText("0,09 eV");
-  await expect(row(page, "E_g")).toContainText("-0,26 … 0,26");
+  await expect(row(page, "Eg")).toContainText("0,09 eV");
+  await expect(row(page, "Eg")).toContainText("-0,26 … 0,26");
   await expect(row(page, "m₂/m₁")).toContainText("1,01");
   await expect(row(page, "m₂/m₁")).toContainText("-3 … 3");
   // Only what this scattering uses.
@@ -173,11 +173,11 @@ test("the table and counter follow a fit", async ({ page }) => {
     parameters: { band_gap: 850.123456 },
   });
   await expect(iterations(page)).toContainText("3");
-  await expect(row(page, "E_g")).toContainText("0,07 eV");
+  await expect(row(page, "Eg")).toContainText("0,07 eV");
 
   await send(page, { type: "done", result: RESULT });
   await expect(iterations(page)).toContainText("5");
-  await expect(row(page, "E_g")).toContainText("0,08 eV");
+  await expect(row(page, "Eg")).toContainText("0,08 eV");
   await expect(row(page, "m₂/m₁")).toContainText("0,5");
   await expect(page.getByText(/not a converged result/)).toHaveCount(0);
 });
@@ -187,7 +187,7 @@ test("a value at a bound is marked, and only that one", async ({ page }) => {
 
   await finishWith(page, { at_bounds: ["band_gap"] });
 
-  await expect(row(page, "E_g").getByText("at bound")).toBeVisible();
+  await expect(row(page, "Eg").getByText("at bound")).toBeVisible();
   await expect(table(page).getByText("at bound")).toHaveCount(1);
   await expect(page.getByText(/may have been set by that bound/)).toBeVisible();
 });
@@ -201,7 +201,7 @@ test("an edit ends what was said about the fit", async ({ page }) => {
   });
   await expect(page.getByText(/returns m₂\/m₁ times N₂\/N₁/)).toBeVisible();
 
-  await page.getByRole("slider", { name: "E_g" }).press("ArrowRight");
+  await page.getByRole("slider", { name: "Eg" }).press("ArrowRight");
 
   await expect(table(page).getByText("at bound")).toHaveCount(0);
   await expect(page.getByText(/may have been set/)).toHaveCount(0);
@@ -214,7 +214,7 @@ test("an in-gap Fermi energy explains what the data cannot determine", async ({
 }) => {
   await open(page);
   const warning = page.getByText(
-    /The transport data cannot determine where E_F is within this gap/,
+    /The transport data cannot determine where EF is within this gap/,
   );
   await expect(warning).toHaveCount(0);
 
@@ -226,7 +226,7 @@ test("an in-gap Fermi energy explains what the data cannot determine", async ({
   });
 
   await expect(warning).toBeVisible();
-  await expect(row(page, "E_F")).toContainText("at bound");
+  await expect(row(page, "EF")).toContainText("at bound");
 });
 
 test("a fit at its iteration limit says it did not converge", async ({
@@ -305,7 +305,7 @@ test("a fit that fails after iterations does not call its values start values", 
     iteration: 2,
     parameters: { band_gap: 850 },
   });
-  await expect(row(page, "E_g")).toContainText("0,07 eV");
+  await expect(row(page, "Eg")).toContainText("0,07 eV");
 
   await send(page, {
     type: "error",
@@ -313,7 +313,7 @@ test("a fit that fails after iterations does not call its values start values", 
   });
 
   await expect(page.getByRole("alert")).toBeVisible();
-  await expect(row(page, "E_g")).toContainText("0,07 eV");
+  await expect(row(page, "Eg")).toContainText("0,07 eV");
   await expect(
     page.getByText(/they are its start values or those of its last iteration/),
   ).toBeVisible();
@@ -356,7 +356,7 @@ test("a fit the server ended early keeps its marks and flags", async ({
   });
 
   await expect(page.getByText(/these are its last values/)).toBeVisible();
-  await expect(row(page, "E_g").getByText("at bound")).toBeVisible();
+  await expect(row(page, "Eg").getByText("at bound")).toBeVisible();
   await expect(page.getByText(/returns m₂\/m₁ times N₂\/N₁/)).toBeVisible();
 });
 
@@ -365,7 +365,7 @@ for (const [name, change] of [
     "Reset",
     (page: Page) => page.getByRole("button", { name: "Reset" }).click(),
   ],
-  ["a change of mode", (page: Page) => choose(page, "S + ρ + R_H")],
+  ["a change of mode", (page: Page) => choose(page, "S + ρ + RH")],
   [
     "a change of scattering",
     async (page: Page) => {

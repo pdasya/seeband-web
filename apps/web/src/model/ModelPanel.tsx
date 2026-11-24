@@ -29,6 +29,7 @@ import {
 import { useSessionStore, type Quantity } from "@/session/store";
 import { Panel } from "@/shell/layout";
 import { STRINGS } from "@/strings";
+import { plainSubscripts, Subscripted } from "@/lib/subscripts";
 
 const { model: text, data: dataText } = STRINGS;
 
@@ -70,7 +71,11 @@ function Group({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      {!hideLabel && <span className="text-[13px] font-medium">{label}</span>}
+      {!hideLabel && (
+        <span className="text-[13px] font-medium">
+          <Subscripted text={label} />
+        </span>
+      )}
       {children}
     </div>
   );
@@ -102,7 +107,7 @@ function ChoiceGroup({
         type="single"
         variant="outline"
         className="w-full"
-        aria-label={label}
+        aria-label={plainSubscripts(label)}
         value={value ?? ""}
         onValueChange={(next) => {
           // Pressing the chosen one would otherwise leave nothing chosen.
@@ -123,7 +128,7 @@ function ChoiceGroup({
               // A tooltip's trigger sets its own data-state, so being chosen shows from aria-checked.
               className="flex-auto aria-checked:bg-accent aria-checked:text-accent-foreground"
             >
-              {option.label}
+              <Subscripted text={option.label} />
             </ToggleGroupItem>
           );
           return option.hint === undefined ? (
@@ -131,7 +136,9 @@ function ChoiceGroup({
           ) : (
             <Tooltip key={option.id}>
               <TooltipTrigger asChild>{item}</TooltipTrigger>
-              <TooltipContent>{option.hint}</TooltipContent>
+              <TooltipContent>
+                <Subscripted text={option.hint} />
+              </TooltipContent>
             </Tooltip>
           );
         })}
@@ -326,6 +333,7 @@ function ModelControls({ models }: { models: readonly ModelDescription[] }) {
   const selection = useSessionStore((state) => state.selection);
   const saved = useSessionStore((state) => state.savedModelSettings);
   const setSelection = useSessionStore((state) => state.setSelection);
+  const chooseFitMode = useSessionStore((state) => state.chooseFitMode);
   const chooseModel = useSessionStore((state) => state.chooseModel);
 
   const model = models.find(({ id }) => id === selection.model);
@@ -348,7 +356,15 @@ function ModelControls({ models }: { models: readonly ModelDescription[] }) {
         onChange={(id) => {
           const next = models.find((candidate) => candidate.id === id);
           if (next !== undefined) {
-            chooseModel(id, settingsFor(next, saved[id]));
+            const settings = settingsFor(next, saved[id]);
+            const to = fitModeOf(next, settings.fitMode);
+            chooseModel(
+              id,
+              settings,
+              mode === undefined || to === undefined
+                ? undefined
+                : { from: mode, to },
+            );
           }
         }}
         options={models.map(({ id, name }) => ({
@@ -363,14 +379,18 @@ function ModelControls({ models }: { models: readonly ModelDescription[] }) {
           label={text.fitMode}
           value={mode?.id ?? null}
           onChange={(id) => {
-            setSelection(
-              settingsFor(model, {
-                fitMode: id,
-                scattering: selection.scattering,
-                band1Degeneracy: selection.band1Degeneracy,
-                band2Degeneracy: selection.band2Degeneracy,
-              }),
-            );
+            const next = settingsFor(model, {
+              fitMode: id,
+              scattering: selection.scattering,
+              band1Degeneracy: selection.band1Degeneracy,
+              band2Degeneracy: selection.band2Degeneracy,
+            });
+            const to = fitModeOf(model, next.fitMode);
+            if (mode === undefined || to === undefined) {
+              setSelection(next);
+            } else {
+              chooseFitMode(next, mode, to);
+            }
           }}
           options={model.fit_modes.map((candidate) => ({
             id: candidate.id,

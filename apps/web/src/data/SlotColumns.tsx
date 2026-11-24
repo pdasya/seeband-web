@@ -16,6 +16,7 @@ import { UNITS_OF, type Unit } from "@/data/units";
 import type { ColumnChoice } from "@/data/useFileUpload";
 import { LOADED_QUANTITIES, type LoadedQuantity } from "@/session/store";
 import { STRINGS } from "@/strings";
+import { Subscripted } from "@/lib/subscripts";
 
 const { data: text } = STRINGS;
 const IGNORE = "ignore";
@@ -101,7 +102,7 @@ export function SlotColumns({
                 <SelectContent>
                   {ROLES.map((option) => (
                     <SelectItem key={option} value={option}>
-                      {roleSymbol(option)}
+                      <Subscripted text={roleSymbol(option)} />
                     </SelectItem>
                   ))}
                   <SelectItem value={IGNORE}>{text.single.ignore}</SelectItem>
@@ -133,7 +134,9 @@ export function SlotColumns({
           <AlertDescription>
             <ul className="m-0 list-none p-0">
               {choice.problems.map((problem, index) => (
-                <li key={index}>{problem}</li>
+                <li key={index}>
+                  <Subscripted text={problem} />
+                </li>
               ))}
             </ul>
             {/* A full slot emptied, or a lost connection back, leaves nothing to choose anew. */}

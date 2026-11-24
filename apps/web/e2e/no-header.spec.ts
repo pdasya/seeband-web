@@ -117,7 +117,7 @@ async function open(
     });
   });
   await page.goto("/fit");
-  await expect(page.getByRole("slider", { name: "E_F" })).toBeVisible();
+  await expect(page.getByRole("slider", { name: "EF" })).toBeVisible();
   return { bodies, guesses };
 }
 

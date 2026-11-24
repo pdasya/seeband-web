@@ -24,6 +24,7 @@ import { fitAlgorithm, type FitState, useSessionStore } from "@/session/store";
 import { parameterSymbol } from "@/model/parameters";
 import { formatNumber } from "@/lib/numbers";
 import { STRINGS } from "@/strings";
+import { Subscripted } from "@/lib/subscripts";
 
 const { fit: text } = STRINGS;
 
@@ -45,7 +46,11 @@ export function FitStatusBadge({
   return (
     <>
       {badge !== null && <StatusBadge {...badge} />}
-      {missing !== null && <Badge variant="warning">{missing}</Badge>}
+      {missing !== null && (
+        <Badge variant="warning">
+          <Subscripted text={missing} />
+        </Badge>
+      )}
       <span role="status" className="sr-only">
         {/* The detail of an ended fit, as its stop rule, but no running count, read at each step. */}
         {badge === null
@@ -157,13 +162,15 @@ export function FitMessages({
         role="status"
         className="m-0 text-xs text-muted-foreground empty:hidden"
       >
-        {blockerMessage(control) ?? ""}
+        <Subscripted text={blockerMessage(control)} />
       </p>
       <NumericalDiagnostics fit={control.fit} />
       {failure !== null && (
         <Alert variant="destructive">
           <AlertCircleIcon aria-hidden="true" />
-          <AlertDescription>{failure}</AlertDescription>
+          <AlertDescription>
+            <Subscripted text={failure} />
+          </AlertDescription>
         </Alert>
       )}
     </>
@@ -249,23 +256,27 @@ export function NumericalDiagnostics({ fit }: { fit: FitState }) {
           <p>{text.diagnostics.residualInputs}</p>
           {Object.entries(diagnostics.residuals).map(([quantity, residual]) => (
             <p key={quantity}>
-              {text.diagnostics.residual(
-                STRINGS.data.quantities[
-                  quantity as keyof typeof STRINGS.data.quantities
-                ].symbol,
-                formatNumber(residual.rmse),
-                residual.unit,
-                residual.relative_l2 == null
-                  ? text.diagnostics.unavailable
-                  : formatNumber(residual.relative_l2),
-              )}
+              <Subscripted
+                text={text.diagnostics.residual(
+                  STRINGS.data.quantities[
+                    quantity as keyof typeof STRINGS.data.quantities
+                  ].symbol,
+                  formatNumber(residual.rmse),
+                  residual.unit,
+                  residual.relative_l2 == null
+                    ? text.diagnostics.unavailable
+                    : formatNumber(residual.relative_l2),
+                )}
+              />
             </p>
           ))}
           {diagnostics.unidentified.length > 0 && (
             <p>
-              {text.diagnostics.unidentified(
-                diagnostics.unidentified.map(parameterSymbol).join(", "),
-              )}
+              <Subscripted
+                text={text.diagnostics.unidentified(
+                  diagnostics.unidentified.map(parameterSymbol).join(", "),
+                )}
+              />
             </p>
           )}
           <p>{text.diagnostics.notAssessed}</p>

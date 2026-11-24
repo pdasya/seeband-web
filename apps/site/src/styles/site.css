@@ -17,6 +17,15 @@ body {
   line-height: 1.6;
 }
 
+/* An index such as the H of R_H, lowered without opening up its line. */
+sub {
+  position: relative;
+  bottom: -0.25em;
+  font-size: 75%;
+  line-height: 0;
+  vertical-align: baseline;
+}
+
 a {
   color: inherit;
   text-underline-offset: 3px;

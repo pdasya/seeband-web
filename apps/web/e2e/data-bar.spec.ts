@@ -37,7 +37,7 @@ async function open(page: Page) {
     });
   });
   await page.goto("/fit");
-  await expect(page.getByRole("slider", { name: "E_F" })).toBeVisible();
+  await expect(page.getByRole("slider", { name: "EF" })).toBeVisible();
 }
 
 async function load(page: Page, quantity: string, name: string) {
@@ -80,7 +80,7 @@ test("the data stay open once the fit mode has all it needs, and Hide folds them
   await expect(summary(page).getByRole("listitem")).toHaveText([
     "S · 31 pts",
     "ρ · 12 pts",
-    "R_H · not loaded",
+    "RH · not loaded",
   ]);
   await expect(details(page)).toHaveAttribute("aria-expanded", "false");
 });
@@ -116,7 +116,7 @@ test("the data open again once the fit mode needs more", async ({ page }) => {
   await hide(page).click();
   await expect(heading(page)).toBeHidden();
 
-  await page.getByRole("radio", { name: "S + ρ + R_H", exact: true }).click();
+  await page.getByRole("radio", { name: "S + ρ + RH", exact: true }).click();
   await expect(heading(page)).toBeVisible();
   await expect(summary(page).getByText("Data loaded")).toHaveCount(0);
 });

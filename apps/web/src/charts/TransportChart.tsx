@@ -14,6 +14,7 @@ import {
   type ReferenceLine,
 } from "@/charts/figure";
 import { loadPlotly, type PlotlyModule } from "@/charts/loadPlotly";
+import { plainSubscripts, Subscripted } from "@/lib/subscripts";
 import { measureSince } from "@/model/timing";
 
 const NO_REFERENCE_LINES: readonly ReferenceLine[] = [];
@@ -33,6 +34,7 @@ export interface TransportChartProps {
   fitRange?: ChartFitRange | null;
   referenceLines?: readonly ReferenceLine[];
   xAxisTitle: string;
+  xAxisScale?: boolean | undefined;
   xAxisSpan?: readonly [number, number] | null | undefined;
   yAxisTitle: string;
   /** What a screen reader says about the chart, as it cannot read the drawing. */
@@ -54,8 +56,12 @@ function ChartEmptyState({ title, text }: EmptyState) {
       <div className="flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
         <ChartLineIcon className="size-[18px]" aria-hidden="true" />
       </div>
-      <div className="font-semibold">{title}</div>
-      <div className="max-w-[420px] text-muted-foreground">{text}</div>
+      <div className="font-semibold">
+        <Subscripted text={title} />
+      </div>
+      <div className="max-w-[420px] text-muted-foreground">
+        <Subscripted text={text} />
+      </div>
     </div>
   );
 }
@@ -80,7 +86,7 @@ function Legend({
             aria-hidden="true"
             className="inline-block size-2 rounded-full border-[1.5px] border-foreground bg-background"
           />
-          {measurementsLabel}
+          <Subscripted text={measurementsLabel} />
         </li>
       )}
       {interpolatedLabel !== null && (
@@ -90,7 +96,7 @@ function Legend({
             className="inline-block size-2 rounded-full"
             style={{ backgroundColor: "var(--accent-orange)" }}
           />
-          {interpolatedLabel}
+          <Subscripted text={interpolatedLabel} />
         </li>
       )}
       {curves.map((curve, index) => (
@@ -103,7 +109,7 @@ function Legend({
               borderTopStyle: curve.dashed === true ? "dashed" : "solid",
             }}
           />
-          {curve.label}
+          <Subscripted text={curve.label} />
         </li>
       ))}
     </ul>
@@ -117,6 +123,7 @@ function Plot({
   fitRange,
   referenceLines,
   xAxisTitle,
+  xAxisScale,
   xAxisSpan,
   yAxisTitle,
   description,
@@ -130,6 +137,7 @@ function Plot({
   fitRange: ChartFitRange | null;
   referenceLines: readonly ReferenceLine[];
   xAxisTitle: string;
+  xAxisScale?: boolean | undefined;
   xAxisSpan?: readonly [number, number] | null | undefined;
   yAxisTitle: string;
   description: string;
@@ -175,6 +183,7 @@ function Plot({
       fitRange,
       referenceLines,
       xAxisTitle,
+      xAxisScale,
       xAxisSpan,
       yAxisTitle,
     }),
@@ -185,6 +194,7 @@ function Plot({
       fitRange,
       referenceLines,
       xAxisTitle,
+      xAxisScale,
       xAxisSpan,
       yAxisTitle,
     ],
@@ -245,7 +255,7 @@ function Plot({
     <div
       ref={container}
       role="img"
-      aria-label={description}
+      aria-label={plainSubscripts(description)}
       style={{ minHeight: CHART_HEIGHT_PX }}
     />
   );
@@ -263,6 +273,7 @@ export function TransportChart({
   fitRange = null,
   referenceLines = NO_REFERENCE_LINES,
   xAxisTitle,
+  xAxisScale,
   xAxisSpan,
   yAxisTitle,
   description,
@@ -287,6 +298,7 @@ export function TransportChart({
         fitRange={fitRange}
         referenceLines={referenceLines}
         xAxisTitle={xAxisTitle}
+        xAxisScale={xAxisScale}
         xAxisSpan={xAxisSpan}
         yAxisTitle={yAxisTitle}
         description={description}

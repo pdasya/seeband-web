@@ -49,6 +49,7 @@ import { QUANTITIES, useSessionStore, type ChartTab } from "@/session/store";
 import { PageHeading, Panel } from "@/shell/layout";
 import { StatusBadge } from "@/shell/StatusBadge";
 import { STRINGS } from "@/strings";
+import { plainSubscripts, Subscripted } from "@/lib/subscripts";
 
 const {
   results: text,
@@ -78,11 +79,15 @@ function Kpi({
 }) {
   return (
     <div className="min-w-0 flex-[1_1_180px] rounded-xl border bg-card px-4 py-3.5 shadow-card">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dt className="text-xs text-muted-foreground">
+        <Subscripted text={label} />
+      </dt>
       <dd className="m-0 text-[22px] font-semibold tracking-[-0.02em] tabular-nums">
         {value}
       </dd>
-      <dd className="m-0 text-xs text-muted-foreground">{detail}</dd>
+      <dd className="m-0 text-xs text-muted-foreground">
+        <Subscripted text={detail} />
+      </dd>
     </div>
   );
 }
@@ -112,9 +117,11 @@ function FitLog({ steps }: { steps: readonly LogStep[] }) {
               {!last && <span className="min-h-3 w-px flex-auto bg-border" />}
             </div>
             <div className="min-w-0 pb-4">
-              <div className="font-medium">{step.title}</div>
+              <div className="font-medium">
+                <Subscripted text={step.title} />
+              </div>
               <div className="text-[13px] text-muted-foreground">
-                {step.text}
+                <Subscripted text={step.text} />
               </div>
             </div>
           </li>
@@ -218,7 +225,7 @@ function MoreGraph({
           id={titleId}
           className="m-0 flex flex-wrap items-center gap-1.5 text-sm font-medium"
         >
-          {chartText.tabs[tab]}
+          <Subscripted text={chartText.tabs[tab]} />
           {issues.map(({ id, severity }) => (
             <Badge key={id} variant="outline">
               {fitText.issueMark[severity]}
@@ -228,7 +235,7 @@ function MoreGraph({
         <Button
           variant="ghost"
           size="icon-sm"
-          aria-label={exportText.graph(chartText.tabs[tab])}
+          aria-label={plainSubscripts(exportText.graph(chartText.tabs[tab]))}
           disabled={answer === null || exported === null}
           onClick={() => {
             if (answer !== null && exported !== null) {
@@ -247,7 +254,7 @@ function MoreGraph({
       </div>
       {failed !== null && (
         <p role="alert" className="m-0 text-xs text-destructive">
-          {failureText(failed)}
+          <Subscripted text={failureText(failed)} />
         </p>
       )}
       <TransportChart
@@ -264,11 +271,15 @@ function MoreGraph({
         failedText={chartText.failed}
       />
       {view.note !== null && (
-        <p className="m-0 text-xs text-muted-foreground">{view.note}</p>
+        <p className="m-0 text-xs text-muted-foreground">
+          <Subscripted text={view.note} />
+        </p>
       )}
       {issues.map(({ id, severity, text: issue }) => (
         <p key={id} className="m-0 text-xs text-muted-foreground">
-          {text.issue(fitText.issueSeverity[severity], issue)}
+          <Subscripted
+            text={text.issue(fitText.issueSeverity[severity], issue)}
+          />
         </p>
       ))}
     </section>
@@ -279,7 +290,9 @@ function MoreGraph({
 function NoResult({ message }: { message: string }) {
   return (
     <div className="flex flex-col items-start gap-3 rounded-xl border bg-card p-5 shadow-card">
-      <p className="m-0 text-muted-foreground">{message}</p>
+      <p className="m-0 text-muted-foreground">
+        <Subscripted text={message} />
+      </p>
       <Button variant="outline" asChild>
         <Link to="/fit">{text.toFit}</Link>
       </Button>
@@ -533,11 +546,11 @@ export function ResultsPage() {
                     <TableRow key={row.name}>
                       <TableCell className="font-medium">
                         <span className="inline-flex flex-wrap items-center gap-1.5">
-                          {row.symbol}
+                          <Subscripted text={row.symbol} />
                         </span>
                       </TableCell>
                       <TableCell className="whitespace-normal text-muted-foreground">
-                        {row.meaning}
+                        <Subscripted text={row.meaning} />
                       </TableCell>
                       <TableCell className="text-right font-mono">
                         {row.value === "" ? text.noValue : row.value}
@@ -591,7 +604,7 @@ export function ResultsPage() {
           {text.graphs.title}
         </h2>
         <p className="mt-1 mb-0 text-[13px] text-muted-foreground">
-          {text.graphs.subtitle}
+          <Subscripted text={text.graphs.subtitle} />
         </p>
         <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
           {MORE_GRAPHS.map((tab) => {
@@ -618,7 +631,7 @@ export function ResultsPage() {
           <div className="flex flex-col gap-1">
             {notes.map((note) => (
               <p key={note.key} className="m-0">
-                {note.text}
+                <Subscripted text={note.text} />
               </p>
             ))}
           </div>

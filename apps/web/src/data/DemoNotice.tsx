@@ -10,6 +10,7 @@ import {
   useSessionStore,
 } from "@/session/store";
 import { STRINGS } from "@/strings";
+import { Subscripted } from "@/lib/subscripts";
 
 const { data: text } = STRINGS;
 
@@ -20,7 +21,11 @@ export function noticeText(messageKey: string): string {
 }
 
 function Line({ children }: { children: string }) {
-  return <p className="m-0 text-xs text-muted-foreground">{children}</p>;
+  return (
+    <p className="m-0 text-xs text-muted-foreground">
+      <Subscripted text={children} />
+    </p>
+  );
 }
 
 /** Says that demo data are not a measurement, for as long as any are in use. */

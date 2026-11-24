@@ -127,6 +127,33 @@ const mainOf = (html) => html.match(/<main[\s\S]*<\/main>/)?.[0] ?? "";
 // Visible text, with tags and Astro's attributes out of the way.
 const textOf = (html) => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
 
+test("a symbol's index is drawn lowered in text, and is plain in a name", () => {
+  // Text outside KaTeX's formulas, which draw their own indices.
+  const text = (html) =>
+    html
+      .replace(
+        /<span class="katex">[\s\S]*?<\/annotation><\/semantics><\/math><\/span>/g,
+        "",
+      )
+      .replace(/<script[\s\S]*?<\/script>/g, "");
+  const home = page("index.html");
+  assert.match(home, /R<sub>H<\/sub>\(T\)/);
+  assert.match(home, /aria-label="[^"]*starting at Eg, and EF between them"/);
+  for (const path of [
+    "index.html",
+    "guide/index.html",
+    "results-changed/index.html",
+    "examples/awi32/index.html",
+    "examples/si-p/index.html",
+  ]) {
+    assert.doesNotMatch(
+      text(page(path)),
+      /(?<![\w])(E_g|E_F|R_H|κ_e|k_B)(?![\w])/,
+      path,
+    );
+  }
+});
+
 test("the overview says where data go, and promises only what the app does", () => {
   const main = mainOf(page("index.html"));
   const text = textOf(main);
@@ -512,4 +539,21 @@ test("renders formulas in MDX when built, with KaTeX's styles and no script", ()
     files(mathOutDir).filter((path) => path.endsWith(".js")).length,
     0,
   );
+  // Each size of a subscript or superscript has its rule: KaTeX renamed the class between
+  // versions, and with no rule an index is drawn at full size and clipped.
+  const sizes = new Set(
+    [
+      ...html.matchAll(/class="((?:katex-)?sizing) (reset-size\d+) (size\d+)/g),
+    ].map((m) => `.${m[1]}.${m[2]}.${m[3]}{`),
+  );
+  assert.ok(sizes.size > 0);
+  for (const rule of sizes) {
+    assert.ok(css.replaceAll(" ", "").includes(rule), rule);
+  }
+});
+
+test("KaTeX's styles come from the version that renders the formulas", () => {
+  const site = createRequire(join(SITE_DIR, "package.json"));
+  const renderer = createRequire(site.resolve("rehype-katex"));
+  assert.equal(site("katex").version, renderer("katex").version);
 });

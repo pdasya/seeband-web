@@ -62,7 +62,7 @@ async function open(
     return answer(route, body);
   });
   await page.goto("/fit");
-  await expect(page.getByRole("slider", { name: "E_F" })).toBeVisible();
+  await expect(page.getByRole("slider", { name: "EF" })).toBeVisible();
   return bodies;
 }
 
@@ -93,30 +93,30 @@ test("the last chart shows it from the start, with no data, in one request", asy
   expect(bodies[0]?.parameters.band_gap).toBe(1000);
 });
 
-test("E_g over the chart shows in eV, as its field does, and follows it", async ({
+test("Eg over the chart shows in eV, as its field does, and follows it", async ({
   page,
 }) => {
   await open(page);
 
   // 1000 K by default.
-  await expect(diagram(page).getByText("E_g = 0,09 eV")).toBeVisible();
-  await expect(field(page, "E_g")).toHaveValue("0,09");
-  await field(page, "E_g").fill("0,123");
-  await field(page, "E_g").blur();
-  await expect(diagram(page).getByText("E_g = 0,12 eV")).toBeVisible();
-  await expect(field(page, "E_g")).toHaveValue("0,12");
+  await expect(diagram(page).getByText("Eg = 0,09 eV")).toBeVisible();
+  await expect(field(page, "Eg")).toHaveValue("0,09");
+  await field(page, "Eg").fill("0,123");
+  await field(page, "Eg").blur();
+  await expect(diagram(page).getByText("Eg = 0,12 eV")).toBeVisible();
+  await expect(field(page, "Eg")).toHaveValue("0,12");
 });
 
-test("it draws each band and E_F over k in nm⁻¹ without fit range shading", async ({
+test("it draws each band and EF over a k axis with no values, without fit range shading", async ({
   page,
 }) => {
   await open(page);
 
   await expect(traces(page)).toHaveCount(3);
-  await expect(legend(page)).toHaveText(["Band 1", "Band 2", "E_F"]);
-  await expect(diagram(page).locator(".xtitle")).toHaveText("k, nm⁻¹");
+  await expect(legend(page)).toHaveText(["Band 1", "Band 2", "EF"]);
+  await expect(diagram(page).locator(".xtitle")).toHaveText("k");
   await expect(diagram(page).locator(".ytitle")).toHaveText("E, eV");
-  await expect(diagram(page).locator(".xtick text").first()).toBeVisible();
+  await expect(diagram(page).locator(".xtick text")).toHaveCount(0);
   await expect(diagram(page).locator(".shapelayer path")).toHaveCount(0);
 });
 
@@ -146,8 +146,8 @@ test("it follows the parameters and the degeneracies", async ({ page }) => {
   const bodies = await open(page);
   await expect(traces(page)).toHaveCount(3);
 
-  await field(page, "E_g").fill("0,05");
-  await field(page, "E_g").blur();
+  await field(page, "Eg").fill("0,05");
+  await field(page, "Eg").blur();
   await expect
     .poll(() => bodies.at(-1)?.parameters.band_gap)
     .toBe(580.225906087);
@@ -175,7 +175,7 @@ test("SPB draws what its answer holds, and an old mode's bands do not stay", asy
   await expect(legend(page)).toHaveCount(0);
 
   gate.release();
-  await expect(legend(page)).toHaveText(["Band 1", "E_F"]);
+  await expect(legend(page)).toHaveText(["Band 1", "EF"]);
   await expect(traces(page)).toHaveCount(2);
   await expect(
     diagram(page).getByText(/so it is assumed to be mₑ/),
@@ -190,8 +190,8 @@ test("it stops asking when no chart shows it, and asks again when one does", asy
   await show(page, "Seebeck S(T)", 4);
   const asked = bodies.length;
 
-  await field(page, "E_g").fill("0,05");
-  await field(page, "E_g").blur();
+  await field(page, "Eg").fill("0,05");
+  await field(page, "Eg").blur();
   await page.waitForTimeout(500);
 
   expect(bodies).toHaveLength(asked);
@@ -221,7 +221,7 @@ test("a band with no finite values leaves a gap, and the rest stay", async ({
   const curves = { ...DPB.curves, band_2_energy_k: [null, null, null] };
   await open(page, (route) => route.fulfill({ json: { ...DPB, curves } }));
 
-  await expect(legend(page)).toHaveText(["Band 1", "Band 2", "E_F"]);
+  await expect(legend(page)).toHaveText(["Band 1", "Band 2", "EF"]);
   await expect(diagram(page).getByRole("alert")).toHaveCount(0);
   const ys = await diagram(page)
     .locator(".js-plotly-plot")
@@ -234,7 +234,7 @@ test("a band with no finite values leaves a gap, and the rest stay", async ({
   expect(ys).toEqual(Object.values(curves).map(inEv));
 });
 
-test("the k axis keeps its units and ticks while awaiting the first answer", async ({
+test("the k axis keeps its title and no values while awaiting the first answer", async ({
   page,
 }) => {
   const gate = hold();
@@ -243,11 +243,12 @@ test("the k axis keeps its units and ticks while awaiting the first answer", asy
     await route.fulfill({ json: DPB });
   });
 
-  await expect(diagram(page).locator(".xtitle")).toHaveText("k, nm⁻¹");
-  await expect(diagram(page).locator(".xtick text").first()).toBeVisible();
+  await expect(diagram(page).locator(".js-plotly-plot")).toBeVisible();
+  await expect(diagram(page).locator(".xtitle")).toHaveText("k");
+  await expect(diagram(page).locator(".xtick text")).toHaveCount(0);
   gate.release();
   await expect(traces(page)).toHaveCount(3);
-  await expect(diagram(page).locator(".xtick text").first()).toBeVisible();
+  await expect(diagram(page).locator(".xtick text")).toHaveCount(0);
 });
 
 test("a failure says so, and the last diagram stays", async ({ page }) => {
@@ -263,8 +264,8 @@ test("a failure says so, and the last diagram stays", async ({ page }) => {
   await expect(traces(page)).toHaveCount(3);
 
   failing = true;
-  await field(page, "E_g").fill("0,05");
-  await field(page, "E_g").blur();
+  await field(page, "Eg").fill("0,05");
+  await field(page, "Eg").blur();
 
   await expect(diagram(page).getByRole("alert")).toContainText(
     "The last curve stays on the chart.",
@@ -344,8 +345,8 @@ test("the repaired SPB Hall mode requests its band diagram", async ({
     state.setSelection({ model: "spb", fitMode: "spb_s_rho_rh" });
   });
   const asked = bodies.length;
-  await field(page, "E_F").fill("0,05");
-  await field(page, "E_F").blur();
+  await field(page, "EF").fill("0,05");
+  await field(page, "EF").blur();
   await page.waitForTimeout(400);
 
   await expect.poll(() => bodies.length).toBeGreaterThan(asked);

@@ -12,6 +12,7 @@ import {
 } from "@/session/store";
 import { formatNumber } from "@/lib/numbers";
 import { STRINGS } from "@/strings";
+import { Subscripted } from "@/lib/subscripts";
 
 const { data: text } = STRINGS;
 
@@ -100,7 +101,9 @@ export function InterpolationSwitch() {
       {interpolation.failure !== null && interpolation.enabled && (
         <Alert variant="destructive">
           <AlertCircleIcon aria-hidden="true" />
-          <AlertDescription>{interpolation.failure}</AlertDescription>
+          <AlertDescription>
+            <Subscripted text={interpolation.failure} />
+          </AlertDescription>
         </Alert>
       )}
       {flags.length > 0 && !interpolation.loading && (
@@ -109,7 +112,9 @@ export function InterpolationSwitch() {
           <AlertDescription>
             <ul className="m-0 list-none p-0">
               {flags.map((flag, index) => (
-                <li key={index}>{flag}</li>
+                <li key={index}>
+                  <Subscripted text={flag} />
+                </li>
               ))}
             </ul>
           </AlertDescription>

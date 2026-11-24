@@ -5,7 +5,7 @@ import { serveModels } from "./support/models";
 async function open(page: Page) {
   await serveModels(page);
   await page.goto("/fit");
-  await expect(page.getByRole("slider", { name: "E_F" })).toBeVisible();
+  await expect(page.getByRole("slider", { name: "EF" })).toBeVisible();
 }
 
 const field = (page: Page, name: string) =>
@@ -45,21 +45,21 @@ test("starts with the mode's parameters, defaults and ranges", async ({
 
   await expect(field(page, "m₂/m₁")).toHaveValue("1,01");
   // Energies show in eV: 1000 K and -100 K, to 0,01 eV.
-  await expect(field(page, "E_g")).toHaveValue("0,09");
-  await expect(field(page, "E_F")).toHaveValue("-0,01");
+  await expect(field(page, "Eg")).toHaveValue("0,09");
+  await expect(field(page, "EF")).toHaveValue("-0,01");
   await expect(field(page, "A")).toHaveValue("40000");
   await expect(field(page, "B")).toHaveValue("1");
   // ±3000 K.
-  await expect(slider(page, "E_F")).toHaveAttribute(
+  await expect(slider(page, "EF")).toHaveAttribute(
     "aria-valuemin",
     "-0.25851999786",
   );
-  await expect(slider(page, "E_F")).toHaveAttribute(
+  await expect(slider(page, "EF")).toHaveAttribute(
     "aria-valuemax",
     "0.25851999786",
   );
   await expect(page.getByText("-0,26", { exact: true }).first()).toBeVisible();
-  await expect(field(page, "E_F")).toHaveAccessibleDescription(
+  await expect(field(page, "EF")).toHaveAccessibleDescription(
     "Fermi energy at T = 0, in eV",
   );
   await expect(page.getByRole("alert")).toHaveCount(0);
@@ -79,7 +79,7 @@ test("a parameter's meaning shows on its (i), not under it", async ({
   await expect(tip).toHaveCount(0);
 
   // A keyboard reaches it too.
-  await page.getByRole("button", { name: "About E_g" }).focus();
+  await page.getByRole("button", { name: "About Eg" }).focus();
   await expect(tip).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(tip).toHaveCount(0);
@@ -100,11 +100,11 @@ test("parameters follow the scattering type and fit mode", async ({ page }) => {
   await expect(field(page, "F")).toHaveCount(0);
   await expect(field(page, "m₁")).toHaveCount(0);
 
-  await choose(page, "S + ρ + R_H");
+  await choose(page, "S + ρ + RH");
   await expect(field(page, "m₁")).toBeVisible();
 
   await choose(page, "S");
-  await expect(slider(page, "E_F")).toBeVisible();
+  await expect(slider(page, "EF")).toBeVisible();
   await expect(field(page, "A")).toHaveCount(0);
 });
 
@@ -128,7 +128,7 @@ test("the SPB mass spans both signs, and is marked as not fitted", async ({
   await field(page, "m").press("Enter");
 
   await expect(slider(page, "m")).toHaveAttribute("aria-valuenow", "-2.5");
-  expect(await stored(page, "spb_s")).toEqual({ band_mass: -2.5 });
+  expect(await stored(page, "spb_s")).toMatchObject({ band_mass: -2.5 });
 });
 
 test("a typed value counts on leaving the field, and moves the slider", async ({
@@ -136,20 +136,20 @@ test("a typed value counts on leaving the field, and moves the slider", async ({
 }) => {
   await open(page);
 
-  await field(page, "E_g").fill("0.1234");
-  await expect(slider(page, "E_g")).toHaveAttribute(
+  await field(page, "Eg").fill("0.1234");
+  await expect(slider(page, "Eg")).toHaveAttribute(
     "aria-valuenow",
     "0.08617333262",
   );
 
-  await field(page, "E_g").blur();
+  await field(page, "Eg").blur();
 
-  await expect(slider(page, "E_g")).toHaveAttribute("aria-valuenow", "0.1234");
+  await expect(slider(page, "Eg")).toHaveAttribute("aria-valuenow", "0.1234");
   expect(await stored(page, "dpb_s_rho")).toEqual({
     band_gap: 1431.99753622,
   });
   await moveAway(page);
-  await expect(field(page, "E_g")).toHaveValue("0,12");
+  await expect(field(page, "Eg")).toHaveValue("0,12");
 });
 
 // Beyond ±0,26 eV, the range of ±3000 K as it shows.
@@ -158,37 +158,37 @@ for (const typed of ["0,27", "-0,27", "", "abc", "1,2,3"]) {
     page,
   }) => {
     await open(page);
-    await field(page, "E_g").fill("0,05");
-    await field(page, "E_g").press("Enter");
+    await field(page, "Eg").fill("0,05");
+    await field(page, "Eg").press("Enter");
 
-    await field(page, "E_g").fill(typed);
-    await field(page, "E_g").blur();
+    await field(page, "Eg").fill(typed);
+    await field(page, "Eg").blur();
 
-    await expect(field(page, "E_g")).toHaveAttribute("aria-invalid", "true");
+    await expect(field(page, "Eg")).toHaveAttribute("aria-invalid", "true");
     await expect(page.getByRole("alert")).toContainText(
-      "E_g: enter a number from -0,26 to 0,26",
+      "Eg: enter a number from -0,26 to 0,26",
     );
     expect(await stored(page, "dpb_s_rho")).toEqual({
       band_gap: 580.225906087,
     });
 
     await moveAway(page);
-    await expect(field(page, "E_g")).toHaveValue("0,05");
+    await expect(field(page, "Eg")).toHaveValue("0,05");
     await expect(page.getByRole("alert")).toHaveCount(0);
   });
 }
 
 test("moving the slider replaces a refused number", async ({ page }) => {
   await open(page);
-  await field(page, "E_g").fill("9999");
-  await field(page, "E_g").blur();
+  await field(page, "Eg").fill("9999");
+  await field(page, "Eg").blur();
   await expect(page.getByRole("alert")).toBeVisible();
 
-  await slider(page, "E_g").press("ArrowRight");
+  await slider(page, "Eg").press("ArrowRight");
 
   await expect(page.getByRole("alert")).toHaveCount(0);
   // One step of 0,01 eV from 1000 K.
-  await expect(field(page, "E_g")).toHaveValue("0,1");
+  await expect(field(page, "Eg")).toHaveValue("0,1");
 });
 
 test("numbers show a decimal comma, and take a comma or a point", async ({
@@ -200,24 +200,24 @@ test("numbers show a decimal comma, and take a comma or a point", async ({
   await expect(page.getByText("0,9", { exact: true })).toBeVisible();
   await expect(page.getByText("1,1", { exact: true })).toBeVisible();
 
-  await field(page, "E_g").fill("0,12");
-  await field(page, "E_g").blur();
-  await expect(slider(page, "E_g")).toHaveAttribute("aria-valuenow", "0.12");
-  await expect(field(page, "E_g")).toHaveValue("0,12");
+  await field(page, "Eg").fill("0,12");
+  await field(page, "Eg").blur();
+  await expect(slider(page, "Eg")).toHaveAttribute("aria-valuenow", "0.12");
+  await expect(field(page, "Eg")).toHaveValue("0,12");
 
-  await field(page, "E_g").fill("0.13");
-  await field(page, "E_g").blur();
-  await expect(slider(page, "E_g")).toHaveAttribute("aria-valuenow", "0.13");
-  await expect(field(page, "E_g")).toHaveValue("0,13");
+  await field(page, "Eg").fill("0.13");
+  await field(page, "Eg").blur();
+  await expect(slider(page, "Eg")).toHaveAttribute("aria-valuenow", "0.13");
+  await expect(field(page, "Eg")).toHaveValue("0,13");
 });
 
 test("a message about a number is tied to its field", async ({ page }) => {
   await open(page);
 
-  await field(page, "E_F").fill("9999");
-  await field(page, "E_F").blur();
+  await field(page, "EF").fill("9999");
+  await field(page, "EF").blur();
 
-  await expect(field(page, "E_F")).toHaveAccessibleDescription(
+  await expect(field(page, "EF")).toHaveAccessibleDescription(
     /Fermi energy.*enter a number from -0,26 to 0,26/,
   );
 });
@@ -230,7 +230,7 @@ test("ionized amplitude controls retain their values", async ({ page }) => {
   await field(page, "A").fill("42000");
   await field(page, "A").press("Enter");
   await slider(page, "A").press("ArrowRight");
-  expect(await stored(page, "spb_s_rho")).toEqual({ A: 43000 });
+  expect(await stored(page, "spb_s_rho")).toMatchObject({ A: 43000 });
   await expect(field(page, "A")).toHaveValue("43000");
 });
 
@@ -268,9 +268,9 @@ test("a value between steps stays, and a step moves on from it", async ({
   await expect(field(page, "m₂/m₁")).toHaveValue("1,244");
 });
 
-test("G with R_H keeps its default off the large step", async ({ page }) => {
+test("G with RH keeps its default off the large step", async ({ page }) => {
   await open(page);
-  await choose(page, "S + ρ + R_H");
+  await choose(page, "S + ρ + RH");
   await chooseScattering(page, /dis\)/);
 
   await expect(field(page, "G")).toHaveValue("1");
@@ -283,7 +283,7 @@ test("dragging moves by whole control units, not by the step", async ({
   page,
 }) => {
   await open(page);
-  await choose(page, "S + ρ + R_H");
+  await choose(page, "S + ρ + RH");
   await chooseScattering(page, /dis\)/);
   await slider(page, "G").scrollIntoViewIfNeeded();
   const box = await slider(page, "G").locator("..").locator("..").boundingBox();
@@ -312,36 +312,42 @@ test("ionized scattering has no mixed-scattering controls", async ({
   await expect(field(page, "D")).toHaveCount(0);
 });
 
-test("each fit mode keeps its own values and defaults", async ({ page }) => {
+test("values follow to another fit mode and model, by parameter", async ({
+  page,
+}) => {
   await open(page);
   await choose(page, "SPB");
-  await field(page, "E_F").fill("0,06");
-  await field(page, "E_F").blur();
+  await field(page, "EF").fill("0,06");
+  await field(page, "EF").blur();
 
+  // SPB S + ρ starts from m = -1 on its own, but takes the m shown in S.
   await choose(page, "S + ρ");
-  await expect(field(page, "E_F")).toHaveValue("-0,01");
-  await expect(field(page, "m")).toHaveValue("-1");
-
-  await choose(page, "S");
-  await expect(field(page, "E_F")).toHaveValue("0,06");
+  await expect(field(page, "EF")).toHaveValue("0,06");
+  await expect(field(page, "m")).toHaveValue("1,01");
+  await field(page, "EF").fill("0,05");
+  await field(page, "EF").blur();
 
   await choose(page, "DPB");
-  await expect(field(page, "E_F")).toHaveValue("-0,01");
+  await expect(field(page, "EF")).toHaveValue("0,05");
+  await expect(field(page, "m₂/m₁")).toHaveValue("1,01");
+  await field(page, "EF").fill("0,04");
+  await field(page, "EF").blur();
+
   await choose(page, "SPB");
-  await expect(field(page, "E_F")).toHaveValue("0,06");
+  await expect(field(page, "EF")).toHaveValue("0,04");
 });
 
 test("a refused number does not follow to another fit mode", async ({
   page,
 }) => {
   await open(page);
-  await field(page, "E_g").fill("9999");
-  await field(page, "E_g").blur();
+  await field(page, "Eg").fill("9999");
+  await field(page, "Eg").blur();
   await expect(page.getByRole("alert")).toBeVisible();
 
   await choose(page, "S");
 
-  await expect(field(page, "E_g")).toHaveValue("0,09");
+  await expect(field(page, "Eg")).toHaveValue("0,09");
   await expect(page.getByRole("alert")).toHaveCount(0);
 });
 
@@ -383,20 +389,20 @@ test("leaving a field unchanged keeps a result and the exact value", async ({
     });
   });
 
-  await field(page, "E_g").focus();
-  await field(page, "E_g").press("Enter");
-  await field(page, "E_g").blur();
+  await field(page, "Eg").focus();
+  await field(page, "Eg").press("Enter");
+  await field(page, "Eg").blur();
   // Typing the number that is shown, written differently, is no change either.
   // 1000 K shows as 0,09 eV.
-  await field(page, "E_g").fill("0,090");
-  await field(page, "E_g").blur();
+  await field(page, "Eg").fill("0,090");
+  await field(page, "Eg").blur();
 
   expect(await fitStatus()).not.toBe("idle");
   expect(await stored(page, "dpb_s_rho")).toEqual({
     band_gap: 1000.0000000000001,
   });
 
-  await slider(page, "E_g").press("ArrowRight");
+  await slider(page, "Eg").press("ArrowRight");
   await expect.poll(fitStatus).toBe("idle");
 });
 
@@ -419,13 +425,28 @@ test.describe("on a touch screen", () => {
     await open(page);
     const tip = page.getByRole("tooltip");
 
-    await page.getByRole("button", { name: "About E_g" }).tap();
+    await page.getByRole("button", { name: "About Eg" }).tap();
     await expect(
-      page.getByRole("button", { name: "About E_g" }),
+      page.getByRole("button", { name: "About Eg" }),
     ).not.toBeFocused();
     await expect(tip).toContainText("in eV");
 
     await page.getByRole("heading", { name: "Parameters" }).tap();
     await expect(tip).toHaveCount(0);
   });
+});
+
+test("a change of model says what it took along, and that E_F counts from another edge", async ({
+  page,
+}) => {
+  await open(page);
+  await choose(page, "SPB");
+
+  await expect(
+    page.getByRole("status").filter({ hasText: "taken from DPB" }),
+  ).toHaveText(
+    "EF taken from DPB, with any bounds and holds. EF counts from the band edge in SPB and from the top of band 1 in DPB, so check it.",
+  );
+  await choose(page, "S + ρ");
+  await expect(page.getByText(/taken from DPB/)).toHaveCount(0);
 });

@@ -310,7 +310,7 @@ test("a reference line is dashed across the plot, with its label", () => {
   expect(layout.shapes).toMatchObject([
     { type: "line", xref: "paper", y0: 900, y1: 900, line: { dash: "dash" } },
   ]);
-  expect(layout.annotations).toMatchObject([{ y: 900, text: "E_g" }]);
+  expect(layout.annotations).toMatchObject([{ y: 900, text: "E<sub>g</sub>" }]);
 });
 
 test("the figure does not share arrays with its input", () => {
@@ -337,6 +337,21 @@ describe("a wavevector axis", () => {
       ticks: "outside",
     });
     expect(wavevector).not.toHaveProperty("dtick");
+  });
+
+  test("with no scale, keeps its title but shows no values or tick marks", () => {
+    const bare = xaxis({
+      xAxisSpan: [-2, 2],
+      xAxisTitle: "k",
+      xAxisScale: false,
+    });
+    expect(bare).toMatchObject({
+      range: [-2, 2],
+      title: { text: "k" },
+      showticklabels: false,
+      ticks: "",
+      showline: true,
+    });
   });
 
   test("leaves a temperature axis as it was", () => {

@@ -26,7 +26,7 @@ const EXAMPLES = fileURLToPath(
 
 type Schemas = components["schemas"];
 
-const SYMBOL_OF_SUFFIX = { see: "S", rho: "ρ", hall: "R_H" } as const;
+const SYMBOL_OF_SUFFIX = { see: "S", rho: "ρ", hall: "RH" } as const;
 
 /**
  * Chooses a file for the next empty slot, then names the quantity of its second column, which
@@ -53,7 +53,7 @@ async function loadExample(page: Page, name: string) {
 for (const example of ["01_Fe2VAl09Si01", "02_SiP", "03_AWI32_SI"]) {
   test(`all files of ${example} load`, async ({ page }) => {
     await page.goto("/fit");
-    await page.getByRole("radio", { name: "S + ρ + R_H", exact: true }).click();
+    await page.getByRole("radio", { name: "S + ρ + RH", exact: true }).click();
 
     const names = ["see", "rho", "hall"].map(
       (suffix) => `${example}_${suffix}.txt`,
@@ -188,11 +188,11 @@ test("a single file maps its columns through the real parser", async ({
 
   await expect(page.getByText("S · 6 points")).toBeVisible();
   await expect(page.getByText("ρ · 6 points")).toBeVisible();
-  await expect(page.getByText("R_H · not found")).toBeVisible();
+  await expect(page.getByText("RH · not found")).toBeVisible();
 
   await page.getByRole("combobox", { name: "Quantity for column rho" }).click();
-  await page.getByRole("option", { name: "R_H", exact: true }).click();
-  await expect(page.getByText("R_H · 6 points")).toBeVisible();
+  await page.getByRole("option", { name: "RH", exact: true }).click();
+  await expect(page.getByText("RH · 6 points")).toBeVisible();
   await expect(page.getByText("ρ · not found")).toBeVisible();
 
   await page.getByRole("combobox", { name: "Quantity for column T" }).click();
@@ -255,13 +255,13 @@ test("the SPB Hall mode is selectable and draws its calculated coefficient", asy
   await page.getByRole("radio", { name: "SPB" }).click();
 
   const hallMode = page.getByRole("radio", {
-    name: "S + ρ + R_H",
+    name: "S + ρ + RH",
     exact: true,
   });
   await hallMode.click();
   await expect(hallMode).toBeChecked();
   // Put the Fermi energy inside the default electron band.
-  const fermi = page.getByRole("textbox", { name: "E_F", exact: true });
+  const fermi = page.getByRole("textbox", { name: "EF", exact: true });
   await fermi.fill("0,02");
   await fermi.blur();
   const calculated = page.waitForResponse(
@@ -281,7 +281,7 @@ test("the SPB Hall mode is selectable and draws its calculated coefficient", asy
       (value) => value !== null && Number.isFinite(value) && value < 0,
     ),
   ).toBe(true);
-  await show(page, "Hall coefficient R_H(T)");
+  await show(page, "Hall coefficient RH(T)");
   await expect(
     chart(page).locator(".scatterlayer .trace path.js-line"),
   ).toBeVisible();
@@ -291,7 +291,7 @@ test("the real descriptions fill the parameters", async ({ page }) => {
   await page.goto("/fit");
 
   await expect(
-    page.getByRole("textbox", { name: "E_F", exact: true }),
+    page.getByRole("textbox", { name: "EF", exact: true }),
   ).toHaveValue("-0,01");
   await page.getByRole("radio", { name: "SPB" }).click();
   await expect(
@@ -310,7 +310,7 @@ test("an example through the real API draws the curve, with its RMSE", async ({
   await expect(page.getByRole("alert")).toHaveCount(0);
   const before = await page.getByText(/^[\d,]+ µV\/K$/).textContent();
 
-  await page.getByRole("slider", { name: "E_F" }).press("PageUp");
+  await page.getByRole("slider", { name: "EF" }).press("PageUp");
 
   await expect(page.getByText(/^[\d,]+ µV\/K$/)).not.toHaveText(before ?? "");
 });
@@ -337,12 +337,12 @@ test("a zero in resistivity does not stop the real API from answering", async ({
 
 test("the charts draw real curves through the real API", async ({ page }) => {
   await page.goto("/fit");
-  await expect(page.getByRole("slider", { name: "E_F" })).toBeVisible();
+  await expect(page.getByRole("slider", { name: "EF" })).toBeVisible();
   const lines = chart(page).locator(".scatterlayer .trace path.js-line");
 
   await show(page, "Chemical potential μ(T)");
   await expect(lines).toHaveCount(1);
-  await expect(chart(page).getByText("band 2 bottom (E_g)")).toBeVisible();
+  await expect(chart(page).getByText("band 2 bottom (Eg)")).toBeVisible();
 
   await show(page, "Band contributions");
   await expect(lines).toHaveCount(3);
@@ -375,8 +375,8 @@ for (const [example, mass, gap, fermi] of [
       page.getByRole("textbox", { name, exact: true });
 
     await expect(field("m₂/m₁")).toHaveValue(mass);
-    await expect(field("E_g")).toHaveValue(gap);
-    await expect(field("E_F")).toHaveValue(fermi);
+    await expect(field("Eg")).toHaveValue(gap);
+    await expect(field("EF")).toHaveValue(fermi);
     await expect(
       page
         .locator('[data-slot="badge"]')
@@ -393,7 +393,7 @@ test("02_SiP has no net for its span, and keeps the desktop's values", async ({
 
   await expect(page.getByText(/No neural net covers/)).toBeVisible();
   await expect(
-    page.getByRole("textbox", { name: "E_g", exact: true }),
+    page.getByRole("textbox", { name: "Eg", exact: true }),
   ).toHaveValue("0,09");
 });
 
@@ -401,7 +401,7 @@ test("the real API draws the sketch of the bands, and it follows the values", as
   page,
 }) => {
   await page.goto("/fit");
-  await expect(page.getByRole("slider", { name: "E_F" })).toBeVisible();
+  await expect(page.getByRole("slider", { name: "EF" })).toBeVisible();
   // The last chart shows it from the start.
   await expect(page.getByText(/^Caution: This is a sketch/)).toBeVisible();
   await expect(page.getByRole("alert")).toHaveCount(0);
@@ -410,7 +410,7 @@ test("the real API draws the sketch of the bands, and it follows the values", as
   ).toHaveCount(3);
 
   const answered = page.waitForResponse("**/api/band-diagram");
-  const field = page.getByRole("textbox", { name: "E_g", exact: true });
+  const field = page.getByRole("textbox", { name: "Eg", exact: true });
   // 0.04 eV, about 464 K.
   await field.fill("0,04");
   await field.blur();
@@ -479,7 +479,7 @@ test.describe("real fits", () => {
     await loadExample(page, "01_Fe2VAl09Si01_rho.txt");
     await expect(page.getByText(/^\d+ points/)).toHaveCount(2);
     const run = page.getByRole("button", { name: "Run fit" });
-    const gap = page.getByRole("textbox", { name: "E_g", exact: true });
+    const gap = page.getByRole("textbox", { name: "Eg", exact: true });
 
     const badge = (text: RegExp) =>
       page.locator('[data-slot="badge"]').filter({ hasText: text });
@@ -494,7 +494,7 @@ test.describe("real fits", () => {
     await expect(gap).toHaveValue("0,05");
 
     async function expectFittedGap(gapK: number | null | undefined) {
-      if (gapK == null) throw new Error("Fit result is missing E_g");
+      if (gapK == null) throw new Error("Fit result is missing Eg");
       const displayedEv = Number((await gap.inputValue()).replace(",", "."));
       expect(displayedEv).toBeCloseTo(gapK * 8.617333262e-5, 2);
     }
@@ -511,7 +511,7 @@ test.describe("real fits", () => {
       `Iterations${String(joint.iterations)}limit 1000`,
     );
     await expect(
-      parameters.getByRole("row").filter({ hasText: /^E_g/ }),
+      parameters.getByRole("row").filter({ hasText: /^Eg/ }),
     ).toContainText("-0,26 … 0,26");
 
     await page.getByRole("button", { name: "Reset" }).click();
@@ -617,14 +617,14 @@ test.describe("real fits", () => {
     await page.goto("/fit?demo=1");
     await expect(page.getByText(/^Synthetic data/)).toBeVisible();
     await page.getByRole("radio", { name: "S", exact: true }).click();
-    const gap = page.getByRole("textbox", { name: "E_g", exact: true });
+    const gap = page.getByRole("textbox", { name: "Eg", exact: true });
     await gap.fill("0,09");
     await gap.blur();
     await page.getByRole("button", { name: "Edit bounds" }).click();
 
     // The data were made with a gap of 800 K, so a fit is held off from there: 0.08 eV is about 928 K.
-    await page.getByRole("textbox", { name: "E_g, lower bound" }).fill("0,08");
-    await page.getByRole("textbox", { name: "E_g, upper bound" }).fill("0,1");
+    await page.getByRole("textbox", { name: "Eg, lower bound" }).fill("0,08");
+    await page.getByRole("textbox", { name: "Eg, upper bound" }).fill("0,1");
     await page.getByRole("button", { name: "Done" }).click();
     await runVerifiedFit(page);
 
@@ -632,7 +632,7 @@ test.describe("real fits", () => {
     const row = page
       .getByRole("table", { name: "Parameters in use" })
       .getByRole("row")
-      .filter({ hasText: /^E_g/ });
+      .filter({ hasText: /^Eg/ });
     await expect(row).toContainText("0,08 … 0,1");
     await expect(row.getByText("at bound")).toBeVisible();
   });
