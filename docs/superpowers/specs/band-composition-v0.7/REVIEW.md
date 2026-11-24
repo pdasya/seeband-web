@@ -6,6 +6,8 @@ Read the [technical design document](../2026-11-21-band-composition-design.md) f
 
 [Download the review ZIP](https://github.com/pdasya/seeband-web/releases/download/review-pr272-v0.7-item18/seeband-band-composition-v0.7-review.zip). Extract it and open `README.md` for the illustrated English TDD, interactive Fit/Guide, field dictionary and recorded results. The included images and prototype open offline. The README identifies the source commit. Links to implementation files on GitHub use that revision.
 
+The published ZIP records the item 18 review. The [current decision on Q1](../2026-11-21-band-composition-design.md#9-implementation-stages-and-questions-for-colleagues) adopts the desktop carrier balance already described in §3 of that snapshot.
+
 For comments, use the Markdown in PR #272. The six current figures are rendered from the checked-in source and published alongside the ZIP. To build a package from a clean checkout with the dependencies below, choose a destination outside the checkout:
 
 ```sh
