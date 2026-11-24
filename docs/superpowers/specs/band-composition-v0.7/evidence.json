@@ -36,13 +36,15 @@
         "label": "1 SKB + 1 SPB"
       }
     ],
-    "guide": "Parameters by fit mode"
+    "guide": "Parameters by fit mode",
+    "band_counts_with_kane": [1, 2]
   },
   "planned_matrix": {
-    "allowed": 270,
-    "invalid_scattering": 306,
+    "allowed": 198,
+    "invalid_scattering": 90,
     "status": "The standalone Fit/Guide exercised all 576 ordered requests in Chromium. Production API transport and fitting remain planned.",
-    "total": 576
+    "total": 576,
+    "unsupported_composition": 288
   },
   "checks": [
     {
@@ -76,7 +78,7 @@
       "metrics": {
         "max_normalized_residual": 1.303e-13
       },
-      "limitations": "Finite sample of configurations. The demonstration of conductivity fractions assumes a constant relaxation time.",
+      "limitations": "Finite sample of configurations. The demonstration of conductivity fractions assumes a constant relaxation time. Three-band Kane inputs in this mathematical reference are outside the current editor scope.",
       "item_12": {
         "reference_wavevector_per_m": 10000000000.0,
         "test_display_coordinates": [-0.1, 0.1],
@@ -534,8 +536,8 @@
       "output": "evidence/scattering-matrix.txt",
       "metrics": {
         "distinct_requests": 576,
-        "accepted": 270,
-        "rejected": 306,
+        "accepted": 198,
+        "rejected": 378,
         "by_band_count": [
           {
             "bands": 1,
@@ -549,12 +551,14 @@
           },
           {
             "bands": 3,
-            "accepted": 168,
-            "rejected": 216
+            "accepted": 96,
+            "rejected": 288
           }
         ],
-        "invalid_per_fit_mode": 102,
-        "invalid_per_nonacoustic_mechanism": 102
+        "invalid_per_fit_mode": 126,
+        "invalid_scattering": 90,
+        "unsupported_composition": 288,
+        "scattering_refusals_per_nonacoustic_mechanism": 30
       },
       "failure": {
         "code": "incompatible_scattering",
@@ -564,9 +568,14 @@
       },
       "case_output_option": "--cases",
       "limitations": "Browser compatibility only. The production 422 response, transport and fitting are separate acceptance cases. Configurations with multiple Kane bands are outside this matrix.",
-      "provenance": "Replayed on the canonical offline HTML with the locked Playwright Chromium. Expected eligibility follows the v1 acoustic-only restriction for any declared Kane band.",
+      "provenance": "Replayed against the standalone HTML in locked Chromium. Composition eligibility is checked before acoustic-only scattering eligibility.",
       "replay_status": "reproduced_from_pr",
-      "output_sha256": "479040e2b48130d0aec9a7a0bdbbff8c3a388a254fd1acad7c96dcc3a9a5efb5"
+      "output_sha256": "f93db0f6772e7fb9ba4622c4f2333106907809ad06de32330995ea5a63d3ede3",
+      "composition_failure": {
+        "code": "unsupported_composition",
+        "path": "modelContent.types",
+        "applies_to": "All three-band requests containing Kane, including acPh."
+      }
     },
     {
       "id": "UI-FIT-GUIDE",
@@ -577,14 +586,15 @@
       "command": "node docs/superpowers/specs/band-composition-v0.7/evidence/verify_fit_guide.mjs --browser",
       "output": "evidence/fit-guide-v0.7.txt",
       "metrics": {
-        "allowed_ui_configurations": 270,
+        "allowed_ui_configurations": 198,
         "viewport_widths_px": [960, 320],
         "min_bands": 1,
         "max_bands": 3,
-        "max_kane": 1
+        "max_kane": 1,
+        "max_bands_with_kane": 2
       },
       "limitations": "Browser and design-state checks only. No transport API is called.",
-      "provenance": "The 270 field configurations run against the dictionary. The transition regression edits rendered controls in jsdom and Chrome, checks legacy and current widget snapshots, and fails on the pre-fix HTML.",
+      "provenance": "The 198 field configurations run against the dictionary. The transition regression edits rendered controls in jsdom and Chrome, checks legacy and current widget snapshots, and fails on the pre-fix HTML.",
       "mass_convention": {
         "editable": "Single-valley DOS mass",
         "derived": "DOS mass (all equivalent valleys)",
@@ -633,7 +643,7 @@
         "legacy_fractional": "preserve history, block new replay",
         "scope": "proposed labels and UI; scattering laws unchanged"
       },
-      "output_sha256": "b3763363a95ba2bce237a784fab9c9591d85ec5fce8b133913cd6deb72c50dfd",
+      "output_sha256": "3a78c46a5f79b0b0c4cc4e69959fd5e1c23ea1e2421315cdbb6197b09f603146",
       "replay_status": "reproduced_from_pr",
       "regression": {
         "pre_fix_revision": "4e4526c6821d6bf7a06630962b3a7d1bea038acc",
@@ -648,7 +658,7 @@
         ]
       },
       "identifiability": {
-        "configurations_checked": 270,
+        "configurations_checked": 198,
         "parameters_caution": "all multiband S-only configurations",
         "result_example": "three-band S-only, explicit disclosure",
         "issue_ids_exercised": [
@@ -677,7 +687,7 @@
       "item_14": {
         "first_visit": ["VB", "CB", "VB"],
         "acoustic_scale": "shared value, bounds and hold in acPh and acPhDis",
-        "mixed_kane_s": "n-1 dimensionless nonnegative prefactor ratios; positive reference",
+        "mixed_kane_s": "One manual dimensionless prefactor ratio in a mixed pair with a positive reference.",
         "browser": "local draft restored on reload; keyboard help for mode-set holds; composition edit cancels offline replay"
       }
     },
@@ -712,7 +722,8 @@
       },
       "tolerances": {
         "abs_S_V_per_K": 1e-14
-      }
+      },
+      "limitations": "Three-band Kane inputs in this mathematical reference are outside the current editor scope."
     },
     {
       "id": "HOLD-MIGRATION",
@@ -755,8 +766,8 @@
     }
   },
   "review_package": {
-    "tag": "review-pr272-v0.7-item18",
-    "archive": "https://github.com/pdasya/seeband-web/releases/download/review-pr272-v0.7-item18/seeband-band-composition-v0.7-review.zip",
+    "tag": "review-pr272-v0.7-kane-scope",
+    "archive": "https://github.com/pdasya/seeband-web/releases/download/review-pr272-v0.7-kane-scope/seeband-band-composition-v0.7-review.zip",
     "builder": "build_review_bundle.py",
     "current_branch_replay_rows": 13
   }

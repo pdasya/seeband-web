@@ -124,7 +124,11 @@
       "label_en": "αᵢ",
       "display_unit": "eV⁻¹",
       "tooltip_en": "Kane nonparabolicity of this band. Zero gives the parabolic limit.",
-      "definition": "alpha_i"
+      "definition": "alpha_i",
+      "applicability": {
+        "maximum_band_count": 2,
+        "maximum_kane_band_count": 1
+      }
     },
     {
       "key": "amp",
@@ -187,7 +191,9 @@
       "definition": "C_l/E_def^2",
       "applicability": {
         "band_type": "Kane",
-        "scattering": ["acPh"]
+        "scattering": ["acPh"],
+        "maximum_band_count": 2,
+        "maximum_kane_band_count": 1
       }
     },
     {
@@ -216,7 +222,7 @@
     },
     {
       "key": "mixed_parabolic_acoustic_amp",
-      "legacy_or_tdd": "candidate for Kane + parabolic only",
+      "legacy_or_tdd": "candidate for one Kane + one parabolic only",
       "label_en": "σ₀,ᵢ^(ph)",
       "display_unit": "S/m",
       "tooltip_en": "Acoustic conductivity scale for this parabolic band in a composition containing Kane. Only acPh is offered. No extra relative-weight field describes the same band pair. Absolute normalization remains a proposed extension requiring verification.",
@@ -224,7 +230,9 @@
       "applicability": {
         "band_type": "parabolic",
         "kane_present": true,
-        "scattering": ["acPh"]
+        "scattering": ["acPh"],
+        "maximum_band_count": 2,
+        "maximum_kane_band_count": 1
       }
     },
     {
@@ -274,7 +282,9 @@
       "applicability": {
         "kane_present": true,
         "band_index_greater_than": 1,
-        "fit_mode": "S"
+        "fit_mode": "S",
+        "maximum_band_count": 2,
+        "maximum_kane_band_count": 1
       }
     }
   ],
@@ -303,11 +313,6 @@
       "label": "3 SPB",
       "parabolic": 3,
       "kane": 0
-    },
-    {
-      "label": "1 SKB + 2 SPB",
-      "parabolic": 2,
-      "kane": 1
     }
   ],
   "fit_modes": [["S"], ["S", "rho"], ["S", "rho", "R_H"]],
@@ -416,7 +421,7 @@
     },
     "ionized_scale": "Ionized uses τ_ii,1 in every visible mode and τ_ii,i/τ_ii,1 for the existing empirical relative weight. Keep the S/m coefficient, (T/300 K)^3 F2 law and original limits; these symbols add no microscopic assumption.",
     "scale_warning": "The desktop τ labels denote normalized transport coefficients, not raw seconds. Do not infer a new mass conversion from a label change.",
-    "kane": "One Kane band at most, acoustic scattering. S-only uses one manual sigma_0,i/sigma_0,1 per additional band. Resistivity modes use one dimensional amplitude per band."
+    "kane": "One Kane band at most in a one- or two-band composition, acoustic scattering only. Three-band compositions are all-parabolic. S-only uses one manual sigma_0,2/sigma_0,1 for a Kane + parabolic pair. Resistivity modes use one dimensional amplitude per band."
   },
   "fit_eligibility_rules": {
     "mode_order": ["S", "S+rho", "S+rho+R_H"],
@@ -469,7 +474,8 @@
         "Kane": "kane_amp",
         "parabolic": "mixed_parabolic_acoustic_amp"
       },
-      "relative_prefactor_i_gt_1": ["manual", "hidden", "hidden"]
+      "relative_prefactor_i_gt_1": ["manual", "hidden", "hidden"],
+      "maximum_band_count": 2
     },
     "model_settings": {
       "valleys": "Manual positive integers; not fit variables.",
@@ -491,5 +497,47 @@
     "f_i": "f_i is the acoustic fraction of the total scattering rate at 300 K; it is an alternate coordinate to the editable relaxation-time ratio r_i = τ_acPh,i/τ_dis,i.",
     "mapping": "For positive rates at T0 = 300 K, f_i = 1/(1+r_i). P_i = acoustic_limit_prefactor_i/(1+r_i). Pure-mechanism endpoints are limits; do not divide by a zero Fermi integral when deriving coordinates.",
     "storage": "Do not fit P_i/f_i alongside the corresponding editable scales/ratios; they describe the same degrees of freedom."
+  },
+  "composition_scope": {
+    "supported": "One to three parabolic bands, one Kane band, or one Kane plus one parabolic band. CB/VB orientation and band order do not change support.",
+    "kane_band_limit": 1,
+    "three_band_rule": "Three-band compositions support parabolic bands only.",
+    "validation_precedence": "Reject three-band Kane requests as unsupported_composition at modelContent.types before checking scattering. Supported Kane compositions require acPh; other scattering returns incompatible_scattering at modelContent.mechanism.",
+    "ui_edits": "Disable Add band for a two-band Kane composition and disable every Kane choice for three parabolic bands. Reject forced edits without changing the editor or saved draft.",
+    "restore": "Reject unsupported restore or saved-draft reload without replacing the saved draft; preserve it until a deliberate valid edit.",
+    "supported_examples": [
+      {
+        "bands": ["VB Kane"],
+        "scattering": "acPh"
+      },
+      {
+        "bands": ["CB Parabolic", "VB Kane"],
+        "scattering": "acPh"
+      },
+      {
+        "bands": ["CB Parabolic", "VB Parabolic", "CB Parabolic"],
+        "scattering": "acPhDis"
+      }
+    ],
+    "rejected_examples": [
+      {
+        "bands": ["VB Kane", "CB Parabolic", "VB Parabolic"],
+        "scattering": "acPh",
+        "code": "unsupported_composition",
+        "path": "modelContent.types"
+      },
+      {
+        "bands": ["CB Parabolic", "VB Parabolic", "CB Kane"],
+        "scattering": "ionized",
+        "code": "unsupported_composition",
+        "path": "modelContent.types"
+      },
+      {
+        "bands": ["VB Kane", "CB Parabolic"],
+        "scattering": "dis",
+        "code": "incompatible_scattering",
+        "path": "modelContent.mechanism"
+      }
+    ]
   }
 }

@@ -27,6 +27,17 @@ assert.deepEqual(
   [0, 1, 0],
   "default band composition is VB/CB/VB",
 );
+// Rejected imports preserve the editor and report composition before scattering.
+const initialSnapshot = JSON.stringify(w.fitGuide.snapshot());
+for (const mechanism of ["ac", "dis", "ion", "mix"]) {
+  const error = w.fitGuide.restore({
+    modelContent: { n: 3, types: [0, 3, 0], mechanism, selectedMode: 2 },
+    privateContent: {},
+  });
+  assert.equal(error?.code, "unsupported_composition");
+  assert.equal(error?.path, "modelContent.types");
+  assert.equal(JSON.stringify(w.fitGuide.snapshot()), initialSnapshot);
+}
 // The canonical editor owns the retired Model-only fixture's behavior checks.
 function verifyModelControls(w) {
   const d = w.document;
@@ -98,17 +109,37 @@ function verifyModelControls(w) {
         for (let i = 0; i < n; i++)
           equal(
             choice(i, "Kane").disabled,
-            mechanism !== "ac",
+            n === 3 || mechanism !== "ac",
             "Kane requires global acoustic scattering",
           );
       }
       set(one("#sb-scatter"), "ac");
+      if (n === 3) {
+        const before = JSON.stringify(snapshot());
+        choice(0, "Kane").onclick();
+        equal(
+          JSON.stringify(snapshot()),
+          before,
+          "programmatic Kane choice cannot change three parabolas",
+        );
+        continue;
+      }
       choice(n - 1, "Kane").click();
-      equal(
-        name(),
-        { 3: "1 SKB + 2 SPB", 2: "1 SKB + 1 SPB", 1: "SKB" }[n],
-        "Kane Model label",
-      );
+      if (n === 2) {
+        equal(
+          one("#sb-add").disabled,
+          true,
+          "Kane pair cannot add a third band",
+        );
+        const before = JSON.stringify(snapshot());
+        one("#sb-add").onclick();
+        equal(
+          JSON.stringify(snapshot()),
+          before,
+          "programmatic add cannot extend a Kane pair",
+        );
+      }
+      equal(name(), { 2: "1 SKB + 1 SPB", 1: "SKB" }[n], "Kane Model label");
       equal(one("#sb-scatter").value, "ac", "Kane retains acoustic scattering");
       equal(
         one("#sb-scatter").disabled,
@@ -206,7 +237,7 @@ const restore = (s, p = {}) =>
 let checks = 0;
 for (const n of [1, 2, 3])
   for (let mask = 0; mask < 2 ** n; mask++)
-    for (let k = -1; k < n; k++) {
+    for (let k = -1; k < (n === 3 ? 0 : n); k++) {
       const types = [0, 1, 2].map((i) => ((mask >> i) & 1) + (i === k ? 2 : 0));
       for (const mechanism of k < 0 ? ["ac", "dis", "ion", "mix"] : ["ac"])
         for (let selectedMode = 0; selectedMode < 3; selectedMode++) {
@@ -295,12 +326,7 @@ assert.equal(
 );
 assert.equal(one('[data-band="2"] [data-choice=Kane]').disabled, true);
 set(one("#sb-scatter"), "ac");
-assert.equal(one('[data-band="2"] [data-choice=Kane]').disabled, false);
-one('[data-band="2"] [data-choice=Kane]').click();
-assert.equal(one("#sb-model-name").textContent, "1 SKB + 2 SPB");
-assert.ok(one('[data-band="0"] [data-choice=Kane]').disabled);
-one('[data-band="2"] [data-choice=VB]').click();
-assert.ok(field("alpha2", "input"));
+assert.equal(one('[data-band="2"] [data-choice=Kane]').disabled, true);
 one("#sb-remove").click();
 assert.equal(one("#sb-model-name").textContent, "DPB");
 one("#sb-remove").click();
@@ -323,6 +349,10 @@ for (const t of [
   assert.equal(field("gap1", "input").value, "-0,03");
   assert.equal(field("gap1", ".limits label:first-child input").value, "-0,2");
   field("gap1", ".lock").click();
+  // Return to parabolic dispersion before extending this pair to three bands.
+  for (let i = 0; i < 2; i++)
+    if (t[i] >= 2)
+      one('[data-band="' + i + '"] [data-choice=Parabolic]').click();
   one("#sb-add").click();
   assert.equal(
     Number(field("gap1", "input").value.replace(",", ".")),
@@ -349,7 +379,6 @@ assert.ok(!all(".field label").some((l) => l.textContent === "Eg"));
 for (const shape of [
   [1, 0, 1],
   [0, 1, 0],
-  [3, 0, 1],
 ])
   for (const m of [0, 1, 2]) {
     restore({ n: 3, types: shape, mechanism: "ac", selectedMode: m });
@@ -473,16 +502,23 @@ function verifyBandTransitions(w) {
     expectField("ratio1", 2.2, 0.2, 6);
     expectField("ratio2", 5.5, 0.6, 10, false);
   }
+  // Third-band removal resets its state while retaining the eligible pair.
+  one("#sb-remove").click();
+  one("#sb-add").click();
+  equal(field("massRatio2", "input").value, "1");
+  equal(
+    bounds("massRatio2").map((input) => input.value),
+    ["", ""],
+  );
+  equal(field("massRatio2", ".lock").getAttribute("aria-pressed"), "false");
+  one("#sb-remove").click();
   choose(1, "Kane");
   expectField("amplitude0", 27000, 1500, 90000);
-  expectField("gap1", 0.13, -0.25, 0.45);
-  expectField("gap2", -0.07, -0.35, 0.2, false);
+  expectField("gap1", -0.13, -0.45, 0.25);
   expectField("massRatio1", 3.2, 0.3, 8);
-  expectField("massRatio2", 4.4, 0.5, 9, false);
   edit("alpha1", 1.8, 0.2, 4);
   edit("amplitude0", 12000, 100, 50000);
   edit("amplitude1", 23000, 200, 60000, false);
-  edit("amplitude2", 34000, 300, 70000);
   mode(0);
   expectField("mass", 2.7, 0.4, 7, true, true);
   equal(field("amplitude0", "input"), null);
@@ -497,7 +533,6 @@ function verifyBandTransitions(w) {
   expectField("alpha1", 1.8, 0.2, 4);
   expectField("amplitude0", 12000, 100, 50000);
   expectField("amplitude1", 23000, 200, 60000, false);
-  expectField("amplitude2", 34000, 300, 70000);
   choose(1, "Parabolic");
   equal(field("alpha1", "input"), null);
   expectField("scale", 12000, 100, 50000);
@@ -511,18 +546,7 @@ function verifyBandTransitions(w) {
   restore({ n: 1, types: [0, 0, 0], mechanism: "dis", selectedMode: 0 });
   restore(snapshot.modelContent, snapshot.privateContent);
   expectField("alpha1", 1.8, 0.2, 4);
-  expectField("massRatio2", 4.4, 0.5, 9, false);
   expectField("amplitude1", 23000, 200, 60000, false);
-  one("#sb-remove").click();
-  one("#sb-add").click();
-  equal(field("massRatio2", "input").value, "1");
-  equal(
-    bounds("massRatio2").map((input) => input.value),
-    ["", ""],
-  );
-  equal(field("massRatio2", ".lock").getAttribute("aria-pressed"), "false");
-  expectField("alpha1", 1.8, 0.2, 4);
-  expectField("massRatio1", 3.2, 0.3, 8);
 
   // Moving Kane must not reuse a prefactor with a different physical unit.
   choose(1, "Parabolic");
@@ -641,7 +665,7 @@ function verifyIdentifiability(w, copy) {
   let count = 0;
   for (const n of [1, 2, 3])
     for (let mask = 0; mask < 2 ** n; mask++)
-      for (let k = -1; k < n; k++)
+      for (let k = -1; k < (n === 3 ? 0 : n); k++)
         for (const mechanism of k < 0 ? ["ac", "dis", "ion", "mix"] : ["ac"])
           for (let selectedMode = 0; selectedMode < 3; selectedMode++) {
             const types = [0, 1, 2].map(
@@ -687,7 +711,7 @@ function verifyIdentifiability(w, copy) {
             );
             count++;
           }
-  equal(count, 270, "All allowed configurations checked");
+  equal(count, 198, "All allowed configurations checked");
   restore({ n: 3, types: [0, 1, 0], mechanism: "ac", selectedMode: 0 });
   set(field("ef"), "0,011");
   set(field("gap1"), "0,09");
@@ -1697,7 +1721,7 @@ function verifyStandaloneParameters(w) {
     set(one("#sb-scatter"), "ac");
     equal(numbers("scale"), mixed, "disorder coefficient stays independent");
   }
-  for (const n of [1, 2, 3])
+  for (const n of [1, 2])
     for (let kane = 0; kane < n; kane++) {
       const types = [0, 1, 0];
       types[kane] += 2;
@@ -1845,7 +1869,7 @@ console.log(
 );
 verifyIdentifiability(w, labels.identifiability);
 console.log(
-  "Item 9: 270 caution states, opt-in Result, in-gap cues and stable parameter state passed.",
+  "Item 9: 198 caution states, opt-in Result, in-gap cues and stable parameter state passed.",
 );
 verifyBandTransitions(w);
 console.log("Signed gaps and item 8 DOM state transitions passed.");
@@ -2229,7 +2253,7 @@ if (pinnedBrowser || screenshot || process.env.FIT_GUIDE_CHROME === "1") {
         .locator("#sb-flat-profile-result")
         .waitFor({ state: "hidden" });
       console.log(
-        "Chrome item 9: 270 caution states and native opt-in Result disclosure passed.",
+        "Chrome item 9: 198 caution states and native opt-in Result disclosure passed.",
       );
       console.log(
         "Chrome item 8 DOM transitions and 960/320 px layout passed.",

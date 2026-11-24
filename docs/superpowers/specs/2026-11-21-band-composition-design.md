@@ -2,7 +2,7 @@
 
 **Technical design for review · 21 November 2026 · revision 0.7**
 
-[Download the review ZIP](https://github.com/pdasya/seeband-web/releases/download/review-pr272-v0.7-item18/seeband-band-composition-v0.7-review.zip) for the illustrated TDD, interactive Fit/Guide and recorded results.
+[Download the review ZIP](https://github.com/pdasya/seeband-web/releases/download/review-pr272-v0.7-kane-scope/seeband-band-composition-v0.7-review.zip) for the illustrated TDD, interactive Fit/Guide and recorded results.
 
 **Design status.** This proposal uses `main` at `e9b0fa3` as its repository baseline. The explicit two-band parabolic core tested at P18 revision `8e4f98d` is absent from that baseline and from this PR. The band builder, three-band transport and acoustic Kane integration are proposed extensions. Sections 7 and 10–14 describe the numerical checks. The [review guide](band-composition-v0.7/REVIEW.md) identifies which results readers can reproduce from this branch.
 
@@ -12,7 +12,7 @@
 
 In the existing **Model** card, the researcher defines the composition row by row. The name is computed automatically. In **Parameters**, they enter values, hold parameters, and set fit bounds. Fit mode, Scattering, Nᵢ, and the temperature range remain in Model. The new composition has no separate p/n selector.
 
-One band gives SPB or SKB, two give DPB or 1 SKB + 1 SPB, and three give 3 SPB or 1 SKB + 2 SPB. For an all-parabolic composition, acPh, dis, ionized, and acPh + dis are available. When Kane is selected, only one mechanism remains available: acPh.
+One band gives SPB or SKB, two give DPB or 1 SKB + 1 SPB, and three give 3 SPB. The current Kane scope is SKB and 1 SKB + 1 SPB. For an all-parabolic composition, acPh, dis, ionized, and acPh + dis are available. When Kane is selected, only one mechanism remains available: acPh.
 
 ### 1.1 What carries over from the current Fit screen
 
@@ -24,17 +24,17 @@ On a wide screen, FitPage gives the right column 600 px when the viewport is at 
 
 ### 1.2 What changes inside Model and Parameters
 
-![Default three-band Model and Parameters in the review prototype](https://github.com/pdasya/seeband-web/releases/download/review-pr272-v0.7-item18/fit-parameters-and-model.png)
+![Default three-band Model and Parameters in the review prototype](https://github.com/pdasya/seeband-web/releases/download/review-pr272-v0.7-kane-scope/fit-parameters-and-model.png)
 
 **Layout B · first visit.** Model starts with VB₁, CB₂ and VB₃, all parabolic. The heading reads **3 SPB**. Read the controls below the bands for fit mode, scattering, valley counts and temperature range. The adjacent Parameters card shows the two independent offsets and the calculated gap. Open its bounds editor or select a lock to change an individual parameter. A returning reviewer sees the draft saved in that browser.
 
 ### 1.3 Moving from DPB to a mixed model
 
-![Two-band Kane and parabolic S-only fields in the review prototype](https://github.com/pdasya/seeband-web/releases/download/review-pr272-v0.7-item18/fit-mixed-kane-model.png)
+![Two-band Kane and parabolic S-only fields in the review prototype](https://github.com/pdasya/seeband-web/releases/download/review-pr272-v0.7-kane-scope/fit-mixed-kane-model.png)
 
 **Layout C · one parabolic VB and one Kane CB.** From B, remove Band 3, select acoustic phonons, change Band 2 to Kane and select S. The heading reads **1 SKB + 1 SPB**. Parameters gains the Band 2 nonparabolicity and one manual conductivity-prefactor ratio. Selecting S + ρ replaces that ratio with the two dimensional amplitudes in §15.2. Both figures are light-theme captures of the standalone prototype. [Regenerate the figures](figures/render-reviewed-figures.mjs).
 
-If dis, ionized, or acPh + dis was selected before choosing Kane, the layout asks the researcher to select acPh first. Changing the mechanism automatically would conceal a scientifically important decision. To move Kane to another band, the researcher first returns the current band to Parabolic. Add band creates a final row with parabolic dispersion; removal is unavailable when there is only one band. Selecting a mechanism or composition does not itself start the optimizer.
+If dis, ionized, or acPh + dis was selected before choosing Kane, the layout asks the researcher to select acPh first. Changing the mechanism automatically would conceal a scientifically important decision. To move Kane to another band, the researcher first returns the current band to Parabolic. A Kane pair disables Add band. A three-band editor offers only Parabolic. To move between these states, change the Kane band to Parabolic before adding a third band, or remove one of three parabolic bands before selecting Kane. Add band creates a final row with parabolic dispersion; removal is unavailable when there is only one band. Selecting a mechanism or composition does not itself start the optimizer.
 
 ### 1.4 Where to change the project
 
@@ -69,7 +69,7 @@ A new band is created as parabolic. If a Kane band is already selected, Kane is 
 
 ## 3 From Fermi energy to carrier balance
 
-![Two energy configurations for the same band composition](https://github.com/pdasya/seeband-web/releases/download/review-pr272-v0.7-item18/three-band-edges.png)
+![Two energy configurations for the same band composition](https://github.com/pdasya/seeband-web/releases/download/review-pr272-v0.7-kane-scope/three-band-edges.png)
 
 **Figure 1.** The composition VB₁ + CB₂ + VB₃ is the same. On the left, the first two band edges coincide with E_F. On the right, CB₂ is 20 meV above VB₁ and E_F is 10 meV above VB₁. In both cases the third band is 120 meV below VB₁. Masses are illustrative. The horizontal axis is the dimensionless coordinate defined below, measured from each band’s own extremum. Aligning the vertices horizontally does not establish a direct material gap.
 
@@ -128,14 +128,14 @@ For three parabolic bands with one mechanism, extension of the current P18 norma
 }
 ```
 
-The energies in the example are rounded. A complete request also adds the temperature range and active transport amplitudes from the mode description; a fit request passes measurements, start, held, and bounds. A public key for nonparabolicity could be, for example, `b2.alpha_per_ev`. An ID belongs to a band throughout its lifetime. Crossing edges does not reorder the array. A new band receives a free ID and a clean parameter set. Version one allows removal of the last band, leaving the reference band in place.
+The energies in the example are rounded. A complete request also adds the temperature range and active transport amplitudes from the mode description; a fit request passes measurements, start, held, and bounds. In a one- or two-band Kane request a public key for nonparabolicity could be, for example, `b2.alpha_per_ev`. An ID belongs to a band throughout its lifetime. Crossing edges does not reorder the array. A new band receives a free ID and a clean parameter set. Version one allows removal of the last band, leaving the reference band in place.
 
-| Component           | Responsibility and verifiable output                                                                                                                                                                                                                                                                |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| seeband_core        | The registry checks composition and mechanism compatibility. From one immutable input it builds densities, μ(T), channel moments, total curves, statuses, and derived separations.                                                                                                                  |
-| FastAPI and OpenAPI | Distinguish old and new variants. Validate 1–3 bands, unique IDs, allowed fields, positive masses and positive integer valley counts, and at most one declared Kane band. A 422 response contains an error code, field path, and reason. Kane + Kane is rejected for two-band compositions as well. |
-| SeeBand Web         | Model selects structure, mode, mechanism, and T. Parameters builds numeric fields from metadata. Prediction requests are tied to a configuration snapshot. For a temporarily unsupported combination, show the reason and list available modes.                                                     |
-| Results and export  | The server returns T, calculated observable curves in SI, original band IDs, core version, laws, units, statuses, and warnings. CSV/ZIP and a repeated calc at the same snapshot agree with the plot and the final fit result.                                                                      |
+| Component           | Responsibility and verifiable output                                                                                                                                                                                                                                                                                                                                                              |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| seeband_core        | The registry checks composition and mechanism compatibility. From one immutable input it builds densities, μ(T), channel moments, total curves, statuses, and derived separations.                                                                                                                                                                                                                |
+| FastAPI and OpenAPI | Distinguish old and new variants. Validate 1–3 bands, unique IDs, allowed fields, positive masses and positive integer valley counts, and at most one declared Kane band in compositions of one or two bands. All three-band compositions require parabolic dispersion. A 422 response contains an error code, field path, and reason. Kane + Kane is rejected for two-band compositions as well. |
+| SeeBand Web         | Model selects structure, mode, mechanism, and T. Parameters builds numeric fields from metadata. Prediction requests are tied to a configuration snapshot. For a temporarily unsupported combination, show the reason and list available modes.                                                                                                                                                   |
+| Results and export  | The server returns T, calculated observable curves in SI, original band IDs, core version, laws, units, statuses, and warnings. CSV/ZIP and a repeated calc at the same snapshot agree with the plot and the final fit result.                                                                                                                                                                    |
 
 **Distinct outcomes.** Valid geometry may produce a band diagram even if the transport state is impossible. Zero filling in a single-polarity system reports a state error. Nonfinite quadrature or an unverified root reports a numerical error with T and the available residual. Poor fit quality is returned as a result with residuals. A network failure has a separate message. Transport availability is determined for the requested set of outputs, so Hall failure does not block an already verified S calculation.
 
@@ -209,7 +209,7 @@ Each row follows the same prescribed path in $(M_2,M_3,b_2,b_3)$ with $N=(2,3,1)
 
 **Archived run P18-BASE.** Three groups were rerun at revision `8e4f98d`: domains of the previous p/n model, explicit parabolic transport, and explicit two-band fitting. All 113 tests passed. They include comparison with independent SI integrals, permutations, a wide gap, and synthetic fits. In the old full run, an infrastructure test left a child process after completion. A separate rerun of that test passed. The full run for the new model remains outstanding.
 
-**Independent experiment.** The script uses only the Python standard library, integrates directly in radial k-space, and solves balance by bisection. Masses are in units of mₑ and energies in eV. In the gap-3 example, use VB₁ (0; 1.2; N=1), CB₂ (+0.20; 0.3; N=2; α=1 eV⁻¹), and VB₃ (−0.06; 0.7; N=1). Both VB bands are parabolic. These parameters intentionally differ from the geometric sketch in Figure 1. For all bands, τ = 10⁻¹⁴ s. The two starting values E_F, 0.04 and 0.16 eV, give D = 0 and matching μ(T). The σ calculation here checks thermal activation at constant τ.
+**Independent experiment.** The three-band Kane fixtures in this calculation are mathematical reference cases retained for replay. The three-band editor accepts parabolic dispersion only. The script uses only the Python standard library, integrates directly in radial k-space, and solves balance by bisection. Masses are in units of mₑ and energies in eV. In the gap-3 example, use VB₁ (0; 1.2; N=1), CB₂ (+0.20; 0.3; N=2; α=1 eV⁻¹), and VB₃ (−0.06; 0.7; N=1). Both VB bands are parabolic. These parameters intentionally differ from the geometric sketch in Figure 1. For all bands, τ = 10⁻¹⁴ s. The two starting values E_F, 0.04 and 0.16 eV, give D = 0 and matching μ(T). The σ calculation here checks thermal activation at constant τ.
 
 | T, K | μ, eV       | Holes in VB₃, m⁻³ | VB₃ fraction of σ |
 | ---- | ----------- | ----------------- | ----------------- |
@@ -233,20 +233,20 @@ The experiment calculates densities, μ, and σ at constant τ. It does not impl
 
 The standard pytest run executes ten numerical design checks under the core test suite. These cover charge balance, parabolic transport, the Kane table and core-constant cases, acoustic-plus-disorder scattering, the mass and flat-profile examples, valley counts and Kane prefactor ratios. Each script owns its physical tolerances. A green run covers the sampled equations and inputs. The API, optimizer and release acceptance criteria below require their own evidence. [Test entry points and sensitivity checks](band-composition-v0.7/REVIEW.md#automated-numerical-checks).
 
-The Fit/Guide review matrix covers one to three **ordered** bands. With B bands there are 2ᴮ choices of VB/CB and B+1 choices for the position of one Kane band or an all-parabolic composition. Chromium exercised every composition with each of the four scattering mechanisms and each fit mode (S, S + ρ, S + ρ + Hall).
+The browser matrix retains the 576 requests from item 18 as regression cases. It covers every ordered VB/CB assignment with zero or one declared Kane band, four scattering choices and three fit modes. Requests with multiple Kane bands have separate acceptance cases.
 
-| Bands     | All-parabolic compositions | Single-Kane compositions | Accepted requests | Rejected requests |
-| --------- | -------------------------- | ------------------------ | ----------------- | ----------------- |
-| 1         | 2                          | 2                        | 30                | 18                |
-| 2         | 4                          | 8                        | 72                | 72                |
-| 3         | 8                          | 24                       | 168               | 216               |
-| **Total** | **14**                     | **34**                   | **270**           | **306**           |
+| Bands     | Accepted | Incompatible scattering | Unsupported composition |
+| --------- | -------: | ----------------------: | ----------------------: |
+| 1         |       30 |                      18 |                       0 |
+| 2         |       72 |                      72 |                       0 |
+| 3         |       96 |                       0 |                     288 |
+| **Total** |  **198** |                  **90** |                 **288** |
 
-All 14 parabolic compositions accept all four mechanisms. Each of the 34 compositions with one declared Kane band accepts acPh and rejects dis, ionized impurity and acPh + dis in all three fit modes. This gives 102 refusals per forbidden mechanism and 102 per fit mode. The restriction follows the declared dispersion, including at α = 0.
+All 14 all-parabolic compositions accept four mechanisms in three modes (168 requests). The ten ordered SKB and mixed-pair compositions accept acPh in three modes (30 requests). A three-band request containing Kane is refused for every mechanism and mode, including acPh and a declared Kane band with α = 0. The remaining 90 refusals cover nonacoustic scattering in an otherwise supported Kane composition.
 
-The browser check imports all 576 requests through the standalone editor and inspects its controls. Each incompatible request reports `incompatible_scattering` at `modelContent.mechanism`, displays the acoustic-only reason and preserves both the current editor and the saved draft. If a stored draft is incompatible at startup, the editor displays a usable default and leaves the original in storage until an explicit edit. The command for per-case output is documented in the [replay instructions](band-composition-v0.7/REVIEW.md#scattering-eligibility-in-the-editor).
+On draft restore the standalone editor reports `unsupported_composition` at `modelContent.types` before checking scattering. It reports `incompatible_scattering` at `modelContent.mechanism` for eligible compositions. Both errors preserve the active editor and saved draft. The [replay instructions](band-composition-v0.7/REVIEW.md#scattering-eligibility-in-the-editor) include per-case output.
 
-The production acceptance test must also submit incompatible requests to the API and check HTTP 422 at the scattering field before transport or fitting starts. Valid compositions that lack a solver require an explicit unavailable status. Multiple declared Kane bands fall outside this 576-case matrix and have their own acceptance cases, including permutations, α = 0 and session import.
+Production acceptance requires HTTP 422 with the corresponding composition or scattering field path before calculation or fitting. Valid compositions that lack a solver require an explicit unavailable status. Cases with a second declared Kane band also require tests at α = 0, with permuted bands and on session import.
 
 | ID and claim             | Independent check                                                                                                                                                 | Acceptance criterion                                                                                                                                                                               |
 | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -265,7 +265,7 @@ For curve comparisons, we propose a starting budget against the same constants a
 
 1. **Composition and description.** Agree on IDs, units, one-Kane limit, error schemas, and migration. Add the new Model alongside the existing Parameters behind a contract version. The stage demonstration is adding a third band, preserving N₁/N₂, and rejecting a second Kane without changing the first.
 2. **Parabolic compatibility.** Route one and two bands through the new path and compare old fixed points for S, ρ, and Hall. Remove the p/n restriction only from the new variant. Enable three parabolic bands after A1–A4, then fitting and export after A5–A6.
-3. **One Kane band.** Compare against separate SKB work for α units, edge mass, normalization, and scattering. Enable only confirmed combinations with zero to two parabolic bands, one at a time. Each of the three fit modes with acPh requires an independent calculation and discrepancy review. The “no more than one Kane” condition applies at every stage.
+3. **One Kane band.** Compare against separate SKB work for α units, edge mass, normalization, and scattering. Enable only confirmed combinations with zero or one parabolic partner, one at a time. Each of the three fit modes with acPh requires an independent calculation and discrepancy review. The “no more than one Kane” condition applies at every stage.
 4. **Release decision.** For a specific revision, attach the completed test matrix, input sets, error values, and artifact links; record conclusions from the physicist, numerical reviewer, and API owner. Reverting to the previous interface version uses previous execution paths and preserved original sessions.
 
 | Comment question                                                                                                                                        | Decision depending on the answer                                                                                              |
@@ -377,7 +377,7 @@ $$
 
 These expressions recover K3 and K4. Using a DOS per unit $x$ requires multiplying the DOS per joule by $k_BT$. In the first, dimensional line of Eq. (36) on p. 5, the prefactor already contains the factor $(k_BT)^{3/2}$ needed in the following reduced-energy line. Use the reduced-energy result in Eq. (10). Likewise the denominator in the first expanded line of Eq. (38) contains a relaxation time absent from the normalization in Eqs. (33)–(34) and from the subsequent lines. Eq. (14) and the dimensional transport integral above agree on the mobility normalization.
 
-**Scope of the source.** Law K1 describes acoustic scattering. For any composition containing Kane, all three other Scattering options are excluded from v1, including acPh + dis. This rule applies in S mode and remains in effect at α = 0. The standalone editor rejects an incompatible import at the scattering field. The production API contract requires HTTP 422 for an incompatible direct request. Its acceptance test is pending (§8). When one or two parabolas are added to an acoustic SKB, ηᵢ for each band is determined by the shared balance in section 3. Inverting a single-band measured S to obtain η is not applicable to such a fit.
+**Scope of the source.** Law K1 describes acoustic scattering. For any composition containing Kane, all three other Scattering options are excluded from v1, including acPh + dis. This rule applies in S mode and remains in effect at α = 0. The standalone editor rejects an incompatible import at the scattering field. The production API contract requires HTTP 422 for an incompatible direct request. Its acceptance test is pending (§8). When one parabola is added to an acoustic SKB, ηᵢ for each band is determined by the shared balance in section 3. Inverting a single-band measured S to obtain η is not applicable to such a fit.
 
 ## 13 Checking SKB against published data
 
@@ -443,7 +443,7 @@ The entire SeeBand interface language is **English**. This applies to navigation
 
 In **Fit**, the **Model** panel contains Band configuration, Fit mode, Scattering, multiplicities, and Fit range. **Parameters** shows values and locks for the current mode. The comparison table **Parameters by fit mode** appears only in **Guide**. It shows fit eligibility by model and mechanism for the three modes. Temporary user holds belong to Fit. Moving from Fit → Guide → Fit preserves settings, entered values, bounds, and locks.
 
-![Parameters rows and the three lock states](https://github.com/pdasya/seeband-web/releases/download/review-pr272-v0.7-item18/parameters-fit-locks.png)
+![Parameters rows and the three lock states](https://github.com/pdasya/seeband-web/releases/download/review-pr272-v0.7-kane-scope/parameters-fit-locks.png)
 
 **Mockup D. Physical fields and locks.** DPB, VB₁ + CB₂, acPh + dis, S + ρ. The closed user lock on E_F illustrates a hold; the closed lock on the single-valley mass is mode-set. In both cases the value remains manually editable. Values are illustrative. Previous mockups A–C serve as references for the overall layout; the current labels and states are defined here.
 
@@ -493,9 +493,9 @@ Use the existing fit event stream. At start, show the gap of the submitted start
 | −0,11                     | Closed         | Band overlap: 0,02 eV. Edges: CB₃ and VB₂.        |
 | Empty field               | —              | Enter both band-edge offsets.                     |
 
-For two VBs and one CB, check the symmetric case by changing the upper VB. For three CBs or three VBs, the row shows **Undetermined** and identifies the missing band type. All states apply to S, S + ρ, and S + ρ + R_H, including when the only permitted Kane band is present. The mockup check covers display of the row; calculated S, ρ, and R_H are checked separately.
+For two VBs and one CB, check the symmetric case by changing the upper VB. For three CBs or three VBs, the row shows **Undetermined** and identifies the missing band type. All states apply to S, S + ρ, and S + ρ + R_H, for the three-parabola composition. The mockup check covers display of the row; calculated S, ρ, and R_H are checked separately.
 
-![Three bands and the edges that define the gap](https://github.com/pdasya/seeband-web/releases/download/review-pr272-v0.7-item18/three-band-gap-parameters.png)
+![Three bands and the edges that define the gap](https://github.com/pdasya/seeband-web/releases/download/review-pr272-v0.7-kane-scope/three-band-gap-parameters.png)
 
 ### 15.2 Transport rows: desktop notation and precise meaning
 
@@ -519,17 +519,17 @@ The field labels use τ with the mechanism subscript acPh, dis or ii. The formul
 
 **Mixed Kane/parabolic S-only coordinates.** Write $\sigma_i(T)=\sigma_{0,i}g_i(T)$, where the dimensionless shape is $g_i=F_0(\eta_i)$ for a parabola and $g_i=J_{0,i}$ for Kane. For a parabola, $\sigma_{0,i}$ is its acoustic conductivity prefactor. Multiplying the K4 drift mobility by $eC$ gives the Kane prefactor $\sigma_{0,i}=2e^2\hbar N_i(C_l/E_{\rm def}^2)_i/(\pi m_{b,i})$ in S/m, with the deformation potential in joules and mass in kilograms. Convert the displayed Pa/eV² to Pa/J² before applying this expression. Both prefactors include the band's normalization exactly once. With these definitions the parabolic limit is $J_0=F_0/3$. Equal prefactors alone do not imply equal conductivities.
 
-Band 1 must have $\sigma_{0,1}>0$ for this ratio convention. If its prefactor vanishes, the ratios are undefined; require a conducting reference before converting dimensional data. A zero ratio for any other band removes its transport contribution while retaining its charge population. Require $\sum_i w_i g_i>0$ at each evaluated temperature. Define $w_1=1$ and $w_i=\sigma_{0,i}/\sigma_{0,1}$ for $i>1$. The total thermopower is $S=\sum_i w_i g_i S_i/\sum_i w_i g_i$. Multiplying all dimensional amplitudes by any common positive factor leaves this expression invariant. SKB has no amplitude row in S-only. With one or two parabolic partners, show one or two manual dimensionless ratios, each labelled $\sigma_{0,i}/\sigma_{0,1}$. Under this S-only parameterization a supplied ratio stays fixed when masses or valley counts change. In modes with resistivity, show the dimensional amplitudes for every band and apply K4 at each trial vector. Preserve separate drafts for these two parameterizations. Re-entering S-only restores its relative weights. The [scale-invariance check](band-composition-v0.7/evidence/verify_kane_weights.py) compares these coordinates at fixed band structure and filling. This checks the change of coordinates; experimental validation of mixed-band transport remains open.
+Band 1 must have $\sigma_{0,1}>0$ for this ratio convention. If its prefactor vanishes, the ratios are undefined; require a conducting reference before converting dimensional data. A zero ratio for any other band removes its transport contribution while retaining its charge population. Require $\sum_i w_i g_i>0$ at each evaluated temperature. Define $w_1=1$ and $w_i=\sigma_{0,i}/\sigma_{0,1}$ for $i>1$. The total thermopower is $S=\sum_i w_i g_i S_i/\sum_i w_i g_i$. Multiplying all dimensional amplitudes by any common positive factor leaves this expression invariant. SKB has no amplitude row in S-only. For the mixed pair, show one manual dimensionless ratio labelled $\sigma_{0,2}/\sigma_{0,1}$. Under this S-only parameterization a supplied ratio stays fixed when masses or valley counts change. In modes with resistivity, show the dimensional amplitudes for every band and apply K4 at each trial vector. Preserve separate drafts for these two parameterizations. Re-entering S-only restores its relative weights. The [scale-invariance check](band-composition-v0.7/evidence/verify_kane_weights.py) compares these coordinates at fixed band structure and filling. This checks the change of coordinates; experimental validation of mixed-band transport remains open.
 
 **Sources for the desktop convention.** Original `seeband.py`: SPB lines 872, 921, 1198, 1248; DPB S + ρ lines 1908, 1930, 1951, 1977, 2003, 2029; Hall lines 2441, 2461, 2481, 2507, 2532, 2556. Some old result rows contain typos, so use definitions and parameters rather than copying all the old text. In archived core P18, normalized A/F and B/G define band weights. For historical DPB, distinguish the mass weight including multiplicities from the physical ratio of single-valley masses; old E is converted to mass according to the model version.
 
-### 15.3 Full composition matrix: 6 models × mechanisms × 3 modes
+### 15.3 Full composition matrix: 5 models × mechanisms × 3 modes
 
-![Guide screen with fit-mode table](https://github.com/pdasya/seeband-web/releases/download/review-pr272-v0.7-item18/parameters-guide-matrix.png)
+![Guide screen with fit-mode table](https://github.com/pdasya/seeband-web/releases/download/review-pr272-v0.7-kane-scope/parameters-guide-matrix.png)
 
 **Guide · Parameters by fit mode.** Reference table for the selected band composition. Eligible to fit means the mode allows fitting. Set manually in this mode means the researcher provides the value manually. Hidden means the field is hidden in that mode.
 
-The matrix combines the two tables below. The first defines **all structural rows** for each of the six models; the second adds **all transport rows** for each permitted mechanism and mode. There are no other Parameters fields. Nᵢ and Fit range are in Model. VB/CB type changes the edge symbol and charge sign, but not the number or availability of rows; Kane may occupy any one band index.
+The matrix combines the two tables below. The first defines **all structural rows** for each of the five models; the second adds **all transport rows** for each permitted mechanism and mode. There are no other Parameters fields. Nᵢ and Fit range are in Model. VB/CB type changes the edge symbol and charge sign, but not the number or availability of rows; a two-band composition permits Kane at either index.
 
 State notation: **F** — visible and eligible for fitting unless the researcher has held it; **M** — visible, set manually, fitting prohibited by the current mode; **—** — hidden. Each triplet is ordered S / S + ρ / S + ρ + Hall. F does not guarantee identifiability or reliable uncertainty.
 
@@ -540,7 +540,6 @@ State notation: **F** — visible and eligible for fitting unless the researcher
 | DPB           | acPh, dis, ionized, acPh + dis | E_F, edge 2 − edge 1, m_b,2/m_b,1: F/F/F; m_b,1: M/M/F                  |
 | 1 SKB + 1 SPB | acPh only                      | DPB fields and αᵢ for Kane: F/F/F; m_b,1: M/M/F                         |
 | 3 SPB         | acPh, dis, ionized, acPh + dis | E_F, edges i − edge 1 and m_b,i/m_b,1 for i = 2, 3: F/F/F; m_b,1: M/M/F |
-| 1 SKB + 2 SPB | acPh only                      | 3 SPB fields and αᵢ for Kane: F/F/F; m_b,1: M/M/F                       |
 
 In the transport table, Q is one shared absolute amplitude A/F with the symbol from §15.2; bᵢ is the corresponding relative row τₓ,ᵢ/τₓ,₁ for the selected mechanism x, i > 1; rᵢ is the mixed-scattering row at 300 K. For a composition with Kane, Uᵢ is the absolute amplitude of each band from §15.2. Q is not shown in the interface.
 
@@ -555,7 +554,7 @@ In the transport table, Q is one shared absolute amplitude A/F with the symbol f
 | DPB (implemented) or 3 SPB (conditional on §11), ionized | Q, bᵢ: —; set bᵢ = 1 to calculate S    | Q, bᵢ: F     | Q, bᵢ: F     |
 | DPB or 3 SPB, acPh + dis                                 | Q: —; bᵢ (i > 1) and rᵢ (all bands): M | Q, bᵢ, rᵢ: F | Q, bᵢ, rᵢ: F |
 | SKB, acPh                                                | U₁: —                                  | U₁: F        | U₁: F        |
-| 1 SKB + 1 SPB or 1 SKB + 2 SPB, acPh                     | wᵢ (i > 1): M; all Uᵢ: —               | All Uᵢ: F    | All Uᵢ: F    |
+| 1 SKB + 1 SPB, acPh                                      | wᵢ (i > 1): M; all Uᵢ: —               | All Uᵢ: F    | All Uᵢ: F    |
 
 This matrix specifies the field states of the Fit and Guide prototype. In S-only, a single SPB has only one free degree of freedom — E_F. SKB adds α₁. For a single scattering mechanism, parabolic S-only retains the P18 convention bᵢ = 1, while previously entered bᵢ for modes with ρ are stored separately without overwriting them with one. For mixed scattering in multiband S-only, bᵢ (i > 1) and rᵢ (all bands) are researcher-set inputs held outside the optimizer. §14 gives the pointwise weights and the scope of this proposed extension to the desktop S-only calculation. In Kane mixtures, S uses the manual ratios defined in §15.2. Implementation and physical acceptance of these extensions remain requirements in §§8, 12, 14.
 
@@ -587,7 +586,7 @@ A user hold is stored by stable ID and parameter meaning, **not by fit mode**, a
 
 **Saved prototype settings.** The widget snapshot stores band identities with the parameter entries so reopening it preserves the settings through the same transitions. For an older snapshot with multiple entries for one physical field, restore the record matching the saved composition where possible. Read its value, bounds and hold together. Preserve the original legacy entries in the upgraded snapshot when resolving conflicts. This compatibility rule applies to the review prototype. Application session migration is specified in §6.
 
-**Acceptance transitions.** For each of the six model rows and each permitted mechanism, visit all three modes and check both tables. Enter custom values and bounds; hold E_F, mass, and an available amplitude; pass through hidden and M states and back. Check manual editing under a closed lock, persistence of holds and bounds, absence of a fit toggle for M, absence of extra bᵢ in a composition with Kane, and absence of Pᵢ/fᵢ as duplicate fields. Saving and reopening a session must reproduce these states. Check both a single VB and CB, Kane reordering, and band-edge crossings.
+**Acceptance transitions.** For each of the five model rows and each permitted mechanism, visit all three modes and check both tables. Enter custom values and bounds; hold E_F, mass, and an available amplitude; pass through hidden and M states and back. Check manual editing under a closed lock, persistence of holds and bounds, absence of a fit toggle for M, absence of extra bᵢ in a composition with Kane, and absence of Pᵢ/fᵢ as duplicate fields. Saving and reopening a session must reproduce these states. Check both a single VB and CB, Kane reordering, and band-edge crossings.
 
 ### 15.5 Model, Results, and export
 

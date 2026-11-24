@@ -31,7 +31,7 @@ FIGURES = (
     "parameters-guide-matrix.png",
     "three-band-gap-parameters.png",
 )
-RELEASE = "https://github.com/pdasya/seeband-web/releases/download/review-pr272-v0.7-item18/"
+RELEASE = "https://github.com/pdasya/seeband-web/releases/download/review-pr272-v0.7-kane-scope/"
 LINK = re.compile(r"(?<=\]\()([^\s)]+)(?=\))")
 
 

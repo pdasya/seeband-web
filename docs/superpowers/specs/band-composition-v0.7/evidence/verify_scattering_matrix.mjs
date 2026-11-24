@@ -1,5 +1,5 @@
 // Exercise the public editor and its rendered controls. Expected eligibility comes
-// from the v1 rule: any declared Kane band requires acoustic scattering.
+// from the scope: three bands are parabolic only; supported Kane models require acoustic scattering.
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
@@ -46,7 +46,9 @@ try {
               const check = (ok, reason) => {
                 if (!ok) throw new Error(JSON.stringify(row) + ": " + reason);
               };
-              const rejected = kane >= 0 && mechanism !== "ac";
+              const unsupported = n === 3 && kane >= 0;
+              const incompatible = kane >= 0 && mechanism !== "ac";
+              const rejected = unsupported || incompatible;
               const state = () => JSON.stringify(fitGuide.snapshot());
               const saved = () => localStorage.getItem(fitGuide.storageKey);
               const before = state(),
@@ -70,9 +72,15 @@ try {
               });
               if (rejected) {
                 check(
-                  problem?.code === "incompatible_scattering" &&
-                    problem.path === "modelContent.mechanism",
-                  "expected explicit scattering refusal",
+                  problem?.code ===
+                    (unsupported
+                      ? "unsupported_composition"
+                      : "incompatible_scattering") &&
+                    problem.path ===
+                      (unsupported
+                        ? "modelContent.types"
+                        : "modelContent.mechanism"),
+                  "expected explicit refusal with composition precedence",
                 );
                 const notice = document.querySelector(
                   "#sb-compatibility-error",
@@ -80,28 +88,33 @@ try {
                 check(
                   notice?.checkVisibility() &&
                     notice.textContent.includes(problem.message) &&
-                    /Kane/i.test(problem.message) &&
-                    /acoustic/i.test(problem.message),
+                    (unsupported
+                      ? /three.band/i.test(problem.message) &&
+                        /parabolic/i.test(problem.message)
+                      : /Kane/i.test(problem.message) &&
+                        /acoustic/i.test(problem.message)),
                   "missing visible reason",
                 );
                 check(
                   state() === before && saved() === draft,
                   "invalid restore changed the editor or saved draft",
                 );
-                check(
-                  scatter.disabled && scatter.value === "ac",
-                  "forbidden scattering selectable",
-                );
-                scatter.value = mechanism;
-                scatter.dispatchEvent(
-                  new globalThis.Event("change", { bubbles: true }),
-                );
-                check(
-                  scatter.value === "ac" &&
-                    state() === before &&
-                    saved() === draft,
-                  "forced scattering change escaped the guard",
-                );
+                if (!unsupported) {
+                  check(
+                    scatter.disabled && scatter.value === "ac",
+                    "forbidden scattering selectable",
+                  );
+                  scatter.value = mechanism;
+                  scatter.dispatchEvent(
+                    new globalThis.Event("change", { bubbles: true }),
+                  );
+                  check(
+                    scatter.value === "ac" &&
+                      state() === before &&
+                      saved() === draft,
+                    "forced scattering change escaped the guard",
+                  );
+                }
               } else {
                 check(!problem, "compatible restore refused");
                 const snapshot = fitGuide.snapshot();
@@ -165,7 +178,7 @@ try {
   const keys = rows.map((r) => JSON.stringify([r.bands, r.mode, r.scattering]));
   assert.equal(new Set(keys).size, 576);
   assert.equal(rows.length, 576);
-  for (const [i, invalid] of [18, 72, 216].entries()) {
+  for (const [i, invalid] of [18, 72, 0].entries()) {
     const group = rows.filter((r) => r.bands.length === i + 1);
     assert.equal(
       group.filter((r) => r.outcome === "incompatible_scattering").length,
@@ -173,57 +186,112 @@ try {
     );
     assert.equal(
       group.filter((r) => r.outcome === "accepted").length,
-      [30, 72, 168][i],
+      [30, 72, 96][i],
     );
   }
-  const badDraft = JSON.stringify({
-    modelContent: { n: 2, types: [1, 2, 0], mechanism: "ion", selectedMode: 2 },
-    privateContent: {},
+  assert.equal(rows.filter((r) => r.outcome === "accepted").length, 198);
+  assert.equal(
+    rows.filter((r) => r.outcome === "incompatible_scattering").length,
+    90,
+  );
+  assert.equal(
+    rows.filter((r) => r.outcome === "unsupported_composition").length,
+    288,
+  );
+
+  // Exercise both UI edit directions, including forced events on disabled controls.
+  await page.evaluate(() => {
+    const { fitGuide, document, localStorage } = globalThis;
+    for (const modelContent of [
+      { n: 2, types: [2, 1, 0], mechanism: "ac", selectedMode: 1 },
+      { n: 3, types: [0, 1, 0], mechanism: "ac", selectedMode: 2 },
+    ]) {
+      if (fitGuide.restore({ modelContent, privateContent: {} }))
+        throw new Error("UI control setup refused");
+      const before = JSON.stringify(fitGuide.snapshot());
+      const draft = localStorage.getItem(fitGuide.storageKey);
+      const controls =
+        modelContent.n === 2
+          ? [document.querySelector("#sb-add")]
+          : [...document.querySelectorAll('[data-choice="Kane"]')];
+      if (controls.length !== (modelContent.n === 2 ? 1 : 3))
+        throw new Error("missing UI guards");
+      for (const control of controls) {
+        if (!control.disabled)
+          throw new Error("unsupported composition selectable");
+        control.dispatchEvent(
+          new globalThis.MouseEvent("click", { bubbles: true }),
+        );
+        if (
+          JSON.stringify(fitGuide.snapshot()) !== before ||
+          localStorage.getItem(fitGuide.storageKey) !== draft
+        )
+          throw new Error("forced edit changed editor or saved draft");
+      }
+    }
   });
-  await page.evaluate(
-    (s) => globalThis.localStorage.setItem(globalThis.fitGuide.storageKey, s),
-    badDraft,
-  );
-  await page.reload();
-  assert.equal(await page.locator("#sb-compatibility-error").isVisible(), true);
-  assert.match(
-    await page.locator("#sb-compatibility-error").innerText(),
-    /Kane/i,
-  );
-  assert.equal(
-    await page.evaluate(() =>
-      globalThis.localStorage.getItem(globalThis.fitGuide.storageKey),
-    ),
-    badDraft,
-  );
-  assert.equal(await page.locator("#sb-add").isHidden(), true);
-  await page.locator('[data-page="guide"]').click();
-  await page.locator('[data-page="fit"]').click();
-  await page.locator("#sb-bounds").click();
-  assert.equal(
-    await page.evaluate(() =>
-      globalThis.localStorage.getItem(globalThis.fitGuide.storageKey),
-    ),
-    badDraft,
-  );
-  assert.equal(await page.locator("#sb-compatibility-error").isVisible(), true);
-  await page.locator("#sb-remove").click();
-  assert.equal(
+
+  for (const modelContent of [
+    { n: 2, types: [1, 2, 0], mechanism: "ion", selectedMode: 2 },
+    { n: 3, types: [1, 2, 0], mechanism: "ion", selectedMode: 2 },
+  ]) {
+    const badDraft = JSON.stringify({
+      modelContent,
+      privateContent: {},
+    });
     await page.evaluate(
-      () =>
-        JSON.parse(
-          globalThis.localStorage.getItem(globalThis.fitGuide.storageKey),
-        ).modelContent.n,
-    ),
-    2,
-  );
+      (s) => globalThis.localStorage.setItem(globalThis.fitGuide.storageKey, s),
+      badDraft,
+    );
+    await page.reload();
+    assert.equal(
+      await page.locator("#sb-compatibility-error").isVisible(),
+      true,
+    );
+    assert.match(
+      await page.locator("#sb-compatibility-error").innerText(),
+      modelContent.n === 3 ? /three.band/i : /Kane/i,
+    );
+    assert.equal(
+      await page.evaluate(() =>
+        globalThis.localStorage.getItem(globalThis.fitGuide.storageKey),
+      ),
+      badDraft,
+    );
+    assert.equal(await page.locator("#sb-add").isHidden(), true);
+    await page.locator('[data-page="guide"]').click();
+    await page.locator('[data-page="fit"]').click();
+    await page.locator("#sb-bounds").click();
+    assert.equal(
+      await page.evaluate(() =>
+        globalThis.localStorage.getItem(globalThis.fitGuide.storageKey),
+      ),
+      badDraft,
+    );
+    assert.equal(
+      await page.locator("#sb-compatibility-error").isVisible(),
+      true,
+    );
+    await page.locator("#sb-remove").click();
+    assert.equal(
+      await page.evaluate(
+        () =>
+          JSON.parse(
+            globalThis.localStorage.getItem(globalThis.fitGuide.storageKey),
+          ).modelContent.n,
+      ),
+      2,
+    );
+  }
   if (process.argv.includes("--cases")) {
     for (const row of rows) console.log(JSON.stringify(row));
   } else {
     console.log(
-      "Chromium Fit/Guide: 576 distinct ordered requests; 270 accepted, 306 explicitly rejected.",
+      "Chromium Fit/Guide: 576 distinct ordered requests; 198 accepted, 378 explicitly rejected.",
     );
-    console.log("Bands     Accepted    Rejected");
+    console.log(
+      "Bands     Accepted    Invalid scattering    Unsupported composition",
+    );
     for (const n of [1, 2, 3]) {
       const group = rows.filter((r) => r.bands.length === n);
       console.log(
@@ -231,14 +299,15 @@ try {
           n,
           group.filter((r) => r.outcome === "accepted").length,
           group.filter((r) => r.outcome === "incompatible_scattering").length,
+          group.filter((r) => r.outcome === "unsupported_composition").length,
         ].join("         "),
       );
     }
     console.log(
-      "All 306 refusals: incompatible_scattering at modelContent.mechanism; visible reason, unchanged editor and stored draft; forced select change blocked.",
+      "90 incompatible_scattering refusals at modelContent.mechanism; 288 unsupported_composition refusals at modelContent.types, before scattering validation. All refusals show a visible reason and preserve editor and stored draft; forced scattering changes blocked.",
     );
     console.log(
-      "Invalid saved draft survived reload and remained recoverable until a deliberate edit.",
+      "Both UI edit directions blocked unsupported composition, including forced clicks. Invalid scattering and unsupported-composition drafts survived reload and navigation until a deliberate edit.",
     );
   }
 } finally {

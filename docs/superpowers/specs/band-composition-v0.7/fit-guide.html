@@ -871,7 +871,7 @@
         function model() {
           if (n === 1) return hasKane() ? "SKB" : "SPB";
           if (n === 2) return hasKane() ? "1 SKB + 1 SPB" : "DPB";
-          return hasKane() ? "1 SKB + 2 SPB" : "3 SPB";
+          return "3 SPB";
         }
         function edge(i) {
           return (
@@ -1102,6 +1102,16 @@
         }
         function compatibilityError(content) {
           if (
+            content?.n === 3 &&
+            Array.isArray(content.types) &&
+            content.types.slice(0, 3).some((type) => type >= 2)
+          )
+            return {
+              code: "unsupported_composition",
+              path: "modelContent.types",
+              message: "Three-band compositions support parabolic bands only.",
+            };
+          if (
             [1, 2, 3].includes(content?.n) &&
             Array.isArray(content.types) &&
             content.types.slice(0, content.n).some((type) => type >= 2) &&
@@ -1176,6 +1186,7 @@
               b.setAttribute("aria-pressed", String(b.dataset.page === page)),
             );
           add.hidden = n === 3;
+          add.disabled = n === 2 && hasKane();
           remove.hidden = n === 1;
           scatter.value = mechanism;
           scatter.disabled = hasKane();
@@ -1323,9 +1334,11 @@
                 );
                 button.disabled =
                   choice === "Kane" &&
-                  (mechanism !== "ac" ||
+                  (n === 3 ||
+                    mechanism !== "ac" ||
                     types.slice(0, n).some((v, pos) => pos !== i && v >= 2));
                 button.onclick = () => {
+                  if (button.disabled) return;
                   const before = hasKane();
                   types[i] = isType
                     ? types[i] - (types[i] % 2) + j
@@ -1361,6 +1374,8 @@
           if (hasKane())
             note =
               "Kane bands support acoustic phonons only. S-only uses independent dimensionless σ₀ ratios referenced to Band 1; absolute prefactors appear with resistivity and Hall. The absolute Kane scale is pending validation.";
+          else if (n === 3)
+            note += " Three-band compositions support parabolic bands only.";
           else if (mechanism !== "ac")
             note += " Select acPh before choosing a Kane band.";
           el("#sb-note").textContent =
@@ -1374,11 +1389,14 @@
               .join(" + ") +
             " · " +
             scatter.selectedOptions[0].textContent;
-          el("#sb-fit-note").textContent = hasKane()
-            ? "Kane bands support acoustic phonons only."
-            : mechanism !== "ac"
-              ? "Select acPh to enable Kane bands."
-              : "";
+          el("#sb-fit-note").textContent =
+            n === 3
+              ? "Three-band compositions support parabolic bands only."
+              : hasKane()
+                ? "Kane bands support acoustic phonons only."
+                : mechanism !== "ac"
+                  ? "Select acPh to enable Kane bands."
+                  : "";
           const rows = form();
           for (const row of rows) {
             const key = stateKey(row);
@@ -1820,6 +1838,7 @@
           changed(true);
         };
         function changeBandCount(next) {
+          if (next === 3 && hasKane()) return;
           const before = hasKane();
           for (let i = next; i < n; i++) {
             types[i] = 0;
@@ -1838,7 +1857,7 @@
           changed();
         }
         add.onclick = () => {
-          if (n < 3) {
+          if (n < 3 && !(n === 2 && hasKane())) {
             changeBandCount(n + 1);
             el('[data-band="' + (n - 1) + '"] [aria-pressed="true"]').focus();
           }
