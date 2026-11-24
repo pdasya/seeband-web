@@ -735,6 +735,29 @@
       "output": "evidence/hold-migration.txt",
       "output_sha256": "9c63997b356ec2a9ed7ef7499f2593627a732851f929ad6c88b309784c1fd9e3",
       "replay_status": "reproduced_from_pr"
+    },
+    {
+      "id": "Q3-PBSE",
+      "scope": "experimental reference calculation",
+      "status": "constant weight misses observed Hall downturn at the tested band parameters",
+      "claim": "Profile one constant prefactor ratio per specimen in moving and fixed band structures against measured S and Hall.",
+      "cwd": "REPO",
+      "command": "uv run --frozen python docs/superpowers/specs/band-composition-v0.7/evidence/chasapis/compare.py",
+      "output": "evidence/chasapis/results.txt",
+      "output_sha256": "99448d373e6a63498ccecc705e5669c2beba6f1684d2aee49db03fe25ea10267",
+      "replay_status": "reproduced_from_pr",
+      "inputs": [
+        "evidence/chasapis/measured_seebeck.csv",
+        "evidence/chasapis/measured_hall.csv",
+        "evidence/chasapis/published_f0.csv"
+      ],
+      "units": {
+        "S": "µV/K",
+        "Hall": "cm³/C",
+        "T": "K",
+        "w2": "1"
+      },
+      "limitations": "Graph-digitized measurements; fixed reported densities; constant heavy mass for all three samples. No absolute conductivity or experimental uncertainty calibration."
     }
   ],
   "parameter_notation": "../band-parameter-labels.json",

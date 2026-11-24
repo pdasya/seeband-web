@@ -12,6 +12,14 @@ For comments, use the Markdown in PR #272. The six current figures are rendered 
 uv run --frozen python docs/superpowers/specs/band-composition-v0.7/build_review_bundle.py --output ../seeband-band-composition-v0.7-review.zip
 ```
 
+## Q3 experimental comparison with p-PbSe
+
+One Kane L pocket and one parabolic Σ pocket are evaluated against digitized Seebeck and Hall markers at three Na concentrations. The best joint constant per specimen misses the observed Hall downturn in both tested structures. The figure compares it with a reconstruction using the weight reported by Chasapis et al. The linked release ZIP above predates this Q3 experiment. The current PR contains its inputs, results and replay scripts.
+
+![Measured and calculated p-PbSe thermopower and Hall curves](evidence/chasapis/curves.png)
+
+[Method, assumptions and replay](evidence/chasapis/METHOD.md) · [Numerical results](evidence/chasapis/results.txt) · [Pointwise residuals](evidence/chasapis/curves.csv).
+
 ## Automated numerical checks
 
 The core pytest suite runs the six Python design scripts in `scripts/`, including the SKB run with core constants and the mixed-scattering comparison with the legacy core. It also runs the valley-input and Kane-weight examples in this evidence directory. A failure propagates to `pnpm check` locally and to **Python tests (core)** on a pull request. To run just these cases from the repository root:

@@ -118,7 +118,10 @@ def build(args):
         p
         for p in tracked
         if p.startswith(f"{KIT}/evidence/")
-        and Path(p).suffix in {".txt", ".json", ".py", ".mjs"}
+        and (
+            Path(p).suffix in {".txt", ".json", ".py", ".mjs"}
+            or p.startswith(f"{KIT}/evidence/chasapis/")
+        )
         and not p.endswith((".py.txt", ".tsx.txt"))
     )
     names.update(
