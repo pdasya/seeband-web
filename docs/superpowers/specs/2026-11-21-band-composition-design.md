@@ -2,6 +2,8 @@
 
 **Technical design for review · 21 November 2026 · revision 0.7**
 
+[Download the review ZIP](https://github.com/pdasya/seeband-web/releases/download/review-pr272-v0.7-item17/seeband-band-composition-v0.7-review.zip) for the illustrated TDD, interactive Fit/Guide and recorded results.
+
 **Design status.** This proposal uses `main` at `e9b0fa3` as its repository baseline. The explicit two-band parabolic core tested at P18 revision `8e4f98d` is absent from that baseline and from this PR. The band builder, three-band transport and acoustic Kane integration are proposed extensions. Sections 7 and 10–14 describe the numerical checks. The [review guide](band-composition-v0.7/REVIEW.md) identifies which results readers can reproduce from this branch.
 
 **Interface decision · 21 November 2026.** For three bands, the agreed interface has a persistent **Band gap · E_g** row at the top of Parameters. It displays the energy gap of the selected bands and identifies the edges that determine it. The fit uses two independent offsets relative to the first band. Behavior when the determining band changes, when bands overlap, and when data are incomplete is specified in §15.1. This is an interface decision; approval of the transport core is considered separately in §§7–8.
@@ -22,13 +24,13 @@ On a wide screen, FitPage gives the right column 600 px when the viewport is at 
 
 ### 1.2 What changes inside Model and Parameters
 
-![Default three-band Model and Parameters in the review prototype](figures/fit-parameters-and-model.png)
+![Default three-band Model and Parameters in the review prototype](https://github.com/pdasya/seeband-web/releases/download/review-pr272-v0.7-item17/fit-parameters-and-model.png)
 
 **Layout B · first visit.** Model starts with VB₁, CB₂ and VB₃, all parabolic. The heading reads **3 SPB**. Read the controls below the bands for fit mode, scattering, valley counts and temperature range. The adjacent Parameters card shows the two independent offsets and the calculated gap. Open its bounds editor or select a lock to change an individual parameter. A returning reviewer sees the draft saved in that browser.
 
 ### 1.3 Moving from DPB to a mixed model
 
-![Two-band Kane and parabolic S-only fields in the review prototype](figures/fit-mixed-kane-model.png)
+![Two-band Kane and parabolic S-only fields in the review prototype](https://github.com/pdasya/seeband-web/releases/download/review-pr272-v0.7-item17/fit-mixed-kane-model.png)
 
 **Layout C · one parabolic VB and one Kane CB.** From B, remove Band 3, select acoustic phonons, change Band 2 to Kane and select S. The heading reads **1 SKB + 1 SPB**. Parameters gains the Band 2 nonparabolicity and one manual conductivity-prefactor ratio. Selecting S + ρ replaces that ratio with the two dimensional amplitudes in §15.2. Both figures are light-theme captures of the standalone prototype. [Regenerate the figures](figures/render-reviewed-figures.mjs).
 
@@ -67,7 +69,7 @@ A new band is created as parabolic. If a Kane band is already selected, Kane is 
 
 ## 3 From Fermi energy to carrier balance
 
-![Two energy configurations for the same band composition](figures/three-band-edges.png)
+![Two energy configurations for the same band composition](https://github.com/pdasya/seeband-web/releases/download/review-pr272-v0.7-item17/three-band-edges.png)
 
 **Figure 1.** The composition VB₁ + CB₂ + VB₃ is the same. On the left, the first two band edges coincide with E_F. On the right, CB₂ is 20 meV above VB₁ and E_F is 10 meV above VB₁. In both cases the third band is 120 meV below VB₁. Masses are illustrative. The horizontal axis is the dimensionless coordinate defined below, measured from each band’s own extremum. Aligning the vertices horizontally does not establish a direct material gap.
 
@@ -427,7 +429,7 @@ The entire SeeBand interface language is **English**. This applies to navigation
 
 In **Fit**, the **Model** panel contains Band configuration, Fit mode, Scattering, multiplicities, and Fit range. **Parameters** shows values and locks for the current mode. The comparison table **Parameters by fit mode** appears only in **Guide**. It shows fit eligibility by model and mechanism for the three modes. Temporary user holds belong to Fit. Moving from Fit → Guide → Fit preserves settings, entered values, bounds, and locks.
 
-![Parameters rows and the three lock states](figures/parameters-fit-locks.png)
+![Parameters rows and the three lock states](https://github.com/pdasya/seeband-web/releases/download/review-pr272-v0.7-item17/parameters-fit-locks.png)
 
 **Mockup D. Physical fields and locks.** DPB, VB₁ + CB₂, acPh + dis, S + ρ. The closed user lock on E_F illustrates a hold; the closed lock on the single-valley mass is mode-set. In both cases the value remains manually editable. Values are illustrative. Previous mockups A–C serve as references for the overall layout; the current labels and states are defined here.
 
@@ -479,7 +481,7 @@ Use the existing fit event stream. At start, show the gap of the submitted start
 
 For two VBs and one CB, check the symmetric case by changing the upper VB. For three CBs or three VBs, the row shows **Undetermined** and identifies the missing band type. All states apply to S, S + ρ, and S + ρ + R_H, including when the only permitted Kane band is present. The mockup check covers display of the row; calculated S, ρ, and R_H are checked separately.
 
-![Three bands and the edges that define the gap](figures/three-band-gap-parameters.png)
+![Three bands and the edges that define the gap](https://github.com/pdasya/seeband-web/releases/download/review-pr272-v0.7-item17/three-band-gap-parameters.png)
 
 ### 15.2 Transport rows: desktop notation and precise meaning
 
@@ -509,7 +511,7 @@ Band 1 must have $\sigma_{0,1}>0$ for this ratio convention. If its prefactor va
 
 ### 15.3 Full composition matrix: 6 models × mechanisms × 3 modes
 
-![Guide screen with fit-mode table](figures/parameters-guide-matrix.png)
+![Guide screen with fit-mode table](https://github.com/pdasya/seeband-web/releases/download/review-pr272-v0.7-item17/parameters-guide-matrix.png)
 
 **Guide · Parameters by fit mode.** Reference table for the selected band composition. Eligible to fit means the mode allows fitting. Set manually in this mode means the researcher provides the value manually. Hidden means the field is hidden in that mode.
 

@@ -2,6 +2,16 @@
 
 Read the [technical design document](../2026-11-21-band-composition-design.md) for the formulas and proposed changes to P18. The [evidence index](evidence.json) lists commands, conditions, units, tolerances and the SHA-256 digests of saved outputs. To try the [interactive Fit and Guide prototype](fit-guide.html), select **Download raw file** on GitHub and open the downloaded HTML in a browser.
 
+## Download the review package
+
+[Download the review ZIP](https://github.com/pdasya/seeband-web/releases/download/review-pr272-v0.7-item17/seeband-band-composition-v0.7-review.zip). Extract it and open `README.md` for the illustrated English TDD, interactive Fit/Guide, field dictionary and recorded results. The included images and prototype open offline. The README identifies the source commit. Links to implementation files on GitHub use that revision.
+
+For comments, use the Markdown in PR #272. The six current figures are rendered from the checked-in source and published alongside the ZIP. To build a package from a clean checkout with the dependencies below, choose a destination outside the checkout:
+
+```sh
+uv run --frozen python docs/superpowers/specs/band-composition-v0.7/build_review_bundle.py --output ../seeband-band-composition-v0.7-review.zip
+```
+
 ## Automated numerical checks
 
 The core pytest suite runs the six Python design scripts in `scripts/`, including the SKB run with core constants and the mixed-scattering comparison with the legacy core. It also runs the valley-input and Kane-weight examples in this evidence directory. A failure propagates to `pnpm check` locally and to **Python tests (core)** on a pull request. To run just these cases from the repository root:
@@ -42,14 +52,13 @@ On a minimal Linux machine, use `playwright install --with-deps chromium` in the
 
 ```sh
 uv run --frozen pytest -q packages/seeband_core/tests/test_band_design_evidence.py
-node docs/superpowers/specs/band-composition-v0.7/evidence/verify_model.mjs
 node docs/superpowers/specs/band-composition-v0.7/evidence/verify_fit_guide.mjs --browser
 node docs/superpowers/specs/band-composition-v0.7/evidence/verify_hold_migration.mjs
 ```
 
 The [manifest](evidence.json) gives individual commands, units, tolerances and the software versions used for the clean replay. The JavaScript checks resolve dependencies through this checkout's web package. The browser command uses the Chromium revision installed by its locked Playwright version. The separate P18 replay command appears below.
 
-**Clean checkout result.** All 13 runnable current-branch rows passed on macOS arm64, along with all five checks in the P18 driver. The Model and Fit/Guide scripts also passed when invoked from a directory outside the repository. The separately planned production E2E row has no replay command.
+**Clean checkout result.** The item 16 replay passed all 13 then-current rows on macOS arm64 and all five P18 checks. Item 17 moved the separate Model checks into the canonical Fit/Guide verifier. The current manifest has 12 runnable current-branch rows. The separately planned production E2E row has no replay command.
 
 ### Comparing a MIX replay
 
@@ -72,7 +81,7 @@ The [migration result](evidence/hold-migration.txt) covers per-mode hold decisio
 
 To inspect item 13, enter `0.09` or `0,09` as an edge offset. The field and derived gap both display `0,09`. Repeat with the opposite edge ordering to check the overlap magnitude. Try typing and pasting `1.1` and `1,1` into a valley count. Neither is a valid count, and neither becomes 11. On the band diagram only the energy axis carries numbers.
 
-To inspect item 12, choose DPB, switch between acoustic, disorder and ionized scattering, and compare the absolute field and the Band 2 ratio in Parameters with the Guide. Close a user lock and compare its **Held** caption with the mode-set mass lock in S + ρ. Set a band’s valley count to 2, then try pasting 1,5. Confirm the fractional value cannot enter the model. The numeric diagram check uses $k=0,1$ for a physical displacement of 1 inverse nanometre. The same scale applies to Kane and parabolic bands. Regenerate the current illustrations with `node docs/superpowers/specs/figures/render-reviewed-figures.mjs`. [Conventions and field mapping](../../../../apps/site/src/pages/conventions.mdx#reading-the-proposed-band-composition-labels)
+To inspect item 12, choose DPB, switch between acoustic, disorder and ionized scattering, and compare the absolute field and the Band 2 ratio in Parameters with the Guide. Close a user lock and compare its **Held** caption with the mode-set mass lock in S + ρ. Set a band’s valley count to 2, then try pasting 1,5. Confirm the fractional value cannot enter the model. The numeric diagram check uses $k=0,1$ for a physical displacement of 1 inverse nanometre. The same scale applies to Kane and parabolic bands. Regenerate the current illustrations with `node docs/superpowers/specs/figures/render-reviewed-figures.mjs --output-dir ../seeband-review-figures`. [Conventions and field mapping](../../../../apps/site/src/pages/conventions.mdx#reading-the-proposed-band-composition-labels)
 
 To inspect item 11, choose three parabolic bands in the order VB, CB, VB. Enter 0,10 and 0,04 eV for the two offsets, leave them unlocked and open **Offline fit example**. Select **Start fit example** and advance the three accepted snapshots. Watch the **Band gap** row itself: **Fit…** sits beside the live value. Then select **Return final vector**. The returned gap is 0,075 eV, with CB₂ and VB₁ defining it. The last accepted snapshot gave 0,06 eV with CB₂ and VB₃. Cancel or simulate failure during a new replay to return to the entered values. This deterministic example runs entirely in the browser. The documentation site’s formula-rendering change is proposed in [PR #279](https://github.com/pdasya/seeband-web/pull/279).
 
@@ -131,7 +140,6 @@ The [Parameters and Model field dictionary](../band-parameter-labels.json) lists
 | MIX-LEGACY   | Comparison with this PR's math_module at shared μ and integral values                                  | 100, 300 and 800 K. Maximum Hall error 4.495 × 10⁻⁷ for a tolerance of 3 × 10⁻⁵.                                                                                                                                                                | [Branch output](evidence/mixed_legacy_pr.txt)                       |
 | MIX-P18      | P18 archive · historical run with --legacy                                                             | The comparison passed in the historical checkout.                                                                                                                                                                                               | [Archived output](evidence/verify_mixed_scattering_design.txt)      |
 | UI-FIT-GUIDE | Packaged v0.7 prototype                                                                                | 270 configurations. Checks cover retained settings, the S-only caution, signed in-gap cues and the flat-profile example, both DOS mass conventions, historical conversion and the live gap across fit events, including keyboard use at 320 px. | [Output](evidence/fit-guide-v0.7.txt)                               |
-| UI-MODEL     | Earlier Model prototype                                                                                | Checked labels, row counts and Kane restrictions.                                                                                                                                                                                               | [Output](evidence/mock_result.txt)                                  |
 | E2E          | New band builder → Parameters → calculate → fit → session                                              | Pending implementation. The full end-to-end matrix of 270 allowed configurations has yet to run.                                                                                                                                                | [Criteria in §1.4 and §8](../2026-11-21-band-composition-design.md) |
 
 ## Giving feedback

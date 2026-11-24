@@ -27,6 +27,136 @@ assert.deepEqual(
   [0, 1, 0],
   "default band composition is VB/CB/VB",
 );
+// The canonical editor owns the retired Model-only fixture's behavior checks.
+function verifyModelControls(w) {
+  const d = w.document;
+  const one = (selector) => d.querySelector(selector);
+  const equal = (actual, expected, message) => {
+    if (JSON.stringify(actual) !== JSON.stringify(expected))
+      throw new Error(
+        message +
+          ": expected " +
+          JSON.stringify(expected) +
+          ", received " +
+          JSON.stringify(actual),
+      );
+  };
+  const set = (input, value) => {
+    input.value = value;
+    input.dispatchEvent(new w.Event("input", { bubbles: true }));
+    input.dispatchEvent(new w.Event("change"));
+    input.dispatchEvent(new w.FocusEvent("blur"));
+  };
+  const choice = (i, value) =>
+    one('[data-band="' + i + '"] [data-choice="' + value + '"]');
+  const name = () => one("#sb-model-name").textContent;
+  const snapshot = () => JSON.parse(JSON.stringify(w.fitGuide.snapshot()));
+  const saved = snapshot();
+  w.fitGuide.restore({
+    modelContent: { n: 3, types: [0, 1, 0], mechanism: "ac", selectedMode: 2 },
+    privateContent: {},
+  });
+  equal(
+    [
+      ...d.querySelectorAll(
+        '[data-choice="VB"][aria-pressed="true"], [data-choice="CB"][aria-pressed="true"]',
+      ),
+    ].map((el) => el.dataset.choice),
+    ["VB", "CB", "VB"],
+    "initial visible band composition",
+  );
+  equal(name(), "3 SPB", "initial Model label");
+  equal(one("#sb-add").hidden, true, "three-band upper limit");
+  for (const n of [3, 2, 1]) {
+    equal(
+      d.querySelectorAll("#sb-valleys input").length,
+      n,
+      "one valley count per band",
+    );
+    equal(d.querySelectorAll("[data-band]").length, n, "one editor per band");
+    equal(
+      name(),
+      { 3: "3 SPB", 2: "DPB", 1: "SPB" }[n],
+      "parabolic Model label",
+    );
+    for (const mode of [0, 1, 2]) {
+      one('[data-mode="' + mode + '"]').click();
+      for (const mechanism of ["ac", "dis", "ion", "mix"]) {
+        set(one("#sb-scatter"), mechanism);
+        equal(
+          one("#sb-scatter").disabled,
+          false,
+          "parabolic scattering stays editable in every mode",
+        );
+        equal(
+          [...one("#sb-scatter").options]
+            .filter((option) => !option.disabled)
+            .map((option) => option.value),
+          ["ac", "dis", "mix", "ion"],
+          "all parabolic scattering choices remain available",
+        );
+        for (let i = 0; i < n; i++)
+          equal(
+            choice(i, "Kane").disabled,
+            mechanism !== "ac",
+            "Kane requires global acoustic scattering",
+          );
+      }
+      set(one("#sb-scatter"), "ac");
+      choice(n - 1, "Kane").click();
+      equal(
+        name(),
+        { 3: "1 SKB + 2 SPB", 2: "1 SKB + 1 SPB", 1: "SKB" }[n],
+        "Kane Model label",
+      );
+      equal(one("#sb-scatter").value, "ac", "Kane retains acoustic scattering");
+      equal(
+        one("#sb-scatter").disabled,
+        true,
+        "Kane locks global scattering in every mode",
+      );
+      for (let i = 0; i < n - 1; i++)
+        equal(
+          choice(i, "Kane").disabled,
+          true,
+          "a second Kane band cannot be selected",
+        );
+      choice(n - 1, "Parabolic").click();
+    }
+    if (n > 1) one("#sb-remove").click();
+  }
+  equal(one("#sb-remove").hidden, true, "one-band lower limit");
+  set(one("#sb-valleys input"), "6");
+  set(one("#sb-temperatures input"), "51.25");
+  set(d.querySelectorAll("#sb-temperatures input")[1], "799.5");
+  const edited = snapshot();
+  equal(
+    edited.privateContent.values.tMin,
+    "51.25",
+    "temperature stored canonically",
+  );
+  equal(
+    edited.privateContent.values.tMax,
+    "799.5",
+    "upper temperature stored canonically",
+  );
+  one('[data-page="guide"]').click();
+  one('[data-page="fit"]').click();
+  w.fitGuide.restore(edited);
+  equal(one("#sb-valleys input").value, "6", "valley count survives restore");
+  equal(
+    [...d.querySelectorAll("#sb-temperatures input")].map(
+      (input) => input.value,
+    ),
+    ["51,25", "799,5"],
+    "decimal temperatures survive navigation and restore",
+  );
+  w.fitGuide.restore(saved);
+}
+verifyModelControls(w);
+console.log(
+  "Item 17: canonical Model labels, VB/CB/VB, 1–3 bands/valley fields, all mode/scattering restrictions and temperature/count persistence passed.",
+);
 const states = (n, k, mech, m) => {
   const result = {},
     c = dictionary.common,
@@ -1842,6 +1972,10 @@ if (pinnedBrowser || screenshot || process.env.FIT_GUIDE_CHROME === "1") {
       });
       await page.goto(pathToFileURL(file).href);
       await page.locator("#sb-gap-value").getByText("0,09 eV").waitFor();
+      await page.evaluate("(" + verifyModelControls.toString() + ")(window)");
+      console.log(
+        "Chrome item 17: canonical Model labels, band limits/fields, mode/scattering restrictions and temperature/count persistence passed.",
+      );
       assert.equal(await page.evaluate(() => globalThis.openai), undefined);
       assert.deepEqual(
         await page.evaluate(
@@ -1868,7 +2002,26 @@ if (pinnedBrowser || screenshot || process.env.FIT_GUIDE_CHROME === "1") {
         ),
         4,
       );
+      await page.locator("#sb-valleys input").first().fill("6");
+      await page.locator("#sb-temperatures input").first().fill("51.25");
+      await page.locator("#sb-temperatures input").last().fill("799.5");
+      await page.locator("#sb-temperatures input").last().press("Tab");
       await page.reload();
+      assert.equal(
+        await page.locator("#sb-valleys input").first().inputValue(),
+        "6",
+      );
+      assert.equal(
+        await page.locator("#sb-temperatures input").first().inputValue(),
+        "51,25",
+      );
+      assert.equal(
+        await page.locator("#sb-temperatures input").last().inputValue(),
+        "799,5",
+      );
+      console.log(
+        "Chrome item 17: native reload retains valley count and both decimal temperatures.",
+      );
       assert.equal(await page.locator("#sb-p-mass").inputValue(), "2,75");
       assert.equal(
         await page

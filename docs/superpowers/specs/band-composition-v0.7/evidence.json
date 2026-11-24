@@ -511,24 +511,6 @@
       }
     },
     {
-      "id": "UI-MODEL",
-      "scope": "interactive prototype",
-      "status": "passed",
-      "claim": "Single-Kane constraint, composition label, adding and removing bands, and valley degeneracies Nᵢ.",
-      "command": "node docs/superpowers/specs/band-composition-v0.7/evidence/verify_model.mjs",
-      "cwd": "REPO",
-      "output": "evidence/mock_result.txt",
-      "metrics": {
-        "min_bands": 1,
-        "max_bands": 3,
-        "max_kane": 1
-      },
-      "limitations": "Standalone Model prototype. The TDD specifies Parameters, API requests, results and session persistence.",
-      "output_sha256": "3c02db9c2b2417ab5302e9f0ac62ec62c93d2507d6878098a5549c1eb2c06fd5",
-      "provenance": "Output reproduced from the PR checkout.",
-      "replay_status": "reproduced_from_pr"
-    },
-    {
       "id": "E2E",
       "scope": "planned integration",
       "status": "not_run",
@@ -545,13 +527,16 @@
       "id": "UI-FIT-GUIDE",
       "scope": "v0.7 offline prototype",
       "status": "passed",
-      "claim": "Field visibility and eligibility, signed offsets, and preservation of values, bounds and holds across VB/CB and Parabolic/Kane changes for surviving bands.",
+      "claim": "Field visibility and eligibility, signed offsets, and preservation of values, bounds and holds across VB/CB and Parabolic/Kane changes for surviving bands. The same Fit/Guide controls exercise model labels, band counts, scattering eligibility and integer valley counts.",
       "cwd": "REPO",
       "command": "node docs/superpowers/specs/band-composition-v0.7/evidence/verify_fit_guide.mjs --browser",
       "output": "evidence/fit-guide-v0.7.txt",
       "metrics": {
         "allowed_ui_configurations": 270,
-        "viewport_widths_px": [960, 320]
+        "viewport_widths_px": [960, 320],
+        "min_bands": 1,
+        "max_bands": 3,
+        "max_kane": 1
       },
       "limitations": "Browser and design-state checks only. No transport API is called.",
       "provenance": "The 270 field configurations run against the dictionary. The transition regression edits rendered controls in jsdom and Chrome, checks legacy and current widget snapshots, and fails on the pre-fix HTML.",
@@ -603,7 +588,7 @@
         "legacy_fractional": "preserve history, block new replay",
         "scope": "proposed labels and UI; scattering laws unchanged"
       },
-      "output_sha256": "73b746def752888f98b2cd59b6310f0d81bdc7de0fc39a8de70bb4b34d6f1e2b",
+      "output_sha256": "b3763363a95ba2bce237a784fab9c9591d85ec5fce8b133913cd6deb72c50dfd",
       "replay_status": "reproduced_from_pr",
       "regression": {
         "pre_fix_revision": "4e4526c6821d6bf7a06630962b3a7d1bea038acc",
@@ -720,7 +705,14 @@
       "current_branch_commands_passed": 13,
       "p18_driver_checks_passed": 5,
       "historical_Hall_failure_required": true,
-      "production_E2E": "planned"
+      "production_E2E": "planned",
+      "source_revision": "ca4b9ad856cd5853f083eaa785aeb527aec06f03"
     }
+  },
+  "review_package": {
+    "tag": "review-pr272-v0.7-item17",
+    "archive": "https://github.com/pdasya/seeband-web/releases/download/review-pr272-v0.7-item17/seeband-band-composition-v0.7-review.zip",
+    "builder": "build_review_bundle.py",
+    "current_branch_replay_rows": 12
   }
 }

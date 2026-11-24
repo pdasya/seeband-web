@@ -1,6 +1,8 @@
 // Run from the repository root: node docs/superpowers/specs/figures/render-reviewed-figures.mjs
 // These are synthetic design illustrations, not calculated or fitted results.
 import assert from "node:assert/strict";
+import { mkdir } from "node:fs/promises";
+import { parseArgs } from "node:util";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -10,6 +12,14 @@ const require = createRequire(
 );
 const { chromium } = require("@playwright/test");
 const directory = path.dirname(fileURLToPath(import.meta.url));
+const { values } = parseArgs({
+  options: {
+    "output-dir": { type: "string" },
+    "edges-only": { type: "boolean" },
+  },
+});
+const outputDir = path.resolve(values["output-dir"] ?? directory);
+await mkdir(outputDir, { recursive: true });
 const browser = await chromium.launch({ headless: true });
 try {
   const page = await browser.newPage({
@@ -72,10 +82,10 @@ try {
     );
   assert.equal(numbersBelowPlots, 0);
   await page.locator("svg").screenshot({
-    path: path.join(directory, "three-band-edges.png"),
+    path: path.join(outputDir, "three-band-edges.png"),
     scale: "css",
   });
-  if (!process.argv.includes("--edges-only")) {
+  if (!values["edges-only"]) {
     await page.setViewportSize({ width: 960, height: 900 });
     await page.goto(
       pathToFileURL(
@@ -91,7 +101,7 @@ try {
     const capture = async (name) =>
       page
         .locator("#sb-desktop-parameters")
-        .screenshot({ path: path.join(directory, name) });
+        .screenshot({ path: path.join(outputDir, name) });
     assert.equal(await page.locator("#sb-model-name").innerText(), "3 SPB");
     await capture("fit-parameters-and-model.png");
     await restore({ n: 2, types: [0, 3, 0], mechanism: "ac", selectedMode: 0 });

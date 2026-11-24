@@ -1,1 +1,0 @@
-PASS: VB/CB/VB 3 SPB, DPB, 1 SKB + 1 SPB, 1 SKB + 2 SPB, SKB, SPB; 1–3 degeneracy fields; single Kane and global acPh constraint. Model mock only.

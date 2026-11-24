@@ -1,3 +1,4 @@
+Item 17: canonical Model labels, VB/CB/VB, 1–3 bands/valley fields, all mode/scattering restrictions and temperature/count persistence passed.
 Item 14: standalone fixtures, shared acoustic state, dimensionless S-only strengths, independent rho U and composition cancellation passed.
 Item 13: decimal controls, bounds, slider, canonical browser state, live/final/DOS captions and invalid N import/mobile recovery passed.
 Item 12: channel notation, SI units, holds, integer N and imported-value replay rejection passed.
@@ -8,6 +9,8 @@ Signed gaps and item 8 DOM state transitions passed.
 270 matrix states match JSON. Lock, editable manual value, hidden bounds, tooltips and restore passed.
 Chrome item 13 en-US: decimal display/state, native sequential N refusal, paste/mobile equivalent and correction passed.
 Chrome item 13 de-DE: decimal display/state, native sequential N refusal, paste/mobile equivalent and correction passed.
+Chrome item 17: canonical Model labels, band limits/fields, mode/scattering restrictions and temperature/count persistence passed.
+Chrome item 17: native reload retains valley count and both decimal temperatures.
 Chrome item 14: real reload retains browser value/hold/bounds; forced hold Enter and help targets passed.
 Chrome item 11: native disclosure/Tab/Enter, isolated replay, final vector, rerender and mobile layout passed.
 Chrome item 12: mechanism notation, holds, integer N and imported-value replay rejection passed.
