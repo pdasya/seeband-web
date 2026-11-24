@@ -200,7 +200,7 @@ importers:
         specifier: ^7.4.5
         version: 7.4.5(@astrojs/markdown-remark@7.3.9(supports-color@10.2.2))(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1)
       katex:
-        specifier: ^0.16.47
+        specifier: 0.16.47
         version: 0.16.47
       rehype-katex:
         specifier: ^7.0.1
