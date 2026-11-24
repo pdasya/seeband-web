@@ -619,6 +619,8 @@ function bandDiagramView(
   if (diagram?.reference_mass_assumed === true) {
     notes.unshift(text.diagramReferenceMass);
   }
+  // In every mode, as the k axis has no values.
+  notes.unshift(text.diagramShape);
   return {
     ...NO_CHART,
     yAxisTitle: text.axes.energy(energy.unit),
@@ -639,7 +641,7 @@ function bandDiagramView(
       values: energies(values, energy),
       dashed: name === "fermi_energy_k",
     })),
-    note: notes.join(" ") || null,
+    note: notes.join(" "),
   };
 }
 

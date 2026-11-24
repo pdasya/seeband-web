@@ -442,11 +442,11 @@ describe("the band diagram", () => {
     expect(note).not.toContain("made_up");
   });
 
-  test("has no note when the mass is supplied and there are no flags", () => {
+  test("says only that k has no scale when the mass is supplied and there are no flags", () => {
     expect(
       view({ ...DIAGRAM, known_issues: [], reference_mass_assumed: false })
         .note,
-    ).toBeNull();
+    ).toBe("The diagram shows the shape of the bands; k has no scale.");
   });
 
   test("before an answer, shows the wavevector axis without any curves", () => {
@@ -454,7 +454,9 @@ describe("the band diagram", () => {
 
     expect(curves).toEqual([]);
     expect(xAxis).toEqual({ title: "k", scale: false, span: [-2, 2] });
-    expect(note).toBeNull();
+    expect(note).toBe(
+      "The diagram shows the shape of the bands; k has no scale.",
+    );
   });
 
   test("asks for no curves of temperature", () => {
