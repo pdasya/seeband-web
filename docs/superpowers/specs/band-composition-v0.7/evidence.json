@@ -82,7 +82,8 @@
       },
       "output_sha256": "3fefc162b5a38be576fb843f9543f71837821fadd984c4b4f7d462babd923225",
       "provenance": "Output reproduced from the PR checkout.",
-      "replay_status": "reproduced_from_pr"
+      "replay_status": "reproduced_from_pr",
+      "pytest_node": "packages/seeband_core/tests/test_band_design_evidence.py::test_band_design_evidence[composition]"
     },
     {
       "id": "SPB",
@@ -99,7 +100,8 @@
       "limitations": "Forward calculations for parabolic bands with the specified power-law scattering mechanisms.",
       "output_sha256": "8f156cf05bd1d1accda5d51f1c79dc48cfbdf765d2b591f977a17a309dd37417",
       "provenance": "Output reproduced from the PR checkout.",
-      "replay_status": "reproduced_from_pr"
+      "replay_status": "reproduced_from_pr",
+      "pytest_node": "packages/seeband_core/tests/test_band_design_evidence.py::test_band_design_evidence[spb]"
     },
     {
       "id": "DPB-HALL",
@@ -166,7 +168,8 @@
       "limitations": "One isotropic valley, acPh, N=1. The check did not test multiband optimization or independently validate absolute resistivity.",
       "output_sha256": "79a4c60cff866abcd4e141e93df914f106540f3c2e1b33f7791c42592384e267",
       "provenance": "Output reproduced from the PR checkout.",
-      "replay_status": "reproduced_from_pr"
+      "replay_status": "reproduced_from_pr",
+      "pytest_node": "packages/seeband_core/tests/test_band_design_evidence.py::test_band_design_evidence[skb]"
     },
     {
       "id": "SKB-CORE",
@@ -214,7 +217,8 @@
         "near_parabolic_final": 2e-6,
         "valley_scaling": 1e-12
       },
-      "limitations": "Isolated, isotropic intravalley acoustic band with prescribed amplitude. Published tables have N=K=1. N>1 and absolute conductivity are synthetic checks. Mixed-channel weights, empirical amplitude calibration, production calculations and fit behavior remain open."
+      "limitations": "Isolated, isotropic intravalley acoustic band with prescribed amplitude. Published tables have N=K=1. N>1 and absolute conductivity are synthetic checks. Mixed-channel weights, empirical amplitude calibration, production calculations and fit behavior remain open.",
+      "pytest_node": "packages/seeband_core/tests/test_band_design_evidence.py::test_band_design_evidence[skb-core]"
     },
     {
       "id": "S-PROFILE",
@@ -246,7 +250,8 @@
         "min_outside_delta_S_V_per_K": 1e-6
       },
       "output_sha256": "31978fa39763bcfd5e8789e75d6957fb08953acd55759b03225aab78874c0365",
-      "limitations": "The profile minimum follows from exact charge invariance and zero loss. Outside-gap controls hold nuisance parameters fixed. This run does not estimate uncertainty or exercise the application optimizer or API."
+      "limitations": "The profile minimum follows from exact charge invariance and zero loss. Outside-gap controls hold nuisance parameters fixed. This run does not estimate uncertainty or exercise the application optimizer or API.",
+      "pytest_node": "packages/seeband_core/tests/test_band_design_evidence.py::test_band_design_evidence[three-band-profile]"
     },
     {
       "id": "MASS-SCALE",
@@ -294,7 +299,8 @@
         "nearly_equal_edges_bounded_grid_M2": [1.325, 1.475]
       },
       "provenance": "Branch design harness, SciPy charge balance, independent radial-k charge check and standalone SPB transport integrals. See stdout for runtime versions.",
-      "limitations": "The three-band empirical weight law is proposed, including its ionized specialization. The grid holds the other coordinates prescribed. Counts under illustrative residual scales do not establish fitted intervals, global identifiability or production support."
+      "limitations": "The three-band empirical weight law is proposed, including its ionized specialization. The grid holds the other coordinates prescribed. Counts under illustrative residual scales do not establish fitted intervals, global identifiability or production support.",
+      "pytest_node": "packages/seeband_core/tests/test_band_design_evidence.py::test_band_design_evidence[mass]"
     },
     {
       "id": "MIX",
@@ -312,7 +318,8 @@
       },
       "limitations": "Forward curves for parabolic bands. Selecting observables in this check does not run an optimizer.",
       "output_sha256": "9c7d8f38e9186565e4063d816451a16a270afce64b477c580a7a3e912fe1bda1",
-      "provenance": "Output reproduced from the PR checkout."
+      "provenance": "Output reproduced from the PR checkout.",
+      "pytest_node": "packages/seeband_core/tests/test_band_design_evidence.py::test_band_design_evidence[mixed]"
     },
     {
       "id": "MIX-LEGACY",
@@ -329,7 +336,8 @@
       },
       "limitations": "Uses seeband_core.math_module from this checkout. Does not exercise the P18 solver or fitting.",
       "output_sha256": "0ef2769a19b6c6c6978733e791980c5abbf1aa7b05ddfc7721567a307e942e4b",
-      "provenance": "Output reproduced from the PR checkout."
+      "provenance": "Output reproduced from the PR checkout.",
+      "pytest_node": "packages/seeband_core/tests/test_band_design_evidence.py::test_band_design_evidence[mixed-legacy]"
     },
     {
       "id": "MIX-P18",
@@ -499,7 +507,8 @@
       "command": "PYTHONPATH=scripts .venv/bin/python docs/superpowers/specs/band-composition-v0.7/evidence/verify_valley_counts.py",
       "output": "evidence/valley-inputs.txt",
       "output_sha256": "94b9cba470982683b29e0aab2327739fd146a701d610ebe6a54f870df3e4ebbd",
-      "replay_status": "reproduced_from_pr"
+      "replay_status": "reproduced_from_pr",
+      "pytest_node": "packages/seeband_core/tests/test_band_design_evidence.py::test_band_design_evidence[valley-counts]"
     },
     {
       "id": "KANE-WEIGHTS",
@@ -510,7 +519,8 @@
       "command": "PYTHONPATH=scripts uv run --frozen python docs/superpowers/specs/band-composition-v0.7/evidence/verify_kane_weights.py",
       "output": "evidence/kane-weights.txt",
       "output_sha256": "eb6672c16d693f790f297fdc50a9bc455a86b53e50ceee4194eb218fd48a02f3",
-      "replay_status": "reproduced_from_pr"
+      "replay_status": "reproduced_from_pr",
+      "pytest_node": "packages/seeband_core/tests/test_band_design_evidence.py::test_band_design_evidence[kane-weights]"
     },
     {
       "id": "HOLD-MIGRATION",

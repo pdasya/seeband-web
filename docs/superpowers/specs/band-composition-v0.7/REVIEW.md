@@ -2,6 +2,29 @@
 
 Read the [technical design document](../2026-11-21-band-composition-design.md) for the formulas and proposed changes to P18. The [evidence index](evidence.json) lists commands, conditions, units, tolerances and the SHA-256 digests of saved outputs. To try the [interactive Fit and Guide prototype](fit-guide.html), select **Download raw file** on GitHub and open the downloaded HTML in a browser.
 
+## Automated numerical checks
+
+The core pytest suite runs the six Python design scripts in `scripts/`, including the SKB run with core constants and the mixed-scattering comparison with the legacy core. It also runs the valley-input and Kane-weight examples in this evidence directory. A failure propagates to `pnpm check` locally and to **Python tests (core)** on a pull request. To run just these cases from the repository root:
+
+```sh
+uv run --frozen pytest -q packages/seeband_core/tests/test_band_design_evidence.py
+```
+
+The ten cases exercise the numerical assertions and tolerances inside the reference calculations. Arithmetic comparisons use their per-observable tolerances. The SHA-256 values in the [manifest](evidence.json) identify the archived transcripts. Strict mypy covers the production core and API as configured in `pyproject.toml`. The reference scripts have runtime regression coverage. Calculations tied to a separate P18 checkout still use the revision-specific replay instructions below.
+
+### Sensitivity checks for item 15
+
+Each of the following changes was made separately in a disposable copy of the source. Run the pytest command above with `-k` to select a case, or copy the exact node ID from the [evidence index](evidence.json) and quote it on the command line. The unmodified scripts pass all ten cases.
+
+| Pytest case                | Temporary change                                                                                         | Observed failure                                                                                                                                      |
+| -------------------------- | -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `spb`                      | In `momentum()`, negate the radial Seebeck coefficient `k1 / (q * temperature_k * k0)`.                  | The computed Seebeck sign disagreed with the specified carrier sign.                                                                                  |
+| `skb-core`                 | In `kane()`, double the K4 drift mobility.                                                               | The conductivity at the parabolic limit differed from the independent SPB reference by about 100%. The relative tolerance was $10^{-8}$.              |
+| `mixed`                    | In the direct integral in `channel()`, double the disorder rate in the sum of rates.                     | At the crossover temperature the mixed conductivity failed the half-acoustic-conductivity check. The absolute tolerance on this ratio was $10^{-12}$. |
+| `skb-core`, `mixed-legacy` | Skip the call to `core_checks()` or `legacy()` while still returning success from the respective script. | In both cases pytest detected that the selected verification had never reported its result.                                                           |
+
+These experiments exercised the reference scripts only. The scientific source, constants and tolerances are identical to the preceding revision.
+
 ## Replaying the checks from this branch
 
 From the repository root, install the project dependencies with `uv sync` and `pnpm install --frozen-lockfile`, then run:
