@@ -19,7 +19,13 @@ The comparison labelled **published** uses approximate symbol centres from Figur
 
 For each specimen and structure, minimize the sum over observables of the mean squared residual divided by the mean squared measured signal of that observable. Each curve therefore contributes once regardless of its units or point count. These are descriptive scales. No experimental standard deviations enter the objective. The script also profiles each observable separately using the same fixed structure. No bound on a material amplitude is chosen: the search brackets the measured conductance crossovers in $\log(w_2)$ with 40 additional natural-log units on each side, checks both exact single-channel limits and refines the sampled interior minima at two grid spacings. A 30 K near-dark-band regression recovers equal conductances when the underlying shapes differ by eleven orders of magnitude. Residuals are prediction minus digitized measurement. All peaks reported in the transcript are maxima on the observed temperature grid.
 
-From the repository root run the following commands. The first checks normalization and limits. The second regenerates the numerical transcript and the pointwise curves locally. Rendering the figure is optional. The saved PNG used Matplotlib 3.10.0 and the Agg backend. The last command installs that plotting version in an isolated environment.
+For an automated replay from a PR checkout, run the command below from the repository root. The same test runs in GitHub’s Python core job. It checks the forward limits and all 224 rows (112 measurements in two structural scenarios), including point identities, the presence of the published comparison and predictions. The replay tolerance for calculated values is $5\times10^{-6}$ times the measured signal at each point. This tolerance only covers numerical reproduction.
+
+```sh
+uv run --frozen pytest -q packages/seeband_core/tests/test_band_design_evidence.py -k chasapis
+```
+
+To regenerate the underlying outputs, run the following commands from the repository root. The first checks normalization and limits. The second regenerates the numerical transcript and the pointwise curves locally. Rendering the figure is optional. The saved PNG used Matplotlib 3.10.0 and the Agg backend. The last command installs that plotting version in an isolated environment.
 
 ```sh
 cd docs/superpowers/specs/band-composition-v0.7/evidence/chasapis

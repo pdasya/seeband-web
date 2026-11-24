@@ -1,5 +1,6 @@
 """Run the design evidence's numerical assertions through its real entrypoints."""
 
+import csv
 import os
 import subprocess
 import sys
@@ -90,3 +91,29 @@ def test_band_design_evidence(entrypoint: str, args: tuple[str, ...], checkpoint
 
     if entrypoint == "scripts/verify_mixed_scattering_design.py":
         assert "MIX reference replay PASS 73 cases" in result.stdout
+
+
+def test_chasapis_pbse_pointwise_replay(tmp_path: Path) -> None:
+    directory = ROOT / EVIDENCE / "chasapis"
+    subprocess.run([sys.executable, str(directory / "forward_model.py")], check=True, timeout=60)
+    output = tmp_path / "curves.csv"
+    subprocess.run(
+        [sys.executable, str(directory / "compare.py"), "--curves", str(output)],
+        check=True,
+        timeout=120,
+    )
+    with (directory / "curves.csv").open() as f, output.open() as g:
+        saved = list(csv.DictReader(f))
+        replay = list(csv.DictReader(g))
+    assert len(replay) == len(saved) == 2 * (39 + 73)
+    for actual, expected in zip(replay, saved, strict=True):
+        for field in ("composition", "structure", "observable", "temperature_k", "observed"):
+            assert actual[field] == expected[field]
+        for field in ("constant_w2", "published_f0_interpolated", "residual_model_minus_observed"):
+            if expected[field] == "":
+                assert actual[field] == ""
+                continue
+            # Reproduction tolerance in the observable's units, scaled to the measured signal.
+            # Distinct from experimental uncertainty and from goodness of fit.
+            scale = float(expected["observed"])
+            assert float(actual[field]) == pytest.approx(float(expected[field]), abs=5e-6 * scale)

@@ -28,7 +28,7 @@ The core pytest suite runs the six Python design scripts in `scripts/`, includin
 uv run --frozen pytest -q packages/seeband_core/tests/test_band_design_evidence.py
 ```
 
-The ten cases exercise the numerical assertions and tolerances inside the reference calculations. Arithmetic comparisons use their per-observable tolerances. The SHA-256 values in the [manifest](evidence.json) identify the archived transcripts. Strict mypy covers the production core and API as configured in `pyproject.toml`. The reference scripts have runtime regression coverage. Calculations tied to a separate P18 checkout still use the revision-specific replay instructions below.
+Ten cases exercise the numerical assertions and tolerances inside the design references. An additional Q3 test checks the PbSe limits, reruns the profile search and compares all 224 rows of measured and predicted curves with the saved pointwise results. Arithmetic comparisons use their per-observable tolerances. The SHA-256 values in the [manifest](evidence.json) identify the archived transcripts. Strict mypy covers the production core and API as configured in `pyproject.toml`. The reference scripts have runtime regression coverage. Calculations tied to a separate P18 checkout still use the revision-specific replay instructions below.
 
 ### Sensitivity checks for item 15
 
