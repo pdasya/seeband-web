@@ -54,7 +54,7 @@ export async function runGuess(
   controller?.abort();
   const own = new AbortController();
   controller = own;
-  const { parameters, selection, held } = store();
+  const { parameterEdits, selection } = store();
   const scattering = selection.scattering;
   store().guessStarted();
   // The data this answer is still about, if the user has not moved on.
@@ -62,7 +62,8 @@ export async function runGuess(
     const now = store().data.seebeck?.measurement;
     return store().selection.scattering === scattering &&
       store().selection.model === selection.model &&
-      store().parameters === parameters &&
+      // A change of mode is no edit: the answer still fills what is not the user's.
+      store().parameterEdits === parameterEdits &&
       now !== undefined &&
       sameRows(now, measurement)
       ? now
@@ -99,10 +100,10 @@ export async function runGuess(
           fitMode: id,
           values: Object.fromEntries(
             specs.flatMap(({ name, role, core_range }) => {
-              const previous = parameters[id]?.[name];
+              // As they are now, which a change of mode while it waited may have carried.
+              const previous = store().parameters[id]?.[name];
               if (
                 role === "fixed" ||
-                held[id]?.includes(name) ||
                 store().held[id]?.includes(name) ||
                 (intent === "automatic" &&
                   previous !== undefined &&

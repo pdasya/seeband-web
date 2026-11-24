@@ -4,7 +4,7 @@ import { create } from "zustand";
 import type { FitEvent } from "@/api/fitStream";
 import type { UnitDoubtIssue } from "@/data/units";
 import type { FitModeDescription } from "@/model/selection";
-import { carryParameters } from "@/session/carry";
+import { carriedNames, carryParameters } from "@/session/carry";
 
 type Schemas = components["schemas"];
 
@@ -303,6 +303,12 @@ interface GuessRecord {
   parameters: SessionState["parameters"];
 }
 
+/** Parameters a change of model took along from the other model, by name. */
+export interface CarryNotice {
+  fromModel: string;
+  names: readonly string[];
+}
+
 export interface SessionState {
   data: Partial<Record<Quantity, SessionData>>;
   selection: Selection;
@@ -334,6 +340,13 @@ export interface SessionState {
   fitStartValues: Record<string, number> | null;
   /** Counts resets, so that fields can start again even if the values do not change. */
   parameterResets: number;
+  /**
+   * Counts changes of values by the user, a guess, a fit or a session file, but not by a change
+   * of mode, so that a guess on its way can tell whether the values it read still stand.
+   */
+  parameterEdits: number;
+  /** What the last change of model took along, for the panel to say so, or null. */
+  carryNotice: CarryNotice | null;
   /** Bounds a fit of each mode uses in place of the description's, in core units. */
   customBounds: Record<string, Record<string, FitBounds>>;
   /** Fitted parameters a fit of each mode keeps at their values, as the design's fix toggle. */
@@ -525,6 +538,35 @@ export function isFitActive(fit: FitState): boolean {
 
 // A fit moves the values on screen as it goes, so a Stop keeps the last ones. A value that is not
 // finite has nothing to show, and the last one stays.
+const withoutOldResult = (fit: FitState): FitState =>
+  isFitActive(fit) ? fit : { status: "idle" };
+
+/** What a change of selection does, which a change of fit mode does too. */
+function selectionChange(
+  state: SessionState,
+  selection: Partial<Selection>,
+): Partial<SessionState> {
+  return {
+    selection: supportedSelection({ ...state.selection, ...selection }),
+    ...(selection.scattering !== undefined &&
+    selection.scattering !== state.selection.scattering
+      ? { guess: null }
+      : {}),
+    fit:
+      state.fit.status === "stopped" &&
+      Object.keys(selection).every((key) => key === "algorithm")
+        ? state.fit
+        : withoutOldResult(state.fit),
+  };
+}
+
+function noticeOf(
+  fromModel: string,
+  names: readonly string[],
+): CarryNotice | null {
+  return names.length === 0 ? null : { fromModel, names };
+}
+
 function withFitValues(
   parameters: SessionState["parameters"],
   fitMode: string | null,
@@ -627,7 +669,7 @@ export function holdsFiles(
  * longer matches them, so that goes back to `idle`.
  */
 export const createSessionStore = () =>
-  create<SessionState>()((set, get) => {
+  create<SessionState>()((set) => {
     // Late events of an old run must not reach a newer one, or the wrong result would show.
     let currentRun = 0;
     let currentFitMode: string | null = null;
@@ -637,8 +679,6 @@ export const createSessionStore = () =>
       "selection" | "start" | "customBounds" | "held" | "data" | "interpolation"
     > | null = null;
     let lastRequest = 0;
-    const withoutOldResult = (fit: FitState): FitState =>
-      isFitActive(fit) ? fit : { status: "idle" };
 
     return {
       data: {},
@@ -657,6 +697,8 @@ export const createSessionStore = () =>
       fitStartNumerical: false,
       fitStartValues: null,
       parameterResets: 0,
+      parameterEdits: 0,
+      carryNotice: null,
       customBounds: {},
       held: {},
       slotsReading: [],
@@ -718,6 +760,8 @@ export const createSessionStore = () =>
           savedModelSettings: session.savedModelSettings,
           // Fields being typed in start again from the restored values.
           parameterResets: state.parameterResets + 1,
+          parameterEdits: state.parameterEdits + 1,
+          carryNotice: null,
           restored: {
             ...from,
             result: session.result,
@@ -785,6 +829,7 @@ export const createSessionStore = () =>
           }
           return {
             parameters,
+            parameterEdits: state.parameterEdits + 1,
             guessedParameters,
             guessPending: false,
             guess: {
@@ -815,6 +860,13 @@ export const createSessionStore = () =>
             ...(modes === undefined
               ? {}
               : carryParameters(state, modes.from, modes.to)),
+            carryNotice:
+              modes === undefined || selection.model === null
+                ? null
+                : noticeOf(
+                    selection.model,
+                    carriedNames(state, modes.from, modes.to),
+                  ),
             savedModelSettings:
               selection.model === null
                 ? state.savedModelSettings
@@ -955,26 +1007,19 @@ export const createSessionStore = () =>
         });
       },
       setSelection: (selection) => {
-        set((state) => ({
-          selection: supportedSelection({ ...state.selection, ...selection }),
-          ...(selection.scattering !== undefined &&
-          selection.scattering !== state.selection.scattering
-            ? { guess: null }
-            : {}),
-          fit:
-            state.fit.status === "stopped" &&
-            Object.keys(selection).every((key) => key === "algorithm")
-              ? state.fit
-              : withoutOldResult(state.fit),
-        }));
+        set((state) => selectionChange(state, selection));
       },
       chooseFitMode: (selection, from, to) => {
-        set((state) => carryParameters(state, from, to));
-        get().setSelection(selection);
+        set((state) => ({
+          ...carryParameters(state, from, to),
+          ...selectionChange(state, selection),
+          carryNotice: null,
+        }));
       },
       setParameters: (fitMode, values) => {
         set((state) => ({
           parameters: { ...state.parameters, [fitMode]: values },
+          parameterEdits: state.parameterEdits + 1,
           guessedParameters: withoutMode(state.guessedParameters, fitMode),
           fit: withoutOldResult(state.fit),
         }));
@@ -993,6 +1038,7 @@ export const createSessionStore = () =>
             ...state.parameters,
             [fitMode]: { ...state.parameters[fitMode], [name]: value },
           },
+          parameterEdits: state.parameterEdits + 1,
           fit: withoutOldResult(state.fit),
         }));
       },
@@ -1046,6 +1092,8 @@ export const createSessionStore = () =>
             ),
           ),
           parameterResets: state.parameterResets + 1,
+          parameterEdits: state.parameterEdits + 1,
+          carryNotice: null,
           fit: withoutOldResult(state.fit),
         }));
       },
@@ -1118,7 +1166,15 @@ export const createSessionStore = () =>
                   },
                 ].slice(-MAX_RUNS)
               : state.runs;
-          return { fit, parameters, runs: kept };
+          return {
+            fit,
+            parameters,
+            parameterEdits:
+              parameters === state.parameters
+                ? state.parameterEdits
+                : state.parameterEdits + 1,
+            runs: kept,
+          };
         });
       },
       fitStopped: (run) => {

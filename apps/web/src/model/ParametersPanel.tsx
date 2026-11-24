@@ -183,7 +183,7 @@ function ParameterControl({
       </div>
       {/* The tooltip shows it on demand, and the field keeps it as its description. */}
       <span id={hintId} className="sr-only">
-        {hint(parameter)}
+        {plainSubscripts(hint(parameter))}
       </span>
       <Slider
         aria-label={plainSubscripts(label)}
@@ -249,9 +249,23 @@ export function ParametersPanel() {
   const held = useSessionStore((state) => state.held);
   const setHeld = useSessionStore((state) => state.setHeld);
   const active = useSessionStore((state) => isFitActive(state.fit));
+  const carried = useSessionStore((state) => state.carryNotice);
 
   const model = data?.models.find(({ id }) => id === selection.model);
   const mode = fitModeOf(model, selection.fitMode);
+  // Said after a change of model, as values that follow from the other model are easy to miss.
+  const notice =
+    carried === null
+      ? null
+      : [
+          text.carried(
+            carried.names.map(parameterSymbol).join(", "),
+            carried.fromModel.toUpperCase(),
+          ),
+          ...(carried.names.includes("fermi_energy")
+            ? [text.fermiReference]
+            : []),
+        ].join(" ");
 
   return (
     <Panel
@@ -262,6 +276,12 @@ export function ParametersPanel() {
         )
       }
     >
+      <p
+        role="status"
+        className="m-0 text-xs text-muted-foreground empty:hidden"
+      >
+        <Subscripted text={notice} />
+      </p>
       {mode !== undefined && (
         <div className="mt-2 flex flex-col gap-3">
           {visibleParameters(mode, selection.scattering).map((parameter) => (

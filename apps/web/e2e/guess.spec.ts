@@ -694,3 +694,34 @@ test("Reset goes back to the defaults, not to the guess", async ({ page }) => {
   await expect(field(page, "Eg")).toHaveValue("0,09");
   await expect(badge(page, "Initial guess")).toHaveCount(0);
 });
+
+test("a change of mode that changes no value keeps the guess and its badge", async ({
+  page,
+}) => {
+  await open(page);
+  await load(page);
+  await expect(badge(page, "Initial guess")).toBeVisible();
+  await expect(field(page, "Eg")).toHaveValue("0,05");
+
+  await choose(page, "S");
+
+  await expect(field(page, "Eg")).toHaveValue("0,05");
+  await expect(badge(page, "Initial guess")).toBeVisible();
+});
+
+test("a change of mode while the guess is on its way does not lose it", async ({
+  page,
+}) => {
+  const gate = hold();
+  await open(page, async (route) => {
+    await gate.held;
+    await route.fulfill({ json: GUESS }).catch(() => undefined);
+  });
+  await load(page);
+  await choose(page, "S");
+  gate.release();
+
+  await expect(field(page, "Eg")).toHaveValue("0,05");
+  await choose(page, "S + ρ");
+  await expect(field(page, "Eg")).toHaveValue("0,05");
+});

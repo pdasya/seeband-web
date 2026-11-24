@@ -435,3 +435,18 @@ test.describe("on a touch screen", () => {
     await expect(tip).toHaveCount(0);
   });
 });
+
+test("a change of model says what it took along, and that E_F counts from another edge", async ({
+  page,
+}) => {
+  await open(page);
+  await choose(page, "SPB");
+
+  await expect(
+    page.getByRole("status").filter({ hasText: "taken from DPB" }),
+  ).toHaveText(
+    "EF taken from DPB, with any bounds and holds. EF counts from the band edge in SPB and from the top of band 1 in DPB, so check it.",
+  );
+  await choose(page, "S + ρ");
+  await expect(page.getByText(/taken from DPB/)).toHaveCount(0);
+});

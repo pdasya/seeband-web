@@ -195,7 +195,7 @@ test("μ needs no data, has band edges, and follows Eg", async ({ page }) => {
   await expect(page.getByText("band 2 bottom (Eg)")).toBeVisible();
 
   await page.getByRole("radio", { name: "SPB" }).click();
-  await expect(page.getByText("band edge")).toBeVisible();
+  await expect(page.getByText("band edge", { exact: true })).toBeVisible();
   await expect(page.getByText("band 1 top")).toHaveCount(0);
 });
 
