@@ -5,12 +5,12 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-const require = createRequire(import.meta.url);
-const { chromium } = require(
-  path.resolve("apps/web/node_modules/@playwright/test"),
+const require = createRequire(
+  new URL("../../../../apps/web/package.json", import.meta.url),
 );
+const { chromium } = require("@playwright/test");
 const directory = path.dirname(fileURLToPath(import.meta.url));
-const browser = await chromium.launch({ channel: "chrome", headless: true });
+const browser = await chromium.launch({ headless: true });
 try {
   const page = await browser.newPage({
     viewport: { width: 960, height: 900 },

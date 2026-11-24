@@ -3,15 +3,16 @@ import { pathToFileURL } from "node:url";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-const loadPackage = createRequire(import.meta.url);
-const project = process.cwd();
+const loadPackage = createRequire(
+  new URL("../../../../../apps/web/package.json", import.meta.url),
+);
 const kit = path.resolve(import.meta.dirname, "..");
 const file = process.env.FIT_GUIDE_FILE ?? path.join(kit, "fit-guide.html");
 const labels = JSON.parse(
   fs.readFileSync(path.join(kit, "../band-parameter-labels.json")),
 );
 const dictionary = labels.fit_eligibility_rules;
-const jsdom = loadPackage(path.join(project, "apps/web/node_modules/jsdom"));
+const jsdom = loadPackage("jsdom");
 const dom = new jsdom.JSDOM(fs.readFileSync(file, "utf8"), {
   runScripts: "dangerously",
   url: "https://fit-guide.test/",
@@ -1722,13 +1723,13 @@ console.log(
   checks +
     " matrix states match JSON. Lock, editable manual value, hidden bounds, tooltips and restore passed.",
 );
-if (process.argv[2] || process.env.FIT_GUIDE_CHROME === "1") {
+const pinnedBrowser = process.argv.includes("--browser");
+const screenshot = process.argv.slice(2).find((arg) => arg !== "--browser");
+if (pinnedBrowser || screenshot || process.env.FIT_GUIDE_CHROME === "1") {
   (async () => {
-    const { chromium } = loadPackage(
-      path.join(project, "apps/web/node_modules/@playwright/test"),
-    );
+    const { chromium } = loadPackage("@playwright/test");
     const browser = await chromium.launch({
-      channel: "chrome",
+      channel: pinnedBrowser ? undefined : "chrome",
       headless: true,
     });
     try {
@@ -1923,10 +1924,10 @@ if (process.argv[2] || process.env.FIT_GUIDE_CHROME === "1") {
           privateContent: {},
         }),
       );
-      if (process.argv[2])
+      if (screenshot)
         await page
           .locator("#sb-desktop-parameters")
-          .screenshot({ path: process.argv[2] });
+          .screenshot({ path: screenshot });
       await page.getByRole("button", { name: "Guide", exact: true }).click();
       assert.equal(await page.getByRole("table").count(), 1);
       await page.getByRole("button", { name: "Fit", exact: true }).click();

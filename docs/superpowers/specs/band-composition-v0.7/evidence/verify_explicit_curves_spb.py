@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """P18 audit: explicit_curves versus independent closed SPB oracle and channel sums.
 
-Run from a P18 checkout:
-  PYTHONPATH=packages/seeband_core/src .venv/bin/python /path/to/verify_explicit_curves_spb.py
+Run from the review root using the pinned isolated checkout:
+  uv run --frozen python docs/superpowers/specs/band-composition-v0.7/evidence/replay_p18.py
 Uses the reference script shipped alongside this audit in the review repository.
 Uses inherited core constants explicitly to isolate formula/integration errors;
 current-SI versus inherited-constant compatibility is a separate question.

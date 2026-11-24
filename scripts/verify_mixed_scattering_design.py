@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """Synthetic acPh+dis design evidence for 1–3 isotropic spin-2 parabolas.
 
-Run: .venv/bin/python scripts/verify_mixed_scattering_design.py
+Run: uv run --frozen python scripts/verify_mixed_scattering_design.py
 Optional comparison with the legacy math_module functions in this checkout:
-  PYTHONPATH=packages/seeband_core/src .venv/bin/python \
+  PYTHONPATH=packages/seeband_core/src uv run --frozen python \
       scripts/verify_mixed_scattering_design.py --legacy
+Default execution also replays the checked-in mixed_reference.json (73 cases).
+Use --reference PATH to check another reference; --write-reference PATH explicitly
+captures current outputs after independent checks. Replay never updates fixtures.
 Requires installed NumPy/SciPy. No production imports without --legacy.
 
 q=-s*e; s=+1 CB/-1 VB; edges and mu in K (energy/kB), masses in m_e,
@@ -30,9 +33,12 @@ so original multi-T/VBVB Seebeck must not be treated as an independent oracle.
 
 # ruff: noqa: T201 -- reproducible executable evidence.
 
+import argparse
+import json
 import math
 import sys
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+from pathlib import Path
 
 import numpy as np
 import scipy
@@ -41,7 +47,34 @@ from scipy.optimize import brentq
 from scipy.special import expit
 from verify_band_composition_design import require_valley_count
 
+REFERENCE = (
+    Path(__file__).resolve().parents[1]
+    / "docs/superpowers/specs/band-composition-v0.7/evidence/mixed_reference.json"
+)
+# Compatibility budgets, not physical accuracy claims. Absolute floors cover
+# cancellation in S/RH; positive rho/L retain a tight relative budget.
+TOLERANCES = {
+    "rho": {"atol": 1e-15, "rtol": 1e-9},
+    "S": {"atol": 1e-13, "rtol": 1e-9},
+    "RH": {"atol": 1e-18, "rtol": 1e-9},
+    "L": {"atol": 1e-17, "rtol": 1e-9},
+}
+UNITS = {"rho": "ohm*m", "S": "V/K", "RH": "m^3/C", "L": "W*ohm/K^2"}
+
 KB, E, ME, HBAR = 1.380649e-23, 1.602176634e-19, 9.1093837139e-31, 1.054571817e-34
+INPUT_UNITS = {
+    "s": "CB=+1, VB=-1",
+    "edge_k": "K (energy/kB)",
+    "mass_me": "electron mass",
+    "valleys": "count excluding spin (spin=2)",
+    "crossover_k": "K",
+    "ef_k": "K (energy/kB)",
+    "temperature_k": "K",
+    "amplitudes_per_ohm_m": "1/(ohm*m)",
+    "ac": "dimensionless",
+    "dis": "dimensionless",
+}
+CONSTANTS_SI = {"kB_J_per_K": KB, "e_C": E, "m_e_kg": ME, "hbar_J_s": HBAR}
 
 
 @dataclass(frozen=True)
@@ -196,7 +229,113 @@ def legacy():
     )
 
 
+def reference_case(name, mode, bands, ef, temperature, amplitudes, values):
+    return {
+        "id": f"{name}/{mode}/{temperature:g}K",
+        "inputs": {
+            "configuration": name,
+            "mode": mode,
+            "bands": [asdict(b) for b in bands],
+            "ef_k": ef,
+            "temperature_k": temperature,
+            "amplitudes_per_ohm_m": amplitudes,
+            "ac": 1.0,
+            "dis": 1.0,
+        },
+        "outputs": dict(zip(UNITS, values[:4], strict=True)),
+    }
+
+
+def replay_reference(records, path):
+    """Require every case/input/observable; never refresh a baseline on replay."""
+    try:
+        reference = json.loads(path.read_text())
+        if reference["schema_version"] != 1 or reference["units"] != UNITS:
+            raise ValueError("schema version or output units differ")
+        if reference["input_units"] != INPUT_UNITS or reference["constants_si"] != CONSTANTS_SI:
+            raise ValueError("input units or constants differ")
+        if reference["tolerances"] != TOLERANCES:
+            raise ValueError("tolerance contract differs")
+        expected_cases = reference["cases"]
+        by_id = {case["id"]: case for case in expected_cases}
+        if (
+            len(by_id) != len(expected_cases)
+            or len(by_id) != len(records)
+            or set(by_id) != {c["id"] for c in records}
+        ):
+            raise ValueError("case completeness: missing, extra or duplicate case IDs")
+        maxima = {q: 0.0 for q in UNITS}
+        for actual in records:
+            expected = by_id[actual["id"]]
+            context = f"{actual['id']} inputs={actual['inputs']}"
+            if actual["inputs"] != expected["inputs"]:
+                raise ValueError(f"input completeness/mismatch: {context}")
+            if set(expected["outputs"]) != set(UNITS):
+                raise ValueError(f"observable completeness: {context}")
+            for quantity, value in actual["outputs"].items():
+                anchor = expected["outputs"][quantity]
+                if (
+                    isinstance(anchor, bool)
+                    or not isinstance(anchor, (int, float))
+                    or not math.isfinite(anchor)
+                    or not math.isfinite(value)
+                ):
+                    raise ValueError(f"nonfinite/nonnumeric {quantity}: {context}")
+                tolerance = TOLERANCES[quantity]
+                budget = tolerance["atol"] + tolerance["rtol"] * abs(anchor)
+                error = abs(value - anchor)
+                maxima[quantity] = max(maxima[quantity], error / budget)
+                if error > budget:
+                    raise ValueError(
+                        f"{quantity} [{UNITS[quantity]}] actual={value:.17g} "
+                        f"reference={anchor:.17g} abs_error={error:.3e} budget={budget:.3e}: "
+                        f"{context}"
+                    )
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        raise SystemExit(f"MIX replay FAIL: {error}") from error
+    print(
+        f"MIX reference replay PASS {len(records)} cases [rho,S,RH,L]; "
+        f"max abs_error/(atol+rtol*abs(reference))={maxima}; "
+        "compatibility baseline, separate from independent Matthiessen checks."
+    )
+
+
+def write_reference(records, path):
+    reference = {
+        "schema_version": 1,
+        "provenance": {
+            "method": "Current synthetic direct=True Matthiessen outputs; explicit capture",
+            "command": "uv run --frozen python scripts/verify_mixed_scattering_design.py "
+            "--write-reference " + str(path),
+            "numpy": np.__version__,
+            "scipy": scipy.__version__,
+            "python": sys.version.split()[0],
+            "claim": "Compatibility only; independent formula/pure-limit checks run separately",
+        },
+        "units": UNITS,
+        "input_units": INPUT_UNITS,
+        "constants_si": CONSTANTS_SI,
+        "tolerances": TOLERANCES,
+        "tolerance_reason": "abs(actual-reference) <= atol + rtol*abs(reference). "
+        "rtol=1e-9 is 50 times the 2e-11 quadrature relative target and above observed 1e-14 "
+        "formula/integral discrepancies, while detecting 1e-6 relative drift. "
+        "S floor 1e-13 V/K and RH floor 1e-18 m^3/C handle exact compensation; "
+        "rho floor 1e-15 ohm*m and L floor 1e-17 W*ohm/K^2 bound near-zero noise. "
+        "These are compatibility budgets, not measurement or model uncertainty.",
+        "cases": records,
+    }
+    path.write_text(json.dumps(reference, indent=2, allow_nan=False) + "\n")
+    print(f"MIX reference explicitly written: {path} ({len(records)} cases)")
+
+
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--legacy", action="store_true")
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--reference", type=Path, default=REFERENCE)
+    group.add_argument("--write-reference", type=Path)
+    args = parser.parse_args()
+    records = []
     print(f"SYNTHETIC acPh+dis; NumPy {np.__version__}; SciPy {scipy.__version__}")
     maxima, limit_max = [0.0] * 4, [0.0] * 4
     cases = 0
@@ -239,6 +378,7 @@ def main():
                     )
 
                 expected, actual = result(), result(direct=True)
+                records.append(reference_case(name, mode, bands, ef, t, amplitudes, actual))
                 assert actual[0] > 0 and actual[3] > 0
                 if len(set(signs)) == 1:
                     assert signs[0] * actual[1] < 0 and signs[0] * actual[2] < 0
@@ -278,7 +418,19 @@ def main():
         "Independent crossovers c=(120,550,1500)K; at T=c_i sigma_i/sigma_ac_i=0.5; "
         "rho>0; Hall/Seebeck scaled by absolute channel sums near compensation."
     )
-    if "--legacy" in sys.argv:
+    # Exact symmetric electron/hole compensation anchors the absolute budgets.
+    bands = (Band(-1, 0, 1.7, 2, 120), Band(1, 0, 1.7, 2, 120))
+    mu = potential(bands, 300.0, 0)
+    cancelled = combine([channel(b, mu, 300.0, 1e5, direct=True) for b in bands])
+    assert abs(cancelled[1]) < 1e-18 and abs(cancelled[2]) < 1e-24
+    records.append(
+        reference_case("compensated", "S+rho+RH", bands, 0, 300.0, [1e5, 1e5], cancelled)
+    )
+    if args.write_reference:
+        write_reference(records, args.write_reference)
+    else:
+        replay_reference(records, args.reference)
+    if args.legacy:
         legacy()
     print(
         "Limits: synthetic power laws and scalar weak-field RTA; prediction projections only, "

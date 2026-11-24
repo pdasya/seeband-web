@@ -1,0 +1,2829 @@
+{
+  "schema_version": 1,
+  "provenance": {
+    "method": "Current synthetic direct=True Matthiessen outputs; explicit capture",
+    "command": "uv run --frozen python scripts/verify_mixed_scattering_design.py --write-reference docs/superpowers/specs/band-composition-v0.7/evidence/mixed_reference.json",
+    "numpy": "2.5.4",
+    "scipy": "1.18.1",
+    "python": "3.13.18",
+    "claim": "Compatibility only; independent formula/pure-limit checks run separately"
+  },
+  "units": {
+    "rho": "ohm*m",
+    "S": "V/K",
+    "RH": "m^3/C",
+    "L": "W*ohm/K^2"
+  },
+  "input_units": {
+    "s": "CB=+1, VB=-1",
+    "edge_k": "K (energy/kB)",
+    "mass_me": "electron mass",
+    "valleys": "count excluding spin (spin=2)",
+    "crossover_k": "K",
+    "ef_k": "K (energy/kB)",
+    "temperature_k": "K",
+    "amplitudes_per_ohm_m": "1/(ohm*m)",
+    "ac": "dimensionless",
+    "dis": "dimensionless"
+  },
+  "constants_si": {
+    "kB_J_per_K": 1.380649e-23,
+    "e_C": 1.602176634e-19,
+    "m_e_kg": 9.1093837139e-31,
+    "hbar_J_s": 1.054571817e-34
+  },
+  "tolerances": {
+    "rho": {
+      "atol": 1e-15,
+      "rtol": 1e-09
+    },
+    "S": {
+      "atol": 1e-13,
+      "rtol": 1e-09
+    },
+    "RH": {
+      "atol": 1e-18,
+      "rtol": 1e-09
+    },
+    "L": {
+      "atol": 1e-17,
+      "rtol": 1e-09
+    }
+  },
+  "tolerance_reason": "abs(actual-reference) <= atol + rtol*abs(reference). rtol=1e-9 is 50 times the 2e-11 quadrature relative target and above observed 1e-14 formula/integral discrepancies, while detecting 1e-6 relative drift. S floor 1e-13 V/K and RH floor 1e-18 m^3/C handle exact compensation; rho floor 1e-15 ohm*m and L floor 1e-17 W*ohm/K^2 bound near-zero noise. These are compatibility budgets, not measurement or model uncertainty.",
+  "cases": [
+    {
+      "id": "SPB-CB/S/100K",
+      "inputs": {
+        "configuration": "SPB-CB",
+        "mode": "S",
+        "bands": [
+          {
+            "s": 1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          }
+        ],
+        "ef_k": 700,
+        "temperature_k": 100.0,
+        "amplitudes_per_ohm_m": [
+          1.0
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 0.31980397034471514,
+        "S": -4.109644364767065e-05,
+        "RH": -2.126706085557649e-08,
+        "L": 2.2827298386380563e-08
+      }
+    },
+    {
+      "id": "SPB-CB/S/300K",
+      "inputs": {
+        "configuration": "SPB-CB",
+        "mode": "S",
+        "bands": [
+          {
+            "s": 1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          }
+        ],
+        "ef_k": 700,
+        "temperature_k": 300.0,
+        "amplitudes_per_ohm_m": [
+          1.0
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 0.6861090229676743,
+        "S": -0.00011558319461926966,
+        "RH": -2.258687517732932e-08,
+        "L": 1.8427983235006382e-08
+      }
+    },
+    {
+      "id": "SPB-CB/S/800K",
+      "inputs": {
+        "configuration": "SPB-CB",
+        "mode": "S",
+        "bands": [
+          {
+            "s": 1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          }
+        ],
+        "ef_k": 700,
+        "temperature_k": 800.0,
+        "amplitudes_per_ohm_m": [
+          1.0
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 2.0260528670060434,
+        "S": -0.0002215327438109365,
+        "RH": -2.3894227331936322e-08,
+        "L": 1.590067428975699e-08
+      }
+    },
+    {
+      "id": "SPB-CB/S+rho/100K",
+      "inputs": {
+        "configuration": "SPB-CB",
+        "mode": "S+rho",
+        "bands": [
+          {
+            "s": 1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          }
+        ],
+        "ef_k": 700,
+        "temperature_k": 100.0,
+        "amplitudes_per_ohm_m": [
+          100000.0
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 3.1980397034471515e-06,
+        "S": -4.109644364767065e-05,
+        "RH": -2.1267060855576496e-08,
+        "L": 2.2827298386380566e-08
+      }
+    },
+    {
+      "id": "SPB-CB/S+rho/300K",
+      "inputs": {
+        "configuration": "SPB-CB",
+        "mode": "S+rho",
+        "bands": [
+          {
+            "s": 1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          }
+        ],
+        "ef_k": 700,
+        "temperature_k": 300.0,
+        "amplitudes_per_ohm_m": [
+          100000.0
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 6.861090229676742e-06,
+        "S": -0.00011558319461926964,
+        "RH": -2.2586875177329318e-08,
+        "L": 1.842798323500639e-08
+      }
+    },
+    {
+      "id": "SPB-CB/S+rho/800K",
+      "inputs": {
+        "configuration": "SPB-CB",
+        "mode": "S+rho",
+        "bands": [
+          {
+            "s": 1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          }
+        ],
+        "ef_k": 700,
+        "temperature_k": 800.0,
+        "amplitudes_per_ohm_m": [
+          100000.0
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 2.0260528670060436e-05,
+        "S": -0.0002215327438109365,
+        "RH": -2.3894227331936325e-08,
+        "L": 1.5900674289756984e-08
+      }
+    },
+    {
+      "id": "SPB-CB/S+rho+RH/100K",
+      "inputs": {
+        "configuration": "SPB-CB",
+        "mode": "S+rho+RH",
+        "bands": [
+          {
+            "s": 1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          }
+        ],
+        "ef_k": 700,
+        "temperature_k": 100.0,
+        "amplitudes_per_ohm_m": [
+          100000.0
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 3.1980397034471515e-06,
+        "S": -4.109644364767065e-05,
+        "RH": -2.1267060855576496e-08,
+        "L": 2.2827298386380566e-08
+      }
+    },
+    {
+      "id": "SPB-CB/S+rho+RH/300K",
+      "inputs": {
+        "configuration": "SPB-CB",
+        "mode": "S+rho+RH",
+        "bands": [
+          {
+            "s": 1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          }
+        ],
+        "ef_k": 700,
+        "temperature_k": 300.0,
+        "amplitudes_per_ohm_m": [
+          100000.0
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 6.861090229676742e-06,
+        "S": -0.00011558319461926964,
+        "RH": -2.2586875177329318e-08,
+        "L": 1.842798323500639e-08
+      }
+    },
+    {
+      "id": "SPB-CB/S+rho+RH/800K",
+      "inputs": {
+        "configuration": "SPB-CB",
+        "mode": "S+rho+RH",
+        "bands": [
+          {
+            "s": 1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          }
+        ],
+        "ef_k": 700,
+        "temperature_k": 800.0,
+        "amplitudes_per_ohm_m": [
+          100000.0
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 2.0260528670060436e-05,
+        "S": -0.0002215327438109365,
+        "RH": -2.3894227331936325e-08,
+        "L": 1.5900674289756984e-08
+      }
+    },
+    {
+      "id": "SPB-VB/S/100K",
+      "inputs": {
+        "configuration": "SPB-VB",
+        "mode": "S",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          }
+        ],
+        "ef_k": -700,
+        "temperature_k": 100.0,
+        "amplitudes_per_ohm_m": [
+          1.0
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 0.31980397034471514,
+        "S": 4.109644364767065e-05,
+        "RH": 2.126706085557649e-08,
+        "L": 2.2827298386380563e-08
+      }
+    },
+    {
+      "id": "SPB-VB/S/300K",
+      "inputs": {
+        "configuration": "SPB-VB",
+        "mode": "S",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          }
+        ],
+        "ef_k": -700,
+        "temperature_k": 300.0,
+        "amplitudes_per_ohm_m": [
+          1.0
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 0.6861090229676743,
+        "S": 0.00011558319461926966,
+        "RH": 2.258687517732932e-08,
+        "L": 1.8427983235006382e-08
+      }
+    },
+    {
+      "id": "SPB-VB/S/800K",
+      "inputs": {
+        "configuration": "SPB-VB",
+        "mode": "S",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          }
+        ],
+        "ef_k": -700,
+        "temperature_k": 800.0,
+        "amplitudes_per_ohm_m": [
+          1.0
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 2.0260528670060434,
+        "S": 0.0002215327438109365,
+        "RH": 2.3894227331936322e-08,
+        "L": 1.590067428975699e-08
+      }
+    },
+    {
+      "id": "SPB-VB/S+rho/100K",
+      "inputs": {
+        "configuration": "SPB-VB",
+        "mode": "S+rho",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          }
+        ],
+        "ef_k": -700,
+        "temperature_k": 100.0,
+        "amplitudes_per_ohm_m": [
+          100000.0
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 3.1980397034471515e-06,
+        "S": 4.109644364767065e-05,
+        "RH": 2.1267060855576496e-08,
+        "L": 2.2827298386380566e-08
+      }
+    },
+    {
+      "id": "SPB-VB/S+rho/300K",
+      "inputs": {
+        "configuration": "SPB-VB",
+        "mode": "S+rho",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          }
+        ],
+        "ef_k": -700,
+        "temperature_k": 300.0,
+        "amplitudes_per_ohm_m": [
+          100000.0
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 6.861090229676742e-06,
+        "S": 0.00011558319461926964,
+        "RH": 2.2586875177329318e-08,
+        "L": 1.842798323500639e-08
+      }
+    },
+    {
+      "id": "SPB-VB/S+rho/800K",
+      "inputs": {
+        "configuration": "SPB-VB",
+        "mode": "S+rho",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          }
+        ],
+        "ef_k": -700,
+        "temperature_k": 800.0,
+        "amplitudes_per_ohm_m": [
+          100000.0
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 2.0260528670060436e-05,
+        "S": 0.0002215327438109365,
+        "RH": 2.3894227331936325e-08,
+        "L": 1.5900674289756984e-08
+      }
+    },
+    {
+      "id": "SPB-VB/S+rho+RH/100K",
+      "inputs": {
+        "configuration": "SPB-VB",
+        "mode": "S+rho+RH",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          }
+        ],
+        "ef_k": -700,
+        "temperature_k": 100.0,
+        "amplitudes_per_ohm_m": [
+          100000.0
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 3.1980397034471515e-06,
+        "S": 4.109644364767065e-05,
+        "RH": 2.1267060855576496e-08,
+        "L": 2.2827298386380566e-08
+      }
+    },
+    {
+      "id": "SPB-VB/S+rho+RH/300K",
+      "inputs": {
+        "configuration": "SPB-VB",
+        "mode": "S+rho+RH",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          }
+        ],
+        "ef_k": -700,
+        "temperature_k": 300.0,
+        "amplitudes_per_ohm_m": [
+          100000.0
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 6.861090229676742e-06,
+        "S": 0.00011558319461926964,
+        "RH": 2.2586875177329318e-08,
+        "L": 1.842798323500639e-08
+      }
+    },
+    {
+      "id": "SPB-VB/S+rho+RH/800K",
+      "inputs": {
+        "configuration": "SPB-VB",
+        "mode": "S+rho+RH",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          }
+        ],
+        "ef_k": -700,
+        "temperature_k": 800.0,
+        "amplitudes_per_ohm_m": [
+          100000.0
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 2.0260528670060436e-05,
+        "S": 0.0002215327438109365,
+        "RH": 2.3894227331936325e-08,
+        "L": 1.5900674289756984e-08
+      }
+    },
+    {
+      "id": "VBVB/S/100K",
+      "inputs": {
+        "configuration": "VBVB",
+        "mode": "S",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": -1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          }
+        ],
+        "ef_k": -700,
+        "temperature_k": 100.0,
+        "amplitudes_per_ohm_m": [
+          1.0,
+          6.374999999999999
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 0.06980425485430417,
+        "S": 2.8378789017791903e-05,
+        "RH": 7.3289548352751514e-09,
+        "L": 2.364411314465352e-08
+      }
+    },
+    {
+      "id": "VBVB/S/300K",
+      "inputs": {
+        "configuration": "VBVB",
+        "mode": "S",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": -1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          }
+        ],
+        "ef_k": -700,
+        "temperature_k": 300.0,
+        "amplitudes_per_ohm_m": [
+          1.0,
+          6.374999999999999
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 0.10533579254787338,
+        "S": 8.1883451196085e-05,
+        "RH": 8.332316730736647e-09,
+        "L": 2.0316584992837254e-08
+      }
+    },
+    {
+      "id": "VBVB/S/800K",
+      "inputs": {
+        "configuration": "VBVB",
+        "mode": "S",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": -1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          }
+        ],
+        "ef_k": -700,
+        "temperature_k": 800.0,
+        "amplitudes_per_ohm_m": [
+          1.0,
+          6.374999999999999
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 0.22832642782095128,
+        "S": 0.00017774971976111293,
+        "RH": 9.998292248764127e-09,
+        "L": 1.6729946732023767e-08
+      }
+    },
+    {
+      "id": "VBVB/S+rho/100K",
+      "inputs": {
+        "configuration": "VBVB",
+        "mode": "S+rho",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": -1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          }
+        ],
+        "ef_k": -700,
+        "temperature_k": 100.0,
+        "amplitudes_per_ohm_m": [
+          100000.0,
+          509999.99999999994
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 8.272324242264918e-07,
+        "S": 2.90309980131177e-05,
+        "RH": 7.1007259608585725e-09,
+        "L": 2.3610025475586715e-08
+      }
+    },
+    {
+      "id": "VBVB/S+rho/300K",
+      "inputs": {
+        "configuration": "VBVB",
+        "mode": "S+rho",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": -1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          }
+        ],
+        "ef_k": -700,
+        "temperature_k": 300.0,
+        "amplitudes_per_ohm_m": [
+          100000.0,
+          509999.99999999994
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 1.2658146946227854e-06,
+        "S": 8.304828294520769e-05,
+        "RH": 7.986547208632396e-09,
+        "L": 2.0283116461330497e-08
+      }
+    },
+    {
+      "id": "VBVB/S+rho/800K",
+      "inputs": {
+        "configuration": "VBVB",
+        "mode": "S+rho",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": -1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          }
+        ],
+        "ef_k": -700,
+        "temperature_k": 800.0,
+        "amplitudes_per_ohm_m": [
+          100000.0,
+          509999.99999999994
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 2.760352321439909e-06,
+        "S": 0.00017866502063593775,
+        "RH": 9.540654229350492e-09,
+        "L": 1.673437033442824e-08
+      }
+    },
+    {
+      "id": "VBVB/S+rho+RH/100K",
+      "inputs": {
+        "configuration": "VBVB",
+        "mode": "S+rho+RH",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": -1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          }
+        ],
+        "ef_k": -700,
+        "temperature_k": 100.0,
+        "amplitudes_per_ohm_m": [
+          100000.0,
+          509999.99999999994
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 8.272324242264918e-07,
+        "S": 2.90309980131177e-05,
+        "RH": 7.1007259608585725e-09,
+        "L": 2.3610025475586715e-08
+      }
+    },
+    {
+      "id": "VBVB/S+rho+RH/300K",
+      "inputs": {
+        "configuration": "VBVB",
+        "mode": "S+rho+RH",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": -1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          }
+        ],
+        "ef_k": -700,
+        "temperature_k": 300.0,
+        "amplitudes_per_ohm_m": [
+          100000.0,
+          509999.99999999994
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 1.2658146946227854e-06,
+        "S": 8.304828294520769e-05,
+        "RH": 7.986547208632396e-09,
+        "L": 2.0283116461330497e-08
+      }
+    },
+    {
+      "id": "VBVB/S+rho+RH/800K",
+      "inputs": {
+        "configuration": "VBVB",
+        "mode": "S+rho+RH",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": -1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          }
+        ],
+        "ef_k": -700,
+        "temperature_k": 800.0,
+        "amplitudes_per_ohm_m": [
+          100000.0,
+          509999.99999999994
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 2.760352321439909e-06,
+        "S": 0.00017866502063593775,
+        "RH": 9.540654229350492e-09,
+        "L": 1.673437033442824e-08
+      }
+    },
+    {
+      "id": "VBCB/S/100K",
+      "inputs": {
+        "configuration": "VBCB",
+        "mode": "S",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": 1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          }
+        ],
+        "ef_k": 100,
+        "temperature_k": 100.0,
+        "amplitudes_per_ohm_m": [
+          1.0,
+          6.374999999999999
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 6.911910995895254,
+        "S": -0.00013954864241661846,
+        "RH": -1.2970760317324967e-06,
+        "L": 1.3252989555039187e-07
+      }
+    },
+    {
+      "id": "VBCB/S/300K",
+      "inputs": {
+        "configuration": "VBCB",
+        "mode": "S",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": 1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          }
+        ],
+        "ef_k": 100,
+        "temperature_k": 300.0,
+        "amplitudes_per_ohm_m": [
+          1.0,
+          6.374999999999999
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 0.8651059074824243,
+        "S": -0.00013327905352158084,
+        "RH": -8.495108857782811e-08,
+        "L": 6.216230299077622e-08
+      }
+    },
+    {
+      "id": "VBCB/S/800K",
+      "inputs": {
+        "configuration": "VBCB",
+        "mode": "S",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": 1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          }
+        ],
+        "ef_k": 100,
+        "temperature_k": 800.0,
+        "amplitudes_per_ohm_m": [
+          1.0,
+          6.374999999999999
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 0.37906531292546986,
+        "S": -0.00013984856233498005,
+        "RH": -1.5563289432531016e-08,
+        "L": 4.541554768247909e-08
+      }
+    },
+    {
+      "id": "VBCB/S+rho/100K",
+      "inputs": {
+        "configuration": "VBCB",
+        "mode": "S+rho",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": 1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          }
+        ],
+        "ef_k": 100,
+        "temperature_k": 100.0,
+        "amplitudes_per_ohm_m": [
+          100000.0,
+          509999.99999999994
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 8.018659259521012e-05,
+        "S": -0.00010276965782456688,
+        "RH": -9.584867132481724e-07,
+        "L": 1.4154190240483093e-07
+      }
+    },
+    {
+      "id": "VBCB/S+rho/300K",
+      "inputs": {
+        "configuration": "VBCB",
+        "mode": "S+rho",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": 1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          }
+        ],
+        "ef_k": 100,
+        "temperature_k": 300.0,
+        "amplitudes_per_ohm_m": [
+          100000.0,
+          509999.99999999994
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 1.0212674896087297e-05,
+        "S": -0.00011165727603323891,
+        "RH": -7.129991454576179e-08,
+        "L": 6.751370094250075e-08
+      }
+    },
+    {
+      "id": "VBCB/S+rho/800K",
+      "inputs": {
+        "configuration": "VBCB",
+        "mode": "S+rho",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": 1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          }
+        ],
+        "ef_k": 100,
+        "temperature_k": 800.0,
+        "amplitudes_per_ohm_m": [
+          100000.0,
+          509999.99999999994
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 4.531418728344401e-06,
+        "S": -0.00012397888738516338,
+        "RH": -1.3812715181597253e-08,
+        "L": 4.964158137741505e-08
+      }
+    },
+    {
+      "id": "VBCB/S+rho+RH/100K",
+      "inputs": {
+        "configuration": "VBCB",
+        "mode": "S+rho+RH",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": 1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          }
+        ],
+        "ef_k": 100,
+        "temperature_k": 100.0,
+        "amplitudes_per_ohm_m": [
+          100000.0,
+          509999.99999999994
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 8.018659259521012e-05,
+        "S": -0.00010276965782456688,
+        "RH": -9.584867132481724e-07,
+        "L": 1.4154190240483093e-07
+      }
+    },
+    {
+      "id": "VBCB/S+rho+RH/300K",
+      "inputs": {
+        "configuration": "VBCB",
+        "mode": "S+rho+RH",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": 1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          }
+        ],
+        "ef_k": 100,
+        "temperature_k": 300.0,
+        "amplitudes_per_ohm_m": [
+          100000.0,
+          509999.99999999994
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 1.0212674896087297e-05,
+        "S": -0.00011165727603323891,
+        "RH": -7.129991454576179e-08,
+        "L": 6.751370094250075e-08
+      }
+    },
+    {
+      "id": "VBCB/S+rho+RH/800K",
+      "inputs": {
+        "configuration": "VBCB",
+        "mode": "S+rho+RH",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": 1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          }
+        ],
+        "ef_k": 100,
+        "temperature_k": 800.0,
+        "amplitudes_per_ohm_m": [
+          100000.0,
+          509999.99999999994
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 4.531418728344401e-06,
+        "S": -0.00012397888738516338,
+        "RH": -1.3812715181597253e-08,
+        "L": 4.964158137741505e-08
+      }
+    },
+    {
+      "id": "CBCB/S/100K",
+      "inputs": {
+        "configuration": "CBCB",
+        "mode": "S",
+        "bands": [
+          {
+            "s": 1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": 1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          }
+        ],
+        "ef_k": 700,
+        "temperature_k": 100.0,
+        "amplitudes_per_ohm_m": [
+          1.0,
+          6.374999999999999
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 0.1845105394141625,
+        "S": -6.845351208238827e-05,
+        "RH": -2.5388949339752754e-08,
+        "L": 2.2079970040469603e-08
+      }
+    },
+    {
+      "id": "CBCB/S/300K",
+      "inputs": {
+        "configuration": "CBCB",
+        "mode": "S",
+        "bands": [
+          {
+            "s": 1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": 1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          }
+        ],
+        "ef_k": 700,
+        "temperature_k": 300.0,
+        "amplitudes_per_ohm_m": [
+          1.0,
+          6.374999999999999
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 0.3227028817289865,
+        "S": -0.0001634298282402291,
+        "RH": -2.9005292999830697e-08,
+        "L": 1.8298847739459543e-08
+      }
+    },
+    {
+      "id": "CBCB/S/800K",
+      "inputs": {
+        "configuration": "CBCB",
+        "mode": "S",
+        "bands": [
+          {
+            "s": 1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": 1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          }
+        ],
+        "ef_k": 700,
+        "temperature_k": 800.0,
+        "amplitudes_per_ohm_m": [
+          1.0,
+          6.374999999999999
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 0.7073457980196924,
+        "S": -0.00027325568045108325,
+        "RH": -3.1231898713898994e-08,
+        "L": 1.5768501248668472e-08
+      }
+    },
+    {
+      "id": "CBCB/S+rho/100K",
+      "inputs": {
+        "configuration": "CBCB",
+        "mode": "S+rho",
+        "bands": [
+          {
+            "s": 1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": 1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          }
+        ],
+        "ef_k": 700,
+        "temperature_k": 100.0,
+        "amplitudes_per_ohm_m": [
+          100000.0,
+          509999.99999999994
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 2.0191207937808502e-06,
+        "S": -6.511568624631788e-05,
+        "RH": -2.2488426166238196e-08,
+        "L": 2.2246570961175652e-08
+      }
+    },
+    {
+      "id": "CBCB/S+rho/300K",
+      "inputs": {
+        "configuration": "CBCB",
+        "mode": "S+rho",
+        "bands": [
+          {
+            "s": 1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": 1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          }
+        ],
+        "ef_k": 700,
+        "temperature_k": 300.0,
+        "amplitudes_per_ohm_m": [
+          100000.0,
+          509999.99999999994
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 3.6445246953536827e-06,
+        "S": -0.0001595365597950431,
+        "RH": -2.5820921068246564e-08,
+        "L": 1.8424688533231534e-08
+      }
+    },
+    {
+      "id": "CBCB/S+rho/800K",
+      "inputs": {
+        "configuration": "CBCB",
+        "mode": "S+rho",
+        "bands": [
+          {
+            "s": 1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": 1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          }
+        ],
+        "ef_k": 700,
+        "temperature_k": 800.0,
+        "amplitudes_per_ohm_m": [
+          100000.0,
+          509999.99999999994
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 8.282603201272695e-06,
+        "S": -0.0002713739868867362,
+        "RH": -2.8545959533371194e-08,
+        "L": 1.58143734009702e-08
+      }
+    },
+    {
+      "id": "CBCB/S+rho+RH/100K",
+      "inputs": {
+        "configuration": "CBCB",
+        "mode": "S+rho+RH",
+        "bands": [
+          {
+            "s": 1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": 1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          }
+        ],
+        "ef_k": 700,
+        "temperature_k": 100.0,
+        "amplitudes_per_ohm_m": [
+          100000.0,
+          509999.99999999994
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 2.0191207937808502e-06,
+        "S": -6.511568624631788e-05,
+        "RH": -2.2488426166238196e-08,
+        "L": 2.2246570961175652e-08
+      }
+    },
+    {
+      "id": "CBCB/S+rho+RH/300K",
+      "inputs": {
+        "configuration": "CBCB",
+        "mode": "S+rho+RH",
+        "bands": [
+          {
+            "s": 1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": 1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          }
+        ],
+        "ef_k": 700,
+        "temperature_k": 300.0,
+        "amplitudes_per_ohm_m": [
+          100000.0,
+          509999.99999999994
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 3.6445246953536827e-06,
+        "S": -0.0001595365597950431,
+        "RH": -2.5820921068246564e-08,
+        "L": 1.8424688533231534e-08
+      }
+    },
+    {
+      "id": "CBCB/S+rho+RH/800K",
+      "inputs": {
+        "configuration": "CBCB",
+        "mode": "S+rho+RH",
+        "bands": [
+          {
+            "s": 1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": 1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          }
+        ],
+        "ef_k": 700,
+        "temperature_k": 800.0,
+        "amplitudes_per_ohm_m": [
+          100000.0,
+          509999.99999999994
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 8.282603201272695e-06,
+        "S": -0.0002713739868867362,
+        "RH": -2.8545959533371194e-08,
+        "L": 1.58143734009702e-08
+      }
+    },
+    {
+      "id": "VBVBCB/S/100K",
+      "inputs": {
+        "configuration": "VBVBCB",
+        "mode": "S",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": -1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          },
+          {
+            "s": 1,
+            "edge_k": -400,
+            "mass_me": 1.1,
+            "valleys": 3,
+            "crossover_k": 1500
+          }
+        ],
+        "ef_k": 100,
+        "temperature_k": 100.0,
+        "amplitudes_per_ohm_m": [
+          1.0,
+          6.374999999999999,
+          2.318181818181818
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 0.23708920128270594,
+        "S": 6.124272773875162e-05,
+        "RH": 3.783764448116154e-08,
+        "L": 2.4498954620339434e-08
+      }
+    },
+    {
+      "id": "VBVBCB/S/300K",
+      "inputs": {
+        "configuration": "VBVBCB",
+        "mode": "S",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": -1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          },
+          {
+            "s": 1,
+            "edge_k": -400,
+            "mass_me": 1.1,
+            "valleys": 3,
+            "crossover_k": 1500
+          }
+        ],
+        "ef_k": 100,
+        "temperature_k": 300.0,
+        "amplitudes_per_ohm_m": [
+          1.0,
+          6.374999999999999,
+          2.318181818181818
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 0.2606457729349972,
+        "S": 0.00010721570199756739,
+        "RH": 2.2232918274312217e-08,
+        "L": 3.089538135247851e-08
+      }
+    },
+    {
+      "id": "VBVBCB/S/800K",
+      "inputs": {
+        "configuration": "VBVBCB",
+        "mode": "S",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": -1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          },
+          {
+            "s": 1,
+            "edge_k": -400,
+            "mass_me": 1.1,
+            "valleys": 3,
+            "crossover_k": 1500
+          }
+        ],
+        "ef_k": 100,
+        "temperature_k": 800.0,
+        "amplitudes_per_ohm_m": [
+          1.0,
+          6.374999999999999,
+          2.318181818181818
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 0.24458042019236817,
+        "S": 0.00011354879582729823,
+        "RH": 7.515430140866633e-09,
+        "L": 4.1693513699526715e-08
+      }
+    },
+    {
+      "id": "VBVBCB/S+rho/100K",
+      "inputs": {
+        "configuration": "VBVBCB",
+        "mode": "S+rho",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": -1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          },
+          {
+            "s": 1,
+            "edge_k": -400,
+            "mass_me": 1.1,
+            "valleys": 3,
+            "crossover_k": 1500
+          }
+        ],
+        "ef_k": 100,
+        "temperature_k": 100.0,
+        "amplitudes_per_ohm_m": [
+          100000.0,
+          509999.99999999994,
+          301363.63636363635
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 2.651587416461078e-06,
+        "S": 5.13333560822762e-05,
+        "RH": 2.9060036069740254e-08,
+        "L": 2.573160918277098e-08
+      }
+    },
+    {
+      "id": "VBVBCB/S+rho/300K",
+      "inputs": {
+        "configuration": "VBVBCB",
+        "mode": "S+rho",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": -1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          },
+          {
+            "s": 1,
+            "edge_k": -400,
+            "mass_me": 1.1,
+            "valleys": 3,
+            "crossover_k": 1500
+          }
+        ],
+        "ef_k": 100,
+        "temperature_k": 300.0,
+        "amplitudes_per_ohm_m": [
+          100000.0,
+          509999.99999999994,
+          301363.63636363635
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 2.8274422158855214e-06,
+        "S": 8.423211280923833e-05,
+        "RH": 1.557642997335651e-08,
+        "L": 3.4603866377045156e-08
+      }
+    },
+    {
+      "id": "VBVBCB/S+rho/800K",
+      "inputs": {
+        "configuration": "VBVBCB",
+        "mode": "S+rho",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": -1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          },
+          {
+            "s": 1,
+            "edge_k": -400,
+            "mass_me": 1.1,
+            "valleys": 3,
+            "crossover_k": 1500
+          }
+        ],
+        "ef_k": 100,
+        "temperature_k": 800.0,
+        "amplitudes_per_ohm_m": [
+          100000.0,
+          509999.99999999994,
+          301363.63636363635
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 2.5640696535428563e-06,
+        "S": 7.919314745660065e-05,
+        "RH": 4.472354448709777e-09,
+        "L": 4.651621295475086e-08
+      }
+    },
+    {
+      "id": "VBVBCB/S+rho+RH/100K",
+      "inputs": {
+        "configuration": "VBVBCB",
+        "mode": "S+rho+RH",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": -1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          },
+          {
+            "s": 1,
+            "edge_k": -400,
+            "mass_me": 1.1,
+            "valleys": 3,
+            "crossover_k": 1500
+          }
+        ],
+        "ef_k": 100,
+        "temperature_k": 100.0,
+        "amplitudes_per_ohm_m": [
+          100000.0,
+          509999.99999999994,
+          301363.63636363635
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 2.651587416461078e-06,
+        "S": 5.13333560822762e-05,
+        "RH": 2.9060036069740254e-08,
+        "L": 2.573160918277098e-08
+      }
+    },
+    {
+      "id": "VBVBCB/S+rho+RH/300K",
+      "inputs": {
+        "configuration": "VBVBCB",
+        "mode": "S+rho+RH",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": -1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          },
+          {
+            "s": 1,
+            "edge_k": -400,
+            "mass_me": 1.1,
+            "valleys": 3,
+            "crossover_k": 1500
+          }
+        ],
+        "ef_k": 100,
+        "temperature_k": 300.0,
+        "amplitudes_per_ohm_m": [
+          100000.0,
+          509999.99999999994,
+          301363.63636363635
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 2.8274422158855214e-06,
+        "S": 8.423211280923833e-05,
+        "RH": 1.557642997335651e-08,
+        "L": 3.4603866377045156e-08
+      }
+    },
+    {
+      "id": "VBVBCB/S+rho+RH/800K",
+      "inputs": {
+        "configuration": "VBVBCB",
+        "mode": "S+rho+RH",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": -1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          },
+          {
+            "s": 1,
+            "edge_k": -400,
+            "mass_me": 1.1,
+            "valleys": 3,
+            "crossover_k": 1500
+          }
+        ],
+        "ef_k": 100,
+        "temperature_k": 800.0,
+        "amplitudes_per_ohm_m": [
+          100000.0,
+          509999.99999999994,
+          301363.63636363635
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 2.5640696535428563e-06,
+        "S": 7.919314745660065e-05,
+        "RH": 4.472354448709777e-09,
+        "L": 4.651621295475086e-08
+      }
+    },
+    {
+      "id": "VBCBCB/S/100K",
+      "inputs": {
+        "configuration": "VBCBCB",
+        "mode": "S",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": 1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          },
+          {
+            "s": 1,
+            "edge_k": -400,
+            "mass_me": 1.1,
+            "valleys": 3,
+            "crossover_k": 1500
+          }
+        ],
+        "ef_k": 100,
+        "temperature_k": 100.0,
+        "amplitudes_per_ohm_m": [
+          1.0,
+          6.374999999999999,
+          2.318181818181818
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 1.115943576327158,
+        "S": -1.6678434826527573e-05,
+        "RH": -1.4375769071816994e-08,
+        "L": 4.192387945423685e-08
+      }
+    },
+    {
+      "id": "VBCBCB/S/300K",
+      "inputs": {
+        "configuration": "VBCBCB",
+        "mode": "S",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": 1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          },
+          {
+            "s": 1,
+            "edge_k": -400,
+            "mass_me": 1.1,
+            "valleys": 3,
+            "crossover_k": 1500
+          }
+        ],
+        "ef_k": 100,
+        "temperature_k": 300.0,
+        "amplitudes_per_ohm_m": [
+          1.0,
+          6.374999999999999,
+          2.318181818181818
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 0.6141429871699754,
+        "S": -9.216935931809057e-05,
+        "RH": -2.8557085956636383e-08,
+        "L": 5.6019116943487134e-08
+      }
+    },
+    {
+      "id": "VBCBCB/S/800K",
+      "inputs": {
+        "configuration": "VBCBCB",
+        "mode": "S",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": 1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          },
+          {
+            "s": 1,
+            "edge_k": -400,
+            "mass_me": 1.1,
+            "valleys": 3,
+            "crossover_k": 1500
+          }
+        ],
+        "ef_k": 100,
+        "temperature_k": 800.0,
+        "amplitudes_per_ohm_m": [
+          1.0,
+          6.374999999999999,
+          2.318181818181818
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 0.34976604594252425,
+        "S": -0.00013002178397865418,
+        "RH": -1.00757086229481e-08,
+        "L": 4.963541106251649e-08
+      }
+    },
+    {
+      "id": "VBCBCB/S+rho/100K",
+      "inputs": {
+        "configuration": "VBCBCB",
+        "mode": "S+rho",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": 1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          },
+          {
+            "s": 1,
+            "edge_k": -400,
+            "mass_me": 1.1,
+            "valleys": 3,
+            "crossover_k": 1500
+          }
+        ],
+        "ef_k": 100,
+        "temperature_k": 100.0,
+        "amplitudes_per_ohm_m": [
+          100000.0,
+          509999.99999999994,
+          301363.63636363635
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 9.031575237283327e-06,
+        "S": -2.1996591002753597e-05,
+        "RH": -1.9333834724503507e-08,
+        "L": 3.729624437132317e-08
+      }
+    },
+    {
+      "id": "VBCBCB/S+rho/300K",
+      "inputs": {
+        "configuration": "VBCBCB",
+        "mode": "S+rho",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": 1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          },
+          {
+            "s": 1,
+            "edge_k": -400,
+            "mass_me": 1.1,
+            "valleys": 3,
+            "crossover_k": 1500
+          }
+        ],
+        "ef_k": 100,
+        "temperature_k": 300.0,
+        "amplitudes_per_ohm_m": [
+          100000.0,
+          509999.99999999994,
+          301363.63636363635
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 5.813215735657655e-06,
+        "S": -8.379573939783927e-05,
+        "RH": -1.9796850720134396e-08,
+        "L": 5.1645691701820705e-08
+      }
+    },
+    {
+      "id": "VBCBCB/S+rho/800K",
+      "inputs": {
+        "configuration": "VBCBCB",
+        "mode": "S+rho",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": 1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          },
+          {
+            "s": 1,
+            "edge_k": -400,
+            "mass_me": 1.1,
+            "valleys": 3,
+            "crossover_k": 1500
+          }
+        ],
+        "ef_k": 100,
+        "temperature_k": 800.0,
+        "amplitudes_per_ohm_m": [
+          100000.0,
+          509999.99999999994,
+          301363.63636363635
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 3.605036570869229e-06,
+        "S": -0.00012107159749619275,
+        "RH": -7.755060941950058e-09,
+        "L": 4.927623968992707e-08
+      }
+    },
+    {
+      "id": "VBCBCB/S+rho+RH/100K",
+      "inputs": {
+        "configuration": "VBCBCB",
+        "mode": "S+rho+RH",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": 1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          },
+          {
+            "s": 1,
+            "edge_k": -400,
+            "mass_me": 1.1,
+            "valleys": 3,
+            "crossover_k": 1500
+          }
+        ],
+        "ef_k": 100,
+        "temperature_k": 100.0,
+        "amplitudes_per_ohm_m": [
+          100000.0,
+          509999.99999999994,
+          301363.63636363635
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 9.031575237283327e-06,
+        "S": -2.1996591002753597e-05,
+        "RH": -1.9333834724503507e-08,
+        "L": 3.729624437132317e-08
+      }
+    },
+    {
+      "id": "VBCBCB/S+rho+RH/300K",
+      "inputs": {
+        "configuration": "VBCBCB",
+        "mode": "S+rho+RH",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": 1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          },
+          {
+            "s": 1,
+            "edge_k": -400,
+            "mass_me": 1.1,
+            "valleys": 3,
+            "crossover_k": 1500
+          }
+        ],
+        "ef_k": 100,
+        "temperature_k": 300.0,
+        "amplitudes_per_ohm_m": [
+          100000.0,
+          509999.99999999994,
+          301363.63636363635
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 5.813215735657655e-06,
+        "S": -8.379573939783927e-05,
+        "RH": -1.9796850720134396e-08,
+        "L": 5.1645691701820705e-08
+      }
+    },
+    {
+      "id": "VBCBCB/S+rho+RH/800K",
+      "inputs": {
+        "configuration": "VBCBCB",
+        "mode": "S+rho+RH",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": 1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          },
+          {
+            "s": 1,
+            "edge_k": -400,
+            "mass_me": 1.1,
+            "valleys": 3,
+            "crossover_k": 1500
+          }
+        ],
+        "ef_k": 100,
+        "temperature_k": 800.0,
+        "amplitudes_per_ohm_m": [
+          100000.0,
+          509999.99999999994,
+          301363.63636363635
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 3.605036570869229e-06,
+        "S": -0.00012107159749619275,
+        "RH": -7.755060941950058e-09,
+        "L": 4.927623968992707e-08
+      }
+    },
+    {
+      "id": "CBVBCB/S/100K",
+      "inputs": {
+        "configuration": "CBVBCB",
+        "mode": "S",
+        "bands": [
+          {
+            "s": 1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": -1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          },
+          {
+            "s": 1,
+            "edge_k": -400,
+            "mass_me": 1.1,
+            "valleys": 3,
+            "crossover_k": 1500
+          }
+        ],
+        "ef_k": 100,
+        "temperature_k": 100.0,
+        "amplitudes_per_ohm_m": [
+          1.0,
+          6.374999999999999,
+          2.318181818181818
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 0.2062684992735865,
+        "S": 2.8502082172790357e-05,
+        "RH": 2.6156484917054032e-08,
+        "L": 2.6872627678946818e-08
+      }
+    },
+    {
+      "id": "CBVBCB/S/300K",
+      "inputs": {
+        "configuration": "CBVBCB",
+        "mode": "S",
+        "bands": [
+          {
+            "s": 1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": -1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          },
+          {
+            "s": 1,
+            "edge_k": -400,
+            "mass_me": 1.1,
+            "valleys": 3,
+            "crossover_k": 1500
+          }
+        ],
+        "ef_k": 100,
+        "temperature_k": 300.0,
+        "amplitudes_per_ohm_m": [
+          1.0,
+          6.374999999999999,
+          2.318181818181818
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 0.2079140383987239,
+        "S": 6.181577723230121e-05,
+        "RH": 1.6367330453206692e-08,
+        "L": 3.401130637968039e-08
+      }
+    },
+    {
+      "id": "CBVBCB/S/800K",
+      "inputs": {
+        "configuration": "CBVBCB",
+        "mode": "S",
+        "bands": [
+          {
+            "s": 1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": -1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          },
+          {
+            "s": 1,
+            "edge_k": -400,
+            "mass_me": 1.1,
+            "valleys": 3,
+            "crossover_k": 1500
+          }
+        ],
+        "ef_k": 100,
+        "temperature_k": 800.0,
+        "amplitudes_per_ohm_m": [
+          1.0,
+          6.374999999999999,
+          2.318181818181818
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 0.18092003730283918,
+        "S": 8.298774374811921e-05,
+        "RH": 6.231584932684215e-09,
+        "L": 3.927193962101082e-08
+      }
+    },
+    {
+      "id": "CBVBCB/S+rho/100K",
+      "inputs": {
+        "configuration": "CBVBCB",
+        "mode": "S+rho",
+        "bands": [
+          {
+            "s": 1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": -1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          },
+          {
+            "s": 1,
+            "edge_k": -400,
+            "mass_me": 1.1,
+            "valleys": 3,
+            "crossover_k": 1500
+          }
+        ],
+        "ef_k": 100,
+        "temperature_k": 100.0,
+        "amplitudes_per_ohm_m": [
+          100000.0,
+          509999.99999999994,
+          301363.63636363635
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 2.3028616668915908e-06,
+        "S": 1.6796391702729212e-05,
+        "RH": 1.8300338435377357e-08,
+        "L": 2.754007556369986e-08
+      }
+    },
+    {
+      "id": "CBVBCB/S+rho/300K",
+      "inputs": {
+        "configuration": "CBVBCB",
+        "mode": "S+rho",
+        "bands": [
+          {
+            "s": 1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": -1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          },
+          {
+            "s": 1,
+            "edge_k": -400,
+            "mass_me": 1.1,
+            "valleys": 3,
+            "crossover_k": 1500
+          }
+        ],
+        "ef_k": 100,
+        "temperature_k": 300.0,
+        "amplitudes_per_ohm_m": [
+          100000.0,
+          509999.99999999994,
+          301363.63636363635
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 2.3401578981127744e-06,
+        "S": 4.084324947609064e-05,
+        "RH": 1.1953632085630674e-08,
+        "L": 3.641699522407722e-08
+      }
+    },
+    {
+      "id": "CBVBCB/S+rho/800K",
+      "inputs": {
+        "configuration": "CBVBCB",
+        "mode": "S+rho",
+        "bands": [
+          {
+            "s": 1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": -1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          },
+          {
+            "s": 1,
+            "edge_k": -400,
+            "mass_me": 1.1,
+            "valleys": 3,
+            "crossover_k": 1500
+          }
+        ],
+        "ef_k": 100,
+        "temperature_k": 800.0,
+        "amplitudes_per_ohm_m": [
+          100000.0,
+          509999.99999999994,
+          301363.63636363635
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 2.0525960598554146e-06,
+        "S": 5.7446800142874706e-05,
+        "RH": 4.634746524140201e-09,
+        "L": 4.357629037734501e-08
+      }
+    },
+    {
+      "id": "CBVBCB/S+rho+RH/100K",
+      "inputs": {
+        "configuration": "CBVBCB",
+        "mode": "S+rho+RH",
+        "bands": [
+          {
+            "s": 1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": -1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          },
+          {
+            "s": 1,
+            "edge_k": -400,
+            "mass_me": 1.1,
+            "valleys": 3,
+            "crossover_k": 1500
+          }
+        ],
+        "ef_k": 100,
+        "temperature_k": 100.0,
+        "amplitudes_per_ohm_m": [
+          100000.0,
+          509999.99999999994,
+          301363.63636363635
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 2.3028616668915908e-06,
+        "S": 1.6796391702729212e-05,
+        "RH": 1.8300338435377357e-08,
+        "L": 2.754007556369986e-08
+      }
+    },
+    {
+      "id": "CBVBCB/S+rho+RH/300K",
+      "inputs": {
+        "configuration": "CBVBCB",
+        "mode": "S+rho+RH",
+        "bands": [
+          {
+            "s": 1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": -1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          },
+          {
+            "s": 1,
+            "edge_k": -400,
+            "mass_me": 1.1,
+            "valleys": 3,
+            "crossover_k": 1500
+          }
+        ],
+        "ef_k": 100,
+        "temperature_k": 300.0,
+        "amplitudes_per_ohm_m": [
+          100000.0,
+          509999.99999999994,
+          301363.63636363635
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 2.3401578981127744e-06,
+        "S": 4.084324947609064e-05,
+        "RH": 1.1953632085630674e-08,
+        "L": 3.641699522407722e-08
+      }
+    },
+    {
+      "id": "CBVBCB/S+rho+RH/800K",
+      "inputs": {
+        "configuration": "CBVBCB",
+        "mode": "S+rho+RH",
+        "bands": [
+          {
+            "s": 1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": -1,
+            "edge_k": 450,
+            "mass_me": 0.8,
+            "valleys": 6,
+            "crossover_k": 550
+          },
+          {
+            "s": 1,
+            "edge_k": -400,
+            "mass_me": 1.1,
+            "valleys": 3,
+            "crossover_k": 1500
+          }
+        ],
+        "ef_k": 100,
+        "temperature_k": 800.0,
+        "amplitudes_per_ohm_m": [
+          100000.0,
+          509999.99999999994,
+          301363.63636363635
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 2.0525960598554146e-06,
+        "S": 5.7446800142874706e-05,
+        "RH": 4.634746524140201e-09,
+        "L": 4.357629037734501e-08
+      }
+    },
+    {
+      "id": "compensated/S+rho+RH/300K",
+      "inputs": {
+        "configuration": "compensated",
+        "mode": "S+rho+RH",
+        "bands": [
+          {
+            "s": -1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          },
+          {
+            "s": 1,
+            "edge_k": 0,
+            "mass_me": 1.7,
+            "valleys": 2,
+            "crossover_k": 120
+          }
+        ],
+        "ef_k": 0,
+        "temperature_k": 300.0,
+        "amplitudes_per_ohm_m": [
+          100000.0,
+          100000.0
+        ],
+        "ac": 1.0,
+        "dis": 1.0
+      },
+      "outputs": {
+        "rho": 1.0098865286222741e-05,
+        "S": 0.0,
+        "RH": 0.0,
+        "L": 5.79505894073836e-08
+      }
+    }
+  ]
+}

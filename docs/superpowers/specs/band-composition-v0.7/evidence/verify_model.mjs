@@ -2,10 +2,10 @@ import { createRequire } from "node:module";
 import fs from "node:fs";
 import path from "node:path";
 import assert from "node:assert/strict";
-const loadPackage = createRequire(import.meta.url);
-const { JSDOM } = loadPackage(
-  path.join(process.cwd(), "apps/web/node_modules/jsdom"),
+const loadPackage = createRequire(
+  new URL("../../../../../apps/web/package.json", import.meta.url),
 );
+const { JSDOM } = loadPackage("jsdom");
 const html = fs.readFileSync(
   path.join(import.meta.dirname, "legacy-model.html"),
   "utf8",

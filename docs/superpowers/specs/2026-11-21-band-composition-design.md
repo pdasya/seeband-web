@@ -217,10 +217,10 @@ Each row follows the same prescribed path in $(M_2,M_3,b_2,b_3)$ with $N=(2,3,1)
 
 The same program checks two bands with a gap, three bands touching, and one electron band with D > 0. All permutations of the three bands preserve μ. Across nine neutral points, the maximum normalized residual is 1.303 × 10⁻¹³. Doubling the number of intervals from 800 to 1600 changed n and σ by at most 2.220 × 10⁻¹⁶ relative; separately extending the tail from 50 to 60 k_BT changed them by at most 3.331 × 10⁻¹⁶. This is convergence for the selected examples. Additional checks reproduce σ = ne²τ/m for one parabolic band, the α → 0 limit, the m³ᐟ² density law, and the deviation of two nonparabolic bands.
 
-**Replay CHARGE from the repository root** with Python 3.10 or later. The recorded run used Python 3.13.18.
+**Replay CHARGE from the repository root** in the frozen project environment. The recorded run used Python 3.13.18.
 
 ```sh
-python3 scripts/verify_band_composition_design.py
+uv run --frozen python scripts/verify_band_composition_design.py
 ```
 
 The 113-test P18-BASE result comes from the archived P18 checkout. Its three test files are absent here. The [evidence index](band-composition-v0.7/evidence.json) retains the historical command and the [test log](band-composition-v0.7/evidence/p18-baseline.txt) records its output.
@@ -418,6 +418,8 @@ For a single parabola the weight cancels, so S-only hides the transport inputs. 
 **Acceptance.** This mode is needed in Model for any fully parabolic composition. For each advertised mode, compare preview, Verified Fit at its returned parameters, and export with a direct calculation using the same pointwise weights. Include nonunit bᵢ and unequal Θᵢ in mixed S-only. Match C/D at 300 K, check the corrected Hall prefactor (#81), conductivity scale (#82), convergence of both parameter groups (#84) and pointwise DPB Seebeck weights (#102) on synthetic inputs and a desktop reference case. Session and export round trips must preserve distinct `acPhDis` and `ionized` identifiers. Report unsupported combinations explicitly. Separately check invariance of single-band S, both pure limits, unequal Θᵢ, shifting the energy zero, Nᵢ, band reordering, and agreement between the fitted curve and a repeated direct calculation. In P18, the active explicit path accepts three single mechanisms. The old path contains a separate S-only branch and captured SPB Hall errors. Historical-curve checks must account for the version and those differences. With one Kane band, the UI offers only acoustic phonons. The absence of a second Kane band and the rejection of the three incompatible Scattering options are checked independently.
 
 **Numerical validation result.** Integration using summed rates was compared with the formula in terms of Θᵢ in 72 cases. The cases used 8 compositions of 1–3 parabolas, three choices of observed quantities, and T = 100, 300, 800 K. The saved S-only cases use bᵢ = 1 with active band-specific crossovers. They exercise the forward formula; the manual-input and optimizer contract above still requires integration tests. With Θ₁, Θ₂, Θ₃ = 120, 550, 1500 K, each channel gives half its pure-acoustic conductivity at T = Θᵢ. Maximum discrepancies for ρ, S, R_H, and L were 7.8 × 10⁻¹⁶, 7.1 × 10⁻¹⁵, 1.1 × 10⁻¹⁵, and 1.5 × 10⁻¹⁴, respectively. When the second mechanism’s rate was reduced to 10⁻⁹ of its original scale, the maximum deviation from the pure limits was 1.47 × 10⁻⁸. Reproducing archived P18 functions with shared μ inputs and integrals gave deviations up to 4.50 × 10⁻⁷ in Hall. The optimizer, API, and sessions still need to be checked in this comparison after implementation. [Runnable example and exact inputs](../../../scripts/verify_mixed_scattering_design.py).
+
+**Numerical replay.** The versioned MIX fixture stores ρ, S, R_H and L in SI units for the 72 synthetic cases and a symmetric electron–hole control. Compare each value against its absolute floor plus a relative term. At compensation this tests the signed S and R_H directly. A separate comparison with the analytical scattering formula tests the physical calculation. [Replay instructions and per-quantity tolerances](band-composition-v0.7/REVIEW.md#comparing-a-mix-replay).
 
 ## 15 Parameters labels, tooltips, and states
 

@@ -27,34 +27,44 @@ These experiments exercised the reference scripts only. The scientific source, c
 
 ## Replaying the checks from this branch
 
-From the repository root, install the project dependencies with `uv sync` and `pnpm install --frozen-lockfile`, then run:
+Start with Git, uv, Node.js 24.18 or newer and pnpm 12.16.1. The example uses a new directory. In an existing checkout of the PR, start at the dependency installation commands.
 
 ```sh
-.venv/bin/python scripts/verify_band_composition_design.py
-.venv/bin/python scripts/verify_spb_design_coefficients.py
-.venv/bin/python scripts/verify_skb_design_reference.py
-.venv/bin/python scripts/verify_mixed_scattering_design.py
-PYTHONPATH=packages/seeband_core/src .venv/bin/python scripts/verify_mixed_scattering_design.py --legacy
-PYTHONPATH=packages/seeband_core/src .venv/bin/python scripts/verify_skb_design_reference.py --core
-.venv/bin/python scripts/verify_parabolic_mass_identifiability.py
-.venv/bin/python scripts/verify_three_band_s_profile.py
+git clone --single-branch --branch codex/band-composition-tdd-v07 https://github.com/pdasya/seeband-web.git seeband-review
+cd seeband-review
+git rev-parse HEAD
+uv sync --frozen
+pnpm install --frozen-lockfile
+pnpm --filter @seeband/web exec playwright install chromium
 ```
 
-The first four commands reproduce CHARGE, SPB, SKB and MIX. The fifth (MIX-LEGACY) compares ρ, S and Hall with this branch's `seeband_core.math_module` using the same chemical potentials and integrals as inputs. The sixth (SKB-CORE) imports the four SeeBand physical constants, reproduces all 11 SKBcal masses and tests the isolated acoustic band against its dimensional integrals and its SPB limit. The seventh (MASS-SCALE) checks absolute mass scaling and separates the explicit conductivity weight from the effect of mass on the charge balance. The eighth (S-PROFILE) reproduces the three-band flat-profile example displayed in Parameters. The [index](evidence.json) also gives the commands for the two prototypes. The Fit and Guide browser check requires Chrome. From the repository root, run:
+On a minimal Linux machine, use `playwright install --with-deps chromium` in the last command to install the required OS libraries as well. The following commands run all current-branch evidence from the repository root. They read the versioned inputs and report results to the terminal.
 
 ```sh
-FIT_GUIDE_CHROME=1 node docs/superpowers/specs/band-composition-v0.7/evidence/verify_fit_guide.mjs
-PYTHONPATH=scripts .venv/bin/python docs/superpowers/specs/band-composition-v0.7/evidence/verify_valley_counts.py
+uv run --frozen pytest -q packages/seeband_core/tests/test_band_design_evidence.py
+node docs/superpowers/specs/band-composition-v0.7/evidence/verify_model.mjs
+node docs/superpowers/specs/band-composition-v0.7/evidence/verify_fit_guide.mjs --browser
+node docs/superpowers/specs/band-composition-v0.7/evidence/verify_hold_migration.mjs
 ```
+
+The [manifest](evidence.json) gives individual commands, units, tolerances and the software versions used for the clean replay. The JavaScript checks resolve dependencies through this checkout's web package. The browser command uses the Chromium revision installed by its locked Playwright version. The separate P18 replay command appears below.
+
+### Comparing a MIX replay
+
+Run `uv run --frozen python scripts/verify_mixed_scattering_design.py` to print numerical results. The existing direct-integral, analytical and pure-limit checks run first. The script then checks the four transport quantities in each of 72 original input configurations and one exactly compensated configuration against the [stored reference](evidence/mixed_reference.json). The reference records the band inputs, temperature, mode and constants. It was captured from the direct integral for regression testing.
+
+For each quantity the allowed difference is `atol + rtol × abs(reference)`, with `rtol = 1e-9`. The absolute floors are in the units below. At exact compensation the floor supplies the whole tolerance for the signed quantity.
+
+| Quantity             | Unit   | Absolute tolerance |
+| -------------------- | ------ | -----------------: |
+| Resistivity ρ        | Ω·m    |              1e-15 |
+| Seebeck S            | V/K    |              1e-13 |
+| Hall coefficient R_H | m³/C   |              1e-18 |
+| Lorenz number L      | W·Ω/K² |              1e-17 |
+
+A failure reports the case, quantity and inputs. To exercise the failure paths, run `uv run --frozen pytest -q packages/seeband_core/tests/test_mixed_reference_replay.py`. Use the reported numerical differences to compare machines. The SHA-256 digests identify the saved files. The P18 legacy transcript keeps its own provenance.
 
 **Item 14.** Open the standalone Fit prototype. On a first visit it shows VB/CB/VB. Select acoustic phonons, set the acoustic scale to 12345, edit its bounds and select **Held**. Switch to acoustic phonons + alloy disorder and back. All three settings follow the shared coefficient. Select acPh, make one band Kane and select S. A two-band model now asks for one relative conductivity prefactor, a three-band model for two. The single Kane model needs none. In a mode with resistivity, each band regains its own dimensional amplitude. Use Tab and Enter on a mode-set lock to read why it is held. Reload the page to reopen the browser draft when local storage is available. The offline replay demonstrates cancellation on composition edits. Real API cancellation, estimator registration and import of a complete v3 file are application acceptance cases.
-
-Run these additional checks from the PR root:
-
-```sh
-node docs/superpowers/specs/band-composition-v0.7/evidence/verify_hold_migration.mjs
-PYTHONPATH=scripts uv run --frozen python docs/superpowers/specs/band-composition-v0.7/evidence/verify_kane_weights.py
-```
 
 The [migration result](evidence/hold-migration.txt) covers per-mode hold decisions, including an untouched active mode and conflicting inactive modes. The [Kane weight result](evidence/kane-weights.txt) compares dimensional and relative thermopower at prescribed filling and includes a nonconducting additional channel. The [current figures](../2026-11-21-band-composition-design.md#12-what-changes-inside-model-and-parameters) show the same default and mixed compositions as the interactive example.
 
@@ -80,17 +90,13 @@ Use the SHA-256 digest to check a saved file's integrity. The manifest's `replay
 
 ## Replaying the P18 Hall comparison
 
-From the root of this review branch, fetch P18 and run the same audit against both revisions. The expected outcome for the first run is a nonzero exit at the 10⁻⁶ Hall budget. The second must pass both that budget and the 10⁻⁷ regression target.
+From the same review checkout run:
 
 ```sh
-audit="$PWD/docs/superpowers/specs/band-composition-v0.7/evidence/verify_explicit_curves_spb.py"
-git fetch origin refs/heads/codex/p18-hall-quadrature
-git worktree add --detach ../p18-hall-before 8e4f98d78c3868c65f5e22b4e359061aca3f7ece
-git worktree add --detach ../p18-hall-after a7943506412eb82856ad2459984632190315bb64
-(cd ../p18-hall-before && PYTHONPATH=packages/seeband_core/src uv run --frozen python "$audit")
-(cd ../p18-hall-after && PYTHONPATH=packages/seeband_core/src uv run --frozen python "$audit")
-(cd ../p18-hall-after && uv run --frozen pytest -q packages/seeband_core/tests/test_transport_hall_quadrature.py)
+uv run --frozen python docs/superpowers/specs/band-composition-v0.7/evidence/replay_p18.py
 ```
+
+The driver prepares an isolated temporary checkout, fetches the public P18 branch if needed and selects the full commits recorded in the manifest. It uses the frozen review environment and checks that Python imports the selected P18 core. The original revision must reproduce its 113-test baseline, the historical mixed-scattering comparison and the specific CB+CB/dis Hall failure at 800 K. The corrected revision must pass the same Hall audit and its quadrature regressions. Use `--only DPB-HALL-FIX` to replay just the corrected result. An unrelated crash on the old revision fails the replay.
 
 For λ = 0 (acPh and dis), the Hall integrand contains √x at the band edge. The substitution x = t² gives √x dx = 2t² dt. The kernel retains the linear energy grid when the integration window lies entirely above the edge. The moment test compares with ½ F₋½(η) in the unnormalized Fermi-integral convention at a relative tolerance of 10⁻¹⁰, including depleted and degenerate bands. At η = −40, −6, −2, 0, 3, 10 and 60, the maximum relative moment error fell from 1.174 × 10⁻⁶ to 3.908 × 10⁻¹⁴ against a 60-digit polylogarithm reference.
 

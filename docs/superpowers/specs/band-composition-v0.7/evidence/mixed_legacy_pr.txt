@@ -7,5 +7,6 @@ c=550K: sigma_mix/sigma_ac at T=100/300/800K=[0.15384615384615388, 0.35294117647
 c=1500K: sigma_mix/sigma_ac at T=100/300/800K=[0.0625, 0.16666666666666666, 0.3478260869565218]
 PASS 72 temperature/configuration/mode cases: Matthiessen vs formula [rho,S,RH,L] max errors=[7.771561172376096e-16, 7.0439854014450854e-15, 1.0254210451710377e-15, 1.4432899320127035e-14]; pure-limit errors=[1.4625514577204513e-08, 4.805256679020322e-09, 9.31678333577541e-09, 2.5546733617431983e-09]
 Independent crossovers c=(120,550,1500)K; at T=c_i sigma_i/sigma_ac_i=0.5; rho>0; Hall/Seebeck scaled by absolute channel sums near compensation.
+MIX reference replay PASS 73 cases [rho,S,RH,L]; max abs_error/(atol+rtol*abs(reference))={'rho': 0.0, 'S': 0.0, 'RH': 0.0, 'L': 0.0}; compatibility baseline, separate from independent Matthiessen checks.
 Legacy math_module comparison PASS [rho,S,RH] errors=[np.float64(2.220446049250313e-16), np.float64(1.9449763242051648e-07), np.float64(4.4948951790259384e-07)]; shared input mu/FD integrals, no legacy root/fit validation; inherited constants differ.
 Limits: synthetic power laws and scalar weak-field RTA; prediction projections only, not fitted parameters, API support, Kane scattering or human physics confirmation.

@@ -87,3 +87,6 @@ def test_band_design_evidence(entrypoint: str, args: tuple[str, ...], checkpoint
     )
     assert result.returncode == 0, result.stdout + result.stderr
     assert checkpoint in result.stdout, result.stdout + result.stderr
+
+    if entrypoint == "scripts/verify_mixed_scattering_design.py":
+        assert "MIX reference replay PASS 73 cases" in result.stdout
