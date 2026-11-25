@@ -182,6 +182,11 @@ export function FitAlgorithmControl() {
   const ionized = useSessionStore(
     (state) => state.selection.scattering === "ionized",
   );
+  const explicit = useSessionStore(
+    (state) =>
+      state.selection.model === "dpb" &&
+      state.selection.parameterization !== undefined,
+  );
   const algorithm = useSessionStore(
     (state) => state.selection.algorithm ?? "verified-sequential-v2",
   );
@@ -205,11 +210,15 @@ export function FitAlgorithmControl() {
         <option value="verified-sequential-v2">
           {text.algorithm.verified}
         </option>
-        <option value="legacy-sequential-v1" disabled={ionized}>
+        <option value="legacy-sequential-v1" disabled={ionized || explicit}>
           {text.algorithm.legacy}
         </option>
       </select>
-      {ionized && <span>{text.algorithm.ionizedVerified}</span>}
+      {explicit ? (
+        <span>{STRINGS.explicitDpb.verifiedMethod}</span>
+      ) : (
+        ionized && <span>{text.algorithm.ionizedVerified}</span>
+      )}
     </label>
   );
 }

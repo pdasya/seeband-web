@@ -1,9 +1,25 @@
-import { useQuery } from "@tanstack/react-query";
+import { offersExplicitDpb } from "@/model/selection";
+import {
+  convertedSession,
+  historicalSource,
+  legacyVector,
+  withoutLegacyDpb,
+} from "@/session/legacyDpb";
 import { FolderOpenIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { apiClient, type FitRequest } from "@/api/client";
-import { modelsQuery } from "@/api/queries";
+import { useModels } from "@/api/queries";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { parseNumber } from "@/lib/numbers";
+import type { SessionFile } from "@/session/sessionFile";
 import { Button } from "@/components/ui/button";
 import { fitRequest } from "@/model/fitRequest";
 import {
@@ -18,7 +34,7 @@ import { STRINGS } from "@/strings";
 
 const text = STRINGS.session;
 
-type Problem = SessionFileProblem | "read_failed";
+type Problem = SessionFileProblem | "read_failed" | "migration_failed";
 
 /**
  * Opens a session file in place of this session, after `readSessionFile` has checked it. The
@@ -27,12 +43,16 @@ type Problem = SessionFileProblem | "read_failed";
  */
 function useSessionOpen() {
   const restore = useSessionStore((state) => state.restoreSession);
+  const { data: catalog } = useModels();
+  const [pending, setPending] = useState<SessionFile | null>(null);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<Problem | null>(null);
+  const [archivedDpb, setArchivedDpb] = useState(false);
 
   const open = async (file: File) => {
     setBusy(true);
     setProblem(null);
+    setArchivedDpb(false);
     try {
       if (file.size > MAX_SESSION_BYTES) {
         setProblem("too_large");
@@ -44,13 +64,70 @@ function useSessionOpen() {
         return;
       }
       const { session } = read;
+      if (
+        session.content.selection.model === "dpb" &&
+        session.content.selection.parameterization === undefined
+      ) {
+        const models =
+          catalog ??
+          (await apiClient.getModels(undefined, "explicit_fermi_v1"));
+        if (models.models.some(offersExplicitDpb)) {
+          setPending(session);
+          return;
+        }
+      }
+      const dormantDpb =
+        session.content.selection.parameterization === undefined &&
+        session.content.selection.model !== "dpb" &&
+        ([
+          session.content.parameters,
+          session.content.customBounds,
+          session.content.held,
+          session.content.guessedParameters ?? {},
+        ].some((modes) =>
+          Object.keys(modes).some((mode) => mode.startsWith("dpb_")),
+        ) ||
+          session.content.savedModelSettings?.dpb !== undefined) &&
+        (
+          catalog ?? (await apiClient.getModels(undefined, "explicit_fermi_v1"))
+        ).models.some(offersExplicitDpb);
+      const content = dormantDpb
+        ? {
+            ...session.content,
+            parameters: withoutLegacyDpb(session.content.parameters),
+            guessedParameters: withoutLegacyDpb(
+              session.content.guessedParameters ?? {},
+            ),
+            customBounds: withoutLegacyDpb(session.content.customBounds),
+            held: withoutLegacyDpb(session.content.held),
+            savedModelSettings: Object.fromEntries(
+              Object.entries(session.content.savedModelSettings ?? {}).filter(
+                ([id]) => id !== "dpb",
+              ),
+            ),
+          }
+        : session.content;
+      setArchivedDpb(dormantDpb);
       const server = await apiClient.getHealth().catch(() => null);
-      restore(restoredSession(session.content), {
-        saved: session.saved,
-        appVersion: session.appVersion,
-        fitCoreVersion: session.content.fit?.result.core_version ?? null,
-        serverCoreVersion: server?.core_version ?? null,
-      });
+      restore(
+        restoredSession(
+          session.content.selection.parameterization === undefined
+            ? {
+                ...content,
+                selection: {
+                  ...session.content.selection,
+                  legacySource: historicalSource(session),
+                },
+              }
+            : content,
+        ),
+        {
+          saved: session.saved,
+          appVersion: session.appVersion,
+          fitCoreVersion: session.content.fit?.result.core_version ?? null,
+          serverCoreVersion: server?.core_version ?? null,
+        },
+      );
     } catch {
       // A file that cannot be read, or a digest that fails, opens nothing.
       setProblem("read_failed");
@@ -59,7 +136,52 @@ function useSessionOpen() {
     }
   };
 
-  return { open, busy, problem };
+  const convert = async (m1: number, band1: number, band2: number) => {
+    if (pending === null) return;
+    setBusy(true);
+    try {
+      const content = pending.content;
+      const legacyModels = await apiClient.getModels();
+      const description = legacyModels.models
+        .find((model) => model.id === "dpb")
+        ?.fit_modes.find((mode) => mode.id === content.selection.fitMode);
+      if (!description) throw new Error("Legacy mode unavailable");
+      const vector = legacyVector(content, description);
+      const converted = await apiClient.migrateDpb({
+        parameters: vector,
+        m1,
+        band_1_degeneracy: band1,
+        band_2_degeneracy: band2,
+      });
+      const server = await apiClient.getHealth().catch(() => null);
+      const restored = restoredSession(
+        convertedSession(pending, converted, band1, band2),
+      );
+      restore(restored, {
+        saved: pending.saved,
+        appVersion: pending.appVersion,
+        fitCoreVersion: null,
+        serverCoreVersion: server?.core_version ?? null,
+      });
+      setPending(null);
+    } catch {
+      setProblem("migration_failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return {
+    open,
+    busy,
+    problem,
+    pending,
+    archivedDpb,
+    cancel: () => {
+      setPending(null);
+      setProblem(null);
+    },
+    convert,
+  };
 }
 
 /** A request's inputs, all but where it starts, which a fit run again from it would change. */
@@ -76,7 +198,7 @@ function inputsOf(request: FitRequest): string {
  * interpolation is on its way, and checks each time the inputs change.
  */
 function useStaleRestoredFit() {
-  const { data: models } = useQuery(modelsQuery);
+  const { data: models } = useModels();
   const restored = useSessionStore((state) => state.restored);
   const fit = useSessionStore((state) => state.fit);
   const selection = useSessionStore((state) => state.selection);
@@ -151,7 +273,8 @@ function chooseFile(onChosen: (file: File) => void) {
 
 /** The Open session button, what went wrong with a file, and what a restored session came from. */
 export function SessionOpen() {
-  const { open, busy, problem } = useSessionOpen();
+  const { open, busy, problem, pending, cancel, convert, archivedDpb } =
+    useSessionOpen();
   useStaleRestoredFit();
   const restored = useSessionStore((state) => state.restored);
   const fit = useSessionStore((state) => state.fit);
@@ -169,6 +292,16 @@ export function SessionOpen() {
     restored.fitCoreVersion !== null;
   return (
     <div className="mt-3 flex flex-col gap-1.5">
+      {pending && (
+        <LegacyMigration
+          key={pending.checksum}
+          session={pending}
+          busy={busy}
+          failed={problem === "migration_failed"}
+          onCancel={cancel}
+          onConvert={convert}
+        />
+      )}
       <div>
         <Button
           variant="outline"
@@ -184,8 +317,17 @@ export function SessionOpen() {
         </Button>
       </div>
       <p role="status" className="m-0 text-xs text-destructive empty:hidden">
-        {problem === null ? "" : text.problems[problem]}
+        {problem === null
+          ? ""
+          : problem === "migration_failed"
+            ? STRINGS.explicitDpb.migrationFailed
+            : text.problems[problem]}
       </p>
+      {archivedDpb && (
+        <p role="status" className="m-0 text-xs text-muted-foreground">
+          {text.archivedDpb}
+        </p>
+      )}
       {restored !== null && (
         <p className="m-0 text-xs text-muted-foreground">
           {text.restored(
@@ -207,5 +349,109 @@ export function SessionOpen() {
         </p>
       )}
     </div>
+  );
+}
+
+function LegacyMigration({
+  session,
+  busy,
+  failed,
+  onCancel,
+  onConvert,
+}: {
+  session: SessionFile;
+  busy: boolean;
+  failed: boolean;
+  onCancel: () => void;
+  onConvert: (mass: number, band1: number, band2: number) => Promise<void>;
+}) {
+  const text = STRINGS.explicitDpb;
+  const mode = session.content.selection.fitMode ?? "dpb_s_rho";
+  const vector = legacyVector(session.content);
+  const hallMass = mode === "dpb_s_rho_rh" ? vector?.m1 : undefined;
+  const [mass, setMass] = useState(
+    hallMass && hallMass > 0 ? String(hallMass) : "",
+  );
+  const [n1, setN1] = useState(
+    String(
+      session.content.fit?.request?.band_1_degeneracy ??
+        session.content.selection.band1Degeneracy,
+    ),
+  );
+  const [n2, setN2] = useState(
+    String(
+      session.content.fit?.request?.band_2_degeneracy ??
+        session.content.selection.band2Degeneracy,
+    ),
+  );
+  const massValue = parseNumber(mass);
+  const band1Value = parseNumber(n1);
+  const band2Value = parseNumber(n2);
+  const valid =
+    massValue !== null &&
+    massValue > 0 &&
+    band1Value !== null &&
+    band1Value > 0 &&
+    Number.isInteger(band1Value) &&
+    band2Value !== null &&
+    band2Value > 0 &&
+    Number.isInteger(band2Value);
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open && !busy) onCancel();
+      }}
+    >
+      <DialogContent closeLabel={text.cancel}>
+        <DialogHeader>
+          <DialogTitle>{text.migrationTitle}</DialogTitle>
+          <DialogDescription>{text.migrationHint}</DialogDescription>
+        </DialogHeader>
+        <label>
+          {text.mass}
+          <Input
+            value={mass}
+            disabled={
+              busy ||
+              (hallMass !== undefined && hallMass !== null && hallMass > 0)
+            }
+            onChange={(event) => setMass(event.target.value)}
+          />
+        </label>
+        <label>
+          {STRINGS.fit.degeneracyMeaning} N₁
+          <Input
+            value={n1}
+            disabled={busy}
+            onChange={(event) => setN1(event.target.value)}
+          />
+        </label>
+        <label>
+          {STRINGS.fit.degeneracyMeaning} N₂
+          <Input
+            value={n2}
+            disabled={busy}
+            onChange={(event) => setN2(event.target.value)}
+          />
+        </label>
+        {failed && (
+          <p role="alert" className="text-sm text-destructive">
+            {text.migrationFailed}
+          </p>
+        )}
+        <Button
+          disabled={busy || !valid}
+          onClick={() => {
+            if (valid) void onConvert(massValue, band1Value, band2Value);
+          }}
+        >
+          {text.confirm}
+        </Button>
+        <Button variant="outline" disabled={busy} onClick={onCancel}>
+          {text.cancel}
+        </Button>
+      </DialogContent>
+    </Dialog>
   );
 }

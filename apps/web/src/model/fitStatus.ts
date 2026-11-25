@@ -1,3 +1,4 @@
+import { carrierValidationMessage } from "@/model/explicitDpb";
 import { formatNumber } from "@/lib/numbers";
 import type { FitBlocker } from "@/model/fitRequest";
 import { parameterSymbol } from "@/model/parameters";
@@ -97,6 +98,8 @@ export function fitFailureText(fit: FitState): string | null {
   if (fit.status !== "failed") {
     return null;
   }
+  if (fit.failure.code === "validation_error")
+    return carrierValidationMessage(fit.failure.details) ?? text.failureOther;
   const known: Record<string, string> = text.failures;
   return known[fit.failure.code] ?? text.failureOther;
 }
@@ -119,6 +122,8 @@ export function fitBlockerText(blocker: FitBlocker): string {
   switch (blocker.reason) {
     case "no_mode":
       return text.blockers.noMode;
+    case "invalid_density":
+      return STRINGS.explicitDpb.densityRequired;
     case "interpolating":
       return text.blockers.interpolating;
     case "missing_data":

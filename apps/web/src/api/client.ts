@@ -51,10 +51,32 @@ export class ApiClient {
     );
   }
 
-  getModels(signal?: AbortSignal) {
+  getModels(
+    signal?: AbortSignal,
+    parameterization?: NonNullable<
+      operations["get_models"]["parameters"]["query"]
+    >["parameterization"],
+  ) {
     return this.request<ModelsResponse>(
       "GET",
-      "/api/models",
+      parameterization
+        ? `/api/models?parameterization=${parameterization}`
+        : "/api/models",
+      undefined,
+      signal,
+    );
+  }
+
+  getDpbDomain(
+    query: operations["get_dpb_parameter_domain"]["parameters"]["query"],
+    signal?: AbortSignal,
+  ) {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(query))
+      params.set(key, String(value));
+    return this.request<Schemas["ParameterDomain"]>(
+      "GET",
+      `/api/dpb/parameter-domain?${params}`,
       undefined,
       signal,
     );
@@ -62,6 +84,15 @@ export class ApiClient {
 
   getDemo(signal?: AbortSignal) {
     return this.request<DemoResponse>("GET", "/api/demo", undefined, signal);
+  }
+
+  migrateDpb(body: Schemas["LegacyDpbPoint"], signal?: AbortSignal) {
+    return this.request<Schemas["ConvertedDpbPoint"]>(
+      "POST",
+      "/api/dpb/migrate",
+      body,
+      signal,
+    );
   }
 
   postCalc(body: CalcRequest, signal?: AbortSignal) {

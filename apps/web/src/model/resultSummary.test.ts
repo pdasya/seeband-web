@@ -532,3 +532,22 @@ describe("resultRows", () => {
     expect(rows.filter(({ status }) => status.kind === "needs")).toEqual([]);
   });
 });
+
+test("virgin Fermi result rows show the default start without rewriting custom bounds", () => {
+  const rows = parameterRows(
+    modeOf("dpb_s_rho"),
+    "acPh",
+    undefined,
+    { status: "idle" },
+    { fermi_energy: { lower: -500, upper: 2000 } },
+    [],
+    {
+      parameterization: "explicit_fermi_v1",
+      bandConfiguration: "vb_cb",
+    },
+  );
+  expect(rows.find(({ name }) => name === "fermi_energy")).toMatchObject({
+    value: "-0,01 eV",
+    bounds: "-0,04 … 0,17",
+  });
+});

@@ -2,10 +2,107 @@ import type { components } from "@seeband/api-client";
 
 import { parseNumber } from "@/lib/numbers";
 import type { FitModeDescription } from "@/model/selection";
+import type { Selection } from "@/session/store";
 import { STRINGS } from "@/strings";
 
 export type ParameterDescription = components["schemas"]["ParameterResponse"];
 export type FitBounds = components["schemas"]["BoundsInput"];
+
+/** Core-unit limits for manual exploration, independent of joint fit bounds. */
+export type ExplorationDomain = {
+  lower?: number;
+  upper?: number;
+  inclusive: boolean;
+};
+
+export function inExplorationDomain(
+  value: number,
+  domain?: ExplorationDomain,
+): boolean {
+  return (
+    Number.isFinite(value) &&
+    (domain === undefined ||
+      ((domain.lower === undefined ||
+        (domain.inclusive ? value >= domain.lower : value > domain.lower)) &&
+        (domain.upper === undefined ||
+          (domain.inclusive ? value <= domain.upper : value < domain.upper))))
+  );
+}
+
+/** Keep the usual conversion, but never round a valid typed value onto an excluded edge. */
+export function explorationCoreValue(
+  parameter: ParameterDescription,
+  displayed: number,
+  domain?: ExplorationDomain,
+): number | null {
+  const converted = displayToCore(parameter, displayed);
+  const raw = scaled(
+    displayed / parameter.display_factor,
+    parameter.fit_scale / parameter.display_scale,
+  );
+  if (domain !== undefined) {
+    // A displayed endpoint selects the exact server value, even when a round trip
+    // through eV would move EF just to one side of compensation.
+    for (const edge of [domain.lower, domain.upper]) {
+      if (edge === undefined || !Number.isFinite(edge)) continue;
+      const displayEdge = coreToDisplay(parameter, edge);
+      if (displayed === displayEdge || displayed === tidy(displayEdge)) {
+        return domain.inclusive ? edge : null;
+      }
+    }
+    const displayDomain = {
+      ...(domain.lower === undefined
+        ? {}
+        : { lower: coreToDisplay(parameter, domain.lower) }),
+      ...(domain.upper === undefined
+        ? {}
+        : { upper: coreToDisplay(parameter, domain.upper) }),
+      inclusive: domain.inclusive,
+    };
+    if (!inExplorationDomain(displayed, displayDomain)) return null;
+  }
+  return inExplorationDomain(converted, domain)
+    ? converted
+    : inExplorationDomain(raw, domain)
+      ? raw
+      : null;
+}
+
+/** Slider grid remains anchored to the saved range; narrow ranges retain valid endpoints. */
+export function explorationSliderRange(
+  parameter: ParameterDescription,
+  domain?: ExplorationDomain,
+): { minimum: number; maximum: number } | null {
+  const { minimum, maximum } = parameter.display_range;
+  if (domain === undefined) return { minimum, maximum };
+  const step =
+    parameter.display_factor === 1
+      ? parameter.display_scale
+      : parameter.display_range.step;
+  const valid = (value: number) =>
+    value >= minimum &&
+    value <= maximum &&
+    explorationCoreValue(parameter, value, domain) !== null;
+  let lower = minimum;
+  let upper = maximum;
+  if (!valid(lower)) {
+    const edge = coreToDisplay(parameter, domain.lower ?? -Infinity);
+    const index = Math.max(0, Math.ceil((edge - minimum) / step));
+    lower = tidy(minimum + index * step);
+    if (!valid(lower)) lower = tidy(minimum + (index + 1) * step);
+    if (!valid(lower)) lower = maximum;
+  }
+  if (!valid(upper)) {
+    const edge = coreToDisplay(parameter, domain.upper ?? Infinity);
+    const index = Math.floor((edge - minimum) / step);
+    upper = tidy(minimum + index * step);
+    if (!valid(upper)) upper = tidy(minimum + (index - 1) * step);
+    if (!valid(upper)) upper = minimum;
+  }
+  return valid(lower) && valid(upper) && lower <= upper
+    ? { minimum: lower, maximum: upper }
+    : null;
+}
 
 /** How a parameter is written. Any other shows its name, so a new one needs no change. */
 export function parameterSymbol(name: string): string {
@@ -57,17 +154,45 @@ export function withCustomRange(
       };
 }
 
-/** Every parameter of a mode in core units, as requests need them: those set, then the defaults. */
+export type ParameterSelection = Pick<
+  Selection,
+  "parameterization" | "bandConfiguration"
+>;
+
+/** Every parameter in core units. Virgin E_F starts follow the selected bands; stored values win. */
 export function parameterValues(
   mode: FitModeDescription,
   saved: Readonly<Record<string, number>> | undefined,
+  selection?: ParameterSelection,
 ): Record<string, number> {
-  return Object.fromEntries(
+  const values = Object.fromEntries(
     mode.parameters.map((parameter) => [
       parameter.name,
       saved?.[parameter.name] ?? parameter.core_range.default,
     ]),
   );
+  if (
+    selection?.parameterization === "explicit_fermi_v1" &&
+    saved?.fermi_energy === undefined
+  ) {
+    const energy = mode.parameters.find(({ name }) => name === "fermi_energy");
+    const offset =
+      mode.band_2_edge == null ? undefined : values[mode.band_2_edge];
+    if (energy !== undefined && offset !== undefined) {
+      // Initial suggestions only: the server validates carrier populations and all fitted states.
+      const scale =
+        Math.abs(energy.core_range.default) || energy.core_range.step;
+      const low = Math.min(0, offset);
+      const high = Math.max(0, offset);
+      values.fermi_energy =
+        selection.bandConfiguration === "cb_cb"
+          ? low + scale
+          : selection.bandConfiguration === "vb_vb"
+            ? high - scale
+            : low - scale;
+    }
+  }
+  return values;
 }
 
 // As the core converts: dividing where a scale is a fraction, which keeps the last bit.
@@ -152,13 +277,15 @@ export function shortened(value: number): number {
 export function typedDisplayValue(
   parameter: ParameterDescription,
   text: string,
+  domain?: ExplorationDomain,
 ): number | null {
   const value = parseNumber(text);
   const { minimum, maximum } = parameter.display_range;
   // Bounds as the screen shows them, so that a bound typed as shown counts, as that bound.
   return value !== null &&
-    value >= shownValue(parameter, minimum) &&
-    value <= shownValue(parameter, maximum)
+    explorationCoreValue(parameter, value, domain) !== null &&
+    value >= Math.min(minimum, shownValue(parameter, minimum)) &&
+    value <= Math.max(maximum, shownValue(parameter, maximum))
     ? Math.min(maximum, Math.max(minimum, value))
     : null;
 }

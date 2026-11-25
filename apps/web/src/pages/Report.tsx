@@ -1,11 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
 import { apiClient, type CalcResponse } from "@/api/client";
 import { APP_VERSION, withCommit } from "@/lib/version";
 import { coreVersionLines } from "@/model/exportFiles";
-import { modelsQuery } from "@/api/queries";
+import { useModels } from "@/api/queries";
 import { chartImage } from "@/charts/chartImage";
 import {
   bandGapForTab,
@@ -73,7 +72,7 @@ export function useReport({
   measured: LiveCalc;
   derived: Record<DerivedKind, LiveCalc>;
 }) {
-  const { data: models } = useQuery(modelsQuery);
+  const { data: models } = useModels();
   const energy = models?.energy_display ?? ENERGY_IN_K;
   const [charts, setCharts] = useState<readonly ReportChart[] | null>(null);
   const [apiVersion, setApiVersion] = useState<string | null>(null);

@@ -1,3 +1,9 @@
+import {
+  explicitDpbInputs,
+  heldForFit,
+  isExplicitDpb,
+  isValidCarrierDensity,
+} from "@/model/explicitDpb";
 import type { FitRequest } from "@/api/client";
 import {
   editableParameters,
@@ -31,6 +37,7 @@ export type FitBlocker =
   | { reason: "not_interpolated"; quantities: Quantity[] }
   | { reason: "no_points_in_range"; quantities: Quantity[] }
   | { reason: "all_held" }
+  | { reason: "invalid_density" }
   | { reason: "start_outside_bounds"; parameters: string[] };
 
 /** Blockers that come from the request as it is, and so before it is built. */
@@ -56,6 +63,8 @@ export function fitRequest(
     return { blocked: { reason: "no_mode" } };
   }
 
+  if (!isValidCarrierDensity(selection))
+    return { blocked: { reason: "invalid_density" } };
   const quantities = mode.quantities;
   const missing = quantities.filter((q) => state.data[q] === undefined);
   if (missing.length > 0) {
@@ -103,7 +112,7 @@ export function fitRequest(
     .filter(({ role }) => role === "fitted")
     .map(({ name }) => name);
   // Sorted, so that the order of the clicks does not make another request.
-  const held = (state.held[mode.id] ?? [])
+  const held = heldForFit(selection, state.held[mode.id] ?? [])
     .filter((name) => fitted.includes(name))
     .sort();
   if (fitted.length > 0 && held.length === fitted.length) {
@@ -112,19 +121,28 @@ export function fitRequest(
 
   const custom = state.customBounds[mode.id] ?? {};
   const bounds = Object.fromEntries(
-    editableParameters(mode, selection.scattering).flatMap(({ parameter }) => {
-      const chosen = custom[parameter.name];
-      return chosen === undefined ? [] : [[parameter.name, chosen] as const];
-    }),
+    editableParameters(mode, selection.scattering).flatMap(
+      ({ parameter, bounds: defaults }) => {
+        if (isExplicitDpb(selection) && held.includes(parameter.name))
+          return [];
+        const chosen =
+          custom[parameter.name] ??
+          (isExplicitDpb(selection) ? defaults : undefined);
+        return chosen === undefined ? [] : [[parameter.name, chosen] as const];
+      },
+    ),
   );
 
   return {
     request: {
-      algorithm: selection.algorithm ?? "verified-sequential-v2",
+      algorithm: isExplicitDpb(selection)
+        ? "verified-sequential-v2"
+        : (selection.algorithm ?? "verified-sequential-v2"),
       model: model.id,
+      ...explicitDpbInputs(selection),
       fit_mode: mode.id,
       scattering: selection.scattering,
-      start: parameterValues(mode, state.parameters[mode.id]),
+      start: parameterValues(mode, state.parameters[mode.id], selection),
       ...(Object.keys(bounds).length === 0 ? {} : { bounds }),
       ...(held.length === 0 ? {} : { held }),
       min_temperature_k: minK,

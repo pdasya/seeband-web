@@ -1,3 +1,9 @@
+import { visibleParameters } from "@/model/parameters";
+import {
+  calcRequest,
+  bandDiagramRequest,
+  requestScope,
+} from "@/model/liveCurves";
 // @vitest-environment node
 import { describe, expect, test } from "vitest";
 
@@ -403,4 +409,180 @@ test("algorithm defaults for older state and separates request identities", () =
   expect(verified.request.algorithm).toBe("verified-sequential-v2");
   expect(legacy.request.algorithm).toBe("legacy-sequential-v1");
   expect(fitInputsKey(verified.request)).not.toBe(fitInputsKey(legacy.request));
+});
+
+test("explicit fit, calculation and diagram agree on band identity, SI density and absolute mass", () => {
+  const legacy = models.find((model) => model.id === "dpb");
+  if (!legacy) throw new Error("Missing DPB fixture");
+  const base = legacy.fit_modes.find((mode) => mode.id === "dpb_s_rho");
+  if (!base) throw new Error("Missing mode fixture");
+  const mass = base.parameters.find((parameter) => parameter.name === "m_eff");
+  if (!mass) throw new Error("Missing mass fixture");
+  const mode = {
+    ...base,
+    parameters: [
+      ...base.parameters
+        .filter((parameter) => parameter.name !== "fermi_energy")
+        .map((parameter) => ({
+          ...parameter,
+          name:
+            parameter.name === "m_eff"
+              ? "mass_ratio"
+              : parameter.name === "band_gap"
+                ? "band_offset_k"
+                : parameter.name,
+        })),
+      { ...mass, name: "m1" },
+    ],
+  };
+  const explicitModels = [{ ...legacy, fit_modes: [mode] }];
+  const state = {
+    ...STATE,
+    selection: {
+      ...STATE.selection,
+      algorithm: "legacy-sequential-v1" as const,
+      parameterization: "explicit_density_v1" as const,
+      bandConfiguration: "cb_cb" as const,
+      netElectronDensityPerM3: 2e24,
+    },
+    parameters: { dpb_s_rho: { mass_ratio: 2, band_offset_k: -600, m1: 1.7 } },
+  };
+  const built = fitRequest(state, explicitModels);
+  expect("request" in built).toBe(true);
+  if (!("request" in built)) return;
+  const identity = {
+    parameterization: "explicit_density_v1",
+    band_configuration: "cb_cb",
+    net_electron_density_per_m3: 2e24,
+    band_1_degeneracy: 2,
+    band_2_degeneracy: 3,
+  };
+  expect(built.request).toMatchObject(identity);
+  expect(built.request.algorithm).toBe("verified-sequential-v2");
+  expect(built.request.held).toContain("m1");
+  expect(built.request.start).toMatchObject({
+    mass_ratio: 2,
+    band_offset_k: -600,
+    m1: 1.7,
+  });
+  expect(built.request.start).not.toHaveProperty("fermi_energy");
+  for (const parameter of visibleParameters(mode, "acPh").filter(
+    (parameter) => parameter.role === "fitted" && parameter.name !== "m1",
+  ))
+    expect(built.request.bounds).toHaveProperty(parameter.name);
+  expect(built.request.bounds).not.toHaveProperty("m1");
+  const calc = calcRequest(state, explicitModels);
+  if (!calc) throw new Error("Missing calculation request");
+  expect(calc).toMatchObject(identity);
+  expect(bandDiagramRequest(state, explicitModels)).toMatchObject(identity);
+  expect(requestScope({ ...calc, net_electron_density_per_m3: 3e24 })).not.toBe(
+    requestScope(calc),
+  );
+});
+
+test.each(["cb_cb", "vb_vb"] as const)(
+  "zero density suspends %s fit and plots",
+  (configuration) => {
+    const selection = {
+      ...STATE.selection,
+      parameterization: "explicit_density_v1" as const,
+      bandConfiguration: configuration,
+      netElectronDensityPerM3: 0,
+    };
+    const state = { ...STATE, selection };
+    expect(fitRequest(state, models)).toEqual({
+      blocked: { reason: "invalid_density" },
+    });
+    expect(calcRequest(state, models)).toBeNull();
+    expect(bandDiagramRequest(state, models)).toBeNull();
+    const intrinsic = {
+      ...state,
+      selection: { ...selection, bandConfiguration: "vb_cb" as const },
+    };
+    expect(calcRequest(intrinsic, models)?.net_electron_density_per_m3).toBe(0);
+    expect(
+      bandDiagramRequest(intrinsic, models)?.net_electron_density_per_m3,
+    ).toBe(0);
+  },
+);
+
+test("Fermi fits and live curves retain E_F and bounds without a carrier-sign constraint", () => {
+  const state = {
+    ...STATE,
+    selection: {
+      ...STATE.selection,
+      parameterization: "explicit_fermi_v1" as const,
+      bandConfiguration: "vb_cb" as const,
+    },
+    parameters: { dpb_s_rho: { fermi_energy: -140 } },
+    customBounds: { dpb_s_rho: { fermi_energy: { lower: -500, upper: 100 } } },
+  };
+  const built = fitRequest(state, models);
+  if (!("request" in built)) throw new Error("Fermi fit blocked");
+  expect(built.request).toMatchObject({
+    parameterization: "explicit_fermi_v1",
+    start: { fermi_energy: -140 },
+    bounds: { fermi_energy: { lower: -500, upper: 100 } },
+  });
+  expect(built.request).not.toHaveProperty("net_electron_density_per_m3");
+  expect(built.request).not.toHaveProperty("carrier_type");
+  const calc = calcRequest(state, models);
+  if (!calc) throw new Error("Fermi calc blocked");
+  expect(calc).toMatchObject({
+    parameters: { fermi_energy: -140 },
+  });
+  expect(bandDiagramRequest(state, models)).toMatchObject({
+    parameters: { fermi_energy: -140 },
+  });
+  expect(requestScope({ ...calc, carrier_type: "n" })).not.toBe(
+    requestScope(calc),
+  );
+});
+
+test("virgin Fermi starts agree across fits, live curves and mode switches while custom bounds stay intact", () => {
+  const base = {
+    ...STATE,
+    selection: {
+      ...STATE.selection,
+      parameterization: "explicit_fermi_v1" as const,
+      bandConfiguration: "vb_cb" as const,
+    },
+    parameters: {},
+    customBounds: { dpb_s_rho: { fermi_energy: { lower: -500, upper: 2000 } } },
+  };
+  const fit = fitRequest(base, models);
+  if (!("request" in fit)) throw new Error("Virgin fit blocked");
+  expect(fit.request.start.fermi_energy).toBe(-100);
+  expect(fit.request.bounds?.fermi_energy).toEqual({
+    lower: -500,
+    upper: 2000,
+  });
+  expect(calcRequest(base, models)?.parameters.fermi_energy).toBe(-100);
+  expect(bandDiagramRequest(base, models)?.parameters.fermi_energy).toBe(-100);
+  const full = {
+    ...base,
+    selection: {
+      ...base.selection,
+      fitMode: "dpb_s_rho_rh",
+      bandConfiguration: "cb_cb" as const,
+    },
+  };
+  expect(bandDiagramRequest(full, models)?.parameters.fermi_energy).toBe(100);
+  const valence = {
+    ...base,
+    selection: {
+      ...base.selection,
+      bandConfiguration: "vb_vb" as const,
+    },
+  };
+  expect(calcRequest(valence, models)?.parameters.fermi_energy).toBe(900);
+  expect(base.parameters).toEqual({});
+  const manual = { ...base, parameters: { dpb_s_rho: { fermi_energy: -140 } } };
+  const request = fitRequest(manual, models);
+  if (!("request" in request)) throw new Error("Manual fit blocked");
+  expect(request.request.start.fermi_energy).toBe(-140);
+  expect(request.request.bounds?.fermi_energy).toEqual({
+    lower: -500,
+    upper: 2000,
+  });
 });

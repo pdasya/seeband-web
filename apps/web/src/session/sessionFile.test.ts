@@ -295,3 +295,115 @@ test("the plain SHA-256 gives the browser's digest, at each length its padding t
     "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   );
 });
+
+test("explicit density session preserves representation and historical provenance", async () => {
+  const state = session();
+  state.selection = {
+    ...state.selection,
+    parameterization: "explicit_density_v1",
+    bandConfiguration: "cb_cb",
+    netElectronDensityPerM3: 2e24,
+    fitAbsoluteMass: true,
+    legacySource: '{"version":1,"original":"kept"}',
+  };
+  const file = await sessionFile(
+    state,
+    { appVersion: "test", apiVersion: "test", saved: "2026-11-20T00:00:00Z" },
+    () => null,
+  );
+  const read = await readSessionFile(JSON.stringify(file));
+  expect("session" in read).toBe(true);
+  if ("session" in read)
+    expect(restoredSession(read.session.content).selection).toEqual(
+      state.selection,
+    );
+});
+
+test("version 2 requires a coherent explicit representation and rejects v1 explicit payloads", async () => {
+  const state = session();
+  state.selection = {
+    ...state.selection,
+    parameterization: "explicit_density_v1",
+    bandConfiguration: "vb_cb",
+    netElectronDensityPerM3: 0,
+  };
+  const file = await sessionFile(
+    state,
+    { appVersion: "test", apiVersion: null, saved: "2026-11-20T00:00:00Z" },
+    () => null,
+  );
+  expect(file.version).toBe(2);
+  expect(
+    await readSessionFile(JSON.stringify({ ...file, version: 1 })),
+  ).toEqual({ problem: "invalid" });
+  delete file.content.selection.bandConfiguration;
+  file.checksum = await checksum(file.content);
+  expect(await readSessionFile(JSON.stringify(file))).toEqual({
+    problem: "invalid",
+  });
+});
+
+test("explicit DPB identity survives saving while SPB is selected", async () => {
+  const state = session();
+  state.selection = {
+    ...state.selection,
+    model: "spb",
+    fitMode: "spb_s",
+    parameterization: "explicit_density_v1",
+    bandConfiguration: "cb_cb",
+    netElectronDensityPerM3: 3e24,
+  };
+  state.parameters.dpb_s_rho = { mass_ratio: 2, band_offset_k: 600, m1: 1.7 };
+  const file = await sessionFile(
+    state,
+    { appVersion: "test", apiVersion: null, saved: "2026-11-20T00:00:00Z" },
+    () => null,
+  );
+  expect(file.version).toBe(2);
+  const read = await readSessionFile(JSON.stringify(file));
+  if (!("session" in read))
+    throw new Error("Explicit inactive DPB session was rejected");
+  expect(read.session.content.parameters.dpb_s_rho).toEqual({
+    mass_ratio: 2,
+    band_offset_k: 600,
+    m1: 1.7,
+  });
+  expect(read.session.content.selection.bandConfiguration).toBe("cb_cb");
+});
+
+test.each([undefined, "p" as const])(
+  "Fermi session round-trip retains E_F, bounds, holds and optional legacy sign %s",
+  async (carrierType) => {
+    const state = session();
+    state.selection = {
+      ...state.selection,
+      parameterization: "explicit_fermi_v1",
+      bandConfiguration: "vb_cb",
+      ...(carrierType === undefined ? {} : { carrierType }),
+    };
+    state.parameters.dpb_s_rho = { fermi_energy: -140 };
+    state.customBounds.dpb_s_rho = {
+      fermi_energy: { lower: -500, upper: 200 },
+    };
+    state.held.dpb_s_rho = ["fermi_energy"];
+    const file = await sessionFile(
+      state,
+      { appVersion: "test", apiVersion: null, saved: "2026-11-20T00:00:00Z" },
+      () => null,
+    );
+    expect(file.version).toBe(2);
+    const read = await readSessionFile(JSON.stringify(file));
+    if (!("session" in read)) throw new Error("Fermi session rejected");
+    const restored = restoredSession(read.session.content);
+    expect(restored.selection).toEqual(state.selection);
+    expect(restored.parameters.dpb_s_rho).toEqual({ fermi_energy: -140 });
+    expect(restored.customBounds.dpb_s_rho).toEqual(
+      state.customBounds.dpb_s_rho,
+    );
+    expect(restored.held.dpb_s_rho).toEqual(["fermi_energy"]);
+    expect(restored.selection).not.toHaveProperty("netElectronDensityPerM3");
+    if (carrierType === undefined)
+      expect(restored.selection).not.toHaveProperty("carrierType");
+    else expect(restored.selection.carrierType).toBe(carrierType);
+  },
+);

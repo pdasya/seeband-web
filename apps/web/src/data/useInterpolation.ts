@@ -1,8 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 
 import { apiClient, type ParseRequest } from "@/api/client";
-import { modelsQuery } from "@/api/queries";
+import { useModels } from "@/api/queries";
 import { failureMessage } from "@/data/messages";
 import { requestMapping } from "@/data/units";
 import {
@@ -26,7 +25,7 @@ export interface FitRange {
 /** The selected fit range, or the default of the models until one is chosen. */
 export function useFitRange(): FitRange | null {
   const selected = useSessionStore((state) => state.selection);
-  const { data } = useQuery(modelsQuery);
+  const { data } = useModels();
   const model = data?.models[0];
   const minK = selected.minTemperatureK ?? model?.default_min_temperature_k;
   const maxK = selected.maxTemperatureK ?? model?.default_max_temperature_k;

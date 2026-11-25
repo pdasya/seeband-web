@@ -13,9 +13,11 @@ from fastapi import Header, Response
 from pydantic import BaseModel
 from seeband_core.known_issues import disabled_issue_ids
 from seeband_core.model_catalog import registry
+from seeband_core.model_descriptions import explicit_dpb_description
 from seeband_core.model_interface import (
     ALL_CURVE_KINDS,
     CurveKind,
+    DpbParameterization,
     FitMode,
     IssueCondition,
     IssueSeverity,
@@ -308,12 +310,17 @@ def build_models_response(descriptions: Iterable[ModelDescription]) -> ModelsRes
 
 
 @cache
-def _registry_response() -> ModelsResponse:
-    return build_models_response(registry.descriptions())
+def _registry_response(parameterization: DpbParameterization = "legacy_fermi") -> ModelsResponse:
+    return build_models_response(
+        explicit_dpb_description(parameterization == "explicit_fermi_v1")
+        if d.id == "dpb" and parameterization != "legacy_fermi"
+        else d
+        for d in registry.descriptions()
+    )
 
 
-def _registry_etag() -> str:
-    body = _registry_response().model_dump_json(exclude_none=True)
+def _registry_etag(parameterization: DpbParameterization = "legacy_fermi") -> str:
+    body = _registry_response(parameterization).model_dump_json(exclude_none=True)
     return f'"{sha256(body.encode()).hexdigest()[:32]}"'
 
 
@@ -341,11 +348,12 @@ def _registry_example() -> dict[str, Any]:
 )
 async def get_models(
     response: Response,
+    parameterization: DpbParameterization = "legacy_fermi",
     if_none_match: Annotated[str | None, Header()] = None,
 ) -> ModelsResponse | Response:
-    etag = _registry_etag()
+    etag = _registry_etag(parameterization)
     headers = {"Cache-Control": CACHE_CONTROL, "ETag": etag}
     if if_none_match is not None and (if_none_match.strip() == "*" or etag in if_none_match):
         return Response(status_code=304, headers=headers)
     response.headers.update(headers)
-    return _registry_response()
+    return _registry_response(parameterization)

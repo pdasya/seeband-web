@@ -124,6 +124,25 @@ describe("fitFailureText", () => {
     expect(fitFailureText(failed("anything"))).not.toContain("SECRET");
   });
 
+  test("a rejected Fermi energy gives the carrier-specific reason for a failed fit", () => {
+    expect(
+      fitFailureText({
+        status: "failed",
+        failure: {
+          code: "validation_error",
+          message: "Invalid request",
+          details: [
+            {
+              location: ["body"],
+              code: "fermi_energy_carrier_mismatch",
+              message: "details from server",
+            },
+          ],
+        },
+      }),
+    ).toContain("Adjust E_F or switch p/n");
+  });
+
   test("a fit that ended with no result gives the API's fixed reason, and nothing else", () => {
     expect(
       fitFailureText(

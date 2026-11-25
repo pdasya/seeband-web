@@ -4,6 +4,67 @@
  * Add new text here rather than in a component, so that U3 can move it all at once.
  */
 export const STRINGS = {
+  explicitDpb: {
+    unoccupiedBands:
+      "For VB + VB, set E_F below the higher valence-band edge. For CB + CB, set E_F above the lower conduction-band edge.",
+    carrierMismatch:
+      "The chosen E_F gives the opposite carrier excess. Adjust E_F or switch p/n.",
+    fermiRepresentation: "Explicit bands · Fermi energy",
+    carrierType: "Carrier type",
+    carrierTypes: { p: "p: holes", n: "n: electrons" },
+    carrierAbout: "About carrier type",
+    carrierTooltip:
+      "p means excess holes; n means excess electrons. E_F sets the zero-temperature state. Intrinsic states have equal electron and hole populations.",
+    fermiHint:
+      "Set E_F relative to Band 1 in Parameters. For VB + CB, E_F may lie inside the band gap.",
+    fermiIdentity: (configuration: string, carrier?: string) =>
+      `Parameterization: explicit_fermi_v1; configuration: ${configuration}${carrier === undefined ? "" : `; carrier type: ${carrier}`}`,
+
+    representation: "Explicit bands · fixed carrier excess",
+    representationLabel: "Representation",
+    densityMeaning: "Signed net electron density n − p",
+    verifiedMethod: "Explicit bands use the verified joint method.",
+    configuration: "Band configuration",
+    bandLabel: (band: number, kind: string) => `Band ${band} (${kind})`,
+    configurations: { vb_vb: "VB + VB", vb_cb: "VB + CB", cb_cb: "CB + CB" },
+    density: "Net electron density n − p (m⁻³)",
+    densityMagnitude: "Carrier excess magnitude |n − p| (m⁻³)",
+    densityAbout: "About carrier excess",
+    polarity: "Carrier excess polarity",
+    p: "p",
+    n: "n",
+    polarities: { p: "p: excess holes", n: "n: excess electrons" },
+    densityTooltip:
+      "The signed net electron density n − p must remain fixed across the temperature sweep. The separate electron density n and hole density p may each vary with temperature. Choose p for excess holes (n − p < 0), or n for excess electrons (n − p > 0), then enter the nonnegative magnitude |n − p| in m⁻³ (per cubic metre). VB + CB permits either polarity and zero, where n = p. VB + VB requires p and CB + CB requires n; both same-type configurations require a positive magnitude.",
+    branchDensityHints: {
+      vb_vb:
+        "VB + VB requires p: n − p = −|n − p|. The branch selects this sign and preserves the magnitude.",
+      vb_cb: "VB + CB permits p or n, including intrinsic zero (n = p).",
+      cb_cb:
+        "CB + CB requires n: n − p = +|n − p|. The branch selects this sign and preserves the magnitude.",
+    },
+    densityRequired:
+      "Enter a positive concentration for two bands of the same type.",
+    invalidMagnitude: "Enter a finite, nonnegative carrier excess magnitude.",
+    intrinsic: (polarity: "p" | "n") =>
+      `Intrinsic: n = p (n − p = 0 m⁻³). Next nonzero excess: ${polarity === "p" ? "holes (p)" : "electrons (n)"}.`,
+    zeroSameType:
+      "n − p = 0 m⁻³; a positive magnitude is required for this configuration.",
+    signedDensity: (polarity: "p" | "n", magnitude: string) =>
+      `n − p = ${polarity === "p" ? "−" : "+"}${magnitude} m⁻³ (${polarity})`,
+    migrationTitle: "Convert historical DPB session",
+    migrationHint:
+      "Confirm the positive single-valley mass and both valley multiplicities, excluding spin. Saved multiplicities may have been defaults. Original inputs and fit results are preserved; new fits use fresh bounds.",
+    mass: "Single-valley |m₁| (mₑ)",
+    confirm: "Confirm scale and convert",
+    cancel: "Cancel",
+    migrationFailed:
+      "Conversion failed. Check the legacy mass ratio and absolute scale, then retry.",
+    legacyResult:
+      "Original historical session and fit (legacy parameterization)",
+    identity: (configuration: string, density: number) =>
+      `Parameterization: explicit_density_v1; configuration: ${configuration}; net electron density: ${density} m⁻³`,
+  },
   appName: "SeeBand",
   // The link that the header's logo and name make, for a screen reader.
   appHomeLabel: "SeeBand, overview",
@@ -30,6 +91,8 @@ export const STRINGS = {
     // How a parameter is written. Any other shows its name, so a new one needs no change here.
     symbols: {
       band_mass: "m",
+      mass_ratio: "m₂/m₁",
+      band_offset_k: "Δ",
       m_eff: "m₂/m₁",
       band_gap: "E_g",
       fermi_energy: "E_F",
@@ -57,6 +120,17 @@ export const STRINGS = {
       "The lower bound must be below the upper. The last valid bounds stay in use.",
     outOfRange: (minimum: string, maximum: string) =>
       `enter a number from ${minimum} to ${maximum}. The last valid value stays in use.`,
+    explorationDomain: (condition: string) =>
+      `Manual exploration: ${condition}.`,
+    outsideCarrierDomain:
+      "This value is outside the carrier range shown above. The last valid value stays in use.",
+    noDomainValues:
+      "No value is valid with the other current parameters. Adjust E_F or Δ to restore a valid state.",
+    explorationLoadFailed:
+      "Manual limits could not be loaded. Affected controls are unavailable until retry succeeds.",
+    retryExploration: "Retry limits",
+    noExplorationRange:
+      "No slider values in the saved range satisfy this condition. Edit the value or the other parameters to recover.",
   },
   model: {
     title: "Model",
@@ -72,9 +146,10 @@ export const STRINGS = {
     },
     disabledReason: "not available until a known error is fixed.",
     disabledReasons: {},
-    degeneracyHint: "Band degeneracies are not fitted.",
+    degeneracyHint:
+      "Valley multiplicities are positive integers and are not fitted.",
     degeneracyInvalid:
-      "N₁ and N₂ must be above 0. The last valid value stays in use.",
+      "N₁ and N₂ must be positive integers. The last valid value stays in use.",
     range: "Fit range, K",
     rangeMin: "Lower bound, K",
     rangeMax: "Upper bound, K",
@@ -123,6 +198,8 @@ export const STRINGS = {
       "The curve of a run could not be calculated, so its RMSE and curve are missing.",
   },
   session: {
+    archivedDpb:
+      "Historical DPB settings are archived with the original session. Switching to DPB starts fresh explicit bands; the active SPB settings and result stay in use. To convert a historical DPB state, save that state with DPB selected in the original application, then open that file here.",
     open: "Open session",
     openHint:
       "Load a session file saved with Session to file, in place of this session",
@@ -422,12 +499,15 @@ export const STRINGS = {
       band_1_energy_k: "Band 1",
       band_2_energy_k: "Band 2",
       fermi_energy_k: "E_F",
+      fermi_energy_lower_k: "E_F lower endpoint",
+      fermi_energy_upper_k: "E_F upper endpoint",
     },
     wavevectorAxis: "k",
     diagramDescription: "Local parabolic band energies against wavevector",
     diagramShape: "The diagram shows the shape of the bands; k has no scale.",
     diagramReferenceMass:
       "The curvature scale is illustrative. Without Hall data the size of band 1's mass is not set by the data, so it is assumed to be mₑ.",
+    wavevectorWithUnit: (unit: string) => `k (${unit})`,
     axes: {
       seebeck: "S, µV/K",
       resistivity: "ρ, µΩ·m",
@@ -468,6 +548,8 @@ export const STRINGS = {
     bandEdge: "band edge",
     band1Top: "band 1 top",
     band2Bottom: "band 2 bottom (E_g)",
+    band1Edge: "band 1 edge",
+    band2Edge: "band 2 edge (Δ)",
     bandsDescription:
       "Chart of the total S and the contribution of each band against temperature",
     totalS: "Total S",
