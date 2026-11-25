@@ -41,7 +41,7 @@ To run everything as it runs on the server, with Docker: `docker compose -f depl
 pnpm check
 ```
 
-GitHub Actions runs the same checks on every pull request and on pushes to `main`.
+GitHub Actions runs the same checks on every pull request. To run the extended solver regressions locally, use `uv run pytest -m extended`. Pushes to `main` also run those cases. To request them on a PR, include `[x] Run extended core regressions` in its description before the next CI run.
 
 To work on the client without the API, run `pnpm mock`. See [`packages/api-client`](packages/api-client/README.md).
 

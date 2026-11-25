@@ -75,10 +75,20 @@ def _cases() -> list[tuple[str, str, str | None, str, int, float]]:
     for description in registry.descriptions():
         for fit_mode in description.fit_modes:
             for scattering in fit_mode.scattering or (None,):
+                names = {spec.name for spec in fit_mode.parameters}
+                # Some variations affect another model only. Compare each effective input once.
+                variations = []
+                seen = set()
+                for index, values in enumerate(_VARIATIONS):
+                    parameters = default_start(fit_mode) | {
+                        name: value for name, value in values.items() if name in names
+                    }
+                    effective = tuple(sorted(parameters.items()))
+                    if effective not in seen:
+                        seen.add(effective)
+                        variations.append(index)
                 for kind in fit_mode.curve_kinds:
-                    for variation, degeneracy in itertools.product(
-                        range(len(_VARIATIONS)), (1.0, 3.0)
-                    ):
+                    for variation, degeneracy in itertools.product(variations, (1.0, 3.0)):
                         if degeneracy != 1.0 and fit_mode.degeneracy is None:
                             continue
                         cases.append(
@@ -100,7 +110,6 @@ def test_the_comparison_covers_every_mode_scattering_and_kind() -> None:
         for kind in fit_mode.curve_kinds
     }
     assert covered == expected
-    assert len(CASES) > 500
 
 
 @pytest.mark.filterwarnings("ignore")
@@ -202,7 +211,7 @@ def _fit_outcome(model: Any, request: FitRequest) -> Any:
 
 
 # Both fit algorithms: the legacy one of the desktop, and the verified one, the default. A verified
-# dpb_s_rho fit is expensive, so the reuse comparison exercises it with failing solves only.
+# dpb_s_rho fit is expensive, so its full-budget failure comparison is opt-in extended coverage.
 _FITS = [
     ("dpb_s", None, "legacy-sequential-v1"),
     ("dpb_s_rho", "acPh", "legacy-sequential-v1"),
@@ -229,7 +238,15 @@ def test_a_fit_is_the_same_to_the_bit(
     assert now == before
 
 
-@pytest.mark.parametrize(("mode_id", "scattering", "algorithm"), _FITS)
+@pytest.mark.parametrize(
+    ("mode_id", "scattering", "algorithm"),
+    [
+        pytest.param(*fit, marks=pytest.mark.extended)
+        if fit == ("dpb_s_rho", "acPh", "verified-sequential-v2")
+        else fit
+        for fit in _FITS
+    ],
+)
 def test_a_fit_whose_solves_fail_on_the_way_is_the_same_to_the_bit(
     monkeypatch: pytest.MonkeyPatch, mode_id: str, scattering: str | None, algorithm: str
 ) -> None:

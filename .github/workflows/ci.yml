@@ -61,9 +61,17 @@ jobs:
           - suite: golden
             path: packages/seeband_core/tests/test_golden_regression.py
             exclude: ""
+          - suite: core-fits
+            path: >-
+              packages/seeband_core/tests/test_verified_fit.py
+              packages/seeband_core/tests/test_band_models.py
+            exclude: ""
           - suite: core
             path: packages/seeband_core/tests
-            exclude: --ignore=packages/seeband_core/tests/test_golden_regression.py
+            exclude: >-
+              --ignore=packages/seeband_core/tests/test_golden_regression.py
+              --ignore=packages/seeband_core/tests/test_verified_fit.py
+              --ignore=packages/seeband_core/tests/test_band_models.py
           - suite: api
             path: apps/api/tests
             exclude: ""
@@ -73,10 +81,16 @@ jobs:
         with:
           enable-cache: true
       - run: uv sync --locked
-      - name: Pytest with test names and long-running stacks
+      # Keep fatal-signal diagnostics and the job timeout. Timed stack dumps are implicated in #285.
+      - name: Pytest with test names and durations
         run: >-
           uv run pytest ${{ matrix.path }} ${{ matrix.exclude }} -vv -x --tb=short --durations=20
-          -o faulthandler_timeout=120
+
+      - name: Extended core regressions
+        if: >-
+          matrix.suite == 'golden' &&
+          (github.event_name == 'push' || contains(github.event.pull_request.body, '[x] Run extended core regressions'))
+        run: uv run pytest packages/seeband_core/tests -m extended -vv -x --tb=short --durations=3
 
   # Keep the protected check name, and require every independent Python job.
   python:
