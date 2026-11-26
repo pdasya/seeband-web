@@ -286,12 +286,10 @@ def explicit_curves(
     if not isfinite(amplitude) or amplitude <= 0 or not isfinite(relative) or relative < 0:
         raise ValueError("Conductivity amplitude must be positive and relative weight nonnegative")
     weights = np.array([1.0, n2 / n1 * relative / parameters["mass_ratio"]])
-    # Legacy dis uses F*T, acoustic uses A, ionized uses A*(T/300)^3.
-    factor = (
-        t
-        if scattering == "dis"
-        else ((t / 300) ** 3 if scattering == "ionized" else np.ones_like(t))
-    )
+    # The temperature law of sigma comes from the scattering law, as in transport.py: A for
+    # acoustic, A*(T/300)^3 for ionized. Legacy dis is F*T, not normalized at 300 K.
+    power = law.conductivity_temperature_power
+    factor = t**power if scattering == "dis" else (t / 300.0) ** power
     log_f, s_bands, l_bands, log_hall = [], [], [], []
     for i in range(2):
         eta = signs[i] * (mu - edges[i]) / t
