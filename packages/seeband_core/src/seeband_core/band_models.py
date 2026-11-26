@@ -317,7 +317,12 @@ class _BandModel:
         active = fit_mode.parameters_for(scattering)
         specs = {p.name: p for p in fit_mode.parameters}
         specs.update((p.name, p) for p in active)
-        return dataclasses.replace(fit_mode, parameters=tuple(specs.values())), scattering
+        # The parameters now hold the overrides of this scattering, so drop them: applied again,
+        # they would make `parameters` mean base or merged specs depending on the caller.
+        merged = dataclasses.replace(
+            fit_mode, parameters=tuple(specs.values()), parameter_overrides=()
+        )
+        return merged, scattering
 
     def _check_fit(self, request: FitRequest, fit_mode: FitMode) -> None:
         specs = {spec.name: spec for spec in fit_mode.parameters}
