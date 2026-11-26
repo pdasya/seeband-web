@@ -8,13 +8,9 @@ export const STRINGS = {
     unoccupiedBands:
       "For VB + VB, set E_F below the higher valence-band edge. For CB + CB, set E_F above the lower conduction-band edge.",
     carrierMismatch:
-      "The chosen E_F gives the opposite carrier excess. Adjust E_F or switch p/n.",
+      "The chosen E_F gives the opposite carrier excess to the session's carrier type. Adjust E_F.",
     fermiRepresentation: "Explicit bands · Fermi energy",
     carrierType: "Carrier type",
-    carrierTypes: { p: "p: holes", n: "n: electrons" },
-    carrierAbout: "About carrier type",
-    carrierTooltip:
-      "p means excess holes; n means excess electrons. E_F sets the zero-temperature state. Intrinsic states have equal electron and hole populations.",
     fermiHint:
       "Set E_F relative to Band 1 in Parameters. For VB + CB, E_F may lie inside the band gap.",
     fermiIdentity: (configuration: string, carrier?: string) =>
@@ -128,17 +124,6 @@ export const STRINGS = {
       "The lower bound must be below the upper. The last valid bounds stay in use.",
     outOfRange: (minimum: string, maximum: string) =>
       `enter a number from ${minimum} to ${maximum}. The last valid value stays in use.`,
-    explorationDomain: (condition: string) =>
-      `Manual exploration: ${condition}.`,
-    outsideCarrierDomain:
-      "This value is outside the carrier range shown above. The last valid value stays in use.",
-    noDomainValues:
-      "No value is valid with the other current parameters. Adjust E_F or Δ to restore a valid state.",
-    explorationLoadFailed:
-      "Manual limits could not be loaded. Affected controls are unavailable until retry succeeds.",
-    retryExploration: "Retry limits",
-    noExplorationRange:
-      "No slider values in the saved range satisfy this condition. Edit the value or the other parameters to recover.",
   },
   model: {
     title: "Model",

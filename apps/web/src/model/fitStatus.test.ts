@@ -140,7 +140,7 @@ describe("fitFailureText", () => {
           ],
         },
       }),
-    ).toContain("Adjust E_F or switch p/n");
+    ).toContain("Adjust E_F.");
   });
 
   test("a fit that ended with no result gives the API's fixed reason, and nothing else", () => {
