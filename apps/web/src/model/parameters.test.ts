@@ -86,6 +86,7 @@ describe("parameterValues", () => {
       "band_mass",
       "fermi_energy",
       "A",
+      "C",
       "F",
     ]);
     expect(values.band_mass).toBe(-1);
@@ -333,3 +334,80 @@ function scaledParameter() {
     display_range: { minimum: 0, maximum: 3, step: 0.01, default: 1 },
   };
 }
+
+test("virgin Fermi starts follow configuration, offset and mode without becoming saved edits", () => {
+  const selection = {
+    parameterization: "explicit_fermi_v1" as const,
+    bandConfiguration: "vb_cb" as const,
+  };
+  for (const id of ["dpb_s", "dpb_s_rho", "dpb_s_rho_rh"]) {
+    const description = mode(id);
+    const saved = { band_gap: 700 };
+    expect(parameterValues(description, saved, selection).fermi_energy).toBe(
+      -100,
+    );
+    expect(
+      parameterValues(description, saved, {
+        ...selection,
+        bandConfiguration: "cb_cb",
+      }).fermi_energy,
+    ).toBe(100);
+    expect(
+      parameterValues(description, saved, {
+        ...selection,
+        bandConfiguration: "vb_vb",
+      }).fermi_energy,
+    ).toBe(600);
+    expect(saved).toEqual({ band_gap: 700 });
+  }
+  expect(
+    parameterValues(mode("dpb_s"), { band_gap: -700 }, selection).fermi_energy,
+  ).toBe(-800);
+  expect(
+    parameterValues(
+      mode("dpb_s"),
+      { band_gap: -700, fermi_energy: -40 },
+      selection,
+    ).fermi_energy,
+  ).toBe(-40);
+  expect(
+    parameterValues(mode("dpb_s"), undefined, {
+      ...selection,
+      parameterization: "explicit_density_v1",
+    }).fermi_energy,
+  ).toBe(-100);
+});
+
+test("scattering overrides add editable structural inputs without changing other laws", () => {
+  const base = mode("dpb_s_rho");
+  const b = parameter("dpb_s_rho", "B");
+  const structural = {
+    ...b,
+    role: "fixed" as const,
+    bounds_editable: false,
+    fit_bounds: null,
+  };
+  const description = {
+    ...base,
+    parameter_overrides: { ionized: [structural] },
+  };
+  expect(
+    visibleParameters(description, "ionized").find((p) => p.name === "B")?.role,
+  ).toBe("fixed");
+  expect(
+    editableParameters(description, "ionized").some(
+      ({ parameter }) => parameter.name === "B",
+    ),
+  ).toBe(false);
+  expect(
+    visibleParameters(description, "acPh").find((p) => p.name === "B")?.role,
+  ).toBe("fitted");
+  const sOnly = {
+    ...mode("dpb_s"),
+    parameter_overrides: { ionized: [structural] },
+  };
+  expect(visibleParameters(sOnly, "ionized").some((p) => p.name === "B")).toBe(
+    true,
+  );
+  expect(parameterValues(sOnly, { B: 4 }, { scattering: "ionized" }).B).toBe(4);
+});

@@ -1,11 +1,10 @@
 import { rmseIssueText } from "@/model/calcIssues";
-import { useQuery } from "@tanstack/react-query";
 import { DownloadIcon, InfoIcon, PrinterIcon } from "lucide-react";
 import { useId, useMemo, type ReactNode } from "react";
 import { Link } from "react-router";
 import { limitedRanges } from "@/model/interpolatedRanges";
 
-import { modelsQuery } from "@/api/queries";
+import { useModels } from "@/api/queries";
 import { TransportChart } from "@/charts/TransportChart";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -163,7 +162,7 @@ function MoreGraph({
   const parameters = useSessionStore((state) => state.parameters);
   const fit = useSessionStore((state) => state.fit);
   const bandGapK = bandGapForTab(tab, mode, parameters);
-  const { data: models } = useQuery(modelsQuery);
+  const { data: models } = useModels();
   const energy = models?.energy_display ?? ENERGY_IN_K;
   const titleId = useId();
   // The total of S of the bands, and the points of σ, come with the measured curves.
@@ -309,7 +308,7 @@ function NoResult({ message }: { message: string }) {
 
 /** The last fit: what was fitted, how well, and what is known to be wrong with it. */
 export function ResultsPage() {
-  const { data: models, isPending, isError } = useQuery(modelsQuery);
+  const { data: models, isPending, isError } = useModels();
   const selection = useSessionStore((state) => state.selection);
   const parameters = useSessionStore((state) => state.parameters);
   const data = useSessionStore((state) => state.data);

@@ -3,6 +3,7 @@ import { quantityCurve } from "@/model/chartTabs";
 import {
   coreToDisplay,
   type FitBounds,
+  type ParameterSelection,
   parameterSymbol,
   parameterValues,
   shownValue,
@@ -117,8 +118,9 @@ export function parameterRows(
   custom?: Readonly<Record<string, FitBounds>>,
   /** Fitted parameters the fit kept at their values, which no bound sets. */
   held: readonly string[] = [],
+  selection?: ParameterSelection,
 ): ParameterRow[] {
-  const values = parameterValues(mode, saved);
+  const values = parameterValues(mode, saved, { ...selection, scattering });
   // A failed fit has fitted nothing, so it has reached no bound.
   const atBounds =
     fit.status === "done" && fit.result.status !== "failed"
@@ -227,7 +229,8 @@ export function resultRows(
   selection: Pick<
     Selection,
     "scattering" | "band1Degeneracy" | "band2Degeneracy"
-  >,
+  > &
+    ParameterSelection,
   saved: Readonly<Record<string, number>> | undefined,
   fit: FitState,
   custom?: Readonly<Record<string, FitBounds>>,
@@ -242,6 +245,7 @@ export function resultRows(
     fit,
     custom,
     held,
+    selection,
   ).map((row, at) => {
     const parameter = inUse[at];
     const kept = row.status.kind === "fixed" || row.status.kind === "held";

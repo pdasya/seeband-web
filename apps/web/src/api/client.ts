@@ -51,10 +51,17 @@ export class ApiClient {
     );
   }
 
-  getModels(signal?: AbortSignal) {
+  getModels(
+    signal?: AbortSignal,
+    parameterization?: NonNullable<
+      operations["get_models"]["parameters"]["query"]
+    >["parameterization"],
+  ) {
     return this.request<ModelsResponse>(
       "GET",
-      "/api/models",
+      parameterization
+        ? `/api/models?parameterization=${parameterization}`
+        : "/api/models",
       undefined,
       signal,
     );
@@ -62,6 +69,15 @@ export class ApiClient {
 
   getDemo(signal?: AbortSignal) {
     return this.request<DemoResponse>("GET", "/api/demo", undefined, signal);
+  }
+
+  migrateDpb(body: Schemas["LegacyDpbPoint"], signal?: AbortSignal) {
+    return this.request<Schemas["ConvertedDpbPoint"]>(
+      "POST",
+      "/api/dpb/migrate",
+      body,
+      signal,
+    );
   }
 
   postCalc(body: CalcRequest, signal?: AbortSignal) {

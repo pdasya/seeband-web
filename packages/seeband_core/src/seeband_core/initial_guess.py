@@ -65,7 +65,7 @@ def single_band_guess(
             return ionized_transport(at, {"fermi_energy": ef, "band_mass": sign}, "spb_s")[
                 "seebeck"
             ]
-        if scattering not in (None, "acPh", "dis"):
+        if scattering not in (None, "acPh", "dis", "acPhDis"):
             raise ValueError("Unknown scattering mechanism")
         return math_module.spb_see_vs_temp(at, ef, sign)
 

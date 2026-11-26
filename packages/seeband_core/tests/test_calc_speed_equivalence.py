@@ -14,7 +14,7 @@ from typing import Any
 
 import numpy as np
 import pytest
-from seeband_core import band_models, math_module
+from seeband_core import band_models, math_module, verified_fit
 from seeband_core.data_parser import parse_table
 from seeband_core.model_catalog import registry
 from seeband_core.model_interface import CurveRequest, FitRequest
@@ -70,15 +70,30 @@ _VARIATIONS: list[dict[str, float]] = [
 ]
 
 
+def _variations(fit_mode: Any) -> list[int]:
+    """The variations that give the mode a distinct input. Some affect another model only."""
+    names = {spec.name for spec in fit_mode.parameters}
+    variations = []
+    seen = set()
+    for index, values in enumerate(_VARIATIONS):
+        parameters = default_start(fit_mode) | {
+            name: value for name, value in values.items() if name in names
+        }
+        effective = tuple(sorted(parameters.items()))
+        if effective not in seen:
+            seen.add(effective)
+            variations.append(index)
+    return variations
+
+
 def _cases() -> list[tuple[str, str, str | None, str, int, float]]:
     cases = []
     for description in registry.descriptions():
         for fit_mode in description.fit_modes:
+            variations = _variations(fit_mode)
             for scattering in fit_mode.scattering or (None,):
                 for kind in fit_mode.curve_kinds:
-                    for variation, degeneracy in itertools.product(
-                        range(len(_VARIATIONS)), (1.0, 3.0)
-                    ):
+                    for variation, degeneracy in itertools.product(variations, (1.0, 3.0)):
                         if degeneracy != 1.0 and fit_mode.degeneracy is None:
                             continue
                         cases.append(
@@ -100,7 +115,20 @@ def test_the_comparison_covers_every_mode_scattering_and_kind() -> None:
         for kind in fit_mode.curve_kinds
     }
     assert covered == expected
-    assert len(CASES) > 500
+
+
+def test_each_variation_that_touches_a_mode_changes_its_input() -> None:
+    # Dropping duplicates must not drop a branch: if a default moves onto a variation's value, the
+    # variation stops testing anything, and this fails so that the variations can be updated.
+    for description in registry.descriptions():
+        for fit_mode in description.fit_modes:
+            names = {spec.name for spec in fit_mode.parameters}
+            touching = [
+                index
+                for index, values in enumerate(_VARIATIONS)
+                if index == 0 or names & values.keys()
+            ]
+            assert _variations(fit_mode) == touching, fit_mode.id
 
 
 @pytest.mark.filterwarnings("ignore")
@@ -202,7 +230,8 @@ def _fit_outcome(model: Any, request: FitRequest) -> Any:
 
 
 # Both fit algorithms: the legacy one of the desktop, and the verified one, the default. A verified
-# dpb_s_rho fit is expensive, so the reuse comparison exercises it with failing solves only.
+# dpb_s_rho fit is expensive: the routine run compares it with a short evaluation budget, and the
+# full-budget failure comparison is opt-in extended coverage.
 _FITS = [
     ("dpb_s", None, "legacy-sequential-v1"),
     ("dpb_s_rho", "acPh", "legacy-sequential-v1"),
@@ -211,15 +240,41 @@ _FITS = [
     ("dpb_s_rho", "acPh", "verified-sequential-v2"),
     ("spb_s_rho", "acPh", "verified-sequential-v2"),
 ]
+_VERIFIED_DPB_RHO = ("dpb_s_rho", "acPh", "verified-sequential-v2")
+# Far below the verified fit's own budget, so that the fit stops on it within seconds.
+_SHORT_BUDGET = 600
+
+
+def _fit_cases(*, full_budget_extended: bool) -> list[Any]:
+    """Each fit with no budget override; the verified dpb_s_rho fit with the short budget, and with
+    its full budget as an extended case if asked."""
+    cases: list[Any] = []
+    for fit in _FITS:
+        if fit != _VERIFIED_DPB_RHO:
+            cases.append((*fit, None))
+            continue
+        cases.append((*fit, _SHORT_BUDGET))
+        if full_budget_extended:
+            cases.append(pytest.param(*fit, None, marks=pytest.mark.extended))
+    return cases
+
+
+def _limit_evaluations(monkeypatch: pytest.MonkeyPatch, budget: int | None) -> None:
+    if budget is not None:
+        monkeypatch.setattr(verified_fit, "_MAX_EVALUATIONS", budget)
 
 
 @pytest.mark.parametrize(
-    ("mode_id", "scattering", "algorithm"),
-    [fit for fit in _FITS if fit != ("dpb_s_rho", "acPh", "verified-sequential-v2")],
+    ("mode_id", "scattering", "algorithm", "budget"), _fit_cases(full_budget_extended=False)
 )
 def test_a_fit_is_the_same_to_the_bit(
-    monkeypatch: pytest.MonkeyPatch, mode_id: str, scattering: str | None, algorithm: str
+    monkeypatch: pytest.MonkeyPatch,
+    mode_id: str,
+    scattering: str | None,
+    algorithm: str,
+    budget: int | None,
 ) -> None:
+    _limit_evaluations(monkeypatch, budget)
     model, request = _fit_request(mode_id, scattering, algorithm)
 
     with _as_before(monkeypatch):
@@ -229,9 +284,15 @@ def test_a_fit_is_the_same_to_the_bit(
     assert now == before
 
 
-@pytest.mark.parametrize(("mode_id", "scattering", "algorithm"), _FITS)
+@pytest.mark.parametrize(
+    ("mode_id", "scattering", "algorithm", "budget"), _fit_cases(full_budget_extended=True)
+)
 def test_a_fit_whose_solves_fail_on_the_way_is_the_same_to_the_bit(
-    monkeypatch: pytest.MonkeyPatch, mode_id: str, scattering: str | None, algorithm: str
+    monkeypatch: pytest.MonkeyPatch,
+    mode_id: str,
+    scattering: str | None,
+    algorithm: str,
+    budget: int | None,
 ) -> None:
     """Every fourth set of parameters the fit tries has no root.
 
@@ -252,6 +313,7 @@ def test_a_fit_whose_solves_fail_on_the_way_is_the_same_to_the_bit(
         return solve(temp_array, mass, fermi_energy, *rest)
 
     monkeypatch.setattr(math_module, "_solve_chemical_potential", failing)
+    _limit_evaluations(monkeypatch, budget)
     model, request = _fit_request(mode_id, scattering, algorithm)
 
     with _as_before(monkeypatch):

@@ -1,11 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { limitedRanges } from "@/model/interpolatedRanges";
 
 import { apiClient, type CalcRequest, type CalcResponse } from "@/api/client";
 import { ApiError } from "@/api/errors";
 import { APP_VERSION, withCommit } from "@/lib/version";
-import { modelsQuery } from "@/api/queries";
+import { useModels } from "@/api/queries";
 import { strToU8, zipSync } from "fflate";
 
 import { DERIVED_KINDS_ASKED, ENERGY_IN_K } from "@/model/chartTabs";
@@ -21,7 +20,7 @@ import {
 } from "@/model/exportFiles";
 import { calcRequest, derivedRequest } from "@/model/liveCurves";
 import { retriesByItself } from "@/model/latestOnly";
-import { runLines } from "@/model/runRecord";
+import { recordedHolds, runLines } from "@/model/runRecord";
 import { fitRequest } from "@/model/fitRequest";
 import { sessionFile } from "@/session/sessionFile";
 import { hasFittedValues, resultIssues } from "@/model/resultSummary";
@@ -104,7 +103,7 @@ function preFitState(state: SessionState, modeId: string): SessionState {
  * server for the curves it needs, as the client calculates nothing.
  */
 export function useExport() {
-  const { data: models } = useQuery(modelsQuery);
+  const { data: models } = useModels();
   const energy = models?.energy_display ?? ENERGY_IN_K;
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -273,7 +272,7 @@ export function useExport() {
             state.selection,
             state.parameters[mode.id],
             state.fit,
-            state.held[mode.id],
+            recordedHolds(state, mode.id),
           ),
           type,
         );
@@ -325,7 +324,7 @@ export function useExport() {
               state.selection,
               state.parameters[mode.id],
               state.fit,
-              state.held[mode.id],
+              recordedHolds(state, mode.id),
             ),
             graphs,
             energy,

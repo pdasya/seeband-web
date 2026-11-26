@@ -105,7 +105,7 @@ test("a demo that comes before the model descriptions still opens its fit", asyn
 }) => {
   await serveModels(page);
   const gate = hold();
-  await page.route("**/api/models", async (route) => {
+  await page.route(/\/api\/models(?:\?.*)?$/, async (route) => {
     await gate.held;
     await route.fulfill({ json: MODELS });
   });
@@ -339,7 +339,7 @@ test("with no model descriptions it says the demo failed, not that it is loading
   page,
 }) => {
   await serveModels(page);
-  await page.route("**/api/models", (route) =>
+  await page.route(/\/api\/models(?:\?.*)?$/, (route) =>
     route.fulfill({
       status: 422,
       json: { code: "calculation_failed", message: "x", details: [] },

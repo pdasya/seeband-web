@@ -8,7 +8,7 @@ from seeband_core.model_scales import default_start
 
 
 @pytest.mark.parametrize("mode_id", ["spb_s_rho", "dpb_s_rho", "dpb_s_rho_rh"])
-@pytest.mark.parametrize("scattering", ["acPh", "dis", "ionized"])
+@pytest.mark.parametrize("scattering", ["acPh", "dis", "acPhDis", "ionized"])
 def test_conductivity_is_inverse_resistivity(mode_id: str, scattering: str) -> None:
     model = registry.get(mode_id.partition("_")[0])
     mode = model.describe().fit_mode(mode_id)

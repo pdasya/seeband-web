@@ -15,6 +15,16 @@ test.skip(
   "Needs a real API, through SEEBAND_API_TARGET",
 );
 
+/** Historical neural parity deliberately asks the same real server for its legacy registry. */
+async function useLegacyRegistry(page: Page) {
+  await page.route(/\/api\/models(?:\?.*)?$/, async (route) => {
+    const url = new URL(route.request().url());
+    url.searchParams.delete("parameterization");
+    const response = await route.fetch({ url: url.toString() });
+    await route.fulfill({ response });
+  });
+}
+
 const slots = (page: Page) => page.locator("[data-file-slot]");
 
 const EXAMPLES = fileURLToPath(
@@ -291,8 +301,24 @@ test("the real descriptions fill the parameters", async ({ page }) => {
   await page.goto("/fit");
 
   await expect(
+    page.getByRole("textbox", { name: "m₁", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("textbox", { name: "m₂/m₁", exact: true }),
+  ).toBeVisible();
+  await expect(
     page.getByRole("textbox", { name: "EF", exact: true }),
-  ).toHaveValue("-0,01");
+  ).toBeVisible();
+  const offset = page.getByRole("slider", { name: "Δ", exact: true });
+  expect(
+    Number(await offset.getAttribute("aria-valuemin")),
+  ).toBeLessThanOrEqual(-3);
+  expect(
+    Number(await offset.getAttribute("aria-valuemax")),
+  ).toBeGreaterThanOrEqual(3);
+  await expect(
+    page.getByLabel("Band configuration", { exact: false }),
+  ).toHaveValue("vb_cb");
   await page.getByRole("radio", { name: "SPB" }).click();
   await expect(
     page.getByRole("slider", { name: "m", exact: true }),
@@ -310,7 +336,7 @@ test("an example through the real API draws the curve, with its RMSE", async ({
   await expect(page.getByRole("alert")).toHaveCount(0);
   const before = await page.getByText(/^[\d,]+ µV\/K$/).textContent();
 
-  await page.getByRole("slider", { name: "EF" }).press("PageUp");
+  await page.getByRole("slider", { name: "Δ" }).press("PageUp");
 
   await expect(page.getByText(/^[\d,]+ µV\/K$/)).not.toHaveText(before ?? "");
 });
@@ -337,12 +363,12 @@ test("a zero in resistivity does not stop the real API from answering", async ({
 
 test("the charts draw real curves through the real API", async ({ page }) => {
   await page.goto("/fit");
-  await expect(page.getByRole("slider", { name: "EF" })).toBeVisible();
+  await expect(page.getByRole("slider", { name: "Δ" })).toBeVisible();
   const lines = chart(page).locator(".scatterlayer .trace path.js-line");
 
   await show(page, "Chemical potential μ(T)");
   await expect(lines).toHaveCount(1);
-  await expect(chart(page).getByText("band 2 bottom (Eg)")).toBeVisible();
+  await expect(chart(page).getByText("band 2 edge (Δ)")).toBeVisible();
 
   await show(page, "Band contributions");
   await expect(lines).toHaveCount(3);
@@ -369,6 +395,7 @@ for (const [example, mass, gap, fermi] of [
   test(`the net's start values for ${example} match the desktop`, async ({
     page,
   }) => {
+    await useLegacyRegistry(page);
     await page.goto("/fit");
     await loadExample(page, `${example}_see.txt`);
     const field = (name: string) =>
@@ -388,6 +415,7 @@ for (const [example, mass, gap, fermi] of [
 test("02_SiP has no net for its span, and keeps the desktop's values", async ({
   page,
 }) => {
+  await useLegacyRegistry(page);
   await page.goto("/fit");
   await loadExample(page, "02_SiP_see.txt");
 
@@ -397,29 +425,50 @@ test("02_SiP has no net for its span, and keeps the desktop's values", async ({
   ).toHaveValue("0,09");
 });
 
-test("the real API draws the sketch of the bands, and it follows the values", async ({
+test("the real API draws physical explicit bands and follows the signed offset", async ({
   page,
 }) => {
   await page.goto("/fit");
-  await expect(page.getByRole("slider", { name: "EF" })).toBeVisible();
-  // The last chart shows it from the start.
-  await expect(page.getByText(/^Caution: This is a sketch/)).toBeVisible();
+  await expect(page.getByRole("slider", { name: "Δ" })).toBeVisible();
+  await expect(page.getByText(/^Caution: This is a sketch/)).toHaveCount(0);
   await expect(page.getByRole("alert")).toHaveCount(0);
   await expect(
     chart(page, 4).locator(".js-plotly-plot .scatterlayer .trace"),
   ).toHaveCount(3);
-
-  const answered = page.waitForResponse("**/api/band-diagram");
-  const field = page.getByRole("textbox", { name: "Eg", exact: true });
-  // 0.04 eV, about 464 K.
+  await expect(chart(page, 4).locator(".xtitle")).toHaveText("k");
+  await expect(chart(page, 4).locator(".xtick")).toHaveCount(0);
+  await expect(
+    chart(page, 4).getByText("Band 1 (VB)", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    chart(page, 4).getByText("Band 2 (CB)", { exact: true }),
+  ).toBeVisible();
+  const answered = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/api/band-diagram") &&
+      response.request().postDataJSON().parameters.band_offset_k > 464 &&
+      response.request().postDataJSON().parameters.band_offset_k < 465,
+  );
+  const field = page.getByRole("textbox", { name: "Δ", exact: true });
   await field.fill("0,04");
   await field.blur();
   const response = await answered;
-  const body = (await response.json()) as {
-    curves: Record<string, number[]>;
-  };
+  const body = (await response.json()) as Schemas["BandDiagramResponse"];
   expect(response.status()).toBe(200);
-  expect(Math.min(...(body.curves.band_2_energy_k ?? []))).toBeGreaterThan(464);
+  expect(body.wavevector_nm_inv.length).toBeGreaterThan(0);
+  expect(response.request().postDataJSON().parameterization).toBe(
+    "explicit_fermi_v1",
+  );
+  const vb = (body.curves.band_1_energy_k ?? []).filter(
+    (value): value is number => value !== null,
+  );
+  const cb = (body.curves.band_2_energy_k ?? []).filter(
+    (value): value is number => value !== null,
+  );
+  expect(Math.max(...vb)).toBe(0);
+  expect(vb[0]).toBeLessThan(0);
+  expect(Math.min(...cb)).toBeGreaterThan(464);
+  expect(cb[0]).toBeGreaterThan(Math.min(...cb));
 });
 
 /** Compare the visible result with the terminal event of the same real fit. */
@@ -472,34 +521,35 @@ test.describe("real fits", () => {
   test("a real fit can be stopped, shows the verified outcome and resets", async ({
     page,
   }) => {
-    test.setTimeout(60_000);
+    // Allow the two independently bounded real fits to finish in sequence.
+    test.setTimeout(120_000);
     await page.goto("/fit");
     await loadExample(page, "01_Fe2VAl09Si01_see.txt");
     await expect(page.getByText(/^\d+ points/)).toBeVisible();
     await loadExample(page, "01_Fe2VAl09Si01_rho.txt");
     await expect(page.getByText(/^\d+ points/)).toHaveCount(2);
     const run = page.getByRole("button", { name: "Run fit" });
-    const gap = page.getByRole("textbox", { name: "Eg", exact: true });
+    const gap = page.getByRole("textbox", { name: "Δ", exact: true });
 
     const badge = (text: RegExp) =>
       page.locator('[data-slot="badge"]').filter({ hasText: text });
 
-    // The net has set its start values from S, as on the desktop.
-    await expect(gap).toHaveValue("0,05");
+    // Explicit starts remain manual when data arrive.
+    await expect(gap).toHaveValue("0,09");
 
     // Stop before the first iteration updates the initial values.
     await run.click();
     await page.getByRole("button", { name: "Stop" }).click();
     await expect(badge(/^Stopped/)).toBeVisible();
-    await expect(gap).toHaveValue("0,05");
+    await expect(gap).toHaveValue("0,09");
 
     async function expectFittedGap(gapK: number | null | undefined) {
-      if (gapK == null) throw new Error("Fit result is missing Eg");
+      if (gapK == null) throw new Error("Fit result is missing Δ");
       const displayedEv = Number((await gap.inputValue()).replace(",", "."));
       expect(displayedEv).toBeCloseTo(gapK * 8.617333262e-5, 2);
     }
     const joint = await runVerifiedFit(page);
-    await expectFittedGap(joint.parameters.band_gap);
+    await expectFittedGap(joint.parameters.band_offset_k);
     await expect(page.getByRole("alert")).toHaveCount(0);
     // The result panel counts them, and shows the values the fit reached.
     const iterations = page
@@ -511,17 +561,17 @@ test.describe("real fits", () => {
       `Iterations${String(joint.iterations)}limit 1000`,
     );
     await expect(
-      parameters.getByRole("row").filter({ hasText: /^Eg/ }),
-    ).toContainText("-0,26 … 0,26");
+      parameters.getByRole("row").filter({ hasText: /^Δ/ }),
+    ).toContainText("-3,02 … 3,02");
 
     await page.getByRole("button", { name: "Reset" }).click();
     await expect(gap).toHaveValue("0,09");
 
     // The S-only mode has no outer iteration counter.
     await page.getByRole("radio", { name: "S", exact: true }).click();
-    await expect(gap).toHaveValue("0,05");
+    await expect(gap).toHaveValue("0,09");
     const single = await runVerifiedFit(page);
-    await expectFittedGap(single.parameters.band_gap);
+    await expectFittedGap(single.parameters.band_offset_k);
     await expect(page.getByRole("alert")).toHaveCount(0);
     await expect(iterations).toHaveCount(0);
   });
@@ -575,6 +625,42 @@ test.describe("real fits", () => {
       page.getByRole("button", { name: "Download", exact: true }).click(),
     ]);
     const zip = unzipSync(new Uint8Array(readFileSync(await file.path())));
+    const metadata = strFromU8(zip["metadata.txt"] ?? new Uint8Array());
+    const parameters = strFromU8(zip["parameters.txt"] ?? new Uint8Array());
+    const session = JSON.parse(
+      strFromU8(zip["seeband-session.json"] ?? new Uint8Array()),
+    ) as {
+      version: number;
+      content: {
+        selection: {
+          parameterization: string;
+          bandConfiguration: string;
+          netElectronDensityPerM3: number;
+          band1Degeneracy: number;
+          band2Degeneracy: number;
+        };
+        parameters: Record<string, Record<string, number>>;
+      };
+    };
+    expect(session.version).toBe(4);
+    expect(session.content.selection).toMatchObject({
+      parameterization: "explicit_density_v1",
+      bandConfiguration: "vb_cb",
+      band1Degeneracy: 1,
+      band2Degeneracy: 1,
+    });
+    expect(
+      Number.isFinite(session.content.selection.netElectronDensityPerM3),
+    ).toBe(true);
+    expect(metadata).toContain("Parameterization: explicit_density_v1");
+    expect(metadata).toContain("m⁻³");
+    expect(parameters).toContain("Representation");
+    expect(parameters).toContain("explicit_density_v1");
+    expect(parameters).toContain("Signed net electron density n − p");
+    expect(parameters).toContain("m^-3");
+    expect(parameters).toContain("m₂/m₁");
+    expect(parameters).toContain("N1, N2");
+    expect(session.content.parameters.dpb_s_rho?.m1).toBe(1.4);
 
     for (const [name, expected, quantities] of [
       ["data/seebeck.txt", "seebeck", ["seebeck"]],
@@ -617,14 +703,20 @@ test.describe("real fits", () => {
     await page.goto("/fit?demo=1");
     await expect(page.getByText(/^Synthetic data/)).toBeVisible();
     await page.getByRole("radio", { name: "S", exact: true }).click();
-    const gap = page.getByRole("textbox", { name: "Eg", exact: true });
+    const ratio = page.getByRole("textbox", { name: "m₂/m₁", exact: true });
+    await ratio.fill("1,2");
+    await ratio.blur();
+    await page
+      .getByRole("button", { name: "Hold m₂/m₁ at its value in a fit" })
+      .click();
+    const gap = page.getByRole("textbox", { name: "Δ", exact: true });
     await gap.fill("0,09");
     await gap.blur();
     await page.getByRole("button", { name: "Edit bounds" }).click();
 
     // The data were made with a gap of 800 K, so a fit is held off from there: 0.08 eV is about 928 K.
-    await page.getByRole("textbox", { name: "Eg, lower bound" }).fill("0,08");
-    await page.getByRole("textbox", { name: "Eg, upper bound" }).fill("0,1");
+    await page.getByRole("textbox", { name: "Δ, lower bound" }).fill("0,08");
+    await page.getByRole("textbox", { name: "Δ, upper bound" }).fill("0,1");
     await page.getByRole("button", { name: "Done" }).click();
     await runVerifiedFit(page);
 
@@ -632,7 +724,7 @@ test.describe("real fits", () => {
     const row = page
       .getByRole("table", { name: "Parameters in use" })
       .getByRole("row")
-      .filter({ hasText: /^Eg/ });
+      .filter({ hasText: /^Δ/ });
     await expect(row).toContainText("0,08 … 0,1");
     await expect(row.getByText("at bound")).toBeVisible();
   });

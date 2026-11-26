@@ -20,6 +20,7 @@ Write commit messages in English.
 - Start the title with the task ID, for example `[F3] Add NOTICE and contribution rules`.
 - Close the issue from the description, for example `Closes #3`.
 - Run `pnpm check` before pushing. The `Python` and `TypeScript` CI checks must pass before merging.
+- `pnpm check` skips the extended core regressions. CI runs them when `packages/seeband_core/src` changes; for other changes to solvers, tolerances or fits, tick the box in the pull request template, or run `uv run pytest -m extended`.
 - Merge with squash, and write a merge message that describes the result of the whole branch.
 - Delete the branch after merging.
 

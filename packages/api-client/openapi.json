@@ -478,6 +478,21 @@
         "operationId": "get_models",
         "parameters": [
           {
+            "name": "parameterization",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "legacy_fermi",
+                "explicit_density_v1",
+                "explicit_fermi_v1"
+              ],
+              "type": "string",
+              "default": "legacy_fermi",
+              "title": "Parameterization"
+            }
+          },
+          {
             "name": "if-none-match",
             "in": "header",
             "required": false,
@@ -528,6 +543,7 @@
                                   "scattering": [
                                     "acPh",
                                     "dis",
+                                    "acPhDis",
                                     "ionized"
                                   ],
                                   "value_range": {
@@ -562,6 +578,7 @@
                                   "scattering": [
                                     "acPh",
                                     "dis",
+                                    "acPhDis",
                                     "ionized"
                                   ],
                                   "value_range": {
@@ -593,9 +610,11 @@
                                   "bounds_editable": true
                                 }
                               ],
+                              "parameter_overrides": {},
                               "scattering": [
                                 "acPh",
                                 "dis",
+                                "acPhDis",
                                 "ionized"
                               ],
                               "default_scattering": "acPh",
@@ -715,6 +734,7 @@
                                   "scattering": [
                                     "acPh",
                                     "dis",
+                                    "acPhDis",
                                     "ionized"
                                   ],
                                   "value_range": {
@@ -749,6 +769,7 @@
                                   "scattering": [
                                     "acPh",
                                     "dis",
+                                    "acPhDis",
                                     "ionized"
                                   ],
                                   "value_range": {
@@ -786,6 +807,7 @@
                                   "role": "fitted",
                                   "scattering": [
                                     "acPh",
+                                    "acPhDis",
                                     "ionized"
                                   ],
                                   "value_range": {
@@ -815,6 +837,42 @@
                                     "upper": 10000000.0
                                   },
                                   "bounds_editable": false
+                                },
+                                {
+                                  "name": "C",
+                                  "meaning": "tau_ph,1 / tau_dis,1 at 300 K",
+                                  "unit": "dimensionless",
+                                  "role": "fitted",
+                                  "scattering": [
+                                    "acPhDis"
+                                  ],
+                                  "value_range": {
+                                    "minimum": 0.0,
+                                    "maximum": 300.0,
+                                    "step": 1.0,
+                                    "default": 100.0
+                                  },
+                                  "display_range": {
+                                    "minimum": 0.0,
+                                    "maximum": 300.0,
+                                    "step": 1.0,
+                                    "default": 100.0
+                                  },
+                                  "core_range": {
+                                    "minimum": 0.0,
+                                    "maximum": 300.0,
+                                    "step": 1.0,
+                                    "default": 100.0
+                                  },
+                                  "display_scale": 1.0,
+                                  "fit_scale": 1.0,
+                                  "display_unit": "dimensionless",
+                                  "display_factor": 1.0,
+                                  "fit_bounds": {
+                                    "lower": 0.001,
+                                    "upper": 1000.0
+                                  },
+                                  "bounds_editable": true
                                 },
                                 {
                                   "name": "F",
@@ -853,9 +911,11 @@
                                   "bounds_editable": false
                                 }
                               ],
+                              "parameter_overrides": {},
                               "scattering": [
                                 "acPh",
                                 "dis",
+                                "acPhDis",
                                 "ionized"
                               ],
                               "default_scattering": "acPh",
@@ -962,6 +1022,7 @@
                                   "quantity": "resistivity",
                                   "parameters": [
                                     "A",
+                                    "C",
                                     "F"
                                   ],
                                   "repeats": false
@@ -984,6 +1045,7 @@
                                   "scattering": [
                                     "acPh",
                                     "dis",
+                                    "acPhDis",
                                     "ionized"
                                   ],
                                   "value_range": {
@@ -1022,6 +1084,7 @@
                                   "scattering": [
                                     "acPh",
                                     "dis",
+                                    "acPhDis",
                                     "ionized"
                                   ],
                                   "value_range": {
@@ -1059,6 +1122,7 @@
                                   "role": "fitted",
                                   "scattering": [
                                     "acPh",
+                                    "acPhDis",
                                     "ionized"
                                   ],
                                   "value_range": {
@@ -1088,6 +1152,42 @@
                                     "upper": 10000000.0
                                   },
                                   "bounds_editable": false
+                                },
+                                {
+                                  "name": "C",
+                                  "meaning": "tau_ph,1 / tau_dis,1 at 300 K",
+                                  "unit": "dimensionless",
+                                  "role": "fitted",
+                                  "scattering": [
+                                    "acPhDis"
+                                  ],
+                                  "value_range": {
+                                    "minimum": 0.0,
+                                    "maximum": 300.0,
+                                    "step": 1.0,
+                                    "default": 100.0
+                                  },
+                                  "display_range": {
+                                    "minimum": 0.0,
+                                    "maximum": 300.0,
+                                    "step": 1.0,
+                                    "default": 100.0
+                                  },
+                                  "core_range": {
+                                    "minimum": 0.0,
+                                    "maximum": 300.0,
+                                    "step": 1.0,
+                                    "default": 100.0
+                                  },
+                                  "display_scale": 1.0,
+                                  "fit_scale": 1.0,
+                                  "display_unit": "dimensionless",
+                                  "display_factor": 1.0,
+                                  "fit_bounds": {
+                                    "lower": 0.001,
+                                    "upper": 1000.0
+                                  },
+                                  "bounds_editable": true
                                 },
                                 {
                                   "name": "F",
@@ -1126,9 +1226,11 @@
                                   "bounds_editable": false
                                 }
                               ],
+                              "parameter_overrides": {},
                               "scattering": [
                                 "acPh",
                                 "dis",
+                                "acPhDis",
                                 "ionized"
                               ],
                               "default_scattering": "acPh",
@@ -1235,6 +1337,7 @@
                                   "quantity": "resistivity",
                                   "parameters": [
                                     "A",
+                                    "C",
                                     "F"
                                   ],
                                   "repeats": false
@@ -1272,6 +1375,7 @@
                                   "scattering": [
                                     "acPh",
                                     "dis",
+                                    "acPhDis",
                                     "ionized"
                                   ],
                                   "value_range": {
@@ -1310,6 +1414,7 @@
                                   "scattering": [
                                     "acPh",
                                     "dis",
+                                    "acPhDis",
                                     "ionized"
                                   ],
                                   "value_range": {
@@ -1348,6 +1453,7 @@
                                   "scattering": [
                                     "acPh",
                                     "dis",
+                                    "acPhDis",
                                     "ionized"
                                   ],
                                   "value_range": {
@@ -1379,9 +1485,11 @@
                                   "bounds_editable": true
                                 }
                               ],
+                              "parameter_overrides": {},
                               "scattering": [
                                 "acPh",
                                 "dis",
+                                "acPhDis",
                                 "ionized"
                               ],
                               "default_scattering": "acPh",
@@ -1533,6 +1641,7 @@
                                   "scattering": [
                                     "acPh",
                                     "dis",
+                                    "acPhDis",
                                     "ionized"
                                   ],
                                   "value_range": {
@@ -1571,6 +1680,7 @@
                                   "scattering": [
                                     "acPh",
                                     "dis",
+                                    "acPhDis",
                                     "ionized"
                                   ],
                                   "value_range": {
@@ -1609,6 +1719,7 @@
                                   "scattering": [
                                     "acPh",
                                     "dis",
+                                    "acPhDis",
                                     "ionized"
                                   ],
                                   "value_range": {
@@ -1646,6 +1757,7 @@
                                   "role": "fitted",
                                   "scattering": [
                                     "acPh",
+                                    "acPhDis",
                                     "ionized"
                                   ],
                                   "value_range": {
@@ -1683,6 +1795,7 @@
                                   "role": "fitted",
                                   "scattering": [
                                     "acPh",
+                                    "acPhDis",
                                     "ionized"
                                   ],
                                   "value_range": {
@@ -1710,6 +1823,78 @@
                                   "fit_bounds": {
                                     "lower": 0.9,
                                     "upper": 1.1
+                                  },
+                                  "bounds_editable": true
+                                },
+                                {
+                                  "name": "C",
+                                  "meaning": "tau_ph,1 / tau_dis,1 at 300 K",
+                                  "unit": "dimensionless",
+                                  "role": "fitted",
+                                  "scattering": [
+                                    "acPhDis"
+                                  ],
+                                  "value_range": {
+                                    "minimum": 50.0,
+                                    "maximum": 200.0,
+                                    "step": 1.0,
+                                    "default": 100.0
+                                  },
+                                  "display_range": {
+                                    "minimum": 0.5,
+                                    "maximum": 2.0,
+                                    "step": 0.01,
+                                    "default": 1.0
+                                  },
+                                  "core_range": {
+                                    "minimum": 0.5,
+                                    "maximum": 2.0,
+                                    "step": 0.01,
+                                    "default": 1.0
+                                  },
+                                  "display_scale": 0.01,
+                                  "fit_scale": 0.01,
+                                  "display_unit": "dimensionless",
+                                  "display_factor": 1.0,
+                                  "fit_bounds": {
+                                    "lower": 0.5,
+                                    "upper": 2.0
+                                  },
+                                  "bounds_editable": true
+                                },
+                                {
+                                  "name": "D",
+                                  "meaning": "tau_ph,2 / tau_dis,2 at 300 K",
+                                  "unit": "dimensionless",
+                                  "role": "fitted",
+                                  "scattering": [
+                                    "acPhDis"
+                                  ],
+                                  "value_range": {
+                                    "minimum": 50.0,
+                                    "maximum": 200.0,
+                                    "step": 1.0,
+                                    "default": 100.0
+                                  },
+                                  "display_range": {
+                                    "minimum": 0.5,
+                                    "maximum": 2.0,
+                                    "step": 0.01,
+                                    "default": 1.0
+                                  },
+                                  "core_range": {
+                                    "minimum": 0.5,
+                                    "maximum": 2.0,
+                                    "step": 0.01,
+                                    "default": 1.0
+                                  },
+                                  "display_scale": 0.01,
+                                  "fit_scale": 0.01,
+                                  "display_unit": "dimensionless",
+                                  "display_factor": 1.0,
+                                  "fit_bounds": {
+                                    "lower": 0.5,
+                                    "upper": 2.0
                                   },
                                   "bounds_editable": true
                                 },
@@ -1786,9 +1971,11 @@
                                   "bounds_editable": true
                                 }
                               ],
+                              "parameter_overrides": {},
                               "scattering": [
                                 "acPh",
                                 "dis",
+                                "acPhDis",
                                 "ionized"
                               ],
                               "default_scattering": "acPh",
@@ -1940,6 +2127,8 @@
                                   "parameters": [
                                     "A",
                                     "B",
+                                    "C",
+                                    "D",
                                     "F",
                                     "G"
                                   ],
@@ -1964,6 +2153,7 @@
                                   "scattering": [
                                     "acPh",
                                     "dis",
+                                    "acPhDis",
                                     "ionized"
                                   ],
                                   "value_range": {
@@ -2002,6 +2192,7 @@
                                   "scattering": [
                                     "acPh",
                                     "dis",
+                                    "acPhDis",
                                     "ionized"
                                   ],
                                   "value_range": {
@@ -2040,6 +2231,7 @@
                                   "scattering": [
                                     "acPh",
                                     "dis",
+                                    "acPhDis",
                                     "ionized"
                                   ],
                                   "value_range": {
@@ -2077,6 +2269,7 @@
                                   "role": "fitted",
                                   "scattering": [
                                     "acPh",
+                                    "acPhDis",
                                     "ionized"
                                   ],
                                   "value_range": {
@@ -2114,6 +2307,7 @@
                                   "role": "fitted",
                                   "scattering": [
                                     "acPh",
+                                    "acPhDis",
                                     "ionized"
                                   ],
                                   "value_range": {
@@ -2141,6 +2335,78 @@
                                   "fit_bounds": {
                                     "lower": 0.9,
                                     "upper": 1.1
+                                  },
+                                  "bounds_editable": true
+                                },
+                                {
+                                  "name": "C",
+                                  "meaning": "tau_ph,1 / tau_dis,1 at 300 K",
+                                  "unit": "dimensionless",
+                                  "role": "fitted",
+                                  "scattering": [
+                                    "acPhDis"
+                                  ],
+                                  "value_range": {
+                                    "minimum": 50.0,
+                                    "maximum": 200.0,
+                                    "step": 1.0,
+                                    "default": 100.0
+                                  },
+                                  "display_range": {
+                                    "minimum": 0.5,
+                                    "maximum": 2.0,
+                                    "step": 0.01,
+                                    "default": 1.0
+                                  },
+                                  "core_range": {
+                                    "minimum": 0.5,
+                                    "maximum": 2.0,
+                                    "step": 0.01,
+                                    "default": 1.0
+                                  },
+                                  "display_scale": 0.01,
+                                  "fit_scale": 0.01,
+                                  "display_unit": "dimensionless",
+                                  "display_factor": 1.0,
+                                  "fit_bounds": {
+                                    "lower": 0.5,
+                                    "upper": 2.0
+                                  },
+                                  "bounds_editable": true
+                                },
+                                {
+                                  "name": "D",
+                                  "meaning": "tau_ph,2 / tau_dis,2 at 300 K",
+                                  "unit": "dimensionless",
+                                  "role": "fitted",
+                                  "scattering": [
+                                    "acPhDis"
+                                  ],
+                                  "value_range": {
+                                    "minimum": 50.0,
+                                    "maximum": 200.0,
+                                    "step": 1.0,
+                                    "default": 100.0
+                                  },
+                                  "display_range": {
+                                    "minimum": 0.5,
+                                    "maximum": 2.0,
+                                    "step": 0.01,
+                                    "default": 1.0
+                                  },
+                                  "core_range": {
+                                    "minimum": 0.5,
+                                    "maximum": 2.0,
+                                    "step": 0.01,
+                                    "default": 1.0
+                                  },
+                                  "display_scale": 0.01,
+                                  "fit_scale": 0.01,
+                                  "display_unit": "dimensionless",
+                                  "display_factor": 1.0,
+                                  "fit_bounds": {
+                                    "lower": 0.5,
+                                    "upper": 2.0
                                   },
                                   "bounds_editable": true
                                 },
@@ -2224,6 +2490,7 @@
                                   "scattering": [
                                     "acPh",
                                     "dis",
+                                    "acPhDis",
                                     "ionized"
                                   ],
                                   "value_range": {
@@ -2255,9 +2522,11 @@
                                   "bounds_editable": true
                                 }
                               ],
+                              "parameter_overrides": {},
                               "scattering": [
                                 "acPh",
                                 "dis",
+                                "acPhDis",
                                 "ionized"
                               ],
                               "default_scattering": "acPh",
@@ -2421,6 +2690,8 @@
                                   "parameters": [
                                     "A",
                                     "B",
+                                    "C",
+                                    "D",
                                     "F",
                                     "G"
                                   ],
@@ -2459,7 +2730,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "example": "\"9cf4365e1a42a826ec11ec2a52e1a198\""
+                "example": "\"bf5be25a21c681edd6b4bbde0d16ad15\""
               }
             }
           },
@@ -2674,6 +2945,601 @@
           },
           "304": {
             "description": "The descriptions have not changed since the given `If-None-Match`"
+          }
+        }
+      }
+    },
+    "/api/dpb/migrate": {
+      "post": {
+        "tags": [
+          "dpb"
+        ],
+        "summary": "Migrate Dpb",
+        "operationId": "migrate_dpb",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LegacyDpbPoint"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConvertedDpbPoint"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "internal_error": {
+                    "value": {
+                      "code": "internal_error",
+                      "message": "Internal server error",
+                      "details": []
+                    }
+                  },
+                  "not_found": {
+                    "value": {
+                      "code": "not_found",
+                      "message": "Not Found",
+                      "details": []
+                    }
+                  },
+                  "calculation_failed": {
+                    "value": {
+                      "code": "calculation_failed",
+                      "message": "The calculation has no result for these parameters and temperatures",
+                      "details": []
+                    }
+                  },
+                  "calculation_timeout": {
+                    "value": {
+                      "code": "calculation_timeout",
+                      "message": "The calculation took too long",
+                      "details": []
+                    }
+                  },
+                  "calculation_unavailable": {
+                    "value": {
+                      "code": "calculation_unavailable",
+                      "message": "The calculation stopped unexpectedly. Try again.",
+                      "details": []
+                    }
+                  },
+                  "fit_mode_disabled": {
+                    "value": {
+                      "code": "fit_mode_disabled",
+                      "message": "This fit mode is disabled until its known issue is fixed",
+                      "details": []
+                    }
+                  },
+                  "invalid_fit": {
+                    "value": {
+                      "code": "invalid_fit",
+                      "message": "Invalid fit",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "bounds",
+                            "m_eff"
+                          ],
+                          "code": "parameter_not_fitted",
+                          "message": "This fit does not fit it"
+                        }
+                      ]
+                    }
+                  },
+                  "fit_queue_full": {
+                    "value": {
+                      "code": "fit_queue_full",
+                      "message": "Too many fits are running. Try again shortly.",
+                      "details": []
+                    }
+                  },
+                  "rate_limited": {
+                    "value": {
+                      "code": "rate_limited",
+                      "message": "Too many requests",
+                      "details": []
+                    }
+                  },
+                  "request_too_large": {
+                    "value": {
+                      "code": "request_too_large",
+                      "message": "A request can hold at most 10000000 bytes",
+                      "details": []
+                    }
+                  },
+                  "calculation_busy": {
+                    "value": {
+                      "code": "calculation_busy",
+                      "message": "Too many calculations are waiting. Try again shortly.",
+                      "details": []
+                    }
+                  },
+                  "client_calc_limit": {
+                    "value": {
+                      "code": "client_calc_limit",
+                      "message": "At most 4 calculations of one client at once",
+                      "details": []
+                    }
+                  },
+                  "server_busy": {
+                    "value": {
+                      "code": "server_busy",
+                      "message": "Too many requests at once. Try again shortly.",
+                      "details": []
+                    }
+                  },
+                  "request_timeout": {
+                    "value": {
+                      "code": "request_timeout",
+                      "message": "A request's body must arrive within 60.0 s, with no pause over 10.0 s",
+                      "details": []
+                    }
+                  },
+                  "client_fit_limit": {
+                    "value": {
+                      "code": "client_fit_limit",
+                      "message": "This client has too many fits running or waiting",
+                      "details": []
+                    }
+                  },
+                  "invalid_parse_request": {
+                    "value": {
+                      "code": "invalid_parse_request",
+                      "message": "Invalid request",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "mapping"
+                          ],
+                          "code": "unknown_column",
+                          "message": "The text has no such column"
+                        }
+                      ]
+                    }
+                  },
+                  "invalid_guess": {
+                    "value": {
+                      "code": "invalid_guess",
+                      "message": "Invalid request",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "model"
+                          ],
+                          "code": "unknown_model",
+                          "message": "This model does not exist"
+                        }
+                      ]
+                    }
+                  },
+                  "guess_unavailable": {
+                    "value": {
+                      "code": "guess_unavailable",
+                      "message": "This model has no neural net guess",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "model"
+                          ],
+                          "code": "no_neural_net",
+                          "message": "See has_initial_guess in GET /api/models"
+                        }
+                      ]
+                    }
+                  },
+                  "invalid_calculation": {
+                    "value": {
+                      "code": "invalid_calculation",
+                      "message": "Invalid calculation",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "parameters",
+                            "m_eff"
+                          ],
+                          "code": "missing_parameter",
+                          "message": "This mode needs it"
+                        }
+                      ]
+                    }
+                  },
+                  "validation_error": {
+                    "value": {
+                      "code": "validation_error",
+                      "message": "Invalid request",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "seebeck_v_per_k",
+                            3
+                          ],
+                          "code": "float_parsing",
+                          "message": "Input should be a valid number, unable to parse string as a number"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this client, or for the server",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer"
+                },
+                "example": 5
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "rate_limited": {
+                    "value": {
+                      "code": "rate_limited",
+                      "message": "Too many requests",
+                      "details": []
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/dpb/parameter-domain": {
+      "get": {
+        "tags": [
+          "dpb"
+        ],
+        "summary": "Get Dpb Parameter Domain",
+        "operationId": "get_dpb_parameter_domain",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "enum": [
+                "fermi_energy",
+                "band_offset_k",
+                "mass_ratio"
+              ],
+              "type": "string",
+              "title": "Name"
+            }
+          },
+          {
+            "name": "band_configuration",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "enum": [
+                "vb_vb",
+                "vb_cb",
+                "cb_cb"
+              ],
+              "type": "string",
+              "title": "Band Configuration"
+            }
+          },
+          {
+            "name": "fermi_energy",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "title": "Fermi Energy"
+            }
+          },
+          {
+            "name": "band_offset_k",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "title": "Band Offset K"
+            }
+          },
+          {
+            "name": "mass_ratio",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "title": "Mass Ratio"
+            }
+          },
+          {
+            "name": "band_1_degeneracy",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "title": "Band 1 Degeneracy"
+            }
+          },
+          {
+            "name": "band_2_degeneracy",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "title": "Band 2 Degeneracy"
+            }
+          },
+          {
+            "name": "carrier_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "p",
+                    "n"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Carrier Type"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParameterDomain"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "internal_error": {
+                    "value": {
+                      "code": "internal_error",
+                      "message": "Internal server error",
+                      "details": []
+                    }
+                  },
+                  "not_found": {
+                    "value": {
+                      "code": "not_found",
+                      "message": "Not Found",
+                      "details": []
+                    }
+                  },
+                  "calculation_failed": {
+                    "value": {
+                      "code": "calculation_failed",
+                      "message": "The calculation has no result for these parameters and temperatures",
+                      "details": []
+                    }
+                  },
+                  "calculation_timeout": {
+                    "value": {
+                      "code": "calculation_timeout",
+                      "message": "The calculation took too long",
+                      "details": []
+                    }
+                  },
+                  "calculation_unavailable": {
+                    "value": {
+                      "code": "calculation_unavailable",
+                      "message": "The calculation stopped unexpectedly. Try again.",
+                      "details": []
+                    }
+                  },
+                  "fit_mode_disabled": {
+                    "value": {
+                      "code": "fit_mode_disabled",
+                      "message": "This fit mode is disabled until its known issue is fixed",
+                      "details": []
+                    }
+                  },
+                  "invalid_fit": {
+                    "value": {
+                      "code": "invalid_fit",
+                      "message": "Invalid fit",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "bounds",
+                            "m_eff"
+                          ],
+                          "code": "parameter_not_fitted",
+                          "message": "This fit does not fit it"
+                        }
+                      ]
+                    }
+                  },
+                  "fit_queue_full": {
+                    "value": {
+                      "code": "fit_queue_full",
+                      "message": "Too many fits are running. Try again shortly.",
+                      "details": []
+                    }
+                  },
+                  "rate_limited": {
+                    "value": {
+                      "code": "rate_limited",
+                      "message": "Too many requests",
+                      "details": []
+                    }
+                  },
+                  "request_too_large": {
+                    "value": {
+                      "code": "request_too_large",
+                      "message": "A request can hold at most 10000000 bytes",
+                      "details": []
+                    }
+                  },
+                  "calculation_busy": {
+                    "value": {
+                      "code": "calculation_busy",
+                      "message": "Too many calculations are waiting. Try again shortly.",
+                      "details": []
+                    }
+                  },
+                  "client_calc_limit": {
+                    "value": {
+                      "code": "client_calc_limit",
+                      "message": "At most 4 calculations of one client at once",
+                      "details": []
+                    }
+                  },
+                  "server_busy": {
+                    "value": {
+                      "code": "server_busy",
+                      "message": "Too many requests at once. Try again shortly.",
+                      "details": []
+                    }
+                  },
+                  "request_timeout": {
+                    "value": {
+                      "code": "request_timeout",
+                      "message": "A request's body must arrive within 60.0 s, with no pause over 10.0 s",
+                      "details": []
+                    }
+                  },
+                  "client_fit_limit": {
+                    "value": {
+                      "code": "client_fit_limit",
+                      "message": "This client has too many fits running or waiting",
+                      "details": []
+                    }
+                  },
+                  "invalid_parse_request": {
+                    "value": {
+                      "code": "invalid_parse_request",
+                      "message": "Invalid request",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "mapping"
+                          ],
+                          "code": "unknown_column",
+                          "message": "The text has no such column"
+                        }
+                      ]
+                    }
+                  },
+                  "invalid_guess": {
+                    "value": {
+                      "code": "invalid_guess",
+                      "message": "Invalid request",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "model"
+                          ],
+                          "code": "unknown_model",
+                          "message": "This model does not exist"
+                        }
+                      ]
+                    }
+                  },
+                  "guess_unavailable": {
+                    "value": {
+                      "code": "guess_unavailable",
+                      "message": "This model has no neural net guess",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "model"
+                          ],
+                          "code": "no_neural_net",
+                          "message": "See has_initial_guess in GET /api/models"
+                        }
+                      ]
+                    }
+                  },
+                  "invalid_calculation": {
+                    "value": {
+                      "code": "invalid_calculation",
+                      "message": "Invalid calculation",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "parameters",
+                            "m_eff"
+                          ],
+                          "code": "missing_parameter",
+                          "message": "This mode needs it"
+                        }
+                      ]
+                    }
+                  },
+                  "validation_error": {
+                    "value": {
+                      "code": "validation_error",
+                      "message": "Invalid request",
+                      "details": [
+                        {
+                          "location": [
+                            "body",
+                            "seebeck_v_per_k",
+                            3
+                          ],
+                          "code": "float_parsing",
+                          "message": "Input should be a valid number, unable to parse string as a number"
+                        }
+                      ]
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Default Response"
           }
         }
       }
@@ -4311,10 +5177,10 @@
               "text/event-stream": {
                 "examples": {
                   "single_pass": {
-                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"done\",\"result\":{\"parameters\":{\"m_eff\":0.57,\"band_gap\":910.0,\"fermi_energy\":-35.0},\"core_version\":\"0.3.3\",\"status\":\"converged\",\"parameter_errors\":{\"m_eff\":0.02,\"band_gap\":12.0,\"fermi_energy\":4.0},\"at_bounds\":[],\"known_issues\":[],\"held\":[],\"algorithm\":\"legacy-sequential-v1\",\"parameter_status\":{\"m_eff\":\"estimated\",\"band_gap\":\"estimated\",\"fermi_energy\":\"estimated\"},\"uncertainty\":\"not_assessed\",\"last_changes\":{}}}\n\n"
+                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"done\",\"result\":{\"parameters\":{\"m_eff\":0.57,\"band_gap\":910.0,\"fermi_energy\":-35.0},\"core_version\":\"0.4.2\",\"status\":\"converged\",\"parameter_errors\":{\"m_eff\":0.02,\"band_gap\":12.0,\"fermi_energy\":4.0},\"at_bounds\":[],\"known_issues\":[],\"held\":[],\"algorithm\":\"legacy-sequential-v1\",\"parameter_status\":{\"m_eff\":\"estimated\",\"band_gap\":\"estimated\",\"fermi_energy\":\"estimated\"},\"uncertainty\":\"not_assessed\",\"last_changes\":{}}}\n\n"
                   },
                   "iterative": {
-                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"iteration\",\"iteration\":1,\"parameters\":{\"m_eff\":0.8,\"band_gap\":950.0,\"fermi_energy\":-60.0}}\n\ndata: {\"type\":\"iteration\",\"iteration\":2,\"parameters\":{\"m_eff\":0.6,\"band_gap\":915.0,\"fermi_energy\":-38.0}}\n\ndata: {\"type\":\"done\",\"result\":{\"parameters\":{\"m_eff\":0.57,\"band_gap\":910.0,\"fermi_energy\":-35.0},\"core_version\":\"0.3.3\",\"status\":\"converged\",\"iterations\":2,\"parameter_errors\":{\"m_eff\":0.02,\"band_gap\":12.0,\"fermi_energy\":4.0},\"at_bounds\":[],\"known_issues\":[],\"held\":[],\"algorithm\":\"legacy-sequential-v1\",\"parameter_status\":{\"m_eff\":\"estimated\",\"band_gap\":\"estimated\",\"fermi_energy\":\"estimated\"},\"uncertainty\":\"not_assessed\",\"last_changes\":{}}}\n\n"
+                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"iteration\",\"iteration\":1,\"parameters\":{\"m_eff\":0.8,\"band_gap\":950.0,\"fermi_energy\":-60.0}}\n\ndata: {\"type\":\"iteration\",\"iteration\":2,\"parameters\":{\"m_eff\":0.6,\"band_gap\":915.0,\"fermi_energy\":-38.0}}\n\ndata: {\"type\":\"done\",\"result\":{\"parameters\":{\"m_eff\":0.57,\"band_gap\":910.0,\"fermi_energy\":-35.0},\"core_version\":\"0.4.2\",\"status\":\"converged\",\"iterations\":2,\"parameter_errors\":{\"m_eff\":0.02,\"band_gap\":12.0,\"fermi_energy\":4.0},\"at_bounds\":[],\"known_issues\":[],\"held\":[],\"algorithm\":\"legacy-sequential-v1\",\"parameter_status\":{\"m_eff\":\"estimated\",\"band_gap\":\"estimated\",\"fermi_energy\":\"estimated\"},\"uncertainty\":\"not_assessed\",\"last_changes\":{}}}\n\n"
                   },
                   "fit_timeout": {
                     "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"error\",\"error\":{\"code\":\"fit_timeout\",\"message\":\"The fit took too long\",\"details\":[]}}\n\n"
@@ -5339,6 +6205,58 @@
             "type": "string",
             "title": "Model"
           },
+          "parameterization": {
+            "type": "string",
+            "enum": [
+              "legacy_fermi",
+              "explicit_density_v1",
+              "explicit_fermi_v1"
+            ],
+            "title": "Parameterization",
+            "default": "legacy_fermi"
+          },
+          "band_configuration": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "vb_vb",
+                  "vb_cb",
+                  "cb_cb"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Band Configuration"
+          },
+          "net_electron_density_per_m3": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Net Electron Density Per M3"
+          },
+          "carrier_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "p",
+                  "n"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carrier Type"
+          },
           "fit_mode": {
             "type": "string",
             "title": "Fit Mode"
@@ -5497,6 +6415,58 @@
             "type": "string",
             "title": "Model"
           },
+          "parameterization": {
+            "type": "string",
+            "enum": [
+              "legacy_fermi",
+              "explicit_density_v1",
+              "explicit_fermi_v1"
+            ],
+            "title": "Parameterization",
+            "default": "legacy_fermi"
+          },
+          "band_configuration": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "vb_vb",
+                  "vb_cb",
+                  "cb_cb"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Band Configuration"
+          },
+          "net_electron_density_per_m3": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Net Electron Density Per M3"
+          },
+          "carrier_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "p",
+                  "n"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carrier Type"
+          },
           "fit_mode": {
             "type": "string",
             "title": "Fit Mode"
@@ -5610,7 +6580,7 @@
           "max_temperature_k"
         ],
         "title": "CalcRequest",
-        "description": "What to calculate.\n\n`parameters` holds every parameter of the mode in core units, including those of other\nscattering types. Values outside a control's range are allowed, as a fit can end there. `points`\ndefaults to the model's. `measurements` gives an RMSE for each quantity, and should hold only\npoints in the fit range. `extrapolated` says that interpolation made up some of these points.\n\n`kind` chooses the curves, and `GET /api/models` lists which a mode offers. `measurements` need\nthe `measured` kind, because the known issues of a response are those of its curves, and an RMSE\nof other curves would not carry its own.",
+        "description": "What to calculate.\n\n`parameters` holds every parameter of the mode in core units, including those of other\nscattering types. C and D are required only for mixed transport.\nValues outside a control's range are allowed, as a fit can end there. `points`\ndefaults to the model's. `measurements` gives an RMSE for each quantity, and should hold only\npoints in the fit range. `extrapolated` says that interpolation made up some of these points.\n\n`kind` chooses the curves, and `GET /api/models` lists which a mode offers. `measurements` need\nthe `measured` kind, because the known issues of a response are those of its curves, and an RMSE\nof other curves would not carry its own.",
         "examples": [
           {
             "fit_mode": "dpb_s_rho",
@@ -5658,7 +6628,7 @@
             "type": "string",
             "title": "Core Version",
             "description": "Core software version for provenance, not certification.",
-            "default": "0.3.3"
+            "default": "0.4.2"
           },
           "curves": {
             "additionalProperties": {
@@ -5724,7 +6694,7 @@
         "description": "Curves by name, where each name ends in its unit, and null marks a value that is not finite.\n\n`known_issues` names known errors that apply to this result, as in `GET /api/models`. `rmse` is\nempty without measurements. `measured_points` holds points made from the measurements sent,\nby name with its unit: `electrical_conductivity_s_per_m` is 1/rho, with null for a rho of 0 or\nbelow. They use no model, so they go with the data the request sent, interpolated or not.",
         "examples": [
           {
-            "core_version": "0.3.3",
+            "core_version": "0.4.2",
             "curves": {
               "resistivity_ohm_m": [
                 3.6627e-05,
@@ -5929,6 +6899,55 @@
         ],
         "title": "ColumnRole",
         "description": "What a column holds, and the unit its values are written in. Columns count from 0.\n\nIn a request, `unit` is a user's choice, and without it the column's header unit, or SI,\napplies. In an answer it is the unit the column was read in. `input-data.md` of the core lists\nthe units of each quantity."
+      },
+      "ConvertedDpbPoint": {
+        "properties": {
+          "parameterization": {
+            "type": "string",
+            "const": "explicit_density_v1",
+            "title": "Parameterization",
+            "default": "explicit_density_v1"
+          },
+          "band_configuration": {
+            "type": "string",
+            "enum": [
+              "vb_vb",
+              "vb_cb",
+              "cb_cb"
+            ],
+            "title": "Band Configuration"
+          },
+          "net_electron_density_per_m3": {
+            "type": "number",
+            "title": "Net Electron Density Per M3"
+          },
+          "parameters": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Parameters"
+          }
+        },
+        "type": "object",
+        "required": [
+          "band_configuration",
+          "net_electron_density_per_m3",
+          "parameters"
+        ],
+        "title": "ConvertedDpbPoint",
+        "examples": [
+          {
+            "band_configuration": "vb_cb",
+            "net_electron_density_per_m3": 0.0,
+            "parameterization": "explicit_density_v1",
+            "parameters": {
+              "band_offset_k": 600.0,
+              "m1": 1.2,
+              "mass_ratio": 1.8
+            }
+          }
+        ]
       },
       "CurveAvailabilityResponse": {
         "properties": {
@@ -6331,6 +7350,58 @@
             "type": "string",
             "title": "Model"
           },
+          "parameterization": {
+            "type": "string",
+            "enum": [
+              "legacy_fermi",
+              "explicit_density_v1",
+              "explicit_fermi_v1"
+            ],
+            "title": "Parameterization",
+            "default": "legacy_fermi"
+          },
+          "band_configuration": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "vb_vb",
+                  "vb_cb",
+                  "cb_cb"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Band Configuration"
+          },
+          "net_electron_density_per_m3": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Net Electron Density Per M3"
+          },
+          "carrier_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "p",
+                  "n"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carrier Type"
+          },
           "fit_mode": {
             "type": "string",
             "title": "Fit Mode"
@@ -6435,7 +7506,7 @@
           "measurements"
         ],
         "title": "FitApiRequest",
-        "description": "What to fit.\n\n`start` holds every parameter of the mode in core units, including those of other scattering\ntypes. `bounds` overrides the description's bounds for fitted parameters, in core units.\n`measurements` holds each quantity of the mode, and only points from `min_temperature_k` to\n`max_temperature_k`, inclusive, enter the fit. `extrapolated` says that interpolation made up\nsome of these points, so that the result says so too.\n\n`held` names fitted parameters to keep at their start values: the fit finds only the others.\nA name the mode does not fit, for the scattering type, or every fitted parameter, is refused.",
+        "description": "What to fit.\n\n`start` holds every parameter of the mode in core units, including those of other scattering\ntypes. C and D are required only for mixed transport.\n`bounds` overrides the description's bounds for fitted parameters, in core units.\n`measurements` holds each quantity of the mode, and only points from `min_temperature_k` to\n`max_temperature_k`, inclusive, enter the fit. `extrapolated` says that interpolation made up\nsome of these points, so that the result says so too.\n\n`held` names fitted parameters to keep at their start values: the fit finds only the others.\nA name the mode does not fit, for the scattering type, or every fitted parameter, is refused.",
         "examples": [
           {
             "bounds": {
@@ -6652,6 +7723,16 @@
             "type": "array",
             "title": "Parameters"
           },
+          "parameter_overrides": {
+            "additionalProperties": {
+              "items": {
+                "$ref": "#/components/schemas/ParameterResponse"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "Parameter Overrides"
+          },
           "scattering": {
             "items": {
               "type": "string"
@@ -6783,7 +7864,7 @@
           "stages"
         ],
         "title": "FitModeResponse",
-        "description": "One way of fitting a model.\n\nA client must not offer a mode with `disabled`. `disabled_by` names the `known_issues` that say\nwhy. `iterative` tells whether an iteration count means anything. `threshold`, a relative\nchange, and `max_iterations` are what an iterative fit uses, and a request cannot change them.\n`scattering` is empty when a mode has no choice of scattering. `stages` are the solver runs of\na fit, in their order. `band_2_edge` names the parameter whose core value is the edge of band 2\nabove that of band 1, in K, and is left out for a mode with one band."
+        "description": "One way of fitting a model.\n\nA client must not offer a mode with `disabled`. `disabled_by` names the `known_issues` that say\nwhy. `iterative` tells whether an iteration count means anything. `threshold`, a relative\nchange, and `max_iterations` are what an iterative fit uses, and a request cannot change them.\n`scattering` is empty when a mode has no choice of scattering. `stages` are the solver runs of\na fit, in their order. `band_2_edge` names the parameter whose core value is the edge of band 2\nabove that of band 1, in K, and is left out for a mode with one band.\n`parameter_overrides` replaces or appends parameters by name for the selected scattering\nbefore filtering applicability. Missing overrides preserve the base parameter metadata."
       },
       "FitResponse": {
         "properties": {
@@ -6805,7 +7886,7 @@
             "type": "string",
             "title": "Core Version",
             "description": "Core software version for provenance, not certification.",
-            "default": "0.3.3"
+            "default": "0.4.2"
           },
           "status": {
             "type": "string",
@@ -6939,7 +8020,7 @@
         "examples": [
           {
             "at_bounds": [],
-            "core_version": "0.3.3",
+            "core_version": "0.4.2",
             "held": [],
             "known_issues": [],
             "parameter_errors": {
@@ -7150,6 +8231,58 @@
             "type": "string",
             "title": "Model"
           },
+          "parameterization": {
+            "type": "string",
+            "enum": [
+              "legacy_fermi",
+              "explicit_density_v1",
+              "explicit_fermi_v1"
+            ],
+            "title": "Parameterization",
+            "default": "legacy_fermi"
+          },
+          "band_configuration": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "vb_vb",
+                  "vb_cb",
+                  "cb_cb"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Band Configuration"
+          },
+          "net_electron_density_per_m3": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Net Electron Density Per M3"
+          },
+          "carrier_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "p",
+                  "n"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carrier Type"
+          },
           "scattering": {
             "anyOf": [
               {
@@ -7287,7 +8420,7 @@
             "type": "string",
             "title": "Core Version",
             "description": "Core software version for provenance, not certification.",
-            "default": "0.3.3"
+            "default": "0.4.2"
           }
         },
         "type": "object",
@@ -7298,7 +8431,7 @@
         "title": "HealthResponse",
         "examples": [
           {
-            "core_version": "0.3.3",
+            "core_version": "0.4.2",
             "status": "ok",
             "version": "1.0.0"
           }
@@ -7550,6 +8683,42 @@
         ],
         "title": "KnownIssueResponse",
         "description": "A known error of the calculations in this mode. Clients show `message_key` through i18n.\n\nEmpty `scattering` means every type. `curve_kinds` lists the curves it applies to, and empty\nmeans none. Empty `columns` means every curve of those kinds. `condition`, if present, limits it\nto some inputs. `fixed_by` is the issue in this repository that removes it."
+      },
+      "LegacyDpbPoint": {
+        "properties": {
+          "parameters": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "maxProperties": 64,
+            "minProperties": 0,
+            "title": "Parameters"
+          },
+          "m1": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "M1"
+          },
+          "band_1_degeneracy": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Band 1 Degeneracy"
+          },
+          "band_2_degeneracy": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Band 2 Degeneracy"
+          }
+        },
+        "type": "object",
+        "required": [
+          "parameters",
+          "m1",
+          "band_1_degeneracy",
+          "band_2_degeneracy"
+        ],
+        "title": "LegacyDpbPoint"
       },
       "MeasuredPointsResponse": {
         "properties": {
@@ -7804,6 +8973,51 @@
         "title": "NumericalGuessFound",
         "description": "Seebeck-only estimate; mass magnitude remains a reference value."
       },
+      "ParameterDomain": {
+        "properties": {
+          "lower": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lower"
+          },
+          "upper": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upper"
+          },
+          "inclusive": {
+            "type": "boolean",
+            "title": "Inclusive",
+            "default": true
+          },
+          "empty": {
+            "type": "boolean",
+            "title": "Empty",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "ParameterDomain",
+        "examples": [
+          {
+            "empty": false,
+            "inclusive": false,
+            "upper": 1000.0
+          }
+        ]
+      },
       "ParameterResponse": {
         "properties": {
           "name": {
@@ -7890,7 +9104,7 @@
           "bounds_editable"
         ],
         "title": "ParameterResponse",
-        "description": "One parameter of a fit mode.\n\n`display_range` is the control's range as a user sees it, and `core_range` is the same range in\nthe core units of requests and results. Use these two, and do not calculate core values from the\nscales: `display_scale` and `fit_scale`, from control units in `value_range`, are there for\ninformation, as the desktop divides where a multiplication would change the last bit.\n\nIn each range, `step` is the desktop's keyboard increment, not a grid: values between steps are\nvalid, and the default or maximum need not lie on a step.\n\n`scattering` lists the types the parameter applies to, and empty means all of them. A mode with\nno choice of scattering uses all its parameters, whatever they list. A `fixed` parameter is set\nby the user, and a fit does not change it. Requests hold every parameter of a mode, including\nthose of other scattering types.\n\n`unit` is the unit of the scaled value, and can be `dimensionless` or `unknown`. `display_unit`\nis the one a user sees, and `display_factor` goes from the one to the other: an energy in K is\nshown in eV. `display_range` is already in `display_unit`. `fit_bounds` is in core units, and is\nleft out for a parameter that a fit does not change. `meaning` is English text, for a client\nwith no translation."
+        "description": "One parameter of a fit mode.\n\n`display_range` is the control's range as a user sees it, and `core_range` is the same range in\nthe core units of requests and results. Use these two, and do not calculate core values from the\nscales: `display_scale` and `fit_scale`, from control units in `value_range`, are there for\ninformation, as the desktop divides where a multiplication would change the last bit.\n\nIn each range, `step` is the desktop's keyboard increment, not a grid: values between steps are\nvalid, and the default or maximum need not lie on a step.\n\n`scattering` lists the types the parameter applies to, and empty means all of them. A mode with\nno choice of scattering uses all its parameters, whatever they list. A `fixed` parameter is set\nby the user, and a fit does not change it. Requests hold every parameter of a mode, including\nthose of other scattering types. C and D are required only for mixed transport.\n\n`unit` is the unit of the scaled value, and can be `dimensionless` or `unknown`. `display_unit`\nis the one a user sees, and `display_factor` goes from the one to the other: an energy in K is\nshown in eV. `display_range` is already in `display_unit`. `fit_bounds` is in core units, and is\nleft out for a parameter that a fit does not change. `meaning` is English text, for a client\nwith no translation."
       },
       "ParseRequest": {
         "properties": {

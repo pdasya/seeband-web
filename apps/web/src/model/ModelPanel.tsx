@@ -1,8 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
+import { ExplicitDpbControls } from "@/model/ExplicitDpbControls";
 import { AlertCircleIcon } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 
-import { modelsQuery } from "@/api/queries";
+import { useModels } from "@/api/queries";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { formatNumber, parseNumber } from "@/lib/numbers";
@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/tooltip";
 import {
   firstModel,
+  offersExplicitDpb,
   fitModeOf,
   settingsFor,
   type FitModeDescription,
@@ -177,7 +178,8 @@ function DegeneracyField({
   const id = useId();
   const [draft, setDraft] = useState(formatNumber(value));
   const commit = () => {
-    const number = positiveOrNull(draft);
+    const parsed = positiveOrNull(draft);
+    const number = parsed !== null && Number.isInteger(parsed) ? parsed : null;
     onInvalidChange(number === null);
     if (number !== null) {
       setDraft(formatNumber(number));
@@ -365,6 +367,12 @@ function ModelControls({ models }: { models: readonly ModelDescription[] }) {
                 ? undefined
                 : { from: mode, to },
             );
+            if (offersExplicitDpb(next))
+              setSelection({
+                parameterization:
+                  selection.parameterization ?? "explicit_fermi_v1",
+                bandConfiguration: selection.bandConfiguration ?? "vb_cb",
+              });
           }
         }}
         options={models.map(({ id, name }) => ({
@@ -373,6 +381,8 @@ function ModelControls({ models }: { models: readonly ModelDescription[] }) {
           hint: name,
         }))}
       />
+
+      {offersExplicitDpb(model) && <ExplicitDpbControls />}
 
       <div className="flex flex-col gap-1.5">
         <ChoiceGroup
@@ -455,7 +465,7 @@ function ModelControls({ models }: { models: readonly ModelDescription[] }) {
 
 /** Which fit can run: all of it comes from the model descriptions of the API. */
 export function ModelPanel() {
-  const { data, isPending, isError } = useQuery(modelsQuery);
+  const { data, isPending, isError } = useModels();
   const models = data?.models;
   const selected = useSessionStore((state) => state.selection.model);
   const setSelection = useSessionStore((state) => state.setSelection);
@@ -465,6 +475,12 @@ export function ModelPanel() {
     if (selected === null && model !== undefined) {
       setSelection({
         model: model.id,
+        ...(offersExplicitDpb(model)
+          ? {
+              parameterization: "explicit_fermi_v1" as const,
+              bandConfiguration: "vb_cb" as const,
+            }
+          : {}),
         ...settingsFor(model),
         minTemperatureK: model.default_min_temperature_k,
         maxTemperatureK: model.default_max_temperature_k,

@@ -229,7 +229,7 @@ test("a range that holds reaches interpolation, and one that does not says so", 
   await expect(page.getByText("Fit range 50–600 K")).toBeVisible();
 });
 
-for (const value of ["0.5", "2.5"]) {
+for (const value of ["1", "3"]) {
   test(`a degeneracy of ${value} is kept`, async ({ page }) => {
     await open(page);
 
@@ -248,7 +248,7 @@ for (const value of ["0.5", "2.5"]) {
   });
 }
 
-for (const value of ["0", "-1", "", "abc"]) {
+for (const value of ["0", "-1", "0.5", "2.5", "", "abc"]) {
   test(`a degeneracy of "${value}" says so and stays out of the session`, async ({
     page,
   }) => {
@@ -264,7 +264,9 @@ for (const value of ["0", "-1", "", "abc"]) {
       "aria-invalid",
       "false",
     );
-    await expect(page.getByRole("alert")).toContainText("must be above 0");
+    await expect(page.getByRole("alert")).toContainText(
+      "must be positive integers",
+    );
 
     await page.getByRole("link", { name: "Results", exact: true }).click();
     await page.getByRole("link", { name: "Model fit" }).click();
@@ -446,7 +448,7 @@ test("the choices stay when moving to another screen and back", async ({
 });
 
 test("descriptions that cannot load say so", async ({ page }) => {
-  await page.route("**/api/models", (route) =>
+  await page.route(/\/api\/models(?:\?.*)?$/, (route) =>
     route.fulfill({
       status: 400,
       json: { code: "x", message: "SECRET-VALUE", details: [] },
@@ -487,7 +489,7 @@ test("the choice of bands has no visible label, and keeps its name", async ({
   await expect(page.getByText("Fit mode", { exact: true })).toBeVisible();
 });
 
-test("ionized impurities are available in both models and S-only modes", async ({
+test("mixed scattering and ionized impurities are separate choices in both models and S-only modes", async ({
   page,
 }) => {
   await open(page);
@@ -495,7 +497,15 @@ test("ionized impurities are available in both models and S-only modes", async (
     await page.getByRole("radio", { name: model, exact: true }).click();
     await mode(page, "S").click();
     await page.getByRole("combobox", { name: "Scattering" }).click();
-    await expect(page.getByRole("option", { name: /acPhDis/ })).toHaveCount(0);
+    await page.getByRole("option", { name: /acPhDis/ }).click();
+    await expect(
+      page.getByRole("combobox", { name: "Scattering" }),
+    ).toContainText("acPhDis");
+    for (const name of ["A", "B", "C", "D"])
+      await expect(
+        page.getByRole("textbox", { name, exact: true }),
+      ).toHaveCount(0);
+    await page.getByRole("combobox", { name: "Scattering" }).click();
     await page.getByRole("option", { name: "Ionized impurities" }).click();
     await expect(
       page.getByRole("combobox", { name: "Scattering" }),

@@ -1,4 +1,5 @@
 import type { CalcResponse } from "@/api/client";
+import { heldForFit } from "@/model/explicitDpb";
 import {
   LORENZ_L0,
   quantityCurve,
@@ -142,6 +143,30 @@ export function exportHeader(context: ExportContext): string[] {
       context.curveCoreVersions,
     ),
     text.header.date(context.date),
+    ...(selection.model === "dpb" &&
+    selection.parameterization === "explicit_fermi_v1"
+      ? [
+          STRINGS.explicitDpb.fermiIdentity(
+            selection.bandConfiguration ?? "vb_cb",
+            selection.carrierType,
+          ),
+        ]
+      : []),
+    ...(selection.model === "dpb" &&
+    selection.parameterization === "explicit_density_v1"
+      ? [
+          STRINGS.explicitDpb.identity(
+            selection.bandConfiguration ?? "vb_cb",
+            selection.netElectronDensityPerM3 ?? 1e24,
+          ),
+        ]
+      : []),
+    ...(selection.model === "dpb" && selection.legacySource
+      ? [
+          STRINGS.explicitDpb.legacyResult,
+          legacyProvenance(selection.legacySource),
+        ]
+      : []),
     ...(context.demo ? [text.header.demo] : []),
     text.header.model(context.modelId.toUpperCase(), context.modeLabel),
     ...(selection.scattering === null
@@ -298,8 +323,16 @@ function parameterRecords(
   saved: Readonly<Record<string, number>> | undefined,
   fit: FitState,
   held: readonly string[],
+  selection: DegeneracySelection,
 ): ParameterRecord[] {
-  const values = parameterValues(mode, saved);
+  const values = parameterValues(mode, saved, { ...selection, scattering });
+  const effectiveHeld =
+    fit.status === "done"
+      ? (fit.result.held ?? held)
+      : heldForFit(
+          { ...selection, model: selection.model ?? null, fitMode: mode.id },
+          held,
+        );
   const units: Record<string, string | undefined> = text.units;
   return visibleParameters(mode, scattering).map((parameter) => {
     const found = foundStatus(fit, parameter.name);
@@ -314,7 +347,7 @@ function parameterRecords(
       status:
         parameter.role === "fixed"
           ? text.status.fixed
-          : held.includes(parameter.name)
+          : effectiveHeld.includes(parameter.name)
             ? text.status.held
             : found.kind === "free"
               ? found.afterFailure
@@ -330,7 +363,64 @@ function parameterRecords(
 type DegeneracySelection = Pick<
   Selection,
   "scattering" | "band1Degeneracy" | "band2Degeneracy"
->;
+> &
+  Partial<
+    Pick<
+      Selection,
+      | "model"
+      | "parameterization"
+      | "bandConfiguration"
+      | "netElectronDensityPerM3"
+      | "carrierType"
+      | "fitAbsoluteMass"
+    >
+  >;
+
+function explicitIdentityRows(selection: DegeneracySelection): string[][] {
+  if (selection.model !== "dpb" || selection.parameterization === undefined)
+    return [];
+  return [
+    [
+      "parameterization",
+      "parameterization",
+      STRINGS.explicitDpb.representationLabel,
+      "",
+      selection.parameterization,
+      text.status.fixed,
+    ],
+    [
+      "band_configuration",
+      "band_configuration",
+      STRINGS.explicitDpb.configuration,
+      "",
+      selection.bandConfiguration ?? "vb_cb",
+      text.status.fixed,
+    ],
+    ...(selection.parameterization === "explicit_fermi_v1"
+      ? selection.carrierType === undefined
+        ? []
+        : [
+            [
+              "carrier_type",
+              "carrier_type",
+              STRINGS.explicitDpb.carrierType,
+              "",
+              selection.carrierType,
+              text.status.fixed,
+            ],
+          ]
+      : [
+          [
+            "net_electron_density_per_m3",
+            STRINGS.explicitDpb.densitySymbol,
+            STRINGS.explicitDpb.densityMeaning,
+            STRINGS.explicitDpb.densityUnit,
+            numberText(selection.netElectronDensityPerM3 ?? 1e24),
+            text.status.fixed,
+          ],
+        ]),
+  ];
+}
 
 function hasDegeneracy(mode: FitModeDescription): boolean {
   return mode.degeneracy !== null && mode.degeneracy !== undefined;
@@ -351,6 +441,7 @@ export function parametersFile(
     saved,
     fit,
     held,
+    selection,
   ).map(({ symbol, meaning, unit, value, status }) =>
     [text.parameter(symbol, meaning, unit), numberText(value), status].join(
       "\t",
@@ -367,7 +458,18 @@ export function parametersFile(
     : [];
   return (
     commented([...header, ...uncertaintyNotes(fit)]) +
-    [text.parameterColumns, ...lines, ...degeneracy].join("\n") +
+    [
+      text.parameterColumns,
+      ...explicitIdentityRows(selection).map((row) =>
+        [
+          text.parameter(row[1] ?? "", row[2] ?? "", row[3] ?? ""),
+          row[4],
+          row[5],
+        ].join("\t"),
+      ),
+      ...lines,
+      ...degeneracy,
+    ].join("\n") +
     "\n"
   );
 }
@@ -392,7 +494,14 @@ export function parametersCsv(
   held: readonly string[] = [],
 ): string {
   const records = [
-    ...parameterRecords(mode, selection.scattering, saved, fit, held),
+    ...parameterRecords(
+      mode,
+      selection.scattering,
+      saved,
+      fit,
+      held,
+      selection,
+    ),
     ...(hasDegeneracy(mode)
       ? [
           {
@@ -428,7 +537,13 @@ export function parametersCsv(
   );
   return (
     commented([...header, ...uncertaintyNotes(fit)]) +
-    [text.parameterCsvColumns, ...rows].join("\n") +
+    [
+      text.parameterCsvColumns,
+      ...explicitIdentityRows(selection).map((row) =>
+        row.map(csvField).join(","),
+      ),
+      ...rows,
+    ].join("\n") +
     "\n"
   );
 }
@@ -619,4 +734,58 @@ export function zipEntries(
     );
   }
   return entries;
+}
+
+/** Export provenance without repeating the original measurement files in every curve header. */
+function legacyProvenance(source: string): string {
+  try {
+    const saved = JSON.parse(source) as {
+      format?: string;
+      version?: number;
+      appVersion?: string;
+      apiVersion?: string;
+      migration?: unknown;
+      content?: {
+        selection?: unknown;
+        parameters?: unknown;
+        fit?: {
+          request?: Record<string, unknown> | null;
+          [key: string]: unknown;
+        } | null;
+        held?: unknown;
+        customBounds?: unknown;
+        fitStart?: unknown;
+        units?: unknown;
+      };
+    };
+    const fit = saved.content?.fit;
+    const request = fit?.request;
+    const compactFit =
+      request == null
+        ? fit
+        : {
+            ...fit,
+            request: Object.fromEntries(
+              Object.entries(request).filter(([key]) => key !== "measurements"),
+            ),
+          };
+    return JSON.stringify({
+      format: saved.format,
+      version: saved.version,
+      appVersion: saved.appVersion,
+      apiVersion: saved.apiVersion,
+      migration: saved.migration,
+      ...(saved.content && {
+        selection: saved.content.selection,
+        parameters: saved.content.parameters,
+        fit: compactFit,
+        held: saved.content.held,
+        customBounds: saved.content.customBounds,
+        fitStart: saved.content.fitStart,
+        units: saved.content.units,
+      }),
+    });
+  } catch {
+    return source;
+  }
 }

@@ -207,3 +207,115 @@ describe("carriedNames", () => {
     expect(carriedNames(EMPTY, S, S)).toEqual([]);
   });
 });
+
+test.each(["acPh", "dis", "ionized", "acPhDis"])(
+  "converted DPB preserves mode-specific transport controls while %s is selected",
+  (scattering) => {
+    const rho = mode("dpb_s_rho", { band_gap: 1000, A: 100, B: 1, C: 1, D: 1 });
+    const hall = { ...rho, id: "dpb_s_rho_rh" };
+    const state = {
+      ...EMPTY,
+      selection: {
+        model: "dpb",
+        fitMode: "dpb_s_rho",
+        band1Degeneracy: 1,
+        band2Degeneracy: 1,
+        minTemperatureK: 100,
+        maxTemperatureK: 800,
+        legacySource: "archived",
+        parameterization: "explicit_density_v1" as const,
+        scattering,
+      },
+      parameters: {
+        dpb_s_rho: { band_gap: 900, A: 200, B: 2, C: 3, D: 4 },
+        dpb_s_rho_rh: { A: 500, B: 5, C: 6, D: 7 },
+      },
+      customBounds: {
+        dpb_s_rho_rh: {
+          A: { lower: 400, upper: 600 },
+          B: { lower: 4, upper: 6 },
+          C: { lower: 5, upper: 9 },
+          D: { lower: 6, upper: 8 },
+        },
+      },
+      held: { dpb_s_rho: ["A", "D"], dpb_s_rho_rh: ["B", "C"] },
+    };
+    const next = carryParameters(state, rho, hall);
+    expect(next.parameters.dpb_s_rho_rh).toEqual({
+      band_gap: 900,
+      A: 500,
+      B: 5,
+      C: 6,
+      D: 7,
+    });
+    expect(next.customBounds).toEqual(state.customBounds);
+    expect(next.held).toEqual(state.held);
+    const back = carryParameters(
+      { ...next, selection: { ...state.selection, scattering: "acPhDis" } },
+      hall,
+      rho,
+    );
+    expect(back.parameters.dpb_s_rho).toEqual(state.parameters.dpb_s_rho);
+    expect(back.customBounds).toEqual(state.customBounds);
+    expect(back.held).toEqual(state.held);
+  },
+);
+
+test("explicit ionized B carries with its override range, also from S-only", () => {
+  // As explicit DPB: the base B is 0.9..1.1, ionized impurities widen it, and only that override
+  // gives dpb_s a B.
+  const wide = {
+    name: "B",
+    role: "fitted",
+    bounds_editable: true,
+    core_range: { minimum: 0, maximum: 100, step: 0.0001, default: 1 },
+  };
+  const withWideB = (description: FitModeDescription) =>
+    ({
+      ...description,
+      parameter_overrides: { ionized: [wide] },
+    }) as unknown as FitModeDescription;
+  const narrowB = { value: 1, maximum: 1.1 };
+  const s = withWideB(mode("dpb_s", { band_offset_k: 100 }));
+  const rho = withWideB(mode("dpb_s_rho", { band_offset_k: 100, B: narrowB }));
+  const hall = withWideB(
+    mode("dpb_s_rho_rh", { band_offset_k: 100, B: narrowB }),
+  );
+  const state = {
+    ...EMPTY,
+    selection: {
+      model: "dpb",
+      fitMode: "dpb_s",
+      band1Degeneracy: 1,
+      band2Degeneracy: 1,
+      minTemperatureK: 100,
+      maxTemperatureK: 800,
+      parameterization: "explicit_fermi_v1" as const,
+      scattering: "ionized",
+    },
+    parameters: { dpb_s: { B: 5 } },
+    customBounds: { dpb_s: {}, dpb_s_rho: {} },
+    held: { dpb_s: ["B"] },
+  };
+  const toRho = carryParameters(state, s, rho);
+  expect(toRho.parameters.dpb_s_rho).toEqual({ B: 5 });
+  expect(toRho.held.dpb_s_rho).toEqual(["B"]);
+  const withBounds = {
+    ...state,
+    ...toRho,
+    customBounds: { dpb_s_rho: { B: { lower: 2, upper: 8 } } },
+  };
+  const toHall = carryParameters(withBounds, rho, hall);
+  expect(toHall.parameters.dpb_s_rho_rh).toEqual({ B: 5 });
+  expect(toHall.customBounds.dpb_s_rho_rh).toEqual({
+    B: { lower: 2, upper: 8 },
+  });
+  // Without ionized impurities the base range applies, and 5 stays behind.
+  const acoustic = {
+    ...withBounds,
+    selection: { ...state.selection, scattering: "acPh" },
+  };
+  expect(carryParameters(acoustic, rho, hall).parameters.dpb_s_rho_rh).toBe(
+    undefined,
+  );
+});

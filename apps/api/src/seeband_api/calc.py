@@ -25,6 +25,7 @@ from seeband_api.errors import (
 )
 from seeband_api.json_values import finite_or_none
 from seeband_api.request_checks import (
+    BandInputs,
     MaxPointsDep,
     Measurements,
     ParameterValues,
@@ -51,11 +52,12 @@ DEFAULT_RMSE_POINTS = 50
 GridPoints = Annotated[int, Field(ge=2, le=MAX_POINTS, strict=True)]
 
 
-class CalcRequest(BaseModel):
+class CalcRequest(BandInputs):
     """What to calculate.
 
     `parameters` holds every parameter of the mode in core units, including those of other
-    scattering types. Values outside a control's range are allowed, as a fit can end there. `points`
+    scattering types. C and D are required only for mixed transport.
+    Values outside a control's range are allowed, as a fit can end there. `points`
     defaults to the model's. `measurements` gives an RMSE for each quantity, and should hold only
     points in the fit range. `extrapolated` says that interpolation made up some of these points.
 
@@ -94,7 +96,6 @@ class CalcRequest(BaseModel):
         }
     )
 
-    model: str
     fit_mode: str
     scattering: str | None = None
     parameters: ParameterValues
@@ -263,12 +264,16 @@ def _to_response(
 )
 async def post_calc(body: CalcRequest, pool: CalcPoolDep, max_points: MaxPointsDep) -> CalcResponse:
     description, fit_mode = find_mode(
-        body.model, body.fit_mode, "invalid_calculation", "Invalid calculation"
+        body.model,
+        body.fit_mode,
+        "invalid_calculation",
+        "Invalid calculation",
+        body.explicit_settings(),
     )
     details = [
         *check_scattering(body.scattering, fit_mode),
         *check_degeneracy(body.band_1_degeneracy, body.band_2_degeneracy, fit_mode),
-        *check_parameter_names(list(body.parameters), "parameters", fit_mode),
+        *check_parameter_names(list(body.parameters), "parameters", fit_mode, body.scattering),
         *_check_measurements(body, fit_mode),
         *check_point_counts(body.measurements, max_points),
     ]
@@ -296,6 +301,7 @@ async def post_calc(body: CalcRequest, pool: CalcPoolDep, max_points: MaxPointsD
         points=body.points or description.default_curve_points,
         scattering=body.scattering,
         kind=body.kind,
+        explicit_bands=body.explicit_settings(),
         band_1_degeneracy=body.band_1_degeneracy,
         band_2_degeneracy=body.band_2_degeneracy,
         extrapolated=body.extrapolated,

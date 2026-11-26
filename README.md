@@ -41,7 +41,7 @@ To run everything as it runs on the server, with Docker: `docker compose -f depl
 pnpm check
 ```
 
-GitHub Actions runs the same checks on every pull request and on pushes to `main`.
+GitHub Actions runs the same checks on every pull request. `pnpm check` and a plain `uv run pytest` skip the extended solver regressions. Run them with `uv run pytest -m extended`, or one of them by its test id. CI runs them on pushes to `main` and on pull requests that change `packages/seeband_core/src`. To run them on another pull request, tick `Run extended core regressions` in its description, then re-run the CI jobs.
 
 To work on the client without the API, run `pnpm mock`. See [`packages/api-client`](packages/api-client/README.md).
 

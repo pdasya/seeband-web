@@ -2,6 +2,7 @@ import type { components } from "@seeband/api-client";
 
 import { parseNumber } from "@/lib/numbers";
 import type { FitModeDescription } from "@/model/selection";
+import type { Selection } from "@/session/store";
 import { STRINGS } from "@/strings";
 
 export type ParameterDescription = components["schemas"]["ParameterResponse"];
@@ -19,12 +20,25 @@ export function visibleParameters(
   scattering: string | null,
 ): ParameterDescription[] {
   const chosen = scattering ?? mode.default_scattering;
-  return mode.parameters.filter(
+  return parametersForScattering(mode, chosen).filter(
     (parameter) =>
       mode.scattering.length === 0 ||
       parameter.scattering.length === 0 ||
       (chosen != null && parameter.scattering.includes(chosen)),
   );
+}
+
+/** Server-described overrides replace existing names and may add structural inputs. */
+export function parametersForScattering(
+  mode: FitModeDescription,
+  scattering: string | null | undefined,
+): ParameterDescription[] {
+  const overrides = mode.parameter_overrides?.[scattering ?? ""] ?? [];
+  return [
+    ...new Map(
+      [...mode.parameters, ...overrides].map((p) => [p.name, p]),
+    ).values(),
+  ];
 }
 
 /** What a fit of this mode lets the user bound, with the bounds of its description. */
@@ -57,17 +71,49 @@ export function withCustomRange(
       };
 }
 
-/** Every parameter of a mode in core units, as requests need them: those set, then the defaults. */
+export type ParameterSelection = Pick<
+  Selection,
+  "parameterization" | "bandConfiguration"
+> &
+  Partial<Pick<Selection, "scattering">>;
+
+/** Every parameter in core units. Virgin E_F starts follow the selected bands; stored values win. */
 export function parameterValues(
   mode: FitModeDescription,
   saved: Readonly<Record<string, number>> | undefined,
+  selection?: ParameterSelection,
 ): Record<string, number> {
-  return Object.fromEntries(
-    mode.parameters.map((parameter) => [
+  const values = Object.fromEntries(
+    parametersForScattering(
+      mode,
+      selection?.scattering ?? mode.default_scattering,
+    ).map((parameter) => [
       parameter.name,
       saved?.[parameter.name] ?? parameter.core_range.default,
     ]),
   );
+  if (
+    selection?.parameterization === "explicit_fermi_v1" &&
+    saved?.fermi_energy === undefined
+  ) {
+    const energy = mode.parameters.find(({ name }) => name === "fermi_energy");
+    const offset =
+      mode.band_2_edge == null ? undefined : values[mode.band_2_edge];
+    if (energy !== undefined && offset !== undefined) {
+      // Initial suggestions only: the server validates carrier populations and all fitted states.
+      const scale =
+        Math.abs(energy.core_range.default) || energy.core_range.step;
+      const low = Math.min(0, offset);
+      const high = Math.max(0, offset);
+      values.fermi_energy =
+        selection.bandConfiguration === "cb_cb"
+          ? low + scale
+          : selection.bandConfiguration === "vb_vb"
+            ? high - scale
+            : low - scale;
+    }
+  }
+  return values;
 }
 
 // As the core converts: dividing where a scale is a fraction, which keeps the last bit.
@@ -157,8 +203,8 @@ export function typedDisplayValue(
   const { minimum, maximum } = parameter.display_range;
   // Bounds as the screen shows them, so that a bound typed as shown counts, as that bound.
   return value !== null &&
-    value >= shownValue(parameter, minimum) &&
-    value <= shownValue(parameter, maximum)
+    value >= Math.min(minimum, shownValue(parameter, minimum)) &&
+    value <= Math.max(maximum, shownValue(parameter, maximum))
     ? Math.min(maximum, Math.max(minimum, value))
     : null;
 }
