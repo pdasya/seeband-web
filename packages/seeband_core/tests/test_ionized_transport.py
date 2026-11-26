@@ -8,11 +8,11 @@ from seeband_core import math_module as mm
 from seeband_core.model_catalog import registry
 
 
-def test_public_modes_offer_ionized_and_remove_mixed_scattering():
+def test_public_modes_offer_ionized_and_mixed_scattering():
     for name in ("spb", "dpb"):
         for mode in registry.get(name).describe().fit_modes:
             assert "ionized" in mode.scattering
-            assert "acPhDis" not in mode.scattering
+            assert "acPhDis" in mode.scattering
             names = {p.name for p in mode.parameters_for("ionized")}
             assert not names.intersection({"C", "D", "F", "G"})
 

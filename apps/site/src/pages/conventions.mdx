@@ -34,8 +34,8 @@ all Fermi energies between the band edges give the same transport curves.
 The total Seebeck coefficient is conductivity-weighted and each weak-field
 Hall contribution is weighted by the square of its conductivity fraction.
 The electronic thermal conductivity includes the interband term whenever
-the single-band Seebeck coefficients differ. The three scattering choices
-are acoustic phonons, alloy disorder and ionized impurities. Use manual
+the single-band Seebeck coefficients differ. The scattering choices
+are acoustic phonons, alloy disorder, their combination and ionized impurities. Use manual
 starting values and bounds for the explicit model.
 
 For acoustic phonons and alloy disorder, the dimensionless Hall moment is
@@ -89,8 +89,7 @@ reports the tested range.
 
 ## Scattering
 
-The relaxation time is $\tau \propto T^{\beta} E^{\lambda - 1/2}$. One mechanism
-applies over the whole temperature range.
+For each pure mechanism the relaxation time is $\tau \propto T^{\beta} E^{\lambda - 1/2}$. The selected scattering law applies over the whole temperature range.
 
 | Mechanism                 | λ   | β   | Explicit T factor of σ |
 | ------------------------- | --- | --- | ---------------------- |
@@ -103,9 +102,16 @@ $\sigma \propto T^{-3/2}$ for acoustic phonons, $T^{-1/2}$ for alloy disorder an
 $T^{3/2}$ for ionized impurities.
 
 The ionized option is the power law $\tau \propto E^{3/2}$, with no screening
-or impurity-ionization model. The desktop's mixed acoustic-and-disorder option
-(acPhDis, with its C and D) is not offered; old mixed results are not ionized
-results. See the [ionized-impurity formulas](https://github.com/pdasya/seeband-web/blob/main/packages/seeband_core/docs/ionized-impurities.md).
+or impurity-ionization model. Mixed acoustic phonons and alloy disorder
+(`acPhDis`) is a separate selection that combines the two scattering rates
+by Matthiessen's rule. Its dimensionless C and D are crossover temperatures
+divided by 300 K. Mixed S-only does not use A, B, C or D. Saved mixed sessions keep
+their scattering selection. In the mixed rows below, $f_i=T/(T+\Theta_i)$ with $\Theta_1=300C$ K and $\Theta_2=300D$ K.
+The defaults differ between the models, as on the desktop. SPB starts at C = 100,
+so $\Theta_1$ = 30 000 K and alloy disorder dominates over the whole range. DPB
+starts at C = D = 1, so $\Theta_i$ = 300 K. The desktop showed the SPB value
+divided by 100 but fitted it as it is; the web shows the value it fits.
+See the [ionized-impurity formulas](https://github.com/pdasya/seeband-web/blob/main/packages/seeband_core/docs/ionized-impurities.md).
 
 ## Carrier density and chemical potential
 
@@ -255,6 +261,8 @@ $$
 | S + ρ, acoustic phonons or ionized  | $B/\lvert r \rvert$ |
 | S + ρ, alloy disorder               | $G/\lvert r \rvert$ |
 
+For mixed scattering in modes with resistivity, $w=(B/\lvert r\rvert) f_2/f_1$.
+
 The band contributions on the charts are the weighted terms, which add up to S,
 not each band's own S.
 
@@ -267,6 +275,7 @@ $T_{300} = T/(300\ \mathrm{K})$:
 | ------------------ | ------------------------- | --------------------------------------------------------------- |
 | Acoustic phonons   | $A\,F_0(\eta)$            | $A\,[F_0(\eta_1) + (B/\lvert r\rvert)\,F_0(\eta_2)]$            |
 | Alloy disorder     | $F\,T\,F_0(\eta)$         | $F\,T\,[F_0(\eta_1) + (G/\lvert r\rvert)\,F_0(\eta_2)]$         |
+| Acoustic + alloy   | $A f_1 F_0(\eta)$         | $A [f_1 F_0(\eta_1) + (B/\lvert r\rvert) f_2 F_0(\eta_2)]$      |
 | Ionized impurities | $A\,T_{300}^3\,F_2(\eta)$ | $A\,T_{300}^3\,[F_2(\eta_1) + (B/\lvert r\rvert)\,F_2(\eta_2)]$ |
 
 A is a free conductivity amplitude in S/m, and F one in S/(m·K), a unit the app
@@ -351,6 +360,8 @@ so S-only modes do not offer it.
 | S             | $E_F$                                                | m₂/m₁, $E_g$, $E_F$                                               |
 | S + ρ         | $E_F$, then A (or F for alloy disorder), in one pass | m₂/m₁, $E_g$, $E_F$ and A, B (or F, G), repeated until they agree |
 | S + ρ + $R_H$ | the same, then the band mass m                       | the same, then m₁                                                 |
+
+For mixed scattering in either resistivity mode, the resistivity stage uses A and C for SPB and A, B, C and D for DPB.
 
 In SPB S and S + ρ, the band mass is not fitted and only its sign matters.
 Whether the data pin a parameter down is shown for each fit; a fit that

@@ -4,7 +4,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, test, vi } from "vitest";
 import contract from "../../../../packages/api-client/openapi.json";
-import { modelsQuery } from "@/api/queries";
 import { ParametersPanel } from "@/model/ParametersPanel";
 import type { ModelDescription } from "@/model/selection";
 import { useSessionStore } from "@/session/store";
@@ -50,7 +49,8 @@ test("ionized S-only structural B stays editable and has no hold control", () =>
   const query = new QueryClient({
     defaultOptions: { queries: { staleTime: Infinity } },
   });
-  query.setQueryData(modelsQuery.queryKey, {
+  // The panel reads the description of the session's parameterization.
+  query.setQueryData(["models", "explicit_density_v1"], {
     ...MODELS,
     models: [
       {

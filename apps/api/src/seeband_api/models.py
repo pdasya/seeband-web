@@ -69,7 +69,7 @@ class ParameterResponse(BaseModel):
     `scattering` lists the types the parameter applies to, and empty means all of them. A mode with
     no choice of scattering uses all its parameters, whatever they list. A `fixed` parameter is set
     by the user, and a fit does not change it. Requests hold every parameter of a mode, including
-    those of other scattering types.
+    those of other scattering types. C and D are required only for mixed transport.
 
     `unit` is the unit of the scaled value, and can be `dimensionless` or `unknown`. `display_unit`
     is the one a user sees, and `display_factor` goes from the one to the other: an energy in K is

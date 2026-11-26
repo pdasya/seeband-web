@@ -76,6 +76,16 @@ def test_public_explicit_registry_and_fit(client):
     )
 
 
+def test_migration_preserves_fitted_mixed_crossovers(client):
+    point = {"m_eff": 1.8, "band_gap": 600, "fermi_energy": 200, "C": 0.51, "D": 1.75}
+    result = client.post(
+        "/api/dpb/migrate",
+        json=dict(parameters=point, m1=1.2, band_1_degeneracy=2, band_2_degeneracy=3),
+    )
+    assert result.status_code == 200
+    assert {k: result.json()["parameters"][k] for k in ("C", "D")} == {"C": 0.51, "D": 1.75}
+
+
 def test_migrated_point_and_intrinsic_diagram(client):
     request = dict(
         parameters={"m_eff": 1.8, "band_gap": 600, "fermi_energy": 200},

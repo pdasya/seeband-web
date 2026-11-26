@@ -51,3 +51,4 @@ venv = ".venv"
 [tool.pytest.ini_options]
 testpaths = ["packages/seeband_core/tests", "apps/api/tests"]
 addopts = "--import-mode=importlib"
+markers = ["extended: long regression cases, skipped unless -m selects them or they are named"]

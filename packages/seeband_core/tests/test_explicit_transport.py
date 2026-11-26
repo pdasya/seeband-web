@@ -75,10 +75,10 @@ def test_absolute_density_matches_independent_roots_and_grid_order(configuration
 
 
 @pytest.mark.parametrize("sign", [-1, 1])
-@pytest.mark.parametrize("scattering", ["acPh", "dis", "ionized"])
+@pytest.mark.parametrize("scattering", ["acPh", "dis", "ionized", "acPhDis"])
 def test_migrated_curves_match_legacy_transport(sign, scattering):
     p = dict(
-        m1=1.7, mass_ratio=0.8 / 1.7, band_offset_k=650.0, A=1e5, B=0.8, F=2e4, G=1.2, C=1.0, D=1.0
+        m1=1.7, mass_ratio=0.8 / 1.7, band_offset_k=650.0, A=1e5, B=0.8, F=2e4, G=1.2, C=0.5, D=2.0
     )
     configuration = "vb_vb" if sign < 0 else "vb_cb"
     ef = -300.0
@@ -184,11 +184,21 @@ def test_intrinsic_underflow_is_numerical_failure_not_wrong_density():
         ("cb_cb", 2e24, (1, 1)),
     ],
 )
-@pytest.mark.parametrize("scattering", ["acPh", "dis", "ionized"])
+@pytest.mark.parametrize("scattering", ["acPh", "dis", "ionized", "acPhDis"])
 def test_transport_matches_independent_si_relaxation_time_moments(
     configuration, doping, signs, scattering
 ):
-    p = dict(m1=1.7, mass_ratio=0.8 / 1.7, band_offset_k=450.0, A=1e5, B=0.8, F=2e4, G=1.2)
+    p = dict(
+        m1=1.7,
+        mass_ratio=0.8 / 1.7,
+        band_offset_k=450.0,
+        A=1e5,
+        B=0.8,
+        F=2e4,
+        G=1.2,
+        C=0.5,
+        D=2.0,
+    )
     settings = ExplicitBands(configuration, doping)
     band = REFERENCE["Band"]
     t = np.array([100.0, 300.0, 800.0])
@@ -199,7 +209,7 @@ def test_transport_matches_independent_si_relaxation_time_moments(
     actual |= explicit_curves(
         settings, "dpb_s_rho_rh", p, t, scattering, 2, 6, "thermal_conductivity"
     )
-    law = "alloy/dis" if scattering == "dis" else scattering
+    law = "alloy/dis" if scattering == "dis" else "acPh" if scattering == "acPhDis" else scattering
     r, power_t = REFERENCE["LAWS"][law]
     lam = r + 0.5
     expected = []
@@ -212,6 +222,8 @@ def test_transport_matches_independent_si_relaxation_time_moments(
             if scattering == "ionized"
             else p["A"]
         )
+        if scattering == "acPhDis":
+            amplitude *= temperature / (temperature + 300 * p["C"])
         # Calibrate the independent physical relaxation time to public amplitude,
         # using integral x^(lambda+1)(-df/dx)=(lambda+1)*F_lambda, not core values.
         physical_factor = (
@@ -224,6 +236,8 @@ def test_transport_matches_independent_si_relaxation_time_moments(
         )
         tau = amplitude / physical_factor / (temperature / 300) ** power_t
         relative = p["G"] if scattering == "dis" else p["B"]
+        if scattering == "acPhDis":
+            relative *= (temperature + 300 * p["C"]) / (temperature + 300 * p["D"])
         first = band(signs[0], 0.0, 1.7, 2, tau)
         second = band(signs[1], 450.0, 0.8, 6, tau * relative / p["mass_ratio"] ** 1.5)
         expected.append(REFERENCE["transport"]((first, second), potential, temperature, law))

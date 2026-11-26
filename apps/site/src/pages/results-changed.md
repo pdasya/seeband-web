@@ -6,6 +6,15 @@ description: Corrections that change SeeBand Web results compared with the deskt
 
 # Results that changed
 
+Core `0.4.2` restores mixed acoustic phonons and alloy disorder (`acPhDis`)
+as a separate choice alongside ionized impurities in SPB and DPB. Mixed
+scattering uses A and C in SPB, and A, B, C and D in DPB modes with
+resistivity. C and D are dimensionless crossover temperatures divided by
+300 K. Mixed S-only ignores these transport parameters. Saved mixed
+sessions retain their mechanism and transport controls when reopened or
+converted to explicit bands. Existing ionized results keep their mechanism.
+See [the scattering conventions](/conventions/#scattering).
+
 Core 0.4.1 adds a manual relative B to explicit ionized DPB S-only. The default B = 1 reproduces earlier S-only curves. In the resistivity modes the default bounds on B expand from [0.9, 1.1] to [0, 10000]. A new fit may reach a different minimum; at fixed parameters those curves retain their previous values. See [the physical assumptions](/conventions/#ionized-impurities-in-explicit-dpb).
 
 Core `0.4.0` supports any pair of valence or conduction bands with a

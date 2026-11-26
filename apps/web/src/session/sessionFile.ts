@@ -90,6 +90,7 @@ export type SessionFileProblem =
   | "not_json"
   | "not_a_session"
   | "newer_version"
+  | "unsupported_version"
   | "invalid"
   | "checksum";
 
@@ -425,6 +426,8 @@ export async function readSessionFile(
   if ((file.version as number) > SESSION_VERSION) {
     return { problem: "newer_version" };
   }
+  // Version 3 belongs to composition sessions, which this build does not read.
+  if (file.version === 3) return { problem: "unsupported_version" };
   if (![1, 2, 4].includes(file.version as number))
     return { problem: "invalid" };
   if (!isSessionFile(file)) {
@@ -486,22 +489,27 @@ export function historicalIonizedControls(
   content: SessionContent,
   explicitDpb = content.selection.parameterization !== undefined,
 ) {
+  const scattering =
+    content.selection.model === "dpb"
+      ? content.selection.scattering
+      : content.savedModelSettings.dpb?.scattering;
   if (content.ionizedBInputs === true)
     return {
       parameters: content.parameters,
       customBounds: content.customBounds,
     };
-  const ionized =
-    (content.selection.model === "dpb"
-      ? content.selection.scattering
-      : content.savedModelSettings.dpb?.scattering) === "ionized";
+  const ionized = scattering === "ionized";
   const parameters =
-    ionized || content.parameters.dpb_s?.B !== undefined
+    ionized ||
+    (scattering !== "acPhDis" && content.parameters.dpb_s?.B !== undefined)
       ? { ...content.parameters, dpb_s: { ...content.parameters.dpb_s, B: 1 } }
       : content.parameters;
   // Signed-mass sessions keep their original request until explicitly converted.
   if (!ionized && !explicitDpb)
     return { parameters, customBounds: content.customBounds };
+  // Before v4 the B of every scattering had the bounds 0.9-1.1. Explicit DPB with ionized
+  // impurities now offers 0-10000 by default, so an older explicit session keeps its old bounds
+  // whatever its scattering is now, as it would get them if switched to ionized later.
   const customBounds = { ...content.customBounds };
   for (const mode of ["dpb_s_rho", "dpb_s_rho_rh"]) {
     customBounds[mode] = {

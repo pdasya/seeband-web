@@ -33,10 +33,14 @@ def api(tmp_path_factory):
         yield client
 
 
-def calculated(api, config, mode, law, offset, ef, masses, valleys, amplitude, relative):
+def calculated(
+    api, config, mode, law, offset, ef, masses, valleys, amplitude, relative, mixed=(0.5, 2.0)
+):
     p = dict(m1=masses[0], mass_ratio=masses[1] / masses[0], band_offset_k=offset, fermi_energy=ef)
     if mode != "dpb_s":
         p.update(A=amplitude, F=amplitude, B=relative, G=relative)
+        if law == "acPhDis":
+            p.update(C=mixed[0], D=mixed[1])
     elif law == "ionized" and relative is not None:
         p["B"] = relative
     response = api.post(
@@ -74,10 +78,10 @@ def reference(config, law, offset, ef, masses, valleys, amplitude, relative, tem
         )
     )
     mu, _ = REFERENCE["solve"](bands, REFERENCE["density_zero"](bands, ef), temperature)
-    mechanism = "alloy/dis" if law == "dis" else law
+    mechanism = {"dis": "alloy/dis", "acPhDis": "acPh"}.get(law, law)
     r, t = REFERENCE["LAWS"][mechanism]
     # Convert the empirical conductivity amplitude in the API to the oracle's time scale.
-    factor = {"acPh": 1, "dis": temperature, "ionized": (temperature / 300) ** 3}[law]
+    factor = {"acPh": 1, "acPhDis": 1, "dis": temperature, "ionized": (temperature / 300) ** 3}[law]
     normalized = []
     for band, weight in zip(
         bands, (1, valleys[1] / valleys[0] * relative * masses[0] / masses[1]), strict=True
@@ -92,10 +96,16 @@ def reference(config, law, offset, ef, masses, valleys, amplitude, relative, tem
             * (temperature / 300) ** t
         )
         normalized.append(replace(band, tau0_s=amplitude * factor * weight / per_second))
+    if law == "acPhDis":
+        # Matthiessen per valley. Ratio of disorder to acoustic rate at 300 K.
+        normalized = [
+            replace(b, tau0_s=b.tau0_s / (1 + c * 300 / temperature))
+            for b, c in zip(normalized, (0.5, 2.0), strict=True)
+        ]
     return REFERENCE["transport"](normalized, mu, temperature, mechanism)[:3]
 
 
-@pytest.mark.parametrize("law", ["acPh", "dis", "ionized"])
+@pytest.mark.parametrize("law", ["acPh", "dis", "acPhDis", "ionized"])
 @pytest.mark.parametrize("mode", MODES)
 def test_measured_curves_match_moments_and_electron_hole_reflection(api, monkeypatch, mode, law):
     constants = REFERENCE["transport"].__globals__
@@ -112,7 +122,17 @@ def test_measured_curves_match_moments_and_electron_hole_reflection(api, monkeyp
         )
         expected = np.array(
             [
-                reference(config, law, offset, ef, masses, valleys, amplitude, relative, temp)
+                reference(
+                    config,
+                    "acPh" if mode == "dpb_s" and law == "acPhDis" else law,
+                    offset,
+                    ef,
+                    masses,
+                    valleys,
+                    amplitude,
+                    relative,
+                    temp,
+                )
                 for temp in TEMPERATURES
             ]
         ).T
@@ -139,6 +159,7 @@ def test_measured_curves_match_moments_and_electron_hole_reflection(api, monkeyp
         valleys[::-1],
         swapped_amplitude,
         1 / relative,
+        mixed=(2.0, 0.5),
     )
     np.testing.assert_allclose(reflected, signs * results["vb_cb"], rtol=1e-10, atol=0)
 

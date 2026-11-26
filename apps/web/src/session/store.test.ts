@@ -1036,3 +1036,41 @@ test("ionized S-only manual B and rho held B survive mode switches independently
   expect(state().parameters.dpb_s_rho?.B).toBe(4);
   expect(state().held.dpb_s_rho).toContain("B");
 });
+
+test("mixed transport drafts and controls survive S-only and scattering switches", async () => {
+  const { MODELS } = await import("../../e2e/support/models");
+  const { visibleParameters } = await import("@/model/parameters");
+  const descriptions =
+    MODELS.models as import("@/model/selection").ModelDescription[];
+  const dpb = descriptions.find(({ id }) => id === "dpb");
+  const s = dpb?.fit_modes.find(({ id }) => id === "dpb_s");
+  const rho = dpb?.fit_modes.find(({ id }) => id === "dpb_s_rho");
+  if (!s || !rho) throw new Error("Missing DPB modes");
+  state().setSelection({
+    model: "dpb",
+    parameterization: "explicit_fermi_v1",
+    scattering: "acPhDis",
+    fitMode: rho.id,
+  });
+  state().setParameters(rho.id, { A: 2000, B: 2, C: 3, D: 4 });
+  state().setCustomBounds(rho.id, "C", { lower: 2, upper: 5 });
+  state().setHeld(rho.id, "D", true);
+  state().chooseFitMode({ fitMode: s.id }, rho, s);
+  expect(
+    visibleParameters(s, state().selection.scattering).map(({ name }) => name),
+  ).not.toContain("C");
+  state().setSelection({ scattering: "ionized" });
+  expect(visibleParameters(s, "ionized").map(({ name }) => name)).not.toContain(
+    "C",
+  );
+  state().setSelection({ scattering: "acPhDis" });
+  state().chooseFitMode({ fitMode: rho.id }, s, rho);
+  expect(state().parameters[rho.id]).toMatchObject({
+    A: 2000,
+    B: 2,
+    C: 3,
+    D: 4,
+  });
+  expect(state().customBounds[rho.id]?.C).toEqual({ lower: 2, upper: 5 });
+  expect(state().held[rho.id]).toContain("D");
+});

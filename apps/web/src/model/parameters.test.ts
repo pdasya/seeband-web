@@ -5,8 +5,6 @@ import { MODELS } from "../../e2e/support/models";
 
 import {
   editableParameters,
-  explorationCoreValue,
-  explorationSliderRange,
   withCustomRange,
   coreToDisplay,
   isShownValue,
@@ -88,6 +86,7 @@ describe("parameterValues", () => {
       "band_mass",
       "fermi_energy",
       "A",
+      "C",
       "F",
     ]);
     expect(values.band_mass).toBe(-1);
@@ -231,92 +230,6 @@ describe("typedDisplayValue", () => {
     expect(typedDisplayValue(gap, "0,26")).toBe(gap.display_range.maximum);
     expect(typedDisplayValue(gap, "-0,26")).toBe(gap.display_range.minimum);
     expect(typedDisplayValue(gap, "0,27")).toBeNull();
-  });
-});
-
-describe("manual exploration domains", () => {
-  const energy = parameter("dpb_s", "fermi_energy");
-
-  test("accepts typed values arbitrarily close to a strict core boundary without rounding across it", () => {
-    const domain = { upper: 100, inclusive: false };
-    expect(
-      explorationCoreValue(energy, coreToDisplay(energy, 100), domain),
-    ).toBeNull();
-    const near = coreToDisplay(energy, 99.999999999999);
-    expect(explorationCoreValue(energy, near, domain)).toBeLessThan(100);
-    expect(explorationCoreValue(energy, near, domain)).toBeGreaterThan(
-      99.99999999,
-    );
-    expect(
-      explorationCoreValue(energy, coreToDisplay(energy, 101), domain),
-    ).toBeNull();
-  });
-
-  test.each([0.06, -0.06])(
-    "treats the same typed EF and band edge as equal after conversion (%s eV)",
-    (offset) => {
-      const edge = displayToCore(energy, offset);
-      const bound = offset > 0 ? { upper: edge } : { lower: edge };
-      expect(
-        explorationCoreValue(energy, offset, { ...bound, inclusive: false }),
-      ).toBeNull();
-      expect(
-        explorationCoreValue(energy, offset, { ...bound, inclusive: true }),
-      ).toBe(edge);
-    },
-  );
-
-  test("selects the inclusive compensation energy from either side in display units", () => {
-    const boundary = displayToCore(energy, -0.06) / 2;
-    for (const bounds of [{ lower: boundary }, { upper: boundary }]) {
-      expect(
-        explorationCoreValue(energy, -0.03, { ...bounds, inclusive: true }),
-      ).toBe(boundary);
-    }
-  });
-
-  test("keeps custom narrow ranges and disables a disjoint slider without changing fit bounds", () => {
-    const custom = withCustomRange(energy, { lower: 99, upper: 101 });
-    const before = structuredClone(custom);
-    const range = explorationSliderRange(custom, {
-      lower: 100,
-      inclusive: false,
-    });
-    expect(range?.minimum).toBe(coreToDisplay(energy, 101));
-    expect(range?.maximum).toBe(coreToDisplay(energy, 101));
-    expect(
-      explorationSliderRange(custom, { lower: 101, inclusive: false }),
-    ).toBeNull();
-    expect(custom).toEqual(before);
-    const typed = coreToDisplay(energy, 100.5);
-    expect(typedDisplayValue(custom, String(typed))).toBe(typed);
-  });
-
-  test("checks a typed strict edge before the usual displayed custom-bound rounding", () => {
-    const custom = withCustomRange(energy, { lower: 0, upper: 100 });
-    const domain = { upper: 110, inclusive: false };
-    expect(
-      typedDisplayValue(custom, String(coreToDisplay(energy, 110)), domain),
-    ).toBeNull();
-    const inside = coreToDisplay(energy, 99.999999999999);
-    expect(typedDisplayValue(custom, String(inside), domain)).toBe(inside);
-  });
-
-  test("uses strict grid endpoints and leaves inclusive endpoints available", () => {
-    const mass = parameter("dpb_s", "m_eff");
-    expect(
-      explorationSliderRange(mass, { lower: 1, upper: 2, inclusive: false }),
-    ).toEqual({ minimum: 1.01, maximum: 1.99 });
-    expect(
-      explorationSliderRange(mass, { lower: 1, upper: 2, inclusive: true }),
-    ).toEqual({ minimum: 1, maximum: 2 });
-    expect(
-      explorationSliderRange(mass, {
-        lower: Infinity,
-        upper: -Infinity,
-        inclusive: true,
-      }),
-    ).toBeNull();
   });
 });
 

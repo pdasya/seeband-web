@@ -489,7 +489,7 @@ test("the choice of bands has no visible label, and keeps its name", async ({
   await expect(page.getByText("Fit mode", { exact: true })).toBeVisible();
 });
 
-test("ionized impurities are available in both models and S-only modes", async ({
+test("mixed scattering and ionized impurities are separate choices in both models and S-only modes", async ({
   page,
 }) => {
   await open(page);
@@ -497,7 +497,15 @@ test("ionized impurities are available in both models and S-only modes", async (
     await page.getByRole("radio", { name: model, exact: true }).click();
     await mode(page, "S").click();
     await page.getByRole("combobox", { name: "Scattering" }).click();
-    await expect(page.getByRole("option", { name: /acPhDis/ })).toHaveCount(0);
+    await page.getByRole("option", { name: /acPhDis/ }).click();
+    await expect(
+      page.getByRole("combobox", { name: "Scattering" }),
+    ).toContainText("acPhDis");
+    for (const name of ["A", "B", "C", "D"])
+      await expect(
+        page.getByRole("textbox", { name, exact: true }),
+      ).toHaveCount(0);
+    await page.getByRole("combobox", { name: "Scattering" }).click();
     await page.getByRole("option", { name: "Ionized impurities" }).click();
     await expect(
       page.getByRole("combobox", { name: "Scattering" }),

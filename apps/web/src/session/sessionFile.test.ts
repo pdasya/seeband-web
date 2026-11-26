@@ -207,6 +207,10 @@ test.each([
     JSON.stringify({ format: "seeband-session", version: SESSION_VERSION + 1 }),
   ],
   [
+    "unsupported_version",
+    JSON.stringify({ format: "seeband-session", version: 3 }),
+  ],
+  [
     "invalid",
     JSON.stringify({ format: "seeband-session", version: SESSION_VERSION }),
   ],
@@ -471,7 +475,7 @@ test("new explicit sessions retain user S-only B and wide rho defaults on reopen
   expect(restored.customBounds).toEqual({});
   expect(
     await readSessionFile(JSON.stringify({ ...file, version: 3 })),
-  ).toEqual({ problem: "invalid" });
+  ).toEqual({ problem: "unsupported_version" });
 });
 
 test.each([
@@ -521,7 +525,7 @@ test.each([
     const loaded = await readSessionFile(JSON.stringify(file));
     if (!("session" in loaded)) throw new Error(loaded.problem);
     const restored = restoredSession(loaded.session.content);
-    expect(restored.parameters.dpb_s?.B).toBe(1);
+    expect(restored.parameters.dpb_s?.B).toBe(scattering === "acPhDis" ? 7 : 1);
     expect(restored.parameters.dpb_s_rho?.B).toBe(1.03);
     expect(restored.customBounds.dpb_s_rho?.B).toEqual({
       lower: 0.9,
@@ -536,5 +540,41 @@ test.each([
     expect(await readSessionFile(JSON.stringify(inconsistent))).toEqual({
       problem: "invalid",
     });
+  },
+);
+
+test.each([undefined, "explicit_fermi_v1"] as const)(
+  "historical mixed sessions retain transport drafts with %s parameterization",
+  async (parameterization) => {
+    const state = session();
+    state.selection = {
+      ...state.selection,
+      model: "dpb",
+      fitMode: "dpb_s",
+      scattering: "acPhDis",
+      ...(parameterization === undefined ? {} : { parameterization }),
+    };
+    state.parameters = {
+      dpb_s: { B: 7 },
+      dpb_s_rho: { A: 20, B: 9, C: 3, D: 4 },
+    };
+    state.customBounds = { dpb_s_rho: { C: { lower: 2, upper: 5 } } };
+    state.held = { dpb_s_rho: ["C", "D"] };
+    const file = await sessionFile(
+      state,
+      { appVersion: "old", apiVersion: "old", saved: "2026-11-20" },
+      () => null,
+    );
+    delete file.content.ionizedBInputs;
+    const restored = restoredSession(file.content);
+    expect(restored.selection.scattering).toBe("acPhDis");
+    expect(restored.parameters).toEqual(state.parameters);
+    expect(restored.customBounds.dpb_s_rho?.C).toEqual({ lower: 2, upper: 5 });
+    if (parameterization !== undefined)
+      expect(restored.customBounds.dpb_s_rho?.B).toEqual({
+        lower: 0.9,
+        upper: 1.1,
+      });
+    expect(restored.held).toEqual(state.held);
   },
 );

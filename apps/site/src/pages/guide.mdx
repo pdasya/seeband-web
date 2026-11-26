@@ -121,12 +121,16 @@ are:
 - $E_g$, the position of band 2, and $E_F$, the Fermi energy at T = 0;
 - for acoustic phonons or ionized impurities, A, the conductivity scale, and
   B, band 2's scale relative to band 1's; for alloy disorder, F and G instead;
+- for mixed acoustic phonons and alloy disorder, A and B plus dimensionless C
+  and D, the crossover temperatures divided by 300 K;
 - $m_1$, the density-of-states mass of band 1, which only $R_H$ sets; it is the single-valley mass when $N_1 = 1$.
 
 Choose the scattering mechanism under **Scattering**: acoustic phonons, alloy
-disorder or ionized impurities. One mechanism applies over the whole range.
-The desktop's combination of acoustic phonons and alloy disorder by
-Matthiessen's rule is not offered.
+disorder, their combination **Acoustic phonons + alloy disorder (acPhDis)**,
+or ionized impurities. One selection applies over the whole range.
+Mixed scattering combines the two rates by Matthiessen's rule. S-only hides
+and ignores A, B, C and D; their values, bounds and held settings remain
+available when you return to a mode with resistivity.
 
 In explicit DPB with ionized impurities, S-only shows a manual B with default
 
@@ -293,8 +297,8 @@ the default bounds for Si:P, and a sample no mechanism describes.
 ## What differs from the desktop guide
 
 - Data can be loaded in other units, as one table or as σ instead of ρ.
-- Scattering offers ionized impurities, and no longer the combination of
-  acoustic phonons and alloy disorder.
+- Scattering also offers ionized impurities alongside acoustic phonons, alloy
+  disorder and their combination.
 - The default fitting method, Verified sequential, checks each step
   numerically; **Legacy sequential (reproduce earlier results)**, under
   **Fitting method**, reproduces the desktop's fitting.

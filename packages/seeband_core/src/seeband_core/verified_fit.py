@@ -121,8 +121,17 @@ def _evaluate_quantity(
         from seeband_core.explicit_transport import explicit_curves
         from seeband_core.fit_quality import CURVE_NAMES
 
+        # The S stage asks for S only, so that sigma and rho cannot fail its trial points.
+        # The others need the measured vector, the only one that holds R_H.
         curves = explicit_curves(
-            explicit_bands, fit_mode, p, t, scattering, band_1_degeneracy, band_2_degeneracy
+            explicit_bands,
+            fit_mode,
+            p,
+            t,
+            scattering,
+            band_1_degeneracy,
+            band_2_degeneracy,
+            kind="seebeck" if q == "seebeck" else "measured",
         )
         return curves[CURVE_NAMES[q]]
     if scattering == "ionized":
@@ -858,11 +867,10 @@ class _Engine:
                 xtol=1e-11,
                 gtol=1e-8,
             )
-        except mm.NoFiniteChemicalPotentialError:
-            # This optional joint search can cross the selected carrier branch.
-            # Resume from the valid start; the fit stages use admissible derivatives.
-            if not self.request.explicit_bands.uses_fermi_energy:
-                raise
+        except mm.ChemicalPotentialError:
+            # This optional joint search can cross the selected carrier branch, or try masses
+            # where the populations cannot be solved or represented. The start was evaluated
+            # above, so resume from it; the fit stages handle their own trial points.
             return
         trial_costs = np.asarray([np.dot(r, r) for r in errors(candidate.x)])
         tolerance = _AUDIT_RTOL * np.maximum(1.0, start_costs)

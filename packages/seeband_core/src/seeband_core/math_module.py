@@ -603,9 +603,9 @@ def dpb_effective_lorenz(
     gap: float,
     fermi_energy: float,
     degen: float,
-    relative_amplitude: float,
+    relative_amplitude: float | np.ndarray,
 ) -> np.ndarray:
-    # Equal temperature factors cancel in the acoustic and disorder weights.
+    # Supply temperature-dependent relative amplitudes for mixed scattering.
     x1, x2 = _dpb_reduced_potentials(temperatures, mass, gap, fermi_energy, degen)
     weight1, weight2 = _dpb_conductivity_weights(x1, x2, relative_amplitude / abs(mass))
     difference = _band_seebeck(x1, -1) - _band_seebeck(x2, float(np.sign(mass)))

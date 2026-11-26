@@ -66,6 +66,24 @@ test("conversion keeps historical bounds and results as provenance, with fresh e
     fermi_energy: 80,
     m1: 1.7,
   });
+  if (!file.content.fit.request)
+    throw new Error("Expected a recorded fit request");
+  const sparseTransport = {
+    ...file.content,
+    parameters: { dpb_s_rho_rh: { A: 1000, B: 2, C: 3 } },
+    guessedParameters: { dpb_s_rho_rh: { D: 4 } },
+    fit: {
+      ...file.content.fit,
+      request: { ...file.content.fit.request, start: { A: 2000, B: 5 } },
+      result: { ...file.content.fit.result, parameters: { A: 3000 } },
+    },
+  };
+  expect(legacyVector(sparseTransport)).toMatchObject({
+    A: 3000,
+    B: 5,
+    C: 3,
+    D: 4,
+  });
   const sparse = {
     ...file.content,
     fit: null,
@@ -275,5 +293,71 @@ test.each(["ionized", "acPh"])(
       upper: 1.08,
     });
     expect(store.getState().held.dpb_s_rho_rh).toEqual([]);
+  },
+);
+
+test.each(["acPh", "dis", "ionized", "acPhDis"])(
+  "conversion with %s retains archived transport drafts, bounds and held settings across DPB modes",
+  async (scattering) => {
+    const store = createSessionStore();
+    store.setState({
+      selection: {
+        ...store.getState().selection,
+        model: "dpb",
+        scattering,
+        fitMode: "dpb_s",
+      },
+      parameters: {
+        dpb_s: { B: 7 },
+        dpb_s_rho: { A: 1000, B: 2, C: 3, D: 4 },
+        dpb_s_rho_rh: { A: 2000, B: 5, C: 6, D: 7 },
+      },
+      customBounds: {
+        dpb_s_rho: {
+          A: { lower: 900, upper: 1200 },
+          B: { lower: 1, upper: 3 },
+          C: { lower: 2, upper: 4 },
+          D: { lower: 3, upper: 5 },
+        },
+      },
+      held: { dpb_s_rho: ["A", "C", "D", "fermi_energy"] },
+    });
+    const file = await sessionFile(
+      store.getState(),
+      { appVersion: "old", apiVersion: "old", saved: "2026-11-20" },
+      () => null,
+    );
+    const converted = convertedSession(
+      file,
+      {
+        parameterization: "explicit_density_v1",
+        band_configuration: "vb_cb",
+        net_electron_density_per_m3: 1e24,
+        parameters: { mass_ratio: 2, band_offset_k: 600, m1: 1, B: 7 },
+      },
+      1,
+      1,
+    );
+    expect(converted.selection.scattering).toBe(scattering);
+    expect(converted.parameters.dpb_s?.B).toBe(
+      scattering === "acPhDis" ? 7 : 1,
+    );
+    expect(converted.parameters.dpb_s_rho).toEqual({
+      A: 1000,
+      B: 2,
+      C: 3,
+      D: 4,
+    });
+    expect(converted.parameters.dpb_s_rho_rh).toEqual({
+      A: 2000,
+      B: 5,
+      C: 6,
+      D: 7,
+    });
+    expect(converted.customBounds.dpb_s_rho).toEqual(
+      file.content.customBounds.dpb_s_rho,
+    );
+
+    expect(converted.held.dpb_s_rho).toEqual(["A", "C", "D"]);
   },
 );

@@ -217,6 +217,8 @@ test("explicit CB+CB curves and confirmed historical conversion round-trip", asy
   await expect(density).toHaveValue(
     String(Math.abs(file.content.selection.netElectronDensityPerM3)),
   );
+  // A fixed-density session has no E_F: the panel follows the density description.
+  await expect(energy).toHaveCount(0);
   await page.getByRole("radio", { name: "S + ρ + RH", exact: true }).click();
   await expect(
     page.getByRole("textbox", { name: "B", exact: true }),
@@ -378,4 +380,80 @@ test("old ionized S-only sessions replay unit B and a newly entered B survives e
   });
   await openSession(page, saved);
   await expect(field).toHaveValue("4");
+});
+
+test("mixed transport drafts and locks survive S-only and session export", async ({
+  page,
+}) => {
+  await page.goto("/fit");
+  await expect(page.getByText("Explicit bands · Fermi energy")).toBeVisible();
+  await page.getByRole("combobox", { name: "Scattering" }).click();
+  await page.getByRole("option", { name: /acPhDis/ }).click();
+  const c = page.getByRole("textbox", { name: "C", exact: true });
+  const d = page.getByRole("textbox", { name: "D", exact: true });
+  await c.fill("1.2");
+  await c.press("Enter");
+  await d.fill("1.4");
+  await d.press("Enter");
+  const lockC = page.getByRole("button", {
+    name: "Hold C at its value in a fit",
+  });
+  const lockD = page.getByRole("button", {
+    name: "Hold D at its value in a fit",
+  });
+  await lockC.click();
+  await lockD.click();
+  const prediction = page.waitForResponse((response) => {
+    if (!response.url().endsWith("/api/calc")) return false;
+    const body = response.request().postDataJSON();
+    return (
+      body.scattering === "acPhDis" &&
+      body.parameters.C === 1.2 &&
+      body.parameters.D === 1.4
+    );
+  });
+  await page
+    .locator('input[type="file"]')
+    .first()
+    .setInputFiles({
+      name: "synthetic-mixed-s.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from(
+        "T [K] S [V/K]\n100 0.0001\n300 0.0002\n800 0.0003\n",
+      ),
+    });
+  expect((await prediction).ok()).toBe(true);
+  await page.getByRole("radio", { name: "S", exact: true }).click();
+  for (const name of ["A", "B", "C", "D"])
+    await expect(page.getByRole("textbox", { name, exact: true })).toHaveCount(
+      0,
+    );
+  await expect(
+    page.getByRole("combobox", { name: "Scattering" }),
+  ).toContainText("acPhDis");
+  await page.getByRole("radio", { name: "S + ρ", exact: true }).click();
+  await expect(c).toHaveValue("1,2");
+  await expect(d).toHaveValue("1,4");
+  await expect(lockC).toHaveAttribute("aria-pressed", "true");
+  await expect(lockD).toHaveAttribute("aria-pressed", "true");
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Session to file" }).first().click(),
+  ]);
+  const saved = readFileSync(await download.path());
+  expect(JSON.parse(saved.toString())).toMatchObject({
+    content: {
+      selection: {
+        scattering: "acPhDis",
+        parameterization: "explicit_fermi_v1",
+      },
+      parameters: { dpb_s_rho: { C: 1.2, D: 1.4 } },
+      held: { dpb_s_rho: ["C", "D"] },
+    },
+  });
+  await openSession(page, saved);
+  await expect(c).toHaveValue("1,2");
+  await expect(d).toHaveValue("1,4");
+  await expect(lockC).toHaveAttribute("aria-pressed", "true");
+  await expect(lockD).toHaveAttribute("aria-pressed", "true");
 });

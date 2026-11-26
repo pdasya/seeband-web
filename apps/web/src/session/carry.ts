@@ -1,6 +1,17 @@
-import type { ParameterDescription } from "@/model/parameters";
+import {
+  parametersForScattering,
+  type ParameterDescription,
+} from "@/model/parameters";
 import type { FitModeDescription } from "@/model/selection";
 import type { SessionState } from "@/session/store";
+
+// Each converted DPB mode owns its archived values, bounds and holds for these controls.
+export const archivedDpbControls: ReadonlySet<string> = new Set([
+  "A",
+  "B",
+  "C",
+  "D",
+]);
 
 type Carried = Pick<
   SessionState,
@@ -9,7 +20,7 @@ type Carried = Pick<
 
 type CarryState = Carried & Partial<Pick<SessionState, "selection">>;
 
-function keepsHistoricalB(
+function keepsHistoricalControls(
   state: CarryState,
   from: FitModeDescription,
   to: FitModeDescription,
@@ -73,18 +84,26 @@ function plan(
   from: FitModeDescription,
   to: FitModeDescription,
 ) {
+  // As each mode shows them for the chosen scattering, with its overrides, such as the wide B
+  // of explicit DPB with ionized impurities, and the B that only that override gives dpb_s.
+  const scattering = state.selection?.scattering;
   const target = new Map(
-    to.parameters.map((parameter) => [parameter.name, parameter]),
+    parametersForScattering(to, scattering ?? to.default_scattering).map(
+      (parameter) => [parameter.name, parameter],
+    ),
   );
   const saved = state.parameters[from.id] ?? {};
   const guessed = state.guessedParameters[from.id] ?? {};
   const shared = new Set<string>();
   const values: Record<string, number> = {};
   const replaceable: Record<string, number> = {};
-  const keepB = keepsHistoricalB(state, from, to);
-  for (const { name, core_range } of from.parameters) {
-    // Converted v1 sessions retain the archived B controls for each DPB fit mode.
-    if (name === "B" && keepB) continue;
+  const keepHistorical = keepsHistoricalControls(state, from, to);
+  for (const { name, core_range } of parametersForScattering(
+    from,
+    scattering ?? from.default_scattering,
+  )) {
+    // Converted sessions retain each mode's original transport controls.
+    if (keepHistorical && archivedDpbControls.has(name)) continue;
     const there = target.get(name);
     if (there === undefined) continue;
     const value = saved[name] ?? core_range.default;
