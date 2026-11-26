@@ -207,6 +207,10 @@ test.each([
     JSON.stringify({ format: "seeband-session", version: SESSION_VERSION + 1 }),
   ],
   [
+    "unsupported_version",
+    JSON.stringify({ format: "seeband-session", version: 3 }),
+  ],
+  [
     "invalid",
     JSON.stringify({ format: "seeband-session", version: SESSION_VERSION }),
   ],
@@ -471,7 +475,7 @@ test("new explicit sessions retain user S-only B and wide rho defaults on reopen
   expect(restored.customBounds).toEqual({});
   expect(
     await readSessionFile(JSON.stringify({ ...file, version: 3 })),
-  ).toEqual({ problem: "invalid" });
+  ).toEqual({ problem: "unsupported_version" });
 });
 
 test.each([

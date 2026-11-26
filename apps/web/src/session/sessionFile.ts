@@ -90,6 +90,7 @@ export type SessionFileProblem =
   | "not_json"
   | "not_a_session"
   | "newer_version"
+  | "unsupported_version"
   | "invalid"
   | "checksum";
 
@@ -425,6 +426,8 @@ export async function readSessionFile(
   if ((file.version as number) > SESSION_VERSION) {
     return { problem: "newer_version" };
   }
+  // Version 3 belongs to composition sessions, which this build does not read.
+  if (file.version === 3) return { problem: "unsupported_version" };
   if (![1, 2, 4].includes(file.version as number))
     return { problem: "invalid" };
   if (!isSessionFile(file)) {
