@@ -66,10 +66,20 @@ async function collect(
   page: Page,
   answer: (route: Route, index: number) => Promise<void> = (route) =>
     route.fulfill({ json: CALC }),
+  { fromData = false }: { fromData?: boolean } = {},
 ) {
   const bodies: CalcBody[] = [];
   await page.route("**/api/calc", (route) => {
-    bodies.push(route.request().postDataJSON() as CalcBody);
+    const body = route.request().postDataJSON() as CalcBody;
+    // The model previews before data load. A test of what data ask for starts at their request.
+    if (
+      fromData &&
+      bodies.length === 0 &&
+      Object.keys(body.measurements ?? {}).length === 0
+    ) {
+      return route.fulfill({ json: CALC });
+    }
+    bodies.push(body);
     return answer(route, bodies.length - 1);
   });
   return bodies;
@@ -105,8 +115,10 @@ test("loaded data ask for a whole request, and draw the curve", async ({
   page,
 }) => {
   await open(page);
-  const bodies = await collect(page, (route) =>
-    route.fulfill({ json: withRmse(108.43545) }),
+  const bodies = await collect(
+    page,
+    (route) => route.fulfill({ json: withRmse(108.43545) }),
+    { fromData: true },
   );
 
   await load(page);
@@ -426,11 +438,14 @@ test("a limit with no time says to change a value, and does not repeat", async (
   page,
 }) => {
   await open(page);
-  const bodies = await collect(page, (route) =>
-    route.fulfill({
-      status: 429,
-      json: { code: "rate_limited", message: "x", details: [] },
-    }),
+  const bodies = await collect(
+    page,
+    (route) =>
+      route.fulfill({
+        status: 429,
+        json: { code: "rate_limited", message: "x", details: [] },
+      }),
+    { fromData: true },
   );
   await load(page);
 
@@ -464,7 +479,7 @@ test("a slider moved during interpolation waits, and then the latest goes", asyn
   page,
 }) => {
   await open(page);
-  const bodies = await collect(page);
+  const bodies = await collect(page, undefined, { fromData: true });
   await load(page);
   await expect.poll(() => bodies.length).toBe(1);
   let release: () => void = () => undefined;
@@ -551,7 +566,7 @@ test("zeros in resistivity stay out of the request, and the panel says so", asyn
   page,
 }) => {
   await open(page);
-  const bodies = await collect(page);
+  const bodies = await collect(page, undefined, { fromData: true });
   await page.route("**/api/parse", (route) =>
     route.fulfill({
       json: {
@@ -593,23 +608,27 @@ test("removing data preserves model curves and parameters and clears the RMSE", 
   const held = new Promise<void>((resolve) => {
     release = resolve;
   });
-  const bodies = await collect(page, async (route, index) => {
-    if (index > 0) {
-      await held;
-      await route
-        .fulfill({
-          json:
-            Object.keys(
-              (route.request().postDataJSON() as CalcBody).measurements,
-            ).length === 0
-              ? CALC
-              : withRmse(222),
-        })
-        .catch(() => undefined);
-    } else {
-      await route.fulfill({ json: withRmse(111) });
-    }
-  });
+  const bodies = await collect(
+    page,
+    async (route, index) => {
+      if (index > 0) {
+        await held;
+        await route
+          .fulfill({
+            json:
+              Object.keys(
+                (route.request().postDataJSON() as CalcBody).measurements,
+              ).length === 0
+                ? CALC
+                : withRmse(222),
+          })
+          .catch(() => undefined);
+      } else {
+        await route.fulfill({ json: withRmse(111) });
+      }
+    },
+    { fromData: true },
+  );
   await load(page);
   await expect(page.getByText("111 µV/K", { exact: true })).toBeVisible();
   await eg(page).press("ArrowRight");

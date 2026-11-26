@@ -284,6 +284,10 @@ test("other curves are asked for only while their tab is open", async ({
   page,
 }) => {
   const bodies = await open(page);
+  // The S tab previews the model before data load; this test starts from the data's request.
+  await expect.poll(() => bodies.length).toBe(1);
+  expect(bodies[0]?.measurements).toEqual({});
+  bodies.length = 0;
   await load(page, 0);
   await expect.poll(() => bodies.length).toBe(1);
   expect(bodies[0]?.kind).toBeUndefined();
