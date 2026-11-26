@@ -219,11 +219,13 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
           </span>
         </div>
       </div>
-      {drawnFrom.some(({ stale }) => stale === true) && (
-        <p className="m-0 text-xs text-muted-foreground">
-          {STRINGS.calculation.previous}
-        </p>
-      )}
+      {/* A failure alert below already says that the last curve stays. */}
+      {failures.length === 0 &&
+        drawnFrom.some(({ stale }) => stale === true) && (
+          <p className="m-0 text-xs text-muted-foreground">
+            {STRINGS.calculation.previous}
+          </p>
+        )}
       {failures.map((failure) => (
         <Alert key={failure} variant="destructive">
           <AlertCircleIcon aria-hidden="true" />
