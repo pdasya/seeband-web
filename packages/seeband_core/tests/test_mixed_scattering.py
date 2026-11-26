@@ -158,3 +158,26 @@ def test_intrinsic_dilute_mixed_lorenz_retains_temperature_dependent_band_weight
         2 + 4 * relative / (1 + relative) ** 2 * (2 + p["band_gap"] / (2 * t)) ** 2
     )
     np.testing.assert_allclose(result.curves["lorenz_number_w_ohm_per_k2"], expected, rtol=1e-11)
+
+
+@pytest.mark.parametrize("name", ["C", "D"])
+@pytest.mark.parametrize("model_id", ["spb", "dpb"])
+def test_mixed_curves_and_fits_need_their_crossover_ratios(model_id, name):
+    """A missing C or D would read as 0 elsewhere: pure acoustic phonons labelled acPhDis."""
+    model = registry.get(model_id)
+    mode_id = model_id + "_s_rho"
+    mode = model.describe().fit_mode(mode_id)
+    p = default_start(mode)
+    if name not in p:
+        pytest.skip(f"{model_id} has no {name}")
+    p.pop(name)
+    with pytest.raises(ValueError, match=f"needs its crossover ratio {name}"):
+        model.calculate(CurveRequest(mode_id, p, 100, 700, 4, "acPhDis"))
+    full = default_start(mode)
+    curve = model.calculate(CurveRequest(mode_id, full, 100, 700, 5, "acPhDis"))
+    measurements = {
+        q: Measurement(curve.temperature_k, curve.curves[key])
+        for q, key in (("seebeck", "seebeck_v_per_k"), ("resistivity", "resistivity_ohm_m"))
+    }
+    with pytest.raises(ValueError, match=f"needs its crossover ratio {name}"):
+        model.fit(FitRequest(mode_id, measurements, p, scattering="acPhDis"))

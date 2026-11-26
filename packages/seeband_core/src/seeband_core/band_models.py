@@ -344,7 +344,9 @@ class _BandModel:
                 )
         if request.scattering == "acPhDis":
             for name in ("C", "D"):
-                if name in specs and request.start.get(name, 0.0) < 0:
+                if name in specs and name not in request.start:
+                    raise ValueError(f"Mixed scattering needs its crossover ratio {name}")
+                if name in specs and request.start[name] < 0:
                     raise ValueError(f"Mixed scattering ratio {name} must be nonnegative")
         fitted = _fitted_names(fit_mode, request.scattering)
         if request.explicit_bands is not None:
@@ -581,8 +583,14 @@ class _BandModel:
             request.fit_mode, request.scattering, request.explicit_bands
         )
         if scattering == "acPhDis" and not fit_mode.id.endswith("_s"):
+            declared = {spec.name for spec in fit_mode.parameters}
             for name in ("C", "D"):
-                ratio = _value(request.parameters, name)
+                if name not in declared:
+                    continue  # SPB has C only.
+                if name not in request.parameters:
+                    # Elsewhere a missing C or D reads as 0, which would be pure acoustic phonons.
+                    raise ValueError(f"Mixed scattering needs its crossover ratio {name}")
+                ratio = request.parameters[name]
                 if not math.isfinite(ratio) or ratio < 0:
                     raise ValueError(
                         f"Mixed scattering ratio {name} must be finite and nonnegative"
