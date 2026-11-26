@@ -107,6 +107,10 @@ or impurity-ionization model. Mixed acoustic phonons and alloy disorder
 by Matthiessen's rule. Its dimensionless C and D are crossover temperatures
 divided by 300 K. Mixed S-only does not use A, B, C or D. Saved mixed sessions keep
 their scattering selection. In the mixed rows below, $f_i=T/(T+\Theta_i)$ with $\Theta_1=300C$ K and $\Theta_2=300D$ K.
+The defaults differ between the models, as on the desktop. SPB starts at C = 100,
+so $\Theta_1$ = 30 000 K and alloy disorder dominates over the whole range. DPB
+starts at C = D = 1, so $\Theta_i$ = 300 K. The desktop showed the SPB value
+divided by 100 but fitted it as it is; the web shows the value it fits.
 See the [ionized-impurity formulas](https://github.com/pdasya/seeband-web/blob/main/packages/seeband_core/docs/ionized-impurities.md).
 
 ## Carrier density and chemical potential
