@@ -29,7 +29,7 @@ export function visibleParameters(
 }
 
 /** Server-described overrides replace existing names and may add structural inputs. */
-function parametersForScattering(
+export function parametersForScattering(
   mode: FitModeDescription,
   scattering: string | null | undefined,
 ): ParameterDescription[] {

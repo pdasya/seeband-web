@@ -260,3 +260,62 @@ test.each(["acPh", "dis", "ionized", "acPhDis"])(
     expect(back.held).toEqual(state.held);
   },
 );
+
+test("explicit ionized B carries with its override range, also from S-only", () => {
+  // As explicit DPB: the base B is 0.9..1.1, ionized impurities widen it, and only that override
+  // gives dpb_s a B.
+  const wide = {
+    name: "B",
+    role: "fitted",
+    bounds_editable: true,
+    core_range: { minimum: 0, maximum: 100, step: 0.0001, default: 1 },
+  };
+  const withWideB = (description: FitModeDescription) =>
+    ({
+      ...description,
+      parameter_overrides: { ionized: [wide] },
+    }) as unknown as FitModeDescription;
+  const narrowB = { value: 1, maximum: 1.1 };
+  const s = withWideB(mode("dpb_s", { band_offset_k: 100 }));
+  const rho = withWideB(mode("dpb_s_rho", { band_offset_k: 100, B: narrowB }));
+  const hall = withWideB(
+    mode("dpb_s_rho_rh", { band_offset_k: 100, B: narrowB }),
+  );
+  const state = {
+    ...EMPTY,
+    selection: {
+      model: "dpb",
+      fitMode: "dpb_s",
+      band1Degeneracy: 1,
+      band2Degeneracy: 1,
+      minTemperatureK: 100,
+      maxTemperatureK: 800,
+      parameterization: "explicit_fermi_v1" as const,
+      scattering: "ionized",
+    },
+    parameters: { dpb_s: { B: 5 } },
+    customBounds: { dpb_s: {}, dpb_s_rho: {} },
+    held: { dpb_s: ["B"] },
+  };
+  const toRho = carryParameters(state, s, rho);
+  expect(toRho.parameters.dpb_s_rho).toEqual({ B: 5 });
+  expect(toRho.held.dpb_s_rho).toEqual(["B"]);
+  const withBounds = {
+    ...state,
+    ...toRho,
+    customBounds: { dpb_s_rho: { B: { lower: 2, upper: 8 } } },
+  };
+  const toHall = carryParameters(withBounds, rho, hall);
+  expect(toHall.parameters.dpb_s_rho_rh).toEqual({ B: 5 });
+  expect(toHall.customBounds.dpb_s_rho_rh).toEqual({
+    B: { lower: 2, upper: 8 },
+  });
+  // Without ionized impurities the base range applies, and 5 stays behind.
+  const acoustic = {
+    ...withBounds,
+    selection: { ...state.selection, scattering: "acPh" },
+  };
+  expect(carryParameters(acoustic, rho, hall).parameters.dpb_s_rho_rh).toBe(
+    undefined,
+  );
+});
