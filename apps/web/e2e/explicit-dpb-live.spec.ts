@@ -129,10 +129,16 @@ test("explicit CB+CB curves and confirmed historical conversion round-trip", asy
       minTemperatureK: 100,
       maxTemperatureK: 800,
     },
-    parameters: { dpb_s_rho: { m_eff: 2, band_gap: 600, fermi_energy: 80 } },
+    parameters: {
+      dpb_s_rho: { m_eff: 2, band_gap: 600, fermi_energy: 80 },
+      dpb_s_rho_rh: { B: 1.07 },
+    },
     guessedParameters: {},
-    customBounds: { dpb_s_rho: { fermi_energy: { lower: 0, upper: 100 } } },
-    held: { dpb_s_rho: ["fermi_energy"] },
+    customBounds: {
+      dpb_s_rho: { fermi_energy: { lower: 0, upper: 100 } },
+      dpb_s_rho_rh: { B: { lower: 0.98, upper: 1.09 } },
+    },
+    held: { dpb_s_rho: ["fermi_energy"], dpb_s_rho_rh: ["B"] },
     interpolation: { enabled: false },
     chartPanels: ["seebeck", "resistivity", "hall", "band_diagram"],
     savedModelSettings: {},
@@ -200,8 +206,11 @@ test("explicit CB+CB curves and confirmed historical conversion round-trip", asy
   };
   expect(file.version).toBe(4);
   expect(file.content.selection.parameterization).toBe("explicit_density_v1");
-  expect(file.content.customBounds).toEqual({});
-  expect(file.content.held).toEqual({});
+  expect(file.content.customBounds).toEqual({
+    dpb_s_rho: { B: { lower: 0.9, upper: 1.1 } },
+    dpb_s_rho_rh: { B: { lower: 0.98, upper: 1.09 } },
+  });
+  expect(file.content.held).toEqual({ dpb_s_rho_rh: ["B"] });
   expect(file.content.selection.legacySource).not.toContain('"data":');
   await openSession(page, saved);
   await expect(dialog).not.toBeVisible();
@@ -209,6 +218,12 @@ test("explicit CB+CB curves and confirmed historical conversion round-trip", asy
     String(Math.abs(file.content.selection.netElectronDensityPerM3)),
   );
   await page.getByRole("radio", { name: "S + ρ + RH", exact: true }).click();
+  await expect(
+    page.getByRole("textbox", { name: "B", exact: true }),
+  ).toHaveValue("1,07");
+  await expect(
+    page.getByRole("button", { name: "Hold B at its value in a fit" }),
+  ).toHaveAttribute("aria-pressed", "true");
   const massLock = page.getByRole("button", {
     name: "Hold m₁ at its value in a fit",
   });
