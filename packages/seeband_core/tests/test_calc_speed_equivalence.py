@@ -70,23 +70,28 @@ _VARIATIONS: list[dict[str, float]] = [
 ]
 
 
+def _variations(fit_mode: Any) -> list[int]:
+    """The variations that give the mode a distinct input. Some affect another model only."""
+    names = {spec.name for spec in fit_mode.parameters}
+    variations = []
+    seen = set()
+    for index, values in enumerate(_VARIATIONS):
+        parameters = default_start(fit_mode) | {
+            name: value for name, value in values.items() if name in names
+        }
+        effective = tuple(sorted(parameters.items()))
+        if effective not in seen:
+            seen.add(effective)
+            variations.append(index)
+    return variations
+
+
 def _cases() -> list[tuple[str, str, str | None, str, int, float]]:
     cases = []
     for description in registry.descriptions():
         for fit_mode in description.fit_modes:
+            variations = _variations(fit_mode)
             for scattering in fit_mode.scattering or (None,):
-                names = {spec.name for spec in fit_mode.parameters}
-                # Some variations affect another model only. Compare each effective input once.
-                variations = []
-                seen = set()
-                for index, values in enumerate(_VARIATIONS):
-                    parameters = default_start(fit_mode) | {
-                        name: value for name, value in values.items() if name in names
-                    }
-                    effective = tuple(sorted(parameters.items()))
-                    if effective not in seen:
-                        seen.add(effective)
-                        variations.append(index)
                 for kind in fit_mode.curve_kinds:
                     for variation, degeneracy in itertools.product(variations, (1.0, 3.0)):
                         if degeneracy != 1.0 and fit_mode.degeneracy is None:
@@ -110,6 +115,20 @@ def test_the_comparison_covers_every_mode_scattering_and_kind() -> None:
         for kind in fit_mode.curve_kinds
     }
     assert covered == expected
+
+
+def test_each_variation_that_touches_a_mode_changes_its_input() -> None:
+    # Dropping duplicates must not drop a branch: if a default moves onto a variation's value, the
+    # variation stops testing anything, and this fails so that the variations can be updated.
+    for description in registry.descriptions():
+        for fit_mode in description.fit_modes:
+            names = {spec.name for spec in fit_mode.parameters}
+            touching = [
+                index
+                for index, values in enumerate(_VARIATIONS)
+                if index == 0 or names & values.keys()
+            ]
+            assert _variations(fit_mode) == touching, fit_mode.id
 
 
 @pytest.mark.filterwarnings("ignore")
