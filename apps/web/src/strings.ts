@@ -74,8 +74,10 @@ export const STRINGS = {
   },
   appName: "SeeBand",
   calculation: {
+    affectedList: (temperatures: readonly string[]) =>
+      `${temperatures.join("; ")} K`,
     affectedRange: (first: string, last: string, count: number) =>
-      `${first}–${last} (${count} affected temperatures)`,
+      `${first}–${last} K (${count} affected temperatures)`,
     previous:
       "Showing the previous calculation while the current values are unavailable.",
     reasons: {
@@ -85,9 +87,9 @@ export const STRINGS = {
       calculation_failed: "The calculation failed for these values.",
     },
     curveUnavailable: (quantity: string, temperatures: string) =>
-      `${quantity}: model curve unavailable at ${temperatures} K. Gaps are left in the curve.`,
+      `${quantity}: model curve unavailable at ${temperatures}. Gaps are left in the curve.`,
     rmseUnavailable: (quantity: string, temperatures: string) =>
-      `RMSE, ${quantity}: unavailable at ${temperatures} K. The model curve has its own availability.`,
+      `RMSE, ${quantity}: unavailable at ${temperatures}. The model curve has its own availability.`,
   },
   // The link that the header's logo and name make, for a screen reader.
   appHomeLabel: "SeeBand, overview",

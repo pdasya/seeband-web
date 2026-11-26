@@ -811,7 +811,7 @@ test("current partial curves replace an earlier snapshot and keep isolated point
   await eg(page).press("ArrowRight");
   await expect.poll(() => bodies.length).toBe(2);
   await expect(
-    chart(page).getByText(/model curve unavailable at 200, 500 K/),
+    chart(page).getByText(/model curve unavailable at 200; 500 K/),
   ).toBeVisible();
   await expect(
     chart(page).getByText(/RMSE, S: unavailable at 100 K/),

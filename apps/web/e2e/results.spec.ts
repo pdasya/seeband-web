@@ -1564,7 +1564,7 @@ test("Results distinguish unavailable RMSE from partial and wholly unavailable c
   );
   await expect(kpi(page, "RMSE ρ")).toContainText("22 %");
   await expect(
-    page.getByText(/κe.*model curve unavailable at 100, 200, 300 K/),
+    page.getByText(/κe.*model curve unavailable at 100; 200; 300 K/),
   ).toBeVisible();
   await expect(
     page.getByText(/μ.*model curve unavailable at 200 K/),

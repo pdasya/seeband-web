@@ -10,13 +10,15 @@ export function issueReason(code: string): string {
   return reasons[code] ?? STRINGS.calculation.reasons.calculation_failed;
 }
 
+/** Temperatures to 0.1 K, with their unit. A semicolon separates them, as a comma is decimal. */
 export function issueTemperatures(temperatures: readonly number[]): string {
   const unique = [...new Set(temperatures)].sort((a, b) => a - b);
+  const shown = (value: number) => formatNumber(Math.round(value * 10) / 10);
   return unique.length <= 8
-    ? unique.map((value) => formatNumber(value)).join(", ")
+    ? STRINGS.calculation.affectedList(unique.map(shown))
     : STRINGS.calculation.affectedRange(
-        formatNumber(unique.at(0) ?? 0),
-        formatNumber(unique.at(-1) ?? 0),
+        shown(unique.at(0) ?? 0),
+        shown(unique.at(-1) ?? 0),
         unique.length,
       );
 }
