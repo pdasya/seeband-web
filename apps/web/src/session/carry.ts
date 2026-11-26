@@ -2,6 +2,14 @@ import type { ParameterDescription } from "@/model/parameters";
 import type { FitModeDescription } from "@/model/selection";
 import type { SessionState } from "@/session/store";
 
+// Each converted DPB mode owns its archived values, bounds and holds for these controls.
+export const archivedDpbControls: ReadonlySet<string> = new Set([
+  "A",
+  "B",
+  "C",
+  "D",
+]);
+
 type Carried = Pick<
   SessionState,
   "parameters" | "customBounds" | "held" | "guessedParameters"
@@ -82,11 +90,9 @@ function plan(
   const values: Record<string, number> = {};
   const replaceable: Record<string, number> = {};
   const keepHistorical = keepsHistoricalControls(state, from, to);
-  const archivedControls =
-    state.selection?.scattering === "acPhDis" ? ["A", "B", "C", "D"] : ["B"];
   for (const { name, core_range } of from.parameters) {
     // Converted sessions retain each mode's original transport controls.
-    if (keepHistorical && archivedControls.includes(name)) continue;
+    if (keepHistorical && archivedDpbControls.has(name)) continue;
     const there = target.get(name);
     if (there === undefined) continue;
     const value = saved[name] ?? core_range.default;

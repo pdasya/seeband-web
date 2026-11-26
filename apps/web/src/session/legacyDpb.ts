@@ -1,6 +1,7 @@
 import type { components } from "@seeband/api-client";
 import { parameterValues } from "@/model/parameters";
 import type { FitModeDescription } from "@/model/selection";
+import { archivedDpbControls } from "@/session/carry";
 import {
   historicalIonizedControls,
   type SessionContent,
@@ -16,15 +17,15 @@ export function legacyVector(
 ): Record<string, number> {
   const mode = content.selection.fitMode ?? "dpb_s_rho";
   const defaults = description ? parameterValues(description, undefined) : {};
-  if (content.fit === null)
-    return {
-      ...defaults,
-      ...content.guessedParameters?.[mode],
-      ...content.parameters[mode],
-    };
+  const drafts = {
+    ...content.guessedParameters?.[mode],
+    ...content.parameters[mode],
+  };
+  if (content.fit === null) return { ...defaults, ...drafts };
   return Object.fromEntries(
     Object.entries({
       ...defaults,
+      ...archivedControlsOf(drafts),
       ...content.fit.request?.start,
       ...content.fit.result.parameters,
     }).filter((entry): entry is [string, number] => entry[1] !== null),
@@ -40,12 +41,14 @@ export function convertedSession(
 ): SessionContent {
   const content = session.content;
   const mode = content.selection.fitMode ?? "dpb_s_rho";
-  const ionized = content.selection.scattering === "ionized";
+  const restoreStructuralB =
+    mode === "dpb_s" &&
+    (content.selection.scattering === "ionized" ||
+      (content.ionizedBInputs !== true &&
+        content.selection.scattering !== "acPhDis"));
   const controls = historicalIonizedControls(content, true);
   // These transport controls keep their units when the band representation changes.
-  const retained =
-    content.selection.scattering === "acPhDis" ? ["A", "B", "C", "D"] : ["B"];
-  const parameters = legacyControls(controls.parameters, retained);
+  const parameters = legacyControls(controls.parameters);
   return {
     ionizedBInputs: true,
     ...content,
@@ -77,15 +80,13 @@ export function convertedSession(
       [mode]: {
         ...parameters[mode],
         ...point.parameters,
-        ...(ionized && mode === "dpb_s"
-          ? { B: controls.parameters.dpb_s?.B ?? 1 }
-          : {}),
+        ...(restoreStructuralB ? { B: controls.parameters.dpb_s?.B ?? 1 } : {}),
       },
     },
     guessedParameters: withoutLegacyDpb(content.guessedParameters ?? {}),
     customBounds: {
       ...withoutLegacyDpb(content.customBounds),
-      ...legacyControls(controls.customBounds, retained),
+      ...legacyControls(controls.customBounds),
     },
     held: {
       ...withoutLegacyDpb(content.held),
@@ -94,11 +95,11 @@ export function convertedSession(
           .filter(
             ([mode, held]) =>
               mode.startsWith("dpb_") &&
-              held.some((name) => retained.includes(name)),
+              held.some((name) => archivedDpbControls.has(name)),
           )
           .map(([mode, held]) => [
             mode,
-            held.filter((name) => retained.includes(name)),
+            held.filter((name) => archivedDpbControls.has(name)),
           ]),
       ),
     },
@@ -107,15 +108,18 @@ export function convertedSession(
   };
 }
 
+function archivedControlsOf<T>(values: Record<string, T>): Record<string, T> {
+  return Object.fromEntries(
+    Object.entries(values).filter(([name]) => archivedDpbControls.has(name)),
+  );
+}
+
 function legacyControls<T>(
   modes: Record<string, Record<string, T>>,
-  names: readonly string[],
 ): Record<string, Record<string, T>> {
   return Object.fromEntries(
     Object.entries(modes).flatMap(([mode, values]) => {
-      const kept = Object.fromEntries(
-        Object.entries(values).filter(([name]) => names.includes(name)),
-      );
+      const kept = archivedControlsOf(values);
       return mode.startsWith("dpb_") && Object.keys(kept).length > 0
         ? [[mode, kept]]
         : [];

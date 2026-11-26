@@ -208,37 +208,55 @@ describe("carriedNames", () => {
   });
 });
 
-test("converted mixed sessions retain the archived transport controls of each mode", () => {
-  const rho = mode("dpb_s_rho", { band_gap: 1000, A: 100, B: 1, C: 1, D: 1 });
-  const hall = { ...rho, id: "dpb_s_rho_rh" };
-  const state = {
-    ...EMPTY,
-    selection: {
-      model: "dpb",
-      fitMode: "dpb_s_rho",
-      band1Degeneracy: 1,
-      band2Degeneracy: 1,
-      minTemperatureK: 100,
-      maxTemperatureK: 800,
-      legacySource: "archived",
-      parameterization: "explicit_density_v1" as const,
-      scattering: "acPhDis",
-    },
-    parameters: {
-      dpb_s_rho: { band_gap: 900, A: 200, B: 2, C: 3, D: 4 },
-      dpb_s_rho_rh: { A: 500, B: 5, C: 6, D: 7 },
-    },
-    customBounds: { dpb_s_rho_rh: { C: { lower: 5, upper: 9 } } },
-    held: { dpb_s_rho_rh: ["C"] },
-  };
-  const next = carryParameters(state, rho, hall);
-  expect(next.parameters.dpb_s_rho_rh).toEqual({
-    band_gap: 900,
-    A: 500,
-    B: 5,
-    C: 6,
-    D: 7,
-  });
-  expect(next.customBounds.dpb_s_rho_rh?.C).toEqual({ lower: 5, upper: 9 });
-  expect(next.held.dpb_s_rho_rh).toEqual(["C"]);
-});
+test.each(["acPh", "dis", "ionized", "acPhDis"])(
+  "converted DPB preserves mode-specific transport controls while %s is selected",
+  (scattering) => {
+    const rho = mode("dpb_s_rho", { band_gap: 1000, A: 100, B: 1, C: 1, D: 1 });
+    const hall = { ...rho, id: "dpb_s_rho_rh" };
+    const state = {
+      ...EMPTY,
+      selection: {
+        model: "dpb",
+        fitMode: "dpb_s_rho",
+        band1Degeneracy: 1,
+        band2Degeneracy: 1,
+        minTemperatureK: 100,
+        maxTemperatureK: 800,
+        legacySource: "archived",
+        parameterization: "explicit_density_v1" as const,
+        scattering,
+      },
+      parameters: {
+        dpb_s_rho: { band_gap: 900, A: 200, B: 2, C: 3, D: 4 },
+        dpb_s_rho_rh: { A: 500, B: 5, C: 6, D: 7 },
+      },
+      customBounds: {
+        dpb_s_rho_rh: {
+          A: { lower: 400, upper: 600 },
+          B: { lower: 4, upper: 6 },
+          C: { lower: 5, upper: 9 },
+          D: { lower: 6, upper: 8 },
+        },
+      },
+      held: { dpb_s_rho: ["A", "D"], dpb_s_rho_rh: ["B", "C"] },
+    };
+    const next = carryParameters(state, rho, hall);
+    expect(next.parameters.dpb_s_rho_rh).toEqual({
+      band_gap: 900,
+      A: 500,
+      B: 5,
+      C: 6,
+      D: 7,
+    });
+    expect(next.customBounds).toEqual(state.customBounds);
+    expect(next.held).toEqual(state.held);
+    const back = carryParameters(
+      { ...next, selection: { ...state.selection, scattering: "acPhDis" } },
+      hall,
+      rho,
+    );
+    expect(back.parameters.dpb_s_rho).toEqual(state.parameters.dpb_s_rho);
+    expect(back.customBounds).toEqual(state.customBounds);
+    expect(back.held).toEqual(state.held);
+  },
+);
