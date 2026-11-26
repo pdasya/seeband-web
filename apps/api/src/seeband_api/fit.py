@@ -297,15 +297,12 @@ def _refuse(details: list[ErrorDetail]) -> ApiError:
 
 
 def _check_bounds(body: FitApiRequest, fit_mode: FitMode) -> list[ErrorDetail]:
+    # check_scattering has passed, so these are the parameters of the chosen scattering.
     specs = {spec.name: spec for spec in fit_mode.parameters_for(body.scattering)}
-    in_scattering = {
-        spec.name
-        for spec in fit_mode.parameters_for(body.scattering if fit_mode.scattering else None)
-    }
     details = []
     for name in body.bounds:
         spec = specs.get(name)
-        if spec is None or spec.fit_bounds is None or name not in in_scattering:
+        if spec is None or spec.fit_bounds is None:
             details.append(
                 invalid("parameter_not_fitted", "This fit does not fit it", ["bounds", name])
             )
