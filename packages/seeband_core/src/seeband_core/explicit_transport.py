@@ -12,11 +12,11 @@ from contextlib import contextmanager
 from math import exp, isfinite, lgamma, log, pi, sqrt
 
 import numpy as np
-from scipy.integrate import quad
 from scipy.optimize import brentq
-from scipy.special import expit, logsumexp
+from scipy.special import logsumexp
 
 from seeband_core import math_module as mm
+from seeband_core.fermi_integrals import scaled_fermi_integral
 from seeband_core.model_interface import BandDiagramResult, CurveKind, ExplicitBands
 from seeband_core.transport import SCATTERING_LAWS, band_transport
 
@@ -80,19 +80,9 @@ def _log_fhalf(eta: float) -> float:
     if eta < -36:
         # Relative omitted FD correction < exp(-36)/2^1.5 < 1e-16.
         return eta + lgamma(1.5)
-    center = sqrt(max(0.0, eta))
-    points = sorted({0.0, max(0.0, center - 3), center, center + 3})
-    scale = min(eta, 0.0)
-
-    def integrand(u: float) -> float:
-        occupation = exp(-u * u) * expit(u * u - eta) if eta <= 0 else expit(eta - u * u)
-        return float(2 * u * u * occupation)
-
-    value = sum(
-        quad(integrand, a, b, epsabs=1e-12, epsrel=2e-12)[0]
-        for a, b in zip(points, [*points[1:], np.inf], strict=True)
-    )
-    return scale + log(value)
+    # The fixed-node rule shared with transport.py, scaled by exp(-min(eta, 0)) so that it stays
+    # representable. It agrees with adaptive quadrature to 3e-14 in the log for -36 <= eta <= 2000.
+    return min(eta, 0.0) + log(scaled_fermi_integral(0.5, eta))
 
 
 def _solve_potentials(
@@ -290,12 +280,10 @@ def explicit_curves(
     if not isfinite(amplitude) or amplitude <= 0 or not isfinite(relative) or relative < 0:
         raise ValueError("Conductivity amplitude must be positive and relative weight nonnegative")
     weights = np.array([1.0, n2 / n1 * relative / parameters["mass_ratio"]])
-    # Legacy dis uses F*T, acoustic uses A, ionized uses A*(T/300)^3.
-    factor = (
-        t
-        if scattering == "dis"
-        else ((t / 300) ** 3 if scattering == "ionized" else np.ones_like(t))
-    )
+    # The temperature law of sigma comes from the scattering law, as in transport.py: A for
+    # acoustic, A*(T/300)^3 for ionized. Legacy dis is F*T, not normalized at 300 K.
+    power = law.conductivity_temperature_power
+    factor = t**power if scattering == "dis" else (t / 300.0) ** power
     log_f, s_bands, l_bands, log_hall = [], [], [], []
     for i in range(2):
         eta = signs[i] * (mu - edges[i]) / t

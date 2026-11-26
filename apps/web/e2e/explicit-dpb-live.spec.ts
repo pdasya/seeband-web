@@ -217,6 +217,8 @@ test("explicit CB+CB curves and confirmed historical conversion round-trip", asy
   await expect(density).toHaveValue(
     String(Math.abs(file.content.selection.netElectronDensityPerM3)),
   );
+  // A fixed-density session has no E_F: the panel follows the density description.
+  await expect(energy).toHaveCount(0);
   await page.getByRole("radio", { name: "S + ρ + RH", exact: true }).click();
   await expect(
     page.getByRole("textbox", { name: "B", exact: true }),

@@ -412,9 +412,9 @@ function explicitIdentityRows(selection: DegeneracySelection): string[][] {
       : [
           [
             "net_electron_density_per_m3",
-            "n − p",
+            STRINGS.explicitDpb.densitySymbol,
             STRINGS.explicitDpb.densityMeaning,
-            "m^-3",
+            STRINGS.explicitDpb.densityUnit,
             numberText(selection.netElectronDensityPerM3 ?? 1e24),
             text.status.fixed,
           ],
