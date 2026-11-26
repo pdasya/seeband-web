@@ -139,6 +139,7 @@ test("a saved session loads back into a new one as it was, its fit not run again
     "savedModelSettings",
     "selection",
     "parameters",
+    "customBounds",
     "held",
     "fit",
     "fitStartValues",
@@ -147,11 +148,6 @@ test("a saved session loads back into a new one as it was, its fit not run again
   ] as const) {
     expect(after[key], key).toEqual(before[key]);
   }
-  expect(after.customBounds).toEqual({
-    ...before.customBounds,
-    dpb_s_rho: { B: { lower: 0.9, upper: 1.1 } },
-    dpb_s_rho_rh: { B: { lower: 0.9, upper: 1.1 } },
-  });
   expect(after.interpolation.enabled).toBe(true);
   expect(after.restored?.request).toEqual(REQUEST);
 });

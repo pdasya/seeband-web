@@ -41,7 +41,7 @@ export function convertedSession(
   const content = session.content;
   const mode = content.selection.fitMode ?? "dpb_s_rho";
   const ionized = content.selection.scattering === "ionized";
-  const controls = historicalIonizedControls(content);
+  const controls = historicalIonizedControls(content, true);
   return {
     ionizedBInputs: true,
     ...content,

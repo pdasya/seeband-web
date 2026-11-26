@@ -482,7 +482,10 @@ export function restoredSession(content: SessionContent): RestoredSession {
 }
 
 /** Restore controls without rewriting the saved fit or its original submitted inputs. */
-export function historicalIonizedControls(content: SessionContent) {
+export function historicalIonizedControls(
+  content: SessionContent,
+  explicitDpb = content.selection.parameterization !== undefined,
+) {
   if (content.ionizedBInputs === true)
     return {
       parameters: content.parameters,
@@ -496,13 +499,8 @@ export function historicalIonizedControls(content: SessionContent) {
     ionized || content.parameters.dpb_s?.B !== undefined
       ? { ...content.parameters, dpb_s: { ...content.parameters.dpb_s, B: 1 } }
       : content.parameters;
-  // A legacy SPB-only session may have archived its signed-mass DPB settings.
-  // Reintroducing DPB bounds here would trigger archival again on the next open.
-  if (
-    content.selection.model !== "dpb" &&
-    content.selection.parameterization === undefined &&
-    content.savedModelSettings.dpb === undefined
-  )
+  // Signed-mass sessions keep their original request until explicitly converted.
+  if (!ionized && !explicitDpb)
     return { parameters, customBounds: content.customBounds };
   const customBounds = { ...content.customBounds };
   for (const mode of ["dpb_s_rho", "dpb_s_rho_rh"]) {
