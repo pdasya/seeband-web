@@ -7,6 +7,21 @@ type Carried = Pick<
   "parameters" | "customBounds" | "held" | "guessedParameters"
 >;
 
+type CarryState = Carried & Partial<Pick<SessionState, "selection">>;
+
+function keepsHistoricalB(
+  state: CarryState,
+  from: FitModeDescription,
+  to: FitModeDescription,
+): boolean {
+  return (
+    Boolean(state.selection?.legacySource) &&
+    state.selection?.parameterization === "explicit_density_v1" &&
+    from.id.startsWith("dpb_") &&
+    to.id.startsWith("dpb_")
+  );
+}
+
 function sameEntries<T>(
   a: Readonly<Record<string, T>> | undefined,
   b: Readonly<Record<string, T>>,
@@ -54,7 +69,7 @@ const takesBounds = (parameter: ParameterDescription) =>
 
 /** What a change of mode takes along, by name. See `carryParameters`. */
 function plan(
-  state: Carried,
+  state: CarryState,
   from: FitModeDescription,
   to: FitModeDescription,
 ) {
@@ -66,7 +81,10 @@ function plan(
   const shared = new Set<string>();
   const values: Record<string, number> = {};
   const replaceable: Record<string, number> = {};
+  const keepB = keepsHistoricalB(state, from, to);
   for (const { name, core_range } of from.parameters) {
+    // Converted v1 sessions retain the archived B controls for each DPB fit mode.
+    if (name === "B" && keepB) continue;
     const there = target.get(name);
     if (there === undefined) continue;
     const value = saved[name] ?? core_range.default;
@@ -108,7 +126,7 @@ function plan(
  * guess recorded against the values still holds.
  */
 export function carryParameters(
-  state: Carried,
+  state: CarryState,
   from: FitModeDescription,
   to: FitModeDescription,
 ): Carried {
@@ -155,7 +173,7 @@ export function carryParameters(
 
 /** The names of the parameters whose value a change of mode takes along. */
 export function carriedNames(
-  state: Carried,
+  state: CarryState,
   from: FitModeDescription,
   to: FitModeDescription,
 ): string[] {

@@ -139,7 +139,6 @@ test("a saved session loads back into a new one as it was, its fit not run again
     "savedModelSettings",
     "selection",
     "parameters",
-    "customBounds",
     "held",
     "fit",
     "fitStartValues",
@@ -148,6 +147,11 @@ test("a saved session loads back into a new one as it was, its fit not run again
   ] as const) {
     expect(after[key], key).toEqual(before[key]);
   }
+  expect(after.customBounds).toEqual({
+    ...before.customBounds,
+    dpb_s_rho: { B: { lower: 0.9, upper: 1.1 } },
+    dpb_s_rho_rh: { B: { lower: 0.9, upper: 1.1 } },
+  });
   expect(after.interpolation.enabled).toBe(true);
   expect(after.restored?.request).toEqual(REQUEST);
 });
@@ -474,53 +478,67 @@ test("new explicit sessions retain user S-only B and wide rho defaults on reopen
   ).toEqual({ problem: "invalid" });
 });
 
-test("v2 dormant ionized DPB controls migrate while SPB is selected", async () => {
-  const state = session();
-  state.selection = {
-    ...state.selection,
-    model: "spb",
-    parameterization: "explicit_density_v1",
-    bandConfiguration: "vb_cb",
-    netElectronDensityPerM3: 1e24,
-  };
-  state.savedModelSettings = {
-    dpb: {
-      fitMode: "dpb_s_rho",
-      scattering: "ionized",
-      band1Degeneracy: 1,
-      band2Degeneracy: 1,
-    },
-  };
-  state.parameters = { dpb_s: { B: 7 }, dpb_s_rho: { B: 1.03 } };
-  state.customBounds = {};
-  const file = await sessionFile(
-    state,
-    { appVersion: "old", apiVersion: "old", saved: "2026-11-20" },
-    () => null,
-  );
-  file.version = 2;
-  delete file.content.ionizedBInputs;
-  file.content.fit = {
-    result: RESULT,
-    request: {
-      ...REQUEST,
-      fit_mode: "dpb_s",
-      bounds: { B: { lower: 3, upper: 4 } },
-    },
-  };
-  file.checksum = await checksum(file.content);
-  const loaded = await readSessionFile(JSON.stringify(file));
-  if (!("session" in loaded)) throw new Error(loaded.problem);
-  const restored = restoredSession(loaded.session.content);
-  expect(restored.parameters.dpb_s?.B).toBe(1);
-  expect(restored.parameters.dpb_s_rho?.B).toBe(1.03);
-  expect(restored.customBounds.dpb_s_rho?.B).toEqual({
-    lower: 0.9,
-    upper: 1.1,
-  });
-  expect(restored.request).toEqual(file.content.fit.request);
-  const inconsistent = { ...file, version: 4 };
-  expect(await readSessionFile(JSON.stringify(inconsistent))).toEqual({
-    problem: "invalid",
-  });
-});
+test.each([
+  ["spb", "ionized"],
+  ["spb", "dis"],
+  ["dpb", "acPh"],
+  ["dpb", "acPhDis"],
+] as const)(
+  "v2 restores DPB bounds with %s selected and %s scattering",
+  async (model, scattering) => {
+    const state = session();
+    state.selection = {
+      ...state.selection,
+      model,
+      scattering,
+      fitMode: model === "dpb" ? "dpb_s_rho" : "spb_s",
+      parameterization: "explicit_density_v1",
+      bandConfiguration: "vb_cb",
+      netElectronDensityPerM3: 1e24,
+    };
+    state.savedModelSettings = {
+      dpb: {
+        fitMode: "dpb_s_rho",
+        scattering,
+        band1Degeneracy: 1,
+        band2Degeneracy: 1,
+      },
+    };
+    state.parameters = { dpb_s: { B: 7 }, dpb_s_rho: { B: 1.03 } };
+    state.customBounds = { dpb_s_rho_rh: { B: { lower: 0.97, upper: 1.03 } } };
+    const file = await sessionFile(
+      state,
+      { appVersion: "old", apiVersion: "old", saved: "2026-11-20" },
+      () => null,
+    );
+    file.version = 2;
+    delete file.content.ionizedBInputs;
+    file.content.fit = {
+      result: RESULT,
+      request: {
+        ...REQUEST,
+        fit_mode: "dpb_s",
+        bounds: { B: { lower: 3, upper: 4 } },
+      },
+    };
+    file.checksum = await checksum(file.content);
+    const loaded = await readSessionFile(JSON.stringify(file));
+    if (!("session" in loaded)) throw new Error(loaded.problem);
+    const restored = restoredSession(loaded.session.content);
+    expect(restored.parameters.dpb_s?.B).toBe(1);
+    expect(restored.parameters.dpb_s_rho?.B).toBe(1.03);
+    expect(restored.customBounds.dpb_s_rho?.B).toEqual({
+      lower: 0.9,
+      upper: 1.1,
+    });
+    expect(restored.customBounds.dpb_s_rho_rh?.B).toEqual({
+      lower: 0.97,
+      upper: 1.03,
+    });
+    expect(restored.request).toEqual(file.content.fit.request);
+    const inconsistent = { ...file, version: 4 };
+    expect(await readSessionFile(JSON.stringify(inconsistent))).toEqual({
+      problem: "invalid",
+    });
+  },
+);

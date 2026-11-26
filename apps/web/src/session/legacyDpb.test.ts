@@ -1,9 +1,10 @@
-import type { FitModeDescription } from "@/model/selection";
+import type { FitModeDescription, ModelDescription } from "@/model/selection";
 // @vitest-environment node
 import { expect, test } from "vitest";
 import { convertedSession, legacyVector } from "./legacyDpb";
 import { sessionFile, readSessionFile, restoredSession } from "./sessionFile";
 import { createSessionStore } from "./store";
+import { MODELS } from "../../e2e/support/models";
 
 test("conversion keeps historical bounds and results as provenance, with fresh explicit fit controls", async () => {
   const store = createSessionStore();
@@ -97,7 +98,10 @@ test("conversion keeps historical bounds and results as provenance, with fresh e
   );
   expect(converted.selection.algorithm).toBe("verified-sequential-v2");
   expect(converted.parameters.spb_s).toEqual({ band_mass: 3 });
-  expect(converted.customBounds).toEqual({});
+  expect(converted.customBounds).toEqual({
+    dpb_s_rho: { B: { lower: 0.9, upper: 1.1 } },
+    dpb_s_rho_rh: { B: { lower: 0.9, upper: 1.1 } },
+  });
   expect(converted.held).toEqual({});
   expect(converted.fit).toBeNull();
   expect(
@@ -171,3 +175,105 @@ test("ionized conversion preserves rho B holds and historical bounds", async () 
   );
   expect(convertedSession(file, point, 1, 1).held.dpb_s_rho).toBeUndefined();
 });
+
+test.each(["ionized", "acPh"])(
+  "historical %s conversion preserves B controls when switching fit modes",
+  async (scattering) => {
+    const store = createSessionStore();
+    store.setState({
+      selection: {
+        ...store.getState().selection,
+        model: "dpb",
+        scattering,
+        fitMode: "dpb_s_rho",
+      },
+      parameters: {
+        dpb_s: { B: 20, band_gap: 300 },
+        dpb_s_rho: { B: 1.04, band_gap: 400 },
+        dpb_s_rho_rh: { B: 0.98, band_gap: 500 },
+      },
+      customBounds: {
+        dpb_s: { B: { lower: 0.8, upper: 1.2 } },
+        dpb_s_rho: { B: { lower: 0.95, upper: 1.08 } },
+        dpb_s_rho_rh: { B: { lower: 0.92, upper: 1.06 } },
+      },
+      held: {
+        dpb_s: ["B", "band_gap"],
+        dpb_s_rho: ["band_gap"],
+        dpb_s_rho_rh: ["B", "band_gap"],
+      },
+    });
+    const file = await sessionFile(
+      store.getState(),
+      { appVersion: "old", apiVersion: "old", saved: "2026-11-20" },
+      () => null,
+    );
+    file.version = 1;
+    delete file.content.ionizedBInputs;
+    const converted = convertedSession(
+      file,
+      {
+        parameterization: "explicit_density_v1",
+        band_configuration: "vb_cb",
+        net_electron_density_per_m3: 1e24,
+        parameters: { mass_ratio: 2, band_offset_k: 600, m1: 1, B: 1.02 },
+      },
+      1,
+      1,
+    );
+    store.getState().restoreSession(restoredSession(converted), {
+      saved: file.saved,
+      appVersion: file.appVersion,
+      fitCoreVersion: null,
+      serverCoreVersion: null,
+    });
+    const descriptions = (MODELS.models as ModelDescription[]).flatMap(
+      (model) => model.fit_modes,
+    );
+    const description = (id: string | null) => {
+      const found = descriptions.find((mode) => mode.id === id);
+      if (!found) throw new Error(String(id));
+      return found;
+    };
+    for (const [mode, b] of [
+      ["dpb_s_rho_rh", 0.98],
+      ["dpb_s_rho", 1.02],
+      ["dpb_s", 1],
+      ["dpb_s_rho_rh", 0.98],
+      ["dpb_s_rho", 1.02],
+    ] as const) {
+      store
+        .getState()
+        .chooseFitMode(
+          { fitMode: mode },
+          description(store.getState().selection.fitMode),
+          description(mode),
+        );
+      const state = store.getState();
+      expect(state.parameters[mode]?.B).toBe(b);
+      expect(state.customBounds[mode]).toEqual(file.content.customBounds[mode]);
+      expect(state.held[mode] ?? []).toEqual(mode === "dpb_s_rho" ? [] : ["B"]);
+      expect(state.parameters[mode]?.band_gap).toBeUndefined();
+    }
+    expect(converted.parameters.dpb_s_rho).toEqual({
+      mass_ratio: 2,
+      band_offset_k: 600,
+      m1: 1,
+      B: 1.02,
+    });
+    store.getState().setSelection({ legacySource: "" });
+    store
+      .getState()
+      .chooseFitMode(
+        { fitMode: "dpb_s_rho_rh" },
+        description("dpb_s_rho"),
+        description("dpb_s_rho_rh"),
+      );
+    expect(store.getState().parameters.dpb_s_rho_rh?.B).toBe(1.02);
+    expect(store.getState().customBounds.dpb_s_rho_rh?.B).toEqual({
+      lower: 0.95,
+      upper: 1.08,
+    });
+    expect(store.getState().held.dpb_s_rho_rh).toEqual([]);
+  },
+);

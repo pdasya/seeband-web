@@ -496,7 +496,14 @@ export function historicalIonizedControls(content: SessionContent) {
     ionized || content.parameters.dpb_s?.B !== undefined
       ? { ...content.parameters, dpb_s: { ...content.parameters.dpb_s, B: 1 } }
       : content.parameters;
-  if (!ionized) return { parameters, customBounds: content.customBounds };
+  // A legacy SPB-only session may have archived its signed-mass DPB settings.
+  // Reintroducing DPB bounds here would trigger archival again on the next open.
+  if (
+    content.selection.model !== "dpb" &&
+    content.selection.parameterization === undefined &&
+    content.savedModelSettings.dpb === undefined
+  )
+    return { parameters, customBounds: content.customBounds };
   const customBounds = { ...content.customBounds };
   for (const mode of ["dpb_s_rho", "dpb_s_rho_rh"]) {
     customBounds[mode] = {

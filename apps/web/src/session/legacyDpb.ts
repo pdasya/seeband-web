@@ -42,8 +42,6 @@ export function convertedSession(
   const mode = content.selection.fitMode ?? "dpb_s_rho";
   const ionized = content.selection.scattering === "ionized";
   const controls = historicalIonizedControls(content);
-  const bBounds = controls.customBounds[mode]?.B;
-  const bHeld = content.held[mode]?.includes("B") === true;
   return {
     ionizedBInputs: true,
     ...content,
@@ -71,6 +69,7 @@ export function convertedSession(
     },
     parameters: {
       ...withoutLegacyDpb(content.parameters),
+      ...legacyBControls(controls.parameters),
       [mode]: {
         ...point.parameters,
         ...(ionized && mode === "dpb_s"
@@ -81,15 +80,31 @@ export function convertedSession(
     guessedParameters: withoutLegacyDpb(content.guessedParameters ?? {}),
     customBounds: {
       ...withoutLegacyDpb(content.customBounds),
-      ...(ionized && bBounds ? { [mode]: { B: bBounds } } : {}),
+      ...legacyBControls(controls.customBounds),
     },
     held: {
       ...withoutLegacyDpb(content.held),
-      ...(ionized && bHeld ? { [mode]: ["B"] } : {}),
+      ...Object.fromEntries(
+        Object.entries(content.held)
+          .filter(
+            ([mode, held]) => mode.startsWith("dpb_") && held.includes("B"),
+          )
+          .map(([mode]) => [mode, ["B"]]),
+      ),
     },
     fit: null,
     fitStart: { values: null, net: null, numerical: false },
   };
+}
+
+function legacyBControls<T>(modes: Record<string, Record<string, T>>) {
+  return Object.fromEntries(
+    Object.entries(modes).flatMap(([mode, values]) =>
+      mode.startsWith("dpb_") && values.B !== undefined
+        ? [[mode, { B: values.B }]]
+        : [],
+    ),
+  );
 }
 
 export function withoutLegacyDpb<T>(
