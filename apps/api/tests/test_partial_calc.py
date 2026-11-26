@@ -362,3 +362,11 @@ def test_a_negative_hall_mass_is_refused_only_where_it_enters(kind, refused):
     else:
         answer = calculate("dpb", negative, {}, 50)
         assert all(np.isfinite(v).all() for v in answer.curve.curves.values())
+
+
+def test_invalid_measurements_refuse_the_request_rather_than_its_rmse():
+    from seeband_api.calc_worker import CalculationFailed
+
+    data = {"seebeck": Measurement(np.array([0.0, 200.0]), np.array([1e-4, 1e-4]))}
+    with pytest.raises(CalculationFailed):
+        calculate("dpb", request(), data, 50)

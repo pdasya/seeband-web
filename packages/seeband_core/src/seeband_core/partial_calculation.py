@@ -210,6 +210,9 @@ def partial_rmse(
     """Retain the shared-grid healthy path and isolate failed comparisons by observable."""
     if not measurements:
         return {}, ()
+    # Invalid measurements refuse the request: they are not a model failure.
+    for quantity, measurement in measurements.items():
+        measurement.check(quantity)
 
     def compare(data: Mapping[Quantity, Measurement]) -> dict[Quantity, Rmse]:
         return curve_rmse(
