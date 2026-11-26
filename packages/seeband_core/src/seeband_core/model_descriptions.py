@@ -264,7 +264,7 @@ def explicit_dpb_description(fermi_energy: bool = False) -> ModelDescription:
             replace(
                 mode,
                 parameters=tuple(parameters),
-                parameter_overrides={"ionized": (ionized_weight,)},
+                parameter_overrides=(("ionized", (ionized_weight,)),),
                 band_2_edge="band_offset_k",
                 relative_curve_kinds=(),
                 known_issues=tuple(

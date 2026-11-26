@@ -263,8 +263,7 @@ def _fit_mode(fit_mode: FitMode) -> FitModeResponse:
         quantities=list(fit_mode.quantities),
         parameters=[_parameter(spec) for spec in fit_mode.parameters],
         parameter_overrides={
-            law: [_parameter(spec) for spec in specs]
-            for law, specs in fit_mode.parameter_overrides.items()
+            law: [_parameter(spec) for spec in specs] for law, specs in fit_mode.parameter_overrides
         },
         scattering=list(fit_mode.scattering),
         default_scattering=fit_mode.default_scattering,

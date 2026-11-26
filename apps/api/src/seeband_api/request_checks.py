@@ -240,12 +240,9 @@ def check_parameter_names(
 ) -> list[ErrorDetail]:
     """Every parameter of a mode is needed, including those of other scattering types."""
     expected = {spec.name for spec in fit_mode.parameters}
-    optional = (
-        fit_mode.parameter_overrides.values()
-        if scattering is None
-        else (fit_mode.parameter_overrides.get(scattering, ()),)
-    )
-    expected.update(spec.name for specs in optional for spec in specs)
+    for law, overrides in fit_mode.parameter_overrides:
+        if scattering is None or scattering == law:
+            expected.update(spec.name for spec in overrides)
     missing = [
         invalid("missing_parameter", "This mode needs it", [field, spec.name])
         for spec in fit_mode.parameters
