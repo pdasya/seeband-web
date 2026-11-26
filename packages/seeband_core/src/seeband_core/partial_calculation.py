@@ -1,6 +1,6 @@
 """Recover independent forward values after a numerical exception, without changing formulas."""
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, replace
 from typing import Literal
 
@@ -13,6 +13,9 @@ from seeband_core.math_module import (
 )
 from seeband_core.model_interface import CurveRequest, CurveResult, Measurement, Model, Quantity
 
+# The curve kinds of dpb_s_rho_rh whose values depend on m1.
+_KINDS_WITH_M1 = frozenset({"measured", "carrier_concentration_by_band"})
+
 
 @dataclass(frozen=True)
 class CalculationIssue:
@@ -22,17 +25,25 @@ class CalculationIssue:
     code: str
 
 
-def _attempt(model: Model, request: CurveRequest) -> CurveResult | None:
+def _attempt(
+    model: Model, request: CurveRequest
+) -> tuple[CurveResult | None, ArithmeticError | ValueError | None]:
+    """The curve, or the numerical error it raised."""
     try:
         result = model.calculate(request)
     except NoFiniteChemicalPotentialError:
         # Structurally invalid band parameters retain their request-level semantics.
         raise
-    except (ArithmeticError, ValueError):
-        return None
-    if any(np.iscomplexobj(values) for values in result.curves.values()):
+    except (ArithmeticError, ValueError) as error:
+        return None, error
+    _refuse_complex(result.curves.values())
+    return result, None
+
+
+def _refuse_complex(arrays: Iterable[np.ndarray]) -> None:
+    # A negative m1 gives complex values, whose real part would look like a plausible result.
+    if any(np.iscomplexobj(values) for values in arrays):
         raise ValueError("The curve has complex values")
-    return result
 
 
 def partial_curve(
@@ -53,17 +64,28 @@ def partial_curve(
     from seeband_core.known_issues import active_issue_ids
     from seeband_core.verified_fit import evaluate
 
-    mode = model.describe().fit_mode(request.fit_mode)
+    explicit = request.explicit_bands
+    if explicit is not None:
+        if model.describe().id != "dpb":
+            raise ValueError("Explicit band types require DPB")
+        from seeband_core.model_descriptions import explicit_dpb_description
+
+        mode = explicit_dpb_description(explicit.uses_fermi_energy).fit_mode(request.fit_mode)
+    else:
+        mode = model.describe().fit_mode(request.fit_mode)
     # Invalid controls, unavailable curves and missing parameters are never partial results.
-    mode.parameters_for(request.scattering)
+    # Only the parameters of the chosen scattering are needed: C and D belong to acPhDis.
+    active = mode.parameters_for(request.scattering)
     if request.kind not in mode.curve_kinds:
         raise ValueError("Unavailable curve")
-    if any(spec.name not in request.parameters for spec in mode.parameters):
+    if any(spec.name not in request.parameters for spec in active):
         raise ValueError("Missing parameters")
-    if request.parameters.get("m1", 0.0) < 0:
+    # A negative m1 is refused only where it enters: R_H in the measured vector and the band
+    # densities. A partial result would otherwise keep S and rho and hide the invalid mass.
+    if request.kind in _KINDS_WITH_M1 and request.parameters.get("m1", 0.0) < 0:
         raise ValueError("The Hall band mass must be nonnegative")
     with reuse_chemical_potential():
-        curve = _attempt(model, request)
+        curve, first_error = _attempt(model, request)
         failed: dict[str, list[float]] = {}
         if curve is None:
             if not isinstance(model, SpbModel | DpbModel):
@@ -89,19 +111,23 @@ def partial_curve(
                     max_temperature_k=float(temperature),
                     points=1,
                 )
-                point = _attempt(model, single)
+                point, _ = _attempt(model, single)
                 if point is None and request.kind == "measured":
                     # The Hall kernel runs last. Its absence must not erase the original S/rho.
                     if "hall" in mode.quantities:
                         lower = replace(single, fit_mode=f"{model.describe().id}_s_rho")
-                        point = _attempt(model, lower)
+                        point, _ = _attempt(model, lower)
                     available = dict(point.curves) if point is not None else {}
                     for quantity in mode.quantities:
                         name = CURVE_NAMES[quantity]
                         if name in available:
                             continue
                         try:
-                            if quantity != "seebeck" and request.scattering != "ionized":
+                            if (
+                                quantity != "seebeck"
+                                and request.scattering != "ionized"
+                                and explicit is None
+                            ):
                                 isolated = (
                                     replace(single, fit_mode=f"{model.describe().id}_s_rho")
                                     if quantity == "resistivity"
@@ -130,7 +156,9 @@ def partial_curve(
                                     quantities=(quantity,),
                                     check_finite=False,
                                     band_1_degeneracy=request.band_1_degeneracy,
+                                    explicit_bands=explicit,
                                 )[quantity]
+                            _refuse_complex([available[name]])
                         except NoFiniteChemicalPotentialError:
                             raise
                         except (ArithmeticError, ValueError):
@@ -142,8 +170,9 @@ def partial_curve(
                     else:
                         failed.setdefault(name, []).append(float(temperature))
             if not any(np.any(np.isfinite(array)) for array in values.values()):
-                # Keep the established request-level failure if no observable was recovered.
-                model.calculate(request)
+                # Keep the request-level failure of the whole curve if nothing was recovered.
+                assert first_error is not None
+                raise first_error
             curve = CurveResult(
                 temperatures,
                 values,
@@ -192,6 +221,7 @@ def partial_rmse(
             request.band_1_degeneracy,
             request.band_2_degeneracy,
             points,
+            explicit_bands=request.explicit_bands,
         )
 
     try:

@@ -310,3 +310,55 @@ def test_seebeck_failure_preserves_public_dilute_hall_and_resistivity(monkeypatc
     assert partial.curves["hall_m3_per_c"] == healthy.curves["hall_m3_per_c"]
     assert partial.curves["resistivity_ohm_m"] == healthy.curves["resistivity_ohm_m"]
     assert partial.curves["seebeck_v_per_k"][0] is None
+
+
+def test_explicit_bands_reach_the_rmse():
+    from seeband_core.fit_quality import curve_rmse
+    from seeband_core.model_descriptions import explicit_dpb_description
+    from seeband_core.model_interface import ExplicitBands
+
+    mode = explicit_dpb_description().fit_mode("dpb_s_rho")
+    bands = ExplicitBands("vb_cb", 2e24)
+    explicit = CurveRequest(mode.id, default_start(mode), 100, 500, 5, "acPh", explicit_bands=bands)
+    data = {
+        "seebeck": Measurement(np.array([200.0, 300.0]), np.array([1e-4, 1.2e-4])),
+        "resistivity": Measurement(np.array([200.0, 300.0]), np.array([1e-5, 1.1e-5])),
+    }
+    answer = calculate("dpb", explicit, data, 50)
+    expected = curve_rmse(
+        registry.get("dpb"),
+        mode.id,
+        explicit.parameters,
+        data,
+        "acPh",
+        explicit.band_1_degeneracy,
+        explicit.band_2_degeneracy,
+        50,
+        explicit_bands=bands,
+    )
+    assert answer.rmse == expected
+    assert all(value.value is not None for value in answer.rmse.values())
+
+
+def test_a_single_scattering_request_needs_no_mixed_ratios():
+    mode = registry.get("dpb").describe().fit_mode("dpb_s_rho")
+    parameters = {k: v for k, v in default_start(mode).items() if k not in ("C", "D")}
+    answer = calculate("dpb", CurveRequest(mode.id, parameters, 100, 300, 3, "acPh"), {}, 50)
+    assert np.isfinite(answer.curve.curves["seebeck_v_per_k"]).all()
+
+
+@pytest.mark.parametrize(
+    "kind,refused", [("seebeck", False), ("chemical_potential", False), ("measured", True)]
+)
+def test_a_negative_hall_mass_is_refused_only_where_it_enters(kind, refused):
+    from dataclasses import replace
+
+    from seeband_api.calc_worker import CalculationFailed
+
+    negative = replace(request(), parameters=request().parameters | {"m1": -0.5}, kind=kind)
+    if refused:
+        with pytest.raises(CalculationFailed):
+            calculate("dpb", negative, {}, 50)
+    else:
+        answer = calculate("dpb", negative, {}, 50)
+        assert all(np.isfinite(v).all() for v in answer.curve.curves.values())
