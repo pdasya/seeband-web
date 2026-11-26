@@ -280,3 +280,51 @@ def test_explicit_controls_start_where_curves_exist(uses_fermi_energy):
             if p.name == "mass_ratio":
                 assert p.value_range.minimum > 0
                 assert p.fit_bounds is not None and p.fit_bounds.lower > 0
+
+
+@pytest.mark.parametrize("uses_fermi_energy", [False, True])
+def test_a_failing_joint_start_search_resumes_from_the_valid_start(monkeypatch, uses_fermi_energy):
+    """The coupled start is optional: a solver failure inside it must not fail the whole fit."""
+    from seeband_core import math_module, verified_fit
+
+    model = registry.get("dpb")
+    mode = explicit_dpb_description(uses_fermi_energy).fit_mode("dpb_s_rho_rh")
+    p = default_start(mode) | dict(m1=1.2, mass_ratio=1.7, band_offset_k=140.0)
+    cfg = (
+        ExplicitBands("vb_cb", carrier_type="p")
+        if uses_fermi_energy
+        else ExplicitBands("vb_cb", -2e25)
+    )
+    if uses_fermi_energy:
+        p["fermi_energy"] = -75.0
+    curve = model.calculate(CurveRequest(mode.id, p, 200, 500, 6, "acPh", explicit_bands=cfg))
+    measured = {
+        q: Measurement(curve.temperature_k, curve.curves[CURVE_NAMES[q]]) for q in mode.quantities
+    }
+    free = {"m1", "B"}
+    held = frozenset(
+        k.name for k in mode.parameters_for("acPh") if k.role == "fitted" and k.name not in free
+    )
+    request = FitRequest(
+        mode.id,
+        measured,
+        p | {"m1": 1.1, "B": p["B"] * 1.03},
+        {"m1": Bounds(0.8, 1.5), "B": Bounds(p["B"] * 0.9, p["B"] * 1.1)},
+        "acPh",
+        held=held,
+        explicit_bands=cfg,
+    )
+    original = verified_fit.least_squares
+    calls = []
+
+    def failing_first(*args, **kwargs):
+        calls.append(kwargs.get("max_nfev"))
+        if len(calls) == 1:
+            raise math_module.ChemicalPotentialError(None, "explicit density bracket failed")
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(verified_fit, "least_squares", failing_first)
+    fit = model.fit(request)
+    assert calls[0] == 30  # the joint start search, which failed
+    assert fit.status == "converged", fit.message
+    assert fit.parameters["m1"] == pytest.approx(1.2, rel=2e-5)

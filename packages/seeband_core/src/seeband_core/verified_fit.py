@@ -858,11 +858,10 @@ class _Engine:
                 xtol=1e-11,
                 gtol=1e-8,
             )
-        except mm.NoFiniteChemicalPotentialError:
-            # This optional joint search can cross the selected carrier branch.
-            # Resume from the valid start; the fit stages use admissible derivatives.
-            if not self.request.explicit_bands.uses_fermi_energy:
-                raise
+        except mm.ChemicalPotentialError:
+            # This optional joint search can cross the selected carrier branch, or try masses
+            # where the populations cannot be solved or represented. The start was evaluated
+            # above, so resume from it; the fit stages handle their own trial points.
             return
         trial_costs = np.asarray([np.dot(r, r) for r in errors(candidate.x)])
         tolerance = _AUDIT_RTOL * np.maximum(1.0, start_costs)
