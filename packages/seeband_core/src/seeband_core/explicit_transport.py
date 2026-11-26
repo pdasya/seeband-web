@@ -12,11 +12,11 @@ from contextlib import contextmanager
 from math import exp, isfinite, lgamma, log, pi, sqrt
 
 import numpy as np
-from scipy.integrate import quad
 from scipy.optimize import brentq
-from scipy.special import expit, logsumexp
+from scipy.special import logsumexp
 
 from seeband_core import math_module as mm
+from seeband_core.fermi_integrals import scaled_fermi_integral
 from seeband_core.model_interface import BandDiagramResult, CurveKind, ExplicitBands
 from seeband_core.transport import SCATTERING_LAWS, band_transport
 
@@ -80,19 +80,9 @@ def _log_fhalf(eta: float) -> float:
     if eta < -36:
         # Relative omitted FD correction < exp(-36)/2^1.5 < 1e-16.
         return eta + lgamma(1.5)
-    center = sqrt(max(0.0, eta))
-    points = sorted({0.0, max(0.0, center - 3), center, center + 3})
-    scale = min(eta, 0.0)
-
-    def integrand(u: float) -> float:
-        occupation = exp(-u * u) * expit(u * u - eta) if eta <= 0 else expit(eta - u * u)
-        return float(2 * u * u * occupation)
-
-    value = sum(
-        quad(integrand, a, b, epsabs=1e-12, epsrel=2e-12)[0]
-        for a, b in zip(points, [*points[1:], np.inf], strict=True)
-    )
-    return scale + log(value)
+    # The fixed-node rule shared with transport.py, scaled by exp(-min(eta, 0)) so that it stays
+    # representable. It agrees with adaptive quadrature to 3e-14 in the log for -36 <= eta <= 2000.
+    return min(eta, 0.0) + log(scaled_fermi_integral(0.5, eta))
 
 
 def _solve_potentials(
