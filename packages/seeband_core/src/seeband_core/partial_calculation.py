@@ -74,11 +74,18 @@ def partial_curve(
     else:
         mode = model.describe().fit_mode(request.fit_mode)
     # Invalid controls, unavailable curves and missing parameters are never partial results.
-    # Only the parameters of the chosen scattering are needed: C and D belong to acPhDis.
-    active = mode.parameters_for(request.scattering)
+    mode.parameters_for(request.scattering)
     if request.kind not in mode.curve_kinds:
         raise ValueError("Unavailable curve")
-    if any(spec.name not in request.parameters for spec in active):
+    # As the API requires them: the base parameters of the chosen scattering. C and D belong to
+    # acPhDis, and a parameter an override adds, such as the S-only ionized B, has a default.
+    required = [
+        spec
+        for spec in mode.parameters
+        if not spec.scattering
+        or (request.scattering is not None and request.scattering in spec.scattering)
+    ]
+    if any(spec.name not in request.parameters for spec in required):
         raise ValueError("Missing parameters")
     # A negative m1 is refused only where it enters: R_H in the measured vector and the band
     # densities. A partial result would otherwise keep S and rho and hide the invalid mass.
