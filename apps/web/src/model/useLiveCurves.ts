@@ -157,7 +157,8 @@ function useLatest<Result>(
     stale:
       answers.resultScope === scope &&
       answers.result !== null &&
-      (pending || answers.errorScope === scope),
+      // As for busy: a fast request would otherwise flash the notes on every edit.
+      ((pending && longPending) || answers.errorScope === scope),
     error: answers.errorScope === scope ? answers.error : null,
     changedAtMs: answers.resultScope === scope ? answers.changedAtMs : null,
   };
