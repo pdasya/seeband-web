@@ -382,3 +382,21 @@ test("isolated finite curve points remain visible without bridging null gaps", (
     marker: { size: [6, 0, 0, 0, 0, 6] },
   });
 });
+
+test("a point between non-finite neighbours is marked too", () => {
+  const { data } = buildFigure(
+    {
+      ...INPUT,
+      curves: [
+        {
+          id: "partial",
+          label: "Partial",
+          temperatureK: [100, 200, 300],
+          values: [Number.NaN, 5, Number.POSITIVE_INFINITY],
+        },
+      ],
+    },
+    THEME,
+  );
+  expect(data[0]).toMatchObject({ marker: { size: [0, 6, 0] } });
+});

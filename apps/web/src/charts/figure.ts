@@ -202,8 +202,8 @@ export function buildFigure(
     const markerSizes = curve.values.map((value, point) =>
       value !== null &&
       Number.isFinite(value) &&
-      (point === 0 || curve.values[point - 1] == null) &&
-      (point === curve.values.length - 1 || curve.values[point + 1] == null)
+      !Number.isFinite(curve.values[point - 1] ?? Number.NaN) &&
+      !Number.isFinite(curve.values[point + 1] ?? Number.NaN)
         ? 6
         : 0,
     );
