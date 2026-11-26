@@ -11,7 +11,6 @@ import {
   derivedKind,
   drawsMeasuredCurves,
   LORENZ_L0,
-  needsMeasuredCurves,
 } from "@/model/chartTabs";
 import type { FitModeDescription, ModelDescription } from "@/model/selection";
 import type { Quantity, SessionData } from "@/session/store";
@@ -76,13 +75,13 @@ describe("what a tab asks for", () => {
     expect(derivedKind("bands", undefined)).toBeNull();
   });
 
-  test("the total of S goes with contributions, and only there", () => {
-    expect(needsMeasuredCurves("bands", mode("dpb_s"))).toBe(true);
-    expect(needsMeasuredCurves("bands", mode("spb_s"))).toBe(false);
-    expect(needsMeasuredCurves("chemical_potential", mode("dpb_s"))).toBe(
+  test("with no data, the total of S goes with contributions, and S previews", () => {
+    expect(drawsMeasuredCurves("bands", mode("dpb_s"), {})).toBe(true);
+    expect(drawsMeasuredCurves("bands", mode("spb_s"), {})).toBe(false);
+    expect(drawsMeasuredCurves("chemical_potential", mode("dpb_s"), {})).toBe(
       false,
     );
-    expect(needsMeasuredCurves("seebeck", mode("dpb_s"))).toBe(false);
+    expect(drawsMeasuredCurves("seebeck", mode("dpb_s"), {})).toBe(true);
   });
 });
 
@@ -549,7 +548,6 @@ describe("the band diagram", () => {
 
   test("asks for no curves of temperature", () => {
     expect(derivedKind("band_diagram", mode("dpb_s"))).toBeNull();
-    expect(needsMeasuredCurves("band_diagram", mode("dpb_s"))).toBe(false);
     expect(drawsMeasuredCurves("band_diagram", mode("dpb_s"), {})).toBe(false);
   });
 });

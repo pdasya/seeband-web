@@ -122,8 +122,9 @@ export function drawsMeasuredCurves(
   mode: FitModeDescription | undefined,
   data: SessionState["data"],
 ): boolean {
+  // The total of S goes with the contributions, even with no data.
   if (tab === "bands") {
-    return needsMeasuredCurves(tab, mode);
+    return derivedKind(tab, mode) !== null;
   }
   // Its points come with the measured curves, from the ρ data.
   if (tab === "conductivity") {
@@ -187,14 +188,6 @@ export function bandGapForTab(
   return tab === "chemical_potential"
     ? band2EdgeK(mode, parameters)
     : undefined;
-}
-
-/** The total of S goes with the contributions, so that tab needs it even with no data. */
-export function needsMeasuredCurves(
-  tab: ChartTab,
-  mode: FitModeDescription | undefined,
-): boolean {
-  return tab === "bands" && derivedKind(tab, mode) !== null;
 }
 
 function scaled(

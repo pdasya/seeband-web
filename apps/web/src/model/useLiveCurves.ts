@@ -9,7 +9,11 @@ import {
 } from "@/api/client";
 import type { ApiError } from "@/api/errors";
 import { useModels } from "@/api/queries";
-import { derivedKind, type DerivedKind } from "@/model/chartTabs";
+import {
+  derivedKind,
+  drawsMeasuredCurves,
+  type DerivedKind,
+} from "@/model/chartTabs";
 import { LatestOnly } from "@/model/latestOnly";
 import {
   bandDiagramRequest,
@@ -241,7 +245,14 @@ export function useLiveCurves(): LiveCurves {
     const state = { selection, parameters, data, interpolation };
     const model = models?.models.find(({ id }) => id === selection.model);
     const mode = fitModeOf(model, selection.fitMode);
-    const measuredRequest = calcRequest(state, models?.models);
+    // The S, ρ and R_H curves preview without data, but are asked for only while a chart draws
+    // them or data need their RMSE, so that hidden tabs send nothing.
+    const hasData =
+      mode?.quantities.some((q) => data[q] !== undefined) === true;
+    const measuredRequest =
+      hasData || panels.some((tab) => drawsMeasuredCurves(tab, mode, data))
+        ? calcRequest(state, models?.models)
+        : null;
     const asked = new Set(panels.map((tab) => derivedKind(tab, mode)));
     const derivedOf = (kind: DerivedKind) => {
       const request = asked.has(kind)
