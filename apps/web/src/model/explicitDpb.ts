@@ -2,7 +2,9 @@ import type { ApiErrorDetail } from "@/api/errors";
 import { STRINGS } from "@/strings";
 import type { Selection } from "@/session/store";
 
-export function isExplicitDpb(selection: Selection): boolean {
+export function isExplicitDpb(
+  selection: Pick<Selection, "model" | "parameterization">,
+): boolean {
   return (
     selection.model === "dpb" &&
     (selection.parameterization === "explicit_density_v1" ||
@@ -47,7 +49,10 @@ export function isValidCarrierDensity(selection: Selection): boolean {
 }
 
 export function heldForFit(
-  selection: Selection,
+  selection: Pick<
+    Selection,
+    "model" | "parameterization" | "fitMode" | "fitAbsoluteMass"
+  >,
   held: readonly string[],
 ): string[] {
   return isExplicitDpb(selection) &&

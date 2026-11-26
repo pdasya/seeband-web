@@ -20,7 +20,7 @@ import {
 } from "@/model/exportFiles";
 import { calcRequest, derivedRequest } from "@/model/liveCurves";
 import { retriesByItself } from "@/model/latestOnly";
-import { runLines } from "@/model/runRecord";
+import { recordedHolds, runLines } from "@/model/runRecord";
 import { fitRequest } from "@/model/fitRequest";
 import { sessionFile } from "@/session/sessionFile";
 import { hasFittedValues, resultIssues } from "@/model/resultSummary";
@@ -272,7 +272,7 @@ export function useExport() {
             state.selection,
             state.parameters[mode.id],
             state.fit,
-            state.held[mode.id],
+            recordedHolds(state, mode.id),
           ),
           type,
         );
@@ -324,7 +324,7 @@ export function useExport() {
               state.selection,
               state.parameters[mode.id],
               state.fit,
-              state.held[mode.id],
+              recordedHolds(state, mode.id),
             ),
             graphs,
             energy,

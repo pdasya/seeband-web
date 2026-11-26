@@ -1,4 +1,5 @@
 import type { CalcResponse } from "@/api/client";
+import { heldForFit } from "@/model/explicitDpb";
 import {
   LORENZ_L0,
   quantityCurve,
@@ -325,6 +326,13 @@ function parameterRecords(
   selection: DegeneracySelection,
 ): ParameterRecord[] {
   const values = parameterValues(mode, saved, selection);
+  const effectiveHeld =
+    fit.status === "done"
+      ? (fit.result.held ?? held)
+      : heldForFit(
+          { ...selection, model: selection.model ?? null, fitMode: mode.id },
+          held,
+        );
   const units: Record<string, string | undefined> = text.units;
   return visibleParameters(mode, scattering).map((parameter) => {
     const found = foundStatus(fit, parameter.name);
@@ -339,7 +347,7 @@ function parameterRecords(
       status:
         parameter.role === "fixed"
           ? text.status.fixed
-          : held.includes(parameter.name)
+          : effectiveHeld.includes(parameter.name)
             ? text.status.held
             : found.kind === "free"
               ? found.afterFailure
@@ -364,6 +372,7 @@ type DegeneracySelection = Pick<
       | "bandConfiguration"
       | "netElectronDensityPerM3"
       | "carrierType"
+      | "fitAbsoluteMass"
     >
   >;
 
@@ -735,25 +744,41 @@ function legacyProvenance(source: string): string {
       version?: number;
       appVersion?: string;
       apiVersion?: string;
+      migration?: unknown;
       content?: {
         selection?: unknown;
         parameters?: unknown;
-        fit?: unknown;
+        fit?: {
+          request?: Record<string, unknown> | null;
+          [key: string]: unknown;
+        } | null;
         held?: unknown;
         customBounds?: unknown;
         fitStart?: unknown;
         units?: unknown;
       };
     };
+    const fit = saved.content?.fit;
+    const request = fit?.request;
+    const compactFit =
+      request == null
+        ? fit
+        : {
+            ...fit,
+            request: Object.fromEntries(
+              Object.entries(request).filter(([key]) => key !== "measurements"),
+            ),
+          };
     return JSON.stringify({
       format: saved.format,
       version: saved.version,
       appVersion: saved.appVersion,
       apiVersion: saved.apiVersion,
+      migration: saved.migration,
       ...(saved.content && {
         selection: saved.content.selection,
         parameters: saved.content.parameters,
-        fit: saved.content.fit,
+        fit: compactFit,
         held: saved.content.held,
         customBounds: saved.content.customBounds,
         fitStart: saved.content.fitStart,

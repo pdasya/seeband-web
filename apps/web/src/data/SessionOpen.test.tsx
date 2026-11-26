@@ -19,15 +19,16 @@ afterEach(() => {
   useSessionStore.setState(original, true);
 });
 
-test.each(["legacy", "values", "bounds-only", "settings-only"])(
+test.each(["legacy", "plain-spb", "values", "bounds-only", "settings-only"])(
   "a historical session opens safely with dormant explicit DPB: %s",
   async (variant) => {
-    const dormant = variant !== "legacy";
+    const spb = variant !== "legacy";
+    const dormant = spb && variant !== "plain-spb";
     const state = createSessionStore().getState();
     state.selection = {
       ...state.selection,
-      model: dormant ? "spb" : "dpb",
-      fitMode: dormant ? "spb_s" : "dpb_s_rho",
+      model: spb ? "spb" : "dpb",
+      fitMode: spb ? "spb_s" : "dpb_s_rho",
       scattering: "acPh",
       minTemperatureK: 50,
       maxTemperatureK: 800,
@@ -63,8 +64,14 @@ test.each(["legacy", "values", "bounds-only", "settings-only"])(
       held: [],
       parameter_status: {},
     };
-    if (dormant) state.fit = { status: "done", result };
-    const saved = await sessionFile(
+    if (variant === "plain-spb") {
+      state.parameters = {};
+      state.held = {};
+      state.customBounds = {};
+      state.savedModelSettings = {};
+    }
+    if (spb) state.fit = { status: "done", result };
+    let saved = await sessionFile(
       state,
       { appVersion: "legacy", apiVersion: null, saved: "2026-11-20T00:00:00Z" },
       () => null,
@@ -135,6 +142,27 @@ test.each(["legacy", "values", "bounds-only", "settings-only"])(
       expect(
         screen.getByText(/Historical DPB settings are archived/),
       ).toBeTruthy();
+    }
+    if (spb) {
+      const archive = useSessionStore.getState().selection.legacySource;
+      if (!dormant) expect(archive).toBeUndefined();
+      for (let n = 0; n < 3; n++) {
+        const version = String(n);
+        saved = await sessionFile(
+          useSessionStore.getState(),
+          {
+            appVersion: version,
+            apiVersion: null,
+            saved: "2026-11-20T00:00:00Z",
+          },
+          () => null,
+        );
+        fireEvent.click(screen.getByRole("button", { name: "Open session" }));
+        await vi.waitFor(() =>
+          expect(useSessionStore.getState().restored?.appVersion).toBe(version),
+        );
+        expect(useSessionStore.getState().selection.legacySource).toBe(archive);
+      }
     }
     client.clear();
   },

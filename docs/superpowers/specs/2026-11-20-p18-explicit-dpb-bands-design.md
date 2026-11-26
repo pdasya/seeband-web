@@ -147,6 +147,20 @@ converted and its accompanying multiplicities. Do not combine a starting
 mass from one vector with final fitted energies from another. If the saved
 scale is incomplete, request the missing values before conversion.
 
+For a saved Hall mass of 2 mₑ at N₁ = 8, an all-valley DOS mass maps to
+0.5 mₑ per valley. A single-valley input maps to 2 mₑ. Both conventions
+occurred with core version 0.3.0. The conversion records the confirmed
+interpretation, saved multiplicity, converted mass and target multiplicities.
+`test_migrated_hall_curves_follow_confirmed_mass_convention` in
+`apps/api/tests/test_explicit_dpb.py` compares S, ρ and Hall with the
+corresponding historical conventions at 100, 300 and 500 K.
+
+Session provenance retains the original fit request when available, including
+the exact measurement arrays submitted after interpolation. Reopening a saved
+SPB session preserves an existing archive. A plain SPB session requires no
+conversion archive. Exported run records identify effective holds, including
+the fixed absolute mass, and the bounds used for the run.
+
 The explicit fit holds the researcher-supplied D, configuration and
 multiplicities fixed. The researcher supplies m₁ in S and S+ρ. For an
 S+ρ+Hall fit with free m₁, changing its trial value requires solving μ again

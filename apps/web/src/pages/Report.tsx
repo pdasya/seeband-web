@@ -235,6 +235,8 @@ export function ReportHeader({
       customBounds: state.customBounds,
       held: state.held,
       parameters: state.parameters,
+      runs: state.runs,
+      restored: state.restored,
     })),
   );
   const { fit, data } = session;

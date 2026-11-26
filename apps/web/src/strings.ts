@@ -56,6 +56,14 @@ export const STRINGS = {
     migrationHint:
       "Confirm the positive single-valley mass and both valley multiplicities, excluding spin. Saved multiplicities may have been defaults. Original inputs and fit results are preserved; new fits use fresh bounds.",
     mass: "Single-valley |m₁| (mₑ)",
+    hallMassConvention: "Saved Hall mass convention",
+    chooseHallMassConvention: "Choose the saved mass convention",
+    singleValleyMass: "Single-valley mass",
+    allValleyMass: "All-valley density-of-states mass",
+    savedHallMass: (mass: string, multiplicity: string) =>
+      `Saved Hall |m₁|: ${mass} mₑ; saved N₁: ${multiplicity}.`,
+    hallMassHint:
+      "Confirm the convention used when this mass was saved. Core version 0.3.0 alone does not identify it. An all-valley mass is divided by the saved N₁^(2/3); the single-valley value used for conversion is shown below. This converts the saved point and does not guarantee reproduction of older Hall curves.",
     confirm: "Confirm scale and convert",
     cancel: "Cancel",
     migrationFailed:

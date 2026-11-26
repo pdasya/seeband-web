@@ -805,3 +805,101 @@ test("Fermi exports retain an explicitly stored legacy carrier sign", () => {
     "carrier type: n",
   );
 });
+
+const ABSOLUTE_MASS_MODE: FitModeDescription = {
+  ...modeOf("dpb_s_rho"),
+  parameters: [
+    {
+      ...(modeOf("dpb_s_rho")
+        .parameters[0] as FitModeDescription["parameters"][number]),
+      name: "m1",
+      role: "fitted",
+    },
+  ],
+};
+
+test("explicit parameter files record the effective prefit absolute-mass hold", () => {
+  const selection = {
+    ...SELECTION,
+    parameterization: "explicit_fermi_v1" as const,
+  };
+  expect(
+    parametersCsv(
+      [],
+      ABSOLUTE_MASS_MODE,
+      selection,
+      { m1: 2 },
+      { status: "idle" },
+    ),
+  ).toMatch(/m1,m₁,[^\n]*,held at its value/);
+  expect(
+    parametersFile(
+      [],
+      ABSOLUTE_MASS_MODE,
+      selection,
+      { m1: 2 },
+      { status: "idle" },
+    ),
+  ).toMatch(/m₁[^\n]*\theld at its value/);
+});
+
+test("completed parameter exports use result holds and preserve a free absolute mass", () => {
+  const selection = {
+    ...SELECTION,
+    parameterization: "explicit_fermi_v1" as const,
+  };
+  expect(
+    parametersCsv([], ABSOLUTE_MASS_MODE, selection, { m1: 2 }, DONE, ["m1"]),
+  ).not.toMatch(/m1,m₁,[^\n]*,held at its value/);
+  expect(
+    parametersCsv(
+      [],
+      ABSOLUTE_MASS_MODE,
+      selection,
+      { m1: 2 },
+      { status: "done", result: { ...RESULT, held: ["m1"] } },
+    ),
+  ).toMatch(/m1,m₁,[^\n]*,held at its value/);
+});
+
+test("curve headers keep migration provenance without historical request measurements", () => {
+  const legacySource = JSON.stringify({
+    format: "seeband-session",
+    version: 1,
+    migration: { hallMassConvention: "single_valley", sourceValleyCount: 2 },
+    content: {
+      fit: {
+        result: RESULT,
+        request: {
+          held: ["m_eff"],
+          start: { m_eff: 2 },
+          measurements: { seebeck: { values: [123456789] } },
+        },
+      },
+    },
+  });
+  const header = exportHeader({
+    ...CONTEXT,
+    selection: { ...SELECTION, legacySource },
+  }).join("\n");
+  expect(header).toContain(
+    '"migration":{"hallMassConvention":"single_valley","sourceValleyCount":2}',
+  );
+  expect(header).toContain('"held":["m_eff"]');
+  expect(header).not.toContain('"measurements"');
+  expect(header).not.toContain("123456789");
+});
+
+test("a historical result without a held list can export the recorded holds", () => {
+  const legacy = { ...RESULT };
+  Reflect.deleteProperty(legacy, "held");
+  const csv = parametersCsv(
+    [],
+    ABSOLUTE_MASS_MODE,
+    SELECTION,
+    { m1: 2 },
+    { status: "done", result: legacy },
+    ["m1"],
+  );
+  expect(csv).toMatch(/m1,m₁,[^\n]*,held at its value/);
+});

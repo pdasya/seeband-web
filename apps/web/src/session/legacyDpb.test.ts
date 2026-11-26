@@ -2,7 +2,7 @@ import type { FitModeDescription } from "@/model/selection";
 // @vitest-environment node
 import { expect, test } from "vitest";
 import { convertedSession, legacyVector } from "./legacyDpb";
-import { sessionFile } from "./sessionFile";
+import { sessionFile, readSessionFile, restoredSession } from "./sessionFile";
 import { createSessionStore } from "./store";
 
 test("conversion keeps historical bounds and results as provenance, with fresh explicit fit controls", async () => {
@@ -28,8 +28,27 @@ test("conversion keeps historical bounds and results as provenance, with fresh e
     { appVersion: "old", apiVersion: "old", saved: "2026-11-20T00:00:00Z" },
     () => null,
   );
+  file.content.interpolation.enabled = true;
   file.content.fit = {
-    request: null,
+    request: {
+      model: "dpb",
+      fit_mode: "dpb_s_rho_rh",
+      scattering: "acPh",
+      start: { m1: 9, m_eff: 3, band_gap: 300, fermi_energy: 50 },
+      min_temperature_k: 150,
+      max_temperature_k: 300,
+      measurements: {
+        resistivity: {
+          temperature_k: [150, 225, 300],
+          values: [0.001, 0.002, 0.003],
+        },
+        hall: { temperature_k: [150, 225, 300], values: [1e-8, 2e-8, 3e-8] },
+        seebeck: {
+          temperature_k: [150, 225, 300],
+          values: [0.0001, 0.00015, 0.0002],
+        },
+      },
+    },
     result: {
       status: "converged",
       parameters: { m_eff: 2, band_gap: 600, fermi_energy: 80, m1: 1.7 },
@@ -74,6 +93,7 @@ test("conversion keeps historical bounds and results as provenance, with fresh e
     },
     2,
     6,
+    "single_valley",
   );
   expect(converted.selection.algorithm).toBe("verified-sequential-v2");
   expect(converted.parameters.spb_s).toEqual({ band_mass: 3 });
@@ -83,7 +103,27 @@ test("conversion keeps historical bounds and results as provenance, with fresh e
   expect(
     JSON.parse(converted.selection.legacySource ?? "null").content.fit,
   ).toEqual(file.content.fit);
-  expect(converted.selection.legacySource).not.toContain("measurement");
+  store.getState().restoreSession(restoredSession(converted), {
+    saved: file.saved,
+    appVersion: file.appVersion,
+    fitCoreVersion: null,
+    serverCoreVersion: null,
+  });
+  const reopened = await readSessionFile(
+    JSON.stringify(await sessionFile(store.getState(), file, () => null)),
+  );
+  if ("problem" in reopened) throw new Error(reopened.problem);
+  const archived = JSON.parse(
+    reopened.session.content.selection.legacySource ?? "null",
+  );
+  expect(archived.content.fit.request).toEqual(file.content.fit.request);
+  expect(archived.migration).toEqual({
+    hallMassConvention: "single_valley",
+    sourceValleyCount: 2,
+    singleValleyMass: 1.7,
+    band1Degeneracy: 2,
+    band2Degeneracy: 6,
+  });
   expect(converted.selection.netElectronDensityPerM3).toBe(-2e24);
   expect(converted.parameters.dpb_s_rho_rh).toEqual({
     mass_ratio: 2,

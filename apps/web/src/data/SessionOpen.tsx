@@ -2,6 +2,7 @@ import { offersExplicitDpb } from "@/model/selection";
 import {
   convertedSession,
   historicalSource,
+  type HallMassConvention,
   legacyVector,
   withoutLegacyDpb,
 } from "@/session/legacyDpb";
@@ -18,7 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { parseNumber } from "@/lib/numbers";
+import { formatNumber, parseNumber } from "@/lib/numbers";
 import type { SessionFile } from "@/session/sessionFile";
 import { Button } from "@/components/ui/button";
 import { fitRequest } from "@/model/fitRequest";
@@ -94,6 +95,12 @@ function useSessionOpen() {
       const content = dormantDpb
         ? {
             ...session.content,
+            selection: {
+              ...session.content.selection,
+              legacySource:
+                session.content.selection.legacySource ??
+                historicalSource(session),
+            },
             parameters: withoutLegacyDpb(session.content.parameters),
             guessedParameters: withoutLegacyDpb(
               session.content.guessedParameters ?? {},
@@ -109,25 +116,12 @@ function useSessionOpen() {
         : session.content;
       setArchivedDpb(dormantDpb);
       const server = await apiClient.getHealth().catch(() => null);
-      restore(
-        restoredSession(
-          session.content.selection.parameterization === undefined
-            ? {
-                ...content,
-                selection: {
-                  ...session.content.selection,
-                  legacySource: historicalSource(session),
-                },
-              }
-            : content,
-        ),
-        {
-          saved: session.saved,
-          appVersion: session.appVersion,
-          fitCoreVersion: session.content.fit?.result.core_version ?? null,
-          serverCoreVersion: server?.core_version ?? null,
-        },
-      );
+      restore(restoredSession(content), {
+        saved: session.saved,
+        appVersion: session.appVersion,
+        fitCoreVersion: session.content.fit?.result.core_version ?? null,
+        serverCoreVersion: server?.core_version ?? null,
+      });
     } catch {
       // A file that cannot be read, or a digest that fails, opens nothing.
       setProblem("read_failed");
@@ -136,7 +130,12 @@ function useSessionOpen() {
     }
   };
 
-  const convert = async (m1: number, band1: number, band2: number) => {
+  const convert = async (
+    m1: number,
+    band1: number,
+    band2: number,
+    convention?: HallMassConvention,
+  ) => {
     if (pending === null) return;
     setBusy(true);
     try {
@@ -155,7 +154,7 @@ function useSessionOpen() {
       });
       const server = await apiClient.getHealth().catch(() => null);
       const restored = restoredSession(
-        convertedSession(pending, converted, band1, band2),
+        convertedSession(pending, converted, band1, band2, convention),
       );
       restore(restored, {
         saved: pending.saved,
@@ -363,15 +362,25 @@ function LegacyMigration({
   busy: boolean;
   failed: boolean;
   onCancel: () => void;
-  onConvert: (mass: number, band1: number, band2: number) => Promise<void>;
+  onConvert: (
+    mass: number,
+    band1: number,
+    band2: number,
+    hallMassConvention?: HallMassConvention,
+  ) => Promise<void>;
 }) {
   const text = STRINGS.explicitDpb;
   const mode = session.content.selection.fitMode ?? "dpb_s_rho";
   const vector = legacyVector(session.content);
   const hallMass = mode === "dpb_s_rho_rh" ? vector?.m1 : undefined;
-  const [mass, setMass] = useState(
-    hallMass && hallMass > 0 ? String(hallMass) : "",
+  const hasHallMass = hallMass !== undefined && hallMass > 0;
+  const savedN1 =
+    session.content.fit?.request?.band_1_degeneracy ??
+    session.content.selection.band1Degeneracy;
+  const [convention, setConvention] = useState<HallMassConvention | "">(
+    savedN1 === 1 ? "single_valley" : "",
   );
+  const [mass, setMass] = useState("");
   const [n1, setN1] = useState(
     String(
       session.content.fit?.request?.band_1_degeneracy ??
@@ -384,11 +393,20 @@ function LegacyMigration({
         session.content.selection.band2Degeneracy,
     ),
   );
-  const massValue = parseNumber(mass);
+  // An older all-valley DOS mass includes the multiplicity at the time it
+  // was saved, independently of the multiplicities confirmed for the new fit.
+  const massValue = hasHallMass
+    ? convention === ""
+      ? null
+      : convention === "all_valley"
+        ? hallMass / Math.cbrt(savedN1) ** 2
+        : hallMass
+    : parseNumber(mass);
   const band1Value = parseNumber(n1);
   const band2Value = parseNumber(n2);
   const valid =
     massValue !== null &&
+    Number.isFinite(massValue) &&
     massValue > 0 &&
     band1Value !== null &&
     band1Value > 0 &&
@@ -408,14 +426,45 @@ function LegacyMigration({
           <DialogTitle>{text.migrationTitle}</DialogTitle>
           <DialogDescription>{text.migrationHint}</DialogDescription>
         </DialogHeader>
+        {hasHallMass && (
+          <>
+            <p className="text-sm">
+              {text.savedHallMass(
+                formatNumber(hallMass),
+                formatNumber(savedN1),
+              )}
+            </p>
+            {savedN1 !== 1 && (
+              <label>
+                {text.hallMassConvention}
+                <select
+                  className="rounded-md border bg-background px-2 py-1"
+                  value={convention}
+                  disabled={busy}
+                  onChange={(event) =>
+                    setConvention(event.target.value as HallMassConvention | "")
+                  }
+                >
+                  <option value="">{text.chooseHallMassConvention}</option>
+                  <option value="single_valley">{text.singleValleyMass}</option>
+                  <option value="all_valley">{text.allValleyMass}</option>
+                </select>
+              </label>
+            )}
+            <p className="text-sm text-muted-foreground">{text.hallMassHint}</p>
+          </>
+        )}
         <label>
           {text.mass}
           <Input
-            value={mass}
-            disabled={
-              busy ||
-              (hallMass !== undefined && hallMass !== null && hallMass > 0)
+            value={
+              hasHallMass
+                ? massValue === null
+                  ? ""
+                  : formatNumber(massValue)
+                : mass
             }
+            disabled={busy || hasHallMass}
             onChange={(event) => setMass(event.target.value)}
           />
         </label>
@@ -443,7 +492,13 @@ function LegacyMigration({
         <Button
           disabled={busy || !valid}
           onClick={() => {
-            if (valid) void onConvert(massValue, band1Value, band2Value);
+            if (valid)
+              void onConvert(
+                massValue,
+                band1Value,
+                band2Value,
+                hasHallMass ? convention || undefined : undefined,
+              );
           }}
         >
           {text.confirm}

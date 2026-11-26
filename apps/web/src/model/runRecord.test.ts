@@ -59,7 +59,7 @@ const RESULT: FitResult = {
   parameter_status: {},
   at_bounds: [],
   known_issues: [],
-  held: [],
+  held: ["B"],
   last_changes: {
     m_eff: 0.0213,
     band_gap: 0.0006,
@@ -212,4 +212,122 @@ test("run records describe virgin Fermi starts consistently with the live reques
   expect(runLines(state, MODE, null, false).join("\n")).toContain(
     "E_F = -0.008617333262 eV",
   );
+});
+
+const EXPLICIT_MODE: FitModeDescription = {
+  ...MODE,
+  parameters: [
+    ...MODE.parameters,
+    {
+      ...(MODE.parameters[0] as FitModeDescription["parameters"][number]),
+      name: "m1",
+      role: "fitted",
+    },
+  ],
+};
+
+test("explicit prefit records the automatically held absolute mass without its bounds", () => {
+  const state = session();
+  state.fit = { status: "idle" };
+  state.selection.parameterization = "explicit_fermi_v1";
+  const lines = runLines(state, EXPLICIT_MODE, null, false);
+  expect(lines).toContain("Held at their values: B, m₁");
+  expect(lines.find((line) => line.startsWith("Bounds: "))).not.toMatch(
+    /(?:Bounds: |; )m₁ /,
+  );
+});
+
+test("completed records use the submitted constraints even after settings change", () => {
+  const store = createSessionStore();
+  const initial = session();
+  store.setState({
+    selection: initial.selection,
+    customBounds: initial.customBounds,
+    held: initial.held,
+  });
+  const run = store
+    .getState()
+    .fitRequested(MODE.id, {}, "legacy-sequential-v1");
+  store.getState().fitEvent(run, { type: "done", result: RESULT });
+  const state = store.getState();
+  const lines = runLines(
+    { ...state, held: { [MODE.id]: ["m_eff"] }, customBounds: {} },
+    MODE,
+    null,
+    true,
+  );
+  expect(lines).toContain("Held at their values: B");
+  expect(lines.find((line) => line.startsWith("Bounds: "))).toContain(
+    "(set by the user)",
+  );
+});
+
+test("a completed free absolute-mass run overrides the current automatic hold", () => {
+  const state = session();
+  state.selection.parameterization = "explicit_fermi_v1";
+  const lines = runLines(state, EXPLICIT_MODE, null, true);
+  expect(lines.find((line) => line.startsWith("Bounds: "))).toMatch(
+    /(?:Bounds: |; )m₁ /,
+  );
+  expect(lines).toContain("Held at their values: B");
+});
+
+test("restored request bounds take precedence over the current UI bounds", () => {
+  const state = session();
+  state.restored = {
+    saved: "2026-11-01",
+    appVersion: "test",
+    fitCoreVersion: null,
+    serverCoreVersion: null,
+    stale: false,
+    result: RESULT,
+    request: {
+      model: "dpb",
+      fit_mode: MODE.id,
+      start: {},
+      min_temperature_k: 100,
+      max_temperature_k: 200,
+      measurements: {},
+      bounds: { band_gap: { lower: 100, upper: 200 } },
+    },
+  };
+  const bounds = runLines(state, MODE, null, true).find((line) =>
+    line.startsWith("Bounds: "),
+  );
+  expect(bounds).toContain("E_g 0.008617333262 eV to 0.017234666524 eV");
+  const old = { ...RESULT };
+  Reflect.deleteProperty(old, "held");
+  state.fit = { status: "done", result: old };
+  state.restored.result = old;
+  if (state.restored.request) state.restored.request.held = ["m_eff"];
+  expect(runLines(state, MODE, null, true).join("\n")).toContain(
+    "Held at their values: m₂/m₁",
+  );
+  if (state.restored.request !== null) delete state.restored.request.bounds;
+  expect(
+    runLines(state, MODE, null, true).find((line) =>
+      line.startsWith("Bounds: "),
+    ),
+  ).not.toContain("(set by the user)");
+});
+
+test("an explicit Hall prefit can leave absolute mass free", () => {
+  const state = session();
+  state.fit = { status: "idle" };
+  state.selection = {
+    ...state.selection,
+    fitMode: "dpb_s_rho_rh",
+    parameterization: "explicit_fermi_v1",
+    fitAbsoluteMass: true,
+  };
+  const lines = runLines(
+    state,
+    { ...EXPLICIT_MODE, id: "dpb_s_rho_rh" },
+    null,
+    false,
+  );
+  expect(lines.find((line) => line.startsWith("Bounds: "))).toMatch(
+    /(?:Bounds: |; )m₁ /,
+  );
+  expect(lines.join("\n")).not.toContain("Held at their values: m₁");
 });

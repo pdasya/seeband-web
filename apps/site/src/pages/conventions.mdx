@@ -203,8 +203,18 @@ DPB Hall transport since [#252](https://github.com/pdasya/seeband-web/pull/252)
 uses the single-valley mass and counts the absolute valley multiplicity separately.
 For $N_1>1$ the historical diagram therefore draws a different curvature from
 the mass used in that transport calculation. Explicit DPB uses the confirmed
-single-valley mass directly for both. For a saved mass known to use the older
-all-valley DOS convention, divide by $N_1^{2/3}$ once before conversion.
+single-valley mass directly for both. When opening a historical Hall session
+with saved $N_1>1$, choose whether its saved mass is single-valley or all-valley
+DOS. Core version `0.3.0` occurs with both conventions and does not establish
+which one was used. For the older all-valley DOS convention, the migration
+dialog divides the mass by the **saved** $N_1^{2/3}$ once and shows the
+single-valley mass before confirmation. It uses the saved fit request's $N_1$
+when present, otherwise the saved selection's $N_1$. Editing the multiplicity
+for the new calculation does not change this interpretation of the saved mass.
+For saved $N_1=1$, both conventions give the same mass and no choice is needed.
+The selected convention and conversion inputs are preserved with the original
+session provenance. This converts a saved parameter point; it does not guarantee
+reproduction of Hall curves from versions with other historical formula changes.
 
 ## Seebeck coefficient
 

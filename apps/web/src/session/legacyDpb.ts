@@ -3,6 +3,8 @@ import { parameterValues } from "@/model/parameters";
 import type { FitModeDescription } from "@/model/selection";
 import type { SessionContent, SessionFile } from "@/session/sessionFile";
 
+export type HallMassConvention = "single_valley" | "all_valley";
+
 /** Keep final fit energies and final mass together; defaults only fill fixed inputs. */
 export function legacyVector(
   content: SessionContent,
@@ -30,6 +32,7 @@ export function convertedSession(
   point: components["schemas"]["ConvertedDpbPoint"],
   band1: number,
   band2: number,
+  hallMassConvention?: HallMassConvention,
 ): SessionContent {
   const content = session.content;
   const mode = content.selection.fitMode ?? "dpb_s_rho";
@@ -44,7 +47,18 @@ export function convertedSession(
       band1Degeneracy: band1,
       band2Degeneracy: band2,
       fitAbsoluteMass: false,
-      legacySource: historicalSource(session),
+      legacySource: historicalSource(
+        session,
+        hallMassConvention && {
+          hallMassConvention,
+          sourceValleyCount:
+            content.fit?.request?.band_1_degeneracy ??
+            content.selection.band1Degeneracy,
+          singleValleyMass: point.parameters.m1,
+          band1Degeneracy: band1,
+          band2Degeneracy: band2,
+        },
+      ),
     },
     parameters: {
       ...withoutLegacyDpb(content.parameters),
@@ -66,21 +80,29 @@ export function withoutLegacyDpb<T>(
   );
 }
 
-/** Original scale, fit and unit provenance; measurement arrays and file text remain in the session once. */
-export function historicalSource(session: SessionFile): string {
+/** Preserve the actual fit request, including interpolated points, independently of the raw files. */
+export function historicalSource(
+  session: SessionFile,
+  migration?: {
+    hallMassConvention: HallMassConvention;
+    sourceValleyCount: number;
+    singleValleyMass: number | undefined;
+    band1Degeneracy: number;
+    band2Degeneracy: number;
+  },
+): string {
   const { data, singleFile, otherSource, ...settings } = session.content;
   void singleFile;
   void otherSource;
-  const historicalFit = contentFitWithoutMeasurements(session.content);
   return JSON.stringify({
     format: session.format,
     version: session.version,
     saved: session.saved,
     appVersion: session.appVersion,
     apiVersion: session.apiVersion,
+    migration,
     content: {
       ...settings,
-      fit: historicalFit,
       units: Object.fromEntries(
         Object.entries(data).map(([quantity, entry]) => [
           quantity,
@@ -93,17 +115,4 @@ export function historicalSource(session: SessionFile): string {
       ),
     },
   });
-}
-
-function contentFitWithoutMeasurements(content: SessionContent) {
-  const fit = content.fit;
-  return fit === null
-    ? null
-    : {
-        ...fit,
-        request:
-          fit.request === null
-            ? null
-            : { ...fit.request, measurements: undefined },
-      };
 }

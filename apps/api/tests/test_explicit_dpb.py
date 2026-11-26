@@ -278,3 +278,39 @@ def test_manual_parameter_domain_response_and_invalid_inputs(client):
     assert domain(name="mass_ratio") == dict(lower=None, upper=None, inclusive=True, empty=False)
     for changes in (dict(mass_ratio=0), dict(band_1_degeneracy="inf"), dict(fermi_energy="nan")):
         assert client.get(url, params=query | changes).status_code == 422
+
+
+@pytest.mark.parametrize("single_valley_mass,reference_count", [(0.5, 1), (2, 8)])
+def test_migrated_hall_curves_follow_confirmed_mass_convention(
+    client, single_valley_mass, reference_count
+):
+    # At equal valley counts the pre-#252 convention used their ratio alone, as for (1, 1).
+    # A saved all-valley mass of 2 at N=8 therefore maps to 0.5; a single-valley 2 stays 2.
+    shape = dict(m_eff=2, band_gap=600, fermi_energy=-200, m1=2, A=100000, B=0.7, F=100000, G=0.7)
+    counts = dict(band_1_degeneracy=8, band_2_degeneracy=8)
+    point = client.post(
+        "/api/dpb/migrate", json=dict(parameters=shape, m1=single_valley_mass, **counts)
+    )
+    assert point.status_code == 200, point.text
+    grid = dict(
+        model="dpb",
+        fit_mode="dpb_s_rho_rh",
+        scattering="acPh",
+        min_temperature_k=100,
+        max_temperature_k=500,
+        points=3,
+    )
+    historic = client.post(
+        "/api/calc",
+        json=grid
+        | dict(
+            parameters=shape, band_1_degeneracy=reference_count, band_2_degeneracy=reference_count
+        ),
+    )
+    migrated = client.post("/api/calc", json=grid | point.json() | counts)
+    assert historic.status_code == 200, historic.text
+    assert migrated.status_code == 200, migrated.text
+    for curve in ("seebeck_v_per_k", "resistivity_ohm_m", "hall_m3_per_c"):
+        np.testing.assert_allclose(
+            migrated.json()["curves"][curve], historic.json()["curves"][curve], rtol=1e-6, atol=0
+        )
