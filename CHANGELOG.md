@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- P39 (#292): show the absolute model Lorenz number on a 10⁻⁸ W·Ω/K² scale and
+  export the total and per-band values directly in W·Ω/K². SPB and DPB now
+  return L directly from the model moments.
+
 - U8 (#277): every page of the site and the app has the same favicon, as
   SVG, ICO and an Apple touch icon, drawn from the header's logo by
   `pnpm --filter @seeband/site icons`. The logo and the name in the header

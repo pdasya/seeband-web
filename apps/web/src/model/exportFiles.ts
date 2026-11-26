@@ -1,10 +1,6 @@
 import type { CalcResponse } from "@/api/client";
 import { heldForFit } from "@/model/explicitDpb";
-import {
-  LORENZ_L0,
-  quantityCurve,
-  type EnergyDisplay,
-} from "@/model/chartTabs";
+import { quantityCurve, type EnergyDisplay } from "@/model/chartTabs";
 import {
   coreToDisplay,
   parameterSymbol,
@@ -575,19 +571,7 @@ export function graphFile(
             },
           ];
         }
-        const column = { legend: labels[name] ?? name, values };
-        // L also in units of L₀, as the chart shows it.
-        return name.startsWith("lorenz_number")
-          ? [
-              column,
-              {
-                legend: text.relativeToL0(labels[name] ?? name),
-                values: values.map((value) =>
-                  value === null ? null : value / LORENZ_L0,
-                ),
-              },
-            ]
-          : [column];
+        return [{ legend: labels[name] ?? name, values }];
       }),
     ])
   );

@@ -657,80 +657,53 @@ class _BandModel:
     def _lorenz_number(
         self, request: CurveRequest, fit_mode: FitMode, scattering: str | None
     ) -> CurveResult:
-        """L(T) = κ_e/(σT) from the same κ_e and σ as their own curves, so it holds what they hold.
+        """Calculate absolute L in W Ω/K² from transport moments.
 
-        For two bands this is the effective L, with the bipolar part of κ_e, and each band's own L
-        goes with it, as κ_e weighs them by each band's σ. Neither depends on the prefactor of σ.
-        The known issues of κ_e and σ carry over, as L is of them.
+        DPB includes the conductivity-weighted band moments and the bipolar term.
+        The shared conductivity amplitude cancels; an explicit zero keeps the
+        historical undefined effective L, while each band's L remains defined.
         """
-        kappa = self.calculate(dataclasses.replace(request, kind="thermal_conductivity"))
-        sigma = self.calculate(dataclasses.replace(request, kind="electrical_conductivity"))
-        temperature_k = kappa.temperature_k
-        thermal = np.asarray(kappa.curves["thermal_conductivity_w_per_m_k"])
-        conductivity = np.asarray(sigma.curves["electrical_conductivity_s_per_m"])
-        with np.errstate(all="ignore"):
-            effective = thermal / (conductivity * temperature_k)
-        # The normalized ratio stays finite when the underlying curves lose
-        # precision in the subnormal range. Explicit zero amplitude is undefined.
-        amplitude = request.parameters.get("F" if scattering == "dis" else "A", 1.0)
-        tiny = np.finfo(float).tiny
-        underflowed = (
-            np.isfinite(thermal)
-            & np.isfinite(conductivity)
-            & (thermal >= 0)
-            & (conductivity >= 0)
-            & ((thermal < tiny) | (conductivity < tiny))
-            & (amplitude > 0)
+        temperature_k = np.linspace(
+            request.min_temperature_k, request.max_temperature_k, request.points
         )
-        if underflowed.any() and fit_mode.degeneracy is not None:
-            temperatures = temperature_k[underflowed]
-            parameters = request.parameters
-            ratio = _degeneracy_ratio(request)
-            if scattering == "ionized":
-                from seeband_core.transport import ionized_transport
+        parameters = request.parameters
+        ratio = _degeneracy_ratio(request) if fit_mode.degeneracy is not None else 1.0
+        bands: dict[str, np.ndarray] = {}
+        if scattering == "ionized":
+            from seeband_core.transport import ionized_transport
 
-                effective[underflowed] = ionized_transport(
-                    temperatures, parameters, fit_mode.id, ratio
-                )["lorenz_number"]
-            elif scattering in ("acPh", "dis"):
-                # The dilute fallback takes band 2's amplitude relative to band 1 as one number,
-                # which holds for acPh and dis. A mixed mechanism such as acPhDis, B(C+T)/(D+T),
-                # varies with T and needs its own fallback before it may reach this branch.
-                effective[underflowed] = _CORE_MATH.dpb_effective_lorenz(
-                    temperatures,
-                    _value(parameters, "m_eff") / ratio,
-                    _value(parameters, "band_gap"),
-                    _value(parameters, "fermi_energy"),
-                    ratio,
-                    _value(parameters, "G" if scattering == "dis" else "B"),
-                )
-            else:
-                raise ValueError(f"No dilute Lorenz fallback for scattering {scattering!r}")
-        curves: dict[str, np.ndarray] = {LORENZ_CURVE: effective}
-        curves |= self._band_lorenz_numbers(request, fit_mode, scattering, temperature_k)
+            # Only normalized moments are needed. Do not let the absolute
+            # amplitude overflow or underflow the auxiliary transport outputs.
+            predictions = ionized_transport(
+                temperature_k, dict(parameters) | {"A": 1.0}, fit_mode.id, ratio
+            )
+            effective = predictions["lorenz_number"]
+            if fit_mode.degeneracy is not None:
+                bands = {
+                    LORENZ_BAND_CURVES[0]: predictions["lorenz_band_1"],
+                    LORENZ_BAND_CURVES[1]: predictions["lorenz_band_2"],
+                }
+        elif fit_mode.degeneracy is not None:
+            effective, band1, band2 = _CORE_MATH.dpb_lorenz_moments(
+                temperature_k,
+                _value(parameters, "m_eff") / ratio,
+                _value(parameters, "band_gap"),
+                _value(parameters, "fermi_energy"),
+                ratio,
+                _value(parameters, "G" if scattering == "dis" else "B"),
+            )
+            bands = dict(zip(LORENZ_BAND_CURVES, (band1, band2), strict=True))
+        else:
+            effective = _CORE_MATH.spb_lorNum_vs_temp(
+                temperature_k, _value(parameters, "fermi_energy"), _value(parameters, "band_mass")
+            )
+        if parameters.get("F" if scattering == "dis" else "A", 1.0) == 0.0:
+            effective = np.full_like(effective, np.nan)
+        curves = {LORENZ_CURVE: effective} | bands
         issues = active_issue_ids(
-            fit_mode,
-            scattering,
-            request.parameters,
-            _degeneracy_ratio(request) if fit_mode.degeneracy is not None else 1.0,
-            request.kind,
-            request.extrapolated,
+            fit_mode, scattering, parameters, ratio, request.kind, request.extrapolated
         )
-        return CurveResult(
-            temperature_k,
-            curves,
-            tuple(dict.fromkeys((*issues, *kappa.known_issues, *sigma.known_issues))),
-        )
-
-    def _band_lorenz_numbers(
-        self,
-        request: CurveRequest,
-        fit_mode: FitMode,
-        scattering: str | None,
-        temperature_k: np.ndarray,
-    ) -> dict[str, np.ndarray]:
-        """Each band's own L, for a model with more than one band."""
-        return {}
+        return CurveResult(temperature_k, curves, issues)
 
     def band_diagram(self, request: BandDiagramRequest) -> BandDiagramResult:
         """Return the local parabolic bands and constant Fermi energy."""
@@ -897,32 +870,6 @@ class SpbModel(_BandModel):
 
 
 class DpbModel(_BandModel):
-    def _band_lorenz_numbers(
-        self,
-        request: CurveRequest,
-        fit_mode: FitMode,
-        scattering: str | None,
-        temperature_k: np.ndarray,
-    ) -> dict[str, np.ndarray]:
-        """L₁ and L₂ as κ_e takes them: from `transport` for ionized impurities, else the λ = 0
-        Fermi integrals of `math_module`, with m_eff divided by N₂/N₁ as its κ_e has it."""
-        parameters = request.parameters
-        ratio = _degeneracy_ratio(request)
-        if scattering == "ionized":
-            from seeband_core.transport import ionized_transport
-
-            predictions = ionized_transport(temperature_k, parameters, fit_mode.id, ratio)
-            bands = (predictions["lorenz_band_1"], predictions["lorenz_band_2"])
-        else:
-            bands = _CORE_MATH.dpb_lorNum_vs_temp(
-                temperature_k,
-                _value(parameters, "m_eff") / ratio,
-                _value(parameters, "band_gap"),
-                _value(parameters, "fermi_energy"),
-                ratio,
-            )
-        return dict(zip(LORENZ_BAND_CURVES, (np.asarray(band) for band in bands), strict=True))
-
     def __init__(self) -> None:
         super().__init__(load_desktop_descriptions()["dpb"])
 

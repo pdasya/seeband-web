@@ -476,21 +476,23 @@ describe("a graph file", () => {
   });
 });
 
-test("a graph file has L in W·Ω/K² and in units of L₀ beside it", () => {
-  const L0 = (Math.PI ** 2 / 3) * (1.380649e-23 / 1.602176634e-19) ** 2;
-  const lines = graphFile(
-    [],
-    [100],
-    [{ name: "lorenz_number_w_ohm_per_k2", values: [2 * L0] }],
-    { unit: "K", per_kelvin: 1 },
-  ).split("\n");
-  expect(lines[0]).toBe(
-    "Temperature [K]\tLorenz number L = kappa_e/(sigma*T) [W*Ohm/K^2]\t" +
-      "Lorenz number L = kappa_e/(sigma*T) / L0, L0 = pi^2/3 (k_B/e)^2 = 2.44e-8 W*Ohm/K^2",
+test("a graph file exports absolute L for total and bands in SI units only", () => {
+  expect(
+    graphFile(
+      [],
+      [100, 200],
+      [
+        { name: "lorenz_number_w_ohm_per_k2", values: [4.88e-8, null] },
+        { name: "lorenz_number_band_1_w_ohm_per_k2", values: [2e-8, 2.1e-8] },
+        { name: "lorenz_number_band_2_w_ohm_per_k2", values: [1.8e-8, 1.9e-8] },
+      ],
+      { unit: "K", per_kelvin: 1 },
+    ),
+  ).toBe(
+    "Temperature [K]\tLorenz number L [W*Ohm/K^2]\t" +
+      "Lorenz number of band 1 [W*Ohm/K^2]\tLorenz number of band 2 [W*Ohm/K^2]\n" +
+      "100\t4.88e-8\t2e-8\t1.8e-8\n200\t\t2.1e-8\t1.9e-8\n",
   );
-  const [, value, relative] = (lines[1] ?? "").split("\t");
-  expect(Number(value)).toBeCloseTo(2 * L0, 20);
-  expect(Number(relative)).toBeCloseTo(2, 12);
 });
 
 describe("the other formats", () => {

@@ -731,7 +731,7 @@ def with_scattering(values: list[Any], scattering: str | None) -> list[Any]:
 
 
 def test_the_expected_tables_cover_every_mode_and_kind() -> None:
-    # L is made of κ_e and σ, whose calls are here; `test_lorenz_number.py` checks it.
+    # L comes from normalized model moments; `test_lorenz_number.py` checks it.
     assert {(mode, kind) for _, mode, _, kind in curve_cases() if kind != "lorenz_number"} == set(
         EXPECTED_CURVE_CALLS
     )

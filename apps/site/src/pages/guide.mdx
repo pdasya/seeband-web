@@ -225,12 +225,15 @@ allows: μ(T) in every mode, σ, $\kappa_e$ and the Lorenz number in modes with
     <img
       src="/guide/additional-graphs.png"
       width="1392"
-      height="1070"
+      height="1014"
       loading="lazy"
       alt="Six additional graphs: chemical potential, conductivity with 1/ρ of the data, electronic thermal conductivity, Lorenz number, band contributions to S and carrier concentration by band."
     />
   </a>
-  <figcaption>The additional graphs of the DPB fit.</figcaption>
+  <figcaption>
+    Additional graphs from the built-in synthetic DPB demo. The Lorenz panel
+    shows total L and both band values.
+  </figcaption>
 </figure>
 
 - **Chemical potential μ(T).** μ falls with temperature, from 0.11 eV to just
@@ -248,16 +251,16 @@ allows: μ(T) in every mode, σ, $\kappa_e$ and the Lorenz number in modes with
   Wiedemann–Franz law, $\kappa_e = L\sigma T$, with the Lorenz number of
   degenerate metals, $L_0$ = 2.44 × 10⁻⁸ W·Ω/K², or with an estimate from the
   Seebeck coefficient such as that of Kim et al. [[2]](#references). Here L follows from the band
-  parameters, and for two bands $\kappa_e$ includes the bipolar part. It arises
+  parameters, and the model computes $\kappa_e=L\sigma T$. For two bands $\kappa_e$ includes the bipolar part. It arises
   when two bands with different S conduct in parallel; with a conduction and a
   valence band it is carried by electron–hole pairs that form at the hot side
   and recombine at the cold side, releasing the gap energy. It can raise
-  $\kappa_e$ markedly at high temperatures: here the effective L rises from
-  about 0.85 $L_0$ at 200 K to about 2.7 $L_0$ at 800 K. The bipolar part
+  $\kappa_e$ markedly at high temperatures. In the Fe₂VAl example, total L rises from
+  about 2.1 × 10⁻⁸ W·Ω/K² at 200 K to about 6.6 × 10⁻⁸ W·Ω/K² at 800 K. The bipolar part
   cannot be measured on its own; a two-band fit gives a model-dependent
   estimate of it, only as good as the fit. The lattice part is not modelled.
-- **Lorenz number L(T)**, in units of $L_0$: the effective $\kappa_e/(\sigma T)$,
-  with the bipolar part, and each band's own L.
+- **Lorenz number L(T)** shows total L and each band’s own L in units of
+  10⁻⁸ W·Ω/K². The download gives absolute values in W·Ω/K².
 - **Carrier concentration by band.** Without $R_H$ data the size of $m_1$ is
   not measured, so these values are relative; compare the bands, not the values.
   Here $m_1$ is near its bound, so treat them as relative too. Band 1's holes
