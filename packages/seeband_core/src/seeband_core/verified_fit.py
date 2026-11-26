@@ -121,8 +121,17 @@ def _evaluate_quantity(
         from seeband_core.explicit_transport import explicit_curves
         from seeband_core.fit_quality import CURVE_NAMES
 
+        # The S stage asks for S only, so that sigma and rho cannot fail its trial points.
+        # The others need the measured vector, the only one that holds R_H.
         curves = explicit_curves(
-            explicit_bands, fit_mode, p, t, scattering, band_1_degeneracy, band_2_degeneracy
+            explicit_bands,
+            fit_mode,
+            p,
+            t,
+            scattering,
+            band_1_degeneracy,
+            band_2_degeneracy,
+            kind="seebeck" if q == "seebeck" else "measured",
         )
         return curves[CURVE_NAMES[q]]
     if scattering == "ionized":
