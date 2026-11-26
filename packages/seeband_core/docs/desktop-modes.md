@@ -16,6 +16,14 @@ When these scales differ for one parameter, the desktop treats that slider incon
 
 For acPhDis, the core also multiplies some parameters by 300, because they are given at 300 K. This applies to both start values and bounds, and results are divided on return, except in the case recorded as D6.
 
+The web description overrides the desktop SPB C display scale in core 0.4.2.
+In both resistivity modes, the displayed C now equals the stored dimensionless
+ratio tau_ph/tau_dis at 300 K, as it already does for DPB. Thus core C=1 displays
+1; historical core C=100 now displays 100 instead of 1. The raw desktop catalog,
+stored session values, fit and calculation scales, control ranges and numeric
+fit bounds are unchanged. Existing sessions therefore calculate the same curves;
+only their displayed C value changes.
+
 ## Bounds
 
 **Fit bounds** are the values at startup. Bounds marked _editable_ are live slider ranges that Advanced options can change. Qt then clamps the current slider value, so changing a range can also change a start value, including the fixed SPB mass. Other bounds are fixed constants.

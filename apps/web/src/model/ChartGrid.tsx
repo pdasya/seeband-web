@@ -1,10 +1,11 @@
-import { useQuery } from "@tanstack/react-query";
+import { rmseIssueText } from "@/model/calcIssues";
 import { AlertCircleIcon } from "lucide-react";
 import { useId, useMemo } from "react";
 
 import type { ApiError } from "@/api/errors";
+import { carrierValidationMessage } from "@/model/explicitDpb";
 import { NETWORK_ERROR } from "@/api/errors";
-import { modelsQuery } from "@/api/queries";
+import { useModels } from "@/api/queries";
 import { TransportChart } from "@/charts/TransportChart";
 import type { ChartFitRange } from "@/charts/figure";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -41,6 +42,8 @@ const NOTHING: LiveCalc = { result: null, busy: false, error: null };
 /** What a chart says of a failed curve, in our own words. */
 export function failureText(error: ApiError): string {
   switch (error.code) {
+    case "validation_error":
+      return carrierValidationMessage(error.details) ?? text.calcFailed;
     case "calculation_failed": {
       const messages: Record<string, string> = text.calculationDetails;
       const detail = error.details.find(({ code }) =>
@@ -66,7 +69,7 @@ export function failureText(error: ApiError): string {
 function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
   const { measured, diagram } = live;
   const labelId = useId();
-  const { data: models } = useQuery(modelsQuery);
+  const { data: models } = useModels();
   const energy = models?.energy_display ?? ENERGY_IN_K;
   const tab = useSessionStore((state) => state.chartPanels[index] ?? "seebeck");
   const setPanel = useSessionStore((state) => state.setChartPanel);
@@ -96,7 +99,19 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
       chartTabView(
         tab,
         mode,
-        { data, interpolation, bandGapK, energy },
+        {
+          data,
+          interpolation,
+          bandGapK,
+          energy,
+          ...(selection.parameterization !== undefined &&
+          selection.model === "dpb"
+            ? {
+                bandConfiguration: selection.bandConfiguration,
+                parameterization: selection.parameterization,
+              }
+            : {}),
+        },
         measuredCurves,
         derived.result,
         diagramResult,
@@ -111,6 +126,9 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
       measuredCurves,
       derived.result,
       diagramResult,
+      selection.parameterization,
+      selection.model,
+      selection.bandConfiguration,
     ],
   );
   const fitRange = useMemo((): ChartFitRange | null => {
@@ -118,7 +136,9 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
   }, [minK, maxK]);
 
   // Only what this chart draws. An RMSE has its own note, and other curves end with their chart.
-  const usesMeasured = drawsMeasuredCurves(tab, mode, data);
+  const usesMeasured =
+    drawsMeasuredCurves(tab, mode, data) ||
+    (isQuantityTab(tab) && view.curves.length > 0);
   const onTab = tab === "band_diagram" ? diagram : derived;
   // Each request the chart draws from says when it fails, so one failure hides no other.
   const failures = [
@@ -150,12 +170,17 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
   // Shown as its field shows it, to the same step.
   const gap =
     tab === "band_diagram" ? band2EdgeShown(mode, parameters) : undefined;
+  const rmseIssue = isQuantityTab(tab)
+    ? rmseIssueText(measured.result, tab)
+    : null;
   const metric =
-    rmse !== undefined
-      ? `${STRINGS.fit.rmse} ${rmseText(rmse)}`
-      : gap !== undefined
-        ? text.bandGapMetric(formatNumber(gap), energy.unit)
-        : "";
+    rmseIssue !== null
+      ? rmseIssue
+      : rmse !== undefined
+        ? `${STRINGS.fit.rmse} ${rmseText(rmse)}`
+        : gap !== undefined
+          ? text.bandGapMetric(formatNumber(gap), energy.unit)
+          : "";
 
   return (
     <section
@@ -190,11 +215,18 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
         <div className="flex items-center gap-2 text-xs whitespace-nowrap text-muted-foreground">
           {/* In the head, so a chart keeps its height while it waits. */}
           <span role="status">{busy ? text.updating : ""}</span>
-          <span className="font-mono">
+          <span className="font-mono whitespace-normal">
             <Subscripted text={metric} />
           </span>
         </div>
       </div>
+      {/* A failure alert below already says that the last curve stays. */}
+      {failures.length === 0 &&
+        drawnFrom.some(({ stale }) => stale === true) && (
+          <p className="m-0 text-xs text-muted-foreground">
+            {STRINGS.calculation.previous}
+          </p>
+        )}
       {failures.map((failure) => (
         <Alert key={failure} variant="destructive">
           <AlertCircleIcon aria-hidden="true" />

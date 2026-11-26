@@ -10,9 +10,11 @@ SPB numerical initial estimates and DPB neural guesses are described in [Initial
 
 ## Calculation versions
 
-Core `0.3.0` adds [ionized impurity power-law transport](docs/ionized-impurities.md)
-and removes acPhDis from public choices. Scattering exponents are explicit and
-immutable; all four transport coefficients share the selected mechanism.
+Core `0.4.2` restores `acPhDis` mixed acoustic/alloy scattering as the fourth public
+choice alongside [ionized impurity power-law transport](docs/ionized-impurities.md).
+The mixed mechanism uses bandwise Matthiessen addition with C/D defined at 300 K;
+S-only retains the desktop structural model without A/B/C/D. Scattering exponents
+are explicit and immutable; all four transport coefficients share the selected mechanism.
 
 Core `0.2.0` makes [verified sequential fitting](docs/verified-sequential-fit.md)
 the default and retains the previous method as explicit `legacy-sequential-v1`.

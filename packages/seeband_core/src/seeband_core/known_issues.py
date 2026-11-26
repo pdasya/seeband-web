@@ -7,7 +7,7 @@ a user sees comes from `message_key`, through i18n.
 
 from collections.abc import Mapping
 
-from seeband_core.model_interface import CurveKind, FitMode, KnownIssue
+from seeband_core.model_interface import CurveKind, ExplicitBands, FitMode, KnownIssue
 
 _DPB_FIT_CURVES: tuple[CurveKind, ...] = (
     "measured",
@@ -105,12 +105,18 @@ def issues_for_mode(fit_mode_id: str) -> tuple[KnownIssue, ...]:
     return tuple(issue for issue in KNOWN_ISSUES if fit_mode_id in issue.fit_modes)
 
 
-def fermi_energy_in_gap(parameters: Mapping[str, float]) -> bool:
+def fermi_energy_in_gap(
+    parameters: Mapping[str, float], explicit_bands: ExplicitBands | None = None
+) -> bool:
     """DPB has the same zero carrier target throughout a positive valence–conduction gap."""
-    mass = parameters.get("m_eff", 0.0)
-    gap = parameters.get("band_gap", 0.0)
+    if explicit_bands is None:
+        mixed = parameters.get("m_eff", 0.0) > 0
+        gap = parameters.get("band_gap", 0.0)
+    else:
+        mixed = explicit_bands.band_configuration == "vb_cb" and explicit_bands.uses_fermi_energy
+        gap = parameters.get("band_offset_k", 0.0)
     energy = parameters.get("fermi_energy", float("nan"))
-    return mass > 0 and gap > 0 and 0 <= energy <= gap
+    return mixed and gap > 0 and 0 <= energy <= gap
 
 
 def _condition_holds(
@@ -118,13 +124,14 @@ def _condition_holds(
     parameters: Mapping[str, float],
     degeneracy_ratio: float,
     extrapolated: bool,
+    explicit_bands: ExplicitBands | None,
 ) -> bool:
     if issue.condition == "degeneracy_not_one":
         return degeneracy_ratio != 1
     if issue.condition == "collapsed_m_eff":
         return abs(parameters.get("m_eff", 1.0)) < COLLAPSED_M_EFF
     if issue.condition == "fermi_energy_in_gap":
-        return fermi_energy_in_gap(parameters)
+        return fermi_energy_in_gap(parameters, explicit_bands)
     if issue.condition == "fermi_energy_outside_band":
         return parameters.get("band_mass", 1.0) * parameters.get("fermi_energy", 1.0) <= 0
     if issue.condition == "interpolation_extrapolated":
@@ -139,6 +146,7 @@ def active_issue_ids(
     degeneracy_ratio: float,
     kind: CurveKind | None = None,
     extrapolated: bool = False,
+    explicit_bands: ExplicitBands | None = None,
 ) -> tuple[str, ...]:
     """Return the issues that apply to one result: a fit, or with `kind`, one kind of curve.
 
@@ -152,7 +160,9 @@ def active_issue_ids(
             in_scope = True
         else:
             in_scope = kind in issue.curve_kinds if kind is not None else issue.affects_fit
-        if in_scope and _condition_holds(issue, parameters, degeneracy_ratio, extrapolated):
+        if in_scope and _condition_holds(
+            issue, parameters, degeneracy_ratio, extrapolated, explicit_bands
+        ):
             active.append(issue.id)
     return tuple(active)
 

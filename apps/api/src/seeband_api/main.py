@@ -12,6 +12,8 @@ from seeband_api.band_diagram import router as band_diagram_router
 from seeband_api.calc import router as calc_router
 from seeband_api.calc_pool import CalcPool
 from seeband_api.demo import router as demo_router
+from seeband_api.dpb_domains import router as domains_router
+from seeband_api.dpb_migration import router as migration_router
 from seeband_api.errors import add_error_handlers
 from seeband_api.fit import router as fit_router
 from seeband_api.fit_runner import FitRunner
@@ -87,6 +89,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     per_minute = {
         "/api/calc": settings.calc_per_minute,
         "/api/band-diagram": settings.band_diagram_per_minute,
+        "/api/dpb/migrate": settings.calc_per_minute,
         "/api/parse": settings.parse_per_minute,
         "/api/guess": settings.guess_per_minute,
         "/api/fit": settings.fit_per_minute,
@@ -96,7 +99,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         limiter=RateLimiter(per_minute),
         max_body_bytes=settings.max_body_bytes,
         max_body_bytes_by_path=dict.fromkeys(
-            ("/api/calc", "/api/fit", "/api/guess", "/api/band-diagram"),
+            ("/api/calc", "/api/fit", "/api/guess", "/api/band-diagram", "/api/dpb/migrate"),
             settings.json_body_bytes,
         ),
         body_timeout_s=settings.body_timeout_s,
@@ -113,6 +116,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.include_router(health_router)
     app.include_router(models_router)
+    app.include_router(migration_router)
+    app.include_router(domains_router)
     app.include_router(calc_router)
     app.include_router(band_diagram_router)
     app.include_router(parse_router)

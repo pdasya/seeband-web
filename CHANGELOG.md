@@ -5,6 +5,14 @@
 - P29 (#259): the Fit page previews the selected model curves before data are
   loaded. Adding or removing measurements updates their points and RMSE.
 
+- P27 (#257): Fit and Results show the finite points from a partial calculation.
+  Curve gaps and unavailable RMSE values identify the affected quantity,
+  temperatures and reason.
+
+- Core 0.4.2 restores combined acoustic-phonon and alloy-disorder scattering for parabolic bands (#249). S-only uses the desktop structural Seebeck curve. Fits with resistivity use the mixed lifetime for each band. [Model and independent evidence](docs/physics/acphdis.md).
+
+- Core 0.4.1 (#247): explicit DPB ionized fits accept a researcher-held relative B in S-only and permit fitting B across the conditional Coulomb benchmark in modes with resistivity.
+
 - U8 (#277): every page of the site and the app has the same favicon, as
   SVG, ICO and an Apple touch icon, drawn from the header's logo by
   `pnpm --filter @seeband/site icons`. The logo and the name in the header
@@ -60,6 +68,17 @@ deploy/compose.yaml up --build`. The API image installs exactly `uv.lock`
   stream unbuffered. New `GET /api/ready` answers once the calculation
   workers have started; the API's health check uses it. CI builds and
   starts the stack and checks it through Caddy.
+
+- Core `0.4.0` adds explicit VB+VB, VB+CB and CB+CB double parabolic bands
+  with carrier excess derived from a supplied or fitted Fermi energy. Band masses,
+  valley counts and the trial energy determine the conserved electron excess.
+  Saved fixed-density sessions keep their original parametrization. Historical
+  signed-mass requests retain their versioned behavior. See [P18](docs/superpowers/specs/2026-11-20-p18-explicit-dpb-bands-design.md).
+
+- P18: correct the band-edge quadrature for the acoustic and alloy-disorder
+  Hall moments in explicit DPB curves. The previous rule biased the magnitude
+  of the CB+CB disorder Hall coefficient by 1.17 parts per million at 800 K
+  in the reference case.
 
 - Results ZIP exports calculate one curve at a time and retry temporary
   capacity errors. This lets an archive finish while the Results page is

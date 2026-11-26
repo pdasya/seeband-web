@@ -114,7 +114,9 @@ export const NO_GUESS = {
 };
 
 export async function serveModels(page: Page, models = MODELS) {
-  await page.route("**/api/models", (route) => route.fulfill({ json: models }));
+  await page.route(/\/api\/models(?:\?.*)?$/, (route) =>
+    route.fulfill({ json: models }),
+  );
   await page.route("**/api/calc", (route) => route.fulfill({ json: CALC }));
   await page.route("**/api/guess", (route) =>
     route.fulfill({ json: NO_GUESS }),

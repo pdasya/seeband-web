@@ -1,11 +1,11 @@
-import { useQuery } from "@tanstack/react-query";
+import { rmseIssueText } from "@/model/calcIssues";
 import { useEffect, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
 import { apiClient, type CalcResponse } from "@/api/client";
 import { APP_VERSION, withCommit } from "@/lib/version";
 import { coreVersionLines } from "@/model/exportFiles";
-import { modelsQuery } from "@/api/queries";
+import { useModels } from "@/api/queries";
 import { chartImage } from "@/charts/chartImage";
 import {
   bandGapForTab,
@@ -73,7 +73,7 @@ export function useReport({
   measured: LiveCalc;
   derived: Record<DerivedKind, LiveCalc>;
 }) {
-  const { data: models } = useQuery(modelsQuery);
+  const { data: models } = useModels();
   const energy = models?.energy_display ?? ENERGY_IN_K;
   const [charts, setCharts] = useState<readonly ReportChart[] | null>(null);
   const [apiVersion, setApiVersion] = useState<string | null>(null);
@@ -191,10 +191,11 @@ export function useReport({
   const ready =
     mode !== undefined &&
     measured.result !== null &&
+    measured.stale !== true &&
     DERIVED_KINDS_ASKED.every(
       (kind) =>
         !mode.curves.some((curve) => curve.kind === kind && curve.available) ||
-        derived[kind].result !== null,
+        (derived[kind].result !== null && derived[kind].stale !== true),
     );
 
   return {
@@ -236,13 +237,21 @@ export function ReportHeader({
       customBounds: state.customBounds,
       held: state.held,
       parameters: state.parameters,
+      runs: state.runs,
+      restored: state.restored,
     })),
   );
   const { fit, data } = session;
   const run =
     mode === undefined
       ? []
-      : runLines(session, mode, curve?.rmse ?? null, hasFittedValues(fit));
+      : [
+          ...runLines(session, mode, curve?.rmse ?? null, hasFittedValues(fit)),
+          ...mode.quantities.flatMap((quantity) => {
+            const issue = rmseIssueText(curve, quantity);
+            return issue === null ? [] : [issue];
+          }),
+        ];
   return (
     <div className="hidden print:block">
       {/* Not a heading, as the page's own h1 follows. */}

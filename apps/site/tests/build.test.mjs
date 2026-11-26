@@ -164,10 +164,10 @@ test("the overview says where data go, and promises only what the app does", () 
   );
   assert.match(text, /does not save them/);
   assert.match(text, /not your data/);
-  // Not delivered, or no longer offered: the browser, AI summaries, residual plots, acPhDis.
+  // Not delivered, or no longer offered: the browser, AI summaries, residual plots.
   assert.doesNotMatch(
     text,
-    /runs in the browser|\bAI\b|residuals|acPhDis|\[Repository/i,
+    /runs in the browser|\bAI\b|residuals|\[Repository/i,
   );
   // F8: the E(k) sketch, inline and labelled as one case, with no image file.
   assert.match(
@@ -263,8 +263,7 @@ test("Conventions renders its formulas, lists its sections and ties issues to th
     assert.match(conventions, new RegExp(`<code>${id}</code>`), id);
   }
   assert.match(conventions, /<h2 id="band-diagram">Band diagram<\/h2>/);
-  // No mixed scattering is offered any more; the page says so where it names it.
-  assert.match(textOfPage(conventions), /acPhDis[^.]*not offered/);
+  assert.match(textOfPage(conventions), /acPhDis[^.]*Matthiessen/);
 });
 
 test("the user guide is a page of the site, with its screenshots and corrections", () => {

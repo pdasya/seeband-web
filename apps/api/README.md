@@ -202,7 +202,7 @@ It has no rate limit and no `ETag`, as it costs almost nothing and is under 10 K
 
 - **Parameters:** all of a mode's parameters are needed, and values outside a control's range are allowed, because a fit can end there. Names are checked, and problems are listed in `details`. Numbers must be JSON numbers: `true` or `"1.5"` are refused.
 - **A disabled mode** gets a 409 `fit_mode_disabled`, with the ids of its known issues as the `code` in `details`. Show `known_issue.<code>` through i18n.
-- **A nonfinite curve point** usually comes back as `null`, with the rest of the curve.
+- **Partial curves** return HTTP 200 with the requested temperature grid. Each finite value belongs to the submitted parameters. A missing value is `null` at its original index. The `issues` array identifies the scope (`curve` or `rmse`), quantity, temperatures in kelvin and reason. Curve issues use the SI key from `curves`. RMSE issues use the measurement key. A numerical exception yielding a gap uses `calculation_failed`, and a nonfinite output uses `non_finite_result`. Draw gaps between segments and show isolated finite points.
 - **`calculation_failed`** is a 422 with no curve. If the band parameters are
   outside the finite-root domain, the response names the reason in `details`
   at `body.parameters`:
@@ -211,12 +211,11 @@ It has no rate limit and no `ETag`, as it costs almost nothing and is under 10 K
   - `chemical_potential_dpb_fermi_energy` for two valence bands with `E_F ≥ max(0, E_g)`.
 
   Clients can map these calculation detail codes directly to user guidance.
-  Known-issue IDs come from the model registry. An uncertifiable root or an
-  invalid transport result gets the general error. The API logs only the
+  Known-issue IDs come from the model registry. A request-level numerical failure without a more specific domain code gets the general error. The API logs only the
   exception type.
 
 - **`measured_points`** holds points made from the `measurements` sent, with no model: `electrical_conductivity_s_per_m` is 1/ρ at each ρ temperature, with `null` for a ρ of 0 or below. They go with the data the request sent: points in the fit range, as a client sends for the RMSE, and of interpolated ρ when it sends interpolated values. `seeband_core.measured_points` makes them. There are no κ_e points: κ_e is not measured, and an estimate from ρ needs a Lorenz number, which was decided against in #159.
-- **RMSE** for built-in SPB/DPB models evaluates the final parameters directly at each submitted measurement temperature. `points` and `rmse_points` do not affect this metric. Submitted points may be interpolated by the client. Custom registered models retain the grid-based fallback controlled by `rmse_points`. `/api/calc` retains its `422 zero_measured_value` rejection for submitted zero ρ/Hall measurements; the web preview excludes those points. The core metric helper itself returns an unavailable percentage for zeros. Fit diagnostics separately provide absolute RMSE and relative L2 when defined.
+- **RMSE** for built-in SPB/DPB models evaluates the final parameters directly at each submitted measurement temperature. `points` and `rmse_points` do not affect this metric. Submitted points may be interpolated by the client. Custom registered models retain the grid-based fallback controlled by `rmse_points`. `/api/calc` returns `rmse.<quantity>.value = null` and a scoped issue for a failed comparison. For a submitted zero ρ or Hall measurement, `zero_measured_value` identifies the affected measurement temperatures. Other available RMSE values and forward curves are included. The web preview excludes measured zeros from its relative RMSE inputs. Fit diagnostics separately provide absolute RMSE and relative L2 when defined.
 - **`calculation_unavailable`** is a 503: a worker died, and the next request gets a new pool.
 - **`calculation_timeout`** is a 504. A worker cannot be interrupted, so it stays busy until the calculation ends, and its slot in the queue stays taken until then.
 - **`calculation_busy`** is a 503 with `Retry-After`, when the queue is full or a job waited `calc_wait_timeout_s` for a worker. **`client_calc_limit`** is a 429 with `Retry-After`, when the client already has `calc_max_per_client` jobs. Both come at once, rather than after a run's whole time.
@@ -373,9 +372,69 @@ An unhandled `Exception` logs its type and its `file:line:function` frames. So d
 ## Ionized impurity scattering
 
 Core 0.3.0 exposes `ionized` alongside `acPh` and `dis` for SPB and DPB,
-including S-only. `acPhDis` and C/D parameters are no longer public choices.
+including S-only. Core 0.4.2 restores `acPhDis` as a fourth choice for SPB
+and DPB. In mixed S-only send structural parameters. In modes with resistivity
+send C for SPB and C and D for DPB. Each is a core ratio at 300 K.
+The [mixed-scattering equations and evidence](../../docs/physics/acphdis.md)
+give the conversion and the desktop S-only convention.
 Ionized fits require `verified-sequential-v2`; legacy requests are rejected.
 `POST /api/guess` accepts optional `scattering`; SPB numerical estimates use
 it, while ionized DPB requests return `unsupported` with reason
 `scattering_not_supported` without running the acoustic-trained neural net.
 See [the physical contract](../../packages/seeband_core/docs/ionized-impurities.md).
+
+### Explicit double parabolic bands (core 0.4.0)
+
+From core 0.4.1, apply the selected scattering entry in
+`fit_modes[].parameter_overrides` by parameter name before building the
+editor, fit or curve request. Explicit ionized `dpb_s` accepts an optional
+fixed `parameters.B` (or `start.B` in a fit), default 1. In the two modes with
+resistivity B uses fitted bounds [0, 10000] by default. The empirical
+conductivity prefactor is (N₂/N₁)B/M. Omitting the fixed S-only input
+replays old requests with unit weight.
+
+New explicit DPB sessions request `GET /api/models?parameterization=explicit_fermi_v1`.
+Send the same discriminator, the band configuration and both positive integer
+valley counts on calculation, fit and diagram requests.
+Include `fermi_energy` in the parameter vector, in kelvin from the first band
+edge at zero temperature. Fit it with researcher-selected bounds or hold it
+at its supplied value. The model computes the signed electron excess from
+the trial energy and band parameters and conserves it across temperature.
+The band populations determine the sign, including exact compensation.
+Historical requests that explicitly supply `carrier_type` retain their sign constraint. The API rejects a simultaneous fixed density input.
+
+The band diagram draws a supplied Fermi energy and both dispersions even
+when that energy is outside the transport domain. In VB+VB, transport
+requires `fermi_energy < max(0, band_offset_k)`; CB+CB requires
+`fermi_energy > min(0, band_offset_k)`. For calculations and fits, HTTP 422
+includes the detail code `fermi_energy_unoccupied_bands` for a same-type
+pair with zero carrier population, or `fermi_energy_carrier_mismatch` when
+the mixed-band excess conflicts with a supplied historical carrier type.
+
+`GET /api/dpb/parameter-domain` returns the admissible interval for one
+manual control (`fermi_energy`, `band_offset_k` or `mass_ratio`) at the
+current values of the other parameters. Energies use kelvin. A null endpoint
+is unbounded. The response distinguishes inclusive endpoints and empty intervals.
+In VB+CB the interval includes exact electron–hole compensation, including
+the whole gap when the bands are separated. With overlapping bands the
+compensation energy depends on the mass ratio and both valley multiplicities.
+A signed request can use this endpoint to inspect a one-parameter slice.
+The researcher chooses fit bounds independently.
+
+Request `GET /api/models?parameterization=explicit_density_v1` for the saved fixed-density
+parameter names and bounds. On calculation, fit and diagram requests send
+`model: "dpb"`, `parameterization: "explicit_density_v1"`, `band_configuration`
+(`vb_vb`, `vb_cb` or `cb_cb`), `net_electron_density_per_m3` and both positive integer
+`band_1_degeneracy` and `band_2_degeneracy`. Use `mass_ratio`, `band_offset_k`,
+`m1` and the mode's listed scattering parameters in the parameter vector.
+Fit requests supply bounds for each active free parameter. The explicit
+model uses verified sequential fitting with manual starts. Direct requests
+omitting the discriminator use the historical Fermi-energy parameterization.
+
+`POST /api/dpb/migrate` converts one legacy parameter vector. Supply
+`parameters`, the absolute `m1` and both multiplicities; the reply supplies
+the explicit vector, configuration and carrier excess. Old fit bounds must
+be chosen again in the new coordinates. The physical band diagram returns
+wavevector in nm⁻¹. For a supplied Fermi energy the diagram draws one Fermi
+line. A historical density-only intrinsic sample with a positive gap returns
+the two endpoints of its admissible zero-temperature interval.

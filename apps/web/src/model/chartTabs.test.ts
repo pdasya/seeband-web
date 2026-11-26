@@ -448,6 +448,80 @@ describe("the band diagram", () => {
     expect(empty).toBeNull();
   });
 
+  test("explicit diagram shows physical wavevector units and intrinsic Fermi endpoints", () => {
+    const { curves, xAxis } = chartTabView(
+      "band_diagram",
+      mode("dpb_s"),
+      {
+        data: {},
+        interpolation: NO_INTERPOLATION,
+        energy: KELVIN,
+        bandConfiguration: "vb_cb",
+      },
+      null,
+      null,
+      {
+        ...DIAGRAM,
+        curves: {
+          band_1_k: [0, 1, 0],
+          fermi_energy_lower_k: [0, 0, 0],
+          fermi_energy_upper_k: [100, 100, 100],
+        },
+      },
+    );
+    expect(xAxis).toEqual({
+      title: "k (nm⁻¹)",
+      scale: true,
+      span: [-2, 2],
+    });
+    expect(
+      curves.slice(1).map(({ label, dashed }) => ({ label, dashed })),
+    ).toEqual([
+      { label: "E_F lower endpoint", dashed: true },
+      { label: "E_F upper endpoint", dashed: true },
+    ]);
+  });
+
+  test("explicit Fermi diagram uses a shared schematic k axis and one supplied E_F line", () => {
+    const { curves, xAxis } = chartTabView(
+      "band_diagram",
+      mode("dpb_s"),
+      {
+        data: {},
+        interpolation: NO_INTERPOLATION,
+        energy: KELVIN,
+        bandConfiguration: "vb_cb",
+        parameterization: "explicit_fermi_v1",
+      },
+      null,
+      null,
+      {
+        ...DIAGRAM,
+        curves: {
+          band_1_energy_k: [-1, 0, -1],
+          band_2_energy_k: [101, 100, 101],
+          fermi_energy_k: [40, 40, 40],
+          fermi_energy_lower_k: [0, 0, 0],
+          fermi_energy_upper_k: [100, 100, 100],
+        },
+      },
+    );
+    expect(xAxis).toEqual({ title: "k", scale: false, span: [-2, 2] });
+    expect(curves.map(({ label }) => label)).toEqual([
+      "Band 1 (VB)",
+      "Band 2 (CB)",
+      "E_F",
+    ]);
+    expect(curves.map(({ temperatureK }) => temperatureK)).toEqual([
+      [-2, 0, 2],
+      [-2, 0, 2],
+      [-2, 0, 2],
+    ]);
+    expect(
+      curves.filter(({ dashed }) => dashed).map(({ values }) => values),
+    ).toEqual([[40, 40, 40]]);
+  });
+
   test("explains the assumed mass alongside any known issue", () => {
     const { note } = view(DIAGRAM);
 
@@ -818,4 +892,32 @@ describe("ρ from a σ file", () => {
     expect(view.measurements?.label).toBe("σ data");
     expect(view.note).toMatch(/^Points are the loaded σ data in the fit range/);
   });
+});
+
+test("a current response draws enabled quantities even when only another quantity has measurements", () => {
+  const view = chartTabView(
+    "seebeck",
+    mode("dpb_s_rho"),
+    loaded("resistivity"),
+    {
+      temperature_k: [100, 200, 300],
+      curves: { seebeck_v_per_k: [1e-5, null, 3e-5] },
+      known_issues: [],
+      rmse: {},
+      issues: [
+        {
+          scope: "curve",
+          quantity: "seebeck_v_per_k",
+          temperature_k: [200],
+          code: "non_finite_result",
+        },
+      ],
+    },
+    null,
+  );
+  expect(view.empty).toBeNull();
+  expect(view.measurements).toBeNull();
+  expect(view.curves[0]?.values).toEqual([10, null, 30]);
+  expect(view.note).toContain("unavailable at 200 K");
+  expect(view.note).toContain("non-finite value");
 });

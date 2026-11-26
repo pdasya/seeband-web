@@ -236,14 +236,14 @@ EXPECTED_PARAMETERS: dict[str, list[tuple[Any, ...]]] = {
         ("band_mass", "m_e", "fixed", -300, 300, 1, -100, 0.01, 0.01, 0.01, None, False),
         ("fermi_energy", *K_FULL, 1, -100, 1, 1, 1, (-3000, 3000), True),
         ("A", "S/m", "fitted", 0, 1000000, 1000, 40000, 1, 1, 1, (1, 1e7), False),
-        ("C", "dimensionless", "fitted", 0, 300, 1, 100, 0.01, 1, 1, (0.001, 1000), False),
+        ("C", "dimensionless", "fitted", 0, 300, 1, 100, 1, 1, 1, (0.001, 1000), True),
         ("F", "unknown", "fitted", 0, 100000, 100, 4000, 1, 1, 1, (1, 1e7), False),
     ],
     "spb_s_rho_rh": [
         ("band_mass", "m_e", "fitted", -300, 300, 1, 100, 0.01, 0.01, 0.01, (-3, 3), True),
         ("fermi_energy", *K_FULL, 1, 100, 1, 1, 1, (-3000, 3000), True),
         ("A", "S/m", "fitted", 0, 1000000, 1000, 40000, 1, 1, 1, (1, 1e7), False),
-        ("C", "dimensionless", "fitted", 0, 300, 1, 100, 0.01, 1, 300, (0.001, 1000), False),
+        ("C", "dimensionless", "fitted", 0, 300, 1, 100, 1, 1, 300, (0.001, 1000), True),
         ("F", "unknown", "fitted", 0, 100000, 100, 4000, 1, 1, 1, (1, 1e7), False),
     ],
     "dpb_s": [
@@ -320,7 +320,7 @@ def test_parameters_match_the_values_written_here(fit_mode_id: str) -> None:
                 spec.bounds_editable,
             )
         )
-    assert found == [row for row in EXPECTED_PARAMETERS[fit_mode_id] if row[0] not in ("C", "D")]
+    assert found == EXPECTED_PARAMETERS[fit_mode_id]
 
 
 def test_meanings_come_from_the_table() -> None:
@@ -360,14 +360,14 @@ def test_fit_modes_are_as_written_here(
 @pytest.mark.parametrize("fit_mode_id", ["spb_s_rho", "spb_s_rho_rh", "dpb_s_rho", "dpb_s_rho_rh"])
 def test_scattering_options_are_kept(fit_mode_id: str) -> None:
     fit_mode = fit_mode_named(fit_mode_id)
-    assert fit_mode.scattering == ("acPh", "dis", "ionized")
+    assert fit_mode.scattering == ("acPh", "dis", "acPhDis", "ionized")
     assert fit_mode.default_scattering == "acPh"
 
 
 @pytest.mark.parametrize("fit_mode_id", ["spb_s", "dpb_s"])
 def test_seebeck_only_modes_offer_scattering_and_keep_none_compatibility(fit_mode_id: str) -> None:
     fit_mode = fit_mode_named(fit_mode_id)
-    assert fit_mode.scattering == ("acPh", "dis", "ionized")
+    assert fit_mode.scattering == ("acPh", "dis", "acPhDis", "ionized")
     assert fit_mode.default_scattering == "acPh"
     assert fit_mode.parameters_for(None) == fit_mode.parameters
 
@@ -417,6 +417,7 @@ def test_default_starts_match_the_recorded_desktop_calls() -> None:
         "band_mass": -1.0,
         "fermi_energy": -100,
         "A": 40000,
+        "C": 100,
         "F": 4000,
     }
 
@@ -428,6 +429,8 @@ def test_a_default_start_holds_fixed_and_inactive_parameters() -> None:
         "fermi_energy",
         "A",
         "B",
+        "C",
+        "D",
         "F",
         "G",
     }
@@ -601,3 +604,20 @@ def test_the_edge_of_band_2_is_e_g_in_dpb_and_none_in_spb() -> None:
         for fit_mode in model.fit_modes:
             expected = "band_gap" if model.id == "dpb" else None
             assert fit_mode.band_2_edge == expected, fit_mode.id
+
+
+@pytest.mark.parametrize("mode_id", ["spb_s_rho", "spb_s_rho_rh", "dpb_s_rho", "dpb_s_rho_rh"])
+@pytest.mark.parametrize("ratio", [0.5, 1.0, 100.0])
+def test_mixed_c_displays_the_actual_core_ratio(mode_id: str, ratio: float) -> None:
+    spec = parameter_named(mode_id, "C")
+    assert core_to_display(spec, ratio) == ratio
+    assert display_to_core(spec, ratio) == ratio
+
+
+@pytest.mark.parametrize("mode_id", ["spb_s_rho", "spb_s_rho_rh"])
+def test_spb_c_display_override_preserves_desktop_core_values_and_bounds(mode_id: str) -> None:
+    spec = parameter_named(mode_id, "C")
+    assert default_start_value(spec) == 100.0
+    assert spec.fit_bounds == Bounds(0.001, 1000)
+    assert core_range(spec) == ValueRange(0, 300, 1, 100)
+    assert display_range(spec) == core_range(spec)

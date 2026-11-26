@@ -1628,6 +1628,8 @@ class PB_fit:
         fermi_energy: float,
         parameter_res: list[float],
         scatter_type: str,
+        *,
+        skip_seebeck: bool = False,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
 
         # Check if scatter_type is properly set to acPh, dis or acPhDis
@@ -1655,7 +1657,12 @@ class PB_fit:
             para_B = parameter_res[1]
 
         # Calculate the Seebeck coefficient
-        see_array = te.spb_see_vs_temp(temp_array, fermi_energy, band_mass, scal_fac=1)
+        # Partial forward recovery can evaluate rho/Hall through their original stable
+        # kernels even when the independent Seebeck observable raises.
+        if skip_seebeck:
+            see_array = np.full_like(temp_array, np.nan)
+        else:
+            see_array = te.spb_see_vs_temp(temp_array, fermi_energy, band_mass, scal_fac=1)
 
         # Calculate the 'pristine' conductivities of band 1 and band 2 from the fitted
         # band-structure parameters with K = 1, abs(meff) = 1 and beta = 0
@@ -1685,6 +1692,8 @@ class PB_fit:
         parameter_res: list[float],
         degen: float,
         scatter_type: str,
+        *,
+        skip_seebeck: bool = False,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Fits the Seebeck coefficient and resistivity data within the double-parabolic-band model
         and returns band-structure and scattering parameters
@@ -1745,14 +1754,19 @@ class PB_fit:
         fermi_energy = parameter_see[2]
 
         # Calculate the Seebeck coefficient
-        if scatter_type == "acPh" or scatter_type == "dis":
-            see_array = te.dpb_see_vs_temp_single_scatter(
-                temp_array, mass, gap, fermi_energy, degen, para_B, scal_fac=1
-            )
+        # Partial forward recovery can evaluate rho/Hall through their original stable
+        # kernels even when the independent Seebeck observable raises.
+        if skip_seebeck:
+            see_array = np.full_like(temp_array, np.nan)
         else:
-            see_array = te.dpb_see_vs_temp_double_scatter(
-                temp_array, mass, gap, fermi_energy, degen, para_B, para_C, para_D, scal_fac=1
-            )
+            if scatter_type == "acPh" or scatter_type == "dis":
+                see_array = te.dpb_see_vs_temp_single_scatter(
+                    temp_array, mass, gap, fermi_energy, degen, para_B, scal_fac=1
+                )
+            else:
+                see_array = te.dpb_see_vs_temp_double_scatter(
+                    temp_array, mass, gap, fermi_energy, degen, para_B, para_C, para_D, scal_fac=1
+                )
 
         potentials = te.dpb_chemPot_vs_temp(temp_array, gap, mass, fermi_energy, degen)
         x1, x2 = te._dpb_reduced_potentials(temp_array, mass, gap, fermi_energy, degen, potentials)
@@ -1786,6 +1800,8 @@ class PB_fit:
         fermi_energy: float,
         parameter_res: list[float],
         scatter_type: str,
+        *,
+        skip_seebeck: bool = False,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
 
         # Check if scatter_type is properly set to acPh, dis or acPhAlDi
@@ -1816,7 +1832,12 @@ class PB_fit:
             para_B = parameter_res[1]
 
         # Calculate the Seebeck coefficient
-        see_array = te.spb_see_vs_temp(temp_array, fermi_energy, band_mass, scal_fac=1)
+        # Partial forward recovery can evaluate rho/Hall through their original stable
+        # kernels even when the independent Seebeck observable raises.
+        if skip_seebeck:
+            see_array = np.full_like(temp_array, np.nan)
+        else:
+            see_array = te.spb_see_vs_temp(temp_array, fermi_energy, band_mass, scal_fac=1)
 
         # Calculate the 'pristine' conductivities of band 1 and band 2 from the fitted
         # band-structure parameters with K = 1, abs(meff) = 1 and beta = 0
@@ -1851,6 +1872,8 @@ class PB_fit:
         degen: float,
         scatter_type: str,
         band_1_degeneracy: float = 1.0,
+        *,
+        skip_seebeck: bool = False,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Fits the Seebeck coefficient and resistivity data within the double-parabolic-band model
         and returns band-structure and scattering parameters
@@ -1915,14 +1938,19 @@ class PB_fit:
         fermi_energy = parameter_see[2]
 
         # Calculate the Seebeck coefficient
-        if scatter_type == "acPh" or scatter_type == "dis":
-            see_array = te.dpb_see_vs_temp_single_scatter(
-                temp_array, mass, gap, fermi_energy, degen, para_B, scal_fac=1
-            )
+        # Partial forward recovery can evaluate rho/Hall through their original stable
+        # kernels even when the independent Seebeck observable raises.
+        if skip_seebeck:
+            see_array = np.full_like(temp_array, np.nan)
         else:
-            see_array = te.dpb_see_vs_temp_double_scatter(
-                temp_array, mass, gap, fermi_energy, degen, para_B, para_C, para_D, scal_fac=1
-            )
+            if scatter_type == "acPh" or scatter_type == "dis":
+                see_array = te.dpb_see_vs_temp_single_scatter(
+                    temp_array, mass, gap, fermi_energy, degen, para_B, scal_fac=1
+                )
+            else:
+                see_array = te.dpb_see_vs_temp_double_scatter(
+                    temp_array, mass, gap, fermi_energy, degen, para_B, para_C, para_D, scal_fac=1
+                )
 
         # Calculate Fermi integrals
         potentials = te.dpb_chemPot_vs_temp(temp_array, gap, mass, fermi_energy, degen)

@@ -7,6 +7,7 @@ from seeband_core.model_interface import BandDiagramRequest as CoreRequest
 from seeband_api.errors import ApiError
 from seeband_api.json_values import finite_or_none
 from seeband_api.request_checks import (
+    BandInputs,
     ParameterValues,
     PositiveFloat,
     check_degeneracy,
@@ -21,7 +22,7 @@ ERROR_CODE = "invalid_band_diagram"
 ERROR_MESSAGE = "Invalid band diagram"
 
 
-class BandDiagramRequest(BaseModel):
+class BandDiagramRequest(BandInputs):
     """What to draw. `parameters` holds every parameter of the mode in core units, as in a curve."""
 
     model_config = ConfigDict(
@@ -36,7 +37,8 @@ class BandDiagramRequest(BaseModel):
         }
     )
 
-    model: str
+    requires_transport_fermi = False
+
     fit_mode: str
     parameters: ParameterValues
     band_1_degeneracy: PositiveFloat = 1.0
@@ -73,23 +75,31 @@ class BandDiagramResponse(BaseModel):
     reference_mass_assumed: bool
 
 
-@router.post("/band-diagram", responses={429: too_many_requests()})
+@router.post(
+    "/band-diagram", responses={429: too_many_requests()}, response_model_exclude_none=True
+)
 def post_band_diagram(body: BandDiagramRequest) -> BandDiagramResponse:
-    description, fit_mode = find_mode(body.model, body.fit_mode, ERROR_CODE, ERROR_MESSAGE)
+    description, fit_mode = find_mode(
+        body.model, body.fit_mode, ERROR_CODE, ERROR_MESSAGE, body.explicit_settings()
+    )
     details = [
         *check_degeneracy(body.band_1_degeneracy, body.band_2_degeneracy, fit_mode),
         *check_parameter_names(list(body.parameters), "parameters", fit_mode),
     ]
     if details:
         raise ApiError(422, ERROR_CODE, ERROR_MESSAGE, details)
-    result = registry.get(description.id).band_diagram(
-        CoreRequest(
-            fit_mode=fit_mode.id,
-            parameters=body.parameters,
-            band_1_degeneracy=body.band_1_degeneracy,
-            band_2_degeneracy=body.band_2_degeneracy,
+    try:
+        result = registry.get(description.id).band_diagram(
+            CoreRequest(
+                fit_mode=fit_mode.id,
+                parameters=body.parameters,
+                explicit_bands=body.explicit_settings(),
+                band_1_degeneracy=body.band_1_degeneracy,
+                band_2_degeneracy=body.band_2_degeneracy,
+            )
         )
-    )
+    except (ValueError, ArithmeticError) as exc:
+        raise ApiError(422, ERROR_CODE, str(exc)) from exc
     return BandDiagramResponse(
         wavevector_nm_inv=result.wavevector_nm_inv.tolist(),
         curves={name: finite_or_none(values) for name, values in result.curves.items()},

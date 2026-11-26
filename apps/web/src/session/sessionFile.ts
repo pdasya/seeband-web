@@ -21,11 +21,12 @@ import {
  * It holds the data as read, with the text of each file and how each column was read, the choices
  * of the fit screen, and the last finished fit with the request that made it. Loading it gives the
  * same session back; a fit it holds is shown as it was, never run again by a newer model on its
- * own. Each version of the format has a migration to the next, so an old file still loads. Fields
- * a version does not know are dropped as it is read.
+ * own. Versions 1 and 2 remain readable. Version 4 marks explicit DPB sessions with user B
+ * inputs, so older clients reject them rather than reinterpret their physical inputs.
  */
 export const SESSION_FORMAT = "seeband-session";
-export const SESSION_VERSION = 1;
+// Version 3 is reserved for composition sessions.
+export const SESSION_VERSION = 4;
 /**
  * The largest session file, in bytes of the file and characters of its text alike: the text of
  * three data files of 2 MB, their tables, and a fit, with room to spare.
@@ -38,6 +39,8 @@ type SavedSingleFile = Pick<SingleFile, "name" | "text" | "mapping" | "table">;
 
 /** What a session holds, which the checksum covers. */
 export interface SessionContent {
+  /** Explicit user B semantics; absent in historical v1/v2 files. */
+  ionizedBInputs?: boolean;
   dataMode: DataMode;
   data: Partial<Record<Quantity, SessionData>>;
   /** The files of the way of loading not in use, which count again when the user goes back. */
@@ -64,10 +67,10 @@ export interface SessionContent {
   fit: { request: FitRequest | null; result: FitResult } | null;
 }
 
-/** What a session file holds, in version 1. */
-export interface SessionFileV1 {
+/** Version 3 is reserved for composition; versions 2 and 4 require explicit DPB identity. */
+export interface SessionFile {
   format: typeof SESSION_FORMAT;
-  version: 1;
+  version: 1 | 2 | 4;
   /** When it was saved, as ISO 8601. */
   saved: string;
   /** The app's and the API's versions with their commits, as exports name them. */
@@ -81,25 +84,15 @@ export interface SessionFileV1 {
   content: SessionContent;
 }
 
-export type SessionFile = SessionFileV1;
-
 /** Why a file cannot be loaded, as a code for a text. */
 export type SessionFileProblem =
   | "too_large"
   | "not_json"
   | "not_a_session"
   | "newer_version"
+  | "unsupported_version"
   | "invalid"
   | "checksum";
-
-/**
- * Each migration takes a file of one version to the next, and must raise its version. Version 1
- * is the first, so there are none yet; a change of the format adds one here, with a test that a
- * file of the older version still loads.
- */
-export const MIGRATIONS: Readonly<
-  Record<number, (old: Record<string, unknown>) => Record<string, unknown>>
-> = {};
 
 /** JSON with the keys of each object sorted, so the same content gives the same text. */
 export function canonical(value: unknown): string {
@@ -161,6 +154,9 @@ export async function sessionFile(
             },
           });
   const content: SessionContent = {
+    ...(state.selection.parameterization === undefined
+      ? {}
+      : { ionizedBInputs: true }),
     dataMode: state.dataMode,
     data: state.data,
     otherSource:
@@ -188,7 +184,7 @@ export async function sessionFile(
   };
   return {
     format: SESSION_FORMAT,
-    version: SESSION_VERSION,
+    version: state.selection.parameterization !== undefined ? 4 : 1,
     saved: versions.saved,
     appVersion: versions.appVersion,
     apiVersion: versions.apiVersion,
@@ -316,6 +312,12 @@ const isSingleFile = orNull(
 );
 
 const isSelection = shape({
+  parameterization: optional(oneOf("explicit_density_v1", "explicit_fermi_v1")),
+  carrierType: optional(oneOf("p", "n")),
+  bandConfiguration: optional(oneOf("vb_vb", "vb_cb", "cb_cb")),
+  netElectronDensityPerM3: optional(isNumber),
+  fitAbsoluteMass: optional(isBoolean),
+  legacySource: optional(isString),
   algorithm: optional(oneOf("verified-sequential-v2", "legacy-sequential-v1")),
   model: orNull(isString),
   fitMode: orNull(isString),
@@ -359,6 +361,7 @@ const isRequest = shape({
 });
 
 const isContent = shape({
+  ionizedBInputs: optional(isBoolean),
   dataMode: oneOf("separate", "single"),
   data: isData,
   otherSource: orNull(shape({ data: isData, singleFile: isSingleFile })),
@@ -416,29 +419,43 @@ export async function readSessionFile(
   if (!isObject(parsed) || parsed.format !== SESSION_FORMAT) {
     return { problem: "not_a_session" };
   }
-  let file = parsed;
+  const file = parsed;
   if (!isInteger(file.version)) {
     return { problem: "invalid" };
   }
   if ((file.version as number) > SESSION_VERSION) {
     return { problem: "newer_version" };
   }
-  while ((file.version as number) < SESSION_VERSION) {
-    const from = file.version as number;
-    const migrate = MIGRATIONS[from];
-    if (migrate === undefined) {
-      return { problem: "invalid" };
-    }
-    file = migrate(file);
-    // A migration that does not move the version on would loop for ever.
-    if (!isInteger(file.version) || (file.version as number) <= from) {
-      return { problem: "invalid" };
-    }
-  }
+  // Version 3 belongs to composition sessions, which this build does not read.
+  if (file.version === 3) return { problem: "unsupported_version" };
+  if (![1, 2, 4].includes(file.version as number))
+    return { problem: "invalid" };
   if (!isSessionFile(file)) {
     return { problem: "invalid" };
   }
   const session = file as unknown as SessionFile;
+  if ((session.version === 4) !== (session.content.ionizedBInputs === true))
+    return { problem: "invalid" };
+  const selected = session.content.selection;
+  const explicit = selected.parameterization !== undefined;
+  if (
+    (session.version === 1 && explicit) ||
+    ((session.version === 2 || session.version === 4) &&
+      selected.model === "dpb" &&
+      !explicit)
+  )
+    return { problem: "invalid" };
+  if (
+    explicit &&
+    (selected.bandConfiguration === undefined ||
+      (selected.parameterization === "explicit_density_v1" &&
+        selected.netElectronDensityPerM3 === undefined) ||
+      selected.band1Degeneracy <= 0 ||
+      selected.band2Degeneracy <= 0 ||
+      !Number.isInteger(selected.band1Degeneracy) ||
+      !Number.isInteger(selected.band2Degeneracy))
+  )
+    return { problem: "invalid" };
   if ((await checksum(session.content)) !== session.checksum) {
     return { problem: "checksum" };
   }
@@ -447,6 +464,7 @@ export async function readSessionFile(
 
 /** What a checked file gives the store to restore. */
 export function restoredSession(content: SessionContent): RestoredSession {
+  const compatible = historicalIonizedControls(content);
   return {
     dataMode: content.dataMode,
     data: content.data,
@@ -455,13 +473,52 @@ export function restoredSession(content: SessionContent): RestoredSession {
     chartPanels: content.chartPanels,
     savedModelSettings: content.savedModelSettings,
     selection: content.selection,
-    parameters: content.parameters,
+    parameters: compatible.parameters,
     guessedParameters: content.guessedParameters ?? {},
-    customBounds: content.customBounds,
+    customBounds: compatible.customBounds,
     held: content.held,
     interpolationEnabled: content.interpolation.enabled,
     fitStart: content.fitStart,
     result: content.fit?.result ?? null,
     request: content.fit?.request ?? null,
   };
+}
+
+/** Restore controls without rewriting the saved fit or its original submitted inputs. */
+export function historicalIonizedControls(
+  content: SessionContent,
+  explicitDpb = content.selection.parameterization !== undefined,
+) {
+  const scattering =
+    content.selection.model === "dpb"
+      ? content.selection.scattering
+      : content.savedModelSettings.dpb?.scattering;
+  if (content.ionizedBInputs === true)
+    return {
+      parameters: content.parameters,
+      customBounds: content.customBounds,
+    };
+  const ionized = scattering === "ionized";
+  const parameters =
+    ionized ||
+    (scattering !== "acPhDis" && content.parameters.dpb_s?.B !== undefined)
+      ? { ...content.parameters, dpb_s: { ...content.parameters.dpb_s, B: 1 } }
+      : content.parameters;
+  // Signed-mass sessions keep their original request until explicitly converted.
+  if (!ionized && !explicitDpb)
+    return { parameters, customBounds: content.customBounds };
+  // Before v4 the B of every scattering had the bounds 0.9-1.1. Explicit DPB with ionized
+  // impurities now offers 0-10000 by default, so an older explicit session keeps its old bounds
+  // whatever its scattering is now, as it would get them if switched to ionized later.
+  const customBounds = { ...content.customBounds };
+  for (const mode of ["dpb_s_rho", "dpb_s_rho_rh"]) {
+    customBounds[mode] = {
+      ...customBounds[mode],
+      B: customBounds[mode]?.B ??
+        (content.fit?.request?.fit_mode === mode
+          ? content.fit.request.bounds?.B
+          : undefined) ?? { lower: 0.9, upper: 1.1 },
+    };
+  }
+  return { parameters, customBounds };
 }

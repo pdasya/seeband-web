@@ -1,7 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 
-import { modelsQuery } from "@/api/queries";
+import { useModels } from "@/api/queries";
 import { guessModel, isNewLoad, runGuess } from "@/model/guessRun";
 import {
   currentGuess,
@@ -15,7 +14,7 @@ const { fit: text } = STRINGS;
 
 /** The Initial guess button, and the guess that each new file of S starts, as on the desktop. */
 export function useGuess() {
-  const { data: models } = useQuery(modelsQuery);
+  const { data: models } = useModels();
   const measurement = useSessionStore(
     (state) => state.data.seebeck?.measurement,
   );
@@ -25,6 +24,11 @@ export function useGuess() {
   );
   const scattering = useSessionStore((state) => state.selection.scattering);
   const selected = useSessionStore((state) => state.selection.model);
+  const explicit = useSessionStore(
+    (state) =>
+      state.selection.parameterization !== undefined &&
+      state.selection.model === "dpb",
+  );
   const model = guessModel(models?.models, selected ?? "");
   const active = useSessionStore((state) => isFitActive(state.fit));
   const pending = useSessionStore((state) => state.guessPending);
@@ -37,6 +41,7 @@ export function useGuess() {
     // S in doubt does not count as loaded yet, so the guess comes once it is fixed or confirmed.
     if (
       model !== undefined &&
+      !explicit &&
       !doubted &&
       !(model.id === "dpb" && scattering === "ionized") &&
       isNewLoad(measurement, model.id) &&
@@ -44,19 +49,22 @@ export function useGuess() {
     ) {
       void runGuess(model, measurement, "automatic");
     }
-  }, [model, measurement, doubted, scattering]);
+  }, [model, measurement, doubted, scattering, explicit]);
 
   const offered = model !== undefined && selected === model.id;
-  const unsupported = selected === "dpb" && scattering === "ionized";
-  const title = unsupported
-    ? text.guessUnsupported.scattering_not_supported
-    : !offered
-      ? text.guessUnavailable
-      : measurement === undefined
-        ? text.guessNeedsData
-        : doubted
-          ? text.guessUnitInDoubt
-          : text.guessHint;
+  const unsupported =
+    explicit || (selected === "dpb" && scattering === "ionized");
+  const title = explicit
+    ? text.guessUnavailable
+    : unsupported
+      ? text.guessUnsupported.scattering_not_supported
+      : !offered
+        ? text.guessUnavailable
+        : measurement === undefined
+          ? text.guessNeedsData
+          : doubted
+            ? text.guessUnitInDoubt
+            : text.guessHint;
 
   return {
     title,

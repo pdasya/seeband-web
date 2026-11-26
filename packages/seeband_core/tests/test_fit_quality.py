@@ -119,7 +119,15 @@ def test_nonfinite_preview_metric_is_unavailable_without_hiding_density_failures
     data = {"seebeck": synthetic_seebeck()}
     result = curve_rmse(registry.get("dpb"), "dpb_s", DPB_TRUE, data)
     assert result["seebeck"] == Rmse(None, "uV/K")
-    assert calls == [{"quantities": ("seebeck",), "check_finite": False, "band_1_degeneracy": 1.0}]
+    assert calls == [
+        {
+            "quantities": ("seebeck",),
+            "check_finite": False,
+            "band_1_degeneracy": 1.0,
+            "band_2_degeneracy": 1.0,
+            "explicit_bands": None,
+        }
+    ]
 
     def failure(*args, **kwargs):
         raise math_module.ChemicalPotentialError(100.0, "density residual exceeds tolerance", 0.1)

@@ -1,9 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
+import { rmseIssueText } from "@/model/calcIssues";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { limitedRanges } from "@/model/interpolatedRanges";
 
-import { modelsQuery } from "@/api/queries";
+import { useModels } from "@/api/queries";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -88,7 +88,7 @@ function Issues({ issues }: { issues: readonly ResultIssue[] }) {
 /** What the current values give, and what is known about them. */
 export function ResultPanel({ live }: { live: LiveCurves }) {
   const { result, error } = live.measured;
-  const { data: models } = useQuery(modelsQuery);
+  const { data: models } = useModels();
   const selection = useSessionStore((state) => state.selection);
   const parameters = useSessionStore((state) => state.parameters);
   const data = useSessionStore((state) => state.data);
@@ -133,6 +133,7 @@ export function ResultPanel({ live }: { live: LiveCurves }) {
           fitState,
           customBounds[mode.id],
           held[mode.id],
+          selection,
         );
   const { minTemperatureK: minK, maxTemperatureK: maxK } = selection;
   const subtitle = [
@@ -206,7 +207,13 @@ export function ResultPanel({ live }: { live: LiveCurves }) {
           )}
         </dl>
       )}
-      {error !== null && result !== null && <Note>{fit.rmseOutdated}</Note>}
+      {QUANTITIES.map((quantity) => {
+        const issue = rmseIssueText(result, quantity);
+        return issue === null ? null : (
+          <Note key={`rmse:${quantity}`}>{issue}</Note>
+        );
+      })}
+      {live.measured.stale === true && <Note>{fit.rmseOutdated}</Note>}
       {gaps.noPointsInRange.length > 0 && (
         <Note>{`${symbols(gaps.noPointsInRange)}: ${fit.noPointsInRange}`}</Note>
       )}

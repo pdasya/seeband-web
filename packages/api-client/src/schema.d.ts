@@ -56,6 +56,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/dpb/migrate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Migrate Dpb */
+        post: operations["migrate_dpb"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dpb/parameter-domain": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Dpb Parameter Domain */
+        get: operations["get_dpb_parameter_domain"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/calc": {
         parameters: {
             query?: never;
@@ -177,6 +211,18 @@ export interface components {
         BandDiagramRequest: {
             /** Model */
             model: string;
+            /**
+             * Parameterization
+             * @default legacy_fermi
+             * @enum {string}
+             */
+            parameterization?: "legacy_fermi" | "explicit_density_v1" | "explicit_fermi_v1";
+            /** Band Configuration */
+            band_configuration?: ("vb_vb" | "vb_cb" | "cb_cb") | null;
+            /** Net Electron Density Per M3 */
+            net_electron_density_per_m3?: number | null;
+            /** Carrier Type */
+            carrier_type?: ("p" | "n") | null;
             /** Fit Mode */
             fit_mode: string;
             /** Parameters */
@@ -254,7 +300,8 @@ export interface components {
          * @description What to calculate.
          *
          *     `parameters` holds every parameter of the mode in core units, including those of other
-         *     scattering types. Values outside a control's range are allowed, as a fit can end there. `points`
+         *     scattering types. C and D are required only for mixed transport.
+         *     Values outside a control's range are allowed, as a fit can end there. `points`
          *     defaults to the model's. `measurements` gives an RMSE for each quantity, and should hold only
          *     points in the fit range. `extrapolated` says that interpolation made up some of these points.
          *
@@ -296,6 +343,18 @@ export interface components {
         CalcRequest: {
             /** Model */
             model: string;
+            /**
+             * Parameterization
+             * @default legacy_fermi
+             * @enum {string}
+             */
+            parameterization?: "legacy_fermi" | "explicit_density_v1" | "explicit_fermi_v1";
+            /** Band Configuration */
+            band_configuration?: ("vb_vb" | "vb_cb" | "cb_cb") | null;
+            /** Net Electron Density Per M3 */
+            net_electron_density_per_m3?: number | null;
+            /** Carrier Type */
+            carrier_type?: ("p" | "n") | null;
             /** Fit Mode */
             fit_mode: string;
             /** Scattering */
@@ -350,7 +409,7 @@ export interface components {
          *     by name with its unit: `electrical_conductivity_s_per_m` is 1/rho, with null for a rho of 0 or
          *     below. They use no model, so they go with the data the request sent, interpolated or not.
          * @example {
-         *       "core_version": "0.3.3",
+         *       "core_version": "0.4.2",
          *       "curves": {
          *         "resistivity_ohm_m": [
          *           0.000036627,
@@ -401,7 +460,7 @@ export interface components {
             /**
              * Core Version
              * @description Core software version for provenance, not certification.
-             * @default 0.3.3
+             * @default 0.4.2
              */
             core_version?: string;
             /** Curves */
@@ -410,6 +469,8 @@ export interface components {
             };
             /** Known Issues */
             known_issues: string[];
+            /** Issues */
+            issues?: components["schemas"]["CalculationIssueResponse"][];
             /** Rmse */
             rmse: {
                 [key: string]: components["schemas"]["RmseResponse"];
@@ -418,6 +479,23 @@ export interface components {
             measured_points?: {
                 [key: string]: components["schemas"]["MeasuredPointsResponse"];
             };
+        };
+        /**
+         * CalculationIssueResponse
+         * @description A numerical failure isolated to one curve or one observable's RMSE.
+         */
+        CalculationIssueResponse: {
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "curve" | "rmse";
+            /** Quantity */
+            quantity: string;
+            /** Temperature K */
+            temperature_k: number[];
+            /** Code */
+            code: string;
         };
         /**
          * ColumnRead
@@ -456,6 +534,38 @@ export interface components {
             role: "temperature" | "seebeck" | "resistivity" | "conductivity" | "hall";
             /** Unit */
             unit?: ("K" | "C" | "V/K" | "uV/K" | "mV/K" | "Ohm*m" | "Ohm*cm" | "mOhm*cm" | "uOhm*m" | "uOhm*cm" | "S/m" | "S/cm" | "m^3/C" | "cm^3/C") | null;
+        };
+        /**
+         * ConvertedDpbPoint
+         * @example {
+         *       "band_configuration": "vb_cb",
+         *       "net_electron_density_per_m3": 0,
+         *       "parameterization": "explicit_density_v1",
+         *       "parameters": {
+         *         "band_offset_k": 600,
+         *         "m1": 1.2,
+         *         "mass_ratio": 1.8
+         *       }
+         *     }
+         */
+        ConvertedDpbPoint: {
+            /**
+             * Parameterization
+             * @default explicit_density_v1
+             * @constant
+             */
+            parameterization?: "explicit_density_v1";
+            /**
+             * Band Configuration
+             * @enum {string}
+             */
+            band_configuration: "vb_vb" | "vb_cb" | "cb_cb";
+            /** Net Electron Density Per M3 */
+            net_electron_density_per_m3: number;
+            /** Parameters */
+            parameters: {
+                [key: string]: number;
+            };
         };
         /**
          * CurveAvailabilityResponse
@@ -608,7 +718,8 @@ export interface components {
          * @description What to fit.
          *
          *     `start` holds every parameter of the mode in core units, including those of other scattering
-         *     types. `bounds` overrides the description's bounds for fitted parameters, in core units.
+         *     types. C and D are required only for mixed transport.
+         *     `bounds` overrides the description's bounds for fitted parameters, in core units.
          *     `measurements` holds each quantity of the mode, and only points from `min_temperature_k` to
          *     `max_temperature_k`, inclusive, enter the fit. `extrapolated` says that interpolation made up
          *     some of these points, so that the result says so too.
@@ -654,6 +765,18 @@ export interface components {
         FitApiRequest: {
             /** Model */
             model: string;
+            /**
+             * Parameterization
+             * @default legacy_fermi
+             * @enum {string}
+             */
+            parameterization?: "legacy_fermi" | "explicit_density_v1" | "explicit_fermi_v1";
+            /** Band Configuration */
+            band_configuration?: ("vb_vb" | "vb_cb" | "cb_cb") | null;
+            /** Net Electron Density Per M3 */
+            net_electron_density_per_m3?: number | null;
+            /** Carrier Type */
+            carrier_type?: ("p" | "n") | null;
             /** Fit Mode */
             fit_mode: string;
             /** Scattering */
@@ -796,6 +919,8 @@ export interface components {
          *     `scattering` is empty when a mode has no choice of scattering. `stages` are the solver runs of
          *     a fit, in their order. `band_2_edge` names the parameter whose core value is the edge of band 2
          *     above that of band 1, in K, and is left out for a mode with one band.
+         *     `parameter_overrides` replaces or appends parameters by name for the selected scattering
+         *     before filtering applicability. Missing overrides preserve the base parameter metadata.
          */
         FitModeResponse: {
             /** Id */
@@ -804,6 +929,10 @@ export interface components {
             quantities: ("seebeck" | "resistivity" | "hall")[];
             /** Parameters */
             parameters: components["schemas"]["ParameterResponse"][];
+            /** Parameter Overrides */
+            parameter_overrides?: {
+                [key: string]: components["schemas"]["ParameterResponse"][];
+            };
             /** Scattering */
             scattering: string[];
             /** Default Scattering */
@@ -867,7 +996,7 @@ export interface components {
          *     E_F are from that stage. Otherwise it is empty.
          * @example {
          *       "at_bounds": [],
-         *       "core_version": "0.3.3",
+         *       "core_version": "0.4.2",
          *       "held": [],
          *       "known_issues": [],
          *       "parameter_errors": {
@@ -897,7 +1026,7 @@ export interface components {
             /**
              * Core Version
              * @description Core software version for provenance, not certification.
-             * @default 0.3.3
+             * @default 0.4.2
              */
             core_version?: string;
             /**
@@ -1075,6 +1204,18 @@ export interface components {
         GuessRequest: {
             /** Model */
             model: string;
+            /**
+             * Parameterization
+             * @default legacy_fermi
+             * @enum {string}
+             */
+            parameterization?: "legacy_fermi" | "explicit_density_v1" | "explicit_fermi_v1";
+            /** Band Configuration */
+            band_configuration?: ("vb_vb" | "vb_cb" | "cb_cb") | null;
+            /** Net Electron Density Per M3 */
+            net_electron_density_per_m3?: number | null;
+            /** Carrier Type */
+            carrier_type?: ("p" | "n") | null;
             /** Scattering */
             scattering?: string | null;
             /** Temperature K */
@@ -1100,7 +1241,7 @@ export interface components {
         /**
          * HealthResponse
          * @example {
-         *       "core_version": "0.3.3",
+         *       "core_version": "0.4.2",
          *       "status": "ok",
          *       "version": "1.0.0"
          *     }
@@ -1121,7 +1262,7 @@ export interface components {
             /**
              * Core Version
              * @description Core software version for provenance, not certification.
-             * @default 0.3.3
+             * @default 0.4.2
              */
             core_version?: string;
         };
@@ -1206,6 +1347,19 @@ export interface components {
             affects_fit: boolean;
             /** Condition */
             condition?: ("degeneracy_not_one" | "collapsed_m_eff" | "fermi_energy_in_gap" | "fermi_energy_outside_band" | "interpolation_extrapolated") | null;
+        };
+        /** LegacyDpbPoint */
+        LegacyDpbPoint: {
+            /** Parameters */
+            parameters: {
+                [key: string]: number;
+            };
+            /** M1 */
+            m1: number;
+            /** Band 1 Degeneracy */
+            band_1_degeneracy: number;
+            /** Band 2 Degeneracy */
+            band_2_degeneracy: number;
         };
         /**
          * MeasuredPointsResponse
@@ -1317,6 +1471,30 @@ export interface components {
             warnings: ("unsorted_temperature" | "underdetermined_fit" | "m_eff_rounds_to_zero" | "estimate_at_bound" | "large_estimate_residual" | "low_temperature_omitted")[];
         };
         /**
+         * ParameterDomain
+         * @example {
+         *       "empty": false,
+         *       "inclusive": false,
+         *       "upper": 1000
+         *     }
+         */
+        ParameterDomain: {
+            /** Lower */
+            lower?: number | null;
+            /** Upper */
+            upper?: number | null;
+            /**
+             * Inclusive
+             * @default true
+             */
+            inclusive?: boolean;
+            /**
+             * Empty
+             * @default false
+             */
+            empty?: boolean;
+        };
+        /**
          * ParameterResponse
          * @description One parameter of a fit mode.
          *
@@ -1331,7 +1509,7 @@ export interface components {
          *     `scattering` lists the types the parameter applies to, and empty means all of them. A mode with
          *     no choice of scattering uses all its parameters, whatever they list. A `fixed` parameter is set
          *     by the user, and a fit does not change it. Requests hold every parameter of a mode, including
-         *     those of other scattering types.
+         *     those of other scattering types. C and D are required only for mixed transport.
          *
          *     `unit` is the unit of the scaled value, and can be `dimensionless` or `unknown`. `display_unit`
          *     is the one a user sees, and `display_factor` goes from the one to the other: an energy in K is
@@ -1571,7 +1749,9 @@ export interface operations {
     };
     get_models: {
         parameters: {
-            query?: never;
+            query?: {
+                parameterization?: "legacy_fermi" | "explicit_density_v1" | "explicit_fermi_v1";
+            };
             header?: {
                 "if-none-match"?: string | null;
             };
@@ -1585,7 +1765,7 @@ export interface operations {
                 headers: {
                     /** @example no-cache */
                     "Cache-Control"?: string;
-                    /** @example "9cf4365e1a42a826ec11ec2a52e1a198" */
+                    /** @example "bf5be25a21c681edd6b4bbde0d16ad15" */
                     ETag?: string;
                     [name: string]: unknown;
                 };
@@ -1599,6 +1779,88 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Default Response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    migrate_dpb: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LegacyDpbPoint"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConvertedDpbPoint"];
+                };
+            };
+            /** @description Too many requests from this client, or for the server */
+            429: {
+                headers: {
+                    /** @example 5 */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_dpb_parameter_domain: {
+        parameters: {
+            query: {
+                name: "fermi_energy" | "band_offset_k" | "mass_ratio";
+                band_configuration: "vb_vb" | "vb_cb" | "cb_cb";
+                fermi_energy: number;
+                band_offset_k: number;
+                mass_ratio: number;
+                band_1_degeneracy: number;
+                band_2_degeneracy: number;
+                carrier_type?: ("p" | "n") | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParameterDomain"];
+                };
             };
             /** @description Default Response */
             default: {

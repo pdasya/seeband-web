@@ -1,3 +1,4 @@
+import { issueReason, issueTemperatures } from "@/model/calcIssues";
 import type {
   BandDiagramResponse,
   CalcResponse,
@@ -244,6 +245,8 @@ export const ENERGY_IN_K: EnergyDisplay = { unit: "K", per_kelvin: 1 };
 
 type ViewState = Pick<SessionState, "data" | "interpolation"> & {
   bandGapK?: number | undefined;
+  bandConfiguration?: SessionState["selection"]["bandConfiguration"];
+  parameterization?: SessionState["selection"]["parameterization"];
   energy: EnergyDisplay;
 };
 
@@ -376,7 +379,9 @@ function chemicalPotentialView(
             { value: 0, label: text.band1Top },
             {
               value: bandGapK * state.energy.per_kelvin,
-              label: text.band2Bottom,
+              label: state.bandConfiguration
+                ? text.band2Edge
+                : text.band2Bottom,
             },
           ],
   };
@@ -602,10 +607,14 @@ function bandDiagramView(
   mode: FitModeDescription | undefined,
   diagram: BandDiagramResponse | null,
   energy: EnergyDisplay,
+  configuration?: SessionState["selection"]["bandConfiguration"],
+  parameterization?: SessionState["selection"]["parameterization"],
 ): ChartTabView {
   const { fit } = STRINGS;
   const labels: Record<string, string> = text.diagramCurves;
   const issueTexts: Record<string, string> = fit.knownIssueTexts;
+  const schematic =
+    configuration === undefined || parameterization === "explicit_fermi_v1";
   const wavevector = diagram?.wavevector_nm_inv ?? [];
   const first = wavevector[0];
   const last = wavevector.at(-1);
@@ -618,33 +627,47 @@ function bandDiagramView(
   if (diagram?.reference_mass_assumed === true) {
     notes.unshift(text.diagramReferenceMass);
   }
-  // In every mode, as the k axis has no values.
-  notes.unshift(text.diagramShape);
+  if (schematic) notes.unshift(text.diagramShape);
   return {
     ...NO_CHART,
     yAxisTitle: text.axes.energy(energy.unit),
     description: text.diagramDescription,
     empty: null,
     xAxis: {
-      // Only the shape of the bands matters here, so k has no units and no values.
-      title: text.wavevectorAxis,
-      scale: false,
-      // Before the first answer, the core's own k range, _DIAGRAM_K_RANGE_NM_INV in band_models.
+      title: schematic ? text.wavevectorAxis : text.wavevectorWithUnit("nm⁻¹"),
+      scale: !schematic,
       span: first === undefined || last === undefined ? [-2, 2] : [first, last],
     },
     // Each name comes from the server, so a model with other bands needs no change here.
-    curves: Object.entries(diagram?.curves ?? {}).map(([name, values]) => ({
-      id: name,
-      label: labels[name] ?? name,
-      temperatureK: wavevector,
-      values: energies(values, energy),
-      dashed: name === "fermi_energy_k",
-    })),
+    curves: Object.entries(diagram?.curves ?? {})
+      .filter(
+        ([name]) =>
+          parameterization !== "explicit_fermi_v1" ||
+          !name.startsWith("fermi_energy_") ||
+          name === "fermi_energy_k",
+      )
+      .map(([name, values]) => ({
+        id: name,
+        label:
+          configuration &&
+          (name === "band_1_energy_k" || name === "band_2_energy_k")
+            ? STRINGS.explicitDpb.bandLabel(
+                name === "band_1_energy_k" ? 1 : 2,
+                configuration
+                  .split("_")
+                  .at(name === "band_1_energy_k" ? 0 : 1)
+                  ?.toUpperCase() ?? "",
+              )
+            : (labels[name] ?? name),
+        temperatureK: wavevector,
+        values: energies(values, energy),
+        dashed: name.startsWith("fermi_energy"),
+      })),
     note: notes.join(" "),
   };
 }
 
-export function chartTabView(
+function baseChartTabView(
   tab: ChartTab,
   mode: FitModeDescription | undefined,
   state: ViewState,
@@ -654,7 +677,13 @@ export function chartTabView(
 ): ChartTabView {
   switch (tab) {
     case "band_diagram":
-      return bandDiagramView(mode, diagram, state.energy);
+      return bandDiagramView(
+        mode,
+        diagram,
+        state.energy,
+        state.bandConfiguration,
+        state.parameterization,
+      );
     case "conductivity":
       return conductivityView(mode, state, measured, derived);
     case "thermal_conductivity":
@@ -677,4 +706,33 @@ export function chartTabView(
       throw new Error(`No view for the tab ${String(unknown)}`);
     }
   }
+}
+
+/** Availability follows the same selected curves on every chart consumer. */
+export function chartTabView(
+  ...[tab, mode, state, measured, derived, diagram]: Parameters<
+    typeof baseChartTabView
+  >
+): ChartTabView {
+  const view = baseChartTabView(tab, mode, state, measured, derived, diagram);
+  if (view.empty !== null) return view;
+  const notes = [measured, derived].flatMap((result) =>
+    (result?.issues ?? []).flatMap((issue) => {
+      const curve = view.curves.find(({ id }) => id === issue.quantity);
+      return issue.scope !== "curve" || curve === undefined
+        ? []
+        : [
+            `${STRINGS.calculation.curveUnavailable(
+              curve.label === text.model ? view.yAxisTitle : curve.label,
+              issueTemperatures(issue.temperature_k),
+            )} ${issueReason(issue.code)}`,
+          ];
+    }),
+  );
+  return notes.length === 0
+    ? view
+    : {
+        ...view,
+        note: [view.note, ...notes].filter((note) => note !== null).join(" "),
+      };
 }

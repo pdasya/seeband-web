@@ -1,3 +1,10 @@
+import assert from "node:assert/strict";
+import { visibleParameters } from "@/model/parameters";
+import {
+  calcRequest,
+  bandDiagramRequest,
+  requestScope,
+} from "@/model/liveCurves";
 // @vitest-environment node
 import { describe, expect, test } from "vitest";
 
@@ -67,7 +74,17 @@ describe("fitRequest", () => {
       extrapolated: false,
     });
     expect(Object.keys(answer.request.start).sort()).toEqual(
-      ["A", "B", "F", "G", "band_gap", "fermi_energy", "m_eff"].sort(),
+      [
+        "A",
+        "B",
+        "C",
+        "D",
+        "F",
+        "G",
+        "band_gap",
+        "fermi_energy",
+        "m_eff",
+      ].sort(),
     );
     expect(answer.request.measurements.seebeck?.temperature_k).toEqual([
       100, 900,
@@ -403,4 +420,295 @@ test("algorithm defaults for older state and separates request identities", () =
   expect(verified.request.algorithm).toBe("verified-sequential-v2");
   expect(legacy.request.algorithm).toBe("legacy-sequential-v1");
   expect(fitInputsKey(verified.request)).not.toBe(fitInputsKey(legacy.request));
+});
+
+test("explicit fit, calculation and diagram agree on band identity, SI density and absolute mass", () => {
+  const legacy = models.find((model) => model.id === "dpb");
+  if (!legacy) throw new Error("Missing DPB fixture");
+  const base = legacy.fit_modes.find((mode) => mode.id === "dpb_s_rho");
+  if (!base) throw new Error("Missing mode fixture");
+  const mass = base.parameters.find((parameter) => parameter.name === "m_eff");
+  if (!mass) throw new Error("Missing mass fixture");
+  const mode = {
+    ...base,
+    parameters: [
+      ...base.parameters
+        .filter((parameter) => parameter.name !== "fermi_energy")
+        .map((parameter) => ({
+          ...parameter,
+          name:
+            parameter.name === "m_eff"
+              ? "mass_ratio"
+              : parameter.name === "band_gap"
+                ? "band_offset_k"
+                : parameter.name,
+        })),
+      { ...mass, name: "m1" },
+    ],
+  };
+  const explicitModels = [{ ...legacy, fit_modes: [mode] }];
+  const state = {
+    ...STATE,
+    selection: {
+      ...STATE.selection,
+      algorithm: "legacy-sequential-v1" as const,
+      parameterization: "explicit_density_v1" as const,
+      bandConfiguration: "cb_cb" as const,
+      netElectronDensityPerM3: 2e24,
+    },
+    parameters: { dpb_s_rho: { mass_ratio: 2, band_offset_k: -600, m1: 1.7 } },
+  };
+  const built = fitRequest(state, explicitModels);
+  expect("request" in built).toBe(true);
+  if (!("request" in built)) return;
+  const identity = {
+    parameterization: "explicit_density_v1",
+    band_configuration: "cb_cb",
+    net_electron_density_per_m3: 2e24,
+    band_1_degeneracy: 2,
+    band_2_degeneracy: 3,
+  };
+  expect(built.request).toMatchObject(identity);
+  expect(built.request.algorithm).toBe("verified-sequential-v2");
+  expect(built.request.held).toContain("m1");
+  expect(built.request.start).toMatchObject({
+    mass_ratio: 2,
+    band_offset_k: -600,
+    m1: 1.7,
+  });
+  expect(built.request.start).not.toHaveProperty("fermi_energy");
+  for (const parameter of visibleParameters(mode, "acPh").filter(
+    (parameter) => parameter.role === "fitted" && parameter.name !== "m1",
+  ))
+    expect(built.request.bounds).toHaveProperty(parameter.name);
+  expect(built.request.bounds).not.toHaveProperty("m1");
+  const calc = calcRequest(state, explicitModels);
+  if (!calc) throw new Error("Missing calculation request");
+  expect(calc).toMatchObject(identity);
+  expect(bandDiagramRequest(state, explicitModels)).toMatchObject(identity);
+  expect(requestScope({ ...calc, net_electron_density_per_m3: 3e24 })).not.toBe(
+    requestScope(calc),
+  );
+});
+
+test.each(["cb_cb", "vb_vb"] as const)(
+  "zero density suspends %s fit and plots",
+  (configuration) => {
+    const selection = {
+      ...STATE.selection,
+      parameterization: "explicit_density_v1" as const,
+      bandConfiguration: configuration,
+      netElectronDensityPerM3: 0,
+    };
+    const state = { ...STATE, selection };
+    expect(fitRequest(state, models)).toEqual({
+      blocked: { reason: "invalid_density" },
+    });
+    expect(calcRequest(state, models)).toBeNull();
+    expect(bandDiagramRequest(state, models)).toBeNull();
+    const intrinsic = {
+      ...state,
+      selection: { ...selection, bandConfiguration: "vb_cb" as const },
+    };
+    expect(calcRequest(intrinsic, models)?.net_electron_density_per_m3).toBe(0);
+    expect(
+      bandDiagramRequest(intrinsic, models)?.net_electron_density_per_m3,
+    ).toBe(0);
+  },
+);
+
+test("Fermi fits and live curves retain E_F and bounds without a carrier-sign constraint", () => {
+  const state = {
+    ...STATE,
+    selection: {
+      ...STATE.selection,
+      parameterization: "explicit_fermi_v1" as const,
+      bandConfiguration: "vb_cb" as const,
+    },
+    parameters: { dpb_s_rho: { fermi_energy: -140 } },
+    customBounds: { dpb_s_rho: { fermi_energy: { lower: -500, upper: 100 } } },
+  };
+  const built = fitRequest(state, models);
+  if (!("request" in built)) throw new Error("Fermi fit blocked");
+  expect(built.request).toMatchObject({
+    parameterization: "explicit_fermi_v1",
+    start: { fermi_energy: -140 },
+    bounds: { fermi_energy: { lower: -500, upper: 100 } },
+  });
+  expect(built.request).not.toHaveProperty("net_electron_density_per_m3");
+  expect(built.request).not.toHaveProperty("carrier_type");
+  const calc = calcRequest(state, models);
+  if (!calc) throw new Error("Fermi calc blocked");
+  expect(calc).toMatchObject({
+    parameters: { fermi_energy: -140 },
+  });
+  expect(bandDiagramRequest(state, models)).toMatchObject({
+    parameters: { fermi_energy: -140 },
+  });
+  expect(requestScope({ ...calc, carrier_type: "n" })).not.toBe(
+    requestScope(calc),
+  );
+});
+
+test("virgin Fermi starts agree across fits, live curves and mode switches while custom bounds stay intact", () => {
+  const base = {
+    ...STATE,
+    selection: {
+      ...STATE.selection,
+      parameterization: "explicit_fermi_v1" as const,
+      bandConfiguration: "vb_cb" as const,
+    },
+    parameters: {},
+    customBounds: { dpb_s_rho: { fermi_energy: { lower: -500, upper: 2000 } } },
+  };
+  const fit = fitRequest(base, models);
+  if (!("request" in fit)) throw new Error("Virgin fit blocked");
+  expect(fit.request.start.fermi_energy).toBe(-100);
+  expect(fit.request.bounds?.fermi_energy).toEqual({
+    lower: -500,
+    upper: 2000,
+  });
+  expect(calcRequest(base, models)?.parameters.fermi_energy).toBe(-100);
+  expect(bandDiagramRequest(base, models)?.parameters.fermi_energy).toBe(-100);
+  const full = {
+    ...base,
+    selection: {
+      ...base.selection,
+      fitMode: "dpb_s_rho_rh",
+      bandConfiguration: "cb_cb" as const,
+    },
+  };
+  expect(bandDiagramRequest(full, models)?.parameters.fermi_energy).toBe(100);
+  const valence = {
+    ...base,
+    selection: {
+      ...base.selection,
+      bandConfiguration: "vb_vb" as const,
+    },
+  };
+  expect(calcRequest(valence, models)?.parameters.fermi_energy).toBe(900);
+  expect(base.parameters).toEqual({});
+  const manual = { ...base, parameters: { dpb_s_rho: { fermi_energy: -140 } } };
+  const request = fitRequest(manual, models);
+  if (!("request" in request)) throw new Error("Manual fit blocked");
+  expect(request.request.start.fermi_energy).toBe(-140);
+  expect(request.request.bounds?.fermi_energy).toEqual({
+    lower: -500,
+    upper: 2000,
+  });
+});
+
+test("ionized structural B is sent to fits and live curves without optimizer controls", () => {
+  const source = models.find((model) => model.id === "dpb");
+  assert(source);
+  const s = source.fit_modes.find((mode) => mode.id === "dpb_s");
+  assert(s);
+  const rho = source.fit_modes.find((mode) => mode.id === "dpb_s_rho");
+  assert(rho);
+  const b = rho.parameters.find((parameter) => parameter.name === "B");
+  assert(b);
+  const structural = {
+    ...b,
+    scattering: ["ionized"],
+    role: "fixed" as const,
+    fit_bounds: null,
+    bounds_editable: false,
+  };
+  const described = [
+    {
+      ...source,
+      fit_modes: [
+        {
+          ...s,
+          scattering: ["acPh", "ionized"],
+          parameter_overrides: { ionized: [structural] },
+        },
+      ],
+    },
+  ];
+  const state = {
+    ...STATE,
+    selection: {
+      ...STATE.selection,
+      fitMode: "dpb_s",
+      scattering: "ionized",
+      parameterization: "explicit_density_v1" as const,
+      bandConfiguration: "vb_cb" as const,
+      netElectronDensityPerM3: 1e24,
+    },
+    parameters: { dpb_s: { B: 9 } },
+    customBounds: { dpb_s: { B: { lower: 0.9, upper: 1.1 } } },
+    held: { dpb_s: ["B"] },
+  };
+  const answer = fitRequest(state, described);
+  if (!("request" in answer)) throw new Error(answer.blocked.reason);
+  expect(answer.request.start.B).toBe(9);
+  expect(answer.request.bounds?.B).toBeUndefined();
+  expect(answer.request.held ?? []).not.toContain("B");
+  expect(calcRequest(state, described)?.parameters.B).toBe(9);
+});
+
+test("ionized rho requests use the server B bounds, user bounds, or a hold", () => {
+  const source = models.find((model) => model.id === "dpb");
+  assert(source);
+  const mode = source.fit_modes.find((mode) => mode.id === "dpb_s_rho");
+  assert(mode);
+  const b = mode.parameters.find((parameter) => parameter.name === "B");
+  assert(b);
+  const wide = { lower: 0, upper: 10000 };
+  const described = [
+    {
+      ...source,
+      fit_modes: [
+        {
+          ...mode,
+          parameter_overrides: { ionized: [{ ...b, fit_bounds: wide }] },
+        },
+      ],
+    },
+  ];
+  const state = {
+    ...STATE,
+    selection: {
+      ...STATE.selection,
+      scattering: "ionized",
+      parameterization: "explicit_density_v1" as const,
+      bandConfiguration: "vb_cb" as const,
+      netElectronDensityPerM3: 1e24,
+    },
+    parameters: { dpb_s_rho: { B: 9 } },
+  };
+  const bounds = (customBounds = {}, held = {}) => {
+    const answer = fitRequest({ ...state, customBounds, held }, described);
+    if (!("request" in answer)) throw new Error(answer.blocked.reason);
+    return answer.request;
+  };
+  expect(bounds().bounds?.B).toEqual(wide);
+  expect(
+    bounds({ dpb_s_rho: { B: { lower: 2, upper: 20 } } }).bounds?.B,
+  ).toEqual({ lower: 2, upper: 20 });
+  const held = bounds({}, { dpb_s_rho: ["B"] });
+  expect(held.start.B).toBe(9);
+  expect(held.held).toContain("B");
+  expect(held.bounds?.B).toBeUndefined();
+});
+
+test("mixed S-only requests ignore dormant transport drafts and controls", () => {
+  const state = {
+    ...STATE,
+    selection: { ...STATE.selection, fitMode: "dpb_s", scattering: "acPhDis" },
+    parameters: { dpb_s: { A: 123, B: 9, C: 7, D: 8 } },
+    customBounds: { dpb_s: { B: { lower: 0, upper: 1 } } },
+    held: { dpb_s: ["A", "B", "C", "D"] },
+  };
+  const built = fitRequest(state, models);
+  assert("request" in built);
+  expect(Object.keys(built.request.start)).toEqual([
+    "m_eff",
+    "band_gap",
+    "fermi_energy",
+  ]);
+  expect(built.request.bounds).toBeUndefined();
+  expect(built.request.held).toBeUndefined();
+  expect(calcRequest(state, models)?.parameters).toEqual(built.request.start);
 });

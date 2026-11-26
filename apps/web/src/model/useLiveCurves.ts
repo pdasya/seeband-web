@@ -1,4 +1,3 @@
-import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 
 import {
@@ -9,7 +8,7 @@ import {
   type CalcResponse,
 } from "@/api/client";
 import type { ApiError } from "@/api/errors";
-import { modelsQuery } from "@/api/queries";
+import { useModels } from "@/api/queries";
 import { derivedKind, type DerivedKind } from "@/model/chartTabs";
 import { LatestOnly } from "@/model/latestOnly";
 import {
@@ -30,6 +29,7 @@ export interface LiveCalc<Result = CalcResponse> {
   /** The latest answer, kept through later requests and errors, so that the chart stays. */
   result: Result | null;
   busy: boolean;
+  stale?: boolean;
   error: ApiError | null;
   /**
    * When the values `result` answers were set, on `performance.now()`'s clock, for timing how long
@@ -150,6 +150,11 @@ function useLatest<Result>(
   return {
     result: answers.resultScope === scope ? answers.result : null,
     busy: pending && longPending,
+    stale:
+      answers.resultScope === scope &&
+      answers.result !== null &&
+      // As for busy: a fast request would otherwise flash the notes on every edit.
+      ((pending && longPending) || answers.errorScope === scope),
     error: answers.errorScope === scope ? answers.error : null,
     changedAtMs: answers.resultScope === scope ? answers.changedAtMs : null,
   };
@@ -224,7 +229,7 @@ function useDerivedCurves(
 
 /** Curves and RMSE for the current values, from the server. */
 export function useLiveCurves(): LiveCurves {
-  const { data: models } = useQuery(modelsQuery);
+  const { data: models } = useModels();
   const selection = useSessionStore((state) => state.selection);
   const parameters = useSessionStore((state) => state.parameters);
   const data = useSessionStore((state) => state.data);
@@ -301,7 +306,7 @@ export function useResultCurves(enabled: boolean): {
   measured: LiveCalc;
   derived: Record<DerivedKind, LiveCalc>;
 } {
-  const { data: models } = useQuery(modelsQuery);
+  const { data: models } = useModels();
   const selection = useSessionStore((state) => state.selection);
   const parameters = useSessionStore((state) => state.parameters);
   const data = useSessionStore((state) => state.data);

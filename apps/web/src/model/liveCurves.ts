@@ -1,3 +1,4 @@
+import { explicitDpbInputs, isValidCarrierDensity } from "@/model/explicitDpb";
 import type { BandDiagramRequest, CalcRequest } from "@/api/client";
 import { parameterValues } from "@/model/parameters";
 import { fitModeOf, type ModelDescription } from "@/model/selection";
@@ -56,6 +57,7 @@ export function calcRequest(
     model === undefined ||
     mode === undefined ||
     mode.disabled ||
+    !isValidCarrierDensity(selection) ||
     minK === null ||
     maxK === null
   ) {
@@ -79,9 +81,10 @@ export function calcRequest(
 
   return {
     model: model.id,
+    ...explicitDpbInputs(selection),
     fit_mode: mode.id,
     scattering: selection.scattering,
-    parameters: parameterValues(mode, state.parameters[mode.id]),
+    parameters: parameterValues(mode, state.parameters[mode.id], selection),
     min_temperature_k: minK,
     max_temperature_k: maxK,
     band_1_degeneracy: selection.band1Degeneracy,
@@ -101,6 +104,7 @@ export function requestScope(request: CalcRequest): string {
     request.fit_mode,
     request.scattering,
     request.kind ?? "measured",
+    ...Object.values(explicitDpbInputsFromRequest(request)),
   ]);
 }
 
@@ -112,12 +116,16 @@ export function bandDiagramRequest(
   const { selection } = state;
   const model = models?.find(({ id }) => id === selection.model);
   const mode = fitModeOf(model, selection.fitMode);
-  return model === undefined || mode === undefined || mode.disabled
+  return model === undefined ||
+    mode === undefined ||
+    mode.disabled ||
+    !isValidCarrierDensity(selection)
     ? null
     : {
         model: model.id,
+        ...explicitDpbInputs(selection),
         fit_mode: mode.id,
-        parameters: parameterValues(mode, state.parameters[mode.id]),
+        parameters: parameterValues(mode, state.parameters[mode.id], selection),
         band_1_degeneracy: selection.band1Degeneracy,
         band_2_degeneracy: selection.band2Degeneracy,
       };
@@ -125,7 +133,11 @@ export function bandDiagramRequest(
 
 /** As `requestScope`: another mode has other bands, and must not pass for this one's. */
 export function bandDiagramScope(request: BandDiagramRequest): string {
-  return JSON.stringify([request.model, request.fit_mode]);
+  return JSON.stringify([
+    request.model,
+    request.fit_mode,
+    ...Object.values(explicitDpbInputsFromRequest(request)),
+  ]);
 }
 
 /** Other curves of the same values. These take no measurements, and need no data. */
@@ -197,4 +209,27 @@ export function rmseGaps(
     }
   }
   return gaps;
+}
+
+function explicitDpbInputsFromRequest(
+  request: CalcRequest | BandDiagramRequest,
+) {
+  if (request.parameterization === "explicit_fermi_v1")
+    return {
+      parameterization: request.parameterization,
+      band_configuration: request.band_configuration,
+      ...(request.carrier_type == null
+        ? {}
+        : { carrier_type: request.carrier_type }),
+      band_1_degeneracy: request.band_1_degeneracy,
+      band_2_degeneracy: request.band_2_degeneracy,
+    };
+  if (request.parameterization !== "explicit_density_v1") return {};
+  return {
+    parameterization: request.parameterization,
+    band_configuration: request.band_configuration,
+    net_electron_density_per_m3: request.net_electron_density_per_m3,
+    band_1_degeneracy: request.band_1_degeneracy,
+    band_2_degeneracy: request.band_2_degeneracy,
+  };
 }

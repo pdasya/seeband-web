@@ -4,7 +4,93 @@
  * Add new text here rather than in a component, so that U3 can move it all at once.
  */
 export const STRINGS = {
+  explicitDpb: {
+    unoccupiedBands:
+      "For VB + VB, set E_F below the higher valence-band edge. For CB + CB, set E_F above the lower conduction-band edge.",
+    carrierMismatch:
+      "The chosen E_F gives the opposite carrier excess to the session's carrier type. Adjust E_F.",
+    fermiRepresentation: "Explicit bands · Fermi energy",
+    carrierType: "Carrier type",
+    fermiHint:
+      "Set E_F relative to Band 1 in Parameters. For VB + CB, E_F may lie inside the band gap.",
+    fermiIdentity: (configuration: string, carrier?: string) =>
+      `Parameterization: explicit_fermi_v1; configuration: ${configuration}${carrier === undefined ? "" : `; carrier type: ${carrier}`}`,
+
+    representation: "Explicit bands · fixed carrier excess",
+    representationLabel: "Representation",
+    densityMeaning: "Signed net electron density n − p",
+    densitySymbol: "n − p",
+    // As written in exported files, in plain ASCII.
+    densityUnit: "m^-3",
+    verifiedMethod: "Explicit bands use the verified joint method.",
+    configuration: "Band configuration",
+    bandLabel: (band: number, kind: string) => `Band ${band} (${kind})`,
+    configurations: { vb_vb: "VB + VB", vb_cb: "VB + CB", cb_cb: "CB + CB" },
+    density: "Net electron density n − p (m⁻³)",
+    densityMagnitude: "Carrier excess magnitude |n − p| (m⁻³)",
+    densityAbout: "About carrier excess",
+    polarity: "Carrier excess polarity",
+    p: "p",
+    n: "n",
+    polarities: { p: "p: excess holes", n: "n: excess electrons" },
+    densityTooltip:
+      "The signed net electron density n − p must remain fixed across the temperature sweep. The separate electron density n and hole density p may each vary with temperature. Choose p for excess holes (n − p < 0), or n for excess electrons (n − p > 0), then enter the nonnegative magnitude |n − p| in m⁻³ (per cubic metre). VB + CB permits either polarity and zero, where n = p. VB + VB requires p and CB + CB requires n; both same-type configurations require a positive magnitude.",
+    branchDensityHints: {
+      vb_vb:
+        "VB + VB requires p: n − p = −|n − p|. The branch selects this sign and preserves the magnitude.",
+      vb_cb: "VB + CB permits p or n, including intrinsic zero (n = p).",
+      cb_cb:
+        "CB + CB requires n: n − p = +|n − p|. The branch selects this sign and preserves the magnitude.",
+    },
+    densityRequired:
+      "Enter a positive concentration for two bands of the same type.",
+    invalidMagnitude: "Enter a finite, nonnegative carrier excess magnitude.",
+    intrinsic: (polarity: "p" | "n") =>
+      `Intrinsic: n = p (n − p = 0 m⁻³). Next nonzero excess: ${polarity === "p" ? "holes (p)" : "electrons (n)"}.`,
+    zeroSameType:
+      "n − p = 0 m⁻³; a positive magnitude is required for this configuration.",
+    signedDensity: (polarity: "p" | "n", magnitude: string) =>
+      `n − p = ${polarity === "p" ? "−" : "+"}${magnitude} m⁻³ (${polarity})`,
+    migrationTitle: "Convert historical DPB session",
+    migrationHint:
+      "Confirm the positive single-valley mass and both valley multiplicities, excluding spin. Saved multiplicities may have been defaults. Original inputs and fit results are preserved; new fits use fresh bounds.",
+    mass: "Single-valley |m₁| (mₑ)",
+    hallMassConvention: "Saved Hall mass convention",
+    chooseHallMassConvention: "Choose the saved mass convention",
+    singleValleyMass: "Single-valley mass",
+    allValleyMass: "All-valley density-of-states mass",
+    savedHallMass: (mass: string, multiplicity: string) =>
+      `Saved Hall |m₁|: ${mass} mₑ; saved N₁: ${multiplicity}.`,
+    hallMassHint:
+      "Confirm the convention used when this mass was saved. Core version 0.3.0 alone does not identify it. An all-valley mass is divided by the saved N₁^(2/3); the single-valley value used for conversion is shown below. This converts the saved point and does not guarantee reproduction of older Hall curves.",
+    confirm: "Confirm scale and convert",
+    cancel: "Cancel",
+    migrationFailed:
+      "Conversion failed. Check the legacy mass ratio and absolute scale, then retry.",
+    legacyResult:
+      "Original historical session and fit (legacy parameterization)",
+    identity: (configuration: string, density: number) =>
+      `Parameterization: explicit_density_v1; configuration: ${configuration}; net electron density: ${density} m⁻³`,
+  },
   appName: "SeeBand",
+  calculation: {
+    affectedList: (temperatures: readonly string[]) =>
+      `${temperatures.join("; ")} K`,
+    affectedRange: (first: string, last: string, count: number) =>
+      `${first}–${last} K (${count} affected temperatures)`,
+    previous:
+      "Showing the previous calculation while the current values are unavailable.",
+    reasons: {
+      zero_measured_value:
+        "A measured value is zero, so the percentage RMSE is undefined.",
+      non_finite_result: "The calculation returned a non-finite value.",
+      calculation_failed: "The calculation failed for these values.",
+    },
+    curveUnavailable: (quantity: string, temperatures: string) =>
+      `${quantity}: model curve unavailable at ${temperatures}. Gaps are left in the curve.`,
+    rmseUnavailable: (quantity: string, temperatures: string) =>
+      `RMSE, ${quantity}: unavailable at ${temperatures}. The model curve has its own availability.`,
+  },
   // The link that the header's logo and name make, for a screen reader.
   appHomeLabel: "SeeBand, overview",
   appStage: "web · prototype",
@@ -30,6 +116,8 @@ export const STRINGS = {
     // How a parameter is written. Any other shows its name, so a new one needs no change here.
     symbols: {
       band_mass: "m",
+      mass_ratio: "m₂/m₁",
+      band_offset_k: "Δ",
       m_eff: "m₂/m₁",
       band_gap: "E_g",
       fermi_energy: "E_F",
@@ -68,13 +156,15 @@ export const STRINGS = {
     scatteringNames: {
       acPh: "Acoustic phonons (acPh)",
       dis: "Alloy disorder (dis)",
+      acPhDis: "Acoustic phonons + alloy disorder (acPhDis)",
       ionized: "Ionized impurities",
     },
     disabledReason: "not available until a known error is fixed.",
     disabledReasons: {},
-    degeneracyHint: "Band degeneracies are not fitted.",
+    degeneracyHint:
+      "Valley multiplicities are positive integers and are not fitted.",
     degeneracyInvalid:
-      "N₁ and N₂ must be above 0. The last valid value stays in use.",
+      "N₁ and N₂ must be positive integers. The last valid value stays in use.",
     range: "Fit range, K",
     rangeMin: "Lower bound, K",
     rangeMax: "Upper bound, K",
@@ -123,6 +213,8 @@ export const STRINGS = {
       "The curve of a run could not be calculated, so its RMSE and curve are missing.",
   },
   session: {
+    archivedDpb:
+      "Historical DPB settings are archived with the original session. Switching to DPB starts fresh explicit bands; the active SPB settings and result stay in use. To convert a historical DPB state, save that state with DPB selected in the original application, then open that file here.",
     open: "Open session",
     openHint:
       "Load a session file saved with Session to file, in place of this session",
@@ -135,6 +227,8 @@ export const STRINGS = {
       not_a_session: "This file is not a SeeBand session file.",
       newer_version:
         "This session file comes from a newer version of SeeBand Web. Open it there.",
+      unsupported_version:
+        "This session file holds a band composition session, which this version of SeeBand Web cannot open.",
       invalid:
         "This session file is damaged, or misses parts, so it was not opened.",
       checksum:
@@ -422,12 +516,15 @@ export const STRINGS = {
       band_1_energy_k: "Band 1",
       band_2_energy_k: "Band 2",
       fermi_energy_k: "E_F",
+      fermi_energy_lower_k: "E_F lower endpoint",
+      fermi_energy_upper_k: "E_F upper endpoint",
     },
     wavevectorAxis: "k",
     diagramDescription: "Local parabolic band energies against wavevector",
     diagramShape: "The diagram shows the shape of the bands; k has no scale.",
     diagramReferenceMass:
       "The curvature scale is illustrative. Without Hall data the size of band 1's mass is not set by the data, so it is assumed to be mₑ.",
+    wavevectorWithUnit: (unit: string) => `k (${unit})`,
     axes: {
       seebeck: "S, µV/K",
       resistivity: "ρ, µΩ·m",
@@ -459,6 +556,8 @@ export const STRINGS = {
     bandEdge: "band edge",
     band1Top: "band 1 top",
     band2Bottom: "band 2 bottom (E_g)",
+    band1Edge: "band 1 edge",
+    band2Edge: "band 2 edge (Δ)",
     bandsDescription:
       "Chart of the total S and the contribution of each band against temperature",
     totalS: "Total S",
@@ -682,6 +781,8 @@ export const STRINGS = {
     rmse: "RMSE",
     degeneracySymbol: "N₁, N₂",
     degeneracyMeaning: "band degeneracies",
+    degeneracyOf: (band: 1 | 2) =>
+      `band degeneracies ${band === 1 ? "N₁" : "N₂"}`,
     noRmse: "The RMSE appears here once measurements are loaded.",
     rmseNotFinite: "not finite",
     rmseFailed: "The RMSE could not be calculated for the current values.",
