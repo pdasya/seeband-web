@@ -40,13 +40,12 @@ type RequestState = Pick<
 >;
 
 /**
- * The curves to ask for, or null where there is nothing to ask: no data for this fit mode, or no
- * mode that can run. Measurements hold only points in the fit range, as the API asks.
+ * The model curves to ask for, or null without a runnable mode and temperature range.
+ * Measurements are optional and hold only points in the fit range, as the API asks.
  */
 export function calcRequest(
   state: RequestState,
   models: readonly ModelDescription[] | undefined,
-  evenWithoutData = false,
 ): CalcRequest | null {
   const { selection } = state;
   const model = models?.find(({ id }) => id === selection.model);
@@ -58,9 +57,7 @@ export function calcRequest(
     mode === undefined ||
     mode.disabled ||
     minK === null ||
-    maxK === null ||
-    (!evenWithoutData &&
-      !mode.quantities.some((quantity) => state.data[quantity] !== undefined))
+    maxK === null
   ) {
     return null;
   }
@@ -137,7 +134,7 @@ export function derivedRequest(
   models: readonly ModelDescription[] | undefined,
   kind: NonNullable<CalcRequest["kind"]>,
 ): CalcRequest | null {
-  const request = calcRequest(state, models, true);
+  const request = calcRequest(state, models);
   return (
     request && {
       ...request,

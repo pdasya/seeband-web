@@ -93,9 +93,9 @@ describe("what a tab draws from the measured request", () => {
     expect(drawsMeasuredCurves("seebeck", mode("dpb_s"), data)).toBe(true);
   });
 
-  test("not with no data of its own, or outside the mode", () => {
+  test("supported model curves need no data; unsupported quantities do not draw", () => {
     expect(drawsMeasuredCurves("resistivity", mode("dpb_s_rho"), data)).toBe(
-      false,
+      true,
     );
     expect(
       drawsMeasuredCurves(
@@ -116,20 +116,34 @@ describe("what a tab draws from the measured request", () => {
 });
 
 describe("tabs of quantities", () => {
-  test("no data has an empty state of its own for R_H", () => {
-    const view = chartTabView(
-      "hall",
-      mode("dpb_s_rho_rh"),
-      loaded(),
-      null,
-      null,
-    );
+  test("supported quantities show model curves without measurements", () => {
+    const measured = answer({
+      seebeck_v_per_k: [1e-4],
+      resistivity_ohm_m: [2e-5],
+      hall_m3_per_c: [3e-9],
+    });
+    for (const tab of ["seebeck", "resistivity", "hall"] as const) {
+      const view = chartTabView(
+        tab,
+        mode("dpb_s_rho_rh"),
+        loaded(),
+        measured,
+        null,
+      );
+      expect(view.empty).toBeNull();
+      expect(view.curves).toHaveLength(1);
+      expect(view.measurements).toBeNull();
+      expect(view.interpolated).toBeNull();
+      expect(
+        chartTabView(tab, mode("dpb_s_rho_rh"), loaded(), null, null).empty,
+      ).toBeNull();
+    }
+  });
 
-    expect(view.empty?.title).toBe("No R_H(T) data");
+  test("unsupported quantities explain the fit mode without asking for data", () => {
+    const view = chartTabView("hall", mode("dpb_s"), loaded(), null, null);
+    expect(view.empty?.text).toContain("not calculated in this fit mode");
     expect(view.curves).toEqual([]);
-    expect(
-      chartTabView("seebeck", mode("dpb_s"), loaded(), null, null).empty?.title,
-    ).toBe("No data for this quantity");
   });
 
   test("units are those of the axis", () => {

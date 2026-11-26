@@ -442,23 +442,14 @@ export const STRINGS = {
     quantityTabs: {
       seebeck: {
         description: "Chart of S against temperature",
-        noDataTitle: "No data for this quantity",
-        noDataText:
-          "Load a file or assign a column in the single-file mapping.",
         notInMode: "The S model is not calculated in this fit mode.",
       },
       resistivity: {
         description: "Chart of ρ against temperature",
-        noDataTitle: "No data for this quantity",
-        noDataText:
-          "Load a file or assign a column in the single-file mapping.",
         notInMode: "The ρ model is not calculated in this fit mode.",
       },
       hall: {
         description: "Chart of R_H against temperature",
-        noDataTitle: "No R_H(T) data",
-        noDataText:
-          "Load a Hall coefficient file (m³/C). R_H sets the overall scale E = m₁^(3/2) and determines the absolute mass m₁.",
         notInMode: "The R_H model is not calculated in this fit mode.",
       },
     },

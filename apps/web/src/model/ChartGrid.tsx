@@ -145,7 +145,8 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
     ? null
     : Math.min(...drawnFrom.map(({ changedAtMs }) => changedAtMs ?? 0));
 
-  const rmse = isQuantityTab(tab) ? measured.result?.rmse?.[tab] : undefined;
+  const hasMeasurements = isQuantityTab(tab) && data[tab] !== undefined;
+  const rmse = hasMeasurements ? measured.result?.rmse?.[tab] : undefined;
   // Shown as its field shows it, to the same step.
   const gap =
     tab === "band_diagram" ? band2EdgeShown(mode, parameters) : undefined;

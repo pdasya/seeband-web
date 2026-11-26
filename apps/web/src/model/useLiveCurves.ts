@@ -10,11 +10,7 @@ import {
 } from "@/api/client";
 import type { ApiError } from "@/api/errors";
 import { modelsQuery } from "@/api/queries";
-import {
-  derivedKind,
-  needsMeasuredCurves,
-  type DerivedKind,
-} from "@/model/chartTabs";
+import { derivedKind, type DerivedKind } from "@/model/chartTabs";
 import { LatestOnly } from "@/model/latestOnly";
 import {
   bandDiagramRequest,
@@ -240,11 +236,7 @@ export function useLiveCurves(): LiveCurves {
     const state = { selection, parameters, data, interpolation };
     const model = models?.models.find(({ id }) => id === selection.model);
     const mode = fitModeOf(model, selection.fitMode);
-    const measuredRequest = calcRequest(
-      state,
-      models?.models,
-      panels.some((tab) => needsMeasuredCurves(tab, mode)),
-    );
+    const measuredRequest = calcRequest(state, models?.models);
     const asked = new Set(panels.map((tab) => derivedKind(tab, mode)));
     const derivedOf = (kind: DerivedKind) => {
       const request = asked.has(kind)
@@ -330,7 +322,7 @@ export function useResultCurves(enabled: boolean): {
           : null,
       );
     return {
-      measured: of(enabled ? calcRequest(state, models?.models, true) : null),
+      measured: of(enabled ? calcRequest(state, models?.models) : null),
       chemical_potential: derivedOf("chemical_potential"),
       seebeck_by_band: derivedOf("seebeck_by_band"),
       electrical_conductivity: derivedOf("electrical_conductivity"),

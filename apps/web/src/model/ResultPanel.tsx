@@ -107,7 +107,8 @@ export function ResultPanel({ live }: { live: LiveCurves }) {
   const mode = fitModeOf(model, selection.fitMode);
 
   const rows = QUANTITIES.flatMap((quantity) => {
-    const rmse = result?.rmse?.[quantity];
+    const rmse =
+      data[quantity] === undefined ? undefined : result?.rmse?.[quantity];
     return rmse === undefined ? [] : [{ quantity, rmse }];
   });
   const issues = resultIssues(mode, {

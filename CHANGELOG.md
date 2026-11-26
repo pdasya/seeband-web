@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- P29 (#259): the Fit page previews the selected model curves before data are
+  loaded. Adding or removing measurements updates their points and RMSE.
+
 - U8 (#277): every page of the site and the app has the same favicon, as
   SVG, ICO and an Apple touch icon, drawn from the header's logo by
   `pnpm --filter @seeband/site icons`. The logo and the name in the header

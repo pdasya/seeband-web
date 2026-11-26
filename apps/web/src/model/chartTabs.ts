@@ -132,11 +132,7 @@ export function drawsMeasuredCurves(
       mode?.quantities.includes("resistivity") === true
     );
   }
-  return (
-    isQuantityTab(tab) &&
-    data[tab] !== undefined &&
-    mode?.quantities.includes(tab) === true
-  );
+  return isQuantityTab(tab) && mode?.quantities.includes(tab) === true;
 }
 
 /** Whether a tab shows a measured quantity, with its points. */
@@ -290,33 +286,36 @@ function quantityView(
   const base = { yAxisTitle: axis, description: words.description };
   const data = state.data[quantity];
   const entry = data?.measurement;
-  if (entry === undefined) {
+  const inMode = mode?.quantities.includes(quantity) === true;
+  if (entry === undefined && !inMode) {
     return {
       ...NO_CHART,
       ...base,
-      empty: { title: words.noDataTitle, text: words.noDataText },
+      empty: { title: text.notInThisMode.title, text: words.notInMode },
     };
   }
   const interpolated = state.interpolation.values[quantity];
-  const inMode = mode?.quantities.includes(quantity) === true;
   // ρ from a σ file is 1/σ, which the chart names, as its points are not what was loaded.
-  const fromSigma = entry.loaded_as === "conductivity";
+  const fromSigma = entry?.loaded_as === "conductivity";
   return {
     ...NO_CHART,
     ...base,
     empty: null,
     curves: inMode ? curveOf(measured, curve, factor, text.model) : [],
-    measurements: {
-      // Demo data say what they are wherever they appear.
-      label:
-        data?.source.kind === "demo"
-          ? text.measurementsDemo
-          : fromSigma
-            ? text.measurementsFromSigma
-            : text.measurements,
-      temperatureK: entry.temperature_k,
-      values: scaled(entry.values, factor),
-    },
+    measurements:
+      entry === undefined
+        ? null
+        : {
+            // Demo data say what they are wherever they appear.
+            label:
+              data?.source.kind === "demo"
+                ? text.measurementsDemo
+                : fromSigma
+                  ? text.measurementsFromSigma
+                  : text.measurements,
+            temperatureK: entry.temperature_k,
+            values: scaled(entry.values, factor),
+          },
     interpolated:
       interpolated === undefined
         ? null

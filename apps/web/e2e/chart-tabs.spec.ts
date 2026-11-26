@@ -122,20 +122,19 @@ test("each chart has a choice of what it shows, by name", async ({ page }) => {
   await show(page, "Resistivity ρ(T)");
 
   await expect(select).toHaveText("Resistivity ρ(T)");
-  await expect(chart(page)).toContainText("No data for this quantity");
+  await expect(lines(page)).toHaveCount(1);
 });
 
-test("each empty state matches its cause", async ({ page }) => {
+test("supported quantities preview curves and unsupported quantities explain why", async ({
+  page,
+}) => {
   await open(page);
 
-  await expect(
-    chart(page).getByText("No data for this quantity"),
-  ).toBeVisible();
+  await expect(legend(page, "Model")).toBeVisible();
 
   await show(page, "Hall coefficient RH(T)");
-  await expect(chart(page).getByText("No RH(T) data")).toBeVisible();
   await expect(
-    chart(page).getByText("determines the absolute mass"),
+    chart(page).getByText("The RH model is not calculated in this fit mode."),
   ).toBeVisible();
   await expect(chart(page).getByText(/not part of this prototype/)).toHaveCount(
     0,
@@ -159,7 +158,8 @@ test("ρ and RH draw their own curves, units and points", async ({ page }) => {
   await expect(legend(page, "Model")).toBeVisible();
 
   await show(page, "Seebeck S(T)");
-  await expect(page.getByText("No data for this quantity")).toBeVisible();
+  await expect(legend(page, "Model")).toBeVisible();
+  await expect(legend(page, "Measurements")).toHaveCount(0);
 });
 
 test("RH has a curve only in the mode with it", async ({ page }) => {
@@ -187,8 +187,10 @@ test("μ needs no data, has band edges, and follows Eg", async ({ page }) => {
 
   await expect.poll(() => bodies.at(-1)?.kind).toBe("chemical_potential");
   await page.waitForTimeout(400);
-  expect(bodies).toHaveLength(1);
-  expect(bodies[0]?.measurements).toEqual({});
+  expect(
+    bodies.filter(({ kind }) => kind === "chemical_potential"),
+  ).toHaveLength(1);
+  expect(bodies.at(-1)?.measurements).toEqual({});
   await expect(yTitle(page)).toHaveText("μ, eV");
   await expect(lines(page)).toHaveCount(1);
   await expect(page.getByText("band 1 top")).toBeVisible();
@@ -355,10 +357,10 @@ test("a failed curve of a tab says so there, and not on the others", async ({
   });
 
   await show(page, "Chemical potential μ(T)");
-  await expect(page.getByRole("alert")).toContainText("no result");
+  await expect(chart(page).getByRole("alert")).toContainText("no result");
 
   await show(page, "Seebeck S(T)");
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(chart(page).getByRole("alert")).toHaveCount(0);
 });
 
 test("a failure of S does not show on μ, and the RMSE says it is old", async ({
@@ -400,9 +402,9 @@ test("a failure of S does not show on μ, and the RMSE says it is old", async ({
   await page.getByRole("slider", { name: "Eg" }).press("ArrowRight");
 
   await expect(page.getByText("not from the current values")).toBeVisible();
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(chart(page).getByRole("alert")).toHaveCount(0);
   await show(page, "Seebeck S(T)");
-  await expect(page.getByRole("alert")).toContainText("no result");
+  await expect(chart(page).getByRole("alert")).toContainText("no result");
 });
 
 test("known errors of a tab's curves are named while it is open", async ({
@@ -479,11 +481,11 @@ test("known errors of a tab go with it at once, also if the next curve fails", a
   );
 
   gate.release();
-  await expect(page.getByRole("alert")).toContainText("no result");
+  await expect(chart(page).getByRole("alert")).toContainText("no result");
   await expect(page.getByText(/the fit can be poorly conditioned/)).toHaveCount(
     0,
   );
-  await expect(page.getByRole("alert")).not.toContainText("last curve");
+  await expect(chart(page).getByRole("alert")).not.toContainText("last curve");
 });
 
 test("a change of mode takes the old curve away at once, and says it waits", async ({
@@ -538,12 +540,14 @@ for (const detail of [null, "chemical_potential_dpb_fermi_energy"]) {
 
     await page.getByRole("radio", { name: "S", exact: true }).click();
 
-    await expect(page.getByRole("alert")).toContainText(
+    await expect(chart(page).getByRole("alert")).toContainText(
       detail === null
         ? "no result"
         : "Set EF below the higher band edge, max(0, Eg).",
     );
-    await expect(page.getByRole("alert")).not.toContainText("last curve");
+    await expect(chart(page).getByRole("alert")).not.toContainText(
+      "last curve",
+    );
     await expect(lines(page)).toHaveCount(0);
   });
 }
@@ -559,7 +563,7 @@ test("a failure of the last mode goes at once with the change of mode", async ({
     }),
   );
   await load(page, 0);
-  await expect(page.getByRole("alert")).toContainText("no result");
+  await expect(chart(page).getByRole("alert")).toContainText("no result");
   const gate = hold();
   await page.route("**/api/calc", async (route) => {
     const body = route.request().postDataJSON() as CalcBody;
@@ -569,7 +573,7 @@ test("a failure of the last mode goes at once with the change of mode", async ({
 
   await page.getByRole("radio", { name: "S", exact: true }).click();
 
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(chart(page).getByRole("alert")).toHaveCount(0);
   gate.release();
 });
 
@@ -590,8 +594,8 @@ test("failed contributions beside the total do not call it the last curve", asyn
   await show(page, "Band contributions");
 
   await expect(lines(page)).toHaveCount(1);
-  await expect(page.getByRole("alert")).toContainText("no result");
-  await expect(page.getByRole("alert")).not.toContainText("last curve");
+  await expect(chart(page).getByRole("alert")).toContainText("no result");
+  await expect(chart(page).getByRole("alert")).not.toContainText("last curve");
 });
 
 test("a new value keeps the curve while waiting", async ({ page }) => {
@@ -635,13 +639,13 @@ test("a tab says nothing about curves it does not draw", async ({ page }) => {
   await expect(page.getByText("Updating…")).toBeVisible();
 
   gate.release();
-  await expect(page.getByRole("alert")).toContainText("no result");
+  await expect(chart(page).getByRole("alert")).toContainText("no result");
 
   // With the failure known to have arrived, the tabs that do not draw it stay quiet.
   await show(page, "Resistivity ρ(T)");
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(chart(page).getByRole("alert")).toHaveCount(0);
   await show(page, "Band contributions");
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(chart(page).getByRole("alert")).toHaveCount(0);
 });
 
 const countRedraws = (page: Page) =>

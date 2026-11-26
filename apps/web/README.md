@@ -103,7 +103,7 @@ SEEBAND_API_TARGET=http://127.0.0.1:8000 pnpm --filter @seeband/web exec playwri
 
 ## Live curves
 
-`model/useLiveCurves.ts` asks `POST /api/calc` for the current values whenever they change and data are loaded. Without data for the fit mode, nothing is sent.
+`model/useLiveCurves.ts` asks `POST /api/calc` for the current parameters and temperature range as soon as the selected fit mode is available. Measurements, when present, supply the points for comparison.
 
 - **One request at a time.** `model/latestOnly.ts` sends the latest values when the running request has its answer, so requests cannot pile up on a slower server. A change does not abort a running request, because the server cannot stop a calculation that has started. So an old answer cannot arrive after a newer one. Only leaving the page or removing the data aborts one, and a request with no answer ends after 60 s.
 - **A request waits** for 250 ms of rest, or 300 ms at the latest during a long drag. FS12 tunes these over a real network.
@@ -126,7 +126,7 @@ SEEBAND_API_TARGET=http://127.0.0.1:8000 pnpm --filter @seeband/web exec playwri
 
 `model/chartTabs.ts` says what each tab of the fit screen draws, in the units of its axis: S in µV/K, ρ in µΩ·m, R_H in m³/C and μ in K.
 
-- **S, ρ and R_H** use the curves that measurements go with. With no data, a tab says so. With data that the fit mode does not use, it shows the points and says that the mode has no model for them.
+- **S, ρ and R_H** show the model curves offered by the selected fit mode. Loading a file overlays its points. Removing it clears those points and its RMSE. For a quantity outside the mode, the tab explains its availability and still shows any loaded measurements.
 - **μ and band contributions** are other kinds of curve, which the API refuses to mix with measurements. So they are a second request, only while their tab is open, and also one at a time. They need no data. The contributions take their total S from the first request.
 - **An answer shows only for its own curve.** It counts while the model, mode, scattering and kind match, so a new value keeps the curve while waiting, and a change of mode takes it away at once. A tab shows the state of a request only if it draws its curves.
 - **Whether a mode offers a curve** comes from `curves` in `GET /api/models`, with its text from the reason. μ draws the band edges: band 2's comes from the parameter the mode names in `band_2_edge`, and a mode without one draws one band edge. The band diagram shows that parameter as E_g. No parameter name of a model is written in the client, so a two-band model with another name needs no change here.
