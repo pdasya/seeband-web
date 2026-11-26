@@ -213,7 +213,10 @@ export function ResultPanel({ live }: { live: LiveCurves }) {
           <Note key={`rmse:${quantity}`}>{issue}</Note>
         );
       })}
-      {live.measured.stale === true && <Note>{fit.rmseOutdated}</Note>}
+      {/* Only an RMSE shown can be outdated; with no data there is none. */}
+      {rows.length > 0 && live.measured.stale === true && (
+        <Note>{fit.rmseOutdated}</Note>
+      )}
       {gaps.noPointsInRange.length > 0 && (
         <Note>{`${symbols(gaps.noPointsInRange)}: ${fit.noPointsInRange}`}</Note>
       )}
