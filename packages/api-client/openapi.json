@@ -6580,7 +6580,7 @@
           "max_temperature_k"
         ],
         "title": "CalcRequest",
-        "description": "What to calculate.\n\n`parameters` holds every parameter of the mode in core units, including those of other\nscattering types. C and D are required only for mixed transport. Values outside a control's range are allowed, as a fit can end there. `points`\ndefaults to the model's. `measurements` gives an RMSE for each quantity, and should hold only\npoints in the fit range. `extrapolated` says that interpolation made up some of these points.\n\n`kind` chooses the curves, and `GET /api/models` lists which a mode offers. `measurements` need\nthe `measured` kind, because the known issues of a response are those of its curves, and an RMSE\nof other curves would not carry its own.",
+        "description": "What to calculate.\n\n`parameters` holds every parameter of the mode in core units, including those of other\nscattering types. C and D are required only for mixed transport.\nValues outside a control's range are allowed, as a fit can end there. `points`\ndefaults to the model's. `measurements` gives an RMSE for each quantity, and should hold only\npoints in the fit range. `extrapolated` says that interpolation made up some of these points.\n\n`kind` chooses the curves, and `GET /api/models` lists which a mode offers. `measurements` need\nthe `measured` kind, because the known issues of a response are those of its curves, and an RMSE\nof other curves would not carry its own.",
         "examples": [
           {
             "fit_mode": "dpb_s_rho",
@@ -7463,7 +7463,7 @@
           "measurements"
         ],
         "title": "FitApiRequest",
-        "description": "What to fit.\n\n`start` holds every parameter of the mode in core units, including those of other scattering\ntypes. C and D are required only for mixed transport. `bounds` overrides the description's bounds for fitted parameters, in core units.\n`measurements` holds each quantity of the mode, and only points from `min_temperature_k` to\n`max_temperature_k`, inclusive, enter the fit. `extrapolated` says that interpolation made up\nsome of these points, so that the result says so too.\n\n`held` names fitted parameters to keep at their start values: the fit finds only the others.\nA name the mode does not fit, for the scattering type, or every fitted parameter, is refused.",
+        "description": "What to fit.\n\n`start` holds every parameter of the mode in core units, including those of other scattering\ntypes. C and D are required only for mixed transport.\n`bounds` overrides the description's bounds for fitted parameters, in core units.\n`measurements` holds each quantity of the mode, and only points from `min_temperature_k` to\n`max_temperature_k`, inclusive, enter the fit. `extrapolated` says that interpolation made up\nsome of these points, so that the result says so too.\n\n`held` names fitted parameters to keep at their start values: the fit finds only the others.\nA name the mode does not fit, for the scattering type, or every fitted parameter, is refused.",
         "examples": [
           {
             "bounds": {
