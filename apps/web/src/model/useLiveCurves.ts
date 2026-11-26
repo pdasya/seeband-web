@@ -11,7 +11,7 @@ import type { ApiError } from "@/api/errors";
 import { useModels } from "@/api/queries";
 import {
   derivedKind,
-  needsMeasuredCurves,
+  drawsMeasuredCurves,
   type DerivedKind,
 } from "@/model/chartTabs";
 import { LatestOnly } from "@/model/latestOnly";
@@ -231,6 +231,48 @@ function useDerivedCurves(
   };
 }
 
+/**
+ * The answer with the RMSE, and RMSE issues, only of the measurements the current request sends.
+ * An answer may still be for data since removed: its curves can stay, its comparison cannot.
+ */
+export function withSentRmse(
+  result: CalcResponse | null,
+  sent: ReadonlySet<string>,
+): CalcResponse | null {
+  if (result === null) return null;
+  const rmse = Object.fromEntries(
+    Object.entries(result.rmse ?? {}).filter(([quantity]) =>
+      sent.has(quantity),
+    ),
+  );
+  const issues = (result.issues ?? []).filter(
+    (issue) => issue.scope !== "rmse" || sent.has(issue.quantity),
+  );
+  return Object.keys(rmse).length === Object.keys(result.rmse ?? {}).length &&
+    issues.length === (result.issues ?? []).length
+    ? result
+    : { ...result, rmse, issues };
+}
+
+function useSentRmse(live: LiveCalc, body: string | null): LiveCalc {
+  const sent = useMemo(
+    () =>
+      new Set(
+        Object.keys(
+          body === null
+            ? {}
+            : ((JSON.parse(body) as CalcRequest).measurements ?? {}),
+        ),
+      ),
+    [body],
+  );
+  const result = useMemo(
+    () => withSentRmse(live.result, sent),
+    [live.result, sent],
+  );
+  return result === live.result ? live : { ...live, result };
+}
+
 /** Curves and RMSE for the current values, from the server. */
 export function useLiveCurves(): LiveCurves {
   const { data: models } = useModels();
@@ -245,11 +287,14 @@ export function useLiveCurves(): LiveCurves {
     const state = { selection, parameters, data, interpolation };
     const model = models?.models.find(({ id }) => id === selection.model);
     const mode = fitModeOf(model, selection.fitMode);
-    const measuredRequest = calcRequest(
-      state,
-      models?.models,
-      panels.some((tab) => needsMeasuredCurves(tab, mode)),
-    );
+    // The S, ρ and R_H curves preview without data, but are asked for only while a chart draws
+    // them or data need their RMSE, so that hidden tabs send nothing.
+    const hasData =
+      mode?.quantities.some((q) => data[q] !== undefined) === true;
+    const measuredRequest =
+      hasData || panels.some((tab) => drawsMeasuredCurves(tab, mode, data))
+        ? calcRequest(state, models?.models)
+        : null;
     const asked = new Set(panels.map((tab) => derivedKind(tab, mode)));
     const derivedOf = (kind: DerivedKind) => {
       const request = asked.has(kind)
@@ -288,12 +333,9 @@ export function useLiveCurves(): LiveCurves {
   const waiting = interpolation.enabled && interpolation.loading;
 
   return {
-    measured: useLatest(
-      CALC,
+    measured: useSentRmse(
+      useLatest(CALC, measured.body, measured.scope, waiting, "measured"),
       measured.body,
-      measured.scope,
-      waiting,
-      "measured",
     ),
     derived: useDerivedCurves(derived),
     diagram: useLatest(
@@ -335,7 +377,7 @@ export function useResultCurves(enabled: boolean): {
           : null,
       );
     return {
-      measured: of(enabled ? calcRequest(state, models?.models, true) : null),
+      measured: of(enabled ? calcRequest(state, models?.models) : null),
       chemical_potential: derivedOf("chemical_potential"),
       seebeck_by_band: derivedOf("seebeck_by_band"),
       electrical_conductivity: derivedOf("electrical_conductivity"),

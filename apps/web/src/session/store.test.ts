@@ -42,6 +42,18 @@ beforeEach(() => {
   store = createSessionStore();
 });
 
+test("removing measurements preserves model preview settings", () => {
+  const store = createSessionStore();
+  store.getState().setParameter("dpb_s_rho", "band_gap", 1500);
+  store.getState().setData("seebeck", DATA);
+  const before = store.getState();
+  store.getState().removeData("seebeck");
+  expect(store.getState().data).toEqual({});
+  expect(store.getState().parameters).toEqual(before.parameters);
+  expect(store.getState().selection).toEqual(before.selection);
+  expect(store.getState().parameterResets).toBe(before.parameterResets);
+});
+
 describe("a fit", () => {
   test("goes from waiting through its events to a result", () => {
     const run = state().fitRequested();

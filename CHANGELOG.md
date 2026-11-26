@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- P29 (#259): the Fit page previews the selected model curves before data are
+  loaded. Adding or removing measurements updates their points and RMSE.
+
 - P27 (#257): Fit and Results show the finite points from a partial calculation.
   Curve gaps and unavailable RMSE values identify the affected quantity,
   temperatures and reason.

@@ -11,7 +11,6 @@ import {
   derivedKind,
   drawsMeasuredCurves,
   LORENZ_L0,
-  needsMeasuredCurves,
 } from "@/model/chartTabs";
 import type { FitModeDescription, ModelDescription } from "@/model/selection";
 import type { Quantity, SessionData } from "@/session/store";
@@ -76,13 +75,13 @@ describe("what a tab asks for", () => {
     expect(derivedKind("bands", undefined)).toBeNull();
   });
 
-  test("the total of S goes with contributions, and only there", () => {
-    expect(needsMeasuredCurves("bands", mode("dpb_s"))).toBe(true);
-    expect(needsMeasuredCurves("bands", mode("spb_s"))).toBe(false);
-    expect(needsMeasuredCurves("chemical_potential", mode("dpb_s"))).toBe(
+  test("with no data, the total of S goes with contributions, and S previews", () => {
+    expect(drawsMeasuredCurves("bands", mode("dpb_s"), {})).toBe(true);
+    expect(drawsMeasuredCurves("bands", mode("spb_s"), {})).toBe(false);
+    expect(drawsMeasuredCurves("chemical_potential", mode("dpb_s"), {})).toBe(
       false,
     );
-    expect(needsMeasuredCurves("seebeck", mode("dpb_s"))).toBe(false);
+    expect(drawsMeasuredCurves("seebeck", mode("dpb_s"), {})).toBe(true);
   });
 });
 
@@ -93,9 +92,9 @@ describe("what a tab draws from the measured request", () => {
     expect(drawsMeasuredCurves("seebeck", mode("dpb_s"), data)).toBe(true);
   });
 
-  test("not with no data of its own, or outside the mode", () => {
+  test("supported model curves need no data; unsupported quantities do not draw", () => {
     expect(drawsMeasuredCurves("resistivity", mode("dpb_s_rho"), data)).toBe(
-      false,
+      true,
     );
     expect(
       drawsMeasuredCurves(
@@ -116,20 +115,34 @@ describe("what a tab draws from the measured request", () => {
 });
 
 describe("tabs of quantities", () => {
-  test("no data has an empty state of its own for R_H", () => {
-    const view = chartTabView(
-      "hall",
-      mode("dpb_s_rho_rh"),
-      loaded(),
-      null,
-      null,
-    );
+  test("supported quantities show model curves without measurements", () => {
+    const measured = answer({
+      seebeck_v_per_k: [1e-4],
+      resistivity_ohm_m: [2e-5],
+      hall_m3_per_c: [3e-9],
+    });
+    for (const tab of ["seebeck", "resistivity", "hall"] as const) {
+      const view = chartTabView(
+        tab,
+        mode("dpb_s_rho_rh"),
+        loaded(),
+        measured,
+        null,
+      );
+      expect(view.empty).toBeNull();
+      expect(view.curves).toHaveLength(1);
+      expect(view.measurements).toBeNull();
+      expect(view.interpolated).toBeNull();
+      expect(
+        chartTabView(tab, mode("dpb_s_rho_rh"), loaded(), null, null).empty,
+      ).toBeNull();
+    }
+  });
 
-    expect(view.empty?.title).toBe("No R_H(T) data");
+  test("unsupported quantities explain the fit mode without asking for data", () => {
+    const view = chartTabView("hall", mode("dpb_s"), loaded(), null, null);
+    expect(view.empty?.text).toContain("not calculated in this fit mode");
     expect(view.curves).toEqual([]);
-    expect(
-      chartTabView("seebeck", mode("dpb_s"), loaded(), null, null).empty?.title,
-    ).toBe("No data for this quantity");
   });
 
   test("units are those of the axis", () => {
@@ -535,7 +548,6 @@ describe("the band diagram", () => {
 
   test("asks for no curves of temperature", () => {
     expect(derivedKind("band_diagram", mode("dpb_s"))).toBeNull();
-    expect(needsMeasuredCurves("band_diagram", mode("dpb_s"))).toBe(false);
     expect(drawsMeasuredCurves("band_diagram", mode("dpb_s"), {})).toBe(false);
   });
 });
@@ -906,4 +918,29 @@ test("a current response draws enabled quantities even when only another quantit
   expect(view.curves[0]?.values).toEqual([10, null, 30]);
   expect(view.note).toContain("unavailable at 200 K");
   expect(view.note).toContain("non-finite value");
+});
+
+describe("a quantity tab with no data says why it has no curve", () => {
+  test("while the model descriptions load", () => {
+    const view = chartTabView("seebeck", undefined, loaded(), null, null);
+    expect(view.empty?.title).toBe("Loading the model");
+    expect(view.empty?.text).not.toContain("not calculated");
+  });
+
+  test("when no request can go out", () => {
+    const disabled = { ...mode("dpb_s"), disabled: true };
+    expect(
+      chartTabView("seebeck", disabled, loaded(), null, null).empty?.title,
+    ).toBe("No model curve");
+    const noRange = { ...loaded(), temperatureRangeSet: false };
+    expect(
+      chartTabView("seebeck", mode("dpb_s"), noRange, null, null).empty?.title,
+    ).toBe("No model curve");
+  });
+
+  test("and previews the curve otherwise", () => {
+    expect(
+      chartTabView("seebeck", mode("dpb_s"), loaded(), null, null).empty,
+    ).toBeNull();
+  });
 });

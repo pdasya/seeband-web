@@ -122,8 +122,9 @@ export function drawsMeasuredCurves(
   mode: FitModeDescription | undefined,
   data: SessionState["data"],
 ): boolean {
+  // The total of S goes with the contributions, even with no data.
   if (tab === "bands") {
-    return needsMeasuredCurves(tab, mode);
+    return derivedKind(tab, mode) !== null;
   }
   // Its points come with the measured curves, from the ρ data.
   if (tab === "conductivity") {
@@ -133,11 +134,7 @@ export function drawsMeasuredCurves(
       mode?.quantities.includes("resistivity") === true
     );
   }
-  return (
-    isQuantityTab(tab) &&
-    data[tab] !== undefined &&
-    mode?.quantities.includes(tab) === true
-  );
+  return isQuantityTab(tab) && mode?.quantities.includes(tab) === true;
 }
 
 /** Whether a tab shows a measured quantity, with its points. */
@@ -193,14 +190,6 @@ export function bandGapForTab(
     : undefined;
 }
 
-/** The total of S goes with the contributions, so that tab needs it even with no data. */
-export function needsMeasuredCurves(
-  tab: ChartTab,
-  mode: FitModeDescription | undefined,
-): boolean {
-  return tab === "bands" && derivedKind(tab, mode) !== null;
-}
-
 function scaled(
   values: readonly (number | null)[],
   factor: number,
@@ -248,6 +237,8 @@ export type EnergyDisplay = ModelsResponse["energy_display"];
 export const ENERGY_IN_K: EnergyDisplay = { unit: "K", per_kelvin: 1 };
 
 type ViewState = Pick<SessionState, "data" | "interpolation"> & {
+  /** False when no temperature range is set, so that no curve is requested. */
+  temperatureRangeSet?: boolean;
   bandGapK?: number | undefined;
   bandConfiguration?: SessionState["selection"]["bandConfiguration"];
   parameterization?: SessionState["selection"]["parameterization"];
@@ -294,14 +285,23 @@ function quantityView(
   const data = state.data[quantity];
   const entry = data?.measurement;
   const inMode = mode?.quantities.includes(quantity) === true;
+  if (entry === undefined && mode === undefined) {
+    // The descriptions are still loading, or failed: no reason to say the mode lacks it.
+    return { ...NO_CHART, ...base, empty: text.modelLoading };
+  }
   if (
     entry === undefined &&
-    (!inMode || measured?.curves[curve] === undefined)
+    inMode &&
+    (mode?.disabled === true || state.temperatureRangeSet === false)
   ) {
+    // No request goes out, so nothing else would explain the empty chart.
+    return { ...NO_CHART, ...base, empty: text.noModelCurve };
+  }
+  if (entry === undefined && !inMode) {
     return {
       ...NO_CHART,
       ...base,
-      empty: { title: words.noDataTitle, text: words.noDataText },
+      empty: { title: text.notInThisMode.title, text: words.notInMode },
     };
   }
   const interpolated = state.interpolation.values[quantity];

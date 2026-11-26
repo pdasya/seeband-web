@@ -104,6 +104,9 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
           interpolation,
           bandGapK,
           energy,
+          temperatureRangeSet:
+            selection.minTemperatureK !== null &&
+            selection.maxTemperatureK !== null,
           ...(selection.parameterization !== undefined &&
           selection.model === "dpb"
             ? {
@@ -123,6 +126,8 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
       interpolation,
       bandGapK,
       energy,
+      selection.minTemperatureK,
+      selection.maxTemperatureK,
       measuredCurves,
       derived.result,
       diagramResult,
@@ -165,6 +170,7 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
     ? null
     : Math.min(...drawnFrom.map(({ changedAtMs }) => changedAtMs ?? 0));
 
+  // The hook keeps only the RMSE of the measurements the current request sends.
   const rmse = isQuantityTab(tab) ? measured.result?.rmse?.[tab] : undefined;
   // Shown as its field shows it, to the same step.
   const gap =
