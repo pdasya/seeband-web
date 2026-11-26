@@ -266,3 +266,17 @@ def test_the_hall_mass_comes_from_the_hall_mode_whatever_the_order():
     for mode in explicit_dpb_description().fit_modes:
         mass = next(p for p in mode.parameters if p.name == "m1")
         assert mass.value_range == hall.value_range, mode.id
+
+
+@pytest.mark.parametrize("uses_fermi_energy", [False, True])
+def test_explicit_controls_start_where_curves_exist(uses_fermi_energy):
+    """No explicit curve has a zero amplitude or mass ratio, so no slider offers one."""
+    for mode in explicit_dpb_description(uses_fermi_energy).fit_modes:
+        for p in mode.parameters:
+            if p.name in ("A", "F"):
+                assert p.value_range.minimum == p.value_range.step > 0, (mode.id, p.name)
+                # The fit keeps 0, where it profiles the amplitude before its first prediction.
+                assert p.fit_bounds is not None and p.fit_bounds.lower == 0
+            if p.name == "mass_ratio":
+                assert p.value_range.minimum > 0
+                assert p.fit_bounds is not None and p.fit_bounds.lower > 0

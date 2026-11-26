@@ -222,7 +222,20 @@ def explicit_dpb_description(fermi_energy: bool = False) -> ModelDescription:
                         name="mass_ratio",
                         meaning="Single-valley mass magnitude ratio m₂/|m₁|",
                         value_range=ValueRange(1, 10000, 1, 100),
-                        fit_bounds=Bounds(0, 100),
+                        # m₂ divides the band-2 weight, so the fit starts at the slider's minimum.
+                        fit_bounds=Bounds(0.01, 100),
+                    )
+                )
+            elif p.name in ("A", "F"):
+                # Explicit curves need a positive amplitude: zero conductivity has no finite
+                # resistivity, so the slider starts at its first positive step. The fit bounds keep
+                # 0, where the fit profiles the amplitude before its first prediction.
+                parameters.append(
+                    replace(
+                        p,
+                        value_range=replace(
+                            p.value_range, minimum=max(p.value_range.minimum, p.value_range.step)
+                        ),
                     )
                 )
             elif p.name == "band_gap":
