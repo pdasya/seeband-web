@@ -805,3 +805,31 @@ describe("ρ from a σ file", () => {
     expect(view.note).toMatch(/^Points are the loaded σ data in the fit range/);
   });
 });
+
+test("a current response draws enabled quantities even when only another quantity has measurements", () => {
+  const view = chartTabView(
+    "seebeck",
+    mode("dpb_s_rho"),
+    loaded("resistivity"),
+    {
+      temperature_k: [100, 200, 300],
+      curves: { seebeck_v_per_k: [1e-5, null, 3e-5] },
+      known_issues: [],
+      rmse: {},
+      issues: [
+        {
+          scope: "curve",
+          quantity: "seebeck_v_per_k",
+          temperature_k: [200],
+          code: "non_finite_result",
+        },
+      ],
+    },
+    null,
+  );
+  expect(view.empty).toBeNull();
+  expect(view.measurements).toBeNull();
+  expect(view.curves[0]?.values).toEqual([10, null, 30]);
+  expect(view.note).toContain("unavailable at 200 K");
+  expect(view.note).toContain("non-finite value");
+});

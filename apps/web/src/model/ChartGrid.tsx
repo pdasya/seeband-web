@@ -1,3 +1,4 @@
+import { rmseIssueText } from "@/model/calcIssues";
 import { useQuery } from "@tanstack/react-query";
 import { AlertCircleIcon } from "lucide-react";
 import { useId, useMemo } from "react";
@@ -118,7 +119,9 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
   }, [minK, maxK]);
 
   // Only what this chart draws. An RMSE has its own note, and other curves end with their chart.
-  const usesMeasured = drawsMeasuredCurves(tab, mode, data);
+  const usesMeasured =
+    drawsMeasuredCurves(tab, mode, data) ||
+    (isQuantityTab(tab) && view.curves.length > 0);
   const onTab = tab === "band_diagram" ? diagram : derived;
   // Each request the chart draws from says when it fails, so one failure hides no other.
   const failures = [
@@ -149,12 +152,17 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
   // Shown as its field shows it, to the same step.
   const gap =
     tab === "band_diagram" ? band2EdgeShown(mode, parameters) : undefined;
+  const rmseIssue = isQuantityTab(tab)
+    ? rmseIssueText(measured.result, tab)
+    : null;
   const metric =
-    rmse !== undefined
-      ? `${STRINGS.fit.rmse} ${rmseText(rmse)}`
-      : gap !== undefined
-        ? text.bandGapMetric(formatNumber(gap), energy.unit)
-        : "";
+    rmseIssue !== null
+      ? rmseIssue
+      : rmse !== undefined
+        ? `${STRINGS.fit.rmse} ${rmseText(rmse)}`
+        : gap !== undefined
+          ? text.bandGapMetric(formatNumber(gap), energy.unit)
+          : "";
 
   return (
     <section
@@ -189,11 +197,16 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
         <div className="flex items-center gap-2 text-xs whitespace-nowrap text-muted-foreground">
           {/* In the head, so a chart keeps its height while it waits. */}
           <span role="status">{busy ? text.updating : ""}</span>
-          <span className="font-mono">
+          <span className="font-mono whitespace-normal">
             <Subscripted text={metric} />
           </span>
         </div>
       </div>
+      {drawnFrom.some(({ stale }) => stale === true) && (
+        <p className="m-0 text-xs text-muted-foreground">
+          {STRINGS.calculation.previous}
+        </p>
+      )}
       {failures.map((failure) => (
         <Alert key={failure} variant="destructive">
           <AlertCircleIcon aria-hidden="true" />

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- P27 (#257): Fit and Results show the finite points from a partial calculation.
+  Curve gaps and unavailable RMSE values identify the affected quantity,
+  temperatures and reason.
+
 - U8 (#277): every page of the site and the app has the same favicon, as
   SVG, ICO and an Apple touch icon, drawn from the header's logo by
   `pnpm --filter @seeband/site icons`. The logo and the name in the header

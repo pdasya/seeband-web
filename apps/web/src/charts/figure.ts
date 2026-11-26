@@ -197,19 +197,34 @@ export function buildFigure(
   const { measurements, fitRange } = input;
   const maxK = axisMaxK(input);
 
-  const lines: Data[] = input.curves.map((curve, index) => ({
-    type: "scatter",
-    mode: "lines",
-    name: plotlySubscripts(curve.label),
-    x: [...curve.temperatureK],
-    y: [...curve.values],
-    connectgaps: false,
-    line: {
-      color: theme.curves[curveColor(curve, index)],
-      width: 2,
-      dash: curve.dashed === true ? "dash" : "solid",
-    },
-  }));
+  const lines: Data[] = input.curves.map((curve, index) => {
+    // A line cannot show a finite point with no finite neighbour.
+    const markerSizes = curve.values.map((value, point) =>
+      value !== null &&
+      Number.isFinite(value) &&
+      (point === 0 || curve.values[point - 1] == null) &&
+      (point === curve.values.length - 1 || curve.values[point + 1] == null)
+        ? 6
+        : 0,
+    );
+    return {
+      type: "scatter",
+      mode: markerSizes.some((size) => size > 0) ? "lines+markers" : "lines",
+      name: plotlySubscripts(curve.label),
+      x: [...curve.temperatureK],
+      y: [...curve.values],
+      connectgaps: false,
+      marker: {
+        color: theme.curves[curveColor(curve, index)],
+        size: markerSizes,
+      },
+      line: {
+        color: theme.curves[curveColor(curve, index)],
+        width: 2,
+        dash: curve.dashed === true ? "dash" : "solid",
+      },
+    };
+  });
   const points: Data[] =
     measurements === null
       ? []

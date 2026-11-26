@@ -1,3 +1,4 @@
+import { issueReason, issueTemperatures } from "@/model/calcIssues";
 import type {
   BandDiagramResponse,
   CalcResponse,
@@ -290,7 +291,11 @@ function quantityView(
   const base = { yAxisTitle: axis, description: words.description };
   const data = state.data[quantity];
   const entry = data?.measurement;
-  if (entry === undefined) {
+  const inMode = mode?.quantities.includes(quantity) === true;
+  if (
+    entry === undefined &&
+    (!inMode || measured?.curves[curve] === undefined)
+  ) {
     return {
       ...NO_CHART,
       ...base,
@@ -298,25 +303,27 @@ function quantityView(
     };
   }
   const interpolated = state.interpolation.values[quantity];
-  const inMode = mode?.quantities.includes(quantity) === true;
   // ρ from a σ file is 1/σ, which the chart names, as its points are not what was loaded.
-  const fromSigma = entry.loaded_as === "conductivity";
+  const fromSigma = entry?.loaded_as === "conductivity";
   return {
     ...NO_CHART,
     ...base,
     empty: null,
     curves: inMode ? curveOf(measured, curve, factor, text.model) : [],
-    measurements: {
-      // Demo data say what they are wherever they appear.
-      label:
-        data?.source.kind === "demo"
-          ? text.measurementsDemo
-          : fromSigma
-            ? text.measurementsFromSigma
-            : text.measurements,
-      temperatureK: entry.temperature_k,
-      values: scaled(entry.values, factor),
-    },
+    measurements:
+      entry === undefined
+        ? null
+        : {
+            // Demo data say what they are wherever they appear.
+            label:
+              data?.source.kind === "demo"
+                ? text.measurementsDemo
+                : fromSigma
+                  ? text.measurementsFromSigma
+                  : text.measurements,
+            temperatureK: entry.temperature_k,
+            values: scaled(entry.values, factor),
+          },
     interpolated:
       interpolated === undefined
         ? null
@@ -645,7 +652,7 @@ function bandDiagramView(
   };
 }
 
-export function chartTabView(
+function baseChartTabView(
   tab: ChartTab,
   mode: FitModeDescription | undefined,
   state: ViewState,
@@ -678,4 +685,33 @@ export function chartTabView(
       throw new Error(`No view for the tab ${String(unknown)}`);
     }
   }
+}
+
+/** Availability follows the same selected curves on every chart consumer. */
+export function chartTabView(
+  ...[tab, mode, state, measured, derived, diagram]: Parameters<
+    typeof baseChartTabView
+  >
+): ChartTabView {
+  const view = baseChartTabView(tab, mode, state, measured, derived, diagram);
+  if (view.empty !== null) return view;
+  const notes = [measured, derived].flatMap((result) =>
+    (result?.issues ?? []).flatMap((issue) => {
+      const curve = view.curves.find(({ id }) => id === issue.quantity);
+      return issue.scope !== "curve" || curve === undefined
+        ? []
+        : [
+            `${STRINGS.calculation.curveUnavailable(
+              curve.label === text.model ? view.yAxisTitle : curve.label,
+              issueTemperatures(issue.temperature_k),
+            )} ${issueReason(issue.code)}`,
+          ];
+    }),
+  );
+  return notes.length === 0
+    ? view
+    : {
+        ...view,
+        note: [view.note, ...notes].filter((note) => note !== null).join(" "),
+      };
 }

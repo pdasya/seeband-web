@@ -5,6 +5,22 @@
  */
 export const STRINGS = {
   appName: "SeeBand",
+  calculation: {
+    affectedRange: (first: string, last: string, count: number) =>
+      `${first}–${last} (${count} affected temperatures)`,
+    previous:
+      "Showing the previous calculation while the current values are unavailable.",
+    reasons: {
+      zero_measured_value:
+        "A measured value is zero, so the percentage RMSE is undefined.",
+      non_finite_result: "The calculation returned a non-finite value.",
+      calculation_failed: "The calculation failed for these values.",
+    },
+    curveUnavailable: (quantity: string, temperatures: string) =>
+      `${quantity}: model curve unavailable at ${temperatures} K. Gaps are left in the curve.`,
+    rmseUnavailable: (quantity: string, temperatures: string) =>
+      `RMSE, ${quantity}: unavailable at ${temperatures} K. The model curve has its own availability.`,
+  },
   // The link that the header's logo and name make, for a screen reader.
   appHomeLabel: "SeeBand, overview",
   appStage: "web · prototype",

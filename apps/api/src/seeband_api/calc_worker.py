@@ -7,11 +7,11 @@ import warnings
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-import numpy as np
-from seeband_core.fit_quality import Rmse, curve_rmse
+from seeband_core.fit_quality import Rmse
 from seeband_core.math_module import NoFiniteChemicalPotentialError
 from seeband_core.model_catalog import registry
 from seeband_core.model_interface import CurveRequest, CurveResult, Measurement, Quantity
+from seeband_core.partial_calculation import CalculationIssue, partial_curve, partial_rmse
 
 
 class CalculationFailed(Exception):
@@ -26,6 +26,7 @@ class CalculationFailed(Exception):
 class CalcOutcome:
     curve: CurveResult
     rmse: Mapping[Quantity, Rmse]
+    issues: tuple[CalculationIssue, ...] = ()
 
 
 def _exit_when_parent_exits() -> None:
@@ -61,26 +62,10 @@ def calculate(
     """
     model = registry.get(model_id)
     try:
-        curve = model.calculate(request)
-        # A negative m1 gives complex values, whose real part would look like a plausible result.
-        if any(np.iscomplexobj(values) for values in curve.curves.values()):
-            raise ValueError("The curve has complex values")
-        rmse = (
-            curve_rmse(
-                model,
-                request.fit_mode,
-                request.parameters,
-                measurements,
-                request.scattering,
-                request.band_1_degeneracy,
-                request.band_2_degeneracy,
-                rmse_points,
-            )
-            if measurements
-            else {}
-        )
+        curve, curve_issues = partial_curve(model, request)
+        rmse, rmse_issues = partial_rmse(model, request, measurements, rmse_points)
     except NoFiniteChemicalPotentialError as error:
         raise CalculationFailed(type(error).__name__, error.code) from error
     except (ArithmeticError, ValueError) as error:
         raise CalculationFailed(type(error).__name__) from error
-    return CalcOutcome(curve, rmse)
+    return CalcOutcome(curve, rmse, (*curve_issues, *rmse_issues))

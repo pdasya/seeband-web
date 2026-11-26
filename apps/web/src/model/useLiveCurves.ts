@@ -34,6 +34,7 @@ export interface LiveCalc<Result = CalcResponse> {
   /** The latest answer, kept through later requests and errors, so that the chart stays. */
   result: Result | null;
   busy: boolean;
+  stale?: boolean;
   error: ApiError | null;
   /**
    * When the values `result` answers were set, on `performance.now()`'s clock, for timing how long
@@ -154,6 +155,10 @@ function useLatest<Result>(
   return {
     result: answers.resultScope === scope ? answers.result : null,
     busy: pending && longPending,
+    stale:
+      answers.resultScope === scope &&
+      answers.result !== null &&
+      (pending || answers.errorScope === scope),
     error: answers.errorScope === scope ? answers.error : null,
     changedAtMs: answers.resultScope === scope ? answers.changedAtMs : null,
   };

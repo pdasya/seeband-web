@@ -107,7 +107,7 @@ describe("measurements", () => {
     );
 
     expect(data).toMatchObject([
-      { mode: "lines" },
+      { mode: "lines+markers" },
       {
         mode: "markers",
         marker: { line: { color: ["in", "in", "in", "in"] } },
@@ -357,5 +357,28 @@ describe("a wavevector axis", () => {
   test("leaves a temperature axis as it was", () => {
     expect(xaxis({})).toMatchObject({ range: [0, 800], dtick: 100 });
     expect(xaxis({})).not.toHaveProperty("showticklabels");
+  });
+});
+
+test("isolated finite curve points remain visible without bridging null gaps", () => {
+  const { data } = buildFigure(
+    {
+      ...INPUT,
+      curves: [
+        {
+          id: "partial",
+          label: "Partial",
+          temperatureK: [100, 200, 300, 400, 500, 600],
+          values: [1, null, 3, 4, null, 6],
+        },
+      ],
+    },
+    THEME,
+  );
+  expect(data[0]).toMatchObject({
+    mode: "lines+markers",
+    connectgaps: false,
+    y: [1, null, 3, 4, null, 6],
+    marker: { size: [6, 0, 0, 0, 0, 6] },
   });
 });

@@ -159,7 +159,8 @@ test("ρ and RH draw their own curves, units and points", async ({ page }) => {
   await expect(legend(page, "Model")).toBeVisible();
 
   await show(page, "Seebeck S(T)");
-  await expect(page.getByText("No data for this quantity")).toBeVisible();
+  await expect(legend(page, "Model")).toBeVisible();
+  await expect(legend(page, "Measurements")).toHaveCount(0);
 });
 
 test("RH has a curve only in the mode with it", async ({ page }) => {
@@ -400,9 +401,9 @@ test("a failure of S does not show on μ, and the RMSE says it is old", async ({
   await page.getByRole("slider", { name: "Eg" }).press("ArrowRight");
 
   await expect(page.getByText("not from the current values")).toBeVisible();
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(chart(page).getByRole("alert")).toHaveCount(0);
   await show(page, "Seebeck S(T)");
-  await expect(page.getByRole("alert")).toContainText("no result");
+  await expect(chart(page).getByRole("alert")).toContainText("no result");
 });
 
 test("known errors of a tab's curves are named while it is open", async ({

@@ -449,7 +449,7 @@ def test_parameters_with_no_result_answer_a_clear_error(client: TestClient) -> N
     assert _details(response) == [(["body", "parameters"], "chemical_potential_zero_mass")]
 
 
-def test_uncertified_chemical_potential_keeps_the_generic_calculation_error(
+def test_uncertified_chemical_potential_retains_certified_temperature_points(
     client: TestClient,
 ) -> None:
     response = client.post(
@@ -465,9 +465,25 @@ def test_uncertified_chemical_potential_keeps_the_generic_calculation_error(
         ),
     )
 
-    assert response.status_code == 422
-    assert response.json()["code"] == "calculation_failed"
-    assert response.json()["details"] == []
+    assert response.status_code == 200
+    answer = response.json()
+    expected = registry.get("dpb").calculate(
+        CurveRequest(
+            "dpb_s",
+            {"m_eff": 1.01, "band_gap": 1000.0, "fermi_energy": 0.0},
+            0.03,
+            0.03,
+            1,
+        )
+    )
+    assert answer["curves"]["seebeck_v_per_k"][:2] == [None, None]
+    assert answer["curves"]["seebeck_v_per_k"][2] == expected.curves["seebeck_v_per_k"][0]
+    assert len(answer["issues"]) == 1
+    issue = answer["issues"][0]
+    assert issue["scope"] == "curve"
+    assert issue["quantity"] == "seebeck_v_per_k"
+    assert issue["code"] == "calculation_failed"
+    assert issue["temperature_k"] == pytest.approx([0.01, 0.02])
 
 
 def test_calc_openapi_adds_only_a_route_specific_chemical_potential_example() -> None:
@@ -628,10 +644,6 @@ def test_spb_hall_mode_returns_finite_hall_curves(client: TestClient) -> None:
             {"measurements": {"hall": {"temperature_k": [300.0], "values": [1.0]}}},
             [(["body", "measurements", "hall"], "quantity_not_in_mode")],
         ),
-        (
-            {"measurements": {"resistivity": {"temperature_k": [1.0, 2.0], "values": [1.0, 0.0]}}},
-            [(["body", "measurements", "resistivity", "values", 1], "zero_measured_value")],
-        ),
     ],
 )
 def test_invalid_calculations_name_the_problem(
@@ -644,7 +656,7 @@ def test_invalid_calculations_name_the_problem(
     assert _details(response) == expected
 
 
-def test_zero_hall_value_is_refused(client: TestClient) -> None:
+def test_zero_hall_value_only_disables_its_rmse(client: TestClient) -> None:
     fit_mode = registry.get("dpb").describe().fit_mode("dpb_s_rho_rh")
     measurements = {"hall": {"temperature_k": [150.0], "values": [0.0]}}
 
@@ -655,8 +667,16 @@ def test_zero_hall_value_is_refused(client: TestClient) -> None:
         ),
     )
 
-    location = ["body", "measurements", "hall", "values", 0]
-    assert _details(response) == [(location, "zero_measured_value")]
+    assert response.status_code == 200
+    assert response.json()["rmse"]["hall"] == {"value": None, "unit": "%"}
+    assert response.json()["issues"] == [
+        {
+            "scope": "rmse",
+            "quantity": "hall",
+            "temperature_k": [150.0],
+            "code": "zero_measured_value",
+        }
+    ]
 
 
 def test_degeneracy_is_refused_on_a_mode_without_one(client: TestClient) -> None:

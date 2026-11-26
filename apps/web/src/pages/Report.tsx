@@ -1,3 +1,4 @@
+import { rmseIssueText } from "@/model/calcIssues";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
@@ -191,10 +192,11 @@ export function useReport({
   const ready =
     mode !== undefined &&
     measured.result !== null &&
+    measured.stale !== true &&
     DERIVED_KINDS_ASKED.every(
       (kind) =>
         !mode.curves.some((curve) => curve.kind === kind && curve.available) ||
-        derived[kind].result !== null,
+        (derived[kind].result !== null && derived[kind].stale !== true),
     );
 
   return {
@@ -242,7 +244,13 @@ export function ReportHeader({
   const run =
     mode === undefined
       ? []
-      : runLines(session, mode, curve?.rmse ?? null, hasFittedValues(fit));
+      : [
+          ...runLines(session, mode, curve?.rmse ?? null, hasFittedValues(fit)),
+          ...mode.quantities.flatMap((quantity) => {
+            const issue = rmseIssueText(curve, quantity);
+            return issue === null ? [] : [issue];
+          }),
+        ];
   return (
     <div className="hidden print:block">
       {/* Not a heading, as the page's own h1 follows. */}

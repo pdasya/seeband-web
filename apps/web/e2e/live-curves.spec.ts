@@ -774,3 +774,66 @@ test("an RMSE that is not finite says so", async ({ page }) => {
 
   await expect(page.getByText("not finite", { exact: true })).toBeVisible();
 });
+
+test("current partial curves replace an earlier snapshot and keep isolated points visible", async ({
+  page,
+}) => {
+  await open(page);
+  const bodies = await collect(page, (route, index) =>
+    route.fulfill({
+      json:
+        index === 0
+          ? withRmse(108.4)
+          : {
+              ...CALC,
+              temperature_k: [100, 200, 300, 400, 500],
+              curves: { seebeck_v_per_k: [1e-5, null, 3e-5, 4e-5, null] },
+              rmse: {},
+              issues: [
+                {
+                  scope: "curve",
+                  quantity: "seebeck_v_per_k",
+                  temperature_k: [200, 500],
+                  code: "non_finite_result",
+                },
+                {
+                  scope: "rmse",
+                  quantity: "seebeck",
+                  temperature_k: [100],
+                  code: "non_finite_result",
+                },
+              ],
+            },
+    }),
+  );
+  await load(page);
+  await expect(page.getByText("108,4 µV/K", { exact: true })).toBeVisible();
+  await eg(page).press("ArrowRight");
+  await expect.poll(() => bodies.length).toBe(2);
+  await expect(
+    chart(page).getByText(/model curve unavailable at 200, 500 K/),
+  ).toBeVisible();
+  await expect(
+    chart(page).getByText(/RMSE, S: unavailable at 100 K/),
+  ).toBeVisible();
+  await expect(page.getByText("108,4 µV/K", { exact: true })).toHaveCount(0);
+  // Two adjacent finite values make a line; the isolated value has its own visible marker.
+  const trace = chart(page).locator(".scatterlayer .trace").first();
+  await expect(trace.locator("path.point")).toHaveCount(3);
+  await expect(trace.locator("path.point").first()).toBeVisible();
+  expect(
+    await trace
+      .locator("path.point")
+      .evaluateAll((points) =>
+        points.map((point) => point.getBoundingClientRect().width > 0),
+      ),
+  ).toEqual([true, false, false]);
+  // Each separate segment has at most one line command; no line crosses a null.
+  const segments = await trace
+    .locator("path.js-line")
+    .evaluateAll((paths) => paths.map((path) => path.getAttribute("d") ?? ""));
+  expect(segments.filter((segment) => segment.includes("L"))).toHaveLength(1);
+  expect(
+    segments.every((segment) => (segment.match(/L/g) ?? []).length <= 1),
+  ).toBe(true);
+});
