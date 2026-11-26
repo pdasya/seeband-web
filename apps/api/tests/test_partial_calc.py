@@ -370,3 +370,36 @@ def test_invalid_measurements_refuse_the_request_rather_than_its_rmse():
     data = {"seebeck": Measurement(np.array([0.0, 200.0]), np.array([1e-4, 1e-4]))}
     with pytest.raises(CalculationFailed):
         calculate("dpb", request(), data, 50)
+
+
+def test_required_parameters_are_those_the_api_requires():
+    from seeband_api.calc_worker import CalculationFailed
+    from seeband_core.model_descriptions import explicit_dpb_description
+    from seeband_core.model_interface import ExplicitBands
+
+    # The S-only ionized B of explicit DPB comes from an override and defaults to 1.
+    mode = explicit_dpb_description().fit_mode("dpb_s")
+    parameters = {k: v for k, v in default_start(mode).items() if k != "B"}
+    bands = ExplicitBands("vb_cb", 2e24)
+    without = calculate(
+        "dpb",
+        CurveRequest(mode.id, parameters, 100, 300, 3, "ionized", explicit_bands=bands),
+        {},
+        50,
+    )
+    with_b = calculate(
+        "dpb",
+        CurveRequest(
+            mode.id, parameters | {"B": 1.0}, 100, 300, 3, "ionized", explicit_bands=bands
+        ),
+        {},
+        50,
+    )
+    np.testing.assert_array_equal(
+        without.curve.curves["seebeck_v_per_k"], with_b.curve.curves["seebeck_v_per_k"]
+    )
+    # Mixed scattering still needs its crossover ratios.
+    rho = registry.get("dpb").describe().fit_mode("dpb_s_rho")
+    mixed = {k: v for k, v in default_start(rho).items() if k != "C"}
+    with pytest.raises(CalculationFailed):
+        calculate("dpb", CurveRequest(rho.id, mixed, 100, 300, 3, "acPhDis"), {}, 50)
