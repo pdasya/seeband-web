@@ -1,8 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
 import { CheckIcon, ChevronDownIcon, TriangleAlertIcon } from "lucide-react";
 import { useEffect, useRef, useState, type RefObject } from "react";
 
-import { modelsQuery } from "@/api/queries";
+import { useModels } from "@/api/queries";
 import { Button } from "@/components/ui/button";
 import { DataPanel } from "@/data/DataPanel";
 import { sessionMismatches } from "@/data/temperatureRanges";
@@ -25,7 +24,7 @@ const { data: text } = STRINGS;
  * and open again when it lacks some. A page opened with complete data starts folded.
  */
 export function DataBar() {
-  const { data: models } = useQuery(modelsQuery);
+  const { data: models } = useModels();
   const data = useSessionStore((state) => state.data);
   const selection = useSessionStore((state) => state.selection);
   const reading = useSessionStore(readsFiles);

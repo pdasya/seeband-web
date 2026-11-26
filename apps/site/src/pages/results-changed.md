@@ -6,6 +6,20 @@ description: Corrections that change SeeBand Web results compared with the deskt
 
 # Results that changed
 
+Core `0.4.0` supports any pair of valence or conduction bands with a
+positive mass ratio. In a new sample, choose the two band types and set or fit the
+zero-temperature Fermi energy. The model calculates the electron excess at
+each trial. Saved fixed-density sessions retain their specified excess
+when a mass or band offset changes. Converting an older signed-mass session
+uses its original Fermi energy and the confirmed mass and valley counts.
+[Conventions and model](/conventions/).
+
+The P18 development version also corrects a band-edge integration error in
+acoustic and alloy-disorder Hall curves. For the CB+CB disorder reference
+case at 800 K, the earlier P18 revision gave −7.038047602 × 10⁻⁶ m³/C.
+The independent two-band reference gives −7.038039356 × 10⁻⁶ m³/C.
+The regression test requires agreement within a relative error of 10⁻⁷.
+
 Core `0.3.0` replaces the public mixed acPhDis option with ionized impurity
 power-law transport (lambda=2) for SPB and DPB. S, rho, Hall and electronic
 thermal conductivity use the same approximation. Historical mixed results

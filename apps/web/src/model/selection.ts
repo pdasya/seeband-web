@@ -60,3 +60,13 @@ export function settingsFor(
         : (wanted?.band2Degeneracy ?? mode.degeneracy.band_2_default),
   };
 }
+
+/** Only opt in when the server describes the explicit public parameters. */
+export function offersExplicitDpb(model: ModelDescription): boolean {
+  return (
+    model.id === "dpb" &&
+    model.fit_modes.some((mode) =>
+      mode.parameters.some((parameter) => parameter.name === "mass_ratio"),
+    )
+  );
+}

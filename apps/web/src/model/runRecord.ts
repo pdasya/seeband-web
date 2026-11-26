@@ -1,6 +1,7 @@
 import type { CalcResponse } from "@/api/client";
 import type { Role } from "@/data/columnChoice";
 import { unitDoubtMessage } from "@/data/units";
+import { heldForFit } from "@/model/explicitDpb";
 import { numberText } from "@/model/exportFiles";
 import {
   coreToDisplay,
@@ -27,7 +28,8 @@ export type RunState = Pick<
   | "customBounds"
   | "held"
   | "parameters"
->;
+> &
+  Partial<Pick<SessionState, "runs" | "restored">>;
 const text = exportText.run;
 
 /**
@@ -129,7 +131,11 @@ function interpolationLines(
 
 /** The values in use, which the file's fitted curve and parameters are of. */
 function valueLines(state: RunState, mode: FitModeDescription): string[] {
-  const values = parameterValues(mode, state.parameters[mode.id]);
+  const values = parameterValues(
+    mode,
+    state.parameters[mode.id],
+    state.selection,
+  );
   const listed = visibleParameters(mode, state.selection.scattering)
     .map((parameter) => {
       const value = values[parameter.name] ?? parameter.core_range.default;
@@ -154,7 +160,7 @@ function startLines(state: RunState, mode: FitModeDescription): string[] {
       : state.fitStartNumerical
         ? text.fromNumerical
         : text.fromScreen;
-  const values = parameterValues(mode, start);
+  const values = parameterValues(mode, start, state.selection);
   const listed = visibleParameters(mode, state.selection.scattering)
     .map((parameter) => {
       const value = values[parameter.name] ?? parameter.core_range.default;
@@ -164,12 +170,46 @@ function startLines(state: RunState, mode: FitModeDescription): string[] {
   return [text.start(source, listed)];
 }
 
+/** Older results can omit held; prefer the submitted request to later screen settings. */
+export function recordedHolds(
+  state: RunState,
+  modeId: string,
+): readonly string[] {
+  if (state.fit.status === "done") {
+    const result = state.fit.result;
+    if (result.held !== undefined) return result.held;
+    if (
+      state.restored?.result === result &&
+      state.restored.request?.held !== undefined
+    ) {
+      return state.restored.request.held;
+    }
+    const run = state.runs?.find((item) => item.result === result);
+    if (run) return heldForFit(run.selection, run.held);
+  }
+  return heldForFit(state.selection, state.held[modeId] ?? []);
+}
+
 /** The bounds of each parameter a fit finds, which ones the user set, and those held. */
 function boundLines(state: RunState, mode: FitModeDescription): string[] {
-  const custom = state.customBounds[mode.id] ?? {};
-  const held = state.held[mode.id] ?? [];
+  const result = state.fit.status === "done" ? state.fit.result : null;
+  const historical =
+    result === null
+      ? undefined
+      : state.runs?.find((run) => run.result === result);
+  const restored =
+    result !== null && state.restored?.result === result
+      ? state.restored.request
+      : null;
+  const custom =
+    historical?.customBounds ??
+    (restored === null ? state.customBounds[mode.id] : restored.bounds) ??
+    {};
   const fitted = visibleParameters(mode, state.selection.scattering).filter(
     ({ role }) => role === "fitted",
+  );
+  const held = recordedHolds(state, mode.id).filter((name) =>
+    fitted.some((parameter) => parameter.name === name),
   );
   const bounds = fitted
     .filter(({ name }) => !held.includes(name))
@@ -184,7 +224,10 @@ function boundLines(state: RunState, mode: FitModeDescription): string[] {
           parameterSymbol(parameter.name),
           valueText(parameter, range.lower),
           valueText(parameter, range.upper),
-          chosen !== undefined,
+          chosen !== undefined &&
+            (restored === null ||
+              chosen.lower !== parameter.fit_bounds?.lower ||
+              chosen.upper !== parameter.fit_bounds?.upper),
         ),
       ];
     });

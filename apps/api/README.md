@@ -379,3 +379,51 @@ Ionized fits require `verified-sequential-v2`; legacy requests are rejected.
 it, while ionized DPB requests return `unsupported` with reason
 `scattering_not_supported` without running the acoustic-trained neural net.
 See [the physical contract](../../packages/seeband_core/docs/ionized-impurities.md).
+
+### Explicit double parabolic bands (core 0.4.0)
+
+New explicit DPB sessions request `GET /api/models?parameterization=explicit_fermi_v1`.
+Send the same discriminator, the band configuration and both positive integer
+valley counts on calculation, fit and diagram requests.
+Include `fermi_energy` in the parameter vector, in kelvin from the first band
+edge at zero temperature. Fit it with researcher-selected bounds or hold it
+at its supplied value. The model computes the signed electron excess from
+the trial energy and band parameters and conserves it across temperature.
+The band populations determine the sign, including exact compensation.
+Historical requests that explicitly supply `carrier_type` retain their sign constraint. The API rejects a simultaneous fixed density input.
+
+The band diagram draws a supplied Fermi energy and both dispersions even
+when that energy is outside the transport domain. In VB+VB, transport
+requires `fermi_energy < max(0, band_offset_k)`; CB+CB requires
+`fermi_energy > min(0, band_offset_k)`. For calculations and fits, HTTP 422
+includes the detail code `fermi_energy_unoccupied_bands` for a same-type
+pair with zero carrier population, or `fermi_energy_carrier_mismatch` when
+the mixed-band excess conflicts with a supplied historical carrier type.
+
+`GET /api/dpb/parameter-domain` returns the admissible interval for one
+manual control (`fermi_energy`, `band_offset_k` or `mass_ratio`) at the
+current values of the other parameters. Energies use kelvin. A null endpoint
+is unbounded. The response distinguishes inclusive endpoints and empty intervals.
+In VB+CB the interval includes exact electron–hole compensation, including
+the whole gap when the bands are separated. With overlapping bands the
+compensation energy depends on the mass ratio and both valley multiplicities.
+A signed request can use this endpoint to inspect a one-parameter slice.
+The researcher chooses fit bounds independently.
+
+Request `GET /api/models?parameterization=explicit_density_v1` for the saved fixed-density
+parameter names and bounds. On calculation, fit and diagram requests send
+`model: "dpb"`, `parameterization: "explicit_density_v1"`, `band_configuration`
+(`vb_vb`, `vb_cb` or `cb_cb`), `net_electron_density_per_m3` and both positive integer
+`band_1_degeneracy` and `band_2_degeneracy`. Use `mass_ratio`, `band_offset_k`,
+`m1` and the mode's listed scattering parameters in the parameter vector.
+Fit requests supply bounds for each active free parameter. The explicit
+model uses verified sequential fitting with manual starts. Direct requests
+omitting the discriminator use the historical Fermi-energy parameterization.
+
+`POST /api/dpb/migrate` converts one legacy parameter vector. Supply
+`parameters`, the absolute `m1` and both multiplicities; the reply supplies
+the explicit vector, configuration and carrier excess. Old fit bounds must
+be chosen again in the new coordinates. The physical band diagram returns
+wavevector in nm⁻¹. For a supplied Fermi energy the diagram draws one Fermi
+line. A historical density-only intrinsic sample with a positive gap returns
+the two endpoints of its admissible zero-temperature interval.

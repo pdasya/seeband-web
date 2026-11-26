@@ -1,10 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
 import { AlertCircleIcon } from "lucide-react";
 import { useId, useMemo } from "react";
 
 import type { ApiError } from "@/api/errors";
+import { carrierValidationMessage } from "@/model/explicitDpb";
 import { NETWORK_ERROR } from "@/api/errors";
-import { modelsQuery } from "@/api/queries";
+import { useModels } from "@/api/queries";
 import { TransportChart } from "@/charts/TransportChart";
 import type { ChartFitRange } from "@/charts/figure";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -41,6 +41,8 @@ const NOTHING: LiveCalc = { result: null, busy: false, error: null };
 /** What a chart says of a failed curve, in our own words. */
 export function failureText(error: ApiError): string {
   switch (error.code) {
+    case "validation_error":
+      return carrierValidationMessage(error.details) ?? text.calcFailed;
     case "calculation_failed": {
       const messages: Record<string, string> = text.calculationDetails;
       const detail = error.details.find(({ code }) =>
@@ -66,7 +68,7 @@ export function failureText(error: ApiError): string {
 function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
   const { measured, diagram } = live;
   const labelId = useId();
-  const { data: models } = useQuery(modelsQuery);
+  const { data: models } = useModels();
   const energy = models?.energy_display ?? ENERGY_IN_K;
   const tab = useSessionStore((state) => state.chartPanels[index] ?? "seebeck");
   const setPanel = useSessionStore((state) => state.setChartPanel);
@@ -96,7 +98,19 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
       chartTabView(
         tab,
         mode,
-        { data, interpolation, bandGapK, energy },
+        {
+          data,
+          interpolation,
+          bandGapK,
+          energy,
+          ...(selection.parameterization !== undefined &&
+          selection.model === "dpb"
+            ? {
+                bandConfiguration: selection.bandConfiguration,
+                parameterization: selection.parameterization,
+              }
+            : {}),
+        },
         measuredCurves,
         derived.result,
         diagramResult,
@@ -111,6 +125,9 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
       measuredCurves,
       derived.result,
       diagramResult,
+      selection.parameterization,
+      selection.model,
+      selection.bandConfiguration,
     ],
   );
   const fitRange = useMemo((): ChartFitRange | null => {

@@ -58,6 +58,17 @@ deploy/compose.yaml up --build`. The API image installs exactly `uv.lock`
   workers have started; the API's health check uses it. CI builds and
   starts the stack and checks it through Caddy.
 
+- Core `0.4.0` adds explicit VB+VB, VB+CB and CB+CB double parabolic bands
+  with carrier excess derived from a supplied or fitted Fermi energy. Band masses,
+  valley counts and the trial energy determine the conserved electron excess.
+  Saved fixed-density sessions keep their original parametrization. Historical
+  signed-mass requests retain their versioned behavior. See [P18](docs/superpowers/specs/2026-11-20-p18-explicit-dpb-bands-design.md).
+
+- P18: correct the band-edge quadrature for the acoustic and alloy-disorder
+  Hall moments in explicit DPB curves. The previous rule biased the magnitude
+  of the CB+CB disorder Hall coefficient by 1.17 parts per million at 800 K
+  in the reference case.
+
 - Results ZIP exports calculate one curve at a time and retry temporary
   capacity errors. This lets an archive finish while the Results page is
   still calculating its plots.

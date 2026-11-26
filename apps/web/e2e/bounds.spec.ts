@@ -642,7 +642,9 @@ test("with no editable bounds, there is no button", async ({ page }) => {
       }
     }
   }
-  await page.route("**/api/models", (route) => route.fulfill({ json: models }));
+  await page.route(/\/api\/models(?:\?.*)?$/, (route) =>
+    route.fulfill({ json: models }),
+  );
   await page.goto("/fit");
   await expect(page.getByRole("slider", { name: "EF" })).toBeVisible();
 
@@ -668,7 +670,9 @@ test("bounds convert to core units, where the scales of a parameter differ", asy
       }
     }
   }
-  await page.route("**/api/models", (route) => route.fulfill({ json: models }));
+  await page.route(/\/api\/models(?:\?.*)?$/, (route) =>
+    route.fulfill({ json: models }),
+  );
   await page.route("**/api/parse", (route) => {
     const { expected } = route.request().postDataJSON() as {
       expected: string;

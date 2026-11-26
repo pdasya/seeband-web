@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from seeband_core.model_interface import CurveRequest, Measurement, Model, Quantity
+from seeband_core.model_interface import CurveRequest, ExplicitBands, Measurement, Model, Quantity
 
 CURVE_NAMES: Mapping[Quantity, str] = {
     "seebeck": "seebeck_v_per_k",
@@ -55,6 +55,8 @@ def curve_rmse(
     band_1_degeneracy: float = 1.0,
     band_2_degeneracy: float = 1.0,
     points: int = RMSE_GRID_POINTS,
+    *,
+    explicit_bands: ExplicitBands | None = None,
 ) -> dict[Quantity, Rmse]:
     """Return the RMSE of a model against each measured quantity, for any parameters.
 
@@ -93,6 +95,8 @@ def curve_rmse(
                 quantities=(quantity,),
                 check_finite=False,
                 band_1_degeneracy=band_1_degeneracy if isinstance(model, DpbModel) else 1.0,
+                band_2_degeneracy=band_2_degeneracy,
+                explicit_bands=explicit_bands,
             )[quantity]
             # Percentage residuals are undefined at a measured zero. Verified
             # fit diagnostics supply absolute RMSE and safe relative L2 instead.

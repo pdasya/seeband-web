@@ -151,6 +151,16 @@ def _client(**settings: Any) -> TestClient:
     ("path", "setting", "body"),
     [
         ("/api/calc", "calc_per_minute", _CALC),
+        (
+            "/api/dpb/migrate",
+            "calc_per_minute",
+            {
+                "parameters": {"m_eff": 1.8, "band_gap": 600, "fermi_energy": 200},
+                "m1": 1.2,
+                "band_1_degeneracy": 2,
+                "band_2_degeneracy": 3,
+            },
+        ),
         ("/api/parse", "parse_per_minute", _PARSE),
         ("/api/guess", "guess_per_minute", _GUESS),
         ("/api/fit", "fit_per_minute", _FIT),
@@ -174,6 +184,7 @@ def test_every_route_that_takes_a_body_has_a_rate_limit() -> None:
     assert {path for path, operations in paths.items() if "post" in operations} == {
         "/api/calc",
         "/api/band-diagram",
+        "/api/dpb/migrate",
         "/api/parse",
         "/api/guess",
         "/api/fit",

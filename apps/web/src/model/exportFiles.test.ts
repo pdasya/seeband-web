@@ -703,3 +703,203 @@ test("historical stopped state without provenance remains unknown", () => {
     }),
   ).toContain("Fitting method: Unknown");
 });
+
+test("explicit parameter CSV carries typed density identity, and SPB exports omit DPB history", () => {
+  const base = modeOf("dpb_s_rho");
+  const explicitMode = {
+    ...base,
+    parameters: base.parameters
+      .filter((parameter) => parameter.name !== "fermi_energy")
+      .map((parameter) => ({
+        ...parameter,
+        name:
+          parameter.name === "m_eff"
+            ? "mass_ratio"
+            : parameter.name === "band_gap"
+              ? "band_offset_k"
+              : parameter.name,
+      })),
+  };
+  const selection = {
+    ...SELECTION,
+    parameterization: "explicit_density_v1" as const,
+    bandConfiguration: "cb_cb" as const,
+    netElectronDensityPerM3: 3e24,
+    legacySource: "historic DPB snapshot",
+  };
+  const csv = parametersCsv(
+    [],
+    explicitMode,
+    selection,
+    { mass_ratio: 2 },
+    { status: "idle" },
+  );
+  expect(csv).toContain(
+    "parameterization,parameterization,Representation,,explicit_density_v1,fixed",
+  );
+  expect(csv).toContain(
+    "band_configuration,band_configuration,Band configuration,,cb_cb,fixed",
+  );
+  expect(csv).toContain(
+    "net_electron_density_per_m3,n − p,Signed net electron density n − p,m^-3,3e+24,fixed",
+  );
+  expect(csv).toContain("mass_ratio,m₂/m₁");
+  expect(csv).toContain("band_1_degeneracy");
+  expect(
+    exportHeader({
+      ...CONTEXT,
+      selection: { ...selection, model: "spb" },
+    }).join("\n"),
+  ).not.toContain("historic DPB snapshot");
+});
+
+test("Fermi exports keep E_F without a carrier-sign constraint", () => {
+  const selection = {
+    ...SELECTION,
+    parameterization: "explicit_fermi_v1" as const,
+    bandConfiguration: "vb_cb" as const,
+  };
+  const csv = parametersCsv(
+    [],
+    modeOf("dpb_s_rho"),
+    selection,
+    { fermi_energy: -140 },
+    { status: "idle" },
+  );
+  expect(csv).toContain(
+    "parameterization,parameterization,Representation,,explicit_fermi_v1,fixed",
+  );
+  expect(csv).not.toContain("carrier_type");
+  expect(csv).toContain("fermi_energy,E_F");
+  expect(csv).not.toContain("net_electron_density_per_m3");
+  expect(exportHeader({ ...CONTEXT, selection }).join("\n")).toContain(
+    "Parameterization: explicit_fermi_v1; configuration: vb_cb",
+  );
+});
+
+test("Fermi parameter exports use the same virgin start as live curves", () => {
+  const selection = {
+    ...SELECTION,
+    parameterization: "explicit_fermi_v1" as const,
+    bandConfiguration: "vb_cb" as const,
+  };
+  const csv = parametersCsv([], modeOf("dpb_s_rho"), selection, undefined, {
+    status: "idle",
+  });
+  expect(csv).toMatch(/fermi_energy,E_F,[^\n]*,-0\.008617333262,/);
+});
+
+test("Fermi exports retain an explicitly stored legacy carrier sign", () => {
+  const selection = {
+    ...SELECTION,
+    parameterization: "explicit_fermi_v1" as const,
+    bandConfiguration: "vb_cb" as const,
+    carrierType: "n" as const,
+  };
+  expect(
+    parametersCsv([], modeOf("dpb_s_rho"), selection, undefined, {
+      status: "idle",
+    }),
+  ).toContain("carrier_type,carrier_type,Carrier type,,n,fixed");
+  expect(exportHeader({ ...CONTEXT, selection }).join("\n")).toContain(
+    "carrier type: n",
+  );
+});
+
+const ABSOLUTE_MASS_MODE: FitModeDescription = {
+  ...modeOf("dpb_s_rho"),
+  parameters: [
+    {
+      ...(modeOf("dpb_s_rho")
+        .parameters[0] as FitModeDescription["parameters"][number]),
+      name: "m1",
+      role: "fitted",
+    },
+  ],
+};
+
+test("explicit parameter files record the effective prefit absolute-mass hold", () => {
+  const selection = {
+    ...SELECTION,
+    parameterization: "explicit_fermi_v1" as const,
+  };
+  expect(
+    parametersCsv(
+      [],
+      ABSOLUTE_MASS_MODE,
+      selection,
+      { m1: 2 },
+      { status: "idle" },
+    ),
+  ).toMatch(/m1,m₁,[^\n]*,held at its value/);
+  expect(
+    parametersFile(
+      [],
+      ABSOLUTE_MASS_MODE,
+      selection,
+      { m1: 2 },
+      { status: "idle" },
+    ),
+  ).toMatch(/m₁[^\n]*\theld at its value/);
+});
+
+test("completed parameter exports use result holds and preserve a free absolute mass", () => {
+  const selection = {
+    ...SELECTION,
+    parameterization: "explicit_fermi_v1" as const,
+  };
+  expect(
+    parametersCsv([], ABSOLUTE_MASS_MODE, selection, { m1: 2 }, DONE, ["m1"]),
+  ).not.toMatch(/m1,m₁,[^\n]*,held at its value/);
+  expect(
+    parametersCsv(
+      [],
+      ABSOLUTE_MASS_MODE,
+      selection,
+      { m1: 2 },
+      { status: "done", result: { ...RESULT, held: ["m1"] } },
+    ),
+  ).toMatch(/m1,m₁,[^\n]*,held at its value/);
+});
+
+test("curve headers keep migration provenance without historical request measurements", () => {
+  const legacySource = JSON.stringify({
+    format: "seeband-session",
+    version: 1,
+    migration: { hallMassConvention: "single_valley", sourceValleyCount: 2 },
+    content: {
+      fit: {
+        result: RESULT,
+        request: {
+          held: ["m_eff"],
+          start: { m_eff: 2 },
+          measurements: { seebeck: { values: [123456789] } },
+        },
+      },
+    },
+  });
+  const header = exportHeader({
+    ...CONTEXT,
+    selection: { ...SELECTION, legacySource },
+  }).join("\n");
+  expect(header).toContain(
+    '"migration":{"hallMassConvention":"single_valley","sourceValleyCount":2}',
+  );
+  expect(header).toContain('"held":["m_eff"]');
+  expect(header).not.toContain('"measurements"');
+  expect(header).not.toContain("123456789");
+});
+
+test("a historical result without a held list can export the recorded holds", () => {
+  const legacy = { ...RESULT };
+  Reflect.deleteProperty(legacy, "held");
+  const csv = parametersCsv(
+    [],
+    ABSOLUTE_MASS_MODE,
+    SELECTION,
+    { m1: 2 },
+    { status: "done", result: legacy },
+    ["m1"],
+  );
+  expect(csv).toMatch(/m1,m₁,[^\n]*,held at its value/);
+});

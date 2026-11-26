@@ -19,6 +19,7 @@ from seeband_core.known_issues import active_issue_ids, fermi_energy_in_gap
 from seeband_core.model_interface import (
     QUANTITY_UNITS,
     Bounds,
+    ExplicitBands,
     FitDiagnostics,
     FitMode,
     FitRequest,
@@ -113,7 +114,26 @@ def _evaluate_quantity(
     *,
     band_1_degeneracy: float = 1.0,
     potentials: np.ndarray | None = None,
+    band_2_degeneracy: float = 1.0,
+    explicit_bands: ExplicitBands | None = None,
 ) -> np.ndarray:
+    if explicit_bands is not None:
+        from seeband_core.explicit_transport import explicit_curves
+        from seeband_core.fit_quality import CURVE_NAMES
+
+        # The S stage asks for S only, so that sigma and rho cannot fail its trial points.
+        # The others need the measured vector, the only one that holds R_H.
+        curves = explicit_curves(
+            explicit_bands,
+            fit_mode,
+            p,
+            t,
+            scattering,
+            band_1_degeneracy,
+            band_2_degeneracy,
+            kind="seebeck" if q == "seebeck" else "measured",
+        )
+        return curves[CURVE_NAMES[q]]
     if scattering == "ionized":
         from seeband_core.transport import ionized_transport
 
@@ -203,7 +223,9 @@ class _Coordinates:
     ) -> None:
         self.names = names
         self.scale = np.array([max(abs(values[n]), 1.0) for n in names])
-        self.logarithmic = np.array([n in ("m_eff", "band_mass") for n in names])
+        self.logarithmic = np.array(
+            [n in ("m_eff", "band_mass", "mass_ratio", "m1") for n in names]
+        )
         self.sign = np.array([np.sign(values[n]) for n in names])
         self.public_lower = np.array([bound(n).lower for n in names])
         self.public_upper = np.array([bound(n).upper for n in names])
@@ -405,6 +427,7 @@ class _Engine:
     def __init__(self, request: FitRequest, mode: FitMode) -> None:
         self.request, self.mode = request, mode
         self.dpb = request.fit_mode.startswith("dpb")
+        self.gap_name = "band_offset_k" if request.explicit_bands is not None else "band_gap"
         self.n = request.band_2_degeneracy / request.band_1_degeneracy
         self.values = dict(request.start)
         self.specs = {s.name: s for s in mode.parameters_for(request.scattering)}
@@ -433,7 +456,11 @@ class _Engine:
             b = self.bound(name)
             if not b.lower <= self.values[name] <= b.upper:
                 raise ValueError("Start values outside bounds")
-        if self.dpb and self.values["m_eff"] == 0:
+        if request.explicit_bands is not None:
+            for name in ("m1", "mass_ratio"):
+                if self.values[name] <= 0 or (name in self.fitted and self.bound(name).lower < 0):
+                    raise ValueError(f"{name} must remain on the positive mass branch")
+        elif self.dpb and self.values["m_eff"] == 0:
             raise ValueError("Zero band mass has no finite density domain")
         if not self.dpb:
             mass = self.values["band_mass"]
@@ -471,6 +498,8 @@ class _Engine:
             self.n,
             root_provider=self._root_provider,
             band_1_degeneracy=self.request.band_1_degeneracy,
+            band_2_degeneracy=self.request.band_2_degeneracy,
+            explicit_bands=self.request.explicit_bands,
         ).copy()
         values.setflags(write=False)
         return values
@@ -495,7 +524,7 @@ class _Engine:
     def amplitude(self, q: Quantity) -> str | None:
         if q == "resistivity":
             return "F" if self.request.scattering == "dis" else "A"
-        if q == "hall":
+        if q == "hall" and self.request.explicit_bands is None:
             return "m1" if self.dpb else "band_mass"
         return None
 
@@ -570,6 +599,9 @@ class _Engine:
         )
         return derivative if np.all(np.isfinite(derivative)) else None
 
+    def in_intrinsic_gap(self, parameters: Mapping[str, float]) -> bool:
+        return fermi_energy_in_gap(parameters, self.request.explicit_bands)
+
     def upper_gap_reference(
         self,
         evaluate: Callable[[np.ndarray], np.ndarray],
@@ -584,14 +616,15 @@ class _Engine:
         Check exact residual equality before using the reference for differencing or as a seed.
         """
         names = coordinates.names
-        if not self.dpb or "band_gap" not in names or "fermi_energy" not in names:
+        if not self.dpb or self.gap_name not in names or "fermi_energy" not in names:
             return point
-        gap_index = names.index("band_gap")
+        gap_index = names.index(self.gap_name)
         if point[gap_index] != coordinates.upper[gap_index]:
             return point
         parameters = dict(base) | coordinates.decode(point)
         if not (
-            fermi_energy_in_gap(parameters) and parameters["fermi_energy"] == parameters["band_gap"]
+            self.in_intrinsic_gap(parameters)
+            and parameters["fermi_energy"] == parameters[self.gap_name]
         ):
             return point
         fermi_index = names.index("fermi_energy")
@@ -601,7 +634,7 @@ class _Engine:
             return point
         reference = point.copy()
         reference[fermi_index] = energy
-        if not 0 < coordinates.decode(reference)["fermi_energy"] < parameters["band_gap"]:
+        if not 0 < coordinates.decode(reference)["fermi_energy"] < parameters[self.gap_name]:
             return point
         return reference if np.array_equal(evaluate(point), evaluate(reference)) else point
 
@@ -696,13 +729,13 @@ class _Engine:
         zero_columns: tuple[int, ...] = ()
         lower = coordinates.lower
         names = coordinates.names
-        if self.dpb and ("fermi_energy" in names or "band_gap" in names):
+        if self.dpb and ("fermi_energy" in names or self.gap_name in names):
             parameters = dict(base) | coordinates.decode(point)
-            if fermi_energy_in_gap(parameters):
+            if self.in_intrinsic_gap(parameters):
                 if "fermi_energy" in names:
                     zero_columns = (names.index("fermi_energy"),)
-                if "band_gap" in names:
-                    index = names.index("band_gap")
+                if self.gap_name in names:
+                    index = names.index(self.gap_name)
                     edge = parameters["fermi_energy"] / coordinates.scale[index]
                     if coordinates.upper[index] > edge:
                         lower = lower.copy()
@@ -738,7 +771,7 @@ class _Engine:
         """Select an improving physical seed on each reachable side of the fitted gap."""
         i = coordinates.names.index("fermi_energy")
         bounds = self.bound("fermi_energy")
-        gap = parameters["band_gap"]
+        gap = parameters[self.gap_name]
         seeds = []
         for edge, direction, bound in ((0.0, -1.0, bounds.lower), (gap, 1.0, bounds.upper)):
             extent = direction * (bound - edge)
@@ -799,6 +832,54 @@ class _Engine:
             return None
         return seed
 
+    def coupled_density_start(self) -> None:
+        """Find a common descent seed for parameters shared between stages.
+
+        Keep the public per-stage scales and require simultaneous improvement of
+        each objective. The subsequent independent stage audits decide convergence.
+        """
+        cross_stage = {"m1", "B", "G"} & self.free
+        if self.request.explicit_bands is None or not cross_stage or len(self.free) < 2:
+            return
+        base = dict(self.values)
+        coordinates = _Coordinates(sorted(self.free), base, self.bound)
+
+        def errors(z: np.ndarray) -> list[np.ndarray]:
+            p = base | coordinates.decode(z)
+            return [
+                (self.predict(q, p) - self.data[q][1]) * _SCALE[q] for q in self.mode.quantities
+            ]
+
+        def residual(z: np.ndarray) -> np.ndarray:
+            return np.concatenate(errors(z))
+
+        start_costs = np.asarray([np.dot(r, r) for r in errors(coordinates.point)])
+        if np.max(start_costs) <= _AUDIT_RTOL:
+            return
+        try:
+            candidate = least_squares(
+                residual,
+                coordinates.point,
+                bounds=(coordinates.lower, coordinates.upper),
+                x_scale="jac",
+                max_nfev=30,
+                ftol=1e-11,
+                xtol=1e-11,
+                gtol=1e-8,
+            )
+        except mm.ChemicalPotentialError:
+            # This optional joint search can cross the selected carrier branch, or try masses
+            # where the populations cannot be solved or represented. The start was evaluated
+            # above, so resume from it; the fit stages handle their own trial points.
+            return
+        trial_costs = np.asarray([np.dot(r, r) for r in errors(candidate.x)])
+        tolerance = _AUDIT_RTOL * np.maximum(1.0, start_costs)
+        if np.all(trial_costs <= start_costs + tolerance) and np.any(
+            trial_costs < start_costs - tolerance
+        ):
+            self.values.update(coordinates.decode(candidate.x))
+            self.recoveries += 1
+
     def stage(self, q: Quantity, base: Mapping[str, float]) -> tuple[dict[str, float], float]:
         """Return the stage candidate and an audit measure that rejects unchecked improvements."""
         stage = next(s for s in self.mode.stages if s.quantity == q)
@@ -839,6 +920,7 @@ class _Engine:
                 profiling
                 and q == "resistivity"
                 and self.dpb
+                and self.request.explicit_bands is None
                 and self.request.scattering in {"acPh", "dis"}
                 and amp in self.free
                 and names == [relative]
@@ -866,7 +948,7 @@ class _Engine:
         initial_cost = float(np.dot(initial, initial))
         best, best_cost = x, initial_cost
         uncertified_cost = np.inf
-        flat_fermi_only = self.dpb and names == ["fermi_energy"] and fermi_energy_in_gap(p)
+        flat_fermi_only = self.dpb and names == ["fermi_energy"] and self.in_intrinsic_gap(p)
         gap_searched = self.held_gap_search_applies(q, coordinates, base, x)
         origin = self.upper_gap_reference(evaluate, coordinates, base, x)
         if gap_searched and initial_cost > 0.0:
@@ -903,7 +985,7 @@ class _Engine:
         seeds: list[tuple[np.ndarray, float | None]] = []
         best_parameters = p | coordinates.decode(best)
         if self.dpb and "fermi_energy" in names and best_cost > _AUDIT_RTOL:
-            if fermi_energy_in_gap(best_parameters):
+            if self.in_intrinsic_gap(best_parameters):
                 seeds.extend(
                     self.populated_gap_seeds(
                         residual, coordinates, best_parameters, best, best_cost
@@ -984,7 +1066,9 @@ class _Engine:
         # outside the optimization budget, always at the exact retained endpoint.
         def final_prediction(q: Quantity, p: Mapping[str, float]) -> np.ndarray:
             self.evaluations += 1
-            with mm.independent_chemical_potential():
+            from seeband_core.explicit_transport import independent_explicit_potentials
+
+            with mm.independent_chemical_potential(), independent_explicit_potentials():
                 return _evaluate_quantity(
                     q,
                     self.data[q][0],
@@ -993,6 +1077,8 @@ class _Engine:
                     self.request.scattering,
                     self.n,
                     band_1_degeneracy=self.request.band_1_degeneracy,
+                    band_2_degeneracy=self.request.band_2_degeneracy,
+                    explicit_bands=self.request.explicit_bands,
                 )
 
         unidentified: set[str] = set()
@@ -1055,6 +1141,7 @@ class _Engine:
             self.values,
             self.n,
             extrapolated=self.request.extrapolated,
+            explicit_bands=self.request.explicit_bands,
         )
         at_bounds = []
         for n in sorted(self.free):
@@ -1129,6 +1216,12 @@ def fit_verified(
     callback_error: Exception | None = None
     try:
         engine = _Engine(request, mode)
+        # The S stage precedes rho, but an explicit measured vector includes rho.
+        # Profile a free zero conductivity amplitude before computing the first curve.
+        if request.explicit_bands is not None and "resistivity" in mode.quantities:
+            amplitude = engine.amplitude("resistivity")
+            if amplitude is not None and amplitude in engine.free and engine.values[amplitude] == 0:
+                engine.profile("resistivity", engine.values)
         # Require a valid start before the optimizer may reject invalid trial points.
         for q in mode.quantities:
             p = dict(engine.values)
@@ -1137,6 +1230,7 @@ def fit_verified(
             # Establish a finite profiled endpoint before any nonlinear stage can
             # consume the shared budget, including a permitted free A=0 start.
             engine.values = p
+        engine.coupled_density_start()
         history: list[np.ndarray] = []
         for iteration in range(1, (mode.max_iterations or 1) + 1):
             uncertified_improvement = False
@@ -1200,6 +1294,8 @@ def evaluate(
     quantities: tuple[Quantity, ...] | None = None,
     check_finite: bool = True,
     band_1_degeneracy: float = 1.0,
+    band_2_degeneracy: float | None = None,
+    explicit_bands: ExplicitBands | None = None,
 ) -> dict[Quantity, np.ndarray]:
     """Evaluate built-in measured quantities on the supplied temperatures in core units."""
     from seeband_core.model_descriptions import load_desktop_descriptions
@@ -1213,6 +1309,22 @@ def evaluate(
     selected = mode.quantities if quantities is None else quantities
     if any(q not in mode.quantities for q in selected):
         raise ValueError("Quantity is not available for this fit mode")
+    if explicit_bands is not None:
+        from seeband_core.explicit_transport import explicit_curves
+        from seeband_core.fit_quality import CURVE_NAMES
+
+        if model_id != "dpb" or band_2_degeneracy is None:
+            raise ValueError("Explicit DPB requires both absolute valley multiplicities")
+        curves = explicit_curves(
+            explicit_bands,
+            fit_mode,
+            parameters,
+            temperature_k,
+            scattering,
+            band_1_degeneracy,
+            band_2_degeneracy,
+        )
+        return {q: curves[CURVE_NAMES[q]] for q in selected}
     return {
         q: _evaluate_quantity(
             q,

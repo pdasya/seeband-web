@@ -13,6 +13,48 @@ core differs from the desktop SeeBand, the core is what is described here, and
 [Results that changed](/results-changed/) lists why. A physicist has not yet
 confirmed the corrections.
 
+## Explicit double parabolic bands
+
+In core 0.4.0, choose VB+VB, VB+CB or CB+CB before fitting. The first edge
+defines zero energy, and the offset is the second edge minus the first.
+Changing the sign of the offset preserves the band labels. In VB+CB, a
+positive offset opens a gap and a negative offset gives band overlap.
+
+The band types and Fermi energy determine the carrier excess; no separate
+p/n choice is needed. Earlier explicitly signed requests can still supply
+**p** or **n**, and retain their carrier-sign checks. Enter the
+zero-temperature Fermi energy relative to the first band edge, the
+single-valley mass of band 1 in electron masses, the positive mass ratio
+and both positive integer valley multiplicities (excluding spin). The model counts the
+occupied states to determine the excess $n-p$ at that trial point. It then
+solves for the chemical potential that preserves this excess at each
+temperature. A mixed pair permits either sign. Within an intrinsic gap,
+all Fermi energies between the band edges give the same transport curves.
+
+The total Seebeck coefficient is conductivity-weighted and each weak-field
+Hall contribution is weighted by the square of its conductivity fraction.
+The electronic thermal conductivity includes the interband term whenever
+the single-band Seebeck coefficients differ. The three scattering choices
+are acoustic phonons, alloy disorder and ionized impurities. Use manual
+starting values and bounds for the explicit model.
+
+For acoustic phonons and alloy disorder, the dimensionless Hall moment is
+$\int_0^\infty \sqrt{x}(-\partial f/\partial x)\,dx = F_{-1/2}(\eta)/2$,
+where $F$ is the unnormalized Fermi integral. P18 uses $x=t^2$ when the
+integration window includes the band edge, so the derivative of the square
+root at zero does not limit the accuracy of the quadrature.
+
+With S or S+ρ the mass scale stays fixed. With S+ρ+Hall it can be fitted,
+which sets the absolute concentration scale. At fixed Fermi energy and
+mass ratio, rescaling both masses preserves the balance for the same
+chemical potential and changes the Hall amplitude.
+Opening an old S or S+ρ session for conversion requires the absolute mass
+and confirmation of both multiplicities. Its old Fermi energy specifies the
+new carrier excess only at that particular parameter vector.
+
+The signed-mass and zero-temperature Fermi-energy formulas below describe
+the legacy DPB parameterization.
+
 ## Units and signs
 
 - Energies ($E_F$, $E_g$, μ) are in kelvin in the core, that is $E/k_B$. The app
@@ -21,7 +63,7 @@ confirmed the corrections.
   (conduction) band, a negative mass a hole (valence) band.
 - For a band with signed mass m and edge E₀, the reduced potential is
   $\eta = \operatorname{sign}(m)\,(\mu - E_0)/T$.
-- In DPB, band 1 is a valence band with its top at zero, so
+- In legacy DPB, band 1 is a valence band with its top at zero, so
   $\eta_1 = -\mu/T$. Band 2 starts at $E_g$, and the sign of m₂/m₁ sets its type:
   $\eta_2 = \operatorname{sign}(R)\,(\mu - E_g)/T$.
 - $E_F$ sets the carrier density at T = 0. The chemical potential μ(T) is
@@ -82,7 +124,7 @@ $$
 
 with $n_0 = 0$ unless $\operatorname{sign}(m)\,E_F > 0$.
 
-SPB solves $n(\mu, m, T) = n_0(E_F, m)$. DPB conserves the signed carrier
+SPB solves $n(\mu, m, T) = n_0(E_F, m)$. Legacy DPB conserves the signed carrier
 balance, with $r = R/N$, $s = \operatorname{sign}(r)$ and band 2's density mass
 $rN^{5/3}$:
 
@@ -108,7 +150,7 @@ parameters fixed, the same carrier target gives the same finite-temperature
 $S$, $\rho$ and $R_H$ throughout the interval. SeeBand flags results in this
 range because the transport data cannot locate $E_F$ within it.
 
-## DPB mass and degeneracy
+## Legacy DPB mass and degeneracy
 
 Let N = N₂/N₁. The public parameter m₂/m₁ is the signed mass ratio
 R = m₂/|m₁|: its magnitude is the band-mass ratio and its sign the type of
@@ -143,9 +185,9 @@ $$
 E(k)=E_0+\frac{\hbar^2 k^2}{2m_b}.
 $$
 
-The sign of $m_b$ sets the direction of the curvature. In DPB, band 1
+The sign of $m_b$ sets the direction of the curvature. In the historical signed-mass DPB diagram, band 1
 opens down from 0 and band 2 starts at $E_g$. For modes with Hall data, the
-diagram converts the first band's density-of-states mass $m_1$ to the magnitude
+historical diagram interprets its first mass input as a density-of-states mass and draws the magnitude
 of the single-valley mass $|m_{b,1}|=m_1/N_1^{2/3}$. The signed mass of band 2
 is $m_{b,2}=R|m_{b,1}|$. In modes without Hall data, SPB or DPB, no data set
 the size of a mass, so the diagram assumes $|m_{b,1}|=m_e$, keeping its sign, and
@@ -157,13 +199,22 @@ chart uses the selected energy unit.
 $k$ is measured from each band's own extremum, so drawing both DPB bands at
 $k = 0$ does not say that the gap is direct: band 2 can lie in another valley.
 
-The fitted $m_1$ is the density-of-states mass of band 1, $N_1^{2/3}|m_{b,1}|$;
-it equals the single-valley mass only for $N_1 = 1$. So with $N_1 
-e 1$ the
-displayed $m_2/m_1$, a ratio of single-valley masses, is not $m_2$ divided by
-the displayed $m_1$. After a legacy DPB fit with $N_2/N_1 
-e 1$, R carries
-the factor of `dpb_loop_degeneracy`, and band 2's curvature inherits it.
+DPB Hall transport since [#252](https://github.com/pdasya/seeband-web/pull/252)
+uses the single-valley mass and counts the absolute valley multiplicity separately.
+For $N_1>1$ the historical diagram therefore draws a different curvature from
+the mass used in that transport calculation. Explicit DPB uses the confirmed
+single-valley mass directly for both. When opening a historical Hall session
+with saved $N_1>1$, choose whether its saved mass is single-valley or all-valley
+DOS. Core version `0.3.0` occurs with both conventions and does not establish
+which one was used. For the older all-valley DOS convention, the migration
+dialog divides the mass by the **saved** $N_1^{2/3}$ once and shows the
+single-valley mass before confirmation. It uses the saved fit request's $N_1$
+when present, otherwise the saved selection's $N_1$. Editing the multiplicity
+for the new calculation does not change this interpretation of the saved mass.
+For saved $N_1=1$, both conventions give the same mass and no choice is needed.
+The selected convention and conversion inputs are preserved with the original
+session provenance. This converts a saved parameter point; it does not guarantee
+reproduction of Hall curves from versions with other historical formula changes.
 
 ## Seebeck coefficient
 
@@ -271,16 +322,16 @@ $$
 + T\,\frac{\sigma_1\sigma_2}{\sigma_1 + \sigma_2}\,(S_1 - S_2)^2,
 $$
 
-where the second term is the bipolar part and $S_i$ is each band's own S.
+where the second term is the interband contribution and $S_i$ is each band's own S.
 The core evaluates this term without forming a product of two small
 conductivities. The lattice part is not modelled. The Lorenz number chart shows the effective
-$L = \kappa_e/(\sigma T)$, in units of L₀; for DPB it includes the bipolar part
+$L = \kappa_e/(\sigma T)$, in units of L₀; for DPB it includes the interband contribution
 and can rise far above either band's L, which are shown beside it. L needs σ,
 so S-only modes do not offer it.
 
 ## Which data fit which parameters
 
-| Fit mode      | SPB                                                  | DPB                                                               |
+| Fit mode      | SPB                                                  | Legacy DPB                                                        |
 | ------------- | ---------------------------------------------------- | ----------------------------------------------------------------- |
 | S             | $E_F$                                                | m₂/m₁, $E_g$, $E_F$                                               |
 | S + ρ         | $E_F$, then A (or F for alloy disorder), in one pass | m₂/m₁, $E_g$, $E_F$ and A, B (or F, G), repeated until they agree |
@@ -290,9 +341,18 @@ In SPB S and S + ρ, the band mass is not fitted and only its sign matters.
 Whether the data pin a parameter down is shown for each fit; a fit that
 converges does not show that the model suits the sample.
 
+For a new explicit DPB sample the S stage fits the positive mass ratio, signed
+offset and Fermi energy within the selected bounds.
+The ρ stage adds A and B (F and G for disorder). With Hall data, the user can
+release the absolute mass. Each trial computes its carrier excess from the
+trial energy and band parameters. Historical fixed-density sessions use the
+saved excess throughout the fit. When the Hall mass or relative scattering weight couples the stages, a bounded search can seed
+them with a vector that improves their residuals together. The solver
+checks the separate stage objectives at the returned vector.
+
 ## Fitting methods
 
-The default method, `verified-sequential-v2`, fits each stage by least squares
+For SPB and historical DPB the default method, `verified-sequential-v2`, fits each stage by least squares
 in the order above, solves the conductivity or Hall amplitude exactly for the
 other parameters, works in public R throughout, and checks at the end that no
 stage refit improves the result. `legacy-sequential-v1` reproduces the
@@ -307,7 +367,7 @@ missing version is unknown and is not inferred.
 
 ## Initial values
 
-A neural net gives DPB starting values for acoustic phonons and alloy disorder,
+A neural net gives legacy DPB starting values for acoustic phonons and alloy disorder,
 from the first of its temperature ranges that the data cover. SPB starting
 values come from the chosen mechanism. An estimate is a starting value only, not
 evidence that a model fits the sample.

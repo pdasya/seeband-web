@@ -333,3 +333,46 @@ function scaledParameter() {
     display_range: { minimum: 0, maximum: 3, step: 0.01, default: 1 },
   };
 }
+
+test("virgin Fermi starts follow configuration, offset and mode without becoming saved edits", () => {
+  const selection = {
+    parameterization: "explicit_fermi_v1" as const,
+    bandConfiguration: "vb_cb" as const,
+  };
+  for (const id of ["dpb_s", "dpb_s_rho", "dpb_s_rho_rh"]) {
+    const description = mode(id);
+    const saved = { band_gap: 700 };
+    expect(parameterValues(description, saved, selection).fermi_energy).toBe(
+      -100,
+    );
+    expect(
+      parameterValues(description, saved, {
+        ...selection,
+        bandConfiguration: "cb_cb",
+      }).fermi_energy,
+    ).toBe(100);
+    expect(
+      parameterValues(description, saved, {
+        ...selection,
+        bandConfiguration: "vb_vb",
+      }).fermi_energy,
+    ).toBe(600);
+    expect(saved).toEqual({ band_gap: 700 });
+  }
+  expect(
+    parameterValues(mode("dpb_s"), { band_gap: -700 }, selection).fermi_energy,
+  ).toBe(-800);
+  expect(
+    parameterValues(
+      mode("dpb_s"),
+      { band_gap: -700, fermi_energy: -40 },
+      selection,
+    ).fermi_energy,
+  ).toBe(-40);
+  expect(
+    parameterValues(mode("dpb_s"), undefined, {
+      ...selection,
+      parameterization: "explicit_density_v1",
+    }).fermi_energy,
+  ).toBe(-100);
+});

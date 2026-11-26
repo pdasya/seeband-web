@@ -339,7 +339,7 @@ test("a change after the fit leaves no summary, for values it did not fit", asyn
 test("while the models load or fail, it says that, not that a fit gave nothing", async ({
   page,
 }) => {
-  await page.route("**/api/models", (route) =>
+  await page.route(/\/api\/models(?:\?.*)?$/, (route) =>
     route.fulfill({ status: 500, json: { code: "internal_error" } }),
   );
   await page.goto("/results");
@@ -618,7 +618,7 @@ const DERIVED: Record<string, Record<string, number[]>> = {
 };
 
 async function serveCurves(page: Page) {
-  await page.route("**/api/models", (route) =>
+  await page.route(/\/api\/models(?:\?.*)?$/, (route) =>
     route.fulfill({ json: MODELS_WITH_SEEBECK_ISSUE }),
   );
   const kinds: string[] = [];

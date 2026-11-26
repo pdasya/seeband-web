@@ -434,6 +434,80 @@ describe("the band diagram", () => {
     expect(empty).toBeNull();
   });
 
+  test("explicit diagram shows physical wavevector units and intrinsic Fermi endpoints", () => {
+    const { curves, xAxis } = chartTabView(
+      "band_diagram",
+      mode("dpb_s"),
+      {
+        data: {},
+        interpolation: NO_INTERPOLATION,
+        energy: KELVIN,
+        bandConfiguration: "vb_cb",
+      },
+      null,
+      null,
+      {
+        ...DIAGRAM,
+        curves: {
+          band_1_k: [0, 1, 0],
+          fermi_energy_lower_k: [0, 0, 0],
+          fermi_energy_upper_k: [100, 100, 100],
+        },
+      },
+    );
+    expect(xAxis).toEqual({
+      title: "k (nm⁻¹)",
+      scale: true,
+      span: [-2, 2],
+    });
+    expect(
+      curves.slice(1).map(({ label, dashed }) => ({ label, dashed })),
+    ).toEqual([
+      { label: "E_F lower endpoint", dashed: true },
+      { label: "E_F upper endpoint", dashed: true },
+    ]);
+  });
+
+  test("explicit Fermi diagram uses a shared schematic k axis and one supplied E_F line", () => {
+    const { curves, xAxis } = chartTabView(
+      "band_diagram",
+      mode("dpb_s"),
+      {
+        data: {},
+        interpolation: NO_INTERPOLATION,
+        energy: KELVIN,
+        bandConfiguration: "vb_cb",
+        parameterization: "explicit_fermi_v1",
+      },
+      null,
+      null,
+      {
+        ...DIAGRAM,
+        curves: {
+          band_1_energy_k: [-1, 0, -1],
+          band_2_energy_k: [101, 100, 101],
+          fermi_energy_k: [40, 40, 40],
+          fermi_energy_lower_k: [0, 0, 0],
+          fermi_energy_upper_k: [100, 100, 100],
+        },
+      },
+    );
+    expect(xAxis).toEqual({ title: "k", scale: false, span: [-2, 2] });
+    expect(curves.map(({ label }) => label)).toEqual([
+      "Band 1 (VB)",
+      "Band 2 (CB)",
+      "E_F",
+    ]);
+    expect(curves.map(({ temperatureK }) => temperatureK)).toEqual([
+      [-2, 0, 2],
+      [-2, 0, 2],
+      [-2, 0, 2],
+    ]);
+    expect(
+      curves.filter(({ dashed }) => dashed).map(({ values }) => values),
+    ).toEqual([[40, 40, 40]]);
+  });
+
   test("explains the assumed mass alongside any known issue", () => {
     const { note } = view(DIAGRAM);
 

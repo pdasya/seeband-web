@@ -34,6 +34,7 @@ from seeband_core.model_descriptions import (
     SPB_SCATTERING as _SPB_SCATTERING,
 )
 from seeband_core.model_descriptions import (
+    explicit_dpb_description,
     load_desktop_descriptions,
 )
 from seeband_core.model_interface import (
@@ -43,6 +44,7 @@ from seeband_core.model_interface import (
     CurveKind,
     CurveRequest,
     CurveResult,
+    ExplicitBands,
     FitMode,
     FitRequest,
     FitResult,
@@ -227,7 +229,7 @@ def _with_parameter_status[**P](method: Callable[P, FitResult]) -> Callable[P, F
         assert isinstance(model, _BandModel) and isinstance(request, FitRequest)
         if result.parameter_status:
             return result
-        fit_mode = model.describe().fit_mode(request.fit_mode)
+        fit_mode = model._request_mode(request.fit_mode, request.explicit_bands)
         diagnostics = result.diagnostics
         return dataclasses.replace(
             result,
@@ -299,10 +301,17 @@ class _BandModel:
     def describe(self) -> ModelDescription:
         return self._description
 
+    def _request_mode(self, mode_id: str, explicit: ExplicitBands | None) -> FitMode:
+        if explicit is not None:
+            if self._description.id != "dpb":
+                raise ValueError("Explicit band types require DPB")
+            return explicit_dpb_description(explicit.uses_fermi_energy).fit_mode(mode_id)
+        return self._description.fit_mode(mode_id)
+
     def _mode_and_scattering(
-        self, fit_mode_id: str, scattering: str | None
+        self, fit_mode_id: str, scattering: str | None, explicit: ExplicitBands | None = None
     ) -> tuple[FitMode, str | None]:
-        fit_mode = self._description.fit_mode(fit_mode_id)
+        fit_mode = self._request_mode(fit_mode_id, explicit)
         if scattering is None and fit_mode.scattering and not fit_mode.id.endswith("_s"):
             raise ValueError(f"Fit mode {fit_mode_id} needs a scattering type")
         fit_mode.parameters_for(scattering)
@@ -324,6 +333,12 @@ class _BandModel:
             if not bounds.lower < bounds.upper:
                 raise ValueError(f"The lower bound of {name} must be below its upper bound")
         fitted = _fitted_names(fit_mode, request.scattering)
+        if request.explicit_bands is not None:
+            missing = fitted - request.held - request.bounds.keys()
+            if missing:
+                raise ValueError(f"Choose fit bounds for {sorted(missing)}")
+            if any(request.start.get(n, 0.0) <= 0 for n in ("m1", "mass_ratio")):
+                raise ValueError("The single-valley masses must be positive")
         not_fitted = sorted(name for name in request.held if name not in fitted)
         if not_fitted:
             raise ValueError(f"Fit mode {fit_mode.id} does not fit parameters {not_fitted}")
@@ -548,9 +563,37 @@ class _BandModel:
 
     @_reusing_chemical_potential
     def calculate(self, request: CurveRequest) -> CurveResult:
-        fit_mode, scattering = self._mode_and_scattering(request.fit_mode, request.scattering)
+        fit_mode, scattering = self._mode_and_scattering(
+            request.fit_mode, request.scattering, request.explicit_bands
+        )
         if request.kind not in fit_mode.curve_kinds:
             raise ValueError(f"Fit mode {fit_mode.id} has no curve {request.kind}")
+        if request.explicit_bands is not None:
+            from seeband_core.explicit_transport import explicit_curves
+
+            temperatures = np.linspace(
+                request.min_temperature_k, request.max_temperature_k, request.points
+            )
+            curves = explicit_curves(
+                request.explicit_bands,
+                fit_mode.id,
+                request.parameters,
+                temperatures,
+                scattering,
+                request.band_1_degeneracy,
+                request.band_2_degeneracy,
+                request.kind,
+            )
+            issues = active_issue_ids(
+                fit_mode,
+                scattering,
+                request.parameters,
+                _degeneracy_ratio(request),
+                request.kind,
+                extrapolated=request.extrapolated,
+                explicit_bands=request.explicit_bands,
+            )
+            return CurveResult(temperatures, curves, issues)
         if request.kind == "lorenz_number":
             return self._lorenz_number(request, fit_mode, scattering)
         if scattering == "ionized" and request.kind != "carrier_concentration_by_band":
@@ -691,6 +734,16 @@ class _BandModel:
 
     def band_diagram(self, request: BandDiagramRequest) -> BandDiagramResult:
         """Return the local parabolic bands and constant Fermi energy."""
+        if request.explicit_bands is not None:
+            from seeband_core.explicit_transport import explicit_diagram
+
+            self._request_mode(request.fit_mode, request.explicit_bands)
+            return explicit_diagram(
+                request.explicit_bands,
+                request.parameters,
+                request.band_1_degeneracy,
+                request.band_2_degeneracy,
+            )
         fit_mode = self.describe().fit_mode(request.fit_mode)
         wavevector_nm_inv: np.ndarray | None = None
         curves: dict[str, np.ndarray] = {}
@@ -784,7 +837,9 @@ class SpbModel(_BandModel):
     @_with_parameter_status
     @_reusing_chemical_potential
     def fit(self, request: FitRequest, on_iteration: IterationCallback | None = None) -> FitResult:
-        fit_mode, scattering = self._mode_and_scattering(request.fit_mode, request.scattering)
+        fit_mode, scattering = self._mode_and_scattering(
+            request.fit_mode, request.scattering, request.explicit_bands
+        )
         self._check_fit(request, fit_mode)
         if request.algorithm == "verified-sequential-v2":
             from seeband_core.verified_fit import fit_verified
@@ -957,7 +1012,11 @@ class DpbModel(_BandModel):
     @_with_parameter_status
     @_reusing_chemical_potential
     def fit(self, request: FitRequest, on_iteration: IterationCallback | None = None) -> FitResult:
-        fit_mode, scattering = self._mode_and_scattering(request.fit_mode, request.scattering)
+        fit_mode, scattering = self._mode_and_scattering(
+            request.fit_mode, request.scattering, request.explicit_bands
+        )
+        if request.explicit_bands is not None and request.algorithm != "verified-sequential-v2":
+            raise ValueError("Explicit bands require the verified fitting algorithm")
         self._check_fit(request, fit_mode)
         if request.algorithm == "verified-sequential-v2":
             from seeband_core.verified_fit import fit_verified
@@ -966,6 +1025,11 @@ class DpbModel(_BandModel):
             _measurement_arrays(request.measurements, fit_mode.quantities)
             if fit_mode.degeneracy is not None:
                 _degeneracy_ratio(request)
+            if request.explicit_bands is not None:
+                from seeband_core.explicit_transport import reuse_explicit_potentials
+
+                with reuse_explicit_potentials():
+                    return fit_verified(request, fit_mode, on_iteration)
             return fit_verified(request, fit_mode, on_iteration)
         if scattering == "ionized":
             raise ValueError("Ionized scattering requires verified-sequential-v2")

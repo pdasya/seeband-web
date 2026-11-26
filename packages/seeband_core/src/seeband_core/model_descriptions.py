@@ -1,6 +1,8 @@
 """Build the SPB and DPB descriptions from the table of desktop modes."""
 
 import json
+from dataclasses import replace
+from functools import cache
 from importlib import resources
 from typing import Any
 
@@ -202,3 +204,85 @@ def load_desktop_descriptions() -> dict[str, ModelDescription]:
         )
         for name, full_name in MODEL_NAMES.items()
     }
+
+
+@cache
+def explicit_dpb_description(fermi_energy: bool = False) -> ModelDescription:
+    """Controls for explicit band configurations with fixed density or a fitted Fermi energy."""
+    desktop = load_desktop_descriptions()["dpb"]
+    hall_mass = next(p for p in desktop.fit_mode("dpb_s_rho_rh").parameters if p.name == "m1")
+    modes = []
+    for mode in desktop.fit_modes:
+        parameters = []
+        for p in mode.parameters:
+            if p.name == "m_eff":
+                parameters.append(
+                    replace(
+                        p,
+                        name="mass_ratio",
+                        meaning="Single-valley mass magnitude ratio m₂/|m₁|",
+                        value_range=ValueRange(1, 10000, 1, 100),
+                        # m₂ divides the band-2 weight, so the fit starts at the slider's minimum.
+                        fit_bounds=Bounds(0.01, 100),
+                    )
+                )
+            elif p.name in ("A", "F"):
+                # Explicit curves need a positive amplitude: zero conductivity has no finite
+                # resistivity, so the slider starts at its first positive step. The fit bounds keep
+                # 0, where the fit profiles the amplitude before its first prediction.
+                parameters.append(
+                    replace(
+                        p,
+                        value_range=replace(
+                            p.value_range, minimum=max(p.value_range.minimum, p.value_range.step)
+                        ),
+                    )
+                )
+            elif p.name == "band_gap":
+                parameters.append(
+                    replace(
+                        p,
+                        name="band_offset_k",
+                        meaning="Band offset E₂ − E₁",
+                        value_range=ValueRange(-35000, 35000, 10, 1000),
+                        fit_bounds=Bounds(-35000, 35000),
+                    )
+                )
+            elif p.name == "fermi_energy":
+                if fermi_energy:
+                    parameters.append(
+                        replace(p, meaning="Zero-temperature Fermi energy relative to band 1")
+                    )
+            else:
+                parameters.append(p)
+        if "hall" not in mode.quantities:
+            parameters.append(
+                replace(hall_mass, role="fixed", fit_bounds=None, bounds_editable=False)
+            )
+        modes.append(
+            replace(
+                mode,
+                parameters=tuple(parameters),
+                band_2_edge="band_offset_k",
+                relative_curve_kinds=(),
+                known_issues=tuple(
+                    i
+                    for i in mode.known_issues
+                    if i.id in ("hall_dis_no_reference", "interpolation_extrapolates")
+                    or (fermi_energy and i.id == "fermi_energy_in_gap")
+                ),
+                stages=tuple(
+                    replace(
+                        stage,
+                        parameters=("mass_ratio", "band_offset_k")
+                        + (("fermi_energy",) if fermi_energy else ()),
+                    )
+                    if stage.quantity == "seebeck"
+                    else replace(stage, repeats=mode.iterative)
+                    for stage in mode.stages
+                ),
+            )
+        )
+    return replace(
+        desktop, fit_modes=tuple(modes), has_initial_guess=False, initial_guess_method=None
+    )
