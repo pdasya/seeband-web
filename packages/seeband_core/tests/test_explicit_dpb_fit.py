@@ -20,7 +20,7 @@ from seeband_core.model_scales import default_start
 @pytest.mark.parametrize(
     "configuration,density", [("cb_cb", 2e25), ("vb_vb", -2e25), ("vb_cb", 2e25)]
 )
-@pytest.mark.parametrize("scattering", ["acPh", "dis", "ionized"])
+@pytest.mark.parametrize("scattering", ["acPh", "dis", "acPhDis", "ionized"])
 @pytest.mark.parametrize("mode_id", ["dpb_s", "dpb_s_rho", "dpb_s_rho_rh"])
 def test_explicit_fit_returns_consistent_curves(configuration, density, scattering, mode_id):
     model = registry.get("dpb")
@@ -140,7 +140,7 @@ def test_free_zero_resistivity_amplitude_is_profiled_before_first_prediction():
         ("vb_cb", "p", -140, -130, (-1, 1)),
     ],
 )
-@pytest.mark.parametrize("scattering", ["acPh", "dis", "ionized"])
+@pytest.mark.parametrize("scattering", ["acPh", "dis", "acPhDis", "ionized"])
 @pytest.mark.parametrize("mode_id", ["dpb_s", "dpb_s_rho", "dpb_s_rho_rh"])
 def test_fermi_energy_fit_and_independent_pocket_population(
     configuration, carrier, offset, ef, signs, scattering, mode_id

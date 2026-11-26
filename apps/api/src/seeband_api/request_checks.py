@@ -238,7 +238,7 @@ def check_degeneracy(band_1: float, band_2: float, fit_mode: FitMode) -> list[Er
 def check_parameter_names(
     names: list[str], field: str, fit_mode: FitMode, scattering: str | None = None
 ) -> list[ErrorDetail]:
-    """Every parameter of a mode is needed, including those of other scattering types."""
+    """Accept historical full vectors. Only mixed transport requires its C/D crossovers."""
     expected = {spec.name for spec in fit_mode.parameters}
     for law, overrides in fit_mode.parameter_overrides:
         if scattering is None or scattering == law:
@@ -246,7 +246,7 @@ def check_parameter_names(
     missing = [
         invalid("missing_parameter", "This mode needs it", [field, spec.name])
         for spec in fit_mode.parameters
-        if spec.name not in names
+        if spec.name not in names and (scattering == "acPhDis" or spec.scattering != ("acPhDis",))
     ]
     unknown = [
         invalid("unknown_parameter", "This mode has no such parameter", [field, name])

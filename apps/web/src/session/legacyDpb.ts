@@ -42,6 +42,10 @@ export function convertedSession(
   const mode = content.selection.fitMode ?? "dpb_s_rho";
   const ionized = content.selection.scattering === "ionized";
   const controls = historicalIonizedControls(content, true);
+  // These transport controls keep their units when the band representation changes.
+  const retained =
+    content.selection.scattering === "acPhDis" ? ["A", "B", "C", "D"] : ["B"];
+  const parameters = legacyControls(controls.parameters, retained);
   return {
     ionizedBInputs: true,
     ...content,
@@ -69,8 +73,9 @@ export function convertedSession(
     },
     parameters: {
       ...withoutLegacyDpb(content.parameters),
-      ...legacyBControls(controls.parameters),
+      ...parameters,
       [mode]: {
+        ...parameters[mode],
         ...point.parameters,
         ...(ionized && mode === "dpb_s"
           ? { B: controls.parameters.dpb_s?.B ?? 1 }
@@ -80,16 +85,21 @@ export function convertedSession(
     guessedParameters: withoutLegacyDpb(content.guessedParameters ?? {}),
     customBounds: {
       ...withoutLegacyDpb(content.customBounds),
-      ...legacyBControls(controls.customBounds),
+      ...legacyControls(controls.customBounds, retained),
     },
     held: {
       ...withoutLegacyDpb(content.held),
       ...Object.fromEntries(
         Object.entries(content.held)
           .filter(
-            ([mode, held]) => mode.startsWith("dpb_") && held.includes("B"),
+            ([mode, held]) =>
+              mode.startsWith("dpb_") &&
+              held.some((name) => retained.includes(name)),
           )
-          .map(([mode]) => [mode, ["B"]]),
+          .map(([mode, held]) => [
+            mode,
+            held.filter((name) => retained.includes(name)),
+          ]),
       ),
     },
     fit: null,
@@ -97,13 +107,19 @@ export function convertedSession(
   };
 }
 
-function legacyBControls<T>(modes: Record<string, Record<string, T>>) {
+function legacyControls<T>(
+  modes: Record<string, Record<string, T>>,
+  names: readonly string[],
+): Record<string, Record<string, T>> {
   return Object.fromEntries(
-    Object.entries(modes).flatMap(([mode, values]) =>
-      mode.startsWith("dpb_") && values.B !== undefined
-        ? [[mode, { B: values.B }]]
-        : [],
-    ),
+    Object.entries(modes).flatMap(([mode, values]) => {
+      const kept = Object.fromEntries(
+        Object.entries(values).filter(([name]) => names.includes(name)),
+      );
+      return mode.startsWith("dpb_") && Object.keys(kept).length > 0
+        ? [[mode, kept]]
+        : [];
+    }),
   );
 }
 

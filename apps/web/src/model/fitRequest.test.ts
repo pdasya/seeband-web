@@ -74,7 +74,17 @@ describe("fitRequest", () => {
       extrapolated: false,
     });
     expect(Object.keys(answer.request.start).sort()).toEqual(
-      ["A", "B", "F", "G", "band_gap", "fermi_energy", "m_eff"].sort(),
+      [
+        "A",
+        "B",
+        "C",
+        "D",
+        "F",
+        "G",
+        "band_gap",
+        "fermi_energy",
+        "m_eff",
+      ].sort(),
     );
     expect(answer.request.measurements.seebeck?.temperature_k).toEqual([
       100, 900,
@@ -681,4 +691,24 @@ test("ionized rho requests use the server B bounds, user bounds, or a hold", () 
   expect(held.start.B).toBe(9);
   expect(held.held).toContain("B");
   expect(held.bounds?.B).toBeUndefined();
+});
+
+test("mixed S-only requests ignore dormant transport drafts and controls", () => {
+  const state = {
+    ...STATE,
+    selection: { ...STATE.selection, fitMode: "dpb_s", scattering: "acPhDis" },
+    parameters: { dpb_s: { A: 123, B: 9, C: 7, D: 8 } },
+    customBounds: { dpb_s: { B: { lower: 0, upper: 1 } } },
+    held: { dpb_s: ["A", "B", "C", "D"] },
+  };
+  const built = fitRequest(state, models);
+  assert("request" in built);
+  expect(Object.keys(built.request.start)).toEqual([
+    "m_eff",
+    "band_gap",
+    "fermi_energy",
+  ]);
+  expect(built.request.bounds).toBeUndefined();
+  expect(built.request.held).toBeUndefined();
+  expect(calcRequest(state, models)?.parameters).toEqual(built.request.start);
 });

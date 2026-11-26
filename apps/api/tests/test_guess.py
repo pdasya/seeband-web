@@ -678,7 +678,6 @@ def test_ionized_dpb_guess_does_not_use_an_acoustic_neural_net(client: TestClien
     }
 
 
-@pytest.mark.parametrize("scattering", ["acPhDis", "unknown"])
-def test_guess_rejects_unavailable_scattering(client: TestClient, scattering: str) -> None:
-    response = client.post("/api/guess", json={**REQUEST_EXAMPLE, "scattering": scattering})
+def test_guess_rejects_unavailable_scattering(client: TestClient) -> None:
+    response = client.post("/api/guess", json={**REQUEST_EXAMPLE, "scattering": "unknown"})
     assert response.status_code == 422

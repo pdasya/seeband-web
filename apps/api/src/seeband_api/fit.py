@@ -85,7 +85,7 @@ class FitApiRequest(BandInputs):
     """What to fit.
 
     `start` holds every parameter of the mode in core units, including those of other scattering
-    types. `bounds` overrides the description's bounds for fitted parameters, in core units.
+    types. C and D are required only for mixed transport. `bounds` overrides the description's bounds for fitted parameters, in core units.
     `measurements` holds each quantity of the mode, and only points from `min_temperature_k` to
     `max_temperature_k`, inclusive, enter the fit. `extrapolated` says that interpolation made up
     some of these points, so that the result says so too.
@@ -307,6 +307,14 @@ def _check_bounds(body: FitApiRequest, fit_mode: FitMode) -> list[ErrorDetail]:
         if spec is None or spec.fit_bounds is None or name not in in_scattering:
             details.append(
                 invalid("parameter_not_fitted", "This fit does not fit it", ["bounds", name])
+            )
+        elif body.scattering == "acPhDis" and name in ("C", "D") and body.bounds[name].lower < 0:
+            details.append(
+                invalid(
+                    "negative_bound",
+                    "Use a nonnegative scattering ratio",
+                    ["bounds", name, "lower"],
+                )
             )
         elif not spec.bounds_editable:
             details.append(

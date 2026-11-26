@@ -277,3 +277,54 @@ test.each(["ionized", "acPh"])(
     expect(store.getState().held.dpb_s_rho_rh).toEqual([]);
   },
 );
+
+test("mixed conversion retains transport drafts, bounds and held settings across DPB modes", async () => {
+  const store = createSessionStore();
+  store.setState({
+    selection: {
+      ...store.getState().selection,
+      model: "dpb",
+      scattering: "acPhDis",
+      fitMode: "dpb_s",
+    },
+    parameters: {
+      dpb_s: { B: 7 },
+      dpb_s_rho: { A: 1000, B: 2, C: 3, D: 4 },
+      dpb_s_rho_rh: { A: 2000, B: 5, C: 6, D: 7 },
+    },
+    customBounds: {
+      dpb_s_rho: { A: { lower: 900, upper: 1200 }, C: { lower: 2, upper: 4 } },
+    },
+    held: { dpb_s_rho: ["A", "C", "D", "fermi_energy"] },
+  });
+  const file = await sessionFile(
+    store.getState(),
+    { appVersion: "old", apiVersion: "old", saved: "2026-11-20" },
+    () => null,
+  );
+  const converted = convertedSession(
+    file,
+    {
+      parameterization: "explicit_density_v1",
+      band_configuration: "vb_cb",
+      net_electron_density_per_m3: 1e24,
+      parameters: { mass_ratio: 2, band_offset_k: 600, m1: 1 },
+    },
+    1,
+    1,
+  );
+  expect(converted.selection.scattering).toBe("acPhDis");
+  expect(converted.parameters.dpb_s_rho).toEqual({ A: 1000, B: 2, C: 3, D: 4 });
+  expect(converted.parameters.dpb_s_rho_rh).toEqual({
+    A: 2000,
+    B: 5,
+    C: 6,
+    D: 7,
+  });
+  expect(converted.customBounds.dpb_s_rho?.A).toEqual({
+    lower: 900,
+    upper: 1200,
+  });
+  expect(converted.customBounds.dpb_s_rho?.C).toEqual({ lower: 2, upper: 4 });
+  expect(converted.held.dpb_s_rho).toEqual(["A", "C", "D"]);
+});

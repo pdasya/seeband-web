@@ -9,7 +9,7 @@ type Carried = Pick<
 
 type CarryState = Carried & Partial<Pick<SessionState, "selection">>;
 
-function keepsHistoricalB(
+function keepsHistoricalControls(
   state: CarryState,
   from: FitModeDescription,
   to: FitModeDescription,
@@ -81,10 +81,12 @@ function plan(
   const shared = new Set<string>();
   const values: Record<string, number> = {};
   const replaceable: Record<string, number> = {};
-  const keepB = keepsHistoricalB(state, from, to);
+  const keepHistorical = keepsHistoricalControls(state, from, to);
+  const archivedControls =
+    state.selection?.scattering === "acPhDis" ? ["A", "B", "C", "D"] : ["B"];
   for (const { name, core_range } of from.parameters) {
-    // Converted v1 sessions retain the archived B controls for each DPB fit mode.
-    if (name === "B" && keepB) continue;
+    // Converted sessions retain each mode's original transport controls.
+    if (keepHistorical && archivedControls.includes(name)) continue;
     const there = target.get(name);
     if (there === undefined) continue;
     const value = saved[name] ?? core_range.default;

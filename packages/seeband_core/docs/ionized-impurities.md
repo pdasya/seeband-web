@@ -1,9 +1,13 @@
 # Ionized impurity power-law transport
 
-Core 0.3.0 offers `acPh`, `dis` and `ionized` in every SPB/DPB fit mode,
-including S-only. `acPhDis` is no longer a public model choice. Historical
-mixed-scattering functions and reference captures remain for reproduction;
-their inputs must not be relabelled as ionized impurity results.
+Core 0.4.2 offers `acPh`, `dis`, `acPhDis` and `ionized` in every SPB/DPB fit mode,
+including S-only. `acPhDis` retains the mixed acoustic/alloy mechanism; its inputs
+must not be relabelled as ionized impurity results. Its per-band conductivity
+factors are T/(T + 300 C) and B T/(T + 300 D), with dimensionless C/D at 300 K.
+S-only retains the desktop structural model, independent of A/B/C/D; ionized
+explicit DPB uses its separately declared empirical B override. SPB C displays
+the actual core ratio in both resistivity modes, matching DPB; historical session
+values and calculations are unchanged. See the [desktop display deviation](desktop-modes.md#how-to-read-the-scales).
 
 ## Approximation and conventions
 

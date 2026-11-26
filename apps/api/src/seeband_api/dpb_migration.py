@@ -51,7 +51,7 @@ def migrate_dpb(body: LegacyDpbPoint) -> ConvertedDpbPoint:
     if p.keys() - {"m_eff", "fermi_energy", "band_gap", "m1", "A", "B", "F", "G", "C", "D"}:
         raise ApiError(422, "invalid_legacy_bands", "Unknown legacy parameter")
     config: BandConfiguration = "vb_cb" if p["m_eff"] > 0 else "vb_vb"
-    values: dict[str, float] = {name: p[name] for name in ("A", "B", "F", "G") if name in p}
+    values: dict[str, float] = {name: p[name] for name in ("A", "B", "C", "D", "F", "G") if name in p}
     values.update(mass_ratio=abs(p["m_eff"]), band_offset_k=p["band_gap"], m1=body.m1)
     try:
         density = zero_temperature_density(

@@ -150,6 +150,7 @@ export const STRINGS = {
     scatteringNames: {
       acPh: "Acoustic phonons (acPh)",
       dis: "Alloy disorder (dis)",
+      acPhDis: "Acoustic phonons + alloy disorder (acPhDis)",
       ionized: "Ionized impurities",
     },
     disabledReason: "not available until a known error is fixed.",

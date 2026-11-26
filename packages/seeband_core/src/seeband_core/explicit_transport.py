@@ -277,9 +277,9 @@ def explicit_curves(
             f"carrier_concentration_band_{i + 1}_per_cm3": signs[i] * populations[:, i] * 1e-6
             for i in range(2)
         }
-    if scattering not in SCATTERING_LAWS:
-        raise ValueError("Explicit bands support acPh, dis and ionized scattering")
-    law = SCATTERING_LAWS[scattering]
+    if scattering not in SCATTERING_LAWS and scattering != "acPhDis":
+        raise ValueError("Explicit bands support acPh, dis, acPhDis and ionized scattering")
+    law = SCATTERING_LAWS["acPh" if scattering == "acPhDis" else scattering]
     only_s = fit_mode == "dpb_s"
     amplitude = 1.0 if only_s else parameters.get("F" if scattering == "dis" else "A", 1.0)
     relative = (
@@ -328,6 +328,13 @@ def explicit_curves(
     logs = np.asarray(log_f).T
     log_weights = np.full(2, -np.inf)
     np.log(weights, out=log_weights, where=weights > 0)
+    if scattering == "acPhDis" and not only_s:
+        # Bandwise Matthiessen law. C/D are dimensionless acoustic/disorder
+        # ratios at 300 K; the two mechanisms share the same energy exponent.
+        ratios = np.array([parameters.get("C", 0.0), parameters.get("D", 0.0)])
+        if not np.isfinite(ratios).all() or (ratios < 0).any():
+            raise ValueError("Mixed scattering ratios must be finite and nonnegative")
+        log_weights = log_weights + np.log(t[:, None] / (t[:, None] + 300.0 * ratios))
     log_channels = logs + log_weights
     log_total = logsumexp(log_channels, axis=1)
     channel_fraction = np.exp(log_channels - log_total[:, None])

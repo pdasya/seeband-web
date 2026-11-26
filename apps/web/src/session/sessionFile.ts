@@ -486,17 +486,19 @@ export function historicalIonizedControls(
   content: SessionContent,
   explicitDpb = content.selection.parameterization !== undefined,
 ) {
+  const scattering =
+    content.selection.model === "dpb"
+      ? content.selection.scattering
+      : content.savedModelSettings.dpb?.scattering;
   if (content.ionizedBInputs === true)
     return {
       parameters: content.parameters,
       customBounds: content.customBounds,
     };
-  const ionized =
-    (content.selection.model === "dpb"
-      ? content.selection.scattering
-      : content.savedModelSettings.dpb?.scattering) === "ionized";
+  const ionized = scattering === "ionized";
   const parameters =
-    ionized || content.parameters.dpb_s?.B !== undefined
+    ionized ||
+    (scattering !== "acPhDis" && content.parameters.dpb_s?.B !== undefined)
       ? { ...content.parameters, dpb_s: { ...content.parameters.dpb_s, B: 1 } }
       : content.parameters;
   // Signed-mass sessions keep their original request until explicitly converted.

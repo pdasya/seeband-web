@@ -207,3 +207,38 @@ describe("carriedNames", () => {
     expect(carriedNames(EMPTY, S, S)).toEqual([]);
   });
 });
+
+test("converted mixed sessions retain the archived transport controls of each mode", () => {
+  const rho = mode("dpb_s_rho", { band_gap: 1000, A: 100, B: 1, C: 1, D: 1 });
+  const hall = { ...rho, id: "dpb_s_rho_rh" };
+  const state = {
+    ...EMPTY,
+    selection: {
+      model: "dpb",
+      fitMode: "dpb_s_rho",
+      band1Degeneracy: 1,
+      band2Degeneracy: 1,
+      minTemperatureK: 100,
+      maxTemperatureK: 800,
+      legacySource: "archived",
+      parameterization: "explicit_density_v1" as const,
+      scattering: "acPhDis",
+    },
+    parameters: {
+      dpb_s_rho: { band_gap: 900, A: 200, B: 2, C: 3, D: 4 },
+      dpb_s_rho_rh: { A: 500, B: 5, C: 6, D: 7 },
+    },
+    customBounds: { dpb_s_rho_rh: { C: { lower: 5, upper: 9 } } },
+    held: { dpb_s_rho_rh: ["C"] },
+  };
+  const next = carryParameters(state, rho, hall);
+  expect(next.parameters.dpb_s_rho_rh).toEqual({
+    band_gap: 900,
+    A: 500,
+    B: 5,
+    C: 6,
+    D: 7,
+  });
+  expect(next.customBounds.dpb_s_rho_rh?.C).toEqual({ lower: 5, upper: 9 });
+  expect(next.held.dpb_s_rho_rh).toEqual(["C"]);
+});

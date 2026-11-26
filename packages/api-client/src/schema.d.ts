@@ -300,7 +300,7 @@ export interface components {
          * @description What to calculate.
          *
          *     `parameters` holds every parameter of the mode in core units, including those of other
-         *     scattering types. Values outside a control's range are allowed, as a fit can end there. `points`
+         *     scattering types. C and D are required only for mixed transport. Values outside a control's range are allowed, as a fit can end there. `points`
          *     defaults to the model's. `measurements` gives an RMSE for each quantity, and should hold only
          *     points in the fit range. `extrapolated` says that interpolation made up some of these points.
          *
@@ -408,7 +408,7 @@ export interface components {
          *     by name with its unit: `electrical_conductivity_s_per_m` is 1/rho, with null for a rho of 0 or
          *     below. They use no model, so they go with the data the request sent, interpolated or not.
          * @example {
-         *       "core_version": "0.4.1",
+         *       "core_version": "0.4.2",
          *       "curves": {
          *         "resistivity_ohm_m": [
          *           0.000036627,
@@ -459,7 +459,7 @@ export interface components {
             /**
              * Core Version
              * @description Core software version for provenance, not certification.
-             * @default 0.4.1
+             * @default 0.4.2
              */
             core_version?: string;
             /** Curves */
@@ -698,7 +698,7 @@ export interface components {
          * @description What to fit.
          *
          *     `start` holds every parameter of the mode in core units, including those of other scattering
-         *     types. `bounds` overrides the description's bounds for fitted parameters, in core units.
+         *     types. C and D are required only for mixed transport. `bounds` overrides the description's bounds for fitted parameters, in core units.
          *     `measurements` holds each quantity of the mode, and only points from `min_temperature_k` to
          *     `max_temperature_k`, inclusive, enter the fit. `extrapolated` says that interpolation made up
          *     some of these points, so that the result says so too.
@@ -975,7 +975,7 @@ export interface components {
          *     E_F are from that stage. Otherwise it is empty.
          * @example {
          *       "at_bounds": [],
-         *       "core_version": "0.4.1",
+         *       "core_version": "0.4.2",
          *       "held": [],
          *       "known_issues": [],
          *       "parameter_errors": {
@@ -1005,7 +1005,7 @@ export interface components {
             /**
              * Core Version
              * @description Core software version for provenance, not certification.
-             * @default 0.4.1
+             * @default 0.4.2
              */
             core_version?: string;
             /**
@@ -1220,7 +1220,7 @@ export interface components {
         /**
          * HealthResponse
          * @example {
-         *       "core_version": "0.4.1",
+         *       "core_version": "0.4.2",
          *       "status": "ok",
          *       "version": "1.0.0"
          *     }
@@ -1241,7 +1241,7 @@ export interface components {
             /**
              * Core Version
              * @description Core software version for provenance, not certification.
-             * @default 0.4.1
+             * @default 0.4.2
              */
             core_version?: string;
         };
@@ -1488,7 +1488,7 @@ export interface components {
          *     `scattering` lists the types the parameter applies to, and empty means all of them. A mode with
          *     no choice of scattering uses all its parameters, whatever they list. A `fixed` parameter is set
          *     by the user, and a fit does not change it. Requests hold every parameter of a mode, including
-         *     those of other scattering types.
+         *     those of other scattering types. C and D are required only for mixed transport.
          *
          *     `unit` is the unit of the scaled value, and can be `dimensionless` or `unknown`. `display_unit`
          *     is the one a user sees, and `display_factor` goes from the one to the other: an energy in K is
@@ -1744,7 +1744,7 @@ export interface operations {
                 headers: {
                     /** @example no-cache */
                     "Cache-Control"?: string;
-                    /** @example "3611b6e7e39f5f472c5f66d84c8e5a94" */
+                    /** @example "bf5be25a21c681edd6b4bbde0d16ad15" */
                     ETag?: string;
                     [name: string]: unknown;
                 };

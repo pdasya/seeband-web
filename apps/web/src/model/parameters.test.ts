@@ -88,6 +88,7 @@ describe("parameterValues", () => {
       "band_mass",
       "fermi_energy",
       "A",
+      "C",
       "F",
     ]);
     expect(values.band_mass).toBe(-1);
