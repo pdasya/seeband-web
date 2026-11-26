@@ -210,7 +210,7 @@ def load_desktop_descriptions() -> dict[str, ModelDescription]:
 def explicit_dpb_description(fermi_energy: bool = False) -> ModelDescription:
     """Controls for explicit band configurations with fixed density or a fitted Fermi energy."""
     desktop = load_desktop_descriptions()["dpb"]
-    hall_mass = next(p for p in desktop.fit_modes[-1].parameters if p.name == "m1")
+    hall_mass = next(p for p in desktop.fit_mode("dpb_s_rho_rh").parameters if p.name == "m1")
     modes = []
     for mode in desktop.fit_modes:
         parameters = []

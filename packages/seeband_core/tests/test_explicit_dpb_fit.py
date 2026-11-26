@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from seeband_core.fit_quality import CURVE_NAMES
 from seeband_core.model_catalog import registry
-from seeband_core.model_descriptions import explicit_dpb_description
+from seeband_core.model_descriptions import explicit_dpb_description, load_desktop_descriptions
 from seeband_core.model_interface import (
     Bounds,
     CurveRequest,
@@ -258,3 +258,11 @@ def test_joint_hall_fit_can_start_at_compensated_overlap():
     assert fit.status == "converged", fit.message
     assert fit.parameters["fermi_energy"] == pytest.approx(-65, abs=2e-5)
     assert fit.parameters["m1"] == pytest.approx(1.2, rel=2e-5)
+
+
+def test_the_hall_mass_comes_from_the_hall_mode_whatever_the_order():
+    desktop = load_desktop_descriptions()["dpb"]
+    hall = next(p for p in desktop.fit_mode("dpb_s_rho_rh").parameters if p.name == "m1")
+    for mode in explicit_dpb_description().fit_modes:
+        mass = next(p for p in mode.parameters if p.name == "m1")
+        assert mass.value_range == hall.value_range, mode.id
