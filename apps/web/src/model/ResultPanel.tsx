@@ -107,8 +107,8 @@ export function ResultPanel({ live }: { live: LiveCurves }) {
   const mode = fitModeOf(model, selection.fitMode);
 
   const rows = QUANTITIES.flatMap((quantity) => {
-    const rmse =
-      data[quantity] === undefined ? undefined : result?.rmse?.[quantity];
+    // The hook keeps only the RMSE of the measurements the current request sends.
+    const rmse = result?.rmse?.[quantity];
     return rmse === undefined ? [] : [{ quantity, rmse }];
   });
   const issues = resultIssues(mode, {

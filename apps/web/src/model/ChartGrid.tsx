@@ -165,8 +165,8 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
     ? null
     : Math.min(...drawnFrom.map(({ changedAtMs }) => changedAtMs ?? 0));
 
-  const hasMeasurements = isQuantityTab(tab) && data[tab] !== undefined;
-  const rmse = hasMeasurements ? measured.result?.rmse?.[tab] : undefined;
+  // The hook keeps only the RMSE of the measurements the current request sends.
+  const rmse = isQuantityTab(tab) ? measured.result?.rmse?.[tab] : undefined;
   // Shown as its field shows it, to the same step.
   const gap =
     tab === "band_diagram" ? band2EdgeShown(mode, parameters) : undefined;

@@ -231,6 +231,48 @@ function useDerivedCurves(
   };
 }
 
+/**
+ * The answer with the RMSE, and RMSE issues, only of the measurements the current request sends.
+ * An answer may still be for data since removed: its curves can stay, its comparison cannot.
+ */
+export function withSentRmse(
+  result: CalcResponse | null,
+  sent: ReadonlySet<string>,
+): CalcResponse | null {
+  if (result === null) return null;
+  const rmse = Object.fromEntries(
+    Object.entries(result.rmse ?? {}).filter(([quantity]) =>
+      sent.has(quantity),
+    ),
+  );
+  const issues = (result.issues ?? []).filter(
+    (issue) => issue.scope !== "rmse" || sent.has(issue.quantity),
+  );
+  return Object.keys(rmse).length === Object.keys(result.rmse ?? {}).length &&
+    issues.length === (result.issues ?? []).length
+    ? result
+    : { ...result, rmse, issues };
+}
+
+function useSentRmse(live: LiveCalc, body: string | null): LiveCalc {
+  const sent = useMemo(
+    () =>
+      new Set(
+        Object.keys(
+          body === null
+            ? {}
+            : ((JSON.parse(body) as CalcRequest).measurements ?? {}),
+        ),
+      ),
+    [body],
+  );
+  const result = useMemo(
+    () => withSentRmse(live.result, sent),
+    [live.result, sent],
+  );
+  return result === live.result ? live : { ...live, result };
+}
+
 /** Curves and RMSE for the current values, from the server. */
 export function useLiveCurves(): LiveCurves {
   const { data: models } = useModels();
@@ -291,12 +333,9 @@ export function useLiveCurves(): LiveCurves {
   const waiting = interpolation.enabled && interpolation.loading;
 
   return {
-    measured: useLatest(
-      CALC,
+    measured: useSentRmse(
+      useLatest(CALC, measured.body, measured.scope, waiting, "measured"),
       measured.body,
-      measured.scope,
-      waiting,
-      "measured",
     ),
     derived: useDerivedCurves(derived),
     diagram: useLatest(
