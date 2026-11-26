@@ -1,7 +1,7 @@
 """`POST /api/calc`: curves for given parameters, and optionally their RMSE. It keeps no state."""
 
 from http import HTTPStatus
-from typing import Annotated, Self
+from typing import Annotated, Literal, Self
 
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -130,6 +130,15 @@ class MeasuredPointsResponse(BaseModel):
     values: list[float | None]
 
 
+class CalculationIssueResponse(BaseModel):
+    """A numerical failure isolated to one curve or one observable's RMSE."""
+
+    scope: Literal["curve", "rmse"]
+    quantity: str
+    temperature_k: list[float]
+    code: str
+
+
 class CalcResponse(BaseModel):
     """Curves by name, where each name ends in its unit, and null marks a value that is not finite.
 
@@ -174,6 +183,7 @@ class CalcResponse(BaseModel):
     )
     curves: dict[str, list[float | None]]
     known_issues: list[str]
+    issues: list[CalculationIssueResponse] = Field(default_factory=list)
     rmse: dict[Quantity, RmseResponse]
     measured_points: dict[str, MeasuredPointsResponse] = Field(default_factory=dict)
 
@@ -198,23 +208,13 @@ def _refuse(details: list[ErrorDetail]) -> ApiError:
 
 def _check_measurements(body: CalcRequest, fit_mode: FitMode) -> list[ErrorDetail]:
     details = []
-    for quantity, measurement in body.measurements.items():
+    for quantity in body.measurements:
         if quantity not in fit_mode.quantities:
             details.append(
                 invalid(
                     "quantity_not_in_mode",
                     "This mode has no such curve",
                     ["measurements", quantity],
-                )
-            )
-        elif quantity != "seebeck" and 0 in measurement.values:
-            # The RMSE of rho and R_H is a percent of the data, which has no meaning at 0.
-            index = measurement.values.index(0)
-            details.append(
-                invalid(
-                    "zero_measured_value",
-                    "A relative RMSE needs values other than 0",
-                    ["measurements", quantity, "values", index],
                 )
             )
     return details
@@ -232,6 +232,15 @@ def _to_response(
             for quantity, rmse in outcome.rmse.items()
         },
         measured_points=points or {},
+        issues=[
+            CalculationIssueResponse(
+                scope=issue.scope,
+                quantity=issue.quantity,
+                temperature_k=list(issue.temperature_k),
+                code=issue.code,
+            )
+            for issue in outcome.issues
+        ],
     )
 
 

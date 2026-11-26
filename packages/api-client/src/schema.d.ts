@@ -469,6 +469,8 @@ export interface components {
             };
             /** Known Issues */
             known_issues: string[];
+            /** Issues */
+            issues?: components["schemas"]["CalculationIssueResponse"][];
             /** Rmse */
             rmse: {
                 [key: string]: components["schemas"]["RmseResponse"];
@@ -477,6 +479,23 @@ export interface components {
             measured_points?: {
                 [key: string]: components["schemas"]["MeasuredPointsResponse"];
             };
+        };
+        /**
+         * CalculationIssueResponse
+         * @description A numerical failure isolated to one curve or one observable's RMSE.
+         */
+        CalculationIssueResponse: {
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "curve" | "rmse";
+            /** Quantity */
+            quantity: string;
+            /** Temperature K */
+            temperature_k: number[];
+            /** Code */
+            code: string;
         };
         /**
          * ColumnRead

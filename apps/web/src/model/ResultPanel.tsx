@@ -1,3 +1,4 @@
+import { rmseIssueText } from "@/model/calcIssues";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { limitedRanges } from "@/model/interpolatedRanges";
@@ -205,7 +206,13 @@ export function ResultPanel({ live }: { live: LiveCurves }) {
           )}
         </dl>
       )}
-      {error !== null && result !== null && <Note>{fit.rmseOutdated}</Note>}
+      {QUANTITIES.map((quantity) => {
+        const issue = rmseIssueText(result, quantity);
+        return issue === null ? null : (
+          <Note key={`rmse:${quantity}`}>{issue}</Note>
+        );
+      })}
+      {live.measured.stale === true && <Note>{fit.rmseOutdated}</Note>}
       {gaps.noPointsInRange.length > 0 && (
         <Note>{`${symbols(gaps.noPointsInRange)}: ${fit.noPointsInRange}`}</Note>
       )}

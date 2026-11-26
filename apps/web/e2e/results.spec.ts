@@ -1505,3 +1505,69 @@ test("a report that cannot be prepared says so, and prints nothing", async ({
     ),
   ).toBe(0);
 });
+
+test("Results distinguish unavailable RMSE from partial and wholly unavailable curves", async ({
+  page,
+}) => {
+  await openFit(page);
+  await finishWith(page);
+  await page.route("**/api/calc", (route) => {
+    const { kind = "measured" } = route.request().postDataJSON() as {
+      kind?: string;
+    };
+    return route.fulfill({
+      json: {
+        ...CALC,
+        temperature_k: [100, 200, 300],
+        curves:
+          kind === "thermal_conductivity"
+            ? { thermal_conductivity_w_per_m_k: [null, null, null] }
+            : kind === "chemical_potential"
+              ? { chemical_potential_k: [10, null, 30] }
+              : CALC.curves,
+        rmse: kind === "measured" ? { resistivity: RMSE.resistivity } : {},
+        issues:
+          kind === "measured"
+            ? [
+                {
+                  scope: "rmse",
+                  quantity: "seebeck",
+                  temperature_k: [100],
+                  code: "non_finite_result",
+                },
+              ]
+            : kind === "thermal_conductivity"
+              ? [
+                  {
+                    scope: "curve",
+                    quantity: "thermal_conductivity_w_per_m_k",
+                    temperature_k: [100, 200, 300],
+                    code: "non_finite_result",
+                  },
+                ]
+              : kind === "chemical_potential"
+                ? [
+                    {
+                      scope: "curve",
+                      quantity: "chemical_potential_k",
+                      temperature_k: [200],
+                      code: "non_finite_result",
+                    },
+                  ]
+                : [],
+      },
+    });
+  });
+  await toResults(page);
+  await expect(kpi(page, "RMSE, S")).toContainText(
+    "RMSE, S: unavailable at 100 K",
+  );
+  await expect(kpi(page, "RMSE ρ")).toContainText("22 %");
+  await expect(
+    page.getByText(/κe.*model curve unavailable at 100; 200; 300 K/),
+  ).toBeVisible();
+  await expect(
+    page.getByText(/μ.*model curve unavailable at 200 K/),
+  ).toBeVisible();
+  await expect(page.getByText("The RMSE is being calculated.")).toHaveCount(0);
+});

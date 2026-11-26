@@ -73,6 +73,24 @@ export const STRINGS = {
       `Parameterization: explicit_density_v1; configuration: ${configuration}; net electron density: ${density} m⁻³`,
   },
   appName: "SeeBand",
+  calculation: {
+    affectedList: (temperatures: readonly string[]) =>
+      `${temperatures.join("; ")} K`,
+    affectedRange: (first: string, last: string, count: number) =>
+      `${first}–${last} K (${count} affected temperatures)`,
+    previous:
+      "Showing the previous calculation while the current values are unavailable.",
+    reasons: {
+      zero_measured_value:
+        "A measured value is zero, so the percentage RMSE is undefined.",
+      non_finite_result: "The calculation returned a non-finite value.",
+      calculation_failed: "The calculation failed for these values.",
+    },
+    curveUnavailable: (quantity: string, temperatures: string) =>
+      `${quantity}: model curve unavailable at ${temperatures}. Gaps are left in the curve.`,
+    rmseUnavailable: (quantity: string, temperatures: string) =>
+      `RMSE, ${quantity}: unavailable at ${temperatures}. The model curve has its own availability.`,
+  },
   // The link that the header's logo and name make, for a screen reader.
   appHomeLabel: "SeeBand, overview",
   appStage: "web · prototype",

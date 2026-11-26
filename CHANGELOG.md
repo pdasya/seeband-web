@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- P27 (#257): Fit and Results show the finite points from a partial calculation.
+  Curve gaps and unavailable RMSE values identify the affected quantity,
+  temperatures and reason.
+
 - Core 0.4.2 restores combined acoustic-phonon and alloy-disorder scattering for parabolic bands (#249). S-only uses the desktop structural Seebeck curve. Fits with resistivity use the mixed lifetime for each band. [Model and independent evidence](docs/physics/acphdis.md).
 
 - Core 0.4.1 (#247): explicit DPB ionized fits accept a researcher-held relative B in S-only and permit fitting B across the conditional Coulomb benchmark in modes with resistivity.

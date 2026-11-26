@@ -6654,6 +6654,13 @@
             "type": "array",
             "title": "Known Issues"
           },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/CalculationIssueResponse"
+            },
+            "type": "array",
+            "title": "Issues"
+          },
           "rmse": {
             "additionalProperties": {
               "$ref": "#/components/schemas/RmseResponse"
@@ -6732,6 +6739,42 @@
             ]
           }
         ]
+      },
+      "CalculationIssueResponse": {
+        "properties": {
+          "scope": {
+            "type": "string",
+            "enum": [
+              "curve",
+              "rmse"
+            ],
+            "title": "Scope"
+          },
+          "quantity": {
+            "type": "string",
+            "title": "Quantity"
+          },
+          "temperature_k": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Temperature K"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "scope",
+          "quantity",
+          "temperature_k",
+          "code"
+        ],
+        "title": "CalculationIssueResponse",
+        "description": "A numerical failure isolated to one curve or one observable's RMSE."
       },
       "ColumnRead": {
         "properties": {
