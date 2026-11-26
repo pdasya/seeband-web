@@ -469,7 +469,7 @@ function LegacyMigration({
           />
         </label>
         <label>
-          {STRINGS.fit.degeneracyMeaning} N₁
+          {STRINGS.fit.degeneracyOf(1)}
           <Input
             value={n1}
             disabled={busy}
@@ -477,7 +477,7 @@ function LegacyMigration({
           />
         </label>
         <label>
-          {STRINGS.fit.degeneracyMeaning} N₂
+          {STRINGS.fit.degeneracyOf(2)}
           <Input
             value={n2}
             disabled={busy}

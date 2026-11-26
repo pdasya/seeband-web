@@ -19,6 +19,9 @@ export const STRINGS = {
     representation: "Explicit bands · fixed carrier excess",
     representationLabel: "Representation",
     densityMeaning: "Signed net electron density n − p",
+    densitySymbol: "n − p",
+    // As written in exported files, in plain ASCII.
+    densityUnit: "m^-3",
     verifiedMethod: "Explicit bands use the verified joint method.",
     configuration: "Band configuration",
     bandLabel: (band: number, kind: string) => `Band ${band} (${kind})`,
@@ -766,6 +769,8 @@ export const STRINGS = {
     rmse: "RMSE",
     degeneracySymbol: "N₁, N₂",
     degeneracyMeaning: "band degeneracies",
+    degeneracyOf: (band: 1 | 2) =>
+      `band degeneracies ${band === 1 ? "N₁" : "N₂"}`,
     noRmse: "The RMSE appears here once measurements are loaded.",
     rmseNotFinite: "not finite",
     rmseFailed: "The RMSE could not be calculated for the current values.",
