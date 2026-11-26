@@ -7,6 +7,14 @@ from math import isfinite
 from urllib.request import Request, urlopen
 
 CURVE = {"seebeck": "seebeck_v_per_k", "resistivity": "resistivity_ohm_m", "hall": "hall_m3_per_c"}
+# Nonzero SPB values, so that negating both flips the carrier type whatever the defaults are.
+SPB_START = {"fermi_energy": 150.0, "band_mass": 1.2}
+
+
+def check(condition: bool, context: object) -> None:
+    """A failed check stops the replay. Unlike assert, it also runs under python -O."""
+    if not condition:
+        raise SystemExit(f"FAILED: {context}")
 
 
 def verify(base_url: str) -> None:
@@ -25,6 +33,8 @@ def verify(base_url: str) -> None:
                 continue
             for law in mode["scattering"]:
                 parameters = {p["name"]: p["core_range"]["default"] for p in mode["parameters"]}
+                if model["id"] == "spb":
+                    parameters |= SPB_START
                 body = dict(
                     model=model["id"],
                     fit_mode=mode["id"],
@@ -35,23 +45,25 @@ def verify(base_url: str) -> None:
                     parameters=parameters,
                 )
                 first = call("/api/calc", body)
+                changed = dict(parameters)
                 if model["id"] == "spb":
-                    parameters["fermi_energy"] *= -1
-                    parameters["band_mass"] *= -1
+                    changed["fermi_energy"] *= -1
+                    changed["band_mass"] *= -1
                 else:
-                    parameters["m_eff"] *= 2
+                    changed["m_eff"] *= 2
+                body = body | {"parameters": changed}
                 updated = call("/api/calc", body)
                 keys = {CURVE[q] for q in mode["quantities"]}
-                assert set(updated["curves"]) == keys and not updated["rmse"], body
+                check(set(updated["curves"]) == keys and not updated["rmse"], body)
                 observations = {}
                 for quantity in mode["quantities"]:
                     key = CURVE[quantity]
                     old, new = first["curves"][key], updated["curves"][key]
-                    assert all(v is not None and isfinite(v) for v in old + new), (body, key)
+                    check(all(v is not None and isfinite(v) for v in old + new), (body, key))
                     if model["id"] == "dpb":
-                        assert old != new, (body, key)
+                        check(old != new, (body, key))
                     elif quantity in ("seebeck", "hall"):
-                        assert all(x * y < 0 for x, y in zip(old, new, strict=True)), (body, key)
+                        check(all(x * y < 0 for x, y in zip(old, new, strict=True)), (body, key))
                     observations[quantity] = {
                         "temperature_k": updated["temperature_k"][::3],
                         "values": [v * 1.05 for v in new[::3]],
@@ -59,14 +71,14 @@ def verify(base_url: str) -> None:
                 loaded = call("/api/calc", body | {"measurements": observations})
                 removed = call("/api/calc", body)
                 for result in (loaded, removed):
-                    assert result["temperature_k"] == updated["temperature_k"], body
-                    assert result["curves"] == updated["curves"], body
-                assert set(loaded["rmse"]) == set(mode["quantities"]), body
-                assert all(isfinite(item["value"]) for item in loaded["rmse"].values()), body
-                assert removed["rmse"] == {}, body
+                    check(result["temperature_k"] == updated["temperature_k"], body)
+                    check(result["curves"] == updated["curves"], body)
+                check(set(loaded["rmse"]) == set(mode["quantities"]), body)
+                check(all(isfinite(item["value"]) for item in loaded["rmse"].values()), body)
+                check(removed["rmse"] == {}, body)
                 count += 1
                 sys.stdout.write(f"{mode['id']} {law} OK\n")
-    assert count > 0, "The API advertised no supported combinations"
+    check(count > 0, "The API advertised no supported combinations")
     sys.stdout.write(f"Verified {count} model, fit-mode and scattering combinations.\n")
 
 
