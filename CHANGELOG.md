@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Core 0.4.1 (#247): explicit DPB ionized fits accept a researcher-held relative B in S-only and permit fitting B across the conditional Coulomb benchmark in modes with resistivity.
+
 - U8 (#277): every page of the site and the app has the same favicon, as
   SVG, ICO and an Apple touch icon, drawn from the header's logo by
   `pnpm --filter @seeband/site icons`. The logo and the name in the header

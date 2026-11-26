@@ -263,7 +263,7 @@ async def post_calc(body: CalcRequest, pool: CalcPoolDep, max_points: MaxPointsD
     details = [
         *check_scattering(body.scattering, fit_mode),
         *check_degeneracy(body.band_1_degeneracy, body.band_2_degeneracy, fit_mode),
-        *check_parameter_names(list(body.parameters), "parameters", fit_mode),
+        *check_parameter_names(list(body.parameters), "parameters", fit_mode, body.scattering),
         *_check_measurements(body, fit_mode),
         *check_point_counts(body.measurements, max_points),
     ]

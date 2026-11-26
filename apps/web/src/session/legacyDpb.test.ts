@@ -131,3 +131,43 @@ test("conversion keeps historical bounds and results as provenance, with fresh e
     m1: 1.7,
   });
 });
+
+test("ionized conversion preserves rho B holds and historical bounds", async () => {
+  const store = createSessionStore();
+  store.setState({
+    selection: {
+      ...store.getState().selection,
+      model: "dpb",
+      scattering: "ionized",
+      fitMode: "dpb_s_rho",
+    },
+    parameters: { dpb_s_rho: { B: 1.04 } },
+    customBounds: { dpb_s_rho: { B: { lower: 0.95, upper: 1.08 } } },
+    held: { dpb_s_rho: ["B"] },
+  });
+  const file = await sessionFile(
+    store.getState(),
+    { appVersion: "old", apiVersion: "old", saved: "2026-11-20" },
+    () => null,
+  );
+  const point = {
+    parameterization: "explicit_density_v1" as const,
+    band_configuration: "vb_cb" as const,
+    net_electron_density_per_m3: 1e24,
+    parameters: { mass_ratio: 2, band_offset_k: 600, m1: 1, B: 1.04 },
+  };
+  const converted = convertedSession(file, point, 1, 1);
+  expect(converted.parameters.dpb_s_rho?.B).toBe(1.04);
+  expect(converted.customBounds.dpb_s_rho?.B).toEqual({
+    lower: 0.95,
+    upper: 1.08,
+  });
+  expect(converted.held.dpb_s_rho).toEqual(["B"]);
+  expect(converted.ionizedBInputs).toBe(true);
+  file.content.customBounds = {};
+  file.content.held = {};
+  expect(convertedSession(file, point, 1, 1).customBounds.dpb_s_rho?.B).toEqual(
+    { lower: 0.9, upper: 1.1 },
+  );
+  expect(convertedSession(file, point, 1, 1).held.dpb_s_rho).toBeUndefined();
+});

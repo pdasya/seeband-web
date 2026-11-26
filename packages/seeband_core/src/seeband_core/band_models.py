@@ -314,8 +314,10 @@ class _BandModel:
         fit_mode = self._request_mode(fit_mode_id, explicit)
         if scattering is None and fit_mode.scattering and not fit_mode.id.endswith("_s"):
             raise ValueError(f"Fit mode {fit_mode_id} needs a scattering type")
-        fit_mode.parameters_for(scattering)
-        return fit_mode, scattering
+        active = fit_mode.parameters_for(scattering)
+        specs = {p.name: p for p in fit_mode.parameters}
+        specs.update((p.name, p) for p in active)
+        return dataclasses.replace(fit_mode, parameters=tuple(specs.values())), scattering
 
     def _check_fit(self, request: FitRequest, fit_mode: FitMode) -> None:
         specs = {spec.name: spec for spec in fit_mode.parameters}
@@ -1015,6 +1017,12 @@ class DpbModel(_BandModel):
         fit_mode, scattering = self._mode_and_scattering(
             request.fit_mode, request.scattering, request.explicit_bands
         )
+        if (
+            request.explicit_bands is not None
+            and scattering == "ionized"
+            and fit_mode.id == "dpb_s"
+        ):
+            request = dataclasses.replace(request, start={"B": 1.0} | dict(request.start))
         if request.explicit_bands is not None and request.algorithm != "verified-sequential-v2":
             raise ValueError("Explicit bands require the verified fitting algorithm")
         self._check_fit(request, fit_mode)

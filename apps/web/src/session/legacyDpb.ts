@@ -1,7 +1,11 @@
 import type { components } from "@seeband/api-client";
 import { parameterValues } from "@/model/parameters";
 import type { FitModeDescription } from "@/model/selection";
-import type { SessionContent, SessionFile } from "@/session/sessionFile";
+import {
+  historicalIonizedControls,
+  type SessionContent,
+  type SessionFile,
+} from "@/session/sessionFile";
 
 export type HallMassConvention = "single_valley" | "all_valley";
 
@@ -36,7 +40,12 @@ export function convertedSession(
 ): SessionContent {
   const content = session.content;
   const mode = content.selection.fitMode ?? "dpb_s_rho";
+  const ionized = content.selection.scattering === "ionized";
+  const controls = historicalIonizedControls(content);
+  const bBounds = controls.customBounds[mode]?.B;
+  const bHeld = content.held[mode]?.includes("B") === true;
   return {
+    ionizedBInputs: true,
     ...content,
     selection: {
       ...content.selection,
@@ -62,11 +71,22 @@ export function convertedSession(
     },
     parameters: {
       ...withoutLegacyDpb(content.parameters),
-      [mode]: point.parameters,
+      [mode]: {
+        ...point.parameters,
+        ...(ionized && mode === "dpb_s"
+          ? { B: controls.parameters.dpb_s?.B ?? 1 }
+          : {}),
+      },
     },
     guessedParameters: withoutLegacyDpb(content.guessedParameters ?? {}),
-    customBounds: withoutLegacyDpb(content.customBounds),
-    held: withoutLegacyDpb(content.held),
+    customBounds: {
+      ...withoutLegacyDpb(content.customBounds),
+      ...(ionized && bBounds ? { [mode]: { B: bBounds } } : {}),
+    },
+    held: {
+      ...withoutLegacyDpb(content.held),
+      ...(ionized && bHeld ? { [mode]: ["B"] } : {}),
+    },
     fit: null,
     fitStart: { values: null, net: null, numerical: false },
   };

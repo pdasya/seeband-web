@@ -6,6 +6,8 @@ description: Corrections that change SeeBand Web results compared with the deskt
 
 # Results that changed
 
+Core 0.4.1 adds a manual relative B to explicit ionized DPB S-only. The default B = 1 reproduces earlier S-only curves. In the resistivity modes the default bounds on B expand from [0.9, 1.1] to [0, 10000]. A new fit may reach a different minimum; at fixed parameters those curves retain their previous values. See [the physical assumptions](/conventions/#ionized-impurities-in-explicit-dpb).
+
 Core `0.4.0` supports any pair of valence or conduction bands with a
 positive mass ratio. In a new sample, choose the two band types and set or fit the
 zero-temperature Fermi energy. The model calculates the electron excess at

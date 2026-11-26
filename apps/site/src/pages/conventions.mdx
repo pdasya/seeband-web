@@ -167,13 +167,27 @@ inter-band scattering. Longitudinal transport uses the positive mass magnitude
 |r|; carrier signs stay in occupations, signed density and Hall. See
 [positive DPB weights](https://github.com/pdasya/seeband-web/blob/main/packages/seeband_core/docs/dpb-positive-weights.md).
 
-The same weight is used for alloy disorder, where it holds for equal alloy
-potentials, and for ionized impurities, where it does not follow from the same
-assumptions. For unscreened Coulomb scattering with the same impurity density in
-both bands, $\tau \propto m^{1/2}E^{3/2}$ gives $\sigma_2/\sigma_1 \propto N R$
-rather than $N/R$, so B would have to be $R^2$, which its default bounds exclude
-unless $|R| \approx 1$. Which law ionized DPB fits should use is open
-([#247](https://github.com/pdasya/seeband-web/issues/247)).
+Alloy disorder gives the same mass dependence for equal alloy potentials.
+
+### Ionized impurities in explicit DPB
+
+Define $M=|m_2|/|m_1|$ using single-valley masses and $N=N_2/N_1$. The
+relative conductivity is $(NB/M) F_2(η_2)/F_2(η_1)$. B is a dimensionless
+empirical normalization. In S-only, enter B (default 1) to hold it throughout
+the fit. In either mode with resistivity, B can be held or fitted. The default
+fit interval [0, 10000] includes $M^2$ across the default mass-ratio range
+[0.01, 100]. Choose bounds appropriate for the sample.
+
+For isotropic parabolic valleys with common impurity charge, density,
+permittivity and a common constant screening factor, the Coulomb lifetime
+scales as $\sqrt{m_i} E^{3/2}$. The conductivity prefactor then scales as
+$N_i m_i$, giving $B=M^2$. Full Brooks–Herring screening depends on wavevector.
+SeeBand uses the power-law approximation and keeps B independent of M.
+A two-band fit to p-PbSe also used an adjustable relative mobility, which has
+a different definition from B.
+[Meyer and Bartoli](https://doi.org/10.1103/PhysRevB.31.2353) ·
+[Majdi et al.](https://doi.org/10.1002/adts.202000103) ·
+[Chasapis et al.](https://doi.org/10.1103/PhysRevB.91.085207).
 
 ## Band diagram
 
@@ -234,11 +248,12 @@ $$
 S = \frac{F_\lambda(\eta_1)\,S_1 + w\,F_\lambda(\eta_2)\,S_2}{F_\lambda(\eta_1) + w\,F_\lambda(\eta_2)}
 $$
 
-| Mode and mechanism                 | Weight w            |
-| ---------------------------------- | ------------------- |
-| S only                             | $1/\lvert r \rvert$ |
-| S + ρ, acoustic phonons or ionized | $B/\lvert r \rvert$ |
-| S + ρ, alloy disorder              | $G/\lvert r \rvert$ |
+| Mode and mechanism                  | Weight w            |
+| ----------------------------------- | ------------------- |
+| S only, except explicit ionized DPB | $1/\lvert r \rvert$ |
+| S only, explicit ionized DPB        | $NB/M$ (B held)     |
+| S + ρ, acoustic phonons or ionized  | $B/\lvert r \rvert$ |
+| S + ρ, alloy disorder               | $G/\lvert r \rvert$ |
 
 The band contributions on the charts are the weighted terms, which add up to S,
 not each band's own S.

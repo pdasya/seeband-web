@@ -408,7 +408,7 @@ export interface components {
          *     by name with its unit: `electrical_conductivity_s_per_m` is 1/rho, with null for a rho of 0 or
          *     below. They use no model, so they go with the data the request sent, interpolated or not.
          * @example {
-         *       "core_version": "0.4.0",
+         *       "core_version": "0.4.1",
          *       "curves": {
          *         "resistivity_ohm_m": [
          *           0.000036627,
@@ -459,7 +459,7 @@ export interface components {
             /**
              * Core Version
              * @description Core software version for provenance, not certification.
-             * @default 0.4.0
+             * @default 0.4.1
              */
             core_version?: string;
             /** Curves */
@@ -898,6 +898,8 @@ export interface components {
          *     `scattering` is empty when a mode has no choice of scattering. `stages` are the solver runs of
          *     a fit, in their order. `band_2_edge` names the parameter whose core value is the edge of band 2
          *     above that of band 1, in K, and is left out for a mode with one band.
+         *     `parameter_overrides` replaces or appends parameters by name for the selected scattering
+         *     before filtering applicability. Missing overrides preserve the base parameter metadata.
          */
         FitModeResponse: {
             /** Id */
@@ -906,6 +908,10 @@ export interface components {
             quantities: ("seebeck" | "resistivity" | "hall")[];
             /** Parameters */
             parameters: components["schemas"]["ParameterResponse"][];
+            /** Parameter Overrides */
+            parameter_overrides?: {
+                [key: string]: components["schemas"]["ParameterResponse"][];
+            };
             /** Scattering */
             scattering: string[];
             /** Default Scattering */
@@ -969,7 +975,7 @@ export interface components {
          *     E_F are from that stage. Otherwise it is empty.
          * @example {
          *       "at_bounds": [],
-         *       "core_version": "0.4.0",
+         *       "core_version": "0.4.1",
          *       "held": [],
          *       "known_issues": [],
          *       "parameter_errors": {
@@ -999,7 +1005,7 @@ export interface components {
             /**
              * Core Version
              * @description Core software version for provenance, not certification.
-             * @default 0.4.0
+             * @default 0.4.1
              */
             core_version?: string;
             /**
@@ -1214,7 +1220,7 @@ export interface components {
         /**
          * HealthResponse
          * @example {
-         *       "core_version": "0.4.0",
+         *       "core_version": "0.4.1",
          *       "status": "ok",
          *       "version": "1.0.0"
          *     }
@@ -1235,7 +1241,7 @@ export interface components {
             /**
              * Core Version
              * @description Core software version for provenance, not certification.
-             * @default 0.4.0
+             * @default 0.4.1
              */
             core_version?: string;
         };
@@ -1738,7 +1744,7 @@ export interface operations {
                 headers: {
                     /** @example no-cache */
                     "Cache-Control"?: string;
-                    /** @example "9cf4365e1a42a826ec11ec2a52e1a198" */
+                    /** @example "3611b6e7e39f5f472c5f66d84c8e5a94" */
                     ETag?: string;
                     [name: string]: unknown;
                 };

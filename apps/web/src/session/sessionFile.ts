@@ -21,11 +21,12 @@ import {
  * It holds the data as read, with the text of each file and how each column was read, the choices
  * of the fit screen, and the last finished fit with the request that made it. Loading it gives the
  * same session back; a fit it holds is shown as it was, never run again by a newer model on its
- * own. Version 1 remains readable for historical calculations; version 2 marks explicit density
- * sessions so older clients reject them rather than reinterpret their physical inputs.
+ * own. Versions 1 and 2 remain readable. Version 4 marks explicit DPB sessions with user B
+ * inputs, so older clients reject them rather than reinterpret their physical inputs.
  */
 export const SESSION_FORMAT = "seeband-session";
-export const SESSION_VERSION = 2;
+// Version 3 is reserved for composition sessions.
+export const SESSION_VERSION = 4;
 /**
  * The largest session file, in bytes of the file and characters of its text alike: the text of
  * three data files of 2 MB, their tables, and a fit, with room to spare.
@@ -38,6 +39,8 @@ type SavedSingleFile = Pick<SingleFile, "name" | "text" | "mapping" | "table">;
 
 /** What a session holds, which the checksum covers. */
 export interface SessionContent {
+  /** Explicit user B semantics; absent in historical v1/v2 files. */
+  ionizedBInputs?: boolean;
   dataMode: DataMode;
   data: Partial<Record<Quantity, SessionData>>;
   /** The files of the way of loading not in use, which count again when the user goes back. */
@@ -64,10 +67,10 @@ export interface SessionContent {
   fit: { request: FitRequest | null; result: FitResult } | null;
 }
 
-/** Versions 1 and 2 share the envelope; version 2 requires explicit DPB identity. */
+/** Version 3 is reserved for composition; versions 2 and 4 require explicit DPB identity. */
 export interface SessionFile {
   format: typeof SESSION_FORMAT;
-  version: 1 | 2;
+  version: 1 | 2 | 4;
   /** When it was saved, as ISO 8601. */
   saved: string;
   /** The app's and the API's versions with their commits, as exports name them. */
@@ -150,6 +153,9 @@ export async function sessionFile(
             },
           });
   const content: SessionContent = {
+    ...(state.selection.parameterization === undefined
+      ? {}
+      : { ionizedBInputs: true }),
     dataMode: state.dataMode,
     data: state.data,
     otherSource:
@@ -177,7 +183,7 @@ export async function sessionFile(
   };
   return {
     format: SESSION_FORMAT,
-    version: state.selection.parameterization !== undefined ? 2 : 1,
+    version: state.selection.parameterization !== undefined ? 4 : 1,
     saved: versions.saved,
     appVersion: versions.appVersion,
     apiVersion: versions.apiVersion,
@@ -354,6 +360,7 @@ const isRequest = shape({
 });
 
 const isContent = shape({
+  ionizedBInputs: optional(isBoolean),
   dataMode: oneOf("separate", "single"),
   data: isData,
   otherSource: orNull(shape({ data: isData, singleFile: isSingleFile })),
@@ -418,16 +425,21 @@ export async function readSessionFile(
   if ((file.version as number) > SESSION_VERSION) {
     return { problem: "newer_version" };
   }
-  if ((file.version as number) < 1) return { problem: "invalid" };
+  if (![1, 2, 4].includes(file.version as number))
+    return { problem: "invalid" };
   if (!isSessionFile(file)) {
     return { problem: "invalid" };
   }
   const session = file as unknown as SessionFile;
+  if ((session.version === 4) !== (session.content.ionizedBInputs === true))
+    return { problem: "invalid" };
   const selected = session.content.selection;
   const explicit = selected.parameterization !== undefined;
   if (
     (session.version === 1 && explicit) ||
-    (session.version === 2 && selected.model === "dpb" && !explicit)
+    ((session.version === 2 || session.version === 4) &&
+      selected.model === "dpb" &&
+      !explicit)
   )
     return { problem: "invalid" };
   if (
@@ -449,6 +461,7 @@ export async function readSessionFile(
 
 /** What a checked file gives the store to restore. */
 export function restoredSession(content: SessionContent): RestoredSession {
+  const compatible = historicalIonizedControls(content);
   return {
     dataMode: content.dataMode,
     data: content.data,
@@ -457,13 +470,42 @@ export function restoredSession(content: SessionContent): RestoredSession {
     chartPanels: content.chartPanels,
     savedModelSettings: content.savedModelSettings,
     selection: content.selection,
-    parameters: content.parameters,
+    parameters: compatible.parameters,
     guessedParameters: content.guessedParameters ?? {},
-    customBounds: content.customBounds,
+    customBounds: compatible.customBounds,
     held: content.held,
     interpolationEnabled: content.interpolation.enabled,
     fitStart: content.fitStart,
     result: content.fit?.result ?? null,
     request: content.fit?.request ?? null,
   };
+}
+
+/** Restore controls without rewriting the saved fit or its original submitted inputs. */
+export function historicalIonizedControls(content: SessionContent) {
+  if (content.ionizedBInputs === true)
+    return {
+      parameters: content.parameters,
+      customBounds: content.customBounds,
+    };
+  const ionized =
+    (content.selection.model === "dpb"
+      ? content.selection.scattering
+      : content.savedModelSettings.dpb?.scattering) === "ionized";
+  const parameters =
+    ionized || content.parameters.dpb_s?.B !== undefined
+      ? { ...content.parameters, dpb_s: { ...content.parameters.dpb_s, B: 1 } }
+      : content.parameters;
+  if (!ionized) return { parameters, customBounds: content.customBounds };
+  const customBounds = { ...content.customBounds };
+  for (const mode of ["dpb_s_rho", "dpb_s_rho_rh"]) {
+    customBounds[mode] = {
+      ...customBounds[mode],
+      B: customBounds[mode]?.B ??
+        (content.fit?.request?.fit_mode === mode
+          ? content.fit.request.bounds?.B
+          : undefined) ?? { lower: 0.9, upper: 1.1 },
+    };
+  }
+  return { parameters, customBounds };
 }

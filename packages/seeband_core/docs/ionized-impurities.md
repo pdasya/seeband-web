@@ -62,6 +62,15 @@ kappa_e=T*(L_1*sigma_1+L_2*sigma_2)
 The plotted Seebeck contributions are w_i*S_i, rather than each band's
 standalone S_i. Carrier densities without Hall remain relative reference values.
 
+## Explicit DPB weight (#247)
+
+With explicit parabolic bands the same weight is NB/M, using positive
+single-valley mass ratio M and valley-count ratio N. B is an editable fixed
+input in S-only (default 1). With resistivity it is fitted or held. The
+default bounds [0, 10000] admit the conditional Coulomb benchmark B=M²
+throughout the default mass range. The signed-mass legacy path retains its
+original S-only weight. See the [derivation and literature](../../../apps/site/src/pages/conventions.mdx#ionized-impurities-in-explicit-dpb).
+
 ## Fitting and starting estimates
 
 Ionized fitting uses verified-sequential-v2 with the existing absolute stage

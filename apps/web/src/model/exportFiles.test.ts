@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 // @vitest-environment node
 import { describe, expect, test } from "vitest";
 
@@ -902,4 +903,34 @@ test("a historical result without a held list can export the recorded holds", ()
     ["m1"],
   );
   expect(csv).toMatch(/m1,m₁,[^\n]*,held at its value/);
+});
+
+test("ionized structural B is exported as fixed with its user value", () => {
+  const mode = modeOf("dpb_s");
+  const b = modeOf("dpb_s_rho").parameters.find((p) => p.name === "B");
+  assert(b);
+  const described = {
+    ...mode,
+    parameter_overrides: {
+      ionized: [
+        {
+          ...b,
+          role: "fixed" as const,
+          bounds_editable: false,
+          fit_bounds: null,
+          scattering: ["ionized"],
+        },
+      ],
+    },
+  };
+  const csv = parametersCsv(
+    [],
+    described,
+    { ...SELECTION, scattering: "ionized" },
+    { B: 9 },
+    { status: "idle" },
+  );
+  expect(csv.split("\n").find((line) => line.startsWith("B,B,"))).toMatch(
+    /,9,fixed\r?$/,
+  );
 });

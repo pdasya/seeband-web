@@ -296,7 +296,7 @@ def _refuse(details: list[ErrorDetail]) -> ApiError:
 
 
 def _check_bounds(body: FitApiRequest, fit_mode: FitMode) -> list[ErrorDetail]:
-    specs = {spec.name: spec for spec in fit_mode.parameters}
+    specs = {spec.name: spec for spec in fit_mode.parameters_for(body.scattering)}
     in_scattering = {
         spec.name
         for spec in fit_mode.parameters_for(body.scattering if fit_mode.scattering else None)
@@ -399,7 +399,7 @@ def _to_core_request(body: FitApiRequest, max_points: int) -> tuple[str, FitRequ
     details = [
         *scattering_details,
         *check_degeneracy(body.band_1_degeneracy, body.band_2_degeneracy, fit_mode),
-        *check_parameter_names(list(body.start), "start", fit_mode),
+        *check_parameter_names(list(body.start), "start", fit_mode, body.scattering),
         *_check_measurements(body, fit_mode),
         *check_point_counts(body.measurements, max_points),
     ]

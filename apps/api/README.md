@@ -382,6 +382,14 @@ See [the physical contract](../../packages/seeband_core/docs/ionized-impurities.
 
 ### Explicit double parabolic bands (core 0.4.0)
 
+From core 0.4.1, apply the selected scattering entry in
+`fit_modes[].parameter_overrides` by parameter name before building the
+editor, fit or curve request. Explicit ionized `dpb_s` accepts an optional
+fixed `parameters.B` (or `start.B` in a fit), default 1. In the two modes with
+resistivity B uses fitted bounds [0, 10000] by default. The empirical
+conductivity prefactor is (N₂/N₁)B/M. Omitting the fixed S-only input
+replays old requests with unit weight.
+
 New explicit DPB sessions request `GET /api/models?parameterization=explicit_fermi_v1`.
 Send the same discriminator, the band configuration and both positive integer
 valley counts on calculation, fit and diagram requests.

@@ -104,6 +104,8 @@ class BandInputs(BaseModel):
                 if not float(value).is_integer():
                     raise ValueError(f"{name} must be a positive integer for explicit bands")
             values = getattr(self, "parameters", None) or getattr(self, "start", {})
+            if getattr(self, "scattering", None) == "ionized" and values.get("B", 1) < 0:
+                raise ValueError("The ionized relative weight B must be nonnegative")
             for name in ("m1", "mass_ratio"):
                 if name in values and values[name] <= 0:
                     raise ValueError(f"{name} must be positive in explicit DPB")
@@ -233,9 +235,17 @@ def check_degeneracy(band_1: float, band_2: float, fit_mode: FitMode) -> list[Er
     ]
 
 
-def check_parameter_names(names: list[str], field: str, fit_mode: FitMode) -> list[ErrorDetail]:
+def check_parameter_names(
+    names: list[str], field: str, fit_mode: FitMode, scattering: str | None = None
+) -> list[ErrorDetail]:
     """Every parameter of a mode is needed, including those of other scattering types."""
     expected = {spec.name for spec in fit_mode.parameters}
+    optional = (
+        fit_mode.parameter_overrides.values()
+        if scattering is None
+        else (fit_mode.parameter_overrides.get(scattering, ()),)
+    )
+    expected.update(spec.name for specs in optional for spec in specs)
     missing = [
         invalid("missing_parameter", "This mode needs it", [field, spec.name])
         for spec in fit_mode.parameters

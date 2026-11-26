@@ -198,7 +198,7 @@ test("explicit CB+CB curves and confirmed historical conversion round-trip", asy
       held: object;
     };
   };
-  expect(file.version).toBe(2);
+  expect(file.version).toBe(4);
   expect(file.content.selection.parameterization).toBe("explicit_density_v1");
   expect(file.content.customBounds).toEqual({});
   expect(file.content.held).toEqual({});
@@ -269,3 +269,98 @@ for (const sample of [
     }
   });
 }
+
+test("old ionized S-only sessions replay unit B and a newly entered B survives export", async ({
+  page,
+}) => {
+  await page.goto("/fit");
+  const content = {
+    dataMode: "separate",
+    data: {},
+    otherSource: null,
+    singleFile: null,
+    selection: {
+      model: "dpb",
+      fitMode: "dpb_s",
+      scattering: "ionized",
+      parameterization: "explicit_fermi_v1",
+      bandConfiguration: "vb_cb",
+      band1Degeneracy: 1,
+      band2Degeneracy: 3,
+      minTemperatureK: 100,
+      maxTemperatureK: 800,
+    },
+    parameters: {
+      dpb_s: {
+        m1: 1,
+        mass_ratio: 2,
+        band_offset_k: 450,
+        fermi_energy: 150,
+        B: 9,
+      },
+    },
+    guessedParameters: {},
+    customBounds: {},
+    held: {},
+    interpolation: { enabled: false },
+    chartPanels: ["seebeck", "band_diagram"],
+    savedModelSettings: {},
+    fitStart: { values: null, net: null, numerical: false },
+    fit: null,
+  };
+  await openSession(
+    page,
+    Buffer.from(
+      JSON.stringify({
+        format: "seeband-session",
+        version: 2,
+        saved: "2026-11-20T00:00:00Z",
+        appVersion: "old",
+        apiVersion: null,
+        content,
+        checksum: createHash("sha256").update(canonical(content)).digest("hex"),
+      }),
+    ),
+  );
+  const field = page.getByRole("textbox", { name: "B", exact: true });
+  await expect(field).toHaveValue("1");
+  const prediction = (b: number) =>
+    page.waitForResponse(
+      (r) =>
+        r.url().endsWith("/api/calc") &&
+        r.request().postDataJSON().fit_mode === "dpb_s" &&
+        r.request().postDataJSON().parameters.B === b,
+    );
+  const unit = prediction(1);
+  await page
+    .locator('input[type="file"]')
+    .first()
+    .setInputFiles({
+      name: "seebeck.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from(
+        "T [K] S [V/K]\n100 0.0001\n450 0.0002\n800 0.0003\n",
+      ),
+    });
+  const baseline = await unit;
+  expect(baseline.ok()).toBe(true);
+  const edited = prediction(4);
+  await field.fill("4");
+  await field.press("Enter");
+  const calculated = await edited;
+  expect(calculated.ok()).toBe(true);
+  expect((await calculated.json()).curves.seebeck_v_per_k).not.toEqual(
+    (await baseline.json()).curves.seebeck_v_per_k,
+  );
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Session to file" }).first().click(),
+  ]);
+  const saved = readFileSync(await download.path());
+  expect(JSON.parse(saved.toString())).toMatchObject({
+    version: 4,
+    content: { parameters: { dpb_s: { B: 4 } } },
+  });
+  await openSession(page, saved);
+  await expect(field).toHaveValue("4");
+});

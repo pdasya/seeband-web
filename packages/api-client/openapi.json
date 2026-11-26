@@ -608,6 +608,7 @@
                                   "bounds_editable": true
                                 }
                               ],
+                              "parameter_overrides": {},
                               "scattering": [
                                 "acPh",
                                 "dis",
@@ -868,6 +869,7 @@
                                   "bounds_editable": false
                                 }
                               ],
+                              "parameter_overrides": {},
                               "scattering": [
                                 "acPh",
                                 "dis",
@@ -1141,6 +1143,7 @@
                                   "bounds_editable": false
                                 }
                               ],
+                              "parameter_overrides": {},
                               "scattering": [
                                 "acPh",
                                 "dis",
@@ -1394,6 +1397,7 @@
                                   "bounds_editable": true
                                 }
                               ],
+                              "parameter_overrides": {},
                               "scattering": [
                                 "acPh",
                                 "dis",
@@ -1801,6 +1805,7 @@
                                   "bounds_editable": true
                                 }
                               ],
+                              "parameter_overrides": {},
                               "scattering": [
                                 "acPh",
                                 "dis",
@@ -2270,6 +2275,7 @@
                                   "bounds_editable": true
                                 }
                               ],
+                              "parameter_overrides": {},
                               "scattering": [
                                 "acPh",
                                 "dis",
@@ -2474,7 +2480,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "example": "\"9cf4365e1a42a826ec11ec2a52e1a198\""
+                "example": "\"3611b6e7e39f5f472c5f66d84c8e5a94\""
               }
             }
           },
@@ -4921,10 +4927,10 @@
               "text/event-stream": {
                 "examples": {
                   "single_pass": {
-                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"done\",\"result\":{\"parameters\":{\"m_eff\":0.57,\"band_gap\":910.0,\"fermi_energy\":-35.0},\"core_version\":\"0.4.0\",\"status\":\"converged\",\"parameter_errors\":{\"m_eff\":0.02,\"band_gap\":12.0,\"fermi_energy\":4.0},\"at_bounds\":[],\"known_issues\":[],\"held\":[],\"algorithm\":\"legacy-sequential-v1\",\"parameter_status\":{\"m_eff\":\"estimated\",\"band_gap\":\"estimated\",\"fermi_energy\":\"estimated\"},\"uncertainty\":\"not_assessed\",\"last_changes\":{}}}\n\n"
+                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"done\",\"result\":{\"parameters\":{\"m_eff\":0.57,\"band_gap\":910.0,\"fermi_energy\":-35.0},\"core_version\":\"0.4.1\",\"status\":\"converged\",\"parameter_errors\":{\"m_eff\":0.02,\"band_gap\":12.0,\"fermi_energy\":4.0},\"at_bounds\":[],\"known_issues\":[],\"held\":[],\"algorithm\":\"legacy-sequential-v1\",\"parameter_status\":{\"m_eff\":\"estimated\",\"band_gap\":\"estimated\",\"fermi_energy\":\"estimated\"},\"uncertainty\":\"not_assessed\",\"last_changes\":{}}}\n\n"
                   },
                   "iterative": {
-                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"iteration\",\"iteration\":1,\"parameters\":{\"m_eff\":0.8,\"band_gap\":950.0,\"fermi_energy\":-60.0}}\n\ndata: {\"type\":\"iteration\",\"iteration\":2,\"parameters\":{\"m_eff\":0.6,\"band_gap\":915.0,\"fermi_energy\":-38.0}}\n\ndata: {\"type\":\"done\",\"result\":{\"parameters\":{\"m_eff\":0.57,\"band_gap\":910.0,\"fermi_energy\":-35.0},\"core_version\":\"0.4.0\",\"status\":\"converged\",\"iterations\":2,\"parameter_errors\":{\"m_eff\":0.02,\"band_gap\":12.0,\"fermi_energy\":4.0},\"at_bounds\":[],\"known_issues\":[],\"held\":[],\"algorithm\":\"legacy-sequential-v1\",\"parameter_status\":{\"m_eff\":\"estimated\",\"band_gap\":\"estimated\",\"fermi_energy\":\"estimated\"},\"uncertainty\":\"not_assessed\",\"last_changes\":{}}}\n\n"
+                    "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"iteration\",\"iteration\":1,\"parameters\":{\"m_eff\":0.8,\"band_gap\":950.0,\"fermi_energy\":-60.0}}\n\ndata: {\"type\":\"iteration\",\"iteration\":2,\"parameters\":{\"m_eff\":0.6,\"band_gap\":915.0,\"fermi_energy\":-38.0}}\n\ndata: {\"type\":\"done\",\"result\":{\"parameters\":{\"m_eff\":0.57,\"band_gap\":910.0,\"fermi_energy\":-35.0},\"core_version\":\"0.4.1\",\"status\":\"converged\",\"iterations\":2,\"parameter_errors\":{\"m_eff\":0.02,\"band_gap\":12.0,\"fermi_energy\":4.0},\"at_bounds\":[],\"known_issues\":[],\"held\":[],\"algorithm\":\"legacy-sequential-v1\",\"parameter_status\":{\"m_eff\":\"estimated\",\"band_gap\":\"estimated\",\"fermi_energy\":\"estimated\"},\"uncertainty\":\"not_assessed\",\"last_changes\":{}}}\n\n"
                   },
                   "fit_timeout": {
                     "value": "data: {\"type\":\"started\"}\n\ndata: {\"type\":\"error\",\"error\":{\"code\":\"fit_timeout\",\"message\":\"The fit took too long\",\"details\":[]}}\n\n"
@@ -6372,7 +6378,7 @@
             "type": "string",
             "title": "Core Version",
             "description": "Core software version for provenance, not certification.",
-            "default": "0.4.0"
+            "default": "0.4.1"
           },
           "curves": {
             "additionalProperties": {
@@ -6431,7 +6437,7 @@
         "description": "Curves by name, where each name ends in its unit, and null marks a value that is not finite.\n\n`known_issues` names known errors that apply to this result, as in `GET /api/models`. `rmse` is\nempty without measurements. `measured_points` holds points made from the measurements sent,\nby name with its unit: `electrical_conductivity_s_per_m` is 1/rho, with null for a rho of 0 or\nbelow. They use no model, so they go with the data the request sent, interpolated or not.",
         "examples": [
           {
-            "core_version": "0.4.0",
+            "core_version": "0.4.1",
             "curves": {
               "resistivity_ohm_m": [
                 3.6627e-05,
@@ -7424,6 +7430,16 @@
             "type": "array",
             "title": "Parameters"
           },
+          "parameter_overrides": {
+            "additionalProperties": {
+              "items": {
+                "$ref": "#/components/schemas/ParameterResponse"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "Parameter Overrides"
+          },
           "scattering": {
             "items": {
               "type": "string"
@@ -7555,7 +7571,7 @@
           "stages"
         ],
         "title": "FitModeResponse",
-        "description": "One way of fitting a model.\n\nA client must not offer a mode with `disabled`. `disabled_by` names the `known_issues` that say\nwhy. `iterative` tells whether an iteration count means anything. `threshold`, a relative\nchange, and `max_iterations` are what an iterative fit uses, and a request cannot change them.\n`scattering` is empty when a mode has no choice of scattering. `stages` are the solver runs of\na fit, in their order. `band_2_edge` names the parameter whose core value is the edge of band 2\nabove that of band 1, in K, and is left out for a mode with one band."
+        "description": "One way of fitting a model.\n\nA client must not offer a mode with `disabled`. `disabled_by` names the `known_issues` that say\nwhy. `iterative` tells whether an iteration count means anything. `threshold`, a relative\nchange, and `max_iterations` are what an iterative fit uses, and a request cannot change them.\n`scattering` is empty when a mode has no choice of scattering. `stages` are the solver runs of\na fit, in their order. `band_2_edge` names the parameter whose core value is the edge of band 2\nabove that of band 1, in K, and is left out for a mode with one band.\n`parameter_overrides` replaces or appends parameters by name for the selected scattering\nbefore filtering applicability. Missing overrides preserve the base parameter metadata."
       },
       "FitResponse": {
         "properties": {
@@ -7577,7 +7593,7 @@
             "type": "string",
             "title": "Core Version",
             "description": "Core software version for provenance, not certification.",
-            "default": "0.4.0"
+            "default": "0.4.1"
           },
           "status": {
             "type": "string",
@@ -7711,7 +7727,7 @@
         "examples": [
           {
             "at_bounds": [],
-            "core_version": "0.4.0",
+            "core_version": "0.4.1",
             "held": [],
             "known_issues": [],
             "parameter_errors": {
@@ -8111,7 +8127,7 @@
             "type": "string",
             "title": "Core Version",
             "description": "Core software version for provenance, not certification.",
-            "default": "0.4.0"
+            "default": "0.4.1"
           }
         },
         "type": "object",
@@ -8122,7 +8138,7 @@
         "title": "HealthResponse",
         "examples": [
           {
-            "core_version": "0.4.0",
+            "core_version": "0.4.1",
             "status": "ok",
             "version": "1.0.0"
           }

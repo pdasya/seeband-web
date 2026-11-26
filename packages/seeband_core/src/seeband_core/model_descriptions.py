@@ -246,10 +246,25 @@ def explicit_dpb_description(fermi_energy: bool = False) -> ModelDescription:
             parameters.append(
                 replace(hall_mass, role="fixed", fit_bounds=None, bounds_editable=False)
             )
+        # Empirical NB/M weight; B=M² is a conditional equal-prefactor benchmark.
+        weight = next(p for p in desktop.fit_modes[1].parameters if p.name == "B")
+        ionized_weight = replace(
+            weight,
+            meaning="Empirical ionized band normalization B (equal-prefactor benchmark: M²)",
+            scattering=("ionized",),
+            role="fixed" if mode.id == "dpb_s" else "fitted",
+            value_range=ValueRange(0, 10000, 0.0001, 1),
+            display_scale=1,
+            fit_scale=1,
+            calc_scale=1,
+            fit_bounds=None if mode.id == "dpb_s" else Bounds(0, 10000),
+            bounds_editable=mode.id != "dpb_s",
+        )
         modes.append(
             replace(
                 mode,
                 parameters=tuple(parameters),
+                parameter_overrides={"ionized": (ionized_weight,)},
                 band_2_edge="band_offset_k",
                 relative_curve_kinds=(),
                 known_issues=tuple(

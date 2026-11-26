@@ -282,7 +282,11 @@ def explicit_curves(
     law = SCATTERING_LAWS[scattering]
     only_s = fit_mode == "dpb_s"
     amplitude = 1.0 if only_s else parameters.get("F" if scattering == "dis" else "A", 1.0)
-    relative = 1.0 if only_s else parameters.get("G" if scattering == "dis" else "B", 1.0)
+    relative = (
+        1.0
+        if only_s and scattering != "ionized"
+        else parameters.get("G" if scattering == "dis" else "B", 1.0)
+    )
     if not isfinite(amplitude) or amplitude <= 0 or not isfinite(relative) or relative < 0:
         raise ValueError("Conductivity amplitude must be positive and relative weight nonnegative")
     weights = np.array([1.0, n2 / n1 * relative / parameters["mass_ratio"]])

@@ -267,3 +267,33 @@ the oracle were 5.8 × 10⁻¹⁵ for S, 4.4 × 10⁻¹⁴ for ρ and 7.9 × 10�
 Hall, within the 10⁻⁶ relative tolerance. The largest relative reflection
 residual was below 4 × 10⁻¹⁵ (tolerance 10⁻¹⁰). Separate cases cover the
 intrinsic gap plateau and band overlap with either sign of carrier excess.
+
+## Explicit ionized DPB weight (#247)
+
+Use the empirical weight (N₂/N₁)B/M before the F₂ ratio. A new S-only
+calculation defaults to B = 1 and accepts a researcher-entered fixed value.
+With resistivity, B can be fitted or held. The default fit bounds [0, 10000]
+admit B = M² over the default mass-ratio range. Increasing M during a fit
+does not reset B. Historical fits keep their recorded constraints. See
+[the model conventions and primary sources](../../../apps/site/src/pages/conventions.mdx#ionized-impurities-in-explicit-dpb).
+
+The following measurements of model output use the public HTTP calculation
+endpoint at 450 K. Both valley counts and masses are unequal:
+(N₁,N₂) = (1,3), (m₁,m₂) = (1,2) mₑ, A = 40000 S/m. The (offset, E_F)
+pairs in kelvin are (450, −220) for VB+VB, (−450, 220) for CB+CB and
+(450, 150) for VB+CB.
+
+| Bands |   B | S (µV/K) |    ρ (Ω m) |  R_H (m³/C) |
+| ----- | --: | -------: | ---------: | ----------: |
+| VB+VB |   1 |  326.695 | 1.11705e−6 |  3.00784e−8 |
+| VB+VB |   4 |  316.295 | 3.32683e−7 |  1.90076e−8 |
+| CB+CB |   1 | −326.695 | 1.11705e−6 | −3.00784e−8 |
+| CB+CB |   4 | −316.295 | 3.32683e−7 | −1.90076e−8 |
+| VB+CB |   1 |  210.755 | 1.81497e−6 |  1.23695e−7 |
+| VB+CB |   4 |   20.108 | 1.32901e−6 |  4.38089e−8 |
+
+Replay the parity check across modes, the independent moment calculation
+and the equal-edge conductivity ratios using
+`uv run pytest -q apps/api/tests/test_explicit_dpb_curves.py`. The synthetic
+recovery tests in `packages/seeband_core/tests/test_explicit_ionized_weight.py`
+vary B with the other inputs held. They check both resistivity modes.

@@ -642,7 +642,7 @@ test.describe("real fits", () => {
         parameters: Record<string, Record<string, number>>;
       };
     };
-    expect(session.version).toBe(2);
+    expect(session.version).toBe(4);
     expect(session.content.selection).toMatchObject({
       parameterization: "explicit_density_v1",
       bandConfiguration: "vb_cb",
