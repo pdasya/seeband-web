@@ -507,6 +507,9 @@ export function historicalIonizedControls(
   // Signed-mass sessions keep their original request until explicitly converted.
   if (!ionized && !explicitDpb)
     return { parameters, customBounds: content.customBounds };
+  // Before v4 the B of every scattering had the bounds 0.9-1.1. Explicit DPB with ionized
+  // impurities now offers 0-10000 by default, so an older explicit session keeps its old bounds
+  // whatever its scattering is now, as it would get them if switched to ionized later.
   const customBounds = { ...content.customBounds };
   for (const mode of ["dpb_s_rho", "dpb_s_rho_rh"]) {
     customBounds[mode] = {
