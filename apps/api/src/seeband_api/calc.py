@@ -56,7 +56,8 @@ class CalcRequest(BandInputs):
     """What to calculate.
 
     `parameters` holds every parameter of the mode in core units, including those of other
-    scattering types. Values outside a control's range are allowed, as a fit can end there. `points`
+    scattering types. C and D are required only for mixed transport.
+    Values outside a control's range are allowed, as a fit can end there. `points`
     defaults to the model's. `measurements` gives an RMSE for each quantity, and should hold only
     points in the fit range. `extrapolated` says that interpolation made up some of these points.
 
@@ -263,7 +264,7 @@ async def post_calc(body: CalcRequest, pool: CalcPoolDep, max_points: MaxPointsD
     details = [
         *check_scattering(body.scattering, fit_mode),
         *check_degeneracy(body.band_1_degeneracy, body.band_2_degeneracy, fit_mode),
-        *check_parameter_names(list(body.parameters), "parameters", fit_mode),
+        *check_parameter_names(list(body.parameters), "parameters", fit_mode, body.scattering),
         *_check_measurements(body, fit_mode),
         *check_point_counts(body.measurements, max_points),
     ]

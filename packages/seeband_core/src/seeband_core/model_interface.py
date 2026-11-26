@@ -188,6 +188,7 @@ class FitMode:
     relative_curve_kinds: tuple[CurveKind, ...] = ()
     stages: tuple[FitStage, ...] = ()
     band_2_edge: str | None = None
+    parameter_overrides: tuple[tuple[str, tuple[ParameterSpec, ...]], ...] = ()
 
     def unavailable_reason(self, kind: CurveKind) -> str | None:
         """Return why this mode does not offer a kind of curve, or None if it does."""
@@ -204,13 +205,17 @@ class FitMode:
         return any(issue.severity == "disabled" for issue in self.known_issues)
 
     def parameters_for(self, scattering: str | None) -> tuple[ParameterSpec, ...]:
-        """Return the parameters that apply to a scattering type, or all of them for None."""
+        """Apply mechanism overrides, then select parameters; None returns the base metadata."""
         if scattering is None:
             return self.parameters
         if scattering not in self.scattering:
             raise ValueError(f"Fit mode {self.id} has no scattering type {scattering}")
+        specs = {spec.name: spec for spec in self.parameters}
+        for law, overrides in self.parameter_overrides:
+            if law == scattering:
+                specs.update((spec.name, spec) for spec in overrides)
         return tuple(
-            spec for spec in self.parameters if not spec.scattering or scattering in spec.scattering
+            spec for spec in specs.values() if not spec.scattering or scattering in spec.scattering
         )
 
 

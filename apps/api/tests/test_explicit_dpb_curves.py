@@ -33,10 +33,16 @@ def api(tmp_path_factory):
         yield client
 
 
-def calculated(api, config, mode, law, offset, ef, masses, valleys, amplitude, relative):
+def calculated(
+    api, config, mode, law, offset, ef, masses, valleys, amplitude, relative, mixed=(0.5, 2.0)
+):
     p = dict(m1=masses[0], mass_ratio=masses[1] / masses[0], band_offset_k=offset, fermi_energy=ef)
     if mode != "dpb_s":
         p.update(A=amplitude, F=amplitude, B=relative, G=relative)
+        if law == "acPhDis":
+            p.update(C=mixed[0], D=mixed[1])
+    elif law == "ionized" and relative is not None:
+        p["B"] = relative
     response = api.post(
         "/api/calc",
         json=dict(
@@ -72,10 +78,10 @@ def reference(config, law, offset, ef, masses, valleys, amplitude, relative, tem
         )
     )
     mu, _ = REFERENCE["solve"](bands, REFERENCE["density_zero"](bands, ef), temperature)
-    mechanism = "alloy/dis" if law == "dis" else law
+    mechanism = {"dis": "alloy/dis", "acPhDis": "acPh"}.get(law, law)
     r, t = REFERENCE["LAWS"][mechanism]
     # Convert the empirical conductivity amplitude in the API to the oracle's time scale.
-    factor = {"acPh": 1, "dis": temperature, "ionized": (temperature / 300) ** 3}[law]
+    factor = {"acPh": 1, "acPhDis": 1, "dis": temperature, "ionized": (temperature / 300) ** 3}[law]
     normalized = []
     for band, weight in zip(
         bands, (1, valleys[1] / valleys[0] * relative * masses[0] / masses[1]), strict=True
@@ -90,10 +96,16 @@ def reference(config, law, offset, ef, masses, valleys, amplitude, relative, tem
             * (temperature / 300) ** t
         )
         normalized.append(replace(band, tau0_s=amplitude * factor * weight / per_second))
+    if law == "acPhDis":
+        # Matthiessen per valley. Ratio of disorder to acoustic rate at 300 K.
+        normalized = [
+            replace(b, tau0_s=b.tau0_s / (1 + c * 300 / temperature))
+            for b, c in zip(normalized, (0.5, 2.0), strict=True)
+        ]
     return REFERENCE["transport"](normalized, mu, temperature, mechanism)[:3]
 
 
-@pytest.mark.parametrize("law", ["acPh", "dis", "ionized"])
+@pytest.mark.parametrize("law", ["acPh", "dis", "acPhDis", "ionized"])
 @pytest.mark.parametrize("mode", MODES)
 def test_measured_curves_match_moments_and_electron_hole_reflection(api, monkeypatch, mode, law):
     constants = REFERENCE["transport"].__globals__
@@ -101,6 +113,8 @@ def test_measured_curves_match_moments_and_electron_hole_reflection(api, monkeyp
         monkeypatch.setitem(constants, name, value)
     masses, valleys = (1.7, 0.8), (2, 6)
     amplitude, relative = (1, 1) if mode == "dpb_s" else (40000, 0.8)
+    if law == "ionized":
+        relative = 4.0
     results = {}
     for config, offset, ef in (("vb_vb", 450, -220), ("cb_cb", -450, 220), ("vb_cb", 450, 150)):
         actual = calculated(
@@ -108,7 +122,17 @@ def test_measured_curves_match_moments_and_electron_hole_reflection(api, monkeyp
         )
         expected = np.array(
             [
-                reference(config, law, offset, ef, masses, valleys, amplitude, relative, temp)
+                reference(
+                    config,
+                    "acPh" if mode == "dpb_s" and law == "acPhDis" else law,
+                    offset,
+                    ef,
+                    masses,
+                    valleys,
+                    amplitude,
+                    relative,
+                    temp,
+                )
                 for temp in TEMPERATURES
             ]
         ).T
@@ -135,6 +159,7 @@ def test_measured_curves_match_moments_and_electron_hole_reflection(api, monkeyp
         valleys[::-1],
         swapped_amplitude,
         1 / relative,
+        mixed=(2.0, 0.5),
     )
     np.testing.assert_allclose(reflected, signs * results["vb_cb"], rtol=1e-10, atol=0)
 
@@ -158,3 +183,51 @@ def test_mixed_gap_plateau_and_overlap_with_either_carrier_sign(api, monkeypatch
         actual = calculated(api, "vb_cb", mode, law, -450, ef, *args)
         expected = np.array([reference("vb_cb", law, -450, ef, *args, t) for t in TEMPERATURES]).T
         np.testing.assert_allclose(actual, expected, rtol=1e-6, atol=0)
+
+
+@pytest.mark.parametrize(
+    "config,offset,ef", [("vb_vb", 450, -220), ("cb_cb", -450, 220), ("vb_cb", 450, 150)]
+)
+def test_ionized_s_only_default_and_held_weight_across_fit_modes(api, config, offset, ef):
+    # Unequal edges give unequal partial Seebeck coefficients and a visible B effect.
+    def curve(mode, weight):
+        return calculated(api, config, mode, "ionized", offset, ef, (1, 2), (1, 3), 40000, weight)
+
+    default = curve("dpb_s", None)
+    np.testing.assert_array_equal(default, curve("dpb_s", 1))
+    chosen = curve("dpb_s", 4)
+    assert np.max(np.abs(default - chosen)) > 1e-6
+    for mode in ("dpb_s_rho", "dpb_s_rho_rh"):
+        np.testing.assert_allclose(chosen[0], curve(mode, 4)[0], rtol=1e-10)
+
+
+def test_conditional_coulomb_benchmark_from_partial_conductivities(api):
+    # Equal edges remove the F2 ratio; the conditional Coulomb prefactor is N*M = 6.
+    for weight, expected in ((1, 1.5), (4, 6)):
+        response = api.post(
+            "/api/calc",
+            json=dict(
+                model="dpb",
+                parameterization="explicit_density_v1",
+                band_configuration="cb_cb",
+                fit_mode="dpb_s_rho_rh",
+                scattering="ionized",
+                kind="electrical_conductivity_by_band",
+                net_electron_density_per_m3=2e24,
+                band_1_degeneracy=1,
+                band_2_degeneracy=3,
+                parameters=dict(
+                    m1=1, mass_ratio=2, band_offset_k=0, A=40000, B=weight, F=40000, G=1
+                ),
+                min_temperature_k=100,
+                max_temperature_k=500,
+                points=3,
+            ),
+        )
+        assert response.status_code == 200, response.text
+        curves = response.json()["curves"]
+        ratio = (
+            np.array(curves["electrical_conductivity_band_2_s_per_m"])
+            / curves["electrical_conductivity_band_1_s_per_m"]
+        )
+        np.testing.assert_allclose(ratio, expected, rtol=1e-10, atol=0)

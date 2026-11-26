@@ -325,7 +325,7 @@ function parameterRecords(
   held: readonly string[],
   selection: DegeneracySelection,
 ): ParameterRecord[] {
-  const values = parameterValues(mode, saved, selection);
+  const values = parameterValues(mode, saved, { ...selection, scattering });
   const effectiveHeld =
     fit.status === "done"
       ? (fit.result.held ?? held)

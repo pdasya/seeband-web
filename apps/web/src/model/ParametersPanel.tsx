@@ -292,7 +292,9 @@ export function ParametersPanel() {
               disabled={active}
               parameter={withCustomRange(
                 parameter,
-                customBounds[mode.id]?.[parameter.name],
+                parameter.role === "fitted" && parameter.bounds_editable
+                  ? customBounds[mode.id]?.[parameter.name]
+                  : undefined,
               )}
               value={
                 parameterValues(mode, saved[mode.id], selection)[

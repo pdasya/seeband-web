@@ -129,10 +129,16 @@ test("explicit CB+CB curves and confirmed historical conversion round-trip", asy
       minTemperatureK: 100,
       maxTemperatureK: 800,
     },
-    parameters: { dpb_s_rho: { m_eff: 2, band_gap: 600, fermi_energy: 80 } },
+    parameters: {
+      dpb_s_rho: { m_eff: 2, band_gap: 600, fermi_energy: 80 },
+      dpb_s_rho_rh: { B: 1.07 },
+    },
     guessedParameters: {},
-    customBounds: { dpb_s_rho: { fermi_energy: { lower: 0, upper: 100 } } },
-    held: { dpb_s_rho: ["fermi_energy"] },
+    customBounds: {
+      dpb_s_rho: { fermi_energy: { lower: 0, upper: 100 } },
+      dpb_s_rho_rh: { B: { lower: 0.98, upper: 1.09 } },
+    },
+    held: { dpb_s_rho: ["fermi_energy"], dpb_s_rho_rh: ["B"] },
     interpolation: { enabled: false },
     chartPanels: ["seebeck", "resistivity", "hall", "band_diagram"],
     savedModelSettings: {},
@@ -198,10 +204,13 @@ test("explicit CB+CB curves and confirmed historical conversion round-trip", asy
       held: object;
     };
   };
-  expect(file.version).toBe(2);
+  expect(file.version).toBe(4);
   expect(file.content.selection.parameterization).toBe("explicit_density_v1");
-  expect(file.content.customBounds).toEqual({});
-  expect(file.content.held).toEqual({});
+  expect(file.content.customBounds).toEqual({
+    dpb_s_rho: { B: { lower: 0.9, upper: 1.1 } },
+    dpb_s_rho_rh: { B: { lower: 0.98, upper: 1.09 } },
+  });
+  expect(file.content.held).toEqual({ dpb_s_rho_rh: ["B"] });
   expect(file.content.selection.legacySource).not.toContain('"data":');
   await openSession(page, saved);
   await expect(dialog).not.toBeVisible();
@@ -211,6 +220,12 @@ test("explicit CB+CB curves and confirmed historical conversion round-trip", asy
   // A fixed-density session has no E_F: the panel follows the density description.
   await expect(energy).toHaveCount(0);
   await page.getByRole("radio", { name: "S + ρ + RH", exact: true }).click();
+  await expect(
+    page.getByRole("textbox", { name: "B", exact: true }),
+  ).toHaveValue("1,07");
+  await expect(
+    page.getByRole("button", { name: "Hold B at its value in a fit" }),
+  ).toHaveAttribute("aria-pressed", "true");
   const massLock = page.getByRole("button", {
     name: "Hold m₁ at its value in a fit",
   });
@@ -271,3 +286,174 @@ for (const sample of [
     }
   });
 }
+
+test("old ionized S-only sessions replay unit B and a newly entered B survives export", async ({
+  page,
+}) => {
+  await page.goto("/fit");
+  const content = {
+    dataMode: "separate",
+    data: {},
+    otherSource: null,
+    singleFile: null,
+    selection: {
+      model: "dpb",
+      fitMode: "dpb_s",
+      scattering: "ionized",
+      parameterization: "explicit_fermi_v1",
+      bandConfiguration: "vb_cb",
+      band1Degeneracy: 1,
+      band2Degeneracy: 3,
+      minTemperatureK: 100,
+      maxTemperatureK: 800,
+    },
+    parameters: {
+      dpb_s: {
+        m1: 1,
+        mass_ratio: 2,
+        band_offset_k: 450,
+        fermi_energy: 150,
+        B: 9,
+      },
+    },
+    guessedParameters: {},
+    customBounds: {},
+    held: {},
+    interpolation: { enabled: false },
+    chartPanels: ["seebeck", "band_diagram"],
+    savedModelSettings: {},
+    fitStart: { values: null, net: null, numerical: false },
+    fit: null,
+  };
+  await openSession(
+    page,
+    Buffer.from(
+      JSON.stringify({
+        format: "seeband-session",
+        version: 2,
+        saved: "2026-11-20T00:00:00Z",
+        appVersion: "old",
+        apiVersion: null,
+        content,
+        checksum: createHash("sha256").update(canonical(content)).digest("hex"),
+      }),
+    ),
+  );
+  const field = page.getByRole("textbox", { name: "B", exact: true });
+  await expect(field).toHaveValue("1");
+  const prediction = (b: number) =>
+    page.waitForResponse(
+      (r) =>
+        r.url().endsWith("/api/calc") &&
+        r.request().postDataJSON().fit_mode === "dpb_s" &&
+        r.request().postDataJSON().parameters.B === b,
+    );
+  const unit = prediction(1);
+  await page
+    .locator('input[type="file"]')
+    .first()
+    .setInputFiles({
+      name: "seebeck.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from(
+        "T [K] S [V/K]\n100 0.0001\n450 0.0002\n800 0.0003\n",
+      ),
+    });
+  const baseline = await unit;
+  expect(baseline.ok()).toBe(true);
+  const edited = prediction(4);
+  await field.fill("4");
+  await field.press("Enter");
+  const calculated = await edited;
+  expect(calculated.ok()).toBe(true);
+  expect((await calculated.json()).curves.seebeck_v_per_k).not.toEqual(
+    (await baseline.json()).curves.seebeck_v_per_k,
+  );
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Session to file" }).first().click(),
+  ]);
+  const saved = readFileSync(await download.path());
+  expect(JSON.parse(saved.toString())).toMatchObject({
+    version: 4,
+    content: { parameters: { dpb_s: { B: 4 } } },
+  });
+  await openSession(page, saved);
+  await expect(field).toHaveValue("4");
+});
+
+test("mixed transport drafts and locks survive S-only and session export", async ({
+  page,
+}) => {
+  await page.goto("/fit");
+  await expect(page.getByText("Explicit bands · Fermi energy")).toBeVisible();
+  await page.getByRole("combobox", { name: "Scattering" }).click();
+  await page.getByRole("option", { name: /acPhDis/ }).click();
+  const c = page.getByRole("textbox", { name: "C", exact: true });
+  const d = page.getByRole("textbox", { name: "D", exact: true });
+  await c.fill("1.2");
+  await c.press("Enter");
+  await d.fill("1.4");
+  await d.press("Enter");
+  const lockC = page.getByRole("button", {
+    name: "Hold C at its value in a fit",
+  });
+  const lockD = page.getByRole("button", {
+    name: "Hold D at its value in a fit",
+  });
+  await lockC.click();
+  await lockD.click();
+  const prediction = page.waitForResponse((response) => {
+    if (!response.url().endsWith("/api/calc")) return false;
+    const body = response.request().postDataJSON();
+    return (
+      body.scattering === "acPhDis" &&
+      body.parameters.C === 1.2 &&
+      body.parameters.D === 1.4
+    );
+  });
+  await page
+    .locator('input[type="file"]')
+    .first()
+    .setInputFiles({
+      name: "synthetic-mixed-s.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from(
+        "T [K] S [V/K]\n100 0.0001\n300 0.0002\n800 0.0003\n",
+      ),
+    });
+  expect((await prediction).ok()).toBe(true);
+  await page.getByRole("radio", { name: "S", exact: true }).click();
+  for (const name of ["A", "B", "C", "D"])
+    await expect(page.getByRole("textbox", { name, exact: true })).toHaveCount(
+      0,
+    );
+  await expect(
+    page.getByRole("combobox", { name: "Scattering" }),
+  ).toContainText("acPhDis");
+  await page.getByRole("radio", { name: "S + ρ", exact: true }).click();
+  await expect(c).toHaveValue("1,2");
+  await expect(d).toHaveValue("1,4");
+  await expect(lockC).toHaveAttribute("aria-pressed", "true");
+  await expect(lockD).toHaveAttribute("aria-pressed", "true");
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Session to file" }).first().click(),
+  ]);
+  const saved = readFileSync(await download.path());
+  expect(JSON.parse(saved.toString())).toMatchObject({
+    content: {
+      selection: {
+        scattering: "acPhDis",
+        parameterization: "explicit_fermi_v1",
+      },
+      parameters: { dpb_s_rho: { C: 1.2, D: 1.4 } },
+      held: { dpb_s_rho: ["C", "D"] },
+    },
+  });
+  await openSession(page, saved);
+  await expect(c).toHaveValue("1,2");
+  await expect(d).toHaveValue("1,4");
+  await expect(lockC).toHaveAttribute("aria-pressed", "true");
+  await expect(lockD).toHaveAttribute("aria-pressed", "true");
+});

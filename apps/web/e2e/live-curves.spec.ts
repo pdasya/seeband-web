@@ -121,7 +121,7 @@ test("loaded data ask for a whole request, and draw the curve", async ({
   });
   // Every parameter of the mode, also those of other scattering types.
   expect(Object.keys(bodies[0]?.parameters ?? {}).sort()).toEqual(
-    ["A", "B", "F", "G", "band_gap", "fermi_energy", "m_eff"].sort(),
+    ["A", "B", "C", "D", "F", "G", "band_gap", "fermi_energy", "m_eff"].sort(),
   );
   // Only points in the fit range, in V/K.
   expect(bodies[0]?.measurements).toEqual({

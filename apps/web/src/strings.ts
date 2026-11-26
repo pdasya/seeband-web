@@ -138,6 +138,7 @@ export const STRINGS = {
     scatteringNames: {
       acPh: "Acoustic phonons (acPh)",
       dis: "Alloy disorder (dis)",
+      acPhDis: "Acoustic phonons + alloy disorder (acPhDis)",
       ionized: "Ionized impurities",
     },
     disabledReason: "not available until a known error is fixed.",
@@ -208,6 +209,8 @@ export const STRINGS = {
       not_a_session: "This file is not a SeeBand session file.",
       newer_version:
         "This session file comes from a newer version of SeeBand Web. Open it there.",
+      unsupported_version:
+        "This session file holds a band composition session, which this version of SeeBand Web cannot open.",
       invalid:
         "This session file is damaged, or misses parts, so it was not opened.",
       checksum:

@@ -67,6 +67,20 @@ def test_calculation_identifies_the_core_version(client: TestClient) -> None:
     assert response.json()["core_version"] == seeband_core.__version__
 
 
+def test_mixed_crossovers_required_only_for_mixed_transport(client: TestClient) -> None:
+    old = {k: v for k, v in DPB_S_RHO_PARAMETERS.items() if k not in {"C", "D"}}
+    for law in ("acPh", "dis", "ionized"):
+        assert (
+            client.post("/api/calc", json=_body(scattering=law, parameters=old)).status_code == 200
+        )
+    mixed = client.post("/api/calc", json=_body(scattering="acPhDis", parameters=old))
+    assert mixed.status_code == 422
+    assert [(d["location"][-1], d["code"]) for d in mixed.json()["details"]] == [
+        ("C", "missing_parameter"),
+        ("D", "missing_parameter"),
+    ]
+
+
 @pytest.mark.parametrize(("model_id", "fit_mode_id", "scattering"), MODES)
 def test_curves_are_exactly_those_of_the_core(
     client: TestClient, model_id: str, fit_mode_id: str, scattering: str | None
@@ -608,7 +622,7 @@ def test_spb_hall_mode_returns_finite_hall_curves(client: TestClient) -> None:
         (
             {
                 "fit_mode": "dpb_s",
-                "scattering": "acPhDis",
+                "scattering": "unknown",
                 "parameters": {"m_eff": 1.0, "band_gap": 1.0, "fermi_energy": 1.0},
             },
             [(["body", "scattering"], "unknown_scattering")],
@@ -619,7 +633,7 @@ def test_spb_hall_mode_returns_finite_hall_curves(client: TestClient) -> None:
                 *[
                     (["body", "parameters", name], "missing_parameter")
                     for name in DPB_S_RHO_PARAMETERS
-                    if name != "m_eff"
+                    if name not in {"m_eff", "C", "D"}
                 ],
                 (["body", "parameters", "nope"], "unknown_parameter"),
             ],

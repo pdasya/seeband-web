@@ -507,7 +507,9 @@ test("bounds of another scattering neither go with a fit nor stop it", async ({
   await expect(run(page)).toBeDisabled();
 
   await page.getByRole("combobox", { name: "Scattering" }).click();
-  await page.getByRole("option", { name: /Acoustic phonons/ }).click();
+  await page
+    .getByRole("option", { name: "Acoustic phonons (acPh)", exact: true })
+    .click();
   await expect(run(page)).toBeEnabled();
   await run(page).click();
 

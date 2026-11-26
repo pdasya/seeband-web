@@ -373,7 +373,11 @@ An unhandled `Exception` logs its type and its `file:line:function` frames. So d
 ## Ionized impurity scattering
 
 Core 0.3.0 exposes `ionized` alongside `acPh` and `dis` for SPB and DPB,
-including S-only. `acPhDis` and C/D parameters are no longer public choices.
+including S-only. Core 0.4.2 restores `acPhDis` as a fourth choice for SPB
+and DPB. In mixed S-only send structural parameters. In modes with resistivity
+send C for SPB and C and D for DPB. Each is a core ratio at 300 K.
+The [mixed-scattering equations and evidence](../../docs/physics/acphdis.md)
+give the conversion and the desktop S-only convention.
 Ionized fits require `verified-sequential-v2`; legacy requests are rejected.
 `POST /api/guess` accepts optional `scattering`; SPB numerical estimates use
 it, while ionized DPB requests return `unsupported` with reason
@@ -381,6 +385,14 @@ it, while ionized DPB requests return `unsupported` with reason
 See [the physical contract](../../packages/seeband_core/docs/ionized-impurities.md).
 
 ### Explicit double parabolic bands (core 0.4.0)
+
+From core 0.4.1, apply the selected scattering entry in
+`fit_modes[].parameter_overrides` by parameter name before building the
+editor, fit or curve request. Explicit ionized `dpb_s` accepts an optional
+fixed `parameters.B` (or `start.B` in a fit), default 1. In the two modes with
+resistivity B uses fitted bounds [0, 10000] by default. The empirical
+conductivity prefactor is (N₂/N₁)B/M. Omitting the fixed S-only input
+replays old requests with unit weight.
 
 New explicit DPB sessions request `GET /api/models?parameterization=explicit_fermi_v1`.
 Send the same discriminator, the band configuration and both positive integer

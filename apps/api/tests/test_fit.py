@@ -358,7 +358,7 @@ def test_spb_hall_mode_validates_measurements_instead_of_refusing_mode(client: T
     [
         ({"model": "nope"}, [(["body", "model"], "unknown_model")]),
         ({"fit_mode": "nope"}, [(["body", "fit_mode"], "unknown_fit_mode")]),
-        ({"scattering": "acPhDis"}, [(["body", "scattering"], "unknown_scattering")]),
+        ({"scattering": "nope"}, [(["body", "scattering"], "unknown_scattering")]),
         (
             {"start": {"m_eff": 1.0, "band_gap": 1.0}},
             [(["body", "start", "fermi_energy"], "missing_parameter")],

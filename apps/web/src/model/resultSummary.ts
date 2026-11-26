@@ -120,7 +120,7 @@ export function parameterRows(
   held: readonly string[] = [],
   selection?: ParameterSelection,
 ): ParameterRow[] {
-  const values = parameterValues(mode, saved, selection);
+  const values = parameterValues(mode, saved, { ...selection, scattering });
   // A failed fit has fitted nothing, so it has reached no bound.
   const atBounds =
     fit.status === "done" && fit.result.status !== "failed"
