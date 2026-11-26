@@ -61,9 +61,17 @@ jobs:
           - suite: golden
             path: packages/seeband_core/tests/test_golden_regression.py
             exclude: ""
+          - suite: core-fits
+            path: >-
+              packages/seeband_core/tests/test_verified_fit.py
+              packages/seeband_core/tests/test_band_models.py
+            exclude: ""
           - suite: core
             path: packages/seeband_core/tests
-            exclude: --ignore=packages/seeband_core/tests/test_golden_regression.py
+            exclude: >-
+              --ignore=packages/seeband_core/tests/test_golden_regression.py
+              --ignore=packages/seeband_core/tests/test_verified_fit.py
+              --ignore=packages/seeband_core/tests/test_band_models.py
           - suite: api
             path: apps/api/tests
             exclude: ""
@@ -73,16 +81,71 @@ jobs:
         with:
           enable-cache: true
       - run: uv sync --locked
-      - name: Pytest with test names and long-running stacks
+      # No timed stack dumps, which are implicated in #285. A hang still gets one stack: after 30
+      # minutes `timeout` sends SIGABRT, and pytest's faulthandler prints every thread before exit.
+      - name: Pytest with test names and durations
         run: >-
-          uv run pytest ${{ matrix.path }} ${{ matrix.exclude }} -vv -x --tb=short --durations=20
-          -o faulthandler_timeout=120
+          uv run timeout --signal=ABRT --kill-after=1m 30m
+          pytest ${{ matrix.path }} ${{ matrix.exclude }} -vv -x --tb=short --durations=20
+
+  python-extended:
+    name: Python tests (extended)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      # Reads the description now, not from the event, so ticking the box and re-running works.
+      - name: Decide whether to run the extended regressions
+        id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        # Whole outputs into variables first: `grep -q` in a pipe can end the writer early, which
+        # under pipefail would read as "not requested".
+        run: |
+          reason=""
+          if [ "$EVENT" = push ]; then
+            reason="a push to main"
+          else
+            body=$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json body --jq .body)
+            changed=$(git diff --name-only "$BASE_SHA" HEAD)
+            if grep -qiF '[x] Run extended core regressions' <<< "$body"; then
+              reason="the pull request asks for them"
+            elif grep -q '^packages/seeband_core/src/' <<< "$changed"; then
+              reason="the pull request changes packages/seeband_core/src"
+            fi
+          fi
+          if [ -n "$reason" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "Extended regressions run: $reason." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "Extended regressions skipped: the core is unchanged and they were not requested." >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        if: steps.decide.outputs.run == 'true'
+        with:
+          enable-cache: true
+      - if: steps.decide.outputs.run == 'true'
+        run: uv sync --locked
+      - name: Extended core regressions
+        if: steps.decide.outputs.run == 'true'
+        run: >-
+          uv run timeout --signal=ABRT --kill-after=1m 45m
+          pytest packages/seeband_core/tests -m extended -vv -x --tb=short --durations=3
 
   # Keep the protected check name, and require every independent Python job.
   python:
     name: Python
     if: ${{ always() }}
-    needs: [python-checks, python-tests]
+    needs: [python-checks, python-tests, python-extended]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -90,9 +153,11 @@ jobs:
         env:
           PYTHON_CHECKS_RESULT: ${{ needs.python-checks.result }}
           PYTHON_TESTS_RESULT: ${{ needs.python-tests.result }}
+          PYTHON_EXTENDED_RESULT: ${{ needs.python-extended.result }}
         run: |
           test "$PYTHON_CHECKS_RESULT" = success
           test "$PYTHON_TESTS_RESULT" = success
+          test "$PYTHON_EXTENDED_RESULT" = success
 
   typescript:
     name: TypeScript

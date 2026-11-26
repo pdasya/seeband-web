@@ -379,7 +379,14 @@ def _dense_gap_profile(data, fermi_energy, lower=300.0, upper=800.0):
     return gap, rmse
 
 
-@pytest.mark.parametrize("fermi_energy", [799.999, 799.9, 799.0])
+@pytest.mark.parametrize(
+    "fermi_energy",
+    [
+        799.999,
+        pytest.param(799.9, marks=pytest.mark.extended),
+        pytest.param(799.0, marks=pytest.mark.extended),
+    ],
+)
 def test_verified_searches_the_gap_with_fermi_energy_held_just_below_the_bound(fermi_energy):
     # Before, these converged at the 800 K bound, a higher minimum than one inside the interval.
     data = load_demo_dataset().measurements["seebeck"]
