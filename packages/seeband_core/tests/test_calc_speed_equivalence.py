@@ -14,7 +14,7 @@ from typing import Any
 
 import numpy as np
 import pytest
-from seeband_core import band_models, math_module
+from seeband_core import band_models, math_module, verified_fit
 from seeband_core.data_parser import parse_table
 from seeband_core.model_catalog import registry
 from seeband_core.model_interface import CurveRequest, FitRequest
@@ -230,7 +230,8 @@ def _fit_outcome(model: Any, request: FitRequest) -> Any:
 
 
 # Both fit algorithms: the legacy one of the desktop, and the verified one, the default. A verified
-# dpb_s_rho fit is expensive, so its full-budget failure comparison is opt-in extended coverage.
+# dpb_s_rho fit is expensive: the routine run compares it with a short evaluation budget, and the
+# full-budget failure comparison is opt-in extended coverage.
 _FITS = [
     ("dpb_s", None, "legacy-sequential-v1"),
     ("dpb_s_rho", "acPh", "legacy-sequential-v1"),
@@ -239,15 +240,41 @@ _FITS = [
     ("dpb_s_rho", "acPh", "verified-sequential-v2"),
     ("spb_s_rho", "acPh", "verified-sequential-v2"),
 ]
+_VERIFIED_DPB_RHO = ("dpb_s_rho", "acPh", "verified-sequential-v2")
+# Far below the verified fit's own budget, so that the fit stops on it within seconds.
+_SHORT_BUDGET = 600
+
+
+def _fit_cases(*, full_budget_extended: bool) -> list[Any]:
+    """Each fit with no budget override; the verified dpb_s_rho fit with the short budget, and with
+    its full budget as an extended case if asked."""
+    cases: list[Any] = []
+    for fit in _FITS:
+        if fit != _VERIFIED_DPB_RHO:
+            cases.append((*fit, None))
+            continue
+        cases.append((*fit, _SHORT_BUDGET))
+        if full_budget_extended:
+            cases.append(pytest.param(*fit, None, marks=pytest.mark.extended))
+    return cases
+
+
+def _limit_evaluations(monkeypatch: pytest.MonkeyPatch, budget: int | None) -> None:
+    if budget is not None:
+        monkeypatch.setattr(verified_fit, "_MAX_EVALUATIONS", budget)
 
 
 @pytest.mark.parametrize(
-    ("mode_id", "scattering", "algorithm"),
-    [fit for fit in _FITS if fit != ("dpb_s_rho", "acPh", "verified-sequential-v2")],
+    ("mode_id", "scattering", "algorithm", "budget"), _fit_cases(full_budget_extended=False)
 )
 def test_a_fit_is_the_same_to_the_bit(
-    monkeypatch: pytest.MonkeyPatch, mode_id: str, scattering: str | None, algorithm: str
+    monkeypatch: pytest.MonkeyPatch,
+    mode_id: str,
+    scattering: str | None,
+    algorithm: str,
+    budget: int | None,
 ) -> None:
+    _limit_evaluations(monkeypatch, budget)
     model, request = _fit_request(mode_id, scattering, algorithm)
 
     with _as_before(monkeypatch):
@@ -258,16 +285,14 @@ def test_a_fit_is_the_same_to_the_bit(
 
 
 @pytest.mark.parametrize(
-    ("mode_id", "scattering", "algorithm"),
-    [
-        pytest.param(*fit, marks=pytest.mark.extended)
-        if fit == ("dpb_s_rho", "acPh", "verified-sequential-v2")
-        else fit
-        for fit in _FITS
-    ],
+    ("mode_id", "scattering", "algorithm", "budget"), _fit_cases(full_budget_extended=True)
 )
 def test_a_fit_whose_solves_fail_on_the_way_is_the_same_to_the_bit(
-    monkeypatch: pytest.MonkeyPatch, mode_id: str, scattering: str | None, algorithm: str
+    monkeypatch: pytest.MonkeyPatch,
+    mode_id: str,
+    scattering: str | None,
+    algorithm: str,
+    budget: int | None,
 ) -> None:
     """Every fourth set of parameters the fit tries has no root.
 
@@ -288,6 +313,7 @@ def test_a_fit_whose_solves_fail_on_the_way_is_the_same_to_the_bit(
         return solve(temp_array, mass, fermi_energy, *rest)
 
     monkeypatch.setattr(math_module, "_solve_chemical_potential", failing)
+    _limit_evaluations(monkeypatch, budget)
     model, request = _fit_request(mode_id, scattering, algorithm)
 
     with _as_before(monkeypatch):
