@@ -104,6 +104,9 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
           interpolation,
           bandGapK,
           energy,
+          temperatureRangeSet:
+            selection.minTemperatureK !== null &&
+            selection.maxTemperatureK !== null,
           ...(selection.parameterization !== undefined &&
           selection.model === "dpb"
             ? {
@@ -123,6 +126,8 @@ function ChartPanel({ index, live }: { index: number; live: LiveCurves }) {
       interpolation,
       bandGapK,
       energy,
+      selection.minTemperatureK,
+      selection.maxTemperatureK,
       measuredCurves,
       derived.result,
       diagramResult,

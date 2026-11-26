@@ -237,6 +237,8 @@ export type EnergyDisplay = ModelsResponse["energy_display"];
 export const ENERGY_IN_K: EnergyDisplay = { unit: "K", per_kelvin: 1 };
 
 type ViewState = Pick<SessionState, "data" | "interpolation"> & {
+  /** False when no temperature range is set, so that no curve is requested. */
+  temperatureRangeSet?: boolean;
   bandGapK?: number | undefined;
   bandConfiguration?: SessionState["selection"]["bandConfiguration"];
   parameterization?: SessionState["selection"]["parameterization"];
@@ -283,6 +285,18 @@ function quantityView(
   const data = state.data[quantity];
   const entry = data?.measurement;
   const inMode = mode?.quantities.includes(quantity) === true;
+  if (entry === undefined && mode === undefined) {
+    // The descriptions are still loading, or failed: no reason to say the mode lacks it.
+    return { ...NO_CHART, ...base, empty: text.modelLoading };
+  }
+  if (
+    entry === undefined &&
+    inMode &&
+    (mode?.disabled === true || state.temperatureRangeSet === false)
+  ) {
+    // No request goes out, so nothing else would explain the empty chart.
+    return { ...NO_CHART, ...base, empty: text.noModelCurve };
+  }
   if (entry === undefined && !inMode) {
     return {
       ...NO_CHART,

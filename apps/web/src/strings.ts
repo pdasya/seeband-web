@@ -567,6 +567,14 @@ export const STRINGS = {
       title: "Not available in this mode",
       text: "This fit mode has no such curve.",
     },
+    modelLoading: {
+      title: "Loading the model",
+      text: "The model curve appears once the model descriptions have loaded.",
+    },
+    noModelCurve: {
+      title: "No model curve",
+      text: "This fit mode is unavailable, or the temperature range is not set, so no curve is calculated.",
+    },
     unavailable: {
       single_band: {
         title: "DPB only",

@@ -919,3 +919,28 @@ test("a current response draws enabled quantities even when only another quantit
   expect(view.note).toContain("unavailable at 200 K");
   expect(view.note).toContain("non-finite value");
 });
+
+describe("a quantity tab with no data says why it has no curve", () => {
+  test("while the model descriptions load", () => {
+    const view = chartTabView("seebeck", undefined, loaded(), null, null);
+    expect(view.empty?.title).toBe("Loading the model");
+    expect(view.empty?.text).not.toContain("not calculated");
+  });
+
+  test("when no request can go out", () => {
+    const disabled = { ...mode("dpb_s"), disabled: true };
+    expect(
+      chartTabView("seebeck", disabled, loaded(), null, null).empty?.title,
+    ).toBe("No model curve");
+    const noRange = { ...loaded(), temperatureRangeSet: false };
+    expect(
+      chartTabView("seebeck", mode("dpb_s"), noRange, null, null).empty?.title,
+    ).toBe("No model curve");
+  });
+
+  test("and previews the curve otherwise", () => {
+    expect(
+      chartTabView("seebeck", mode("dpb_s"), loaded(), null, null).empty,
+    ).toBeNull();
+  });
+});
