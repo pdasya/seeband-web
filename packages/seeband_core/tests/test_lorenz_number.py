@@ -177,6 +177,15 @@ def test_zero_conductivity_leaves_only_individual_band_moments():
     assert all(np.isfinite(result.curves[name]).all() for name in LORENZ_BAND_CURVES)
 
 
+@pytest.mark.parametrize("amplitude", [0.0, math.nan, math.inf])
+@pytest.mark.parametrize("model_id", ["spb", "dpb"])
+def test_an_undefined_conductivity_leaves_the_effective_l_undefined(model_id, amplitude):
+    # σ and κ_e are zero, undefined or infinite, so κ_e/(σT) has no value either.
+    with np.errstate(all="ignore"):
+        result = _curve(model_id, f"{model_id}_s_rho", "acPh", "lorenz_number", A=amplitude)
+    assert np.isnan(result.curves[LORENZ_CURVE]).all()
+
+
 def test_a_mechanism_without_lorenz_moments_is_refused():
     model = registry.get("dpb")
     fit_mode = model.describe().fit_mode("dpb_s_rho")

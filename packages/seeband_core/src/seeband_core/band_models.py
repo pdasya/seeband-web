@@ -127,6 +127,11 @@ def _degeneracy_ratio(request: CurveRequest | FitRequest) -> float:
 _MOMENT_SCATTERING = frozenset({None, "acPh", "dis", "acPhDis"})
 
 
+def _amplitude_name(scattering: str | None) -> str:
+    """The conductivity amplitude of a mechanism: F for alloy disorder, A otherwise."""
+    return "F" if scattering == "dis" else "A"
+
+
 def _measurement_arrays(
     measurements: Mapping[Quantity, Measurement], quantities: Iterable[Quantity]
 ) -> list[Any]:
@@ -748,7 +753,9 @@ class _BandModel:
             effective = _CORE_MATH.spb_lorNum_vs_temp(
                 temperature_k, _value(parameters, "fermi_energy"), _value(parameters, "band_mass")
             )
-        if parameters.get("F" if scattering == "dis" else "A", 1.0) == 0.0:
+        amplitude = parameters.get(_amplitude_name(scattering), 1.0)
+        if not np.isfinite(amplitude) or amplitude == 0.0:
+            # σ and κ_e are zero, infinite or undefined, so their ratio is too; each band's L stays.
             effective = np.full_like(effective, np.nan)
         curves = {LORENZ_CURVE: effective} | bands
         issues = active_issue_ids(
