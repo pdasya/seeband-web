@@ -27,7 +27,7 @@ function keepsHistoricalControls(
 ): boolean {
   return (
     Boolean(state.selection?.legacySource) &&
-    state.selection?.parameterization === "explicit_density_v1" &&
+    state.selection?.parameterization !== undefined &&
     from.id.startsWith("dpb_") &&
     to.id.startsWith("dpb_")
   );

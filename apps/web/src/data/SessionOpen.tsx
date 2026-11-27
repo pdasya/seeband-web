@@ -146,6 +146,8 @@ function useSessionOpen() {
         ?.fit_modes.find((mode) => mode.id === content.selection.fitMode);
       if (!description) throw new Error("Legacy mode unavailable");
       const vector = legacyVector(content, description);
+      const fermiEnergyK = vector.fermi_energy;
+      if (fermiEnergyK === undefined) throw new Error("Legacy EF unavailable");
       const converted = await apiClient.migrateDpb({
         parameters: vector,
         m1,
@@ -154,7 +156,14 @@ function useSessionOpen() {
       });
       const server = await apiClient.getHealth().catch(() => null);
       const restored = restoredSession(
-        convertedSession(pending, converted, band1, band2, convention),
+        convertedSession(
+          pending,
+          converted,
+          band1,
+          band2,
+          fermiEnergyK,
+          convention,
+        ),
       );
       restore(restored, {
         saved: pending.saved,
