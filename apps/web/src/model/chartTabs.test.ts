@@ -642,6 +642,7 @@ describe("the additional graphs", () => {
       expect(view.curves.map(({ label }) => label)).toEqual(["L"]);
       expect(view.curves[0]?.values).toEqual([2.44, 1.22]);
       expect(view.description).toContain("10⁻⁸ W·Ω/K²");
+      expect(view.note).toContain("L₀ = π²/3 (k_B/e)²");
     });
 
     test("two bands say which line is the total L and which each band's", () => {
@@ -665,6 +666,8 @@ describe("the additional graphs", () => {
         [2, 2],
         [2, 2],
       ]);
+      // The total above both bands needs its reason on screen.
+      expect(view.note).toContain("bipolar part");
     });
 
     test("is asked for where κ_e is, and says why not where it is not", () => {

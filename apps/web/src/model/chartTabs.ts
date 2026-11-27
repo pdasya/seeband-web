@@ -528,7 +528,8 @@ function lorenzView(
     ],
     yAxisTitle: text.axes.lorenz,
     description: text.lorenzDescription,
-    note: null,
+    // Why the total can lie above both bands, and what one band tends to.
+    note: bands ? text.lorenzTwoBandsNote : text.lorenzNote,
   });
 }
 

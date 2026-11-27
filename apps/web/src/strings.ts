@@ -573,6 +573,10 @@ export const STRINGS = {
     lorenzTotal: "Total L",
     lorenzDescription:
       "Chart of the Lorenz number against temperature, in 10⁻⁸ W·Ω/K²",
+    lorenzNote:
+      "L = κ_e/(σT). It tends to L₀ = π²/3 (k_B/e)² = 2,44 × 10⁻⁸ W·Ω/K² for a degenerate band, and for a nondegenerate one to 2 (k_B/e)² = 1,49 × 10⁻⁸ W·Ω/K² with acoustic phonons or alloy disorder and to 4 (k_B/e)² = 2,97 × 10⁻⁸ W·Ω/K² with ionized impurities.",
+    lorenzTwoBandsNote:
+      "The solid line is the total L = κ_e/(σT), with the bipolar part, which can rise far above either band's; the dashed lines are each band's own L.",
     thermalConductivityNote:
       "The electronic part only, with the bipolar part in a two-band model. The lattice part is not modelled.",
     carrierConcentrationDescription:
