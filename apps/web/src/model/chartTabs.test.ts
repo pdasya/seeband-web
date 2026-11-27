@@ -638,10 +638,10 @@ describe("the additional graphs", () => {
       const view = at("spb_s_rho", {
         lorenz_number_w_ohm_per_k2: [2.44e-8, 1.22e-8],
       });
-      expect(view.yAxisTitle).toBe("L, 10⁻⁸ W·Ω·K⁻²");
+      expect(view.yAxisTitle).toBe("L / (10⁻⁸ W·Ω/K²)");
       expect(view.curves.map(({ label }) => label)).toEqual(["L"]);
       expect(view.curves[0]?.values).toEqual([2.44, 1.22]);
-      expect(view.description).toContain("10⁻⁸ W·Ω·K⁻²");
+      expect(view.description).toContain("10⁻⁸ W·Ω/K²");
     });
 
     test("two bands say which line is the total L and which each band's", () => {

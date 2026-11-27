@@ -511,7 +511,7 @@ export const STRINGS = {
       energy: (unit: string) => `E, ${unit}`,
       conductivity: "σ, S/m",
       thermalConductivity: "κ_e, W/(m·K)",
-      lorenz: "L, 10⁻⁸ W·Ω·K⁻²",
+      lorenz: "L / (10⁻⁸ W·Ω/K²)",
       carrierConcentration: "n, cm⁻³",
     },
     quantityTabs: {
@@ -572,7 +572,7 @@ export const STRINGS = {
     lorenz: "L",
     lorenzTotal: "Total L",
     lorenzDescription:
-      "Chart of the Lorenz number against temperature, in 10⁻⁸ W·Ω·K⁻²",
+      "Chart of the Lorenz number against temperature, in 10⁻⁸ W·Ω/K²",
     thermalConductivityNote:
       "The electronic part only, with the bipolar part in a two-band model. The lattice part is not modelled.",
     carrierConcentrationDescription:
