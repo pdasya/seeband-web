@@ -16,6 +16,8 @@ test("conversion keeps historical bounds and results as provenance, with fresh e
       fitMode: "dpb_s_rho_rh",
       band1Degeneracy: 2,
       band2Degeneracy: 6,
+      carrierType: "p",
+      netElectronDensityPerM3: 9e23,
     },
     parameters: {
       spb_s: { band_mass: 3 },
@@ -112,6 +114,7 @@ test("conversion keeps historical bounds and results as provenance, with fresh e
     },
     2,
     6,
+    80,
     "single_valley",
   );
   expect(converted.selection.algorithm).toBe("verified-sequential-v2");
@@ -146,11 +149,14 @@ test("conversion keeps historical bounds and results as provenance, with fresh e
     band1Degeneracy: 2,
     band2Degeneracy: 6,
   });
-  expect(converted.selection.netElectronDensityPerM3).toBe(-2e24);
+  expect(converted.selection.parameterization).toBe("explicit_fermi_v1");
+  expect(converted.selection.netElectronDensityPerM3).toBeUndefined();
+  expect(converted.selection.carrierType).toBeUndefined();
   expect(converted.parameters.dpb_s_rho_rh).toEqual({
     mass_ratio: 2,
     band_offset_k: 600,
     m1: 1.7,
+    fermi_energy: 80,
   });
 });
 
@@ -178,7 +184,7 @@ test("ionized conversion preserves rho B holds and historical bounds", async () 
     net_electron_density_per_m3: 1e24,
     parameters: { mass_ratio: 2, band_offset_k: 600, m1: 1, B: 1.04 },
   };
-  const converted = convertedSession(file, point, 1, 1);
+  const converted = convertedSession(file, point, 1, 1, -175);
   expect(converted.parameters.dpb_s_rho?.B).toBe(1.04);
   expect(converted.customBounds.dpb_s_rho?.B).toEqual({
     lower: 0.95,
@@ -188,10 +194,12 @@ test("ionized conversion preserves rho B holds and historical bounds", async () 
   expect(converted.ionizedBInputs).toBe(true);
   file.content.customBounds = {};
   file.content.held = {};
-  expect(convertedSession(file, point, 1, 1).customBounds.dpb_s_rho?.B).toEqual(
-    { lower: 0.9, upper: 1.1 },
-  );
-  expect(convertedSession(file, point, 1, 1).held.dpb_s_rho).toBeUndefined();
+  expect(
+    convertedSession(file, point, 1, 1, -175).customBounds.dpb_s_rho?.B,
+  ).toEqual({ lower: 0.9, upper: 1.1 });
+  expect(
+    convertedSession(file, point, 1, 1, -175).held.dpb_s_rho,
+  ).toBeUndefined();
 });
 
 test.each(["ionized", "acPh"])(
@@ -238,6 +246,7 @@ test.each(["ionized", "acPh"])(
       },
       1,
       1,
+      -175,
     );
     store.getState().restoreSession(restoredSession(converted), {
       saved: file.saved,
@@ -278,6 +287,7 @@ test.each(["ionized", "acPh"])(
       band_offset_k: 600,
       m1: 1,
       B: 1.02,
+      fermi_energy: -175,
     });
     store.getState().setSelection({ legacySource: "" });
     store
@@ -337,6 +347,7 @@ test.each(["acPh", "dis", "ionized", "acPhDis"])(
       },
       1,
       1,
+      -175,
     );
     expect(converted.selection.scattering).toBe(scattering);
     expect(converted.parameters.dpb_s?.B).toBe(

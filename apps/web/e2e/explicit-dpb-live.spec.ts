@@ -176,12 +176,14 @@ test("explicit CB+CB curves and confirmed historical conversion round-trip", asy
     .getByRole("button", { name: "Confirm scale and convert" })
     .click();
   await expect(dialog).not.toBeVisible();
-  const density = page.getByRole("textbox", {
-    name: "Carrier excess magnitude |n − p| (m⁻³)",
-  });
+  await expect(page.getByText("Explicit bands · Fermi energy")).toBeVisible();
   await expect(
-    page.getByText("Explicit bands · fixed carrier excess"),
-  ).toBeVisible();
+    page.getByRole("textbox", { name: /Carrier excess magnitude/ }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("radiogroup", { name: "Carrier excess polarity" }),
+  ).toHaveCount(0);
+  await expect(energy).toHaveValue("0,01");
   await expect(
     page.getByText(
       "Original historical session and fit (legacy parameterization)",
@@ -197,15 +199,20 @@ test("explicit CB+CB curves and confirmed historical conversion round-trip", asy
     content: {
       selection: {
         parameterization: string;
-        netElectronDensityPerM3: number;
+        netElectronDensityPerM3?: number;
+        carrierType?: string;
         legacySource: string;
       };
+      parameters: Record<string, Record<string, number>>;
       customBounds: object;
       held: object;
     };
   };
   expect(file.version).toBe(4);
-  expect(file.content.selection.parameterization).toBe("explicit_density_v1");
+  expect(file.content.selection.parameterization).toBe("explicit_fermi_v1");
+  expect(file.content.selection.netElectronDensityPerM3).toBeUndefined();
+  expect(file.content.selection.carrierType).toBeUndefined();
+  expect(file.content.parameters.dpb_s_rho?.fermi_energy).toBe(80);
   expect(file.content.customBounds).toEqual({
     dpb_s_rho: { B: { lower: 0.9, upper: 1.1 } },
     dpb_s_rho_rh: { B: { lower: 0.98, upper: 1.09 } },
@@ -214,11 +221,7 @@ test("explicit CB+CB curves and confirmed historical conversion round-trip", asy
   expect(file.content.selection.legacySource).not.toContain('"data":');
   await openSession(page, saved);
   await expect(dialog).not.toBeVisible();
-  await expect(density).toHaveValue(
-    String(Math.abs(file.content.selection.netElectronDensityPerM3)),
-  );
-  // A fixed-density session has no E_F: the panel follows the density description.
-  await expect(energy).toHaveCount(0);
+  await expect(energy).toHaveValue("0,01");
   await page.getByRole("radio", { name: "S + ρ + RH", exact: true }).click();
   await expect(
     page.getByRole("textbox", { name: "B", exact: true }),

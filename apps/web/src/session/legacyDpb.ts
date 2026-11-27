@@ -37,6 +37,7 @@ export function convertedSession(
   point: components["schemas"]["ConvertedDpbPoint"],
   band1: number,
   band2: number,
+  fermiEnergyK: number,
   hallMassConvention?: HallMassConvention,
 ): SessionContent {
   const content = session.content;
@@ -49,15 +50,17 @@ export function convertedSession(
   const controls = historicalIonizedControls(content, true);
   // These transport controls keep their units when the band representation changes.
   const parameters = legacyControls(controls.parameters);
+  const selection = { ...content.selection };
+  delete selection.netElectronDensityPerM3;
+  delete selection.carrierType;
   return {
     ionizedBInputs: true,
     ...content,
     selection: {
-      ...content.selection,
+      ...selection,
       algorithm: "verified-sequential-v2",
-      parameterization: "explicit_density_v1",
+      parameterization: "explicit_fermi_v1",
       bandConfiguration: point.band_configuration,
-      netElectronDensityPerM3: point.net_electron_density_per_m3,
       band1Degeneracy: band1,
       band2Degeneracy: band2,
       fitAbsoluteMass: false,
@@ -80,6 +83,7 @@ export function convertedSession(
       [mode]: {
         ...parameters[mode],
         ...point.parameters,
+        fermi_energy: fermiEnergyK,
         ...(restoreStructuralB ? { B: controls.parameters.dpb_s?.B ?? 1 } : {}),
       },
     },

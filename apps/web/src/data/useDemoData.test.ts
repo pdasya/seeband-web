@@ -56,7 +56,7 @@ describe("demoEntries", () => {
 });
 
 describe("explicit synthetic demo initialization", () => {
-  test("uses server-converted fixed density and mass while preserving free starts", async () => {
+  test("opens a Fermi-energy session with the synthetic reference filling and mass", async () => {
     const { applyDemo } = await import("./useDemoData");
     const { apiClient } = await import("@/api/client");
     const { useSessionStore } = await import("@/session/store");
@@ -72,17 +72,15 @@ describe("explicit synthetic demo initialization", () => {
             ...model,
             fit_modes: model.fit_modes.map((mode) => ({
               ...mode,
-              parameters: mode.parameters
-                .map((parameter) => ({
-                  ...parameter,
-                  name:
-                    parameter.name === "m_eff"
-                      ? "mass_ratio"
-                      : parameter.name === "band_gap"
-                        ? "band_offset_k"
-                        : parameter.name,
-                }))
-                .filter((parameter) => parameter.name !== "fermi_energy"),
+              parameters: mode.parameters.map((parameter) => ({
+                ...parameter,
+                name:
+                  parameter.name === "m_eff"
+                    ? "mass_ratio"
+                    : parameter.name === "band_gap"
+                      ? "band_offset_k"
+                      : parameter.name,
+              })),
             })),
           },
     );
@@ -98,6 +96,15 @@ describe("explicit synthetic demo initialization", () => {
       parameters: { m1: 1.4, mass_ratio: 1.2, band_offset_k: 800 },
     });
     try {
+      useSessionStore.setState({
+        selection: {
+          ...original.selection,
+          model: "dpb",
+          parameterization: "explicit_density_v1",
+          netElectronDensityPerM3: -2e24,
+          legacySource: "Archived fit",
+        },
+      });
       await applyDemo(DEMO, models);
       const state = useSessionStore.getState();
       expect(convert).toHaveBeenCalledWith(
@@ -109,11 +116,16 @@ describe("explicit synthetic demo initialization", () => {
         undefined,
       );
       expect(state.selection).toMatchObject({
-        parameterization: "explicit_density_v1",
+        parameterization: "explicit_fermi_v1",
         bandConfiguration: "vb_cb",
-        netElectronDensityPerM3: -3e24,
       });
-      expect(state.parameters[DEMO.fit_mode]).toEqual({ m1: 1.4 });
+      expect(state.selection.netElectronDensityPerM3).toBeUndefined();
+      expect(state.selection.carrierType).toBeUndefined();
+      expect(state.selection.legacySource).toBeUndefined();
+      expect(state.parameters[DEMO.fit_mode]).toEqual({
+        m1: 1.4,
+        fermi_energy: DEMO.true_parameters.fermi_energy,
+      });
       expect(state.guessedParameters).toEqual({});
       expect(state.data.seebeck?.source.kind).toBe("demo");
       useSessionStore.setState(original, true);

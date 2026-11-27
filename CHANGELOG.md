@@ -72,7 +72,9 @@ deploy/compose.yaml up --build`. The API image installs exactly `uv.lock`
 - Core `0.4.0` adds explicit VB+VB, VB+CB and CB+CB double parabolic bands
   with carrier excess derived from a supplied or fitted Fermi energy. Band masses,
   valley counts and the trial energy determine the conserved electron excess.
-  Saved fixed-density sessions keep their original parametrization. Historical
+  Model has no carrier polarity or density fields. Converting a signed-mass
+  session carries its saved Fermi energy into Parameters. Already-saved
+  fixed-density sessions replay with their archived carrier balance. Historical
   signed-mass requests retain their versioned behavior. See [P18](docs/superpowers/specs/2026-11-20-p18-explicit-dpb-bands-design.md).
 
 - P18: correct the band-edge quadrature for the acoustic and alloy-disorder

@@ -19,6 +19,114 @@ afterEach(() => {
   useSessionStore.setState(original, true);
 });
 
+test("signed-mass conversion keeps EF from the exact vector validated by migration", async () => {
+  const state = createSessionStore().getState();
+  state.selection = {
+    ...state.selection,
+    model: "dpb",
+    fitMode: "dpb_s_rho",
+    scattering: "acPh",
+    carrierType: "p",
+    netElectronDensityPerM3: 9e23,
+  };
+  // EF is supplied by the historical mode's default, not the saved drafts.
+  state.parameters = { dpb_s_rho: { m_eff: -3, band_gap: 600 } };
+  const saved = await sessionFile(
+    state,
+    { appVersion: "legacy", apiVersion: null, saved: "2026-11-20T00:00:00Z" },
+    () => null,
+  );
+  const file = new File([], "historical.json");
+  Object.defineProperty(file, "text", {
+    value: async () => JSON.stringify(saved),
+  });
+  vi.spyOn(HTMLInputElement.prototype, "click").mockImplementation(function (
+    this: HTMLInputElement,
+  ) {
+    Object.defineProperty(this, "files", { value: [file] });
+    this.dispatchEvent(new Event("change"));
+  });
+  const explicitModels = {
+    models: [
+      {
+        id: "dpb",
+        fit_modes: [{ id: "dpb_s_rho", parameters: [{ name: "mass_ratio" }] }],
+      },
+    ],
+  } as ModelsResponse;
+  const historicalModels = {
+    models: [
+      {
+        id: "dpb",
+        fit_modes: [
+          {
+            id: "dpb_s_rho",
+            parameters: [
+              { name: "m_eff", core_range: { default: 1 } },
+              { name: "band_gap", core_range: { default: 1000 } },
+              { name: "fermi_energy", core_range: { default: -175 } },
+            ],
+          },
+        ],
+      },
+    ],
+  } as ModelsResponse;
+  vi.spyOn(apiClient, "getModels").mockImplementation(
+    async (_signal, parameterization) =>
+      parameterization === undefined ? historicalModels : explicitModels,
+  );
+  vi.spyOn(apiClient, "getHealth").mockResolvedValue({
+    core_version: "current",
+  } as HealthResponse);
+  const migrate = vi.spyOn(apiClient, "migrateDpb").mockResolvedValue({
+    parameterization: "explicit_density_v1",
+    band_configuration: "vb_cb",
+    net_electron_density_per_m3: -2e24,
+    parameters: { mass_ratio: 3, band_offset_k: 600, m1: 1.7 },
+  });
+  const client = createQueryClient();
+  client.setQueryData(modelsQuery.queryKey, explicitModels);
+  render(
+    <QueryClientProvider client={client}>
+      <SessionOpen />
+    </QueryClientProvider>,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Open session" }));
+  await screen.findByRole("dialog");
+  fireEvent.change(screen.getByLabelText("Single-valley |m₁| (mₑ)"), {
+    target: { value: "1.7" },
+  });
+  fireEvent.click(
+    screen.getByRole("button", { name: "Confirm scale and convert" }),
+  );
+  await vi.waitFor(() =>
+    expect(useSessionStore.getState().selection.parameterization).toBe(
+      "explicit_fermi_v1",
+    ),
+  );
+  expect(migrate).toHaveBeenCalledWith({
+    parameters: { m_eff: -3, band_gap: 600, fermi_energy: -175 },
+    m1: 1.7,
+    band_1_degeneracy: state.selection.band1Degeneracy,
+    band_2_degeneracy: state.selection.band2Degeneracy,
+  });
+  expect(useSessionStore.getState().parameters.dpb_s_rho).toEqual({
+    mass_ratio: 3,
+    band_offset_k: 600,
+    m1: 1.7,
+    fermi_energy: -175,
+  });
+  expect(
+    useSessionStore.getState().selection.netElectronDensityPerM3,
+  ).toBeUndefined();
+  expect(useSessionStore.getState().selection.carrierType).toBeUndefined();
+  expect(
+    JSON.parse(useSessionStore.getState().selection.legacySource ?? "null")
+      .content.parameters,
+  ).toEqual(saved.content.parameters);
+  client.clear();
+});
+
 test.each(["legacy", "plain-spb", "values", "bounds-only", "settings-only"])(
   "a historical session opens safely with dormant explicit DPB: %s",
   async (variant) => {

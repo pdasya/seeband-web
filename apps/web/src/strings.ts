@@ -16,7 +16,7 @@ export const STRINGS = {
     fermiIdentity: (configuration: string, carrier?: string) =>
       `Parameterization: explicit_fermi_v1; configuration: ${configuration}${carrier === undefined ? "" : `; carrier type: ${carrier}`}`,
 
-    representation: "Explicit bands · fixed carrier excess",
+    archivedDensity: "Archived fixed-density session",
     representationLabel: "Representation",
     densityMeaning: "Signed net electron density n − p",
     densitySymbol: "n − p",
@@ -27,30 +27,8 @@ export const STRINGS = {
     bandLabel: (band: number, kind: string) => `Band ${band} (${kind})`,
     configurations: { vb_vb: "VB + VB", vb_cb: "VB + CB", cb_cb: "CB + CB" },
     density: "Net electron density n − p (m⁻³)",
-    densityMagnitude: "Carrier excess magnitude |n − p| (m⁻³)",
-    densityAbout: "About carrier excess",
-    polarity: "Carrier excess polarity",
-    p: "p",
-    n: "n",
-    polarities: { p: "p: excess holes", n: "n: excess electrons" },
-    densityTooltip:
-      "The signed net electron density n − p must remain fixed across the temperature sweep. The separate electron density n and hole density p may each vary with temperature. Choose p for excess holes (n − p < 0), or n for excess electrons (n − p > 0), then enter the nonnegative magnitude |n − p| in m⁻³ (per cubic metre). VB + CB permits either polarity and zero, where n = p. VB + VB requires p and CB + CB requires n; both same-type configurations require a positive magnitude.",
-    branchDensityHints: {
-      vb_vb:
-        "VB + VB requires p: n − p = −|n − p|. The branch selects this sign and preserves the magnitude.",
-      vb_cb: "VB + CB permits p or n, including intrinsic zero (n = p).",
-      cb_cb:
-        "CB + CB requires n: n − p = +|n − p|. The branch selects this sign and preserves the magnitude.",
-    },
     densityRequired:
-      "Enter a positive concentration for two bands of the same type.",
-    invalidMagnitude: "Enter a finite, nonnegative carrier excess magnitude.",
-    intrinsic: (polarity: "p" | "n") =>
-      `Intrinsic: n = p (n − p = 0 m⁻³). Next nonzero excess: ${polarity === "p" ? "holes (p)" : "electrons (n)"}.`,
-    zeroSameType:
-      "n − p = 0 m⁻³; a positive magnitude is required for this configuration.",
-    signedDensity: (polarity: "p" | "n", magnitude: string) =>
-      `n − p = ${polarity === "p" ? "−" : "+"}${magnitude} m⁻³ (${polarity})`,
+      "The saved carrier balance is incompatible with the band configuration.",
     migrationTitle: "Convert historical DPB session",
     migrationHint:
       "Confirm the positive single-valley mass and both valley multiplicities, excluding spin. Saved multiplicities may have been defaults. Original inputs and fit results are preserved; new fits use fresh bounds.",
