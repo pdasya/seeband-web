@@ -85,7 +85,8 @@ class FitApiRequest(BandInputs):
     """What to fit.
 
     `start` holds every parameter of the mode in core units, including those of other scattering
-    types. `bounds` overrides the description's bounds for fitted parameters, in core units.
+    types. C and D are required only for mixed transport.
+    `bounds` overrides the description's bounds for fitted parameters, in core units.
     `measurements` holds each quantity of the mode, and only points from `min_temperature_k` to
     `max_temperature_k`, inclusive, enter the fit. `extrapolated` says that interpolation made up
     some of these points, so that the result says so too.
@@ -296,17 +297,22 @@ def _refuse(details: list[ErrorDetail]) -> ApiError:
 
 
 def _check_bounds(body: FitApiRequest, fit_mode: FitMode) -> list[ErrorDetail]:
-    specs = {spec.name: spec for spec in fit_mode.parameters}
-    in_scattering = {
-        spec.name
-        for spec in fit_mode.parameters_for(body.scattering if fit_mode.scattering else None)
-    }
+    # check_scattering has passed, so these are the parameters of the chosen scattering.
+    specs = {spec.name: spec for spec in fit_mode.parameters_for(body.scattering)}
     details = []
     for name in body.bounds:
         spec = specs.get(name)
-        if spec is None or spec.fit_bounds is None or name not in in_scattering:
+        if spec is None or spec.fit_bounds is None:
             details.append(
                 invalid("parameter_not_fitted", "This fit does not fit it", ["bounds", name])
+            )
+        elif body.scattering == "acPhDis" and name in ("C", "D") and body.bounds[name].lower < 0:
+            details.append(
+                invalid(
+                    "negative_bound",
+                    "Use a nonnegative scattering ratio",
+                    ["bounds", name, "lower"],
+                )
             )
         elif not spec.bounds_editable:
             details.append(
@@ -399,7 +405,7 @@ def _to_core_request(body: FitApiRequest, max_points: int) -> tuple[str, FitRequ
     details = [
         *scattering_details,
         *check_degeneracy(body.band_1_degeneracy, body.band_2_degeneracy, fit_mode),
-        *check_parameter_names(list(body.start), "start", fit_mode),
+        *check_parameter_names(list(body.start), "start", fit_mode, body.scattering),
         *_check_measurements(body, fit_mode),
         *check_point_counts(body.measurements, max_points),
     ]

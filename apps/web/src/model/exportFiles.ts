@@ -149,11 +149,12 @@ export function exportHeader(context: ExportContext): string[] {
         ]
       : []),
     ...(selection.model === "dpb" &&
-    selection.parameterization === "explicit_density_v1"
+    selection.parameterization === "explicit_density_v1" &&
+    selection.netElectronDensityPerM3 !== undefined
       ? [
           STRINGS.explicitDpb.identity(
             selection.bandConfiguration ?? "vb_cb",
-            selection.netElectronDensityPerM3 ?? 1e24,
+            selection.netElectronDensityPerM3,
           ),
         ]
       : []),
@@ -321,7 +322,7 @@ function parameterRecords(
   held: readonly string[],
   selection: DegeneracySelection,
 ): ParameterRecord[] {
-  const values = parameterValues(mode, saved, selection);
+  const values = parameterValues(mode, saved, { ...selection, scattering });
   const effectiveHeld =
     fit.status === "done"
       ? (fit.result.held ?? held)
@@ -405,16 +406,18 @@ function explicitIdentityRows(selection: DegeneracySelection): string[][] {
               text.status.fixed,
             ],
           ]
-      : [
-          [
-            "net_electron_density_per_m3",
-            STRINGS.explicitDpb.densitySymbol,
-            STRINGS.explicitDpb.densityMeaning,
-            STRINGS.explicitDpb.densityUnit,
-            numberText(selection.netElectronDensityPerM3 ?? 1e24),
-            text.status.fixed,
-          ],
-        ]),
+      : selection.netElectronDensityPerM3 === undefined
+        ? []
+        : [
+            [
+              "net_electron_density_per_m3",
+              STRINGS.explicitDpb.densitySymbol,
+              STRINGS.explicitDpb.densityMeaning,
+              STRINGS.explicitDpb.densityUnit,
+              numberText(selection.netElectronDensityPerM3),
+              text.status.fixed,
+            ],
+          ]),
   ];
 }
 

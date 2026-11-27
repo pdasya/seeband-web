@@ -1,11 +1,37 @@
-import type { ParameterDescription } from "@/model/parameters";
+import {
+  parametersForScattering,
+  type ParameterDescription,
+} from "@/model/parameters";
 import type { FitModeDescription } from "@/model/selection";
 import type { SessionState } from "@/session/store";
+
+// Each converted DPB mode owns its archived values, bounds and holds for these controls.
+export const archivedDpbControls: ReadonlySet<string> = new Set([
+  "A",
+  "B",
+  "C",
+  "D",
+]);
 
 type Carried = Pick<
   SessionState,
   "parameters" | "customBounds" | "held" | "guessedParameters"
 >;
+
+type CarryState = Carried & Partial<Pick<SessionState, "selection">>;
+
+function keepsHistoricalControls(
+  state: CarryState,
+  from: FitModeDescription,
+  to: FitModeDescription,
+): boolean {
+  return (
+    Boolean(state.selection?.legacySource) &&
+    state.selection?.parameterization !== undefined &&
+    from.id.startsWith("dpb_") &&
+    to.id.startsWith("dpb_")
+  );
+}
 
 function sameEntries<T>(
   a: Readonly<Record<string, T>> | undefined,
@@ -54,19 +80,30 @@ const takesBounds = (parameter: ParameterDescription) =>
 
 /** What a change of mode takes along, by name. See `carryParameters`. */
 function plan(
-  state: Carried,
+  state: CarryState,
   from: FitModeDescription,
   to: FitModeDescription,
 ) {
+  // As each mode shows them for the chosen scattering, with its overrides, such as the wide B
+  // of explicit DPB with ionized impurities, and the B that only that override gives dpb_s.
+  const scattering = state.selection?.scattering;
   const target = new Map(
-    to.parameters.map((parameter) => [parameter.name, parameter]),
+    parametersForScattering(to, scattering ?? to.default_scattering).map(
+      (parameter) => [parameter.name, parameter],
+    ),
   );
   const saved = state.parameters[from.id] ?? {};
   const guessed = state.guessedParameters[from.id] ?? {};
   const shared = new Set<string>();
   const values: Record<string, number> = {};
   const replaceable: Record<string, number> = {};
-  for (const { name, core_range } of from.parameters) {
+  const keepHistorical = keepsHistoricalControls(state, from, to);
+  for (const { name, core_range } of parametersForScattering(
+    from,
+    scattering ?? from.default_scattering,
+  )) {
+    // Converted sessions retain each mode's original transport controls.
+    if (keepHistorical && archivedDpbControls.has(name)) continue;
     const there = target.get(name);
     if (there === undefined) continue;
     const value = saved[name] ?? core_range.default;
@@ -108,7 +145,7 @@ function plan(
  * guess recorded against the values still holds.
  */
 export function carryParameters(
-  state: Carried,
+  state: CarryState,
   from: FitModeDescription,
   to: FitModeDescription,
 ): Carried {
@@ -155,7 +192,7 @@ export function carryParameters(
 
 /** The names of the parameters whose value a change of mode takes along. */
 export function carriedNames(
-  state: Carried,
+  state: CarryState,
   from: FitModeDescription,
   to: FitModeDescription,
 ): string[] {

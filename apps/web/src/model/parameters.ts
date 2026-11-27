@@ -20,12 +20,25 @@ export function visibleParameters(
   scattering: string | null,
 ): ParameterDescription[] {
   const chosen = scattering ?? mode.default_scattering;
-  return mode.parameters.filter(
+  return parametersForScattering(mode, chosen).filter(
     (parameter) =>
       mode.scattering.length === 0 ||
       parameter.scattering.length === 0 ||
       (chosen != null && parameter.scattering.includes(chosen)),
   );
+}
+
+/** Server-described overrides replace existing names and may add structural inputs. */
+export function parametersForScattering(
+  mode: FitModeDescription,
+  scattering: string | null | undefined,
+): ParameterDescription[] {
+  const overrides = mode.parameter_overrides?.[scattering ?? ""] ?? [];
+  return [
+    ...new Map(
+      [...mode.parameters, ...overrides].map((p) => [p.name, p]),
+    ).values(),
+  ];
 }
 
 /** What a fit of this mode lets the user bound, with the bounds of its description. */
@@ -61,7 +74,8 @@ export function withCustomRange(
 export type ParameterSelection = Pick<
   Selection,
   "parameterization" | "bandConfiguration"
->;
+> &
+  Partial<Pick<Selection, "scattering">>;
 
 /** Every parameter in core units. Virgin E_F starts follow the selected bands; stored values win. */
 export function parameterValues(
@@ -70,7 +84,10 @@ export function parameterValues(
   selection?: ParameterSelection,
 ): Record<string, number> {
   const values = Object.fromEntries(
-    mode.parameters.map((parameter) => [
+    parametersForScattering(
+      mode,
+      selection?.scattering ?? mode.default_scattering,
+    ).map((parameter) => [
       parameter.name,
       saved?.[parameter.name] ?? parameter.core_range.default,
     ]),

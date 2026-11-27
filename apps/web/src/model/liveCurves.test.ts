@@ -106,9 +106,18 @@ describe("rmseGaps", () => {
 });
 
 describe("calcRequest", () => {
-  test("asks with no data only when told to", () => {
-    expect(calcRequest(STATE, models)).toBeNull();
-    expect(calcRequest(STATE, models, true)?.fit_mode).toBe("dpb_s_rho");
+  test("asks for model curves without measurements by default", () => {
+    expect(calcRequest(STATE, models)).toMatchObject({
+      fit_mode: "dpb_s_rho",
+      measurements: {},
+      parameters: { m_eff: 1.01 },
+    });
+    expect(
+      calcRequest(
+        { ...STATE, selection: { ...STATE.selection, minTemperatureK: null } },
+        models,
+      ),
+    ).toBeNull();
   });
 });
 

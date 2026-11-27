@@ -1,7 +1,12 @@
 import type { components } from "@seeband/api-client";
 import { parameterValues } from "@/model/parameters";
 import type { FitModeDescription } from "@/model/selection";
-import type { SessionContent, SessionFile } from "@/session/sessionFile";
+import { archivedDpbControls } from "@/session/carry";
+import {
+  historicalIonizedControls,
+  type SessionContent,
+  type SessionFile,
+} from "@/session/sessionFile";
 
 export type HallMassConvention = "single_valley" | "all_valley";
 
@@ -12,15 +17,15 @@ export function legacyVector(
 ): Record<string, number> {
   const mode = content.selection.fitMode ?? "dpb_s_rho";
   const defaults = description ? parameterValues(description, undefined) : {};
-  if (content.fit === null)
-    return {
-      ...defaults,
-      ...content.guessedParameters?.[mode],
-      ...content.parameters[mode],
-    };
+  const drafts = {
+    ...content.guessedParameters?.[mode],
+    ...content.parameters[mode],
+  };
+  if (content.fit === null) return { ...defaults, ...drafts };
   return Object.fromEntries(
     Object.entries({
       ...defaults,
+      ...archivedControlsOf(drafts),
       ...content.fit.request?.start,
       ...content.fit.result.parameters,
     }).filter((entry): entry is [string, number] => entry[1] !== null),
@@ -32,18 +37,30 @@ export function convertedSession(
   point: components["schemas"]["ConvertedDpbPoint"],
   band1: number,
   band2: number,
+  fermiEnergyK: number,
   hallMassConvention?: HallMassConvention,
 ): SessionContent {
   const content = session.content;
   const mode = content.selection.fitMode ?? "dpb_s_rho";
+  const restoreStructuralB =
+    mode === "dpb_s" &&
+    (content.selection.scattering === "ionized" ||
+      (content.ionizedBInputs !== true &&
+        content.selection.scattering !== "acPhDis"));
+  const controls = historicalIonizedControls(content, true);
+  // These transport controls keep their units when the band representation changes.
+  const parameters = legacyControls(controls.parameters);
+  const selection = { ...content.selection };
+  delete selection.netElectronDensityPerM3;
+  delete selection.carrierType;
   return {
+    ionizedBInputs: true,
     ...content,
     selection: {
-      ...content.selection,
+      ...selection,
       algorithm: "verified-sequential-v2",
-      parameterization: "explicit_density_v1",
+      parameterization: "explicit_fermi_v1",
       bandConfiguration: point.band_configuration,
-      netElectronDensityPerM3: point.net_electron_density_per_m3,
       band1Degeneracy: band1,
       band2Degeneracy: band2,
       fitAbsoluteMass: false,
@@ -62,14 +79,56 @@ export function convertedSession(
     },
     parameters: {
       ...withoutLegacyDpb(content.parameters),
-      [mode]: point.parameters,
+      ...parameters,
+      [mode]: {
+        ...parameters[mode],
+        ...point.parameters,
+        fermi_energy: fermiEnergyK,
+        ...(restoreStructuralB ? { B: controls.parameters.dpb_s?.B ?? 1 } : {}),
+      },
     },
     guessedParameters: withoutLegacyDpb(content.guessedParameters ?? {}),
-    customBounds: withoutLegacyDpb(content.customBounds),
-    held: withoutLegacyDpb(content.held),
+    customBounds: {
+      ...withoutLegacyDpb(content.customBounds),
+      ...legacyControls(controls.customBounds),
+    },
+    held: {
+      ...withoutLegacyDpb(content.held),
+      ...Object.fromEntries(
+        Object.entries(content.held)
+          .filter(
+            ([mode, held]) =>
+              mode.startsWith("dpb_") &&
+              held.some((name) => archivedDpbControls.has(name)),
+          )
+          .map(([mode, held]) => [
+            mode,
+            held.filter((name) => archivedDpbControls.has(name)),
+          ]),
+      ),
+    },
     fit: null,
     fitStart: { values: null, net: null, numerical: false },
   };
+}
+
+function archivedControlsOf<T>(values: Record<string, T>): Record<string, T> {
+  return Object.fromEntries(
+    Object.entries(values).filter(([name]) => archivedDpbControls.has(name)),
+  );
+}
+
+function legacyControls<T>(
+  modes: Record<string, Record<string, T>>,
+): Record<string, Record<string, T>> {
+  return Object.fromEntries(
+    Object.entries(modes).flatMap(([mode, values]) => {
+      const kept = archivedControlsOf(values);
+      return mode.startsWith("dpb_") && Object.keys(kept).length > 0
+        ? [[mode, kept]]
+        : [];
+    }),
+  );
 }
 
 export function withoutLegacyDpb<T>(

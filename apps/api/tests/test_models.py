@@ -103,17 +103,26 @@ def test_single_pass_and_iterative_modes(
 def test_fields_that_do_not_apply_are_left_out(modes: dict[str, dict[str, Any]]) -> None:
     mode = modes["spb_s"]
 
-    assert mode["scattering"] == ["acPh", "dis", "ionized"]
+    assert mode["scattering"] == ["acPh", "dis", "acPhDis", "ionized"]
     assert mode["default_scattering"] == "acPh"
     for field in ("threshold", "max_iterations", "degeneracy"):
         assert field not in mode
     assert modes["dpb_s_rho"]["degeneracy"] == {"band_1_default": 1, "band_2_default": 1}
 
 
-def test_removed_mixed_parameters_are_absent(modes: dict[str, dict[str, Any]]) -> None:
+def test_mixed_parameters_are_specific_to_resistivity_modes(
+    modes: dict[str, dict[str, Any]],
+) -> None:
     for mode in modes.values():
-        assert not {"C", "D"} & {spec["name"] for spec in mode["parameters"]}
-        assert "acPhDis" not in mode["scattering"]
+        expected = (
+            set()
+            if mode["id"].endswith("_s")
+            else ({"C", "D"} if mode["id"].startswith("dpb") else {"C"})
+        )
+        assert {
+            spec["name"] for spec in mode["parameters"] if spec.get("scattering") == ["acPhDis"]
+        } == expected
+        assert "acPhDis" in mode["scattering"]
 
 
 def test_core_range_divides_as_the_desktop_does() -> None:
@@ -373,7 +382,7 @@ def test_stages_say_what_each_solver_run_finds(modes: dict[str, dict[str, Any]])
     assert rh[2]["parameters"] == ["m1"]
     assert modes["spb_s_rho"]["stages"][1] == {
         "quantity": "resistivity",
-        "parameters": ["A", "F"],
+        "parameters": ["A", "C", "F"],
         "repeats": False,
     }
 

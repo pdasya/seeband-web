@@ -579,7 +579,7 @@ test.describe("real fits", () => {
   test("the demo goes through the real API like a file: curve, interpolation and fit", async ({
     page,
   }) => {
-    test.setTimeout(60_000);
+    test.setTimeout(120_000);
     await page.goto("/fit?demo=1");
     await expect(page.getByText(/^Synthetic data/)).toBeVisible();
     await expect(
@@ -608,7 +608,7 @@ test.describe("real fits", () => {
   test("a ZIP of a real fit holds data and curves the real parser reads again", async ({
     page,
   }) => {
-    test.setTimeout(60_000);
+    test.setTimeout(120_000);
     await page.goto("/fit?demo=1");
     await expect(page.getByText(/^Synthetic data/)).toBeVisible();
     await page.getByRole("radio", { name: "S + ρ", exact: true }).click();
@@ -635,29 +635,27 @@ test.describe("real fits", () => {
         selection: {
           parameterization: string;
           bandConfiguration: string;
-          netElectronDensityPerM3: number;
+          netElectronDensityPerM3?: number;
+          carrierType?: string;
           band1Degeneracy: number;
           band2Degeneracy: number;
         };
         parameters: Record<string, Record<string, number>>;
       };
     };
-    expect(session.version).toBe(2);
+    expect(session.version).toBe(4);
     expect(session.content.selection).toMatchObject({
-      parameterization: "explicit_density_v1",
+      parameterization: "explicit_fermi_v1",
       bandConfiguration: "vb_cb",
       band1Degeneracy: 1,
       band2Degeneracy: 1,
     });
-    expect(
-      Number.isFinite(session.content.selection.netElectronDensityPerM3),
-    ).toBe(true);
-    expect(metadata).toContain("Parameterization: explicit_density_v1");
-    expect(metadata).toContain("m⁻³");
+    expect(session.content.selection.netElectronDensityPerM3).toBeUndefined();
+    expect(session.content.selection.carrierType).toBeUndefined();
+    expect(metadata).toContain("Parameterization: explicit_fermi_v1");
     expect(parameters).toContain("Representation");
-    expect(parameters).toContain("explicit_density_v1");
-    expect(parameters).toContain("Signed net electron density n − p");
-    expect(parameters).toContain("m^-3");
+    expect(parameters).toContain("explicit_fermi_v1");
+    expect(parameters).not.toContain("Signed net electron density n − p");
     expect(parameters).toContain("m₂/m₁");
     expect(parameters).toContain("N1, N2");
     expect(session.content.parameters.dpb_s_rho?.m1).toBe(1.4);

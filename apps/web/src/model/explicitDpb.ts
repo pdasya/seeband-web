@@ -28,7 +28,7 @@ export function explicitDpbInputs(selection: Selection) {
     ? {
         parameterization: "explicit_density_v1" as const,
         band_configuration: selection.bandConfiguration ?? "vb_cb",
-        net_electron_density_per_m3: selection.netElectronDensityPerM3 ?? 1e24,
+        net_electron_density_per_m3: selection.netElectronDensityPerM3 ?? null,
       }
     : {};
 }
@@ -42,7 +42,7 @@ export function isValidCarrierDensity(selection: Selection): boolean {
     return true;
   const { band_configuration, net_electron_density_per_m3: density } =
     explicitDpbInputs(selection);
-  if (density === undefined || !Number.isFinite(density)) return false;
+  if (density == null || !Number.isFinite(density)) return false;
   if (band_configuration === "cb_cb") return density > 0;
   if (band_configuration === "vb_vb") return density < 0;
   return true;

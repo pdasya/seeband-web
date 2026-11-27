@@ -27,6 +27,14 @@ The screenshots and numbers below come from runs of this version on them; a
 later version can give other numbers, and
 [Results that changed](/results-changed/) says why.
 
+## Preview model curves
+
+Open Fit and choose a model, scattering mechanism and temperature range. The fit mode
+selects the curves to calculate: S, S and ρ, or S, ρ and Hall. Changing a band parameter
+updates the curves even in an empty session. Load measurements to overlay points and
+see the RMSE for each available comparison. Removing the measurements leaves the
+model curves at the selected parameters. Run a fit once the required data are loaded.
+
 ## Load data
 
 The fit screen opens with the Data panel. Load each quantity from its own file
@@ -121,12 +129,23 @@ are:
 - $E_g$, the position of band 2, and $E_F$, the Fermi energy at T = 0;
 - for acoustic phonons or ionized impurities, A, the conductivity scale, and
   B, band 2's scale relative to band 1's; for alloy disorder, F and G instead;
+- for mixed acoustic phonons and alloy disorder, A and B plus dimensionless C
+  and D, the crossover temperatures divided by 300 K;
 - $m_1$, the density-of-states mass of band 1, which only $R_H$ sets; it is the single-valley mass when $N_1 = 1$.
 
 Choose the scattering mechanism under **Scattering**: acoustic phonons, alloy
-disorder or ionized impurities. One mechanism applies over the whole range.
-The desktop's combination of acoustic phonons and alloy disorder by
-Matthiessen's rule is not offered.
+disorder, their combination **Acoustic phonons + alloy disorder (acPhDis)**,
+or ionized impurities. One selection applies over the whole range.
+Mixed scattering combines the two rates by Matthiessen's rule. S-only hides
+and ignores A, B, C and D; their values, bounds and held settings remain
+available when you return to a mode with resistivity.
+
+In explicit DPB with ionized impurities, S-only shows a manual B with default
+
+1. Enter a different value to change the relative weight while fitting the band
+   parameters. The two modes with resistivity can fit B or hold it with the
+   padlock. The S-only value is remembered separately. The conditional benchmark
+   B = M² uses the positive single-valley mass ratio. [Physical assumptions](/conventions/#ionized-impurities-in-explicit-dpb).
 
 For acoustic phonons and alloy disorder, loading S fills eligible starting
 values from a neural net and preserves values you entered by hand. Choose
@@ -289,8 +308,8 @@ the default bounds for Si:P, and a sample no mechanism describes.
 ## What differs from the desktop guide
 
 - Data can be loaded in other units, as one table or as σ instead of ρ.
-- Scattering offers ionized impurities, and no longer the combination of
-  acoustic phonons and alloy disorder.
+- Scattering also offers ionized impurities alongside acoustic phonons, alloy
+  disorder and their combination.
 - The default fitting method, Verified sequential, checks each step
   numerically; **Legacy sequential (reproduce earlier results)**, under
   **Fitting method**, reproduces the desktop's fitting.

@@ -1,3 +1,4 @@
+import { rmseIssueText } from "@/model/calcIssues";
 import { DownloadIcon, InfoIcon, PrinterIcon } from "lucide-react";
 import { useId, useMemo, type ReactNode } from "react";
 import { Link } from "react-router";
@@ -251,6 +252,12 @@ function MoreGraph({
           <DownloadIcon aria-hidden="true" />
         </Button>
       </div>
+      {(derived.stale === true ||
+        (total !== null && measured.stale === true)) && (
+        <p className="m-0 text-xs text-muted-foreground">
+          {STRINGS.calculation.previous}
+        </p>
+      )}
       {failed !== null && (
         <p role="alert" className="m-0 text-xs text-destructive">
           <Subscripted text={failureText(failed)} />
@@ -489,13 +496,16 @@ export function ResultsPage() {
           const rmse = measured.result?.rmse?.[quantity];
           // Missing data, a failed or pending calculation each say so, and none passes for another.
           const detail =
-            rmse !== undefined
-              ? text.inRange
-              : data[quantity] === undefined
-                ? text.noRmse
-                : measured.error !== null
-                  ? text.rmseFailed
-                  : text.rmseCalculating;
+            measured.stale === true
+              ? fitText.rmseOutdated
+              : (rmseIssueText(measured.result, quantity) ??
+                (rmse !== undefined
+                  ? text.inRange
+                  : data[quantity] === undefined
+                    ? text.noRmse
+                    : measured.error !== null
+                      ? text.rmseFailed
+                      : text.rmseCalculating));
           return (
             <Kpi
               key={quantity}

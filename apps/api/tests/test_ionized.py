@@ -13,7 +13,8 @@ from seeband_core.model_scales import default_start
 
 @pytest.mark.parametrize("model_id", ["spb", "dpb"])
 @pytest.mark.parametrize("suffix", ["s", "s_rho", "s_rho_rh"])
-def test_ionized_fit_and_input_grid_are_consistent(model_id: str, suffix: str) -> None:
+@pytest.mark.parametrize("law", ["ionized", "acPhDis"])
+def test_fit_and_input_grid_are_consistent(model_id: str, suffix: str, law: str) -> None:
     mode_id = f"{model_id}_{suffix}"
     model = registry.get(model_id)
     mode = model.describe().fit_mode(mode_id)
@@ -23,7 +24,7 @@ def test_ionized_fit_and_input_grid_are_consistent(model_id: str, suffix: str) -
         CurveRequest(
             fit_mode=mode_id,
             parameters=truth,
-            scattering="ionized",
+            scattering=law,
             min_temperature_k=200.0,
             max_temperature_k=500.0,
             points=5,
@@ -42,7 +43,7 @@ def test_ionized_fit_and_input_grid_are_consistent(model_id: str, suffix: str) -
         for q in mode.quantities
     }
     free = "fermi_energy" if suffix == "s" else "A"
-    held = [p.name for p in mode.parameters_for("ionized") if p.role == "fitted" and p.name != free]
+    held = [p.name for p in mode.parameters_for(law) if p.role == "fitted" and p.name != free]
     start = truth | {free: truth[free] * 1.1}
     with TestClient(create_app()) as client:
         response = client.post(
@@ -50,7 +51,7 @@ def test_ionized_fit_and_input_grid_are_consistent(model_id: str, suffix: str) -
             json={
                 "model": model_id,
                 "fit_mode": mode_id,
-                "scattering": "ionized",
+                "scattering": law,
                 "start": start,
                 "held": held,
                 "measurements": measurements,
@@ -72,7 +73,7 @@ def test_ionized_fit_and_input_grid_are_consistent(model_id: str, suffix: str) -
             json={
                 "model": model_id,
                 "fit_mode": mode_id,
-                "scattering": "ionized",
+                "scattering": law,
                 "parameters": result["parameters"],
                 "min_temperature_k": 200.0,
                 "max_temperature_k": 500.0,
@@ -84,26 +85,6 @@ def test_ionized_fit_and_input_grid_are_consistent(model_id: str, suffix: str) -
         assert residual_response.json()["known_issues"] == []
         for residual in result["diagnostics"]["residuals"].values():
             assert residual["relative_l2"] < 1e-5
-
-
-@pytest.mark.parametrize("model_id", ["spb", "dpb"])
-def test_retired_mixed_scattering_is_not_relabelled(model_id: str) -> None:
-    mode_id = f"{model_id}_s_rho"
-    mode = registry.get(model_id).describe().fit_mode(mode_id)
-    with TestClient(create_app()) as client:
-        response = client.post(
-            "/api/calc",
-            json={
-                "model": model_id,
-                "fit_mode": mode_id,
-                "scattering": "acPhDis",
-                "parameters": default_start(mode),
-                "min_temperature_k": 200.0,
-                "max_temperature_k": 500.0,
-            },
-        )
-    assert response.status_code == 422
-    assert any(d["code"] == "unknown_scattering" for d in response.json()["details"])
 
 
 def test_spb_numerical_guess_uses_ionized_scattering() -> None:

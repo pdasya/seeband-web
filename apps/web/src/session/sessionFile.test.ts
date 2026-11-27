@@ -207,6 +207,10 @@ test.each([
     JSON.stringify({ format: "seeband-session", version: SESSION_VERSION + 1 }),
   ],
   [
+    "unsupported_version",
+    JSON.stringify({ format: "seeband-session", version: 3 }),
+  ],
+  [
     "invalid",
     JSON.stringify({ format: "seeband-session", version: SESSION_VERSION }),
   ],
@@ -332,7 +336,7 @@ test("version 2 requires a coherent explicit representation and rejects v1 expli
     { appVersion: "test", apiVersion: null, saved: "2026-11-20T00:00:00Z" },
     () => null,
   );
-  expect(file.version).toBe(2);
+  expect(file.version).toBe(4);
   expect(
     await readSessionFile(JSON.stringify({ ...file, version: 1 })),
   ).toEqual({ problem: "invalid" });
@@ -359,7 +363,7 @@ test("explicit DPB identity survives saving while SPB is selected", async () => 
     { appVersion: "test", apiVersion: null, saved: "2026-11-20T00:00:00Z" },
     () => null,
   );
-  expect(file.version).toBe(2);
+  expect(file.version).toBe(4);
   const read = await readSessionFile(JSON.stringify(file));
   if (!("session" in read))
     throw new Error("Explicit inactive DPB session was rejected");
@@ -391,7 +395,7 @@ test.each([undefined, "p" as const])(
       { appVersion: "test", apiVersion: null, saved: "2026-11-20T00:00:00Z" },
       () => null,
     );
-    expect(file.version).toBe(2);
+    expect(file.version).toBe(4);
     const read = await readSessionFile(JSON.stringify(file));
     if (!("session" in read)) throw new Error("Fermi session rejected");
     const restored = restoredSession(read.session.content);
@@ -405,5 +409,172 @@ test.each([undefined, "p" as const])(
     if (carrierType === undefined)
       expect(restored.selection).not.toHaveProperty("carrierType");
     else expect(restored.selection.carrierType).toBe(carrierType);
+  },
+);
+
+test("historical ionized controls preserve rho bounds and holds and ignore dormant S-only B", async () => {
+  const state = session();
+  state.selection = {
+    ...state.selection,
+    model: "dpb",
+    scattering: "ionized",
+    fitMode: "dpb_s_rho",
+  };
+  state.parameters = { dpb_s: { B: 7 }, dpb_s_rho: { B: 1.05 } };
+  state.held = { dpb_s_rho: ["B"] };
+  state.customBounds = {};
+  const file = await sessionFile(
+    state,
+    { appVersion: "old", apiVersion: "old", saved: "2026-11-20" },
+    () => null,
+  );
+  const oldContent = JSON.stringify(file.content);
+  const loaded = await readSessionFile(JSON.stringify(file));
+  expect("session" in loaded).toBe(true);
+  const restored = restoredSession(file.content);
+  expect(restored.parameters.dpb_s?.B).toBe(1);
+  expect(restored.parameters.dpb_s_rho?.B).toBe(1.05);
+  expect(restored.customBounds.dpb_s_rho?.B).toEqual({
+    lower: 0.9,
+    upper: 1.1,
+  });
+  expect(restored.held.dpb_s_rho).toEqual(["B"]);
+  expect(JSON.stringify(file.content)).toBe(oldContent);
+  file.content.customBounds = {
+    dpb_s_rho: { B: { lower: 0.95, upper: 1.07 } },
+  };
+  expect(restoredSession(file.content).customBounds.dpb_s_rho?.B).toEqual({
+    lower: 0.95,
+    upper: 1.07,
+  });
+});
+
+test("new explicit sessions retain user S-only B and wide rho defaults on reopen", async () => {
+  const state = session();
+  state.selection = {
+    ...state.selection,
+    model: "dpb",
+    parameterization: "explicit_density_v1",
+    bandConfiguration: "vb_cb",
+    netElectronDensityPerM3: 1e24,
+    scattering: "ionized",
+    fitMode: "dpb_s",
+  };
+  state.parameters = { dpb_s: { B: 9 } };
+  state.customBounds = {};
+  const file = await sessionFile(
+    state,
+    { appVersion: "new", apiVersion: "new", saved: "2026-11-20" },
+    () => null,
+  );
+  expect(file.version).toBe(4);
+  const loaded = await readSessionFile(JSON.stringify(file));
+  if (!("session" in loaded)) throw new Error(loaded.problem);
+  const restored = restoredSession(loaded.session.content);
+  expect(restored.parameters.dpb_s?.B).toBe(9);
+  expect(restored.customBounds).toEqual({});
+  expect(
+    await readSessionFile(JSON.stringify({ ...file, version: 3 })),
+  ).toEqual({ problem: "unsupported_version" });
+});
+
+test.each([
+  ["spb", "ionized"],
+  ["spb", "dis"],
+  ["dpb", "acPh"],
+  ["dpb", "acPhDis"],
+] as const)(
+  "v2 restores DPB bounds with %s selected and %s scattering",
+  async (model, scattering) => {
+    const state = session();
+    state.selection = {
+      ...state.selection,
+      model,
+      scattering,
+      fitMode: model === "dpb" ? "dpb_s_rho" : "spb_s",
+      parameterization: "explicit_density_v1",
+      bandConfiguration: "vb_cb",
+      netElectronDensityPerM3: 1e24,
+    };
+    state.savedModelSettings = {
+      dpb: {
+        fitMode: "dpb_s_rho",
+        scattering,
+        band1Degeneracy: 1,
+        band2Degeneracy: 1,
+      },
+    };
+    state.parameters = { dpb_s: { B: 7 }, dpb_s_rho: { B: 1.03 } };
+    state.customBounds = { dpb_s_rho_rh: { B: { lower: 0.97, upper: 1.03 } } };
+    const file = await sessionFile(
+      state,
+      { appVersion: "old", apiVersion: "old", saved: "2026-11-20" },
+      () => null,
+    );
+    file.version = 2;
+    delete file.content.ionizedBInputs;
+    file.content.fit = {
+      result: RESULT,
+      request: {
+        ...REQUEST,
+        fit_mode: "dpb_s",
+        bounds: { B: { lower: 3, upper: 4 } },
+      },
+    };
+    file.checksum = await checksum(file.content);
+    const loaded = await readSessionFile(JSON.stringify(file));
+    if (!("session" in loaded)) throw new Error(loaded.problem);
+    const restored = restoredSession(loaded.session.content);
+    expect(restored.parameters.dpb_s?.B).toBe(scattering === "acPhDis" ? 7 : 1);
+    expect(restored.parameters.dpb_s_rho?.B).toBe(1.03);
+    expect(restored.customBounds.dpb_s_rho?.B).toEqual({
+      lower: 0.9,
+      upper: 1.1,
+    });
+    expect(restored.customBounds.dpb_s_rho_rh?.B).toEqual({
+      lower: 0.97,
+      upper: 1.03,
+    });
+    expect(restored.request).toEqual(file.content.fit.request);
+    const inconsistent = { ...file, version: 4 };
+    expect(await readSessionFile(JSON.stringify(inconsistent))).toEqual({
+      problem: "invalid",
+    });
+  },
+);
+
+test.each([undefined, "explicit_fermi_v1"] as const)(
+  "historical mixed sessions retain transport drafts with %s parameterization",
+  async (parameterization) => {
+    const state = session();
+    state.selection = {
+      ...state.selection,
+      model: "dpb",
+      fitMode: "dpb_s",
+      scattering: "acPhDis",
+      ...(parameterization === undefined ? {} : { parameterization }),
+    };
+    state.parameters = {
+      dpb_s: { B: 7 },
+      dpb_s_rho: { A: 20, B: 9, C: 3, D: 4 },
+    };
+    state.customBounds = { dpb_s_rho: { C: { lower: 2, upper: 5 } } };
+    state.held = { dpb_s_rho: ["C", "D"] };
+    const file = await sessionFile(
+      state,
+      { appVersion: "old", apiVersion: "old", saved: "2026-11-20" },
+      () => null,
+    );
+    delete file.content.ionizedBInputs;
+    const restored = restoredSession(file.content);
+    expect(restored.selection.scattering).toBe("acPhDis");
+    expect(restored.parameters).toEqual(state.parameters);
+    expect(restored.customBounds.dpb_s_rho?.C).toEqual({ lower: 2, upper: 5 });
+    if (parameterization !== undefined)
+      expect(restored.customBounds.dpb_s_rho?.B).toEqual({
+        lower: 0.9,
+        upper: 1.1,
+      });
+    expect(restored.held).toEqual(state.held);
   },
 );

@@ -16,7 +16,7 @@ export const STRINGS = {
     fermiIdentity: (configuration: string, carrier?: string) =>
       `Parameterization: explicit_fermi_v1; configuration: ${configuration}${carrier === undefined ? "" : `; carrier type: ${carrier}`}`,
 
-    representation: "Explicit bands · fixed carrier excess",
+    archivedDensity: "Archived fixed-density session",
     representationLabel: "Representation",
     densityMeaning: "Signed net electron density n − p",
     densitySymbol: "n − p",
@@ -27,30 +27,8 @@ export const STRINGS = {
     bandLabel: (band: number, kind: string) => `Band ${band} (${kind})`,
     configurations: { vb_vb: "VB + VB", vb_cb: "VB + CB", cb_cb: "CB + CB" },
     density: "Net electron density n − p (m⁻³)",
-    densityMagnitude: "Carrier excess magnitude |n − p| (m⁻³)",
-    densityAbout: "About carrier excess",
-    polarity: "Carrier excess polarity",
-    p: "p",
-    n: "n",
-    polarities: { p: "p: excess holes", n: "n: excess electrons" },
-    densityTooltip:
-      "The signed net electron density n − p must remain fixed across the temperature sweep. The separate electron density n and hole density p may each vary with temperature. Choose p for excess holes (n − p < 0), or n for excess electrons (n − p > 0), then enter the nonnegative magnitude |n − p| in m⁻³ (per cubic metre). VB + CB permits either polarity and zero, where n = p. VB + VB requires p and CB + CB requires n; both same-type configurations require a positive magnitude.",
-    branchDensityHints: {
-      vb_vb:
-        "VB + VB requires p: n − p = −|n − p|. The branch selects this sign and preserves the magnitude.",
-      vb_cb: "VB + CB permits p or n, including intrinsic zero (n = p).",
-      cb_cb:
-        "CB + CB requires n: n − p = +|n − p|. The branch selects this sign and preserves the magnitude.",
-    },
     densityRequired:
-      "Enter a positive concentration for two bands of the same type.",
-    invalidMagnitude: "Enter a finite, nonnegative carrier excess magnitude.",
-    intrinsic: (polarity: "p" | "n") =>
-      `Intrinsic: n = p (n − p = 0 m⁻³). Next nonzero excess: ${polarity === "p" ? "holes (p)" : "electrons (n)"}.`,
-    zeroSameType:
-      "n − p = 0 m⁻³; a positive magnitude is required for this configuration.",
-    signedDensity: (polarity: "p" | "n", magnitude: string) =>
-      `n − p = ${polarity === "p" ? "−" : "+"}${magnitude} m⁻³ (${polarity})`,
+      "The saved carrier balance is incompatible with the band configuration.",
     migrationTitle: "Convert historical DPB session",
     migrationHint:
       "Confirm the positive single-valley mass and both valley multiplicities, excluding spin. Saved multiplicities may have been defaults. Original inputs and fit results are preserved; new fits use fresh bounds.",
@@ -73,6 +51,24 @@ export const STRINGS = {
       `Parameterization: explicit_density_v1; configuration: ${configuration}; net electron density: ${density} m⁻³`,
   },
   appName: "SeeBand",
+  calculation: {
+    affectedList: (temperatures: readonly string[]) =>
+      `${temperatures.join("; ")} K`,
+    affectedRange: (first: string, last: string, count: number) =>
+      `${first}–${last} K (${count} affected temperatures)`,
+    previous:
+      "Showing the previous calculation while the current values are unavailable.",
+    reasons: {
+      zero_measured_value:
+        "A measured value is zero, so the percentage RMSE is undefined.",
+      non_finite_result: "The calculation returned a non-finite value.",
+      calculation_failed: "The calculation failed for these values.",
+    },
+    curveUnavailable: (quantity: string, temperatures: string) =>
+      `${quantity}: model curve unavailable at ${temperatures}. Gaps are left in the curve.`,
+    rmseUnavailable: (quantity: string, temperatures: string) =>
+      `RMSE, ${quantity}: unavailable at ${temperatures}. The model curve has its own availability.`,
+  },
   // The link that the header's logo and name make, for a screen reader.
   appHomeLabel: "SeeBand, overview",
   appStage: "web · prototype",
@@ -138,6 +134,7 @@ export const STRINGS = {
     scatteringNames: {
       acPh: "Acoustic phonons (acPh)",
       dis: "Alloy disorder (dis)",
+      acPhDis: "Acoustic phonons + alloy disorder (acPhDis)",
       ionized: "Ionized impurities",
     },
     disabledReason: "not available until a known error is fixed.",
@@ -208,6 +205,8 @@ export const STRINGS = {
       not_a_session: "This file is not a SeeBand session file.",
       newer_version:
         "This session file comes from a newer version of SeeBand Web. Open it there.",
+      unsupported_version:
+        "This session file holds a band composition session, which this version of SeeBand Web cannot open.",
       invalid:
         "This session file is damaged, or misses parts, so it was not opened.",
       checksum:
@@ -518,23 +517,14 @@ export const STRINGS = {
     quantityTabs: {
       seebeck: {
         description: "Chart of S against temperature",
-        noDataTitle: "No data for this quantity",
-        noDataText:
-          "Load a file or assign a column in the single-file mapping.",
         notInMode: "The S model is not calculated in this fit mode.",
       },
       resistivity: {
         description: "Chart of ρ against temperature",
-        noDataTitle: "No data for this quantity",
-        noDataText:
-          "Load a file or assign a column in the single-file mapping.",
         notInMode: "The ρ model is not calculated in this fit mode.",
       },
       hall: {
         description: "Chart of R_H against temperature",
-        noDataTitle: "No R_H(T) data",
-        noDataText:
-          "Load a Hall coefficient file (m³/C). R_H sets the overall scale E = m₁^(3/2) and determines the absolute mass m₁.",
         notInMode: "The R_H model is not calculated in this fit mode.",
       },
     },
@@ -554,6 +544,14 @@ export const STRINGS = {
     notInThisMode: {
       title: "Not available in this mode",
       text: "This fit mode has no such curve.",
+    },
+    modelLoading: {
+      title: "Loading the model",
+      text: "The model curve appears once the model descriptions have loaded.",
+    },
+    noModelCurve: {
+      title: "No model curve",
+      text: "This fit mode is unavailable, or the temperature range is not set, so no curve is calculated.",
     },
     unavailable: {
       single_band: {

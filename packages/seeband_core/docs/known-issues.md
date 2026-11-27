@@ -1,8 +1,8 @@
 # Known issues
 
-Core 0.3.0 removes acPhDis from public choices. The P3/P11 notes below describe
-historical corrections, not current availability. The ionized impurity option
-uses a separate approved power-law model; see [its assumptions](ionized-impurities.md).
+Core 0.4.2 restores the mixed option removed in 0.3.0. It includes the P3/P11
+corrections below. The [mixed transport equations](../../../docs/physics/acphdis.md)
+and [ionized power law](ionized-impurities.md) describe the two options.
 
 `known_issues.py` records active limitations so users can interpret affected
 results. Corrections remove only the issue they resolve; other limitations

@@ -10,7 +10,7 @@ from hashlib import sha256
 from typing import Annotated, Any
 
 from fastapi import Header, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from seeband_core.known_issues import disabled_issue_ids
 from seeband_core.model_catalog import registry
 from seeband_core.model_descriptions import explicit_dpb_description
@@ -69,7 +69,7 @@ class ParameterResponse(BaseModel):
     `scattering` lists the types the parameter applies to, and empty means all of them. A mode with
     no choice of scattering uses all its parameters, whatever they list. A `fixed` parameter is set
     by the user, and a fit does not change it. Requests hold every parameter of a mode, including
-    those of other scattering types.
+    those of other scattering types. C and D are required only for mixed transport.
 
     `unit` is the unit of the scaled value, and can be `dimensionless` or `unknown`. `display_unit`
     is the one a user sees, and `display_factor` goes from the one to the other: an energy in K is
@@ -154,11 +154,14 @@ class FitModeResponse(BaseModel):
     `scattering` is empty when a mode has no choice of scattering. `stages` are the solver runs of
     a fit, in their order. `band_2_edge` names the parameter whose core value is the edge of band 2
     above that of band 1, in K, and is left out for a mode with one band.
+    `parameter_overrides` replaces or appends parameters by name for the selected scattering
+    before filtering applicability. Missing overrides preserve the base parameter metadata.
     """
 
     id: str
     quantities: list[Quantity]
     parameters: list[ParameterResponse]
+    parameter_overrides: dict[str, list[ParameterResponse]] = Field(default_factory=dict)
     scattering: list[str]
     default_scattering: str | None = None
     iterative: bool
@@ -259,6 +262,9 @@ def _fit_mode(fit_mode: FitMode) -> FitModeResponse:
         id=fit_mode.id,
         quantities=list(fit_mode.quantities),
         parameters=[_parameter(spec) for spec in fit_mode.parameters],
+        parameter_overrides={
+            law: [_parameter(spec) for spec in specs] for law, specs in fit_mode.parameter_overrides
+        },
         scattering=list(fit_mode.scattering),
         default_scattering=fit_mode.default_scattering,
         iterative=fit_mode.iterative,

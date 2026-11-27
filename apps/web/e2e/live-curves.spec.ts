@@ -66,10 +66,20 @@ async function collect(
   page: Page,
   answer: (route: Route, index: number) => Promise<void> = (route) =>
     route.fulfill({ json: CALC }),
+  { fromData = false }: { fromData?: boolean } = {},
 ) {
   const bodies: CalcBody[] = [];
   await page.route("**/api/calc", (route) => {
-    bodies.push(route.request().postDataJSON() as CalcBody);
+    const body = route.request().postDataJSON() as CalcBody;
+    // The model previews before data load. A test of what data ask for starts at their request.
+    if (
+      fromData &&
+      bodies.length === 0 &&
+      Object.keys(body.measurements ?? {}).length === 0
+    ) {
+      return route.fulfill({ json: CALC });
+    }
+    bodies.push(body);
     return answer(route, bodies.length - 1);
   });
   return bodies;
@@ -80,19 +90,22 @@ const eg = (page: Page) =>
 const modelLine = (page: Page) =>
   page.locator(".scatterlayer .trace path.js-line").first();
 
-test("nothing is asked without data, and the empty state stays", async ({
+test("model curves update without data while fitting stays data-gated", async ({
   page,
 }) => {
   await open(page);
+  await expect(modelLine(page)).toBeVisible();
   const bodies = await collect(page);
 
   await eg(page).press("ArrowRight");
   await page.waitForTimeout(500);
 
-  expect(bodies).toHaveLength(0);
+  await expect.poll(() => bodies.length).toBe(1);
+  expect(bodies[0]?.measurements).toEqual({});
+  await expect(modelLine(page)).toBeVisible();
   await expect(
-    chart(page).getByText("No data for this quantity"),
-  ).toBeVisible();
+    page.getByRole("button", { name: "Run fit", exact: true }),
+  ).toBeDisabled();
   await expect(
     page.getByText("The RMSE appears here once measurements are loaded."),
   ).toBeVisible();
@@ -102,8 +115,10 @@ test("loaded data ask for a whole request, and draw the curve", async ({
   page,
 }) => {
   await open(page);
-  const bodies = await collect(page, (route) =>
-    route.fulfill({ json: withRmse(108.43545) }),
+  const bodies = await collect(
+    page,
+    (route) => route.fulfill({ json: withRmse(108.43545) }),
+    { fromData: true },
   );
 
   await load(page);
@@ -121,7 +136,7 @@ test("loaded data ask for a whole request, and draw the curve", async ({
   });
   // Every parameter of the mode, also those of other scattering types.
   expect(Object.keys(bodies[0]?.parameters ?? {}).sort()).toEqual(
-    ["A", "B", "F", "G", "band_gap", "fermi_energy", "m_eff"].sort(),
+    ["A", "B", "C", "D", "F", "G", "band_gap", "fermi_energy", "m_eff"].sort(),
   );
   // Only points in the fit range, in V/K.
   expect(bodies[0]?.measurements).toEqual({
@@ -134,7 +149,7 @@ test("loaded data ask for a whole request, and draw the curve", async ({
   await expect(modelLine(page)).toBeVisible();
   await expect(page.getByText("RMSE, S")).toBeVisible();
   await expect(page.getByText("108,4 µV/K", { exact: true })).toBeVisible();
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(chart(page).getByRole("alert")).toHaveCount(0);
 });
 
 test("S-only sends its selected scattering", async ({ page }) => {
@@ -256,18 +271,18 @@ test("the last curve stays while waiting, with an indicator only after a delay",
   });
   await load(page);
   await expect(page.getByText("111 µV/K", { exact: true })).toBeVisible();
-  await expect(page.getByText("Updating…")).toHaveCount(0);
+  await expect(chart(page).getByText("Updating…")).toHaveCount(0);
 
   await eg(page).press("ArrowRight");
   await expect.poll(() => bodies.length).toBe(2);
 
-  await expect(page.getByText("Updating…")).toBeVisible();
+  await expect(chart(page).getByText("Updating…")).toBeVisible();
   await expect(modelLine(page)).toBeVisible();
   await expect(page.getByText("111 µV/K", { exact: true })).toBeVisible();
 
   release();
   await expect(page.getByText("222 µV/K", { exact: true })).toBeVisible();
-  await expect(page.getByText("Updating…")).toHaveCount(0);
+  await expect(chart(page).getByText("Updating…")).toHaveCount(0);
 });
 
 test("a quick answer shows no indicator at all", async ({ page }) => {
@@ -321,10 +336,12 @@ test("an error keeps the chart, says so without the server's text, and passes", 
 
   await eg(page).press("ArrowRight");
 
-  await expect(page.getByRole("alert")).toContainText(
+  await expect(chart(page).getByRole("alert")).toContainText(
     "no result for these parameters",
   );
-  await expect(page.getByRole("alert")).toContainText("last curve stays");
+  await expect(chart(page).getByRole("alert")).toContainText(
+    "last curve stays",
+  );
   await expect(page.getByText("SECRET-VALUE")).toHaveCount(0);
   await expect(modelLine(page)).toBeVisible();
   await expect(page.getByText("111 µV/K", { exact: true })).toBeVisible();
@@ -332,7 +349,7 @@ test("an error keeps the chart, says so without the server's text, and passes", 
   await eg(page).press("ArrowRight");
 
   await expect(page.getByText("113 µV/K", { exact: true })).toBeVisible();
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(chart(page).getByRole("alert")).toHaveCount(0);
 });
 
 test("a server failure and no network say so", async ({ page }) => {
@@ -348,12 +365,14 @@ test("a server failure and no network say so", async ({ page }) => {
   });
   await load(page);
 
-  await expect(page.getByRole("alert")).toContainText("not responding");
+  await expect(chart(page).getByRole("alert")).toContainText("not responding");
   // With no curve yet, nothing is said about the last one.
-  await expect(page.getByRole("alert")).not.toContainText("last curve");
+  await expect(chart(page).getByRole("alert")).not.toContainText("last curve");
 
   await eg(page).press("ArrowRight");
-  await expect(page.getByRole("alert")).toContainText("could not be reached");
+  await expect(chart(page).getByRole("alert")).toContainText(
+    "could not be reached",
+  );
 });
 
 test("a limit with Retry-After tries again by itself", async ({ page }) => {
@@ -369,11 +388,13 @@ test("a limit with Retry-After tries again by itself", async ({ page }) => {
   );
   await load(page);
 
-  await expect(page.getByRole("alert")).toContainText("Trying again shortly");
+  await expect(chart(page).getByRole("alert")).toContainText(
+    "Trying again shortly",
+  );
   await expect(page.getByText("111 µV/K", { exact: true })).toBeVisible({
     timeout: 3000,
   });
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(chart(page).getByRole("alert")).toHaveCount(0);
   expect(bodies).toHaveLength(2);
 });
 
@@ -417,15 +438,18 @@ test("a limit with no time says to change a value, and does not repeat", async (
   page,
 }) => {
   await open(page);
-  const bodies = await collect(page, (route) =>
-    route.fulfill({
-      status: 429,
-      json: { code: "rate_limited", message: "x", details: [] },
-    }),
+  const bodies = await collect(
+    page,
+    (route) =>
+      route.fulfill({
+        status: 429,
+        json: { code: "rate_limited", message: "x", details: [] },
+      }),
+    { fromData: true },
   );
   await load(page);
 
-  await expect(page.getByRole("alert")).toContainText("Change a value");
+  await expect(chart(page).getByRole("alert")).toContainText("Change a value");
   await page.waitForTimeout(1200);
   expect(bodies).toHaveLength(1);
 });
@@ -455,7 +479,7 @@ test("a slider moved during interpolation waits, and then the latest goes", asyn
   page,
 }) => {
   await open(page);
-  const bodies = await collect(page);
+  const bodies = await collect(page, undefined, { fromData: true });
   await load(page);
   await expect.poll(() => bodies.length).toBe(1);
   let release: () => void = () => undefined;
@@ -486,7 +510,7 @@ test("a slider moved during interpolation waits, and then the latest goes", asyn
   await eg(page).press("ArrowRight");
 
   // The curve is out of date, and the page says that something is on its way.
-  await expect(page.getByText("Updating…")).toBeVisible();
+  await expect(chart(page).getByText("Updating…")).toBeVisible();
   expect(bodies).toHaveLength(1);
 
   release();
@@ -494,7 +518,7 @@ test("a slider moved during interpolation waits, and then the latest goes", asyn
   await expect.poll(() => bodies.length).toBe(2);
   // One step of 0,01 eV from 1000 K.
   expect(bodies[1]?.parameters.band_gap).toBe(1116.04518122);
-  await expect(page.getByText("Updating…")).toHaveCount(0);
+  await expect(chart(page).getByText("Updating…")).toHaveCount(0);
 });
 
 test("a failed interpolation says why there is no RMSE, and the curve still goes", async ({
@@ -542,7 +566,7 @@ test("zeros in resistivity stay out of the request, and the panel says so", asyn
   page,
 }) => {
   await open(page);
-  const bodies = await collect(page);
+  const bodies = await collect(page, undefined, { fromData: true });
   await page.route("**/api/parse", (route) =>
     route.fulfill({
       json: {
@@ -576,7 +600,7 @@ test("zeros in resistivity stay out of the request, and the panel says so", asyn
   await expect(page.getByText("ρ: points with a value of 0")).toBeVisible();
 });
 
-test("removing the data clears the curve and the RMSE, and ends what runs", async ({
+test("removing data preserves model curves and parameters and clears the RMSE", async ({
   page,
 }) => {
   await open(page);
@@ -584,30 +608,49 @@ test("removing the data clears the curve and the RMSE, and ends what runs", asyn
   const held = new Promise<void>((resolve) => {
     release = resolve;
   });
-  const bodies = await collect(page, async (route, index) => {
-    if (index > 0) {
-      await held;
-      await route.fulfill({ json: withRmse(222) }).catch(() => undefined);
-    } else {
-      await route.fulfill({ json: withRmse(111) });
-    }
-  });
+  const bodies = await collect(
+    page,
+    async (route, index) => {
+      if (index > 0) {
+        await held;
+        await route
+          .fulfill({
+            json:
+              Object.keys(
+                (route.request().postDataJSON() as CalcBody).measurements,
+              ).length === 0
+                ? CALC
+                : withRmse(222),
+          })
+          .catch(() => undefined);
+      } else {
+        await route.fulfill({ json: withRmse(111) });
+      }
+    },
+    { fromData: true },
+  );
   await load(page);
   await expect(page.getByText("111 µV/K", { exact: true })).toBeVisible();
   await eg(page).press("ArrowRight");
   await expect.poll(() => bodies.length).toBe(2);
+  const gapBefore = await eg(page).getAttribute("aria-valuenow");
 
   await page
     .getByRole("button", { name: /Remove/ })
     .first()
     .click();
 
+  await expect(modelLine(page)).toBeVisible();
+  expect(await eg(page).getAttribute("aria-valuenow")).toBe(gapBefore);
   await expect(
-    chart(page).getByText("No data for this quantity"),
-  ).toBeVisible();
+    chart(page).locator(".scatterlayer .trace path.point"),
+  ).toHaveCount(0);
   await expect(page.getByText("111 µV/K", { exact: true })).toHaveCount(0);
   release();
-  await page.waitForTimeout(200);
+  await expect.poll(() => bodies.length).toBe(3);
+  expect(bodies[2]?.measurements).toEqual({});
+  expect(bodies[2]?.parameters).toEqual(bodies[1]?.parameters);
+  await expect(modelLine(page)).toBeVisible();
   await expect(page.getByText("222 µV/K", { exact: true })).toHaveCount(0);
 });
 
@@ -773,4 +816,67 @@ test("an RMSE that is not finite says so", async ({ page }) => {
   await load(page);
 
   await expect(page.getByText("not finite", { exact: true })).toBeVisible();
+});
+
+test("current partial curves replace an earlier snapshot and keep isolated points visible", async ({
+  page,
+}) => {
+  await open(page);
+  const bodies = await collect(page, (route, index) =>
+    route.fulfill({
+      json:
+        index === 0
+          ? withRmse(108.4)
+          : {
+              ...CALC,
+              temperature_k: [100, 200, 300, 400, 500],
+              curves: { seebeck_v_per_k: [1e-5, null, 3e-5, 4e-5, null] },
+              rmse: {},
+              issues: [
+                {
+                  scope: "curve",
+                  quantity: "seebeck_v_per_k",
+                  temperature_k: [200, 500],
+                  code: "non_finite_result",
+                },
+                {
+                  scope: "rmse",
+                  quantity: "seebeck",
+                  temperature_k: [100],
+                  code: "non_finite_result",
+                },
+              ],
+            },
+    }),
+  );
+  await load(page);
+  await expect(page.getByText("108,4 µV/K", { exact: true })).toBeVisible();
+  await eg(page).press("ArrowRight");
+  await expect.poll(() => bodies.length).toBe(2);
+  await expect(
+    chart(page).getByText(/model curve unavailable at 200; 500 K/),
+  ).toBeVisible();
+  await expect(
+    chart(page).getByText(/RMSE, S: unavailable at 100 K/),
+  ).toBeVisible();
+  await expect(page.getByText("108,4 µV/K", { exact: true })).toHaveCount(0);
+  // Two adjacent finite values make a line; the isolated value has its own visible marker.
+  const trace = chart(page).locator(".scatterlayer .trace").first();
+  await expect(trace.locator("path.point")).toHaveCount(3);
+  await expect(trace.locator("path.point").first()).toBeVisible();
+  expect(
+    await trace
+      .locator("path.point")
+      .evaluateAll((points) =>
+        points.map((point) => point.getBoundingClientRect().width > 0),
+      ),
+  ).toEqual([true, false, false]);
+  // Each separate segment has at most one line command; no line crosses a null.
+  const segments = await trace
+    .locator("path.js-line")
+    .evaluateAll((paths) => paths.map((path) => path.getAttribute("d") ?? ""));
+  expect(segments.filter((segment) => segment.includes("L"))).toHaveLength(1);
+  expect(
+    segments.every((segment) => (segment.match(/L/g) ?? []).length <= 1),
+  ).toBe(true);
 });

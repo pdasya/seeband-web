@@ -56,7 +56,13 @@ export async function applyDemo(
     return;
   }
   const model = models.find(({ id }) => id === demo.model);
-  let converted: Awaited<ReturnType<typeof apiClient.migrateDpb>> | null = null;
+  let converted: {
+    configuration: Awaited<
+      ReturnType<typeof apiClient.migrateDpb>
+    >["band_configuration"];
+    mass: number;
+    fermiEnergy: number;
+  } | null = null;
   let band1 = 1;
   let band2 = 1;
   if (model && offersExplicitDpb(model)) {
@@ -73,9 +79,12 @@ export async function applyDemo(
     const mass = values.m1;
     if (mass === undefined || mass <= 0)
       throw new Error("Synthetic source mass unavailable");
+    const fermiEnergy = values.fermi_energy;
+    if (fermiEnergy === undefined)
+      throw new Error("Synthetic source Fermi energy unavailable");
     band1 = mode.degeneracy?.band_1_default ?? 1;
     band2 = mode.degeneracy?.band_2_default ?? 1;
-    converted = await apiClient.migrateDpb(
+    const point = await apiClient.migrateDpb(
       {
         parameters: values,
         m1: mass,
@@ -84,6 +93,13 @@ export async function applyDemo(
       },
       signal,
     );
+    if (point.parameters.m1 === undefined)
+      throw new Error("Converted synthetic source mass unavailable");
+    converted = {
+      configuration: point.band_configuration,
+      mass: point.parameters.m1,
+      fermiEnergy,
+    };
   }
   const current = useSessionStore.getState();
   if (
@@ -109,9 +125,11 @@ export async function applyDemo(
       }),
       ...(converted
         ? {
-            parameterization: "explicit_density_v1" as const,
-            bandConfiguration: converted.band_configuration,
-            netElectronDensityPerM3: converted.net_electron_density_per_m3,
+            parameterization: "explicit_fermi_v1" as const,
+            bandConfiguration: converted.configuration,
+            netElectronDensityPerM3: undefined,
+            carrierType: undefined,
+            legacySource: undefined,
             band1Degeneracy: band1,
             band2Degeneracy: band2,
             fitAbsoluteMass: false,
@@ -120,9 +138,7 @@ export async function applyDemo(
         : {}),
     });
     if (converted) {
-      const mass = converted.parameters.m1;
-      if (mass === undefined)
-        throw new Error("Converted synthetic source mass unavailable");
+      const { mass, fermiEnergy } = converted;
       for (const mode of model.fit_modes)
         state.setParameters(mode.id, {
           ...Object.fromEntries(
@@ -131,6 +147,7 @@ export async function applyDemo(
             ),
           ),
           m1: mass,
+          fermi_energy: fermiEnergy,
         });
     }
   }

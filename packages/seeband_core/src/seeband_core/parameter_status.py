@@ -57,7 +57,9 @@ def parameter_statuses(
     unassessed = set(unassessed) | _without_spare_points(fit_mode, active, held, points)
     in_gap = fit_mode.id.startswith("dpb_") and fermi_energy_in_gap(parameters)
     statuses: dict[str, ParameterStatus] = {}
-    for spec in fit_mode.parameters:
+    specs = {spec.name: spec for spec in fit_mode.parameters}
+    specs.update((spec.name, spec) for spec in fit_mode.parameters_for(scattering))
+    for spec in specs.values():
         name = spec.name
         if name not in parameters:
             continue

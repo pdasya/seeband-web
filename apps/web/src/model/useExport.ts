@@ -203,7 +203,7 @@ export function useExport() {
   };
 
   const calc = async (state: SessionState): Promise<CalcResponse | null> => {
-    const request = calcRequest(state, models?.models, true);
+    const request = calcRequest(state, models?.models);
     return request === null ? null : exportCalc(request);
   };
 

@@ -86,6 +86,7 @@ describe("parameterValues", () => {
       "band_mass",
       "fermi_energy",
       "A",
+      "C",
       "F",
     ]);
     expect(values.band_mass).toBe(-1);
@@ -375,4 +376,38 @@ test("virgin Fermi starts follow configuration, offset and mode without becoming
       parameterization: "explicit_density_v1",
     }).fermi_energy,
   ).toBe(-100);
+});
+
+test("scattering overrides add editable structural inputs without changing other laws", () => {
+  const base = mode("dpb_s_rho");
+  const b = parameter("dpb_s_rho", "B");
+  const structural = {
+    ...b,
+    role: "fixed" as const,
+    bounds_editable: false,
+    fit_bounds: null,
+  };
+  const description = {
+    ...base,
+    parameter_overrides: { ionized: [structural] },
+  };
+  expect(
+    visibleParameters(description, "ionized").find((p) => p.name === "B")?.role,
+  ).toBe("fixed");
+  expect(
+    editableParameters(description, "ionized").some(
+      ({ parameter }) => parameter.name === "B",
+    ),
+  ).toBe(false);
+  expect(
+    visibleParameters(description, "acPh").find((p) => p.name === "B")?.role,
+  ).toBe("fitted");
+  const sOnly = {
+    ...mode("dpb_s"),
+    parameter_overrides: { ionized: [structural] },
+  };
+  expect(visibleParameters(sOnly, "ionized").some((p) => p.name === "B")).toBe(
+    true,
+  );
+  expect(parameterValues(sOnly, { B: 4 }, { scattering: "ionized" }).B).toBe(4);
 });

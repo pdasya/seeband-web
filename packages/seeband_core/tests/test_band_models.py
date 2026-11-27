@@ -113,7 +113,7 @@ def test_a_new_process_gets_the_models_from_its_imports(tmp_path: Path) -> None:
 
 
 def test_every_combination_is_covered() -> None:
-    assert len(combinations()) == 18
+    assert len(combinations()) == 24
 
 
 @pytest.mark.filterwarnings("ignore")
@@ -353,7 +353,7 @@ def test_degeneracy_is_the_ratio_of_the_two_bands() -> None:
     ("model_id", "request_", "error", "message"),
     [
         ("dpb", CurveRequest("dpb_s_rho", {}, 50, 800, 5), ValueError, "needs a scattering"),
-        ("dpb", CurveRequest("dpb_s", {}, 50, 800, 5, "acPhDis"), ValueError, "no scattering type"),
+        ("dpb", CurveRequest("dpb_s", {}, 50, 800, 5, "bogus"), ValueError, "no scattering type"),
         ("dpb", CurveRequest("nothing", {}, 50, 800, 5), KeyError, "no fit mode"),
         ("dpb", CurveRequest("dpb_s", {}, 50, 800, 5), ValueError, "Missing parameters"),
         (

@@ -1,3 +1,4 @@
+import { issueReason, issueTemperatures } from "@/model/calcIssues";
 import type {
   BandDiagramResponse,
   CalcResponse,
@@ -115,8 +116,9 @@ export function drawsMeasuredCurves(
   mode: FitModeDescription | undefined,
   data: SessionState["data"],
 ): boolean {
+  // The total of S goes with the contributions, even with no data.
   if (tab === "bands") {
-    return needsMeasuredCurves(tab, mode);
+    return derivedKind(tab, mode) !== null;
   }
   // Its points come with the measured curves, from the ρ data.
   if (tab === "conductivity") {
@@ -126,11 +128,7 @@ export function drawsMeasuredCurves(
       mode?.quantities.includes("resistivity") === true
     );
   }
-  return (
-    isQuantityTab(tab) &&
-    data[tab] !== undefined &&
-    mode?.quantities.includes(tab) === true
-  );
+  return isQuantityTab(tab) && mode?.quantities.includes(tab) === true;
 }
 
 /** Whether a tab shows a measured quantity, with its points. */
@@ -186,14 +184,6 @@ export function bandGapForTab(
     : undefined;
 }
 
-/** The total of S goes with the contributions, so that tab needs it even with no data. */
-export function needsMeasuredCurves(
-  tab: ChartTab,
-  mode: FitModeDescription | undefined,
-): boolean {
-  return tab === "bands" && derivedKind(tab, mode) !== null;
-}
-
 function scaled(
   values: readonly (number | null)[],
   factor: number,
@@ -241,6 +231,8 @@ export type EnergyDisplay = ModelsResponse["energy_display"];
 export const ENERGY_IN_K: EnergyDisplay = { unit: "K", per_kelvin: 1 };
 
 type ViewState = Pick<SessionState, "data" | "interpolation"> & {
+  /** False when no temperature range is set, so that no curve is requested. */
+  temperatureRangeSet?: boolean;
   bandGapK?: number | undefined;
   bandConfiguration?: SessionState["selection"]["bandConfiguration"];
   parameterization?: SessionState["selection"]["parameterization"];
@@ -286,33 +278,48 @@ function quantityView(
   const base = { yAxisTitle: axis, description: words.description };
   const data = state.data[quantity];
   const entry = data?.measurement;
-  if (entry === undefined) {
+  const inMode = mode?.quantities.includes(quantity) === true;
+  if (entry === undefined && mode === undefined) {
+    // The descriptions are still loading, or failed: no reason to say the mode lacks it.
+    return { ...NO_CHART, ...base, empty: text.modelLoading };
+  }
+  if (
+    entry === undefined &&
+    inMode &&
+    (mode?.disabled === true || state.temperatureRangeSet === false)
+  ) {
+    // No request goes out, so nothing else would explain the empty chart.
+    return { ...NO_CHART, ...base, empty: text.noModelCurve };
+  }
+  if (entry === undefined && !inMode) {
     return {
       ...NO_CHART,
       ...base,
-      empty: { title: words.noDataTitle, text: words.noDataText },
+      empty: { title: text.notInThisMode.title, text: words.notInMode },
     };
   }
   const interpolated = state.interpolation.values[quantity];
-  const inMode = mode?.quantities.includes(quantity) === true;
   // ρ from a σ file is 1/σ, which the chart names, as its points are not what was loaded.
-  const fromSigma = entry.loaded_as === "conductivity";
+  const fromSigma = entry?.loaded_as === "conductivity";
   return {
     ...NO_CHART,
     ...base,
     empty: null,
     curves: inMode ? curveOf(measured, curve, factor, text.model) : [],
-    measurements: {
-      // Demo data say what they are wherever they appear.
-      label:
-        data?.source.kind === "demo"
-          ? text.measurementsDemo
-          : fromSigma
-            ? text.measurementsFromSigma
-            : text.measurements,
-      temperatureK: entry.temperature_k,
-      values: scaled(entry.values, factor),
-    },
+    measurements:
+      entry === undefined
+        ? null
+        : {
+            // Demo data say what they are wherever they appear.
+            label:
+              data?.source.kind === "demo"
+                ? text.measurementsDemo
+                : fromSigma
+                  ? text.measurementsFromSigma
+                  : text.measurements,
+            temperatureK: entry.temperature_k,
+            values: scaled(entry.values, factor),
+          },
     interpolated:
       interpolated === undefined
         ? null
@@ -652,7 +659,7 @@ function bandDiagramView(
   };
 }
 
-export function chartTabView(
+function baseChartTabView(
   tab: ChartTab,
   mode: FitModeDescription | undefined,
   state: ViewState,
@@ -691,4 +698,33 @@ export function chartTabView(
       throw new Error(`No view for the tab ${String(unknown)}`);
     }
   }
+}
+
+/** Availability follows the same selected curves on every chart consumer. */
+export function chartTabView(
+  ...[tab, mode, state, measured, derived, diagram]: Parameters<
+    typeof baseChartTabView
+  >
+): ChartTabView {
+  const view = baseChartTabView(tab, mode, state, measured, derived, diagram);
+  if (view.empty !== null) return view;
+  const notes = [measured, derived].flatMap((result) =>
+    (result?.issues ?? []).flatMap((issue) => {
+      const curve = view.curves.find(({ id }) => id === issue.quantity);
+      return issue.scope !== "curve" || curve === undefined
+        ? []
+        : [
+            `${STRINGS.calculation.curveUnavailable(
+              curve.label === text.model ? view.yAxisTitle : curve.label,
+              issueTemperatures(issue.temperature_k),
+            )} ${issueReason(issue.code)}`,
+          ];
+    }),
+  );
+  return notes.length === 0
+    ? view
+    : {
+        ...view,
+        note: [view.note, ...notes].filter((note) => note !== null).join(" "),
+      };
 }

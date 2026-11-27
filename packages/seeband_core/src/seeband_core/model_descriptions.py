@@ -95,21 +95,21 @@ STAGES: dict[str, tuple[FitStage, ...]] = {
     "spb_s": (FitStage("seebeck", ("fermi_energy",)),),
     "spb_s_rho": (
         FitStage("seebeck", ("fermi_energy",)),
-        FitStage("resistivity", ("A", "F")),
+        FitStage("resistivity", ("A", "C", "F")),
     ),
     "spb_s_rho_rh": (
         FitStage("seebeck", ("fermi_energy",)),
-        FitStage("resistivity", ("A", "F")),
+        FitStage("resistivity", ("A", "C", "F")),
         FitStage("hall", ("band_mass",)),
     ),
     "dpb_s": (FitStage("seebeck", DPB_BANDS),),
     "dpb_s_rho": (
         FitStage("seebeck", DPB_BANDS, repeats=True),
-        FitStage("resistivity", ("A", "B", "F", "G"), repeats=True),
+        FitStage("resistivity", ("A", "B", "C", "D", "F", "G"), repeats=True),
     ),
     "dpb_s_rho_rh": (
         FitStage("seebeck", DPB_BANDS, repeats=True),
-        FitStage("resistivity", ("A", "B", "F", "G"), repeats=True),
+        FitStage("resistivity", ("A", "B", "C", "D", "F", "G"), repeats=True),
         FitStage("hall", ("m1",)),
     ),
 }
@@ -132,6 +132,7 @@ def _parameter(entry: dict[str, Any]) -> ParameterSpec:
     slider = entry["slider"]
     # The web bounds replace the desktop's where the table records a deviation, such as D1.
     bounds = entry.get("web_fit_bounds") or entry.get("default_fit_bounds")
+    fit_scale = entry.get("web_fit_scale", entry["fit_scale"])
     return ParameterSpec(
         name=entry["name"],
         meaning=(
@@ -142,14 +143,16 @@ def _parameter(entry: dict[str, Any]) -> ParameterSpec:
         ),
         unit="S/m" if entry["name"] == "A" else entry["unit"],
         role=entry["role"],
-        scattering=tuple(x for x in entry["scattering"] if x != "acPhDis")
+        scattering=tuple(entry["scattering"])
         + (("ionized",) if "acPh" in entry["scattering"] else ()),
         value_range=ValueRange(slider["min"], slider["max"], slider["step"], slider["default"]),
-        display_scale=entry["display_scale"],
-        fit_scale=entry.get("web_fit_scale", entry["fit_scale"]),
+        # C is the actual dimensionless ratio, including SPB where the desktop
+        # display divided the core value by 100. Stored core values stay unchanged.
+        display_scale=fit_scale if entry["name"] == "C" else entry["display_scale"],
+        fit_scale=fit_scale,
         calc_scale=entry["calc_scale"],
         fit_bounds=Bounds(bounds["lower"], bounds["upper"]) if bounds else None,
-        bounds_editable=entry.get("editable", False),
+        bounds_editable=entry.get("editable", False) or entry["name"] == "C",
         **(_ENERGY_DISPLAY if entry["unit"] == "K" else {}),
     )
 
@@ -161,12 +164,8 @@ def _fit_mode(entry: dict[str, Any]) -> FitMode:
     return FitMode(
         id=entry["id"],
         quantities=FIT_MODE_QUANTITIES[entry["fit_mode"]],
-        parameters=tuple(
-            _parameter(parameter)
-            for parameter in entry["parameters"]
-            if parameter["name"] not in ("C", "D")
-        ),
-        scattering=("acPh", "dis", "ionized"),
+        parameters=tuple(_parameter(parameter) for parameter in entry["parameters"]),
+        scattering=("acPh", "dis", "acPhDis", "ionized"),
         default_scattering=scattering.get("default", "acPh"),
         iterative=iteration["kind"] == "iterative",
         threshold=iteration.get("threshold"),
@@ -259,10 +258,25 @@ def explicit_dpb_description(fermi_energy: bool = False) -> ModelDescription:
             parameters.append(
                 replace(hall_mass, role="fixed", fit_bounds=None, bounds_editable=False)
             )
+        # Empirical NB/M weight; B=M² is a conditional equal-prefactor benchmark.
+        weight = next(p for p in desktop.fit_modes[1].parameters if p.name == "B")
+        ionized_weight = replace(
+            weight,
+            meaning="Empirical ionized band normalization B (equal-prefactor benchmark: M²)",
+            scattering=("ionized",),
+            role="fixed" if mode.id == "dpb_s" else "fitted",
+            value_range=ValueRange(0, 10000, 0.0001, 1),
+            display_scale=1,
+            fit_scale=1,
+            calc_scale=1,
+            fit_bounds=None if mode.id == "dpb_s" else Bounds(0, 10000),
+            bounds_editable=mode.id != "dpb_s",
+        )
         modes.append(
             replace(
                 mode,
                 parameters=tuple(parameters),
+                parameter_overrides=(("ionized", (ionized_weight,)),),
                 band_2_edge="band_offset_k",
                 relative_curve_kinds=(),
                 known_issues=tuple(

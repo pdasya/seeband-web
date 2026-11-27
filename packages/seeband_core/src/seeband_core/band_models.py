@@ -314,8 +314,15 @@ class _BandModel:
         fit_mode = self._request_mode(fit_mode_id, explicit)
         if scattering is None and fit_mode.scattering and not fit_mode.id.endswith("_s"):
             raise ValueError(f"Fit mode {fit_mode_id} needs a scattering type")
-        fit_mode.parameters_for(scattering)
-        return fit_mode, scattering
+        active = fit_mode.parameters_for(scattering)
+        specs = {p.name: p for p in fit_mode.parameters}
+        specs.update((p.name, p) for p in active)
+        # The parameters now hold the overrides of this scattering, so drop them: applied again,
+        # they would make `parameters` mean base or merged specs depending on the caller.
+        merged = dataclasses.replace(
+            fit_mode, parameters=tuple(specs.values()), parameter_overrides=()
+        )
+        return merged, scattering
 
     def _check_fit(self, request: FitRequest, fit_mode: FitMode) -> None:
         specs = {spec.name: spec for spec in fit_mode.parameters}
@@ -326,12 +333,26 @@ class _BandModel:
             if not isinstance(value, Real) or not math.isfinite(value):
                 raise ValueError(f"Start value of {name} must be a finite number")
         for name, bounds in request.bounds.items():
-            if name in ("C", "D"):
-                continue  # Inert historical inputs retained for low-level reproductions.
+            if name in ("C", "D") and request.scattering != "acPhDis":
+                continue  # Inert historical inputs for other mechanisms.
             if name not in specs or specs[name].fit_bounds is None:
                 raise ValueError(f"Fit mode {fit_mode.id} does not fit a parameter {name}")
             if not bounds.lower < bounds.upper:
                 raise ValueError(f"The lower bound of {name} must be below its upper bound")
+            if name in ("C", "D") and (
+                not math.isfinite(bounds.lower)
+                or not math.isfinite(bounds.upper)
+                or bounds.lower < 0
+            ):
+                raise ValueError(
+                    f"Mixed scattering bounds for {name} must be finite and nonnegative"
+                )
+        if request.scattering == "acPhDis":
+            for name in ("C", "D"):
+                if name in specs and name not in request.start:
+                    raise ValueError(f"Mixed scattering needs its crossover ratio {name}")
+                if name in specs and request.start[name] < 0:
+                    raise ValueError(f"Mixed scattering ratio {name} must be nonnegative")
         fitted = _fitted_names(fit_mode, request.scattering)
         if request.explicit_bands is not None:
             missing = fitted - request.held - request.bounds.keys()
@@ -566,6 +587,19 @@ class _BandModel:
         fit_mode, scattering = self._mode_and_scattering(
             request.fit_mode, request.scattering, request.explicit_bands
         )
+        if scattering == "acPhDis" and not fit_mode.id.endswith("_s"):
+            declared = {spec.name for spec in fit_mode.parameters}
+            for name in ("C", "D"):
+                if name not in declared:
+                    continue  # SPB has C only.
+                if name not in request.parameters:
+                    # Elsewhere a missing C or D reads as 0, which would be pure acoustic phonons.
+                    raise ValueError(f"Mixed scattering needs its crossover ratio {name}")
+                ratio = request.parameters[name]
+                if not math.isfinite(ratio) or ratio < 0:
+                    raise ValueError(
+                        f"Mixed scattering ratio {name} must be finite and nonnegative"
+                    )
         if request.kind not in fit_mode.curve_kinds:
             raise ValueError(f"Fit mode {fit_mode.id} has no curve {request.kind}")
         if request.explicit_bands is not None:
@@ -684,16 +718,26 @@ class _BandModel:
                     LORENZ_BAND_CURVES[1]: predictions["lorenz_band_2"],
                 }
         elif fit_mode.degeneracy is not None:
+            relative: float | np.ndarray = _value(parameters, "G" if scattering == "dis" else "B")
+            if scattering == "acPhDis":
+                # As in the κ_e and σ of mixed scattering: band 2's weight varies with T.
+                relative = (
+                    relative
+                    * (300.0 * _value(parameters, "C") + temperature_k)
+                    / (300.0 * _value(parameters, "D") + temperature_k)
+                )
             effective, band1, band2 = _CORE_MATH.dpb_lorenz_moments(
                 temperature_k,
                 _value(parameters, "m_eff") / ratio,
                 _value(parameters, "band_gap"),
                 _value(parameters, "fermi_energy"),
                 ratio,
-                _value(parameters, "G" if scattering == "dis" else "B"),
+                relative,
             )
             bands = dict(zip(LORENZ_BAND_CURVES, (band1, band2), strict=True))
         else:
+            # One band: its L does not depend on the amplitude, nor on C in acPhDis, as both
+            # mechanisms there share the energy exponent.
             effective = _CORE_MATH.spb_lorNum_vs_temp(
                 temperature_k, _value(parameters, "fermi_energy"), _value(parameters, "band_mass")
             )
@@ -962,6 +1006,12 @@ class DpbModel(_BandModel):
         fit_mode, scattering = self._mode_and_scattering(
             request.fit_mode, request.scattering, request.explicit_bands
         )
+        if (
+            request.explicit_bands is not None
+            and scattering == "ionized"
+            and fit_mode.id == "dpb_s"
+        ):
+            request = dataclasses.replace(request, start={"B": 1.0} | dict(request.start))
         if request.explicit_bands is not None and request.algorithm != "verified-sequential-v2":
             raise ValueError("Explicit bands require the verified fitting algorithm")
         self._check_fit(request, fit_mode)

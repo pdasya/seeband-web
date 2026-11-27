@@ -104,6 +104,8 @@ class BandInputs(BaseModel):
                 if not float(value).is_integer():
                     raise ValueError(f"{name} must be a positive integer for explicit bands")
             values = getattr(self, "parameters", None) or getattr(self, "start", {})
+            if getattr(self, "scattering", None) == "ionized" and values.get("B", 1) < 0:
+                raise ValueError("The ionized relative weight B must be nonnegative")
             for name in ("m1", "mass_ratio"):
                 if name in values and values[name] <= 0:
                     raise ValueError(f"{name} must be positive in explicit DPB")
@@ -233,13 +235,18 @@ def check_degeneracy(band_1: float, band_2: float, fit_mode: FitMode) -> list[Er
     ]
 
 
-def check_parameter_names(names: list[str], field: str, fit_mode: FitMode) -> list[ErrorDetail]:
-    """Every parameter of a mode is needed, including those of other scattering types."""
+def check_parameter_names(
+    names: list[str], field: str, fit_mode: FitMode, scattering: str | None = None
+) -> list[ErrorDetail]:
+    """Accept historical full vectors. Only mixed transport requires its C/D crossovers."""
     expected = {spec.name for spec in fit_mode.parameters}
+    for law, overrides in fit_mode.parameter_overrides:
+        if scattering is None or scattering == law:
+            expected.update(spec.name for spec in overrides)
     missing = [
         invalid("missing_parameter", "This mode needs it", [field, spec.name])
         for spec in fit_mode.parameters
-        if spec.name not in names
+        if spec.name not in names and (scattering == "acPhDis" or spec.scattering != ("acPhDis",))
     ]
     unknown = [
         invalid("unknown_parameter", "This mode has no such parameter", [field, name])
