@@ -1,6 +1,6 @@
 """Replay the acPh DPB example from issue #292 with independent Fermi moments.
 
-Run from the repository root with uv run python scripts/verify_lorenz_peak.py.
+Run from the repository root with uv run python docs/lorenz-evidence/synthetic/peak.py.
 The input energies and mass ratio are the rounded values in the text export.
 Published PB moments: doi:10.1038/s41598-021-03760-4 (Eq. 3).
 Multiband open-circuit transport: doi:10.1103/PhysRevB.95.125206.
