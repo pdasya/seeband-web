@@ -175,3 +175,14 @@ def test_zero_conductivity_leaves_only_individual_band_moments():
         result = _curve("dpb", "dpb_s_rho", "acPh", "lorenz_number", A=0.0)
     assert np.isnan(result.curves[LORENZ_CURVE]).all()
     assert all(np.isfinite(result.curves[name]).all() for name in LORENZ_BAND_CURVES)
+
+
+def test_a_mechanism_without_lorenz_moments_is_refused():
+    model = registry.get("dpb")
+    fit_mode = model.describe().fit_mode("dpb_s_rho")
+    request = CurveRequest(
+        fit_mode.id, default_start(fit_mode), 100, 300, 3, "acPh", "lorenz_number"
+    )
+    # Not a declared mechanism: it must not get the moments of another one.
+    with pytest.raises(ValueError, match="No Lorenz moments"):
+        model._lorenz_number(request, fit_mode, "unknown")

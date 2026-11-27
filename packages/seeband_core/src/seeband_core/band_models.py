@@ -123,6 +123,10 @@ def _degeneracy_ratio(request: CurveRequest | FitRequest) -> float:
     return request.band_2_degeneracy / request.band_1_degeneracy
 
 
+# The mechanisms whose band weights the Lorenz moments know.
+_MOMENT_SCATTERING = frozenset({None, "acPh", "dis", "acPhDis"})
+
+
 def _measurement_arrays(
     measurements: Mapping[Quantity, Measurement], quantities: Iterable[Quantity]
 ) -> list[Any]:
@@ -717,6 +721,9 @@ class _BandModel:
                     LORENZ_BAND_CURVES[0]: predictions["lorenz_band_1"],
                     LORENZ_BAND_CURVES[1]: predictions["lorenz_band_2"],
                 }
+        elif scattering not in _MOMENT_SCATTERING:
+            # Each mechanism needs its own band weight before L may come from the moments.
+            raise ValueError(f"No Lorenz moments for scattering {scattering!r}")
         elif fit_mode.degeneracy is not None:
             relative: float | np.ndarray = _value(parameters, "G" if scattering == "dis" else "B")
             if scattering == "acPhDis":
