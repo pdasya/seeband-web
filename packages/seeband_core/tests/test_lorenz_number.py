@@ -208,3 +208,10 @@ def test_l_carries_the_known_issues_of_kappa_and_sigma(model_id, scattering):
         issues["thermal_conductivity"] | issues["electrical_conductivity"]
         <= issues["lorenz_number"]
     )
+
+
+def test_modes_without_resistivity_say_why_they_have_no_l() -> None:
+    for model_id, mode_id in (("spb", "spb_s"), ("dpb", "dpb_s")):
+        fit_mode = registry.get(model_id).describe().fit_mode(mode_id)
+        assert "lorenz_number" not in fit_mode.curve_kinds
+        assert fit_mode.unavailable_reason("lorenz_number") == "needs_resistivity"
