@@ -95,11 +95,11 @@ def test_ionized_impurities_reach_their_own_nondegenerate_limit_and_pi2_over_3()
     )
 
 
-@pytest.mark.parametrize("scattering", ["acPh", "dis", "ionized"])
+@pytest.mark.parametrize("scattering", ["acPh", "dis", "acPhDis", "ionized"])
 def test_one_band_l_is_kappa_over_sigma_t(scattering: str) -> None:
-    lorenz = _curve("spb", "spb_s_rho", scattering, "lorenz_number")
-    kappa = _curve("spb", "spb_s_rho", scattering, "thermal_conductivity")
-    sigma = _curve("spb", "spb_s_rho", scattering, "electrical_conductivity")
+    lorenz = _curve("spb", "spb_s_rho", scattering, "lorenz_number", C=0.1)
+    kappa = _curve("spb", "spb_s_rho", scattering, "thermal_conductivity", C=0.1)
+    sigma = _curve("spb", "spb_s_rho", scattering, "electrical_conductivity", C=0.1)
     expected = np.asarray(kappa.curves["thermal_conductivity_w_per_m_k"]) / (
         np.asarray(sigma.curves["electrical_conductivity_s_per_m"]) * lorenz.temperature_k
     )
@@ -107,12 +107,15 @@ def test_one_band_l_is_kappa_over_sigma_t(scattering: str) -> None:
     assert set(lorenz.curves) == {LORENZ_CURVE}
 
 
-@pytest.mark.parametrize("scattering", ["acPh", "dis", "ionized"])
+@pytest.mark.parametrize("scattering", ["acPh", "dis", "acPhDis", "ionized"])
 def test_two_bands_give_the_effective_l_and_each_band_s(scattering: str) -> None:
-    """κ_e = T (L₁σ₁ + L₂σ₂) plus a bipolar part that is not negative, so L ≥ the σ-weighted L."""
+    """κ_e = T (L₁σ₁ + L₂σ₂) plus a bipolar part that is not negative, so L ≥ the σ-weighted L.
+
+    With acPhDis and C ≠ D, band 2's weight varies with T, which a constant B would miss.
+    """
 
     def curve(kind):
-        return _curve("dpb", "dpb_s_rho", scattering, kind, B=2.3, G=0.4, n2=3)
+        return _curve("dpb", "dpb_s_rho", scattering, kind, B=2.3, G=0.4, C=0.1, D=5.0, n2=3)
 
     lorenz = curve("lorenz_number")
     sigma = curve("electrical_conductivity_by_band")
@@ -136,16 +139,23 @@ def test_two_bands_give_the_effective_l_and_each_band_s(scattering: str) -> None
         assert np.all((band / UNIT > low - 1e-9) & (band / UNIT < high + 1e-9))
 
 
-@pytest.mark.parametrize(("model_id", "scattering"), [("spb", "acPh"), ("dpb", "ionized")])
+@pytest.mark.parametrize(
+    ("model_id", "scattering"),
+    [("spb", "acPh"), ("dpb", "acPh"), ("dpb", "dis"), ("dpb", "ionized")],
+)
 def test_lorenz_moments_survive_conductivity_underflow(model_id, scattering):
+    # A subnormal amplitude: σ and κ_e underflow, but L does not depend on the amplitude.
+    amplitude = {"F" if scattering == "dis" else "A": 1e-320}
     if model_id == "spb":
         parameters = {"band_mass": 1.0, "fermi_energy": 1e-6}
         expected = UNIT * 2.0
     else:
-        # Symmetric intrinsic bands have equal unit-amplitude conductivities.
-        # B=3 or G=3 gives weights 1/4 and 3/4, even after absolute underflow.
-        parameters = {"m_eff": 1.0, "band_gap": 4000.0, "fermi_energy": 0.0}
-        expected = UNIT * (4.0 + 3.0 / 16.0 * (2 * (4.0 + 1000.0)) ** 2)
+        # Symmetric intrinsic bands have equal unit-amplitude conductivities. A relative weight
+        # of 3 gives weights 1/4 and 3/4, even after absolute underflow. Each band is
+        # nondegenerate with η = −1000, so L_i = λ + 2 and S_i = ±(λ + 2 + 1000).
+        lam = 2.0 if scattering == "ionized" else 0.0
+        parameters = {"m_eff": 1.0, "band_gap": 4000.0, "fermi_energy": 0.0, "B": 3.0, "G": 3.0}
+        expected = UNIT * (lam + 2 + 3.0 / 16.0 * (2 * (lam + 2 + 1000.0)) ** 2)
     with np.errstate(all="ignore"):
         result = _curve(
             model_id,
@@ -153,8 +163,7 @@ def test_lorenz_moments_survive_conductivity_underflow(model_id, scattering):
             scattering,
             "lorenz_number",
             **parameters,
-            A=1e-320,
-            B=3.0,
+            **amplitude,
             low=2.0,
             high=2.0,
         )
