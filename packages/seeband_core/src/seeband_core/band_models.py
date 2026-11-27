@@ -758,8 +758,15 @@ class _BandModel:
             # σ and κ_e are zero, infinite or undefined, so their ratio is too; each band's L stays.
             effective = np.full_like(effective, np.nan)
         curves = {LORENZ_CURVE: effective} | bands
-        issues = active_issue_ids(
-            fit_mode, scattering, parameters, ratio, request.kind, request.extrapolated
+        # L is κ_e/(σT), so it carries the known issues of both as well as its own.
+        issues = tuple(
+            dict.fromkeys(
+                issue
+                for kind in (request.kind, "thermal_conductivity", "electrical_conductivity")
+                for issue in active_issue_ids(
+                    fit_mode, scattering, parameters, ratio, kind, request.extrapolated
+                )
+            )
         )
         return CurveResult(temperature_k, curves, issues)
 

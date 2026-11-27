@@ -195,3 +195,16 @@ def test_a_mechanism_without_lorenz_moments_is_refused():
     # Not a declared mechanism: it must not get the moments of another one.
     with pytest.raises(ValueError, match="No Lorenz moments"):
         model._lorenz_number(request, fit_mode, "unknown")
+
+
+@pytest.mark.parametrize("scattering", ["acPh", "dis", "acPhDis", "ionized"])
+@pytest.mark.parametrize("model_id", ["spb", "dpb"])
+def test_l_carries_the_known_issues_of_kappa_and_sigma(model_id, scattering):
+    issues = {
+        kind: set(_curve(model_id, f"{model_id}_s_rho", scattering, kind).known_issues)
+        for kind in ("lorenz_number", "thermal_conductivity", "electrical_conductivity")
+    }
+    assert (
+        issues["thermal_conductivity"] | issues["electrical_conductivity"]
+        <= issues["lorenz_number"]
+    )
