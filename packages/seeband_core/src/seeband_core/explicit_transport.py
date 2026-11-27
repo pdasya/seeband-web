@@ -103,6 +103,12 @@ def _solve_potentials(
         )
     prefactors = _log_prefactors(masses, valleys)
     target_log = log(abs(doping)) if doping else -np.inf
+    symmetric_balance = (
+        settings.band_configuration == "vb_cb"
+        and doping == 0
+        and masses[0] == masses[1]
+        and valleys[0] == valleys[1]
+    )
     roots, populations = [], []
     for temperature in temperatures:
 
@@ -120,14 +126,21 @@ def _solve_potentials(
                 np.dot(signs, np.exp(logs - scale)) - np.sign(doping) * exp(target_log - scale)
             )
 
-        width = max(1.0, temperature, abs(float(edges[1])))
-        for _ in range(128):
-            if balance(-width) <= 0 <= balance(width):
-                break
-            width *= 2
+        if symmetric_balance:
+            # The midpoint gives identical reduced energies for the two mirrored bands.
+            # Solving numerically can leave a roundoff imbalance in S and Hall.
+            root = float(edges[1] / 2)
         else:
-            raise mm.ChemicalPotentialError(float(temperature), "explicit density bracket failed")
-        root = brentq(balance, -width, width, xtol=1e-11, rtol=4 * np.finfo(float).eps)
+            width = max(1.0, temperature, abs(float(edges[1])))
+            for _ in range(128):
+                if balance(-width) <= 0 <= balance(width):
+                    break
+                width *= 2
+            else:
+                raise mm.ChemicalPotentialError(
+                    float(temperature), "explicit density bracket failed"
+                )
+            root = brentq(balance, -width, width, xtol=1e-11, rtol=4 * np.finfo(float).eps)
         residual = abs(balance(root))
         logs = log_populations(root)
         if residual > 1e-12 or not isfinite(root) or float(logsumexp(logs)) < _LOG_TINY:

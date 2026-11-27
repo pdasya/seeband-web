@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Symmetric compensated DPB models give exact zero Seebeck and Hall
+  coefficients when both bands also have equal transport weights. The core
+  uses the exact midpoint for the chemical potential, removing roundoff
+  that appeared as spikes on the Fit plots.
+
 - P29 (#259): the Fit page previews the selected model curves before data are
   loaded. Adding or removing measurements updates their points and RMSE.
 
