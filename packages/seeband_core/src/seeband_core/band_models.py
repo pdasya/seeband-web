@@ -123,6 +123,11 @@ def _degeneracy_ratio(request: CurveRequest | FitRequest) -> float:
     return request.band_2_degeneracy / request.band_1_degeneracy
 
 
+def _mode_degeneracy_ratio(request: CurveRequest | FitRequest, fit_mode: FitMode) -> float:
+    """N₂/N₁ for a two-band mode, and 1 for one band."""
+    return _degeneracy_ratio(request) if fit_mode.degeneracy is not None else 1.0
+
+
 # The mechanisms whose band weights the Lorenz moments know.
 _MOMENT_SCATTERING = frozenset({None, "acPh", "dis", "acPhDis"})
 
@@ -444,7 +449,7 @@ class _BandModel:
         parameters: Mapping[str, float],
         status: FitStatus,
     ) -> FitResult:
-        ratio = _degeneracy_ratio(request) if fit_mode.degeneracy is not None else 1.0
+        ratio = _mode_degeneracy_ratio(request, fit_mode)
         # A held value comes back as sent, not through a solver's units, such as m1 from E^(2/3).
         parameters = dict(parameters) | {name: request.start[name] for name in request.held}
         parameters = {name: value for name, value in parameters.items() if name in request.start}
@@ -645,7 +650,7 @@ class _BandModel:
             temperature_k = np.linspace(
                 request.min_temperature_k, request.max_temperature_k, request.points
             )
-            ratio = _degeneracy_ratio(request) if fit_mode.degeneracy is not None else 1.0
+            ratio = _mode_degeneracy_ratio(request, fit_mode)
             predictions = ionized_transport(
                 temperature_k,
                 request.parameters,
@@ -688,7 +693,7 @@ class _BandModel:
             if request.kind == "measured"
             else _CURVE_NAMES[request.kind]
         )
-        ratio = _degeneracy_ratio(request) if fit_mode.degeneracy is not None else 1.0
+        ratio = _mode_degeneracy_ratio(request, fit_mode)
         return CurveResult(
             temperature_k,
             dict(zip(names, curves, strict=True)),
@@ -710,7 +715,7 @@ class _BandModel:
             request.min_temperature_k, request.max_temperature_k, request.points
         )
         parameters = request.parameters
-        ratio = _degeneracy_ratio(request) if fit_mode.degeneracy is not None else 1.0
+        ratio = _mode_degeneracy_ratio(request, fit_mode)
         bands: dict[str, np.ndarray] = {}
         if scattering == "ionized":
             from seeband_core.transport import ionized_transport
