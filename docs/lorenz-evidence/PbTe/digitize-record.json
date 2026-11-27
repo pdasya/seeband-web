@@ -1,0 +1,119 @@
+{
+  "source": "THESBERG.pdf",
+  "sha256": "7ffa4787b6597d8bfbb9da7f746fcca9ea1fe6d372a77c8abf4517117eba7f19",
+  "pdf_page_index": 7,
+  "printed_page": "125206-8",
+  "pdfium_version": "5.15.2",
+  "x_ticks": [
+    [300, 345.77099609375],
+    [400, 379.35400390625],
+    [500, 412.97100830078125],
+    [600, 446.5870056152344],
+    [700, 480.2030029296875],
+    [800, 513.8209838867188],
+    [900, 547.43798828125]
+  ],
+  "y_ticks": [
+    [1.5, 157.98500061035156],
+    [1.6, 178.39999389648438],
+    [1.7, 198.81500244140625],
+    [1.8, 219.2310028076172],
+    [1.9, 239.64700317382812],
+    [2.0, 260.06201171875],
+    [2.1, 280.47698974609375]
+  ],
+  "temperature_tick_max_residual_k": 0.0837743998993119,
+  "curves": [
+    {
+      "path_index": 217,
+      "color": "blue",
+      "p_cm3": 2.5e20,
+      "style": "solid",
+      "count": 25,
+      "temperature_range_k": [300.0, 740.8624314187897],
+      "stroke_width_pt": 1.225000023841858,
+      "visual_lorenz_halfwidth_1e8": 0.003000196255653128
+    },
+    {
+      "path_index": 218,
+      "color": "black",
+      "p_cm3": 2e20,
+      "style": "solid",
+      "count": 28,
+      "temperature_range_k": [300.0, 798.6676299108506],
+      "stroke_width_pt": 1.225000023841858,
+      "visual_lorenz_halfwidth_1e8": 0.003000196255653128
+    },
+    {
+      "path_index": 219,
+      "color": "red",
+      "p_cm3": 1.5e20,
+      "style": "solid",
+      "count": 30,
+      "temperature_range_k": [300.0, 846.7498529105551],
+      "stroke_width_pt": 1.225000023841858,
+      "visual_lorenz_halfwidth_1e8": 0.003000196255653128
+    },
+    {
+      "path_index": 220,
+      "color": "blue",
+      "p_cm3": 2.5e20,
+      "style": "dotted",
+      "count": 30,
+      "temperature_range_k": [300.0, 849.9928573849796],
+      "stroke_width_pt": 1.225000023841858,
+      "visual_lorenz_halfwidth_1e8": 0.003000196255653128
+    },
+    {
+      "path_index": 221,
+      "color": "black",
+      "p_cm3": 2e20,
+      "style": "dotted",
+      "count": 30,
+      "temperature_range_k": [300.0, 849.9928573849796],
+      "stroke_width_pt": 1.225000023841858,
+      "visual_lorenz_halfwidth_1e8": 0.003000196255653128
+    },
+    {
+      "path_index": 222,
+      "color": "red",
+      "p_cm3": 1.5e20,
+      "style": "dotted",
+      "count": 30,
+      "temperature_range_k": [300.0, 849.9928573849796],
+      "stroke_width_pt": 1.225000023841858,
+      "visual_lorenz_halfwidth_1e8": 0.003000196255653128
+    }
+  ],
+  "fig5c_markers": [
+    {
+      "path_index": 157,
+      "color": "red",
+      "p_cm3": 1.5e20,
+      "pdf_x_pt": 258.3819885253906,
+      "fermi_level_ev": -0.22010948382382572
+    },
+    {
+      "path_index": 158,
+      "color": "black",
+      "p_cm3": 2e20,
+      "pdf_x_pt": 254.302001953125,
+      "fermi_level_ev": -0.246073511954614
+    },
+    {
+      "path_index": 159,
+      "color": "blue",
+      "p_cm3": 2.5e20,
+      "pdf_x_pt": 251.1750030517578,
+      "fermi_level_ev": -0.2659729616223998
+    }
+  ],
+  "fig5c_energy_ticks": [
+    [-0.4, 230.11399841308594],
+    [-0.2, 261.5419921875]
+  ],
+  "method": "Native vector polyline vertices via PDFium; affine tick calibration; no interpolation or extrapolation.",
+  "uncertainties": "Encoding bounds assume 0.001 PDF point precision. X tick centers disagree with a single affine transform by up to 0.084 K; use 0.1 K as temperature calibration envelope. Visual halfwidth is half the printed stroke width mapped to L, a conservative digitization envelope, not measurement sigma or model uncertainty. Native vertices are definitive locations of the published curve centerlines.",
+  "verification": "Axes, units, legend/color and density mapping visually checked on original page render. Six paths have strictly increasing x; solid dash count 0 and dotted dash count 4; axis tick residual checks passed.",
+  "caveat": "Source curves have piecewise-linear irregularities. Keep native coordinates and values; do not infer greater physical precision. Solid paths end at clipping boundary, and contain no higher-temperature data."
+}

@@ -1,0 +1,260 @@
+{
+  "source_url": "https://arxiv.org/pdf/2603.21649",
+  "source_sha256": "1131f062bd5dca7915fe01ff72a0f2bba46ba0a836c860cb1ddcaf40535ef971",
+  "pdf_page_one_based": 49,
+  "printed_supplement_page": 12,
+  "figure": "Supplementary Fig. 7, left beta=1.0 panel",
+  "method": "Manual native embedded raster coordinates; linear tick calibration; no interpolation, fit, model, or core calculation.",
+  "native_raster_size_px": [1387, 399],
+  "axis_calibration": {
+    "x_gap4_px": 110.0,
+    "x_gap10_px": 443.0,
+    "y_ratio1_px": 299.0,
+    "y_ratio1_8_px": 61.0
+  },
+  "coordinate_equations": {
+    "gap_kbt": "4 + (x-110)*6/333",
+    "ratio": "1 + (299-y)*0.8/238"
+  },
+  "legend": {
+    "sigma": "blue circle: sigma",
+    "abs_S": "orange square: |S|",
+    "kappa_el": "green upward triangle: kappa_el"
+  },
+  "normalization": "Each quantity at mu=0 relative to its corresponding value at Eg=10 kBT. abs_S is a magnitude ratio, not signed S.",
+  "coverage": "All seven marker positions gap_kbt=4..10 in beta=1 panel. No data supplied outside plotted range. Straight connecting segments are not extra sampled data.",
+  "uncertainty": "Deterministic coordinate envelopes, not statistical confidence intervals or paper error bars. Isolated markers use center +/-6 native px vertically (entire ~9-10px glyph plus calibration/read allowance); partial overlaps +/-7px; x always +/-6px. Hidden sigma at gaps8,9 uses the entire local colored glyph cluster plus1px with no central estimate. Calibration/read errors are shared, so intervals are not independent.",
+  "unavailable": [
+    {
+      "quantity": "sigma",
+      "gap_kbt": 8,
+      "reason": "Blue glyph fully occluded by later-drawn colored glyphs."
+    },
+    {
+      "quantity": "sigma",
+      "gap_kbt": 9,
+      "reason": "Blue glyph fully occluded by later-drawn colored glyphs."
+    }
+  ],
+  "pixel_records": [
+    {
+      "quantity": "sigma",
+      "gap_kbt": 4,
+      "x_px": 110.0,
+      "y_px": 291.0,
+      "x_low_px": 104.0,
+      "x_high_px": 116.0,
+      "y_low_px": 285.0,
+      "y_high_px": 297.0
+    },
+    {
+      "quantity": "sigma",
+      "gap_kbt": 5,
+      "x_px": 165.5,
+      "y_px": 296.0,
+      "x_low_px": 159.5,
+      "x_high_px": 171.5,
+      "y_low_px": 290.0,
+      "y_high_px": 302.0
+    },
+    {
+      "quantity": "sigma",
+      "gap_kbt": 6,
+      "x_px": 221.0,
+      "y_px": 298.0,
+      "x_low_px": 215.0,
+      "x_high_px": 227.0,
+      "y_low_px": 291.0,
+      "y_high_px": 305.0
+    },
+    {
+      "quantity": "sigma",
+      "gap_kbt": 7,
+      "x_px": 276.5,
+      "y_px": 299.0,
+      "x_low_px": 270.5,
+      "x_high_px": 282.5,
+      "y_low_px": 292.0,
+      "y_high_px": 306.0
+    },
+    {
+      "quantity": "sigma",
+      "gap_kbt": 8,
+      "x_px": 332.0,
+      "y_px": null,
+      "x_low_px": 326.0,
+      "x_high_px": 338.0,
+      "y_low_px": 286.0,
+      "y_high_px": 305.0
+    },
+    {
+      "quantity": "sigma",
+      "gap_kbt": 9,
+      "x_px": 387.5,
+      "y_px": null,
+      "x_low_px": 381.5,
+      "x_high_px": 393.5,
+      "y_low_px": 292.0,
+      "y_high_px": 304.0
+    },
+    {
+      "quantity": "sigma",
+      "gap_kbt": 10,
+      "x_px": 443.0,
+      "y_px": 299.0,
+      "x_low_px": 437.0,
+      "x_high_px": 449.0,
+      "y_low_px": 293.0,
+      "y_high_px": 305.0
+    },
+    {
+      "quantity": "abs_S",
+      "gap_kbt": 4,
+      "x_px": 110.0,
+      "y_px": 326.0,
+      "x_low_px": 104.0,
+      "x_high_px": 116.0,
+      "y_low_px": 320.0,
+      "y_high_px": 332.0
+    },
+    {
+      "quantity": "abs_S",
+      "gap_kbt": 5,
+      "x_px": 165.5,
+      "y_px": 310.0,
+      "x_low_px": 159.5,
+      "x_high_px": 171.5,
+      "y_low_px": 304.0,
+      "y_high_px": 316.0
+    },
+    {
+      "quantity": "abs_S",
+      "gap_kbt": 6,
+      "x_px": 221.0,
+      "y_px": 303.5,
+      "x_low_px": 215.0,
+      "x_high_px": 227.0,
+      "y_low_px": 297.5,
+      "y_high_px": 309.5
+    },
+    {
+      "quantity": "abs_S",
+      "gap_kbt": 7,
+      "x_px": 276.5,
+      "y_px": 301.0,
+      "x_low_px": 270.5,
+      "x_high_px": 282.5,
+      "y_low_px": 295.0,
+      "y_high_px": 307.0
+    },
+    {
+      "quantity": "abs_S",
+      "gap_kbt": 8,
+      "x_px": 332.0,
+      "y_px": 300.0,
+      "x_low_px": 326.0,
+      "x_high_px": 338.0,
+      "y_low_px": 293.0,
+      "y_high_px": 307.0
+    },
+    {
+      "quantity": "abs_S",
+      "gap_kbt": 9,
+      "x_px": 387.5,
+      "y_px": 299.5,
+      "x_low_px": 381.5,
+      "x_high_px": 393.5,
+      "y_low_px": 292.5,
+      "y_high_px": 306.5
+    },
+    {
+      "quantity": "abs_S",
+      "gap_kbt": 10,
+      "x_px": 443.0,
+      "y_px": 299.0,
+      "x_low_px": 437.0,
+      "x_high_px": 449.0,
+      "y_low_px": 292.0,
+      "y_high_px": 306.0
+    },
+    {
+      "quantity": "kappa_el",
+      "gap_kbt": 4,
+      "x_px": 110.0,
+      "y_px": 50.0,
+      "x_low_px": 104.0,
+      "x_high_px": 116.0,
+      "y_low_px": 44.0,
+      "y_high_px": 56.0
+    },
+    {
+      "quantity": "kappa_el",
+      "gap_kbt": 5,
+      "x_px": 165.5,
+      "y_px": 184.0,
+      "x_low_px": 159.5,
+      "x_high_px": 171.5,
+      "y_low_px": 178.0,
+      "y_high_px": 190.0
+    },
+    {
+      "quantity": "kappa_el",
+      "gap_kbt": 6,
+      "x_px": 221.0,
+      "y_px": 247.5,
+      "x_low_px": 215.0,
+      "x_high_px": 227.0,
+      "y_low_px": 241.5,
+      "y_high_px": 253.5
+    },
+    {
+      "quantity": "kappa_el",
+      "gap_kbt": 7,
+      "x_px": 276.5,
+      "y_px": 278.0,
+      "x_low_px": 270.5,
+      "x_high_px": 282.5,
+      "y_low_px": 272.0,
+      "y_high_px": 284.0
+    },
+    {
+      "quantity": "kappa_el",
+      "gap_kbt": 8,
+      "x_px": 332.0,
+      "y_px": 291.0,
+      "x_low_px": 326.0,
+      "x_high_px": 338.0,
+      "y_low_px": 284.0,
+      "y_high_px": 298.0
+    },
+    {
+      "quantity": "kappa_el",
+      "gap_kbt": 9,
+      "x_px": 387.5,
+      "y_px": 296.5,
+      "x_low_px": 381.5,
+      "x_high_px": 393.5,
+      "y_low_px": 289.5,
+      "y_high_px": 303.5
+    },
+    {
+      "quantity": "kappa_el",
+      "gap_kbt": 10,
+      "x_px": 443.0,
+      "y_px": 299.0,
+      "x_low_px": 437.0,
+      "x_high_px": 449.0,
+      "y_low_px": 292.0,
+      "y_high_px": 306.0
+    }
+  ],
+  "versions": {
+    "pypdfium2": "5.15.2",
+    "Pillow": "13.0.0"
+  },
+  "python": "3.12.14",
+  "checks": [
+    "Legend, beta label, axis ticks, caption and normalization prose inspected on original page image.",
+    "21 rows:3 quantities x7 gaps; exactly2 unavailable centers; all finite centers inside envelopes."
+  ]
+}

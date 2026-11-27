@@ -1,0 +1,22 @@
+quantity,beta,gap_kbt,gap_kbt_low,gap_kbt_high,ratio,ratio_low,ratio_high,status,notes
+sigma,1,4,3.891892,4.108108,1.026891,1.006723,1.047059,visible,Manual native-raster marker center; full-glyph coordinate envelope.
+sigma,1,5,4.891892,5.108108,1.010084,0.989916,1.030252,visible,Manual native-raster marker center; full-glyph coordinate envelope.
+sigma,1,6,5.891892,6.108108,1.003361,0.979832,1.026891,partial_overlap,Marker partly overlaps another quantity; widened full-glyph envelope.
+sigma,1,7,6.891892,7.108108,1.0,0.976471,1.023529,partial_overlap,Marker partly overlaps another quantity; widened full-glyph envelope.
+sigma,1,8,7.891892,8.108108,,0.979832,1.043697,unavailable_overlap,No independent blue center visible; bounds cover the complete colored overlap cluster plus 1px. No central ratio supplied.
+sigma,1,9,8.891892,9.108108,,0.983193,1.023529,unavailable_overlap,No independent blue center visible; bounds cover the complete colored overlap cluster plus 1px. No central ratio supplied.
+sigma,1,10,9.891892,10.108108,1.0,0.979832,1.020168,normalization_anchor_overlap,"Exact center=1 is source-defined normalization, not an independently resolved raster coordinate; envelope is digitization only."
+abs_S,1,4,3.891892,4.108108,0.909244,0.889076,0.929412,visible,Manual native-raster marker center; full-glyph coordinate envelope.
+abs_S,1,5,4.891892,5.108108,0.963025,0.942857,0.983193,visible,Manual native-raster marker center; full-glyph coordinate envelope.
+abs_S,1,6,5.891892,6.108108,0.984874,0.964706,1.005042,visible,Manual native-raster marker center; full-glyph coordinate envelope.
+abs_S,1,7,6.891892,7.108108,0.993277,0.973109,1.013445,visible,Manual native-raster marker center; full-glyph coordinate envelope.
+abs_S,1,8,7.891892,8.108108,0.996639,0.973109,1.020168,partial_overlap,Marker partly overlaps another quantity; widened full-glyph envelope.
+abs_S,1,9,8.891892,9.108108,0.998319,0.97479,1.021849,partial_overlap,Marker partly overlaps another quantity; widened full-glyph envelope.
+abs_S,1,10,9.891892,10.108108,1.0,0.976471,1.023529,normalization_anchor_overlap,"Exact center=1 is source-defined normalization, not an independently resolved raster coordinate; envelope is digitization only."
+kappa_el,1,4,3.891892,4.108108,1.836975,1.816807,1.857143,visible,Manual native-raster marker center; full-glyph coordinate envelope.
+kappa_el,1,5,4.891892,5.108108,1.386555,1.366387,1.406723,visible,Manual native-raster marker center; full-glyph coordinate envelope.
+kappa_el,1,6,5.891892,6.108108,1.173109,1.152941,1.193277,visible,Manual native-raster marker center; full-glyph coordinate envelope.
+kappa_el,1,7,6.891892,7.108108,1.070588,1.05042,1.090756,visible,Manual native-raster marker center; full-glyph coordinate envelope.
+kappa_el,1,8,7.891892,8.108108,1.026891,1.003361,1.05042,partial_overlap,Marker partly overlaps another quantity; widened full-glyph envelope.
+kappa_el,1,9,8.891892,9.108108,1.008403,0.984874,1.031933,partial_overlap,Marker partly overlaps another quantity; widened full-glyph envelope.
+kappa_el,1,10,9.891892,10.108108,1.0,0.976471,1.023529,normalization_anchor_overlap,"Exact center=1 is source-defined normalization, not an independently resolved raster coordinate; envelope is digitization only."

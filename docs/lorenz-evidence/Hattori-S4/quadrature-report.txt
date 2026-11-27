@@ -1,0 +1,11 @@
+sigma maximum relative difference vs DPB: 4.8405723873656825e-14
+S maximum relative difference vs DPB: 7.249756350802272e-14
+L maximum relative difference vs DPB: 1.0647038806155251e-13
+kappa maximum relative difference vs DPB: 7.80042697101635e-13
+      offset_eV           S  window10_S
+1735        0.0  839.032083  769.533452
+2026        0.1  738.936497  698.072858
+2317        0.2  623.554264  603.763748
+2608        0.3  509.339682  500.874762
+2899        0.4  398.789989  395.389687
+3190        0.5  294.611816  293.245578

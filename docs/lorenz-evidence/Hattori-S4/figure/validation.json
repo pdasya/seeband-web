@@ -1,0 +1,22 @@
+{
+  "raw_rows": 5654,
+  "common_grid_rows": 1815,
+  "trace_count": 33,
+  "common_grid_points": 55,
+  "status_counts": {
+    "resolved": 849,
+    "overlap_unresolved": 489,
+    "near_floor_unresolved": 477
+  },
+  "all_mu_zero_present": true,
+  "all_bounds_contain_centers": true,
+  "native_mu_domains": {
+    "sigma": [-0.7764227642276422, 0.6138211382113821],
+    "seebeck": [-0.7682926829268293, 0.6138211382113821],
+    "kappa_el": [-0.7764227642276422, 0.6056910569105691]
+  },
+  "color_anchor_reproduction_checks": {
+    "sigma_x48_max_seed_error_px": 0.0,
+    "kappa_x507_max_seed_error_px": 0.0
+  }
+}

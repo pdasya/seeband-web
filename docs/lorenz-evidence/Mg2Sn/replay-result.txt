@@ -1,0 +1,1 @@
+A B mass_ratio {'m1': np.float64(0.6929565774421803), 'mass_ratio': np.float64(1.3875324152161597), 'A': np.float64(64982.99457291505), 'B': np.float64(2.0104700378703493)} max abs S in uV/K and relative rho errors vs independent Eqs 2–12 [1.00541797e-10 1.63646874e-13]

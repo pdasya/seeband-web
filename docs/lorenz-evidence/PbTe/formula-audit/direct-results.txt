@@ -1,0 +1,10 @@
+SciPy constants
+333 points; max delta mu (eV), L (1e-8 units): [6.24709621e-08 6.68141358e-06]
+Matched core constants
+333 points; max delta mu (eV), L (1e-8 units): [2.77555756e-15 7.81597009e-14]
+T, label p20, inferred EF (eV), net p20 with printed scalar model 300.0 1.5 -0.3239789163023901 0.5652941159869085
+T, label p20, inferred EF (eV), net p20 with printed scalar model 300.0 2.0 -0.3120177241252436 0.4518750056569134
+T, label p20, inferred EF (eV), net p20 with printed scalar model 300.0 2.5 -0.29799983327443713 0.3479064801452618
+T, label p20, inferred EF (eV), net p20 with printed scalar model 850.0 1.5 -0.2661060914430764 0.8917222976272647
+T, label p20, inferred EF (eV), net p20 with printed scalar model 850.0 2.0 -0.24617318562776222 0.6883804478103142
+T, label p20, inferred EF (eV), net p20 with printed scalar model 850.0 2.5 -0.22003073531788575 0.48389211579263985

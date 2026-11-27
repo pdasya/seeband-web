@@ -1,0 +1,2 @@
+sample,temperature_k,rho_milliohm_cm,rho_lower_milliohm_cm,rho_upper_milliohm_cm,rho_ohm_m,rho_lower_ohm_m,rho_upper_ohm_m,source
+PbTe_2atompercent_Na,400,0.57,0.54,0.60,0.0000057,0.0000054,0.0000060,Pei2011_Fig3a_filled_blue_square_x0

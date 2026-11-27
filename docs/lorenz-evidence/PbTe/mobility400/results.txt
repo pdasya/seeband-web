@@ -1,0 +1,27 @@
+density kg/m3, Cl Pa, mb, mc 8248.917967716496 106905976861.60579 [0.16496756 0.38157141 0.13747296] [0.14193352 0.38157141 0.11827794]
+p20,eta,moment_ratio,mobilities cm2/Vs, rho mOhm cm, b, kinetic ratio 2.4 [  1.79958409   1.21935818 -11.66342449] [0.30557252 0.61378537 0.4826314 ] [ 502.01651893  426.5043412  1250.75542995] 0.0591416899325264 1.1770490249178758 4.708196099671503
+target b, D_S/D_L required, D_S if L=19, D_L if S=9.5 4 0.9217278800575163 17.51282972109281 10.306729573382542
+target b, D_S/D_L required, D_S if L=19, D_L if S=9.5 5.2 1.050931477470306 19.967698071935814 9.039599825164073
+target b, D_S/D_L required, D_S if L=19, D_L if S=9.5 5.2403949073 1.0550055306718706 20.04510508276554 9.004692130808083
+p20,eta,moment_ratio,mobilities cm2/Vs, rho mOhm cm, b, kinetic ratio 2.5 [  1.86609628   1.28587038 -11.72993669] [0.30144775 0.60975066 0.48263146] [ 495.24004703  423.7007165  1250.75558787] 0.05723278925150182 1.1688440159426399 4.6753760637705595
+target b, D_S/D_L required, D_S if L=19, D_L if S=9.5 4 0.9249573784183415 17.57419018994849 10.270743519279568
+target b, D_S/D_L required, D_S if L=19, D_L if S=9.5 5.2 1.0546136721367168 20.037659770597617 9.008037967829845
+target b, D_S/D_L required, D_S if L=19, D_L if S=9.5 5.2403949073 1.058701999776997 20.115337995762946 8.973252154053796
+Fig. S3b at p20=2.5; inferred b, mu_i times rho[mOhm cm] 5.240394907317971 [75.2252149 14.3548752]
+Required independent rho[mOhm cm] for published D for each band, same fractions: [0.15189647 0.03387975]
+Quoted reduced potentials 1.9,1.3: b 1.1623565762424402
+400 K sensitivity to valley normalization at fixed D, masses and fillings
+Scenario names describe only masses in mobility, density calculation stays the same.
+pocket mu, b [502.01651893 426.5043412 ] 1.1770490249178758
+family DOS used only in acoustic final-state count mu, b [125.50412973  35.54202843] 3.5311470747536275
+family masses in both factors, retaining K mu, b [49.80634689  6.78091103] 7.345081907012074
+  sensitivity using patent D (other assumptions held): b= 4.131608572694291
+family masses as isotropic scalar (K ignored in inertia) mu, b [42.85200393  6.78091103] 6.319505412588374
+  sensitivity using patent D (other assumptions held): b= 3.5547217945809595
+400 K mass and filling factors 2.6883811588800457 3.517757803942559 0.49784914429490673
+Rho, mOhm cm 0.57
+SI literal 400K  mobilities, inverted eV, implied D_S/D_L [55.13603182 13.78400796] [57.33170423 52.8442302 ] 0.9217278800575164
+SI with complementary f  mobilities, inverted eV, implied D_S/D_L [107.98832268  26.99708067] [40.96606098 37.75956054] 0.9217278800575165
+S1 normalized by measured low T  mobilities, inverted eV, implied D_S/D_L [143.30768744  27.5406464 ] [35.73128556 37.47167679] 1.0487077696262543
+S1 nominal sample  mobilities, inverted eV, implied D_S/D_L [144.30583014  26.58865741] [35.43811933 38.048464  ] 1.0736592325661112
+S3(b) adjacent density  mobilities, inverted eV, implied D_S/D_L [131.97406113  25.1839916 ] [36.80587853 38.96645718] 1.058701999039598
