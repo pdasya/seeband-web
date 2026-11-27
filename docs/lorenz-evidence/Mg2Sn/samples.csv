@@ -1,0 +1,10 @@
+sample,type,composition,N20,color
+n1,n,Sc0.05Mg2.01Sn0.97Sb0.03,4.57,red
+n2,n,Mg2.06Sn0.97Sb0.03,3.97,blue
+n3,n,Sc0.05Mg1.95Sn,0.0200,magenta
+n4,n,Sc0.01Mg1.99Sn,0.00400,green
+p1,p,Li0.03Mg1.97Sn,2.69,olive
+p2,p,Li0.02Mg1.98Sn,2.45,blue
+p3,p,Li0.01Mg1.99Sn,1.51,magenta
+p4,p,Li0.005Mg1.995Sn,0.720,green
+p5,p,Mg2Sn,0.0440,orange

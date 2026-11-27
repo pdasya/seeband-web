@@ -1,0 +1,12 @@
+{
+  "source": "THESBERG.pdf",
+  "sha256": "7ffa4787b6597d8bfbb9da7f746fcca9ea1fe6d372a77c8abf4517117eba7f19",
+  "pdf_page_index": 7,
+  "printed_page": "125206-8",
+  "pdfium_version": "5.15.2",
+  "method": "Linear intersection within native PDF polyline segments; affine tick-center calibration; no extrapolation. Fig5c only includes 300 and 850 K; 483 and 667 K taken from Fig5b.",
+  "assumptions": "Marker energies fixed at all temperatures; literal published marker/legend colors retained. These slices are not a recalculation of a temperature-dependent chemical potential at fixed density.",
+  "clipping": "Fig5c 850 K red marker is beyond the visible solid path endpoint at the upper L=2.5 boundary; report missing, not extrapolated. Fig6 solid curves terminate at upper L=2.2 boundary; 850 K solid values unavailable. Dotted Fig6 endpoint maps to 849.992857 K and is snapped to 850 K within the published-axis 0.1 K calibration envelope. No inferred values beyond clipped path endpoints.",
+  "uncertainty": "Visual halfwidth is half the published stroke width converted to L, not statistical sigma. Fig5b has a 0..30 ordinate and thus coarser visual precision than Fig5c; native centerline intersections are reproducible but do not establish corresponding physical precision.",
+  "conclusion": "For direct fixed-energy slices, Fig5c at 300 K orders blue > black > red, opposite to Fig6. At 667 K Fig5b orders red > black > blue, opposite to Fig6. At 483 K the fixed slices order red > blue > black, while Fig6 orders red > black > blue; the small differences in Fig5b are below the plotted stroke halfwidth. A red/blue reversal agrees qualitatively with separated low/high-temperature ordering, but is not proof of a label error: fixed-energy slices and fixed-density temperature paths need not be the same calculation."
+}

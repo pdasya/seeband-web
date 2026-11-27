@@ -1,0 +1,10 @@
+figure/source.pdf
+figure/s4-native.png
+figure/trace-overlay.png
+figure/source_page49.png
+figure/source_page49.txt
+figure/s7_source_embedded.png
+figure/s7_beta1_overlay.png
+seeband-web/
+.venv/
+__pycache__/
