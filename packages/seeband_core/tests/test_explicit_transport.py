@@ -370,3 +370,34 @@ def test_explicit_valley_counts_are_integers():
     p = dict(m1=1.0, mass_ratio=1.0, band_offset_k=100.0)
     with pytest.raises(ValueError, match="integer"):
         explicit_curves(ExplicitBands("vb_cb", 0.0), "dpb_s", p, np.array([300.0]), "acPh", 1.5, 1)
+
+
+def test_symmetric_intrinsic_transport_cancels_exactly_on_preview_grid():
+    t = np.linspace(50, 800, 50)
+    p = dict(m1=1.0, mass_ratio=1.0, band_offset_k=1000.0, fermi_energy=350.0, A=4e4, B=1.0)
+    curves = explicit_curves(ExplicitBands("vb_cb"), "dpb_s_rho_rh", p, t, "acPh", 1, 1)
+
+    np.testing.assert_array_equal(curves["seebeck_v_per_k"], 0.0)
+    np.testing.assert_array_equal(curves["hall_m3_per_c"], 0.0)
+    # Equal acoustic channels add, with F_0 evaluated at the exact midpoint.
+    rho = 1 / (2 * p["A"] * np.logaddexp(0.0, -p["band_offset_k"] / (2 * t)))
+    np.testing.assert_allclose(curves["resistivity_ohm_m"], rho, rtol=1e-12, atol=0)
+
+
+@pytest.mark.parametrize("weight, sign", [(0.5, 1), (2.0, -1)])
+def test_intrinsic_symmetric_bands_keep_asymmetric_transport_weight(weight, sign):
+    t = np.array([800.0])
+    p = dict(
+        m1=1.0,
+        mass_ratio=1.0,
+        band_offset_k=3945.53616139,
+        fermi_energy=1972.7680807,
+        A=4e4,
+        B=weight,
+    )
+    curves = explicit_curves(ExplicitBands("vb_cb"), "dpb_s_rho_rh", p, t, "acPh", 1, 1)
+
+    # Independent SI quadrature gives |S_i|=388.39059 µV/K and |R_H,i|=8.117680e-7 m³/C.
+    # Weighting the opposite contributions by (1/3, 2/3) gives one third of each magnitude.
+    assert curves["seebeck_v_per_k"][0] == pytest.approx(sign * 129.463531e-6, rel=1e-6)
+    assert curves["hall_m3_per_c"][0] == pytest.approx(sign * 2.70589333e-7, rel=1e-6)
