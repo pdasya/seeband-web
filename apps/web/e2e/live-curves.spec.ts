@@ -286,13 +286,21 @@ test("the last curve stays while waiting, with an indicator only after a delay",
 });
 
 test("a quick answer shows no indicator at all", async ({ page }) => {
+  // The page's clock is held, so that "quick" is a time on that clock, not on a loaded CI runner:
+  // with real time, a slow runner could take the indicator's delay to send and answer a request.
+  await page.clock.install();
   await open(page);
-  const bodies = await collect(page, async (route, index) => {
-    await new Promise((resolve) => setTimeout(resolve, index === 0 ? 0 : 50));
-    await route.fulfill({ json: withRmse(111 + index) });
-  });
+  const bodies = await collect(
+    page,
+    async (route, index) => {
+      await new Promise((resolve) => setTimeout(resolve, index === 0 ? 0 : 50));
+      await route.fulfill({ json: withRmse(111 + index) });
+    },
+    { fromData: true },
+  );
   await load(page);
   await expect(page.getByText("111 µV/K", { exact: true })).toBeVisible();
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1_000));
   await page.evaluate(() => {
     const seen: string[] = [];
     Object.assign(window, { seenStatuses: seen });
@@ -306,13 +314,18 @@ test("a quick answer shows no indicator at all", async ({ page }) => {
   });
 
   await eg(page).press("ArrowRight");
+  // Past the debounce and its longest wait, and well short of the indicator's delay of 600 ms.
+  await page.clock.runFor(300);
 
   await expect(page.getByText("112 µV/K", { exact: true })).toBeVisible();
+  // Well past the indicator's delay, which an answered request no longer waits for.
+  await page.clock.runFor(2_000);
   expect(bodies).toHaveLength(2);
   const seen = await page.evaluate(
     () => (window as unknown as { seenStatuses: string[] }).seenStatuses,
   );
   expect(seen.some((text) => text.includes("Updating…"))).toBe(false);
+  await expect(chart(page).getByText("Updating…")).toHaveCount(0);
 });
 
 test("an error keeps the chart, says so without the server's text, and passes", async ({

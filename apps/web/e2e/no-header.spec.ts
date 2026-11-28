@@ -196,10 +196,13 @@ test("only T comes chosen, and the file waits for its quantity before any use", 
   await expect(page.getByText(/^Fewer than 6 temperatures/)).toBeVisible();
   await expect.poll(() => guesses.length).toBe(1);
   expect(await fileReads(page)).toBe(0);
-  expect(bodies.at(-1)?.mapping).toEqual([
-    { column: 0, role: "temperature" },
-    { column: 1, role: "seebeck" },
-  ]);
+  // The file's name is on the card while the choice is open too, so wait for the request.
+  await expect
+    .poll(() => bodies.at(-1)?.mapping)
+    .toEqual([
+      { column: 0, role: "temperature" },
+      { column: 1, role: "seebeck" },
+    ]);
   await expect(
     page.getByRole("button", { name: "Remove file S" }),
   ).toBeFocused();
@@ -230,10 +233,13 @@ test("a choice of another quantity puts the file in its slot", async ({
   ).toBeVisible();
   await expect(slot(page, "seebeck")).toContainText("Drop a file");
   await expect(question(page)).toHaveCount(0);
-  expect(bodies.at(-1)?.mapping).toEqual([
-    { column: 0, role: "temperature" },
-    { column: 1, role: "resistivity" },
-  ]);
+  // The file's name is on the card while the choice is open too, so wait for the request.
+  await expect
+    .poll(() => bodies.at(-1)?.mapping)
+    .toEqual([
+      { column: 0, role: "temperature" },
+      { column: 1, role: "resistivity" },
+    ]);
   expect(await fileReads(page)).toBe(0);
 });
 
@@ -304,10 +310,13 @@ test("a unit chosen after a problem reads the choice again", async ({
   await page.getByRole("option", { name: "°C", exact: true }).click();
 
   await expect(slot(page, "seebeck").getByText("mine.txt")).toBeVisible();
-  expect(bodies.at(-1)?.mapping).toEqual([
-    { column: 0, role: "temperature", unit: "C" },
-    { column: 1, role: "seebeck" },
-  ]);
+  // The file's name is on the card while the choice is open too, so wait for the request.
+  await expect
+    .poll(() => bodies.at(-1)?.mapping)
+    .toEqual([
+      { column: 0, role: "temperature", unit: "C" },
+      { column: 1, role: "seebeck" },
+    ]);
 });
 
 test("with more columns, only T comes chosen, and the rest is up to the user", async ({
@@ -326,10 +335,13 @@ test("with more columns, only T comes chosen, and the rest is up to the user", a
   await pick(page, 3, "S");
 
   await expect(slot(page, "seebeck").getByText("mine.txt")).toBeVisible();
-  expect(bodies.at(-1)?.mapping).toEqual([
-    { column: 0, role: "temperature" },
-    { column: 2, role: "seebeck" },
-  ]);
+  // The file's name is on the card while the choice is open too, so wait for the request.
+  await expect
+    .poll(() => bodies.at(-1)?.mapping)
+    .toEqual([
+      { column: 0, role: "temperature" },
+      { column: 2, role: "seebeck" },
+    ]);
 });
 
 test("a quantity with no T, or two quantities, load nothing", async ({
