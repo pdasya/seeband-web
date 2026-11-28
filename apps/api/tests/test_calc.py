@@ -936,6 +936,7 @@ def test_a_worker_that_dies_in_its_warm_up_gets_replaced_before_a_job(
         pool.close()
 
 
+@pytest.mark.timing
 def test_a_replacement_starts_the_fork_server_in_a_thread(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

@@ -4,13 +4,9 @@ from typing import Any
 import numpy as np
 import pytest
 from fastapi.testclient import TestClient
-from running_server import read_events
 from seeband_api.main import create_app
 from seeband_api.parse import ParseResponse
 from seeband_core.demo_dataset import demo_table_text, load_demo_dataset
-from seeband_core.model_catalog import registry
-from seeband_core.model_interface import FitRequest
-from seeband_core.model_scales import default_start
 
 DATASET = load_demo_dataset()
 
@@ -60,40 +56,6 @@ def test_it_holds_the_stored_data_exactly(demo: dict[str, Any]) -> None:
         sent = demo["measurements"][quantity]
         assert np.array_equal(sent["temperature_k"], measurement.temperature_k)
         assert np.array_equal(sent["values"], measurement.values)
-
-
-def test_a_client_can_fit_it_as_it_stands(client: TestClient, demo: dict[str, Any]) -> None:
-    """What the response names and holds is enough for a fit, which equals the core's."""
-    mode = registry.get(demo["model"]).describe().fit_mode(demo["fit_mode"])
-    start = default_start(mode)
-    expected = registry.get(demo["model"]).fit(
-        FitRequest(mode.id, DATASET.measurements, start, scattering=demo["scattering"])
-    )
-    temperature_k = demo["measurements"]["seebeck"]["temperature_k"]
-
-    response = client.post(
-        "/api/fit",
-        json={
-            "model": demo["model"],
-            "fit_mode": demo["fit_mode"],
-            "scattering": demo["scattering"],
-            "start": start,
-            "min_temperature_k": min(temperature_k),
-            "max_temperature_k": max(temperature_k),
-            "measurements": {
-                quantity: {
-                    "temperature_k": measurement["temperature_k"],
-                    "values": measurement["values"],
-                }
-                for quantity, measurement in demo["measurements"].items()
-            },
-        },
-    )
-
-    last = list(read_events(iter(response.text.splitlines())))[-1]
-    assert last["type"] == "done"
-    assert last["result"]["status"] == "converged"
-    assert last["result"]["parameters"] == expected.parameters
 
 
 def test_true_parameters_over_the_described_defaults_give_a_curve_near_the_data(

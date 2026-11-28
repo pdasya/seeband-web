@@ -15,6 +15,9 @@ import pytest
 from seeband_api.calc_pool import CalcPool
 from seeband_api.errors import ApiError
 
+# Measures wall-clock latency, so it runs alone, not beside other test workers.
+pytestmark = pytest.mark.timing
+
 HEAVY_S = 0.3
 
 

@@ -439,6 +439,7 @@ def test_fit_through_a_real_process_logs_no_values_and_leaves_none(tmp_path: Pat
     assert not any(is_running(pid) for pid in children)
 
 
+@pytest.mark.timing
 def test_stopping_the_server_ends_a_running_fit_soon(tmp_path: Path, support_dir: Path) -> None:
     """A stop must not wait for a fit's time limit, so this fit hangs until its process ends."""
     port = free_port()
