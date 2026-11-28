@@ -520,6 +520,7 @@ def _timed_middleware(app: Any, receive: Receive, body_timeout_s: float) -> list
     return sent
 
 
+@pytest.mark.timing
 def test_a_body_that_does_not_arrive_in_time_is_answered_408() -> None:
     async def never(*_: Any) -> None:
         raise AssertionError("the app must not run")

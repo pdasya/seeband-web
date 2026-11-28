@@ -43,11 +43,22 @@ const withRmse = (value: number | null) => ({
   rmse: { seebeck: { value, unit: "uV/K" } },
 });
 
-async function open(page: Page) {
+async function open(
+  page: Page,
+  { calc }: { calc?: (route: Route) => Promise<void> } = {},
+) {
   await serveModels(page);
   await page.route("**/api/parse", (route) => route.fulfill({ json: PARSED }));
+  if (calc !== undefined) {
+    await page.route("**/api/calc", calc);
+  }
   await page.goto("/fit");
   await expect(page.getByRole("slider", { name: "EF" })).toBeVisible();
+  // The model previews before data load. Its answer is in once the line is drawn, so a request
+  // that collect() sees later is never that preview, whatever the runner's speed.
+  if (calc === undefined) {
+    await expect(modelLine(page)).toBeVisible();
+  }
 }
 
 async function load(page: Page) {
@@ -366,15 +377,20 @@ test("an error keeps the chart, says so without the server's text, and passes", 
 });
 
 test("a server failure and no network say so", async ({ page }) => {
-  await open(page);
-  await collect(page, (route, index) => {
-    if (index === 0) {
-      return route.fulfill({
-        status: 503,
-        json: { code: "calculation_unavailable", message: "x", details: [] },
-      });
-    }
-    return route.abort("connectionrefused");
+  // Every request fails from the start, the preview's too, so there is no curve yet.
+  let offline = false;
+  await open(page, {
+    calc: (route) =>
+      offline
+        ? route.abort("connectionrefused")
+        : route.fulfill({
+            status: 503,
+            json: {
+              code: "calculation_unavailable",
+              message: "x",
+              details: [],
+            },
+          }),
   });
   await load(page);
 
@@ -382,6 +398,7 @@ test("a server failure and no network say so", async ({ page }) => {
   // With no curve yet, nothing is said about the last one.
   await expect(chart(page).getByRole("alert")).not.toContainText("last curve");
 
+  offline = true;
   await eg(page).press("ArrowRight");
   await expect(chart(page).getByRole("alert")).toContainText(
     "could not be reached",

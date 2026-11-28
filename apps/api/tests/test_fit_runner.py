@@ -121,6 +121,7 @@ def test_sends_iterations_while_it_runs() -> None:
     assert seen == [1, 2, 3]
 
 
+@pytest.mark.timing
 def test_fit_past_the_time_limit_answers_504_and_ends() -> None:
     runner = FitRunner(1, 0, 1.5)
     started = time.monotonic()
@@ -262,6 +263,7 @@ def test_fit_processes_keep_linear_algebra_to_one_thread() -> None:
     assert seen == dict.fromkeys(ONE_THREAD, "1")
 
 
+@pytest.mark.timing
 def test_a_fork_server_that_does_not_finish_its_imports_fails_the_start(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -300,6 +302,7 @@ def test_a_fit_process_does_not_import_the_web_framework() -> None:
     assert _run(lambda: runner.run(fit_functions.loaded_modules, ["fastapi", "starlette"])) == []
 
 
+@pytest.mark.timing
 def test_a_stop_ends_the_process_within_a_tenth_of_a_second(tmp_path: Path) -> None:
     runner = FitRunner(1, 0, 60.0)
     pid_file = tmp_path / "pid"
@@ -411,6 +414,7 @@ def test_fit_ends_when_the_server_is_killed(tmp_path: Path, support_dir: Path) -
     pytest.fail("The fit outlived the server")
 
 
+@pytest.mark.timing
 def test_requests_beyond_the_limit_are_refused_at_once_with_a_retry_hint() -> None:
     runner = FitRunner(1, 1, 30.0)
 

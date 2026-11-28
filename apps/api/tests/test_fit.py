@@ -38,6 +38,16 @@ MODES = [
     if not fit_mode.disabled
     for scattering in fit_mode.scattering or (None,)
 ]
+# The API passes a fit through to the core; the core's own tests fit every combination. So the
+# identity is checked for every SPB combination, and for each DPB mode once: two with the
+# cheaper "dis", and the demo's own dpb_s_rho_rh with acPh. A DPB fit takes up to a minute.
+RESULT_CASES = [
+    mode
+    for mode in MODES
+    if mode[0] != "dpb"
+    or mode
+    in {("dpb", "dpb_s", "dis"), ("dpb", "dpb_s_rho", "dis"), ("dpb", "dpb_s_rho_rh", "acPh")}
+]
 DEMO = load_demo_dataset().measurements
 DEMO_INPUT = {
     quantity: {
@@ -108,7 +118,7 @@ def test_fit_result_identifies_the_core_version(client: TestClient) -> None:
     assert result["core_version"] == seeband_core.__version__
 
 
-@pytest.mark.parametrize(("model_id", "fit_mode_id", "scattering"), MODES)
+@pytest.mark.parametrize(("model_id", "fit_mode_id", "scattering"), RESULT_CASES)
 def test_result_equals_the_core(
     client: TestClient, model_id: str, fit_mode_id: str, scattering: str | None
 ) -> None:

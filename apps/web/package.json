@@ -10,7 +10,9 @@
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run && node --test tests/build.test.mjs && playwright test"
+    "test": "pnpm run test:unit && pnpm run test:e2e",
+    "test:unit": "vitest run && node --test tests/build.test.mjs",
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",

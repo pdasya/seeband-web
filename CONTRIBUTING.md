@@ -21,6 +21,7 @@ Write commit messages in English.
 - Close the issue from the description, for example `Closes #3`.
 - Run `pnpm check` before pushing. The `Python` and `TypeScript` CI checks must pass before merging.
 - `pnpm check` skips the extended core regressions. CI runs them when `packages/seeband_core/src` changes; for other changes to solvers, tolerances or fits, tick the box in the pull request template, or run `uv run pytest -m extended`.
+- CI runs pytest on every CPU with `pytest-xdist`. A test that asserts wall-clock latency gets `@pytest.mark.timing`, and CI runs those alone afterwards. `pnpm check` still runs everything in one process; `uv run pytest -n auto -m "not timing"` is the faster local run.
 - Merge with squash, and write a merge message that describes the result of the whole branch.
 - Delete the branch after merging.
 

@@ -13,9 +13,13 @@ from pathlib import Path
 from typing import Any
 
 import httpx2
+import pytest
 from running_server import free_port, running_server
 from seeband_core.model_catalog import registry
 from seeband_core.model_scales import default_start
+
+# Measures wall-clock latency, so it runs alone, not beside other test workers.
+pytestmark = pytest.mark.timing
 
 _MODE = registry.get("dpb").describe().fit_mode("dpb_s_rho")
 _CURVE = {
