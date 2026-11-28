@@ -53,7 +53,7 @@ jobs:
   python-tests:
     name: Python tests (${{ matrix.suite }})
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
@@ -83,10 +83,20 @@ jobs:
       - run: uv sync --locked
       # No timed stack dumps, which are implicated in #285. A hang still gets one stack: after 30
       # minutes `timeout` sends SIGABRT, and pytest's faulthandler prints every thread before exit.
-      - name: Pytest with test names and durations
+      # One worker per CPU. Tests that assert wall-clock latency are marked `timing` and run
+      # alone afterwards, as other workers on the same CPUs would make them slow, not wrong.
+      - name: Pytest in parallel, with test names and durations
         run: >-
           uv run timeout --signal=ABRT --kill-after=1m 30m
-          pytest ${{ matrix.path }} ${{ matrix.exclude }} -vv -x --tb=short --durations=20
+          pytest ${{ matrix.path }} ${{ matrix.exclude }} -m "not timing and not extended"
+          -n auto -vv -x --tb=short --durations=20
+      # Exit code 5 is "no tests collected": not every group has such tests.
+      - name: Pytest of wall-clock latency, alone
+        run: >-
+          uv run timeout --signal=ABRT --kill-after=1m 15m
+          pytest ${{ matrix.path }} ${{ matrix.exclude }} -m "timing and not extended"
+          -vv -x --tb=short --durations=5
+          || test $? -eq 5
 
   python-extended:
     name: Python tests (extended)
@@ -159,10 +169,9 @@ jobs:
           test "$PYTHON_TESTS_RESULT" = success
           test "$PYTHON_EXTENDED_RESULT" = success
 
-  typescript:
-    name: TypeScript
+  typescript-checks:
+    name: TypeScript checks and unit tests
     runs-on: ubuntu-latest
-    # The e2e suite alone takes 7-10 minutes on a hosted runner.
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -176,10 +185,48 @@ jobs:
         run: pnpm lint
       - name: Type check
         run: pnpm typecheck
+      - name: Tests of the other packages, including that generated API types are up to date
+        run: pnpm -r --if-present --filter '!@seeband/web' run test
+      - name: Unit tests and build test of the app
+        run: pnpm --filter @seeband/web run test:unit
+
+  # The e2e suite took 7-10 minutes on one hosted runner; three shards take about a third each.
+  typescript-e2e:
+    name: TypeScript e2e (${{ matrix.shard }}/3)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - name: Browser for the tests of the app
         run: pnpm --filter @seeband/web exec playwright install --with-deps chromium
-      - name: Tests, including that generated API types are up to date
-        run: pnpm test
+      - name: E2E tests, shard ${{ matrix.shard }} of 3
+        run: pnpm --filter @seeband/web run test:e2e --shard=${{ matrix.shard }}/3
+
+  # Keep the protected check name, and require every TypeScript job.
+  typescript:
+    name: TypeScript
+    if: ${{ always() }}
+    needs: [typescript-checks, typescript-e2e]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require checks, unit tests and every e2e shard
+        env:
+          CHECKS_RESULT: ${{ needs.typescript-checks.result }}
+          E2E_RESULT: ${{ needs.typescript-e2e.result }}
+        run: |
+          test "$CHECKS_RESULT" = success
+          test "$E2E_RESULT" = success
 
   containers:
     name: Containers
