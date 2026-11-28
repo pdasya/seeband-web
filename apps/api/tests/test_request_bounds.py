@@ -21,6 +21,9 @@ from seeband_api.main import create_app
 from seeband_api.request_checks import MAX_LISTED_POINTS, MAX_PARAMETERS
 from seeband_api.settings import Settings
 
+# Measures wall-clock latency, so it runs alone, not beside other test workers.
+pytestmark = pytest.mark.timing
+
 ANSWER_LIMIT_BYTES = 64_000
 TIME_LIMIT_S = 0.5
 
