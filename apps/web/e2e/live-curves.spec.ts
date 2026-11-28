@@ -43,11 +43,22 @@ const withRmse = (value: number | null) => ({
   rmse: { seebeck: { value, unit: "uV/K" } },
 });
 
-async function open(page: Page) {
+async function open(
+  page: Page,
+  { calc }: { calc?: (route: Route) => Promise<void> } = {},
+) {
   await serveModels(page);
   await page.route("**/api/parse", (route) => route.fulfill({ json: PARSED }));
+  if (calc !== undefined) {
+    await page.route("**/api/calc", calc);
+  }
   await page.goto("/fit");
   await expect(page.getByRole("slider", { name: "EF" })).toBeVisible();
+  // The model previews before data load. Its answer is in once the line is drawn, so a request
+  // that collect() sees later is never that preview, whatever the runner's speed.
+  if (calc === undefined) {
+    await expect(modelLine(page)).toBeVisible();
+  }
 }
 
 async function load(page: Page) {
@@ -286,13 +297,21 @@ test("the last curve stays while waiting, with an indicator only after a delay",
 });
 
 test("a quick answer shows no indicator at all", async ({ page }) => {
+  // The page's clock is held, so that "quick" is a time on that clock, not on a loaded CI runner:
+  // with real time, a slow runner could take the indicator's delay to send and answer a request.
+  await page.clock.install();
   await open(page);
-  const bodies = await collect(page, async (route, index) => {
-    await new Promise((resolve) => setTimeout(resolve, index === 0 ? 0 : 50));
-    await route.fulfill({ json: withRmse(111 + index) });
-  });
+  const bodies = await collect(
+    page,
+    async (route, index) => {
+      await new Promise((resolve) => setTimeout(resolve, index === 0 ? 0 : 50));
+      await route.fulfill({ json: withRmse(111 + index) });
+    },
+    { fromData: true },
+  );
   await load(page);
   await expect(page.getByText("111 µV/K", { exact: true })).toBeVisible();
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1_000));
   await page.evaluate(() => {
     const seen: string[] = [];
     Object.assign(window, { seenStatuses: seen });
@@ -306,13 +325,18 @@ test("a quick answer shows no indicator at all", async ({ page }) => {
   });
 
   await eg(page).press("ArrowRight");
+  // Past the debounce and its longest wait, and well short of the indicator's delay of 600 ms.
+  await page.clock.runFor(300);
 
   await expect(page.getByText("112 µV/K", { exact: true })).toBeVisible();
+  // Well past the indicator's delay, which an answered request no longer waits for.
+  await page.clock.runFor(2_000);
   expect(bodies).toHaveLength(2);
   const seen = await page.evaluate(
     () => (window as unknown as { seenStatuses: string[] }).seenStatuses,
   );
   expect(seen.some((text) => text.includes("Updating…"))).toBe(false);
+  await expect(chart(page).getByText("Updating…")).toHaveCount(0);
 });
 
 test("an error keeps the chart, says so without the server's text, and passes", async ({
@@ -353,15 +377,20 @@ test("an error keeps the chart, says so without the server's text, and passes", 
 });
 
 test("a server failure and no network say so", async ({ page }) => {
-  await open(page);
-  await collect(page, (route, index) => {
-    if (index === 0) {
-      return route.fulfill({
-        status: 503,
-        json: { code: "calculation_unavailable", message: "x", details: [] },
-      });
-    }
-    return route.abort("connectionrefused");
+  // Every request fails from the start, the preview's too, so there is no curve yet.
+  let offline = false;
+  await open(page, {
+    calc: (route) =>
+      offline
+        ? route.abort("connectionrefused")
+        : route.fulfill({
+            status: 503,
+            json: {
+              code: "calculation_unavailable",
+              message: "x",
+              details: [],
+            },
+          }),
   });
   await load(page);
 
@@ -369,6 +398,7 @@ test("a server failure and no network say so", async ({ page }) => {
   // With no curve yet, nothing is said about the last one.
   await expect(chart(page).getByRole("alert")).not.toContainText("last curve");
 
+  offline = true;
   await eg(page).press("ArrowRight");
   await expect(chart(page).getByRole("alert")).toContainText(
     "could not be reached",

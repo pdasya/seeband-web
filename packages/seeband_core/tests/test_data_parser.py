@@ -877,6 +877,7 @@ def test_few_distinct_temperatures_give_a_warning() -> None:
     assert MIN_ROWS == 2
 
 
+@pytest.mark.timing
 def test_a_very_long_line_is_refused_quickly() -> None:
     long_field = "1" * (MAX_LINE_LENGTH + 1)
     table = parse_table(f"300 1\n400 {long_field}\n500 3\n", "seebeck")

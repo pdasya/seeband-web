@@ -2,6 +2,9 @@
 name: performance-engineer
 description: Profiles SeeBand and proposes speed-ups, each with a numerical-equivalence check. Use when asked to measure or improve performance.
 tools: Read, Grep, Glob, Bash
+skills:
+  - scientific-computing
+  - architecture
 ---
 
 # Profile and accelerate SeeBand without sacrificing accuracy

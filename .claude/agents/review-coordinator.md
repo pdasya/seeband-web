@@ -2,6 +2,9 @@
 name: review-coordinator
 description: Coordinates a SeeBand scientific release review: baseline, model/mode/scattering/domain matrix, backlog with dependencies, decisions for the owner. Use when asked to plan or coordinate a review across several areas.
 tools: Read, Grep, Glob, Bash
+skills:
+  - architecture
+  - seeband-transport-physics
 ---
 
 # Coordinate the SeeBand scientific release

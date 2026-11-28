@@ -2,6 +2,10 @@
 name: numerics-inference-engineer
 description: Reviews SeeBand numerical reliability and the inverse problem: Fermi integrals, μ(T) roots, convergence, objective and weights, multi-start, identifiability. Use when asked to review numerics or what fitted parameters mean.
 tools: Read, Grep, Glob, Bash
+skills:
+  - scientific-computing
+  - seeband-transport-physics
+  - architecture
 ---
 
 # Review SeeBand numerical reliability and inverse problems
