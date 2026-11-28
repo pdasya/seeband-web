@@ -20,7 +20,7 @@ import {
   unitIsDefault,
   unitOf,
 } from "@/data/units";
-import { useFileUpload } from "@/data/useFileUpload";
+import { useFileUpload, type UploadState } from "@/data/useFileUpload";
 import { cn } from "@/lib/utils";
 import {
   hasOpenUnitDoubt,
@@ -184,7 +184,16 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
   const removeButton = useRef<HTMLButtonElement>(null);
   const firstSelect = useRef<HTMLButtonElement>(null);
   // The element with focus goes away when a slot changes, so it comes back to the slot's control.
-  const keepFocus = useRef(false);
+  // It holds the slot as it was when the change began. A render can come before the change does,
+  // as an update of the store may be drawn before the slot's own state, and focus must not move
+  // in it: the control that has focus is still there, and goes only with the change.
+  const keepFocus = useRef<{
+    state: UploadState;
+    data: SessionData | undefined;
+  } | null>(null);
+  const keepFocusIf = (changing: boolean) => {
+    keepFocus.current = changing ? { state, data } : null;
+  };
   // A unit select waits while the file is read again, which takes focus from it, so it comes back.
   const unitSelects = useRef<Partial<Record<Role, HTMLButtonElement | null>>>(
     {},
@@ -197,8 +206,11 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
     const settling =
       state.status === "loading" ||
       (state.status === "choose" && state.applying);
-    if (keepFocus.current && !settling) {
-      keepFocus.current = false;
+    const before = keepFocus.current;
+    const changed =
+      before !== null && (before.state !== state || before.data !== data);
+    if (changed && !settling) {
+      keepFocus.current = null;
       (input.current ?? firstSelect.current ?? removeButton.current)?.focus();
     }
     if (unitFocus.current !== null && !rereading) {
@@ -209,7 +221,7 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
 
   const handlers = {
     onFile: (file: File) => {
-      keepFocus.current = true;
+      keepFocusIf(true);
       void upload(file);
     },
     onSeveralFiles: () => {
@@ -217,7 +229,7 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
     },
   };
   const onRemove = () => {
-    keepFocus.current = true;
+    keepFocusIf(true);
     remove();
   };
   const { dragging, dropTarget: drop } = useFileDrop(handlers);
@@ -305,13 +317,13 @@ export function FileSlot({ quantity }: { quantity: Quantity }) {
             firstSelect={firstSelect}
             // A choice that reads the file may take this card away, so focus comes back.
             onRole={(column, role) => {
-              keepFocus.current = chooseRole(column, role);
+              keepFocusIf(chooseRole(column, role));
             }}
             onUnit={(column, unit) => {
-              keepFocus.current = chooseColumnUnit(column, unit);
+              keepFocusIf(chooseColumnUnit(column, unit));
             }}
             onRetry={() => {
-              keepFocus.current = retryChoice();
+              keepFocusIf(retryChoice());
             }}
           />
         </div>
