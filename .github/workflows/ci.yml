@@ -54,6 +54,13 @@ jobs:
     name: Python tests (${{ matrix.suite }})
     runs-on: ubuntu-latest
     timeout-minutes: 40
+    # One BLAS thread per test worker, as the API's fit processes run. With a thread per CPU in
+    # each of the workers, the fits of core-fits took four times as long.
+    env:
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      VECLIB_MAXIMUM_THREADS: "1"
     strategy:
       fail-fast: false
       matrix:
