@@ -461,7 +461,8 @@ class _Engine:
                 if self.values[name] <= 0 or (name in self.fitted and self.bound(name).lower < 0):
                     raise ValueError(f"{name} must remain on the positive mass branch")
         elif self.dpb and self.values["m_eff"] == 0:
-            raise ValueError("Zero band mass has no finite density domain")
+            # P13: zero selects no carrier branch, as in the legacy fit.
+            raise ValueError("The start band mass is outside the bounds of its carrier branch.")
         if not self.dpb:
             mass = self.values["band_mass"]
             if mass == 0:

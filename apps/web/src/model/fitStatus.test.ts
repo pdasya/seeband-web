@@ -104,6 +104,18 @@ describe("fitFailureText", () => {
       "The chemical-potential balance could not be verified during the fit.",
       "could not verify the chemical-potential balance",
     ],
+    [
+      "The fit started from a zero band mass, which has no finite chemical potential.",
+      "Start from a nonzero mass",
+    ],
+    [
+      "The fit started from a Fermi energy outside the band selected by the mass sign, which has no finite chemical potential.",
+      "Start from E_F above 0 for m > 0, or below 0 for m < 0",
+    ],
+    [
+      "The fit started from a Fermi energy at or above the higher edge of two valence bands, which has no finite chemical potential.",
+      "Start from E_F below the higher band edge, max(0, E_g)",
+    ],
   ])("explains the fit failure %s", (message, explanation) => {
     expect(fitFailureText(done({ status: "failed", message }))).toContain(
       explanation,

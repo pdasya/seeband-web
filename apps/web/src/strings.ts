@@ -734,6 +734,12 @@ export const STRINGS = {
         "The model gave values that are not finite during the fit.",
       "The fit encountered band parameters with no finite chemical potential.":
         "The fit encountered band parameters with no finite chemical potential. Check the band parameters and their bounds.",
+      "The fit started from a zero band mass, which has no finite chemical potential.":
+        "The start band mass is 0, which has no finite chemical potential. Start from a nonzero mass.",
+      "The fit started from a Fermi energy outside the band selected by the mass sign, which has no finite chemical potential.":
+        "At T = 0 the band has no carriers with the start values. Start from E_F above 0 for m > 0, or below 0 for m < 0.",
+      "The fit started from a Fermi energy at or above the higher edge of two valence bands, which has no finite chemical potential.":
+        "At T = 0 neither valence band has hole carriers with the start values. Start from E_F below the higher band edge, max(0, E_g).",
       "The chemical-potential balance could not be verified during the fit.":
         "The fit could not verify the chemical-potential balance to numerical precision.",
       "The fit reached its limit of function evaluations.":

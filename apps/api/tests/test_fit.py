@@ -219,24 +219,61 @@ def test_start_outside_the_bounds_is_a_failed_fit(client: TestClient) -> None:
     assert body["parameters"] == default_start(_mode("dpb", "dpb_s"))
 
 
+_SPB_NO_ROOT = (
+    "The fit started from a Fermi energy outside the band selected by the mass sign, "
+    "which has no finite chemical potential."
+)
+_DPB_NO_ROOT = (
+    "The fit started from a Fermi energy at or above the higher edge of two valence bands, "
+    "which has no finite chemical potential."
+)
+
+
 @pytest.mark.parametrize(
-    ("model", "mode", "start"),
+    ("model", "mode", "start", "message"),
     [
-        ("spb", "spb_s", {"band_mass": 1.0, "fermi_energy": 0.0}),
-        ("dpb", "dpb_s", {"m_eff": -1.0, "band_gap": 1000.0, "fermi_energy": 1000.0}),
+        ("spb", "spb_s", {"band_mass": 1.0, "fermi_energy": 0.0}, _SPB_NO_ROOT),
+        ("spb", "spb_s", {"band_mass": -1.0, "fermi_energy": 1.0}, _SPB_NO_ROOT),
+        (
+            "dpb",
+            "dpb_s",
+            {"m_eff": -1.0, "band_gap": 1000.0, "fermi_energy": 1000.0},
+            _DPB_NO_ROOT,
+        ),
+        ("dpb", "dpb_s", {"m_eff": -1.0, "band_gap": -500.0, "fermi_energy": 0.0}, _DPB_NO_ROOT),
     ],
 )
 def test_no_root_at_the_start_ends_with_a_failed_fit(
-    client: TestClient, model: str, mode: str, start: dict[str, float]
+    client: TestClient, model: str, mode: str, start: dict[str, float], message: str
 ) -> None:
     events = _events(client, _body(model, mode, start=start))
 
     assert [event["type"] for event in events] == ["started", "done"]
     result = events[-1]["result"]
     assert result["status"] == "failed"
-    assert (
-        result["message"]
-        == "The fit encountered band parameters with no finite chemical potential."
+    assert result["message"] == message
+    assert result["parameters"] == start
+
+
+@pytest.mark.parametrize("algorithm", ["verified-sequential-v2", "legacy-sequential-v1"])
+@pytest.mark.parametrize(
+    ("model", "mode", "start"),
+    [
+        ("spb", "spb_s", {"band_mass": 0.0, "fermi_energy": 100.0}),
+        ("dpb", "dpb_s", {"m_eff": 0.0, "band_gap": 1000.0, "fermi_energy": 100.0}),
+    ],
+)
+def test_zero_start_mass_selects_no_carrier_branch(
+    client: TestClient, algorithm: str, model: str, mode: str, start: dict[str, float]
+) -> None:
+    result = _result(client, _body(model, mode, start=start) | {"algorithm": algorithm})
+
+    assert result["status"] == "failed"
+    # The legacy Seebeck-only SPB fit has no branch check, so the solver reports the zero mass.
+    assert result["message"] == (
+        "The fit started from a zero band mass, which has no finite chemical potential."
+        if (model, algorithm) == ("spb", "legacy-sequential-v1")
+        else "The start values do not fit the bounds."
     )
     assert result["parameters"] == start
 

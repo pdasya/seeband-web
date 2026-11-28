@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- P15 (#106): a fit that starts with no finite chemical potential names the
+  domain in its message, as calculations already do: an SPB Fermi energy
+  outside the band, or a Fermi energy at or above the higher edge of two
+  valence bands. A zero start `m_eff` in the verified DPB fit now reports a
+  start outside its carrier branch instead of an internal error. No
+  calculated value or fit result changes.
+
 - Symmetric compensated DPB models give exact zero Seebeck and Hall
   coefficients when both bands also have equal transport weights. The core
   uses the exact midpoint for the chemical potential, removing roundoff

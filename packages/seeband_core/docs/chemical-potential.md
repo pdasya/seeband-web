@@ -31,6 +31,28 @@ a finite root exists only when E_F < max(0, E_g). Invalid domains are
 rejected. For example, r = 1.01, E_g = 1000 K, E_F = 0 and N = 1
 give a root close to the midpoint of the gap at 50 K.
 
+### Admissible domains and their edges (P15)
+
+The conserved target is the T = 0 density. Where it is zero for bands of
+one carrier type, every finite μ gives a positive population at T > 0, so no
+finite root exists. The edges belong to the no-root side.
+
+| Model and bands                     | Finite root exists | No-root code                          |
+| ----------------------------------- | ------------------ | ------------------------------------- |
+| SPB, any nonzero m                  | sign(m) E_F > 0    | `chemical_potential_spb_fermi_energy` |
+| DPB, r > 0 (valence and conduction) | always             | none                                  |
+| DPB, r < 0 (two valence bands)      | E_F < max(0, E_g)  | `chemical_potential_dpb_fermi_energy` |
+| SPB m = 0 or DPB r = 0              | never              | `chemical_potential_zero_mass`        |
+
+Explicit DPB bands use their own codes, listed in the
+[API README](../../../apps/api/README.md). `tests/test_no_root_domain.py` checks
+each edge, points 1e-9 K inside it against an independent mpmath density, and
+roots across the whole E_F range for r > 0. A Fermi energy inside a band but
+so close to its edge that the T = 0 density underflows, such as 1e-300 K,
+has a root analytically; it fails as a numerical `ChemicalPotentialError`,
+not as a no-root domain. These domains follow from the implemented
+parabolic-band balance; they still await physicist confirmation (#106).
+
 ## Numerical checks
 
 The solver uses `scipy.optimize.brentq` on the signed normalized balance,
@@ -77,8 +99,9 @@ boundary may be moved outside the domain by SciPy's initial inward adjustment.
 That numerical initialization failure is reported explicitly; the wrapper
 does not change coordinates, solver or bounds to force an interior point.
 
-Invalid starts and numerical failures become fit status `failed` with the
-fixed safe message. A calculation with an uncertifiable density root fails
+Invalid starts and numerical failures become fit status `failed` with a
+fixed safe message. A start in a no-root domain gets a message naming that
+domain. A calculation with an uncertifiable density root fails
 the whole request with HTTP 422; there are no partial density-root arrays.
 This is an intentional contract change from legacy 200/null responses.
 Numeric values from exceptions are not copied into fit messages or logs.
