@@ -126,14 +126,15 @@ def test_derived_curve_exception_preserves_other_temperatures(monkeypatch):
 
     from seeband_core import band_models
 
-    original = band_models._CORE.dpb_thermCond_calc
+    # κ_e = LσT takes L from these moments, so a failure there reaches κ_e.
+    original = band_models._CORE_MATH.dpb_lorenz_moments
 
-    def fails_at_200(tmin, tmax, points, *args):
-        if 200 in np.linspace(tmin, tmax, points):
+    def fails_at_200(temperatures, *args):
+        if 200 in np.asarray(temperatures):
             raise OverflowError("synthetic thermal failure")
-        return original(tmin, tmax, points, *args)
+        return original(temperatures, *args)
 
-    monkeypatch.setattr(band_models._CORE, "dpb_thermCond_calc", fails_at_200)
+    monkeypatch.setattr(band_models._CORE_MATH, "dpb_lorenz_moments", fails_at_200)
     answer = _to_response(calculate("dpb", replace(request(), kind="thermal_conductivity"), {}, 50))
     values = answer.curves["thermal_conductivity_w_per_m_k"]
     assert values[0] is not None and values[1] is None and values[2] is not None

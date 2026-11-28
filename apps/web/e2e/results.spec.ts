@@ -675,9 +675,9 @@ test("the additional graphs draw each curve the mode offers", async ({
   await expect(graph(page, "Thermal conductivity")).toContainText(
     "The electronic part only",
   );
-  await expect(graph(page, "Lorenz number")).toContainText(
-    "The solid line is the effective L",
-  );
+  await expect(graph(page, "Lorenz number")).toContainText("Total L");
+  await expect(graph(page, "Lorenz number")).toContainText("L / (10⁻⁸ W·Ω/K²)");
+  await expect(graph(page, "Lorenz number")).not.toContainText("L / L₀");
   // DPB S + ρ has no R_H data to size n.
   await expect(graph(page, "Carrier concentration")).toContainText(
     "uses m₁ = 1",

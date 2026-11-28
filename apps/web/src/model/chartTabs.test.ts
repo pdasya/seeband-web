@@ -10,7 +10,6 @@ import {
   chartTabView,
   derivedKind,
   drawsMeasuredCurves,
-  LORENZ_L0,
 } from "@/model/chartTabs";
 import type { FitModeDescription, ModelDescription } from "@/model/selection";
 import type { Quantity, SessionData } from "@/session/store";
@@ -626,7 +625,6 @@ describe("the additional graphs", () => {
   });
 
   describe("L(T)", () => {
-    const L0 = LORENZ_L0;
     const at = (id: string, curves: Record<string, number[]>) =>
       chartTabView(
         "lorenz_number",
@@ -636,29 +634,25 @@ describe("the additional graphs", () => {
         { temperature_k: [100, 200], curves, known_issues: [], rmse: {} },
       );
 
-    test("L₀ is π²/3 (k_B/e)², 2,44 × 10⁻⁸ W·Ω/K²", () => {
-      expect(L0).toBeCloseTo(2.443e-8, 11);
-    });
-
-    test("one band draws L in units of L₀, and names its limits", () => {
+    test("one band draws absolute L on a readable SI scale", () => {
       const view = at("spb_s_rho", {
-        lorenz_number_w_ohm_per_k2: [L0, 0.5 * L0],
+        lorenz_number_w_ohm_per_k2: [2.44e-8, 1.22e-8],
       });
-      expect(view.yAxisTitle).toBe("L / L₀");
+      expect(view.yAxisTitle).toBe("L / (10⁻⁸ W·Ω/K²)");
       expect(view.curves.map(({ label }) => label)).toEqual(["L"]);
-      expect(view.curves[0]?.values[0]).toBeCloseTo(1, 12);
-      expect(view.curves[0]?.values[1]).toBeCloseTo(0.5, 12);
-      expect(view.note).toMatch(/2 \(k_B\/e\)²/);
+      expect(view.curves[0]?.values).toEqual([2.44, 1.22]);
+      expect(view.description).toContain("10⁻⁸ W·Ω/K²");
+      expect(view.note).toContain("L₀ = π²/3 (k_B/e)²");
     });
 
-    test("two bands say which line is the effective L and which each band's", () => {
+    test("two bands say which line is the total L and which each band's", () => {
       const view = at("dpb_s_rho", {
-        lorenz_number_w_ohm_per_k2: [3 * L0, 4 * L0],
-        lorenz_number_band_1_w_ohm_per_k2: [L0, L0],
-        lorenz_number_band_2_w_ohm_per_k2: [L0, L0],
+        lorenz_number_w_ohm_per_k2: [5e-8, 8e-8],
+        lorenz_number_band_1_w_ohm_per_k2: [2e-8, 2e-8],
+        lorenz_number_band_2_w_ohm_per_k2: [2e-8, 2e-8],
       });
       expect(view.curves.map(({ label }) => label)).toEqual([
-        "Effective L = κ_e/(σT)",
+        "Total L",
         "band 1",
         "band 2",
       ]);
@@ -667,7 +661,13 @@ describe("the additional graphs", () => {
         true,
         true,
       ]);
-      expect(view.note).toMatch(/bipolar part/);
+      expect(view.curves.map(({ values }) => values)).toEqual([
+        [5, 8],
+        [2, 2],
+        [2, 2],
+      ]);
+      // The total above both bands needs its reason on screen.
+      expect(view.note).toContain("bipolar part");
     });
 
     test("is asked for where κ_e is, and says why not where it is not", () => {

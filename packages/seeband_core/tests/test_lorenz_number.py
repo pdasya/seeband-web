@@ -1,4 +1,4 @@
-"""R11: the Lorenz number L(T), which κ_e already holds, as a curve of its own."""
+"""Model Lorenz moments, independent of the absolute conductivity amplitude."""
 
 import math
 
@@ -18,6 +18,7 @@ def _curve(model_id: str, mode_id: str, scattering: str, kind: str, **changes: f
     model = registry.get(model_id)
     fit_mode = model.describe().fit_mode(mode_id)
     low, high = changes.pop("low", 100.0), changes.pop("high", 800.0)
+    n2 = changes.pop("n2", 1.0)
     parameters = default_start(fit_mode) | changes
     return model.calculate(
         CurveRequest(
@@ -28,6 +29,7 @@ def _curve(model_id: str, mode_id: str, scattering: str, kind: str, **changes: f
             5,
             scattering,
             kind,  # type: ignore[arg-type]
+            band_2_degeneracy=n2,
         )
     )
 
@@ -93,23 +95,30 @@ def test_ionized_impurities_reach_their_own_nondegenerate_limit_and_pi2_over_3()
     )
 
 
-@pytest.mark.parametrize("scattering", ["acPh", "dis", "ionized"])
+@pytest.mark.parametrize("scattering", ["acPh", "dis", "acPhDis", "ionized"])
 def test_one_band_l_is_kappa_over_sigma_t(scattering: str) -> None:
-    lorenz = _curve("spb", "spb_s_rho", scattering, "lorenz_number")
-    kappa = _curve("spb", "spb_s_rho", scattering, "thermal_conductivity")
-    sigma = _curve("spb", "spb_s_rho", scattering, "electrical_conductivity")
+    lorenz = _curve("spb", "spb_s_rho", scattering, "lorenz_number", C=0.1)
+    kappa = _curve("spb", "spb_s_rho", scattering, "thermal_conductivity", C=0.1)
+    sigma = _curve("spb", "spb_s_rho", scattering, "electrical_conductivity", C=0.1)
     expected = np.asarray(kappa.curves["thermal_conductivity_w_per_m_k"]) / (
         np.asarray(sigma.curves["electrical_conductivity_s_per_m"]) * lorenz.temperature_k
     )
-    assert np.asarray(lorenz.curves[LORENZ_CURVE]).tobytes() == expected.tobytes()
+    np.testing.assert_allclose(lorenz.curves[LORENZ_CURVE], expected, rtol=1e-12)
     assert set(lorenz.curves) == {LORENZ_CURVE}
 
 
-@pytest.mark.parametrize("scattering", ["acPh", "dis", "ionized"])
+@pytest.mark.parametrize("scattering", ["acPh", "dis", "acPhDis", "ionized"])
 def test_two_bands_give_the_effective_l_and_each_band_s(scattering: str) -> None:
-    """κ_e = T (L₁σ₁ + L₂σ₂) plus a bipolar part that is not negative, so L ≥ the σ-weighted L."""
-    lorenz = _curve("dpb", "dpb_s_rho", scattering, "lorenz_number")
-    sigma = _curve("dpb", "dpb_s_rho", scattering, "electrical_conductivity_by_band")
+    """κ_e = T (L₁σ₁ + L₂σ₂) plus a bipolar part that is not negative, so L ≥ the σ-weighted L.
+
+    With acPhDis and C ≠ D, band 2's weight varies with T, which a constant B would miss.
+    """
+
+    def curve(kind):
+        return _curve("dpb", "dpb_s_rho", scattering, kind, B=2.3, G=0.4, C=0.1, D=5.0, n2=3)
+
+    lorenz = curve("lorenz_number")
+    sigma = curve("electrical_conductivity_by_band")
     s1, s2 = (
         np.asarray(sigma.curves[name])
         for name in (
@@ -122,20 +131,131 @@ def test_two_bands_give_the_effective_l_and_each_band_s(scattering: str) -> None
     effective = np.asarray(lorenz.curves[LORENZ_CURVE])
     assert set(lorenz.curves) == {LORENZ_CURVE, *LORENZ_BAND_CURVES}
     assert np.all(effective >= weighted * (1 - 1e-12))
+    thermal = curve("thermal_conductivity").curves["thermal_conductivity_w_per_m_k"]
+    np.testing.assert_allclose(effective * (s1 + s2) * lorenz.temperature_k, thermal, rtol=1e-12)
     # Each band alone is a parabolic band, so its L lies between the limits of its scattering.
     low, high = sorted((4.0 if scattering == "ionized" else 2.0, math.pi**2 / 3))
     for band in (l1, l2):
         assert np.all((band / UNIT > low - 1e-9) & (band / UNIT < high + 1e-9))
 
 
-def test_no_other_curve_changes() -> None:
-    """L is new: the curves it is made of, and every other, are as they were."""
-    before = _curve("dpb", "dpb_s_rho", "acPh", "thermal_conductivity")
-    _curve("dpb", "dpb_s_rho", "acPh", "lorenz_number")
-    after = _curve("dpb", "dpb_s_rho", "acPh", "thermal_conductivity")
-    assert {name: np.asarray(v).tobytes() for name, v in before.curves.items()} == {
-        name: np.asarray(v).tobytes() for name, v in after.curves.items()
+@pytest.mark.parametrize("scattering", ["acPh", "dis", "acPhDis", "ionized"])
+@pytest.mark.parametrize(
+    ("band_gap", "fermi_energy", "m_eff"),
+    [
+        (gap, ef, m)
+        for gap in (300.0, 1500.0, 5000.0)
+        for ef in (-400.0, 100.0, 1200.0)
+        for m in (1.7, -0.6)
+        # Two valence bands with E_F above both hold no carriers, so μ(T) has no root.
+        if not (m < 0 and ef > gap)
+    ],
+)
+def test_l_from_moments_stays_kappa_over_sigma_t_across_bands(
+    scattering: str, band_gap: float, fermi_energy: float, m_eff: float
+) -> None:
+    """L comes from the moments, κ_e from its own curve: the two must agree everywhere.
+
+    The grid spans a narrow and a wide gap, E_F in band 1, in the gap and beyond band 2, and a
+    conduction or a second valence band, so a later change to κ_e or σ alone fails here.
+    """
+
+    def curve(kind):
+        return _curve(
+            "dpb",
+            "dpb_s_rho",
+            scattering,
+            kind,
+            band_gap=band_gap,
+            fermi_energy=fermi_energy,
+            m_eff=m_eff,
+            B=2.3,
+            G=0.4,
+            C=0.1,
+            D=5.0,
+            n2=3,
+            low=50.0,
+            high=1000.0,
+        )
+
+    lorenz = curve("lorenz_number")
+    sigma = curve("electrical_conductivity").curves["electrical_conductivity_s_per_m"]
+    thermal = curve("thermal_conductivity").curves["thermal_conductivity_w_per_m_k"]
+    effective = np.asarray(lorenz.curves[LORENZ_CURVE])
+    np.testing.assert_allclose(
+        effective * np.asarray(sigma) * lorenz.temperature_k, thermal, rtol=1e-11
+    )
+
+
+@pytest.mark.parametrize(
+    ("model_id", "scattering"),
+    [("spb", "acPh"), ("dpb", "acPh"), ("dpb", "dis"), ("dpb", "ionized")],
+)
+def test_lorenz_moments_survive_conductivity_underflow(model_id, scattering):
+    # A subnormal amplitude: σ and κ_e underflow, but L does not depend on the amplitude.
+    amplitude = {"F" if scattering == "dis" else "A": 1e-320}
+    if model_id == "spb":
+        parameters = {"band_mass": 1.0, "fermi_energy": 1e-6}
+        expected = UNIT * 2.0
+    else:
+        # Symmetric intrinsic bands have equal unit-amplitude conductivities. A relative weight
+        # of 3 gives weights 1/4 and 3/4, even after absolute underflow. Each band is
+        # nondegenerate with η = −1000, so L_i = λ + 2 and S_i = ±(λ + 2 + 1000).
+        lam = 2.0 if scattering == "ionized" else 0.0
+        parameters = {"m_eff": 1.0, "band_gap": 4000.0, "fermi_energy": 0.0, "B": 3.0, "G": 3.0}
+        expected = UNIT * (lam + 2 + 3.0 / 16.0 * (2 * (lam + 2 + 1000.0)) ** 2)
+    with np.errstate(all="ignore"):
+        result = _curve(
+            model_id,
+            f"{model_id}_s_rho",
+            scattering,
+            "lorenz_number",
+            **parameters,
+            **amplitude,
+            low=2.0,
+            high=2.0,
+        )
+    np.testing.assert_allclose(result.curves[LORENZ_CURVE], expected, rtol=1e-8)
+
+
+def test_zero_conductivity_leaves_only_individual_band_moments():
+    with np.errstate(all="ignore"):
+        result = _curve("dpb", "dpb_s_rho", "acPh", "lorenz_number", A=0.0)
+    assert np.isnan(result.curves[LORENZ_CURVE]).all()
+    assert all(np.isfinite(result.curves[name]).all() for name in LORENZ_BAND_CURVES)
+
+
+@pytest.mark.parametrize("amplitude", [0.0, math.nan, math.inf])
+@pytest.mark.parametrize("model_id", ["spb", "dpb"])
+def test_an_undefined_conductivity_leaves_the_effective_l_undefined(model_id, amplitude):
+    # σ and κ_e are zero, undefined or infinite, so κ_e/(σT) has no value either.
+    with np.errstate(all="ignore"):
+        result = _curve(model_id, f"{model_id}_s_rho", "acPh", "lorenz_number", A=amplitude)
+    assert np.isnan(result.curves[LORENZ_CURVE]).all()
+
+
+def test_a_mechanism_without_lorenz_moments_is_refused():
+    model = registry.get("dpb")
+    fit_mode = model.describe().fit_mode("dpb_s_rho")
+    request = CurveRequest(
+        fit_mode.id, default_start(fit_mode), 100, 300, 3, "acPh", "lorenz_number"
+    )
+    # Not a declared mechanism: it must not get the moments of another one.
+    with pytest.raises(ValueError, match="No Lorenz moments"):
+        model._lorenz_number(request, fit_mode, "unknown")
+
+
+@pytest.mark.parametrize("scattering", ["acPh", "dis", "acPhDis", "ionized"])
+@pytest.mark.parametrize("model_id", ["spb", "dpb"])
+def test_l_carries_the_known_issues_of_kappa_and_sigma(model_id, scattering):
+    issues = {
+        kind: set(_curve(model_id, f"{model_id}_s_rho", scattering, kind).known_issues)
+        for kind in ("lorenz_number", "thermal_conductivity", "electrical_conductivity")
     }
+    assert (
+        issues["thermal_conductivity"] | issues["electrical_conductivity"]
+        <= issues["lorenz_number"]
+    )
 
 
 def test_modes_without_resistivity_say_why_they_have_no_l() -> None:

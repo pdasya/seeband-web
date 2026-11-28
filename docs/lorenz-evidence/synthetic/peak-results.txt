@@ -1,0 +1,3 @@
+T=50 K: weighted=1.945941354e-08, bipolar=8.307208904e-15, total=1.945942184e-08 W ohm/K^2; relative error=6.2e-14
+T=371.42857142857144 K: weighted=1.552826869e-08, bipolar=6.211932207e-08, total=7.764759076e-08 W ohm/K^2; relative error=3.3e-15
+T=800 K: weighted=1.577917215e-08, bipolar=5.243181312e-08, total=6.821098527e-08 W ohm/K^2; relative error=3.7e-15

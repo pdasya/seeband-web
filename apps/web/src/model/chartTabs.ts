@@ -67,12 +67,6 @@ const THERMAL_CONDUCTIVITY = "thermal_conductivity_w_per_m_k";
 const LORENZ = "lorenz_number_w_ohm_per_k2";
 const LORENZ_BAND_1 = "lorenz_number_band_1_w_ohm_per_k2";
 const LORENZ_BAND_2 = "lorenz_number_band_2_w_ohm_per_k2";
-/**
- * L₀ = π²/3 (k_B/e)², the degenerate limit of L, in W·Ω/K², from the exact SI constants. The chart
- * shows L in units of it.
- */
-export const LORENZ_L0 =
-  (Math.PI ** 2 / 3) * (1.380649e-23 / 1.602176634e-19) ** 2;
 const CARRIERS_BAND_1 = "carrier_concentration_band_1_per_cm3";
 const CARRIERS_BAND_2 = "carrier_concentration_band_2_per_cm3";
 
@@ -513,11 +507,6 @@ function thermalConductivityView(
   });
 }
 
-/**
- * L(T) in units of L₀. For one band it is the band's own; for two, the solid line is the effective
- * L = κ_e/(σT), with the bipolar part, and the dashed ones each band's own L, which κ_e weighs by
- * its σ. The note says which is which.
- */
 function lorenzView(
   mode: FitModeDescription | undefined,
   derived: CalcResponse | null,
@@ -525,24 +514,21 @@ function lorenzView(
   const bands = derived?.curves[LORENZ_BAND_1] !== undefined;
   return derivedView("lorenz_number", mode, derived, {
     curves: (result) => [
-      ...curveOf(
-        result,
-        LORENZ,
-        1 / LORENZ_L0,
-        bands ? text.lorenzEffective : text.lorenz,
-        { color: "blue" },
-      ),
-      ...curveOf(result, LORENZ_BAND_1, 1 / LORENZ_L0, text.band1, {
+      ...curveOf(result, LORENZ, 1e8, bands ? text.lorenzTotal : text.lorenz, {
+        color: "blue",
+      }),
+      ...curveOf(result, LORENZ_BAND_1, 1e8, text.band1, {
         color: "orange",
         dashed: true,
       }),
-      ...curveOf(result, LORENZ_BAND_2, 1 / LORENZ_L0, text.band2, {
+      ...curveOf(result, LORENZ_BAND_2, 1e8, text.band2, {
         color: "teal",
         dashed: true,
       }),
     ],
     yAxisTitle: text.axes.lorenz,
     description: text.lorenzDescription,
+    // Why the total can lie above both bands, and what one band tends to.
     note: bands ? text.lorenzTwoBandsNote : text.lorenzNote,
   });
 }

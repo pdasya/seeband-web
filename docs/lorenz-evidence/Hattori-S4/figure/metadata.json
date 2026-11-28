@@ -1,0 +1,95 @@
+{
+  "source_pdf": "source.pdf",
+  "source_sha256": "1131f062bd5dca7915fe01ff72a0f2bba46ba0a836c860cb1ddcaf40535ef971",
+  "pdf_page_one_based": 46,
+  "printed_page": 9,
+  "figure": "Supplementary Fig. 4",
+  "gamma": -0.5,
+  "native_image_size": [1387, 779],
+  "native_sha256": "fa4049be336d84fd3f97383ad3968cd706d8e234ee72ec61bdbb6802c94af465",
+  "panels": {
+    "sigma": {
+      "panel": "d",
+      "xlo": 48,
+      "xhi": 219,
+      "ytop": 328,
+      "ybot": 364,
+      "mu0": 143.5,
+      "px_per_ev": 123.0,
+      "zero_y": 363.0,
+      "unit_per_px": 50955.41401273885,
+      "unit": "S/m",
+      "seeds": [351, 349, 347, 345, 343, 341, 339, 337, 335, 333, 331]
+    },
+    "seebeck": {
+      "panel": "e",
+      "xlo": 280,
+      "xhi": 450,
+      "ytop": 210,
+      "ybot": 362,
+      "mu0": 374.5,
+      "px_per_ev": 123.0,
+      "zero_y": 361.5,
+      "unit_per_px": 5.333333333333333,
+      "unit": "uV/K",
+      "seeds": [
+        214.5, 214.5, 214.5, 214.5, 214.5, 215.5, 228, 246, 265, 284, 304
+      ]
+    },
+    "kappa_el": {
+      "panel": "f",
+      "xlo": 507,
+      "xhi": 677,
+      "ytop": 210,
+      "ybot": 359,
+      "mu0": 602.5,
+      "px_per_ev": 123.0,
+      "zero_y": 358.0,
+      "unit_per_px": 0.24096385542168675,
+      "unit": "W/(m K)",
+      "seeds": [308, 299, 290, 280, 270, 261, 251, 242, 232, 223, 213]
+    }
+  },
+  "palette_rgb": [
+    [59.0, 75.0, 191.0],
+    [97.0, 126.0, 228.0],
+    [137.0, 168.0, 249.0],
+    [162.0, 192.0, 255.0],
+    [193.0, 212.0, 245.0],
+    [223.0, 222.0, 222.0],
+    [242.0, 206.0, 187.0],
+    [247.0, 171.0, 141.0],
+    [239.0, 141.0, 116.0],
+    [216.0, 93.0, 80.0],
+    [176.0, 0.0, 27.0]
+  ],
+  "grid_mu_ev": [
+    -0.75, -0.725, -0.7, -0.675, -0.65, -0.625, -0.6, -0.575, -0.55, -0.525,
+    -0.5, -0.475, -0.45, -0.425, -0.4, -0.375, -0.35, -0.325, -0.3, -0.275,
+    -0.25, -0.225, -0.2, -0.175, -0.15, -0.125, -0.1, -0.075, -0.05, -0.025,
+    0.0, 0.025, 0.05, 0.075, 0.1, 0.125, 0.15, 0.175, 0.2, 0.225, 0.25, 0.275,
+    0.3, 0.325, 0.35, 0.375, 0.4, 0.425, 0.45, 0.475, 0.5, 0.525, 0.55, 0.575,
+    0.6
+  ],
+  "method": "White-to-ink RGB ray separation and bounded image-space dynamic-programming continuity; linear pixel-to-axis calibration; linear resampling of extracted coordinates only.",
+  "envelope": "Deterministic image-reading envelope, not statistical confidence interval: \u00b11.5 vertical pixels, \u00b10.5 horizontal pixel times local observed slope; envelope union for extracted neighboring traces within 1.2 px. Includes native line thickness, vertical calibration and quantization. Overlap centers are representatives, not independently resolved values.",
+  "manual_gray_seebeck_anchors_native_px": [
+    [320, 352],
+    [340, 347.4],
+    [360, 337.2],
+    [380, 316.4],
+    [400, 286.4],
+    [420, 256],
+    [440, 227],
+    [450, 215]
+  ],
+  "no_extrapolation": true,
+  "notes": [
+    "All 11 published DeltaE values included.",
+    "No model or physical curve fit used.",
+    "Native raster resolution limits separability, especially conductivity near baseline, S blue curves at positive mu, and red S curves at negative mu.",
+    "Shared gray DeltaE=0 trace can be obscured by other ink.",
+    "Values are positive as plotted; sigma original axis (ohm m)^-1 with 1e6 multiplier; S uV/K; kappa W/m/K."
+  ],
+  "source_url": "https://arxiv.org/pdf/2603.21649"
+}

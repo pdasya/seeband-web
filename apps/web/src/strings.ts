@@ -511,7 +511,7 @@ export const STRINGS = {
       energy: (unit: string) => `E, ${unit}`,
       conductivity: "σ, S/m",
       thermalConductivity: "κ_e, W/(m·K)",
-      lorenz: "L / L₀",
+      lorenz: "L / (10⁻⁸ W·Ω/K²)",
       carrierConcentration: "n, cm⁻³",
     },
     quantityTabs: {
@@ -570,13 +570,13 @@ export const STRINGS = {
     thermalConductivity: "κ_e",
     thermalConductivityDescription: "Chart of κ_e against temperature",
     lorenz: "L",
-    lorenzEffective: "Effective L = κ_e/(σT)",
+    lorenzTotal: "Total L",
     lorenzDescription:
-      "Chart of the Lorenz number against temperature, in units of L₀",
+      "Chart of the Lorenz number against temperature, in 10⁻⁸ W·Ω/K²",
     lorenzNote:
-      "L = κ_e/(σT), in units of L₀ = π²/3 (k_B/e)² = 2,44 × 10⁻⁸ W·Ω/K². It tends to L₀ for a degenerate band, and for a nondegenerate one to 2 (k_B/e)² with acoustic phonons or alloy disorder and to 4 (k_B/e)² with ionized impurities.",
+      "L = κ_e/(σT). It tends to L₀ = π²/3 (k_B/e)² = 2.44 × 10⁻⁸ W·Ω/K² for a degenerate band, and for a nondegenerate one to 2 (k_B/e)² = 1.49 × 10⁻⁸ W·Ω/K² with acoustic phonons or alloy disorder and to 4 (k_B/e)² = 2.97 × 10⁻⁸ W·Ω/K² with ionized impurities.",
     lorenzTwoBandsNote:
-      "The solid line is the effective L = κ_e/(σT), with the bipolar part, which can rise far above either band's; the dashed lines are each band's own L. All in units of L₀ = π²/3 (k_B/e)² = 2,44 × 10⁻⁸ W·Ω/K².",
+      "The solid line is the total L = κ_e/(σT), with the bipolar part, which can rise far above either band's; the dashed lines are each band's own L.",
     thermalConductivityNote:
       "The electronic part only, with the bipolar part in a two-band model. The lattice part is not modelled.",
     carrierConcentrationDescription:
@@ -898,8 +898,7 @@ export const STRINGS = {
       electrical_conductivity_s_per_m: "Electrical conductivity [S/m]",
       thermal_conductivity_w_per_m_k:
         "Electronic thermal conductivity [W/(m*K)]",
-      lorenz_number_w_ohm_per_k2:
-        "Lorenz number L = kappa_e/(sigma*T) [W*Ohm/K^2]",
+      lorenz_number_w_ohm_per_k2: "Lorenz number L [W*Ohm/K^2]",
       lorenz_number_band_1_w_ohm_per_k2: "Lorenz number of band 1 [W*Ohm/K^2]",
       lorenz_number_band_2_w_ohm_per_k2: "Lorenz number of band 2 [W*Ohm/K^2]",
       seebeck_v_per_k: "Total Seebeck coefficient [V/K]",
@@ -910,8 +909,6 @@ export const STRINGS = {
       carrier_concentration_band_2_per_cm3:
         "Carrier concentration of band 2 [1/cm^3]",
     },
-    relativeToL0: (column: string) =>
-      `${column.replace(/ \[W\*Ohm\/K\^2\]$/, "")} / L0, L0 = pi^2/3 (k_B/e)^2 = 2.44e-8 W*Ohm/K^2`,
     // Curves of an energy, which the API gives in K, in the unit the screen shows them in.
     energyCurves: {
       chemical_potential_k: (unit: string) => `Chemical potential [${unit}]`,

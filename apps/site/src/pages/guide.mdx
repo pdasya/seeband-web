@@ -244,18 +244,21 @@ allows: μ(T) in every mode, σ, $\kappa_e$ and the Lorenz number in modes with
     <img
       src="/guide/additional-graphs.png"
       width="1392"
-      height="1070"
+      height="1054"
       loading="lazy"
       alt="Six additional graphs: chemical potential, conductivity with 1/ρ of the data, electronic thermal conductivity, Lorenz number, band contributions to S and carrier concentration by band."
     />
   </a>
-  <figcaption>The additional graphs of the DPB fit.</figcaption>
+  <figcaption>
+    Additional graphs from the built-in synthetic DPB demo. The Lorenz panel
+    shows total L and both band values.
+  </figcaption>
 </figure>
 
-- **Chemical potential μ(T).** μ falls with temperature, from 0.11 eV to just
-  above the edge of the conduction band at 800 K. The gap, 0.055 eV, is smaller
-  than $k_BT$ at the upper temperatures, so holes form in the valence band. This
-  changes every transport coefficient.
+- **Chemical potential μ(T).** μ starts in the valence band, at $E_F$ = −0.013 eV,
+  and rises into the gap above about 150 K. The gap, 0.069 eV, is close to
+  $k_BT$ at the upper temperatures, so electrons are excited into the conduction
+  band. This changes every transport coefficient.
 - **Band contributions.** Each band's S is weighted by its conductivity, so
   the two contributions add up to S:
 
@@ -266,20 +269,23 @@ allows: μ(T) in every mode, σ, $\kappa_e$ and the Lorenz number in modes with
 - **Electronic thermal conductivity $\kappa_e$.** It is often estimated by the
   Wiedemann–Franz law, $\kappa_e = L\sigma T$, with the Lorenz number of
   degenerate metals, $L_0$ = 2.44 × 10⁻⁸ W·Ω/K², or with an estimate from the
-  Seebeck coefficient such as that of Kim et al. [[2]](#references). Here L follows from the band
-  parameters, and for two bands $\kappa_e$ includes the bipolar part. It arises
+  Seebeck coefficient such as that of Kim et al. [[2]](#references). Here the model computes $\kappa_e$ from the
+  transport moments of the bands, and L follows as $\kappa_e/(\sigma T)$. For two bands $\kappa_e$ includes the bipolar part. It arises
   when two bands with different S conduct in parallel; with a conduction and a
   valence band it is carried by electron–hole pairs that form at the hot side
   and recombine at the cold side, releasing the gap energy. It can raise
-  $\kappa_e$ markedly at high temperatures: here the effective L rises from
-  about 0.85 $L_0$ at 200 K to about 2.7 $L_0$ at 800 K. The bipolar part
+  $\kappa_e$ markedly at high temperatures. In this demo, total L is
+  1.95 × 10⁻⁸ W·Ω/K² at 50 K, peaks at 7.76 × 10⁻⁸ W·Ω/K² near 370 K, of which
+  6.21 × 10⁻⁸ is the bipolar part, and is 6.82 × 10⁻⁸ W·Ω/K² at 800 K, while each
+  band's own L stays between 1.49 and 1.95 × 10⁻⁸ W·Ω/K²
+  ([independent replay](https://github.com/pdasya/seeband-web/blob/main/docs/lorenz-evidence/synthetic/peak-results.txt)). The bipolar part
   cannot be measured on its own; a two-band fit gives a model-dependent
   estimate of it, only as good as the fit. The lattice part is not modelled.
-- **Lorenz number L(T)**, in units of $L_0$: the effective $\kappa_e/(\sigma T)$,
-  with the bipolar part, and each band's own L.
+- **Lorenz number L(T)** shows total L and each band’s own L in units of
+  10⁻⁸ W·Ω/K². The download gives absolute values in W·Ω/K².
 - **Carrier concentration by band.** Without $R_H$ data the size of $m_1$ is
   not measured, so these values are relative; compare the bands, not the values.
-  Here $m_1$ is near its bound, so treat them as relative too. Band 1's holes
+  Band 1's holes
   are drawn as negative, and the ratio of the bands depends on $N_2/N_1$.
 
 The formulas are in [Conventions](/conventions/#thermal-conductivity-and-lorenz-number).

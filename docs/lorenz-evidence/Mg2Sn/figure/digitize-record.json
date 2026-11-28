@@ -1,0 +1,292 @@
+{
+  "source_pdf": "Naithani-2022.pdf",
+  "source_sha256": "b068909f3fccb9a49288816bc467f99282406b9def131dc60fc59f702ebe0116",
+  "source_url": "https://elib.dlr.de/193456/",
+  "doi": "10.1088/2515-7655/ac7fb8",
+  "pdf_page_one_based": 9,
+  "printed_page": 8,
+  "image_size_px": [1351, 1078],
+  "axes": {
+    "a": [126, 300, 639, 750, 11, 0, 447, -200],
+    "c": [106, 300, 652, 750, 548, 350, 912, 0],
+    "b_upper": [778, 250, 1325, 750, 20, 5000, 328, 2000],
+    "b_lower": [778, 250, 1325, 750, 345, 1000, 449, 0],
+    "d": [785, 300, 1329, 750, 561, 4000, 999, 0]
+  },
+  "samples": {
+    "n_sc_sb": ["n", "Sc0.05Mg2.01Sn0.97Sb0.03", "red", 4.57e20],
+    "n_sb": ["n", "Mg2.06Sn0.97Sb0.03", "blue", 3.97e20],
+    "n_sc05": ["n", "Sc0.05Mg1.95Sn", "magenta", 2e18],
+    "n_sc01": ["n", "Sc0.01Mg1.99Sn", "green", 4e17],
+    "p_li03": ["p", "Li0.03Mg1.97Sn", "olive", 2.69e20],
+    "p_li02": ["p", "Li0.02Mg1.98Sn", "blue", 2.45e20],
+    "p_li01": ["p", "Li0.01Mg1.99Sn", "magenta", 1.51e20],
+    "p_li005": ["p", "Li0.005Mg1.995Sn", "green", 7.2e19],
+    "p_undoped": ["p", "Mg2Sn", "orange", 4.4e18]
+  },
+  "curve_guide_anchors": [
+    [
+      "a",
+      "n_sc_sb",
+      [
+        [300, -70],
+        [400, -90],
+        [500, -111],
+        [600, -128],
+        [700, -138],
+        [750, -140]
+      ]
+    ],
+    [
+      "a",
+      "n_sb",
+      [
+        [300, -77],
+        [400, -98],
+        [500, -117],
+        [600, -134],
+        [700, -145],
+        [750, -147]
+      ]
+    ],
+    [
+      "a",
+      "n_sc05",
+      [
+        [350, -200],
+        [400, -112],
+        [450, -69],
+        [500, -44],
+        [550, -35],
+        [600, -31],
+        [650, -30],
+        [750, -29]
+      ]
+    ],
+    [
+      "a",
+      "n_sc01",
+      [
+        [300, -144],
+        [350, -60],
+        [400, -33],
+        [450, -26],
+        [500, -24],
+        [600, -25],
+        [750, -27]
+      ]
+    ],
+    [
+      "c",
+      "p_li03",
+      [
+        [300, 50],
+        [400, 70],
+        [500, 88],
+        [600, 99],
+        [650, 104],
+        [700, 108],
+        [750, 105]
+      ]
+    ],
+    [
+      "c",
+      "p_li02",
+      [
+        [300, 55],
+        [400, 76],
+        [500, 94],
+        [600, 106],
+        [650, 110],
+        [700, 111],
+        [750, 105]
+      ]
+    ],
+    [
+      "c",
+      "p_li01",
+      [
+        [300, 80],
+        [400, 102],
+        [500, 120],
+        [550, 125],
+        [600, 128],
+        [650, 127],
+        [700, 120],
+        [750, 105]
+      ]
+    ],
+    [
+      "c",
+      "p_li005",
+      [
+        [300, 120],
+        [400, 150],
+        [500, 158],
+        [550, 153],
+        [600, 136],
+        [650, 112],
+        [700, 88],
+        [750, 68]
+      ]
+    ],
+    [
+      "c",
+      "p_undoped",
+      [
+        [300, 315],
+        [350, 260],
+        [400, 155],
+        [450, 75],
+        [500, 30],
+        [550, 10],
+        [600, -5],
+        [650, -12],
+        [750, -20]
+      ]
+    ],
+    [
+      "b_upper",
+      "n_sc_sb",
+      [
+        [350, 4500],
+        [400, 3900],
+        [450, 3400],
+        [500, 3040],
+        [550, 2750],
+        [600, 2490],
+        [650, 2300],
+        [730, 2000]
+      ]
+    ],
+    [
+      "b_upper",
+      "n_sb",
+      [
+        [300, 5100],
+        [350, 4300],
+        [400, 3600],
+        [450, 3200],
+        [500, 2850],
+        [550, 2550],
+        [600, 2280],
+        [660, 2000]
+      ]
+    ],
+    [
+      "b_lower",
+      "n_sc01",
+      [
+        [300, 0],
+        [400, 80],
+        [500, 190],
+        [600, 340],
+        [700, 490],
+        [750, 600]
+      ]
+    ],
+    [
+      "d",
+      "p_li03",
+      [
+        [300, 3200],
+        [400, 2400],
+        [500, 1900],
+        [600, 1570],
+        [700, 1350],
+        [750, 1260]
+      ]
+    ],
+    [
+      "d",
+      "p_li02",
+      [
+        [300, 3100],
+        [400, 2300],
+        [500, 1800],
+        [600, 1450],
+        [700, 1250],
+        [750, 1170]
+      ]
+    ],
+    [
+      "d",
+      "p_li01",
+      [
+        [300, 2200],
+        [400, 1630],
+        [500, 1250],
+        [600, 1010],
+        [700, 890],
+        [750, 870]
+      ]
+    ],
+    [
+      "d",
+      "p_li005",
+      [
+        [300, 1250],
+        [400, 850],
+        [500, 670],
+        [600, 600],
+        [700, 630],
+        [750, 670]
+      ]
+    ],
+    [
+      "d",
+      "p_undoped",
+      [
+        [300, 110],
+        [400, 130],
+        [500, 230],
+        [600, 370],
+        [700, 510],
+        [750, 600]
+      ]
+    ]
+  ],
+  "identifiable_square_boxes": {
+    "n_sc01": [
+      [1183, 1195, 403, 415],
+      [1165, 1175, 406, 418],
+      [1144, 1155, 410, 421],
+      [1123, 1134, 413, 424],
+      [1102, 1114, 416, 427],
+      [1081, 1093, 419, 430],
+      [1060, 1071, 422, 433],
+      [1039, 1051, 424, 436],
+      [1018, 1030, 427, 438],
+      [998, 1009, 429, 441],
+      [976, 987, 432, 443],
+      [955, 965, 434, 445],
+      [932, 944, 436, 447],
+      [911, 922, 438, 448],
+      [889, 900, 439, 450],
+      [866, 877, 440, 451],
+      [827, 838, 442, 453]
+    ],
+    "n_sc05": [
+      [878, 887, 439, 450],
+      [900, 909, 438, 448],
+      [921, 931, 436, 447],
+      [944, 953, 435, 445]
+    ]
+  },
+  "pdfium_version": "5.15.2",
+  "curve_pixel_rows": 4467,
+  "spb_pixel_rows": 910,
+  "experimental_symbols": 152,
+  "isolated_experimental_symbols": 131,
+  "identifiable_overlap_symbols": 21,
+  "orange_seebeck_zero_crossing": {
+    "native_pixel_x_bracket": [449, 450],
+    "temperature_k_approx": 583,
+    "figure_reading_envelope_k": 8,
+    "note": "Original thin orange stroke centers straddle S=0 between these columns; vertical \u00b12px envelope dominates near the shallow crossing."
+  },
+  "method": "Embedded raster extracted by PDFium. RGB masks; remove isolated components with both dimensions 7\u201323px (symbols); colored runs no thicker than 6px plus guide-slope allowance; nearest manual guide within 12 px; omit \u00b15px neighborhoods containing a run thicker than the slope-adjusted threshold within 10px of the guide-shifted curve. No interpolation of output. Isolated connected symbols plus explicitly checked overlapping square boxes.",
+  "uncertainty": "Conservative \u00b12 native pixels for each reported coordinate: combines pixel location, anti-aliasing and tick calibration. This is a digitization envelope, not measurement uncertainty or statistical sigma. Local overlaps can create larger error; inspect overlay. Original experimental error bars are not supplied.",
+  "omissions": "The b_lower/n_sc05 published curve is unavailable: magenta marks are square edges and green overpaints the solid curve. SPB dashed bright-green runs are in a separate CSV. Experimental symbols touching curves or one another are omitted unless complete square outer extents can be identified; those explicitly annotated boxes are separate kinds. Masked legend regions can obscure curves; no reconstruction is attempted. At same-color crossings or marker overlaps extracted curve pixels can be unreliable; validation overlay retained.",
+  "verification": "Axes, labels, colors, sample identities and broken n-type conductivity axis visually checked on original PDF render and native image. S/cm converted to S/m by \u00d7100 only in value_si. Negative n-type Seebeck signs preserved."
+}

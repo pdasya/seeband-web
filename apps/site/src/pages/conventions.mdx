@@ -348,10 +348,13 @@ $$
 
 where the second term is the interband contribution and $S_i$ is each band's own S.
 The core evaluates this term without forming a product of two small
-conductivities. The lattice part is not modelled. The Lorenz number chart shows the effective
-$L = \kappa_e/(\sigma T)$, in units of L₀; for DPB it includes the interband contribution
-and can rise far above either band's L, which are shown beside it. L needs σ,
-so S-only modes do not offer it.
+conductivities. The chart shows absolute $L = \kappa_e/(\sigma T)$ on a $10^{-8}$ W·Ω/K² scale.
+Text exports give each value directly in W·Ω/K². The two band curves show the
+intrinsic $L_i$. With $w_i=\sigma_i/\sigma$, the total is
+$w_1L_1+w_2L_2+w_1w_2(S_1-S_2)^2$. Electron and hole thermopowers have
+opposite signs, so the last term can raise the total above both band curves and
+above $L_0$. See [Thesberg et al.](https://doi.org/10.1103/PhysRevB.95.125206).
+SeeBand offers this chart in modes with resistivity.
 
 ## Which data fit which parameters
 

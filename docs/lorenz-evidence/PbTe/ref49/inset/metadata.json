@@ -1,0 +1,38 @@
+{
+  "source": "PEI_SI.pdf",
+  "sha256": "cb11a4dd3add97537ca90be16cd25f92f849ae2e553a0edc8262dc87a0ca6578",
+  "pdfplumber_version": "0.11.9",
+  "pdf_page_one_based": 2,
+  "figure": "Fig S3(b) inset",
+  "x_ticks_temperature_k_pdf_pt": [
+    [300, 402.0602112],
+    [400, 415.0208893],
+    [500, 428.1017914],
+    [600, 440.9422455],
+    [700, 453.9029236],
+    [800, 466.8636017],
+    [900, 479.8242798]
+  ],
+  "y_ticks_fraction_pdf_top_pt": [
+    [0.3, 629.4655914],
+    [0.4, 618.2460175],
+    [0.5, 607.0862732],
+    [0.6, 595.8666992],
+    [0.7, 584.5274963],
+    [0.8, 573.3677368],
+    [0.9, 562.1481781],
+    [1.0, 550.9286041]
+  ],
+  "method": "Direct PDF polyline vertices; piecewise linear calibration between labeled major ticks; linear segment intersection; midpoint for vertical segments. No smoothing or extrapolation except endpoint clamping within 0.01 PDF point.",
+  "uncertainty": "Conservative +/-0.005 absolute visual reading envelope, not statistical or model uncertainty. Stroke width 0.318975 PDF pt gives about +/-0.00142 fraction; coordinate quantization/stair steps and tick geometry contribute additional uncertainty.",
+  "concentration_mapping": "Color inherited from main Fig S3b: green=1.5e20, blue=2.0e20, red=2.5e20 cm^-3; inset itself has no separate color legend.",
+  "max_nearest_vertex_crosscheck_difference": 0.0010962079541957381,
+  "source_prose_comparison_400K": {
+    "page": 3,
+    "f_L": 0.77,
+    "b": 4,
+    "implied_p_sigma_fraction": 0.22999999999999998,
+    "implied_sigma_sigma_fraction": 0.06948640483383685,
+    "note": "Prose is for 2% Na-doped PbTe. Figure density fractions around .81 conflict with implied .23. Do not silently reinterpret or invert the inset labels."
+  }
+}
