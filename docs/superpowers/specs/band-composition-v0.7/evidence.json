@@ -1,0 +1,798 @@
+{
+  "revision": "0.7",
+  "archived_p18_revision": "8e4f98d78c3868c65f5e22b4e359061aca3f7ece",
+  "design": "../2026-11-21-band-composition-design.md",
+  "working_directories": {
+    "REPO": "Repository root of the review checkout. Each command runs here. Historical commands record the original invocation only."
+  },
+  "interface_contract": {
+    "band_count": [1, 2, 3],
+    "band_character": ["VB", "CB"],
+    "dispersion": ["Parabolic", "Kane"],
+    "max_kane": 1,
+    "scattering_without_kane": ["acPh", "dis", "ionized", "acPhDis"],
+    "scattering_with_kane": ["acPh"],
+    "fit_mode_quantities": [["S"], ["S", "rho"], ["S", "rho", "R_H"]],
+    "model_panel": [
+      "bands",
+      "fit_mode",
+      "scattering",
+      "valley_counts",
+      "temperature_range_K"
+    ],
+    "parameters_panel": [
+      "parameter_values",
+      "held",
+      "fit_bounds",
+      "three_band_gap_summary"
+    ],
+    "examples": [
+      {
+        "bands": ["VB Parabolic", "CB Parabolic", "VB Parabolic"],
+        "label": "3 SPB"
+      },
+      {
+        "bands": ["VB Parabolic", "CB Kane"],
+        "label": "1 SKB + 1 SPB"
+      }
+    ],
+    "guide": "Parameters by fit mode",
+    "band_counts_with_kane": [1, 2]
+  },
+  "planned_matrix": {
+    "allowed": 198,
+    "invalid_scattering": 90,
+    "status": "The standalone Fit/Guide exercised all 576 ordered requests in Chromium. Production API transport and fitting remain planned.",
+    "total": 576,
+    "unsupported_composition": 288
+  },
+  "checks": [
+    {
+      "id": "P18-BASE",
+      "scope": "production baseline",
+      "status": "passed",
+      "claim": "Domain checks, explicit DPB transport and the existing two-band fit.",
+      "command": "uv run --frozen python docs/superpowers/specs/band-composition-v0.7/evidence/replay_p18.py --only P18-BASE",
+      "cwd": "REPO",
+      "output": "evidence/p18-baseline.txt",
+      "metrics": {
+        "tests_passed": 113
+      },
+      "limitations": "Selected P18 tests only. The full CI suite for the proposed configuration was not run.",
+      "output_sha256": "e792f4a705b3d5374c5aa7fbcce8f42bd1cfdf337dc7f104739e55f8c3ef690a",
+      "provenance": "retained prior evidence",
+      "replay_status": "historical_output_from_separate_p18",
+      "historical_command": "PYTHONPATH=packages/seeband_core/src .venv/bin/pytest -q packages/seeband_core/tests/test_carrier_domain.py packages/seeband_core/tests/test_explicit_transport.py packages/seeband_core/tests/test_explicit_dpb_fit.py",
+      "acceptance": {
+        "pytest_passed": 113
+      }
+    },
+    {
+      "id": "CHARGE",
+      "scope": "reference calculation",
+      "status": "passed",
+      "claim": "A common chemical potential and conservation of n−p across the reference configurations.",
+      "command": "uv run --frozen python scripts/verify_band_composition_design.py",
+      "cwd": "REPO",
+      "output": "evidence/verify_band_composition_design.txt",
+      "metrics": {
+        "max_normalized_residual": 1.303e-13
+      },
+      "limitations": "Finite sample of configurations. The demonstration of conductivity fractions assumes a constant relaxation time. Three-band Kane inputs in this mathematical reference are outside the current editor scope.",
+      "item_12": {
+        "reference_wavevector_per_m": 10000000000.0,
+        "test_display_coordinates": [-0.1, 0.1],
+        "quantity": "single-valley energy; radial transport keeps physical k"
+      },
+      "output_sha256": "3fefc162b5a38be576fb843f9543f71837821fadd984c4b4f7d462babd923225",
+      "provenance": "Output reproduced from the PR checkout.",
+      "replay_status": "reproduced_from_pr",
+      "pytest_node": "packages/seeband_core/tests/test_band_design_evidence.py::test_band_design_evidence[composition]",
+      "units": {
+        "mu": "eV",
+        "n": "m^-3",
+        "sigma": "S/m"
+      },
+      "tolerances": {
+        "normalized_balance_residual": 2e-11,
+        "grid_mu_eV": 1e-10,
+        "grid_and_tail_n_sigma_relative": 1e-8
+      }
+    },
+    {
+      "id": "SPB",
+      "scope": "reference calculation",
+      "status": "passed",
+      "claim": "Comparison of closed-form coefficients with radial transport integrals.",
+      "command": "uv run --frozen python scripts/verify_spb_design_coefficients.py",
+      "cwd": "REPO",
+      "output": "evidence/verify_spb_design_coefficients.txt",
+      "metrics": {
+        "cases": 36,
+        "max_relative_error_Hall": 1.017e-10
+      },
+      "limitations": "Forward calculations for parabolic bands with the specified power-law scattering mechanisms.",
+      "output_sha256": "8f156cf05bd1d1accda5d51f1c79dc48cfbdf765d2b591f977a17a309dd37417",
+      "provenance": "Output reproduced from the PR checkout.",
+      "replay_status": "reproduced_from_pr",
+      "pytest_node": "packages/seeband_core/tests/test_band_design_evidence.py::test_band_design_evidence[spb]",
+      "units": {
+        "sigma": "S/m",
+        "S": "V/K",
+        "L": "W*ohm/K^2",
+        "RH": "m^3/C",
+        "density": "m^-3"
+      },
+      "tolerances": {
+        "radial_vs_closed_relative": 1e-8,
+        "grid_or_tail_relative": 1e-9
+      }
+    },
+    {
+      "id": "DPB-HALL",
+      "scope": "production vs reference",
+      "status": "exceeds_proposed_tolerance",
+      "claim": "Largest discrepancy for CB+CB, dis, S+ρ+Hall at 800 K.",
+      "command": "uv run --frozen python docs/superpowers/specs/band-composition-v0.7/evidence/replay_p18.py --only DPB-HALL",
+      "cwd": "REPO",
+      "output": "evidence/explicit_curves_spb_result.txt",
+      "metrics": {
+        "cases": 27,
+        "temperature_vectors": 81,
+        "scaled_error_Hall": 1.1716465694490075e-6,
+        "proposed_tolerance": 1e-6,
+        "comparison_tolerance": 3e-6,
+        "core_m3_per_C": -7.038047601642028e-6,
+        "reference_m3_per_C": -7.038039355547361e-6
+      },
+      "limitations": "Archived output uses the original audit and 3e−6 comparison threshold. The current strict script exits nonzero at the 1e−6 design budget on this revision. See DPB-HALL-FIX for the corrected run.",
+      "output_sha256": "554396e11f31d60e8e824bf4fadf2367fe0fc7b3a9937e2c3fdf39fef9b80629",
+      "provenance": "retained prior evidence",
+      "replay_status": "historical_output_from_separate_p18",
+      "historical_command": "PYTHONPATH=packages/seeband_core/src .venv/bin/python \"$KIT/evidence/verify_explicit_curves_spb.py\"",
+      "historical_audit_revision": "3e93c7fdbfbdaa6758e3a2cf8be849585b6a8a6b",
+      "units": {
+        "RH": "m^3/C",
+        "S": "V/K",
+        "rho": "ohm*m",
+        "L": "W*ohm/K^2",
+        "sigma": "S/m",
+        "kappa": "W/(m*K)"
+      },
+      "tolerances": {
+        "scaled_Hall_design": 1e-6,
+        "corrected_scaled_Hall_regression": 1e-7,
+        "other_transport_scaled": 3e-6,
+        "normalized_density_residual": 1e-10
+      }
+    },
+    {
+      "id": "DPB-HALL-FIX",
+      "scope": "P18 explicit DPB forward curves vs independent SPB channel sums",
+      "status": "passed",
+      "replay_status": "reproduced_from_separate_p18",
+      "claim": "The corrected quadrature meets the Hall budget and regression target across the same cases as DPB-HALL.",
+      "cwd": "REPO",
+      "command": "uv run --frozen python docs/superpowers/specs/band-composition-v0.7/evidence/replay_p18.py --only DPB-HALL-FIX",
+      "output": "evidence/dpb_hall_p18_fixed.txt",
+      "metrics": {
+        "cases": 27,
+        "temperature_points": 81,
+        "hall_points": 27,
+        "hall_design_budget": 1e-6,
+        "hall_regression_target": 1e-7,
+        "scaled_error_Hall": 5.0771265704844325e-11,
+        "before_scaled_error_Hall": 1.1716465694490075e-6,
+        "core_m3_per_C": -7.038039355904691e-6,
+        "reference_m3_per_C": -7.038039355547361e-6
+      },
+      "limitations": "The explicit core lives on the linked P18 branch. This forward-curve comparison uses shared physical constants and does not exercise the fit optimizer.",
+      "output_sha256": "f615baccec0bf89fb6537f1d285abb3ca4f8918f0ced1130464bd4e05c515a8b",
+      "provenance": "Captured from a clean P18 checkout at corrected_p18_revision with the audit in this review branch.",
+      "units": {
+        "RH": "m^3/C",
+        "S": "V/K",
+        "rho": "ohm*m",
+        "L": "W*ohm/K^2",
+        "sigma": "S/m",
+        "kappa": "W/(m*K)"
+      },
+      "tolerances": {
+        "scaled_Hall_design": 1e-6,
+        "corrected_scaled_Hall_regression": 1e-7,
+        "other_transport_scaled": 3e-6,
+        "normalized_density_residual": 1e-10
+      },
+      "quadrature_tests": {
+        "passed": 28,
+        "command": "uv run --frozen python docs/superpowers/specs/band-composition-v0.7/evidence/replay_p18.py --only DPB-HALL-REGRESSION"
+      }
+    },
+    {
+      "id": "SKB",
+      "scope": "published benchmark",
+      "status": "passed",
+      "claim": "Recovery of the density-of-states mass for two tabulated cases from Lin and Liu.",
+      "command": "uv run --frozen python scripts/verify_skb_design_reference.py",
+      "cwd": "REPO",
+      "output": "evidence/verify_skb_design_reference.txt",
+      "metrics": {
+        "VB_mass_me": 0.95227533,
+        "CB_mass_me": 0.03876149,
+        "VB_published_me": 0.9523,
+        "CB_published_me": 0.03877
+      },
+      "limitations": "One isotropic valley, acPh, N=1. The check did not test multiband optimization or independently validate absolute resistivity.",
+      "output_sha256": "79a4c60cff866abcd4e141e93df914f106540f3c2e1b33f7791c42592384e267",
+      "provenance": "Output reproduced from the PR checkout.",
+      "replay_status": "reproduced_from_pr",
+      "pytest_node": "packages/seeband_core/tests/test_band_design_evidence.py::test_band_design_evidence[skb]",
+      "units": {
+        "tabulated_mass": "electron mass",
+        "eta": "dimensionless",
+        "Hall_factor": "dimensionless"
+      },
+      "tolerances": {
+        "published_SKBcal_mass_relative": 0.002,
+        "table_grid_or_tail_absolute_in_reported_coordinates": 1e-8
+      }
+    },
+    {
+      "id": "SKB-CORE",
+      "scope": "published masses and synthetic single-band transport",
+      "status": "passed",
+      "replay_status": "reproduced_from_pr",
+      "claim": "All SKBcal masses in Tables 1 and 2, SI acoustic transport at finite nonparabolicity, the SPB limit and equivalent-valley scaling.",
+      "command": "uv run --frozen python scripts/verify_skb_design_reference.py --core",
+      "cwd": "REPO",
+      "output": "evidence/verify_skb_core.txt",
+      "output_sha256": "551d59075e19d170e1e1a50833e576355e7c7ba552c835c8aa6cbcc9278d0ad3",
+      "source": {
+        "doi": "10.1038/s41598-022-09734-4",
+        "pdf": "https://sdg.ncue.edu.tw/var/file/32/1032/img/1022/17.2.1B.pdf",
+        "pdf_sha256": "486c35ab9b65c0aae20f60fbea6f42ff6db26aea74fae02241746e4fd3c956ec",
+        "printed_pages": "1–5, 11–12"
+      },
+      "provenance": "Four SI constants imported from seeband_core.math_module. The table targets are the published SKBcal masses. The synthetic comparisons use dimensional velocity/DOS moments and an independent SPB Fermi-integral reference.",
+      "conditions": {
+        "temperatures_K": [150, 600],
+        "eta": [-8, 0, 12],
+        "carrier_types": ["CB", "VB"],
+        "equivalent_valleys": [1, 2, 6],
+        "epsilon": [0, 0.08, 0.4],
+        "near_parabolic_epsilon": [0.0001, 1e-6, 1e-8],
+        "single_valley_mass_me": 0.7,
+        "elastic_modulus_Pa": 100000000000.0,
+        "deformation_potential_eV": 10
+      },
+      "metrics": {
+        "table_rows": 11,
+        "max_relative_table_mass_error": 0.0002188,
+        "transport_cases": 108,
+        "max_relative_transport_error": 6.286e-13,
+        "exact_parabolic_cases": 36,
+        "max_relative_parabolic_error": 1.867e-11,
+        "max_relative_error_at_epsilon_1e_minus_8": 1.861e-7,
+        "max_relative_grid_change": 8.734e-11,
+        "max_relative_tail_change": 3.609e-12
+      },
+      "relative_tolerances": {
+        "table_mass": 0.002,
+        "two_core_regression_anchors": 1e-9,
+        "transport_and_exact_parabolic": 1e-8,
+        "near_parabolic_final": 2e-6,
+        "valley_scaling": 1e-12
+      },
+      "limitations": "Isolated, isotropic intravalley acoustic band with prescribed amplitude. Published tables have N=K=1. N>1 and absolute conductivity are synthetic checks. Mixed-channel weights, empirical amplitude calibration, production calculations and fit behavior remain open.",
+      "pytest_node": "packages/seeband_core/tests/test_band_design_evidence.py::test_band_design_evidence[skb-core]",
+      "units": {
+        "tabulated_mass": "electron mass",
+        "eta": "dimensionless",
+        "Hall_factor": "dimensionless",
+        "rho": "ohm*m",
+        "S": "V/K",
+        "sigma": "S/m",
+        "L": "W*ohm/K^2",
+        "RH": "m^3/C",
+        "density": "m^-3"
+      },
+      "tolerances": {
+        "published_SKBcal_mass_relative": 0.002,
+        "table_grid_or_tail_absolute_in_reported_coordinates": 1e-8,
+        "velocity_DOS_relative": 1e-8,
+        "core_table_anchor_relative": 1e-9
+      }
+    },
+    {
+      "id": "S-PROFILE",
+      "scope": "synthetic three-band S-only profile",
+      "status": "passed",
+      "replay_status": "reproduced_from_pr",
+      "command": "uv run --frozen python scripts/verify_three_band_s_profile.py",
+      "cwd": "REPO",
+      "output": "evidence/three_band_s_profile.txt",
+      "claim": "A finite admissible interval for a free Fermi energy gives indistinguishable Seebeck curves. For noiseless data the witness reaches the global lower bound of zero squared residual.",
+      "conditions": {
+        "edges_eV": [0, 0.02, -0.12],
+        "bands": ["VB", "CB", "VB"],
+        "masses_me": [1, 1.4, 0.8],
+        "temperature_K": [100, 300, 800],
+        "in_gap_eV": [0, 0.005, 0.01, 0.015, 0.02],
+        "control_eV": [-0.01, 0.03],
+        "scattering": "acPh",
+        "valley_counts": [1, 1, 1],
+        "relative_weights": [1, 1, 1]
+      },
+      "metrics": {
+        "max_in_gap_delta_S_V_per_K": 0,
+        "max_in_gap_scaled_loss": 0,
+        "outside_max_delta_S_uV_per_K": [62.98315, 216.80619]
+      },
+      "tolerances": {
+        "max_in_gap_delta_S_V_per_K": 1e-12,
+        "min_outside_delta_S_V_per_K": 1e-6
+      },
+      "output_sha256": "31978fa39763bcfd5e8789e75d6957fb08953acd55759b03225aab78874c0365",
+      "limitations": "The profile minimum follows from exact charge invariance and zero loss. Outside-gap controls hold nuisance parameters fixed. This run does not estimate uncertainty or exercise the application optimizer or API.",
+      "pytest_node": "packages/seeband_core/tests/test_band_design_evidence.py::test_band_design_evidence[three-band-profile]",
+      "units": {
+        "energy": "eV",
+        "S": "V/K"
+      }
+    },
+    {
+      "id": "MASS-SCALE",
+      "scope": "conditional parabolic mass identifiability",
+      "status": "passed",
+      "replay_status": "reproduced_from_pr",
+      "command": "uv run --frozen python scripts/verify_parabolic_mass_identifiability.py",
+      "cwd": "REPO",
+      "output": "evidence/mass_identifiability.txt",
+      "output_sha256": "c21a22303ea87b3e4d8c80d7970751c049e7647264f06dbc8de6aeff8687c662",
+      "claim": "Fermi-reference global mass scaling and informative Hall under empirical conductivity amplitudes. Three-band longitudinal sensitivity to ratios through charge balance, and truncation by chosen weight bounds.",
+      "conditions": {
+        "temperature_K": [100, 300, 800],
+        "common_mass_multipliers": [0.25, 0.7, 4],
+        "laws": ["acPh", "dis", "ionized (empirical)"],
+        "valley_counts_for_slices": [2, 3, 1],
+        "slice_EF_over_kB_K": 700,
+        "slice_edges_over_kB_K": [
+          [0, 0, 0],
+          [0, 1, -1],
+          [0, 450, -400]
+        ],
+        "b_bounds": [0.9, 1.1]
+      },
+      "common_scale_tolerances": {
+        "absolute_mu_over_kB_K": 1e-8,
+        "relative_rho": 1e-10,
+        "absolute_S_V_per_K": 1e-12,
+        "channel_scaled_RH": 1e-10
+      },
+      "slice_gates": {
+        "absolute_S_V_per_K": 1e-6,
+        "relative_rho": 0.01,
+        "relative_nonzero_RH": 0.02,
+        "criterion": "Mean squared scaled longitudinal residual <=1. Hall additionally requires its own mean squared scaled residual <=1. Bounds are applied separately to the longitudinal subset."
+      },
+      "metrics": {
+        "common_scale_cases": 54,
+        "max_common_scale_Hall_channel_scaled_error": 1.024e-15,
+        "max_independent_charge_mu_over_kB_error_K": 2.443e-11,
+        "slice_size": 39,
+        "accepted_longitudinal": [39, 39, 3],
+        "accepted_longitudinal_and_Hall": [7, 7, 3],
+        "accepted_longitudinal_and_b_bounds": [7, 7, 3],
+        "nearly_equal_edges_bounded_grid_M2": [1.325, 1.475]
+      },
+      "provenance": "Branch design harness, SciPy charge balance, independent radial-k charge check and standalone SPB transport integrals. See stdout for runtime versions.",
+      "limitations": "The three-band empirical weight law is proposed, including its ionized specialization. The grid holds the other coordinates prescribed. Counts under illustrative residual scales do not establish fitted intervals, global identifiability or production support.",
+      "pytest_node": "packages/seeband_core/tests/test_band_design_evidence.py::test_band_design_evidence[mass]",
+      "units": {
+        "mu_over_kB": "K",
+        "rho": "ohm*m",
+        "S": "V/K",
+        "RH": "m^3/C"
+      }
+    },
+    {
+      "id": "MIX",
+      "scope": "reference calculation",
+      "status": "passed",
+      "replay_status": "reproduced_from_pr",
+      "claim": "Matthiessen rates, pure limits and three crossover temperatures.",
+      "command": "uv run --frozen python scripts/verify_mixed_scattering_design.py",
+      "cwd": "REPO",
+      "output": "evidence/mixed_reference.txt",
+      "metrics": {
+        "cases": 72,
+        "max_error_L": 1.4432899320127035e-14,
+        "max_pure_limit_error": 1.4625514577204513e-8
+      },
+      "limitations": "Forward curves for parabolic bands. Selecting observables in this check does not run an optimizer.",
+      "output_sha256": "2fb219a37ceefdf4b1998dc0f0db1f1a612cf97183ab4516001dbfb4add4327f",
+      "provenance": "Output reproduced from the PR checkout.",
+      "pytest_node": "packages/seeband_core/tests/test_band_design_evidence.py::test_band_design_evidence[mixed]",
+      "comparison": {
+        "reference": "evidence/mixed_reference.json",
+        "units": {
+          "rho": "ohm*m",
+          "S": "V/K",
+          "RH": "m^3/C",
+          "L": "W*ohm/K^2"
+        },
+        "tolerances": {
+          "rho": {
+            "atol": 1e-15,
+            "rtol": 1e-9
+          },
+          "S": {
+            "atol": 1e-13,
+            "rtol": 1e-9
+          },
+          "RH": {
+            "atol": 1e-18,
+            "rtol": 1e-9
+          },
+          "L": {
+            "atol": 1e-17,
+            "rtol": 1e-9
+          }
+        },
+        "accept_if": "abs(actual-reference) <= atol + rtol*abs(reference)",
+        "cases": 73,
+        "independent_comparison": {
+          "scaled_transport_error_lt": 1e-8,
+          "pure_limit_error_lt": 2e-8
+        },
+        "reference_sha256": "918a8b1f385e296b19f3c73bf374d19f45162b24e38a5160976219a820383a5d",
+        "max_observed_fraction_of_budget": {
+          "rho": 0,
+          "S": 0,
+          "RH": 0,
+          "L": 0
+        },
+        "negative_controls": {
+          "compensated_S_perturbation_V_per_K": 1e-11,
+          "compensated_RH_perturbation_m3_per_C": 1e-16,
+          "relative_nonzero_drift": 1e-6,
+          "accepted_fraction_of_budget": 0.001
+        }
+      }
+    },
+    {
+      "id": "MIX-LEGACY",
+      "scope": "repository legacy functions vs reference",
+      "status": "passed",
+      "replay_status": "reproduced_from_pr",
+      "claim": "Legacy rho, S and Hall at 100, 300 and 800 K using shared chemical potentials and integrals.",
+      "command": "uv run --frozen python scripts/verify_mixed_scattering_design.py --legacy",
+      "cwd": "REPO",
+      "output": "evidence/mixed_legacy_pr.txt",
+      "metrics": {
+        "max_scaled_error_Hall": 4.4948951790259384e-7,
+        "comparison_tolerance": 3e-5
+      },
+      "limitations": "Uses seeband_core.math_module from this checkout. Does not exercise the P18 solver or fitting.",
+      "output_sha256": "a384922a622acfff7bf49ea31e1ef2ffaa36ff15b85f4bf252fa7d24efbc17d3",
+      "provenance": "Output reproduced from the PR checkout.",
+      "pytest_node": "packages/seeband_core/tests/test_band_design_evidence.py::test_band_design_evidence[mixed-legacy]",
+      "units": {
+        "rho": "ohm*m",
+        "S": "V/K",
+        "RH": "m^3/C"
+      },
+      "tolerances": {
+        "maximum_scaled_legacy_transport_error": 3e-5
+      }
+    },
+    {
+      "id": "MIX-P18",
+      "scope": "reference and archived functions",
+      "status": "passed",
+      "claim": "Sum of acPh and dis rates, pure limits and the archived P18 legacy functions.",
+      "command": "uv run --frozen python docs/superpowers/specs/band-composition-v0.7/evidence/replay_p18.py --only MIX-P18",
+      "cwd": "REPO",
+      "output": "evidence/verify_mixed_scattering_design.txt",
+      "metrics": {
+        "cases": 72,
+        "max_error_L": 1.4432899320127035e-14,
+        "max_pure_limit_error": 1.4625514577204513e-8
+      },
+      "limitations": "Forward curves for parabolic bands. Selecting observables in this check does not run an optimizer.",
+      "output_sha256": "6b1bfbdd4a18707674e2366d47f14e2e2d5f540ac1ba7d1d68502fc0810780b3",
+      "provenance": "retained prior evidence",
+      "replay_status": "historical_output_from_separate_p18",
+      "historical_command": "PYTHONPATH=packages/seeband_core/src .venv/bin/python \"$KIT/../../../../scripts/verify_mixed_scattering_design.py\" --legacy",
+      "units": {
+        "rho": "ohm*m",
+        "S": "V/K",
+        "RH": "m^3/C"
+      },
+      "tolerances": {
+        "maximum_scaled_legacy_transport_error": 3e-5
+      }
+    },
+    {
+      "id": "E2E",
+      "scope": "planned integration",
+      "status": "not_run",
+      "claim": "Change composition while preserving parameters, calculate curves, fit, export and restore the session.",
+      "command": null,
+      "cwd": null,
+      "output": null,
+      "metrics": {},
+      "limitations": "Planned after implementation. See §1.4 and acceptance criterion A6 in §8.",
+      "provenance": "planned",
+      "replay_status": "planned"
+    },
+    {
+      "id": "UI-SCATTER",
+      "scope": "canonical standalone Fit/Guide in Chromium",
+      "status": "passed",
+      "claim": "Exercise every ordered band composition, scattering mechanism and fit mode through the editor restore boundary and inspect rendered controls. Preserve the editor and stored draft on incompatible requests.",
+      "cwd": "REPO",
+      "command": "node docs/superpowers/specs/band-composition-v0.7/evidence/verify_scattering_matrix.mjs",
+      "output": "evidence/scattering-matrix.txt",
+      "metrics": {
+        "distinct_requests": 576,
+        "accepted": 198,
+        "rejected": 378,
+        "by_band_count": [
+          {
+            "bands": 1,
+            "accepted": 30,
+            "rejected": 18
+          },
+          {
+            "bands": 2,
+            "accepted": 72,
+            "rejected": 72
+          },
+          {
+            "bands": 3,
+            "accepted": 96,
+            "rejected": 288
+          }
+        ],
+        "invalid_per_fit_mode": 126,
+        "invalid_scattering": 90,
+        "unsupported_composition": 288,
+        "scattering_refusals_per_nonacoustic_mechanism": 30
+      },
+      "failure": {
+        "code": "incompatible_scattering",
+        "path": "modelContent.mechanism",
+        "pre_fix_revision": "d7550119fe63552907cf9d405dae29030e5429d2",
+        "pre_fix_reproduction": "One VB Kane band, S, disorder: restore applied acoustic scattering and returned no error."
+      },
+      "case_output_option": "--cases",
+      "limitations": "Browser compatibility only. The production 422 response, transport and fitting are separate acceptance cases. Configurations with multiple Kane bands are outside this matrix.",
+      "provenance": "Replayed against the standalone HTML in locked Chromium. Composition eligibility is checked before acoustic-only scattering eligibility.",
+      "replay_status": "reproduced_from_pr",
+      "output_sha256": "f93db0f6772e7fb9ba4622c4f2333106907809ad06de32330995ea5a63d3ede3",
+      "composition_failure": {
+        "code": "unsupported_composition",
+        "path": "modelContent.types",
+        "applies_to": "All three-band requests containing Kane, including acPh."
+      }
+    },
+    {
+      "id": "UI-FIT-GUIDE",
+      "scope": "v0.7 offline prototype",
+      "status": "passed",
+      "claim": "Field visibility and eligibility, signed offsets, and preservation of values, bounds and holds across VB/CB and Parabolic/Kane changes for surviving bands. The same Fit/Guide controls exercise model labels, band counts, scattering eligibility and integer valley counts.",
+      "cwd": "REPO",
+      "command": "node docs/superpowers/specs/band-composition-v0.7/evidence/verify_fit_guide.mjs --browser",
+      "output": "evidence/fit-guide-v0.7.txt",
+      "metrics": {
+        "allowed_ui_configurations": 198,
+        "viewport_widths_px": [960, 320],
+        "min_bands": 1,
+        "max_bands": 3,
+        "max_kane": 1,
+        "max_bands_with_kane": 2
+      },
+      "limitations": "Browser and design-state checks only. No transport API is called.",
+      "provenance": "The 198 field configurations run against the dictionary. The transition regression edits rendered controls in jsdom and Chrome, checks legacy and current widget snapshots, and fails on the pre-fix HTML.",
+      "mass_convention": {
+        "editable": "Single-valley DOS mass",
+        "derived": "DOS mass (all equivalent valleys)",
+        "published_benchmark": {
+          "source": "Jacquot et al., Table I, p-Bi2Te3",
+          "doi": "10.1007/s11664-009-1059-x",
+          "single_valley_me": 0.209,
+          "valleys": 6,
+          "tabulated_total_me": 0.69,
+          "decimal_places": 3
+        },
+        "illustrative_p17": {
+          "saved_total_me": 2,
+          "saved_valleys": 8,
+          "derived_single_valley_me": 0.5
+        },
+        "scope": "Prototype display and immutable example. Production import is specified in the TDD."
+      },
+      "gap_during_fit": {
+        "stream": "Offline replay of isolated synthetic fit vectors",
+        "status_marker": "Fit…",
+        "three_band_example": {
+          "types": ["VB", "CB", "VB"],
+          "start_offsets_eV": [0.1, 0.04],
+          "last_accepted_gap_eV": 0.06,
+          "last_accepted_pair": ["CB2", "VB3"],
+          "returned_gap_eV": 0.075,
+          "returned_pair": ["CB2", "VB1"]
+        },
+        "two_band_example": {
+          "start_eV": 0.1,
+          "first_iteration_eV": 0.09,
+          "returned_eV": 0.075
+        },
+        "checks": [
+          "current gap beside its active marker",
+          "final pair from the returned vector",
+          "input values survive cancellation or failure",
+          "holds, bounds, both polarities and keyboard use"
+        ]
+      },
+      "item_12": {
+        "all_parabolic_labels": ["acPh", "dis", "ii"],
+        "closed_lock_label": "Held",
+        "integer_valley_counts": true,
+        "legacy_fractional": "preserve history, block new replay",
+        "scope": "proposed labels and UI; scattering laws unchanged"
+      },
+      "output_sha256": "3a78c46a5f79b0b0c4cc4e69959fd5e1c23ea1e2421315cdbb6197b09f603146",
+      "replay_status": "reproduced_from_pr",
+      "regression": {
+        "pre_fix_revision": "4e4526c6821d6bf7a06630962b3a7d1bea038acc",
+        "pre_fix_expected_offset_eV": 0.13,
+        "pre_fix_observed_offset_eV": -0.09,
+        "scenarios": [
+          "VB/CB changes on each of three bands",
+          "Parabolic/Kane toggles with held offsets, mass ratios and acoustic amplitude",
+          "signed two-band offset and asymmetric interval",
+          "manual and hidden fields, independent physical prefactors",
+          "remove and re-add, widget save/restore and legacy collisions"
+        ]
+      },
+      "identifiability": {
+        "configurations_checked": 198,
+        "parameters_caution": "all multiband S-only configurations",
+        "result_example": "three-band S-only, explicit disclosure",
+        "issue_ids_exercised": [
+          "band_composition_fermi_in_gap",
+          "band_composition_flat_profile"
+        ],
+        "result_status": "parameter_nonidentifiability",
+        "pre_fix_revision": "dbe26eae6161c12c43d2ffd2d94516b191eb8537",
+        "negative_controls": [
+          "single-band S-only and all modes including resistivity",
+          "contact, overlap, single polarity and incomplete edges",
+          "no automatic outcome from mode selection"
+        ],
+        "browser_checks": [
+          "native keyboard disclosure",
+          "expanded content within 320 px",
+          "draft values, bounds and holds preserved"
+        ]
+      },
+      "item_13": {
+        "decimal_separator": ",",
+        "tested_locales": ["en-US", "de-DE"],
+        "numeric_k_ticks": false,
+        "valley_input": "digits only; reject fractional edits, paste, drop and imports; require missing counts before replay"
+      },
+      "item_14": {
+        "first_visit": ["VB", "CB", "VB"],
+        "acoustic_scale": "shared value, bounds and hold in acPh and acPhDis",
+        "mixed_kane_s": "One manual dimensionless prefactor ratio in a mixed pair with a positive reference.",
+        "browser": "local draft restored on reload; keyboard help for mode-set holds; composition edit cancels offline replay"
+      }
+    },
+    {
+      "id": "VALLEY-INPUTS",
+      "scope": "design reference calculations",
+      "status": "passed",
+      "cwd": "REPO",
+      "command": "uv run --frozen python docs/superpowers/specs/band-composition-v0.7/evidence/verify_valley_counts.py",
+      "output": "evidence/valley-inputs.txt",
+      "output_sha256": "94b9cba470982683b29e0aab2327739fd146a701d610ebe6a54f870df3e4ebbd",
+      "replay_status": "reproduced_from_pr",
+      "pytest_node": "packages/seeband_core/tests/test_band_design_evidence.py::test_band_design_evidence[valley-counts]",
+      "acceptance": {
+        "invalid_input_rejections": 42,
+        "valid_integer_N": 2
+      }
+    },
+    {
+      "id": "KANE-WEIGHTS",
+      "scope": "design reference",
+      "status": "passed",
+      "claim": "72 synthetic fixed-filling comparisons, including the parabolic limit, N > 1 and zero nonreference weight; absolute tolerance 1e-14 V/K.",
+      "cwd": "REPO",
+      "command": "uv run --frozen python docs/superpowers/specs/band-composition-v0.7/evidence/verify_kane_weights.py",
+      "output": "evidence/kane-weights.txt",
+      "output_sha256": "eb6672c16d693f790f297fdc50a9bc455a86b53e50ceee4194eb218fd48a02f3",
+      "replay_status": "reproduced_from_pr",
+      "pytest_node": "packages/seeband_core/tests/test_band_design_evidence.py::test_band_design_evidence[kane-weights]",
+      "units": {
+        "S": "V/K"
+      },
+      "tolerances": {
+        "abs_S_V_per_K": 1e-14
+      },
+      "limitations": "Three-band Kane inputs in this mathematical reference are outside the current editor scope."
+    },
+    {
+      "id": "HOLD-MIGRATION",
+      "scope": "design reference",
+      "status": "passed",
+      "claim": "Hold decisions on validated source content with mapped identities. File decoding, checksum and the production v3 importer are outside this fixture.",
+      "cwd": "REPO",
+      "command": "node docs/superpowers/specs/band-composition-v0.7/evidence/verify_hold_migration.mjs",
+      "output": "evidence/hold-migration.txt",
+      "output_sha256": "9c63997b356ec2a9ed7ef7499f2593627a732851f929ad6c88b309784c1fd9e3",
+      "replay_status": "reproduced_from_pr"
+    },
+    {
+      "id": "Q3-PBSE",
+      "scope": "experimental reference calculation",
+      "status": "constant weight misses observed Hall downturn at the tested band parameters",
+      "claim": "Profile one constant prefactor ratio per specimen in moving and fixed band structures against measured S and Hall.",
+      "cwd": "REPO",
+      "command": "uv run --frozen python docs/superpowers/specs/band-composition-v0.7/evidence/chasapis/compare.py",
+      "output": "evidence/chasapis/results.txt",
+      "output_sha256": "99448d373e6a63498ccecc705e5669c2beba6f1684d2aee49db03fe25ea10267",
+      "replay_status": "reproduced_from_pr",
+      "inputs": [
+        "evidence/chasapis/measured_seebeck.csv",
+        "evidence/chasapis/measured_hall.csv",
+        "evidence/chasapis/published_f0.csv"
+      ],
+      "units": {
+        "S": "µV/K",
+        "Hall": "cm³/C",
+        "T": "K",
+        "w2": "1"
+      },
+      "limitations": "Graph-digitized measurements; fixed reported densities; constant heavy mass for all three samples. No absolute conductivity or experimental uncertainty calibration."
+    }
+  ],
+  "parameter_notation": "../band-parameter-labels.json",
+  "prototype": "fit-guide.html",
+  "corrected_p18_revision": "a7943506412eb82856ad2459984632190315bb64",
+  "replay_environment": {
+    "os": "macOS 26.6.2",
+    "architecture": "arm64",
+    "python": "3.13.18",
+    "uv": "0.13.9",
+    "numpy": "2.5.4",
+    "scipy": "1.18.1",
+    "mpmath": "1.4.1",
+    "pytest": "9.2.0",
+    "node": "24.22.3",
+    "pnpm": "12.16.1",
+    "jsdom": "30.1.3",
+    "playwright": "1.64.1",
+    "chromium": "156.0.8078.4",
+    "playwright_chromium_revision": 1248,
+    "lockfiles": ["uv.lock", "pnpm-lock.yaml"],
+    "scope": "Clean review replay. Historical transcript environments are recorded separately.",
+    "results": {
+      "current_branch_commands_passed": 13,
+      "p18_driver_checks_passed": 5,
+      "historical_Hall_failure_required": true,
+      "production_E2E": "planned",
+      "source_revision": "ca4b9ad856cd5853f083eaa785aeb527aec06f03"
+    }
+  },
+  "review_package": {
+    "review_responses": "REVIEW-RESPONSES.md",
+    "tag": "review-pr272-v0.7-kane-scope",
+    "archive": "https://github.com/pdasya/seeband-web/releases/download/review-pr272-v0.7-kane-scope/seeband-pr272-review-responses-v0.7.zip",
+    "builder": "build_review_bundle.py",
+    "current_branch_replay_rows": 14
+  }
+}

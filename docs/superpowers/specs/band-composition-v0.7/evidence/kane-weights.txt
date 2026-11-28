@@ -1,0 +1,2 @@
+72 comparisons passed: dimensional and relative S agree within 1e-14 V/K.
+Tested both overall scalings, changed and zero nonreference weights, N > 1 and J0 -> F0/3.

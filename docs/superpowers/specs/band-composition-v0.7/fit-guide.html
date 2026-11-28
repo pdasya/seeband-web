@@ -1,0 +1,2128 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SeeBand · Fit and Guide</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+      body {
+        max-width: 1080px;
+        margin: 16px auto;
+        padding: 0 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="sb-desktop-parameters" lang="en">
+      <nav class="mode" aria-label="SeeBand workspace">
+        <button
+          type="button"
+          data-page="fit"
+          aria-controls="sb-fit"
+          aria-pressed="true"
+        >
+          Fit</button
+        ><button
+          type="button"
+          data-page="guide"
+          aria-controls="sb-guide"
+          aria-pressed="false"
+        >
+          Guide
+        </button>
+      </nav>
+      <p id="sb-compatibility-error" class="note" hidden></p>
+      <div class="stage viz-dotted-background" id="sb-fit">
+        <section class="model-panel">
+          <div class="preview-head">
+            <h3>Model</h3>
+            <span id="sb-model-name"></span>
+          </div>
+          <div class="band-section">
+            <h4>Band configuration</h4>
+            <div id="sb-band-controls"></div>
+            <div class="band-actions">
+              <button type="button" id="sb-add">+ Add band</button
+              ><button type="button" id="sb-remove">Remove last band</button>
+            </div>
+          </div>
+          <div class="model-options">
+            <div>
+              <h4>Fit mode</h4>
+              <div class="segments" role="group" aria-label="Fit mode">
+                <button type="button" data-mode="0">S</button
+                ><button type="button" data-mode="1">S + ρ</button
+                ><button type="button" data-mode="2">
+                  S + ρ + R<sub>H</sub>
+                </button>
+              </div>
+            </div>
+            <div>
+              <label for="sb-scatter">Scattering</label
+              ><select id="sb-scatter">
+                <option value="ac">Acoustic phonons (acPh)</option>
+                <option value="dis">Alloy disorder (dis)</option>
+                <option value="mix" selected>
+                  Acoustic phonons + alloy disorder
+                </option>
+                <option value="ion">Ionized impurities</option>
+              </select>
+              <p class="note" id="sb-fit-note"></p>
+            </div>
+            <div>
+              <div class="model-inputs" id="sb-valleys"></div>
+              <p class="note">Band degeneracies are not fitted.</p>
+            </div>
+            <div>
+              <h4>Fit range, K</h4>
+              <div class="model-inputs" id="sb-temperatures"></div>
+            </div>
+          </div>
+        </section>
+        <section class="params">
+          <div class="preview-head">
+            <h3>Parameters</h3>
+            <span class="unit" id="sb-active-name"></span
+            ><button type="button" id="sb-bounds" aria-pressed="false">
+              Bounds
+            </button>
+          </div>
+          <p id="sb-identifiability-caution" class="note" hidden>
+            Seebeck data alone can leave several band parameters undetermined.
+            Use independent measurements or hold parameters you know.
+          </p>
+          <p
+            id="sb-in-gap-note"
+            class="note"
+            data-issue="band_composition_fermi_in_gap"
+            hidden
+          >
+            With these band edges, every E_F inside the gap gives the same
+            curves.
+          </p>
+          <section id="sb-three-gap" aria-label="Band gap" hidden>
+            <div class="gap-heading">
+              <strong
+                title="Lowest conduction edge minus highest valence edge. Momentum-space directness is not inferred."
+                >Band gap · E<sub>g</sub></strong
+              ><span id="sb-gap-value"></span
+              ><span class="gap-fit-marker"></span>
+            </div>
+            <div id="sb-gap-origin" class="gap-origin"></div>
+          </section>
+          <details id="sb-fit-replay">
+            <summary>Offline fit example</summary>
+            <p class="note">
+              Synthetic accepted snapshots and a separately returned final
+              vector; no solver runs. Preview offsets are isolated from your
+              parameter inputs. The example moves the last band edge across the
+              reference edge when free. Held offsets stay fixed; entered bounds
+              apply. Cancel or failure returns to your starting display.
+            </p>
+            <p>
+              <strong id="sb-replay-status">Ready</strong>
+              <span id="sb-replay-gap"></span>
+            </p>
+            <div class="band-actions">
+              <button type="button" id="sb-replay-start">
+                Start fit example
+              </button>
+              <button type="button" id="sb-replay-next" disabled>
+                Next accepted snapshot
+              </button>
+              <button type="button" id="sb-replay-cancel" disabled>
+                Cancel
+              </button>
+              <button type="button" id="sb-replay-fail" disabled>
+                Simulate failure
+              </button>
+            </div>
+            <p id="sb-replay-result" class="note"></p>
+          </details>
+          <div class="rows"></div>
+          <div id="sb-gap-readout" class="field-caption" hidden></div>
+          <details id="sb-p17-migration-preview">
+            <summary>Preview · Results and Earlier runs mass labels</summary>
+            <p class="note">
+              Illustrative P17 migration design; no saved run is changed.
+            </p>
+            <section id="sb-p17-current-run" aria-label="Results mass preview">
+              <h4>Results · Draft / illustrative</h4>
+              <p>
+                Band 1 · Single-valley DOS mass: 0,5 mₑ.<br />
+                DOS mass (all equivalent valleys): 2 mₑ · N = 8.
+              </p>
+              <p class="note">
+                Illustrative values, independent of the editor. For Kane,
+                single-valley DOS mass means the band-edge mass.
+              </p>
+            </section>
+            <section
+              id="sb-p17-earlier-run"
+              aria-label="Earlier runs mass preview"
+            >
+              <h4>Earlier runs · Illustrative historical run</h4>
+              <p>
+                Band 1 · DOS mass (all equivalent valleys): 2 mₑ.<br />
+                Original saved value · preserved historical N = 8.
+              </p>
+              <p>
+                Single-valley DOS mass: 0,5 mₑ · derived for display.<br />
+                2 mₑ ÷ 8<sup>2/3</sup> = 0,5 mₑ.
+              </p>
+              <p class="note">
+                Derived from the original DOS mass and that run’s saved valley
+                count, not the current editor. Original value and units remain
+                preserved; the derived value is not a new fitted parameter.
+              </p>
+            </section>
+          </details>
+          <details id="sb-flat-profile-example" hidden>
+            <summary>Example result for a flat profile</summary>
+            <section
+              id="sb-flat-profile-result"
+              aria-label="Example fit result"
+              data-result-code="parameter_nonidentifiability"
+              data-issue="band_composition_flat_profile"
+            >
+              <h4>Result · Parameters not uniquely determined</h4>
+              <p>
+                Illustrative example of a finished fit with synthetic Seebeck
+                data, independent of current values and locks.
+              </p>
+              <p>
+                For VB at 0 eV, CB at 0,02 eV and VB at −0,12 eV, any E<sub
+                  >F</sub
+                >
+                from 0 to 0,02 eV reproduces the same curve.
+              </p>
+              <p>
+                Several values of a free parameter reproduce the data equally
+                well within the tested range.
+              </p>
+              <p>
+                The band edges define this interval, not parameter bounds.
+                Statistical uncertainty was not estimated.
+              </p>
+            </section>
+          </details>
+        </section>
+      </div>
+      <section id="sb-guide" class="compare" hidden>
+        <h3>Guide · Parameters by fit mode</h3>
+        <p id="sb-guide-config"></p>
+        <table>
+          <thead>
+            <tr>
+              <th>Parameter</th>
+              <th>S</th>
+              <th>S + ρ</th>
+              <th>S + ρ + R<sub>H</sub></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <div class="legend">
+          ● Eligible to fit　○ Set manually in this mode　— Hidden
+        </div>
+        <p class="note" id="sb-note"></p>
+      </section>
+    </div>
+    <style>
+      #sb-desktop-parameters {
+        color-scheme: light dark;
+        --ink: light-dark(#191b23, #f1f2f5);
+        --sub: light-dark(#525968, #bbc2ce);
+        --line: light-dark(#dedfe4, #414650);
+        --bg: light-dark(#fff, #1d2028);
+        --soft: light-dark(#f5f6f8, #2b303b);
+        --blue: light-dark(#174e87, #a2c9f9);
+        --shade: light-dark(#eff5fc, #263544);
+        font:
+          14px/1.45 Inter,
+          system-ui,
+          sans-serif;
+        color: var(--ink);
+        container-type: inline-size;
+      }
+      #sb-desktop-parameters * {
+        box-sizing: border-box;
+      }
+      #sb-desktop-parameters .preview-head,
+      #sb-desktop-parameters .config,
+      #sb-band-controls,
+      #sb-desktop-parameters .mode {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      #sb-desktop-parameters .preview-head {
+        justify-content: space-between;
+      }
+      #sb-desktop-parameters > .preview-head {
+        justify-content: flex-start;
+        gap: 14px;
+      }
+      #sb-model-name {
+        font-weight: 600;
+        color: var(--blue);
+      }
+      #sb-desktop-parameters .config {
+        align-items: end;
+        margin: 10px 0;
+      }
+      #sb-desktop-parameters label {
+        display: grid;
+        gap: 4px;
+        color: var(--sub);
+        font-size: 12px;
+      }
+      #sb-desktop-parameters select,
+      #sb-desktop-parameters button,
+      #sb-desktop-parameters input {
+        color: var(--ink);
+        background: var(--bg);
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        padding: 5px 8px;
+        max-width: 100%;
+        font: inherit;
+      }
+      #sb-desktop-parameters select,
+      #sb-desktop-parameters input {
+        font-size: 14px;
+      }
+      #sb-desktop-parameters .note,
+      #sb-desktop-parameters .unit,
+      #sb-desktop-parameters .legend,
+      #sb-key {
+        color: var(--sub);
+        font-size: 12px;
+      }
+      #sb-desktop-parameters .note {
+        margin: 5px 0 12px;
+      }
+      #sb-identifiability-caution {
+        padding: 10px 12px;
+        background: var(--soft);
+        border-radius: 7px;
+      }
+      #sb-flat-profile-example {
+        margin-top: 14px;
+        border-top: 1px solid var(--line);
+      }
+      #sb-flat-profile-example summary {
+        min-height: 44px;
+        padding: 12px 0;
+        cursor: pointer;
+      }
+      #sb-flat-profile-result {
+        overflow-wrap: anywhere;
+      }
+      #sb-flat-profile-result h4 {
+        margin: 0;
+      }
+      #sb-desktop-parameters .stage {
+        display: grid;
+        grid-template-columns: minmax(240px, 0.93fr) minmax(275px, 1.07fr);
+        align-items: start;
+        gap: 14px;
+        padding: 10px;
+        border-radius: 12px;
+      }
+      #sb-desktop-parameters .params,
+      #sb-desktop-parameters .compare,
+      #sb-desktop-parameters .model-panel {
+        min-width: 0;
+        background: var(--bg);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 16px;
+      }
+      #sb-desktop-parameters .model-panel .config {
+        align-items: start;
+        flex-direction: column;
+      }
+      #sb-desktop-parameters #sb-model-settings {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      #sb-desktop-parameters .model-panel .mode {
+        margin-top: 4px;
+      }
+      #sb-desktop-parameters h3 {
+        margin: 0;
+        font:
+          650 19px/1.3 Inter,
+          system-ui,
+          sans-serif;
+      }
+      #sb-desktop-parameters .rows {
+        margin-top: 10px;
+      }
+      #sb-desktop-parameters .field {
+        padding: 9px 0 8px;
+        border-top: 1px solid var(--line);
+      }
+      #sb-desktop-parameters .field-head {
+        display: flex;
+        gap: 5px 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      #sb-desktop-parameters .field-head label {
+        font-size: 15px;
+        color: var(--ink);
+        display: inline;
+        font-weight: 600;
+        margin-right: auto;
+      }
+      #sb-desktop-parameters .field-head input {
+        width: 82px;
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+      #sb-desktop-parameters .field-head button,
+      #sb-desktop-parameters .fixed {
+        font-size: 11px;
+        white-space: nowrap;
+      }
+      #sb-desktop-parameters .fixed {
+        color: var(--sub);
+      }
+      #sb-desktop-parameters .field-caption {
+        margin-top: 2px;
+        color: var(--sub);
+        font-size: 12px;
+      }
+      #sb-three-gap {
+        margin: 12px 0 8px;
+        padding: 9px 12px;
+        border-radius: 7px;
+        background: var(--soft);
+      }
+      #sb-three-gap .gap-heading {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .gap-fit-marker {
+        margin-left: 0.5em;
+      }
+      #sb-gap-value {
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+      }
+      #sb-three-gap .gap-origin {
+        margin-top: 4px;
+        color: var(--sub);
+        font-size: 12px;
+      }
+      #sb-desktop-parameters [hidden] {
+        display: none !important;
+      }
+      #sb-desktop-parameters .field-head label {
+        margin-right: 0;
+      }
+      #sb-desktop-parameters .field-head .help {
+        margin-right: auto;
+        border: none;
+        background: transparent;
+        color: var(--sub);
+        padding-inline: 4px;
+        min-width: 24px;
+        min-height: 24px;
+      }
+      #sb-desktop-parameters .field-head .lock {
+        min-width: 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+        white-space: nowrap;
+        min-height: 30px;
+      }
+      #sb-desktop-parameters .field-head .lock svg,
+      #sb-desktop-parameters .field-head .help svg {
+        width: 16px;
+        height: 16px;
+        display: block;
+      }
+      #sb-desktop-parameters .field-head .lock[aria-disabled="true"] {
+        color: var(--sub);
+        background: var(--soft);
+        border-style: dashed;
+        opacity: 0.75;
+      }
+      #sb-desktop-parameters .field-caption {
+        padding: 7px 0 2px;
+      }
+      #sb-desktop-parameters .limits {
+        display: flex;
+        gap: 10px;
+        margin-top: 6px;
+      }
+      #sb-desktop-parameters .limits label {
+        flex: 1;
+        min-width: 0;
+      }
+      #sb-desktop-parameters input[type="range"] {
+        width: 100%;
+        accent-color: var(--ink);
+        padding: 0;
+        margin-top: 4px;
+      }
+      #sb-desktop-parameters .params > .preview-head span {
+        margin-right: auto;
+      }
+      #sb-desktop-parameters .mode {
+        margin: 12px 0 8px;
+        gap: 3px;
+      }
+      #sb-desktop-parameters button[aria-pressed="true"] {
+        background: var(--ink);
+        color: var(--bg);
+      }
+      #sb-desktop-parameters table {
+        width: 100%;
+        border-collapse: collapse;
+        font-variant-numeric: tabular-nums;
+      }
+      #sb-desktop-parameters th,
+      #sb-desktop-parameters td {
+        padding: 6px 3px;
+        border-bottom: 1px solid var(--line);
+        text-align: center;
+        font-size: 13px;
+      }
+      #sb-desktop-parameters th:first-child {
+        text-align: left;
+        font-weight: 500;
+      }
+      #sb-desktop-parameters thead th {
+        color: var(--sub);
+        font-size: 11px;
+        font-weight: 550;
+      }
+      #sb-desktop-parameters td.sel,
+      #sb-desktop-parameters th.sel {
+        background: var(--shade);
+        color: var(--blue);
+      }
+      #sb-desktop-parameters .legend,
+      #sb-desktop-parameters details {
+        margin-top: 10px;
+      }
+      #sb-desktop-parameters summary {
+        font-weight: 500;
+      }
+      #sb-key p {
+        margin: 6px 0;
+      }
+      #sb-desktop-parameters sub,
+      #sb-desktop-parameters sup {
+        font-size: 85%;
+        line-height: 0;
+      }
+      @container (max-width:600px) {
+        #sb-desktop-parameters .stage {
+          grid-template-columns: 1fr;
+          padding: 5px;
+        }
+        #sb-desktop-parameters .compare {
+          order: -1;
+        }
+      }
+      @media (pointer: coarse) {
+        #sb-desktop-parameters select,
+        #sb-desktop-parameters button,
+        #sb-desktop-parameters input,
+        #sb-desktop-parameters summary {
+          min-height: 44px;
+        }
+      }
+    </style>
+    <style>
+      #sb-desktop-parameters .model-panel {
+        padding: 0;
+        overflow: hidden;
+      }
+      #sb-desktop-parameters .model-panel > .preview-head {
+        padding: 15px 18px;
+        border-bottom: 1px solid var(--line);
+      }
+      #sb-desktop-parameters #sb-model-name {
+        color: var(--sub);
+        font-size: 13px;
+        font-weight: 600;
+      }
+      #sb-desktop-parameters .band-section,
+      #sb-desktop-parameters .model-options {
+        padding: 16px 18px;
+      }
+      #sb-desktop-parameters .model-panel h4,
+      #sb-desktop-parameters .model-options label[for="sb-scatter"] {
+        margin: 0 0 7px;
+        color: var(--ink);
+        font-size: 14px;
+        font-weight: 600;
+      }
+      #sb-desktop-parameters #sb-band-controls {
+        display: block;
+      }
+      #sb-desktop-parameters .band-row {
+        border: 0;
+        margin: 0;
+        padding: 0 0 10px;
+        min-width: 0;
+      }
+      #sb-desktop-parameters .band-row legend {
+        padding: 0 0 5px;
+        line-height: 1.5;
+        font-weight: 550;
+      }
+      #sb-desktop-parameters .band-row legend::before {
+        content: "";
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        margin: 0 7px 1px 0;
+        border-radius: 50%;
+        background: var(--dot);
+      }
+      #sb-desktop-parameters .band-row:nth-child(1) {
+        --dot: light-dark(#3764b1, #83a8fc);
+      }
+      #sb-desktop-parameters .band-row:nth-child(2) {
+        --dot: light-dark(#cc6625, #ffac6e);
+      }
+      #sb-desktop-parameters .band-row:nth-child(3) {
+        --dot: light-dark(#197a72, #68c8b6);
+      }
+      #sb-desktop-parameters .band-picks {
+        display: grid;
+        grid-template-columns: minmax(75px, 0.78fr) minmax(125px, 1.22fr);
+        gap: 8px;
+      }
+      #sb-desktop-parameters .model-panel .segments {
+        display: flex;
+        gap: 2px;
+        border-radius: 7px;
+        background: var(--soft);
+        padding: 3px;
+      }
+      #sb-desktop-parameters .segments button {
+        flex: 1 0 auto;
+        background: transparent;
+        color: var(--sub);
+        font-size: 13px;
+        min-height: 30px;
+        padding: 3px 4px;
+        border: 1px solid transparent;
+        border-radius: 5px;
+      }
+      #sb-desktop-parameters .segments button[aria-pressed="true"] {
+        background: var(--bg);
+        color: var(--ink);
+        border-color: var(--line);
+        box-shadow: 0 1px 2px #10182016;
+        font-weight: 600;
+      }
+      #sb-desktop-parameters .segments button:disabled {
+        opacity: 0.5;
+      }
+      #sb-desktop-parameters .band-actions {
+        display: flex;
+        gap: 7px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      #sb-desktop-parameters .band-actions button {
+        font-size: 13px;
+        min-height: 32px;
+      }
+      #sb-desktop-parameters #sb-remove {
+        border-color: transparent;
+        color: var(--sub);
+        margin-left: auto;
+      }
+      #sb-desktop-parameters .model-options {
+        border-top: 1px solid var(--line);
+        display: grid;
+        gap: 15px;
+      }
+      #sb-desktop-parameters .model-options select,
+      #sb-desktop-parameters .model-inputs input {
+        width: 100%;
+        min-width: 0;
+        padding: 7px 8px;
+      }
+      #sb-desktop-parameters .model-inputs {
+        display: grid;
+        grid-auto-columns: minmax(0, 1fr);
+        grid-auto-flow: column;
+        gap: 9px;
+      }
+      #sb-desktop-parameters .model-options .note {
+        margin: 5px 0 0;
+      }
+      #sb-desktop-parameters .model-options .note:empty {
+        display: none;
+      }
+      @media (pointer: coarse) {
+        #sb-desktop-parameters .model-panel button {
+          min-height: 44px;
+        }
+      }
+    </style>
+    <script>
+      (() => {
+        const root = document.getElementById("sb-desktop-parameters");
+        const el = (s) => root.querySelector(s);
+        // Same display/entry convention as apps/web/src/lib/numbers.ts.
+        const canonical = (value) =>
+          String(value).replaceAll(",", ".").replace("−", "-");
+        const shown = (value) => String(value).replaceAll(".", ",");
+        const number = (value) => {
+          const text = canonical(value).trim();
+          return /^[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?$/.test(text)
+            ? Number(text)
+            : NaN;
+        };
+        const integer = (value) =>
+          /^\d+$/.test(String(value)) &&
+          Number.isSafeInteger(Number(value)) &&
+          Number(value) > 0;
+        function decimalInput(input) {
+          input.type = "text";
+          input.inputMode = "decimal";
+          input.dataset.number = "";
+          input.addEventListener("input", () => {
+            const start = input.selectionStart,
+              end = input.selectionEnd;
+            input.value = shown(input.value);
+            input.setSelectionRange(start, end);
+          });
+        }
+
+        const add = el("#sb-add"),
+          remove = el("#sb-remove"),
+          scatter = el("#sb-scatter"),
+          bands = el("#sb-band-controls");
+        const modeNames = ["S", "S + ρ", "S + ρ + R_H"];
+        const options = [
+          "VB · Parabolic",
+          "CB · Parabolic",
+          "VB · Kane",
+          "CB · Kane",
+        ];
+        const marks = {
+          fit: ["●", "Eligible to fit"],
+          manual: ["○", "Set manually"],
+          hidden: ["—", "Hidden"],
+        };
+        const values = new Map(),
+          held = new Set(),
+          limits = new Map();
+        let editBounds = false,
+          page = "fit";
+        let bandIds = [1, 2, 3],
+          nextBandId = 4,
+          legacyState;
+        let n = 3,
+          types = [0, 1, 0],
+          mechanism = "ac",
+          selectedMode = 2,
+          lastParabolic = "ac";
+        let replayRunning = false,
+          replayStep = 0,
+          replayStart = [],
+          replayPreview = null,
+          replayPair = "",
+          refreshGap = () => {};
+        function replayControls() {
+          root.querySelectorAll(".gap-fit-marker").forEach((marker) => {
+            marker.textContent = replayRunning ? "Fit…" : "";
+          });
+          el("#sb-replay-start").disabled = replayRunning;
+          for (const id of ["next", "cancel", "fail"])
+            el("#sb-replay-" + id).disabled = !replayRunning;
+        }
+        function stopReplay(status) {
+          replayRunning = false;
+          el("#sb-replay-status").textContent = status;
+          el("#sb-replay-result").textContent = "";
+          replayPreview = null;
+          replayControls();
+          refreshGap();
+        }
+        el("#sb-replay-start").onclick = () => {
+          const invalidValley = [
+            ...root.querySelectorAll("#sb-valleys input"),
+          ].find((input) => !input.checkValidity());
+          if (invalidValley) {
+            stopReplay(
+              "Cannot replay · enter a positive integer valley count.",
+            );
+            invalidValley.reportValidity();
+            return;
+          }
+          const invalidWeight = [
+            ...root.querySelectorAll(
+              '[data-field^="weight"] input[data-number]',
+            ),
+          ].find((input) => !input.checkValidity());
+          if (invalidWeight) {
+            stopReplay(
+              "Cannot replay · enter nonnegative relative channel strengths.",
+            );
+            invalidWeight.reportValidity();
+            return;
+          }
+          replayStart = form()
+            .filter((r) => r.id.startsWith("gap"))
+            .map((r) => {
+              const input = el(
+                '[data-field="' + r.id + '"] input[data-number]',
+              );
+              return {
+                id: r.id,
+                value: canonical(input.value),
+                held: held.has(stateKey(r)),
+              };
+            });
+          replayStep = 0;
+          replayPreview = replayStart.map((r) => r.value);
+          replayRunning = true;
+          el("#sb-replay-next").textContent = "Next accepted snapshot";
+          el("#sb-replay-status").textContent = "Fit…";
+          el("#sb-replay-result").textContent = "";
+          replayControls();
+          refreshGap();
+        };
+        el("#sb-replay-next").onclick = () => {
+          if (!replayRunning) return;
+          const factor = [0.9, 0.8, 0.7, 0.75][replayStep];
+          const snapshot = replayStart.map((r, index) => {
+            const key = stateKey({ id: r.id });
+            const sign = n === 2 && types[0] % 2 === 1 ? -1 : 1;
+            const multiplier =
+              index === 1 ? [0.5, 0.1, 0.25, -0.5][replayStep] : factor;
+            const value = r.held
+              ? Number(r.value)
+              : Number(r.value) * multiplier;
+            const bounds = limits.get(key) ?? ["", ""];
+            return {
+              ...r,
+              key,
+              sign,
+              value,
+              valid:
+                r.value !== "" &&
+                Number.isFinite(value) &&
+                (bounds[0] === "" || value * sign >= Number(bounds[0])) &&
+                (bounds[1] === "" || value * sign <= Number(bounds[1])),
+            };
+          });
+          if (snapshot.some((r) => !r.valid)) {
+            stopReplay("Failed · starting values retained");
+            return;
+          }
+          replayPreview = snapshot.map((r) =>
+            r.held ? r.value : String(Number(r.value.toPrecision(8))),
+          );
+          refreshGap();
+          replayStep++;
+          if (replayStep === 3)
+            el("#sb-replay-next").textContent = "Return final vector";
+          if (replayStep === 4) {
+            replayRunning = false;
+            replayControls();
+            el("#sb-replay-status").textContent = "Complete";
+            el("#sb-replay-result").textContent = replayPair
+              ? "Final · " +
+                el("#sb-replay-gap").textContent +
+                ". Defined by " +
+                replayPair +
+                ". Your starting inputs are unchanged."
+              : "Final · no conduction–valence gap in this model. Your starting inputs are unchanged.";
+          }
+        };
+        el("#sb-replay-cancel").onclick = () =>
+          stopReplay("Cancelled · starting values retained");
+        el("#sb-replay-fail").onclick = () =>
+          stopReplay("Failed · starting values retained");
+        for (const eventName of ["input", "change"])
+          root.addEventListener(eventName, (event) => {
+            if (!event.target.matches("input")) return;
+            if (replayRunning)
+              stopReplay("Cancelled · starting values retained");
+            else if (el("#sb-replay-result").textContent) stopReplay("Ready");
+          });
+        function hasKane() {
+          return types.slice(0, n).some((t) => t >= 2);
+        }
+        function model() {
+          if (n === 1) return hasKane() ? "SKB" : "SPB";
+          if (n === 2) return hasKane() ? "1 SKB + 1 SPB" : "DPB";
+          return "3 SPB";
+        }
+        function edge(i) {
+          return (
+            "E<sub>" + (types[i] % 2 ? "c" : "v") + "," + (i + 1) + "</sub>"
+          );
+        }
+        function mass(i) {
+          return "m<sub>b," + (i + 1) + "</sub>";
+        }
+        function tau(mech, i) {
+          return "τ<sub>" + mech + "," + (i + 1) + "</sub>";
+        }
+        function form() {
+          const rows = [],
+            all = ["fit", "fit", "fit"],
+            later = ["hidden", "fit", "fit"],
+            assumed = ["manual", "fit", "fit"];
+          const row = (id, symbol, meaning, unit, initial, states, min) =>
+            rows.push({ id, symbol, meaning, unit, initial, states, min });
+          row(
+            "ef",
+            "E<sub>F</sub>",
+            "Fermi energy at 0 K. The energy reference is the edge of Band 1, " +
+              edge(0) +
+              ". At finite temperature the model calculates μ(T).",
+            "eV",
+            types[0] % 2 ? 0.01 : -0.01,
+            all,
+          );
+          for (let i = 1; i < n; i++) {
+            row(
+              "gap" + i,
+              edge(i) + " − " + edge(0),
+              "Edge offset of Band " + (i + 1) + " relative to Band 1",
+              "eV",
+              types[i] % 2 ? 0.09 : -0.09,
+              all,
+            );
+            row(
+              "massRatio" + i,
+              mass(i) + " / " + mass(0),
+              "Ratio of positive single-valley effective masses at the two band edges.",
+              "1",
+              1,
+              all,
+              0,
+            );
+          }
+          const k = types.slice(0, n).findIndex((t) => t >= 2);
+          if (k >= 0)
+            row(
+              "alpha" + k,
+              "α<sub>" + (k + 1) + "</sub>",
+              "Nonparabolicity of the Kane band. Zero gives the parabolic limit.",
+              "eV⁻¹",
+              1,
+              all,
+              0,
+            );
+          row(
+            "mass",
+            "Single-valley DOS mass · " + mass(0),
+            "Positive single-valley DOS mass of Band 1. For a Kane band this is the band-edge mass. The total DOS mass includes all equivalent valleys. For an imported P17 DPB Hall mass, divide the saved total DOS mass by the saved valley count raised to the power 2/3.",
+            "mₑ",
+            1,
+            ["manual", "manual", "fit"],
+            0,
+          );
+          if (k >= 0) {
+            if (n > 1)
+              for (let i = 1; i < n; i++)
+                row(
+                  "weight" + i,
+                  "σ<sub>0," + (i + 1) + "</sub> / σ<sub>0,1</sub>",
+                  "Nonnegative dimensionless ratio of conductivity prefactors, referenced to Band 1 (its weight is fixed to 1). For a parabolic band, σ₀ multiplies F₀. For Kane, σ₀ = [2 e² ℏ N / (π m_b)] (C_l/E_def² in SI) multiplies J₀. These manual S-only weights are independent of the dimensional prefactors used with resistivity and Hall; no automatic conversion is made.",
+                  "1",
+                  1,
+                  ["manual", "hidden", "hidden"],
+                  0,
+                );
+            for (let i = 0; i < n; i++) {
+              const kane = i === k;
+              row(
+                "amplitude" + i,
+                kane
+                  ? "(C<sub>l</sub>/E<sub>def</sub>²)<sub>" + (i + 1) + "</sub>"
+                  : "σ<sub>0," + (i + 1) + "</sub><sup>(ph)</sup>",
+                kane
+                  ? "Elastic modulus divided by the squared deformation potential. The absolute Kane scale is pending validation."
+                  : "Acoustic conductivity prefactor for this parabolic band. Equivalent to A for this band.",
+                kane ? "Pa/eV²" : "S/m",
+                "",
+                later,
+                0,
+              );
+            }
+            return rows;
+          }
+          const dis = mechanism === "dis",
+            ion = mechanism === "ion",
+            mix = mechanism === "mix",
+            kind = dis ? "dis" : ion ? "ii" : "acPh";
+          const scaleSymbol = ion
+            ? tau("ii", 0)
+            : tau(kind, 0) +
+              (n > 1 && selectedMode === 1 ? " / " + mass(0) : "");
+          const scaleHelp = ion
+            ? "Normalized conductivity coefficient (legacy A) in the empirical ionized-impurity power-law model. Multiplies (T/300 K)³ F₂, with units S/m, not seconds. The τ label introduces no microscopic relaxation-time assumption."
+            : "Desktop notation for the normalized coefficient " +
+              (dis ? "F multiplying T·F₀" : "A multiplying F₀") +
+              (mix ? " in the acoustic limit" : "") +
+              ". Units refer to the conductivity scale. Converting it to a relaxation time in seconds requires an independent normalization." +
+              (n > 1
+                ? " Desktop uses τ/m₁ with resistivity and τ with Hall. The stored coefficient has the same value in both modes."
+                : "");
+          row(
+            "scale",
+            scaleSymbol,
+            scaleHelp,
+            dis ? "S/(m·K)" : "S/m",
+            dis ? 4000 : 40000,
+            later,
+            0,
+          );
+          for (let i = 1; i < n; i++) {
+            const sym = tau(kind, i) + " / " + tau(kind, 0);
+            row(
+              "ratio" + i,
+              sym,
+              "Relative transport prefactor of Band " +
+                (i + 1) +
+                " referenced to Band 1. The τ ratio denotes the existing empirical transport weight, not a measured conductivity ratio." +
+                (i === 1 ? " Coefficient " + (dis ? "G" : "B") + "." : "") +
+                " The conductivity also depends on mass, valley degeneracy and band filling.",
+              "1",
+              1,
+              mix ? assumed : later,
+              0,
+            );
+          }
+          if (mix)
+            for (let i = 0; i < n; i++) {
+              row(
+                "mix" + i,
+                tau("acPh", i) + " / " + tau("dis", i),
+                "Ratio of acoustic-phonon to alloy-disorder relaxation times at 300 K for Band " +
+                  (i + 1) +
+                  "." +
+                  (i < 2
+                    ? " Desktop coefficient " + (i === 0 ? "C" : "D") + "."
+                    : ""),
+                "1",
+                1,
+                n === 1 ? later : assumed,
+                0,
+              );
+            }
+          return rows;
+        }
+        const strip = (html) => html.replace(/<[^>]*>/g, "");
+        // Keys follow a band and a physical quantity, not its current label.
+        function stateKey(row, bandTypes = types, scattering = mechanism) {
+          const id = row.id;
+          if (["ef", "tMin", "tMax"].includes(id)) return id;
+          const index = Number(id.match(/[0-2]$/)?.[0] ?? 0);
+          const band = "band/" + bandIds[index] + "/";
+          const reference = "/to/" + bandIds[0];
+          if (id.startsWith("N")) return band + "valleys";
+          if (id.startsWith("gap")) return band + "offset:eV" + reference;
+          if (id.startsWith("massRatio")) return band + "massRatio" + reference;
+          if (id.startsWith("weight"))
+            return band + "relativeStrength/ac:dimensionless" + reference;
+          if (id.startsWith("ratio"))
+            return band + "ratio/" + scattering + reference;
+          if (id.startsWith("alpha")) return band + "alpha:eV-1";
+          if (id.startsWith("mix")) return band + "mix:300K";
+          if (id.startsWith("amplitude"))
+            return (
+              band +
+              (bandTypes[index] >= 2 ? "amplitude:Pa/eV2" : "scale/ac:S/m")
+            );
+          if (id === "scale")
+            return (
+              band +
+              "scale/" +
+              (scattering === "mix" ? "ac" : scattering) +
+              (scattering === "dis" ? ":S/(m*K)" : ":S/m")
+            );
+          return band + id;
+        }
+        function icon(name, fallback) {
+          return window.lucide
+            ? '<i data-lucide="' + name + '" aria-hidden="true"></i>'
+            : fallback;
+        }
+        function signedValue(value, sign) {
+          if (sign === -1 && (value === "+" || value === "-"))
+            return value === "+" ? "-" : "+";
+          return value === "" || sign === 1
+            ? canonical(value)
+            : canonical(value).startsWith("-")
+              ? canonical(value).slice(1)
+              : "-" + canonical(value).replace(/^\+/, "");
+        }
+        const storageKey = "seeband.fit-guide.v4";
+        let retainedIncompatibleDraft = false;
+        function snapshot() {
+          return {
+            modelContent: {
+              n,
+              types: [...types],
+              mechanism,
+              selectedMode,
+              lastParabolic,
+            },
+            privateContent: {
+              stateVersion: 4,
+              bandIds: [...bandIds],
+              nextBandId,
+              legacyState,
+              held: [...held],
+              values: Object.fromEntries(values),
+              limits: Object.fromEntries(limits),
+              editBounds,
+              page,
+            },
+          };
+        }
+        function compatibilityError(content) {
+          if (
+            content?.n === 3 &&
+            Array.isArray(content.types) &&
+            content.types.slice(0, 3).some((type) => type >= 2)
+          )
+            return {
+              code: "unsupported_composition",
+              path: "modelContent.types",
+              message: "Three-band compositions support parabolic bands only.",
+            };
+          if (
+            [1, 2, 3].includes(content?.n) &&
+            Array.isArray(content.types) &&
+            content.types.slice(0, content.n).some((type) => type >= 2) &&
+            ["dis", "ion", "mix"].includes(content.mechanism)
+          )
+            return {
+              code: "incompatible_scattering",
+              path: "modelContent.mechanism",
+              message:
+                "Kane bands support acoustic phonon scattering only. Choose acoustic phonons or use parabolic bands.",
+            };
+        }
+        function showCompatibilityError(error) {
+          const notice = el("#sb-compatibility-error");
+          notice.hidden = !error;
+          notice.textContent = error?.message ?? "";
+          if (error) {
+            notice.dataset.code = error.code;
+            notice.dataset.path = error.path;
+          } else {
+            delete notice.dataset.code;
+            delete notice.dataset.path;
+          }
+        }
+        function save() {
+          retainedIncompatibleDraft = false;
+          showCompatibilityError();
+          try {
+            localStorage.setItem(storageKey, JSON.stringify(snapshot()));
+          } catch {
+            // Browsers may deny storage for local files; the editor still works.
+          }
+        }
+        function updateDosMass() {
+          const output = el("#sb-total-dos-mass");
+          if (!output) return;
+          const massInput = el("#sb-p-mass");
+          const valleyInput = el("#sb-valleys input");
+          const count = number(valleyInput.value);
+          const single = number(massInput.value);
+          output.hidden = valleyInput.value !== "" && count === 1;
+          const valid =
+            massInput.value !== "" &&
+            massInput.validity.valid &&
+            valleyInput.value !== "" &&
+            valleyInput.validity.valid &&
+            Number.isFinite(single) &&
+            single > 0 &&
+            Number.isSafeInteger(count) &&
+            count >= 1;
+          const total = single * count ** (2 / 3);
+          output.textContent =
+            "DOS mass (all equivalent valleys): " +
+            (valid && Number.isFinite(total)
+              ? shown(Number(total.toPrecision(8))) + " mₑ"
+              : "— · Enter a positive mass and a valid valley count.");
+        }
+        root.addEventListener("input", updateDosMass);
+        root.addEventListener("change", updateDosMass);
+        function render() {
+          el("#sb-fit").hidden = page !== "fit";
+          el("#sb-guide").hidden = page !== "guide";
+          el("#sb-identifiability-caution").hidden =
+            n < 2 || selectedMode !== 0;
+          const flatProfileExample = el("#sb-flat-profile-example");
+          flatProfileExample.hidden = n !== 3 || selectedMode !== 0;
+          if (flatProfileExample.hidden || page !== "fit")
+            flatProfileExample.open = false;
+          root
+            .querySelectorAll("[data-page]")
+            .forEach((b) =>
+              b.setAttribute("aria-pressed", String(b.dataset.page === page)),
+            );
+          add.hidden = n === 3;
+          add.disabled = n === 2 && hasKane();
+          remove.hidden = n === 1;
+          scatter.value = mechanism;
+          scatter.disabled = hasKane();
+          const valleys = el("#sb-valleys"),
+            temperatures = el("#sb-temperatures");
+          valleys.replaceChildren();
+          temperatures.replaceChildren();
+          for (const [id, title, start] of [
+            ...Array.from({ length: n }, (_, i) => [
+              "N" + i,
+              "N" + ["₁", "₂", "₃"][i],
+              1,
+            ]),
+            ["tMin", "Min", 50],
+            ["tMax", "Max", 800],
+          ]) {
+            const label = document.createElement("label");
+            label.textContent = title;
+            const input = document.createElement("input");
+            decimalInput(input);
+            const isValley = id.startsWith("N");
+            if (isValley) {
+              input.inputMode = "numeric";
+              input.pattern = "[0-9]+";
+              input.required = true;
+            }
+            const key = stateKey({ id });
+            if (!values.has(key)) values.set(key, String(start));
+            const stored = values.get(key);
+            input.value = isValley
+              ? integer(stored)
+                ? stored
+                : ""
+              : shown(stored);
+            if (isValley && !integer(stored)) values.set(key, "");
+            let rejectedSequence = false;
+            const validate = () => {
+              const valid = isValley
+                ? integer(input.value)
+                : number(input.value) >= 0.001;
+              input.setCustomValidity(
+                valid
+                  ? ""
+                  : isValley
+                    ? "Enter a positive integer valley count."
+                    : "Enter a positive temperature.",
+              );
+              input.setAttribute("aria-invalid", String(!valid));
+              return valid;
+            };
+            const rejectInteger = () => {
+              input.value = "";
+              values.set(key, "");
+              rejectedSequence = true;
+              if (replayRunning)
+                stopReplay("Cancelled · starting values retained");
+              validate();
+              save();
+              updateDosMass();
+            };
+            if (isValley) {
+              input.addEventListener("focus", () => {
+                rejectedSequence = false;
+              });
+              input.addEventListener("keydown", (event) => {
+                if (["Backspace", "Delete"].includes(event.key))
+                  rejectedSequence = false;
+              });
+              input.addEventListener("beforeinput", (event) => {
+                if (event.inputType?.startsWith("delete")) {
+                  rejectedSequence = false;
+                  return;
+                }
+                if (
+                  event.data != null &&
+                  (!/^\d*$/.test(event.data) || rejectedSequence)
+                ) {
+                  event.preventDefault();
+                  rejectInteger();
+                }
+              });
+              for (const eventName of ["paste", "drop"])
+                input.addEventListener(eventName, (event) => {
+                  const text =
+                    (event.clipboardData ?? event.dataTransfer)?.getData(
+                      "text/plain",
+                    ) ?? "";
+                  event.preventDefault();
+                  if (!integer(text)) {
+                    rejectInteger();
+                    return;
+                  }
+                  rejectedSequence = false;
+                  input.value = text;
+                  input.dispatchEvent(new Event("input", { bubbles: true }));
+                });
+            }
+            validate();
+            input.oninput = () => {
+              if (
+                isValley &&
+                input.value !== "" &&
+                (rejectedSequence || !integer(input.value))
+              )
+                rejectInteger();
+              validate();
+              values.set(key, canonical(input.value));
+              save();
+            };
+            input.onchange = () => {
+              input.oninput();
+              if (!input.checkValidity()) input.reportValidity();
+            };
+            label.append(input);
+            (id.startsWith("N") ? valleys : temperatures).append(label);
+          }
+          bands.replaceChildren();
+          for (let i = 0; i < n; i++) {
+            const row = document.createElement("fieldset");
+            row.className = "band-row";
+            row.dataset.band = i;
+            row.innerHTML =
+              "<legend>Band " +
+              (i + 1) +
+              '</legend><div class="band-picks"></div>';
+            for (const [name, choices] of [
+              ["Band type", ["VB", "CB"]],
+              ["Dispersion", ["Parabolic", "Kane"]],
+            ]) {
+              const group = document.createElement("div");
+              group.className = "segments";
+              group.setAttribute("role", "group");
+              group.setAttribute("aria-label", name + " of Band " + (i + 1));
+              choices.forEach((choice, j) => {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.textContent = choice;
+                button.dataset.choice = choice;
+                const isType = name === "Band type";
+                button.setAttribute(
+                  "aria-pressed",
+                  String(
+                    (isType ? types[i] % 2 : Math.floor(types[i] / 2)) === j,
+                  ),
+                );
+                button.disabled =
+                  choice === "Kane" &&
+                  (n === 3 ||
+                    mechanism !== "ac" ||
+                    types.slice(0, n).some((v, pos) => pos !== i && v >= 2));
+                button.onclick = () => {
+                  if (button.disabled) return;
+                  const before = hasKane();
+                  types[i] = isType
+                    ? types[i] - (types[i] % 2) + j
+                    : (types[i] % 2) + 2 * j;
+                  if (before && !hasKane()) mechanism = lastParabolic;
+                  changed();
+                  el(
+                    '[data-band="' + i + '"] [data-choice="' + choice + '"]',
+                  ).focus();
+                };
+                group.append(button);
+              });
+              row.lastElementChild.append(group);
+            }
+            bands.append(row);
+          }
+          el("#sb-model-name").textContent = model();
+          el("#sb-active-name").innerHTML = modeNames[selectedMode].replace(
+            "R_H",
+            "R<sub>H</sub>",
+          );
+          const alternative = n > 2 || hasKane();
+          const mixedS = mechanism === "mix" && n > 1;
+          let note =
+            n > 1
+              ? "In S-only fits with a single mechanism, relative transport prefactors are set to one."
+              : "Field values are illustrative starting values.";
+          if (mixedS)
+            note =
+              "Desktop uses a separate S-only calculation. This design uses the specified relative band weights and the scattering-time ratios at 300 K.";
+          if (mechanism === "ion")
+            note = "Ionized impurities use the web power-law model. " + note;
+          if (hasKane())
+            note =
+              "Kane bands support acoustic phonons only. S-only uses independent dimensionless σ₀ ratios referenced to Band 1; absolute prefactors appear with resistivity and Hall. The absolute Kane scale is pending validation.";
+          else if (n === 3)
+            note += " Three-band compositions support parabolic bands only.";
+          else if (mechanism !== "ac")
+            note += " Select acPh before choosing a Kane band.";
+          el("#sb-note").textContent =
+            (alternative ? "Proposed extension · " : "") + note;
+          el("#sb-guide-config").textContent =
+            model() +
+            " · " +
+            types
+              .slice(0, n)
+              .map((t) => options[t])
+              .join(" + ") +
+            " · " +
+            scatter.selectedOptions[0].textContent;
+          el("#sb-fit-note").textContent =
+            n === 3
+              ? "Three-band compositions support parabolic bands only."
+              : hasKane()
+                ? "Kane bands support acoustic phonons only."
+                : mechanism !== "ac"
+                  ? "Select acPh to enable Kane bands."
+                  : "";
+          const rows = form();
+          for (const row of rows) {
+            const key = stateKey(row);
+            if (!values.has(key)) values.set(key, String(row.initial));
+          }
+          const list = el(".rows"),
+            body = el("tbody");
+          list.replaceChildren();
+          body.replaceChildren();
+          const mixed = types.slice(0, n).some((t) => t % 2 !== types[0] % 2);
+          const gapSymbol = "E<sub>g</sub>";
+          function updateGap() {
+            const replayGap = el("#sb-replay-gap");
+            replayGap.hidden = true;
+            replayGap.textContent = "";
+            replayPair = "";
+            const summary = el("#sb-gap-readout");
+            summary.hidden = true;
+            const inGapNote = el("#sb-in-gap-note");
+            inGapNote.hidden = true;
+            const three = el("#sb-three-gap"),
+              value = el("#sb-gap-value"),
+              origin = el("#sb-gap-origin");
+            three.hidden = n !== 3;
+            if (!mixed) {
+              if (n === 3) {
+                value.textContent = "Undetermined";
+                origin.textContent =
+                  types[0] % 2
+                    ? "No valence band in this model."
+                    : "No conduction band in this model.";
+              }
+              return;
+            }
+            const energies = [
+              0,
+              ...Array.from(
+                { length: n - 1 },
+                (_, j) =>
+                  replayPreview?.[j] ??
+                  list.querySelector(
+                    '[data-field="gap' + (j + 1) + '"] input[data-number]',
+                  )?.value,
+              ),
+            ];
+            if (
+              energies
+                .slice(1)
+                .some((x) => x === undefined || !Number.isFinite(number(x)))
+            ) {
+              if (n === 3) {
+                value.textContent = "—";
+                origin.textContent = "Enter both band-edge offsets.";
+              }
+              return;
+            }
+            const sign = n === 2 && types[0] % 2 === 1 ? -1 : 1;
+            const offsets = energies.map((x) => sign * number(x));
+            const cb = offsets.filter((_, i) => types[i] % 2 === 1),
+              vb = offsets.filter((_, i) => types[i] % 2 === 0);
+            const ec = Math.min(...cb),
+              ev = Math.max(...vb),
+              d = ec - ev;
+            const indices = (type, energy) =>
+              offsets
+                .map((e, i) =>
+                  types[i] % 2 === type && e === energy
+                    ? (type ? "CB" : "VB") + ["₁", "₂", "₃"][i]
+                    : null,
+                )
+                .filter(Boolean)
+                .join(" / ");
+            replayPair = indices(1, ec) + " and " + indices(0, ev);
+            replayGap.hidden = false;
+            replayGap.textContent =
+              d < 0
+                ? "Closed · overlap " +
+                  shown(Number(Math.abs(d).toPrecision(8))) +
+                  " eV"
+                : shown(Number(d.toPrecision(8))) + " eV";
+            const ef = list.querySelector(
+              '[data-field="ef"] input[data-number]',
+            )?.value;
+            inGapNote.hidden = !(
+              selectedMode === 0 &&
+              offsets.every(Number.isFinite) &&
+              ef !== undefined &&
+              ef !== "" &&
+              Number.isFinite(number(ef)) &&
+              d > 0 &&
+              number(ef) >= ev &&
+              number(ef) <= ec
+            );
+            if (n === 3) {
+              const pair = replayPair;
+              const magnitude =
+                shown(Number(Math.abs(d).toPrecision(8))) + " eV";
+              value.textContent = d < 0 ? "Closed" : magnitude;
+              origin.textContent =
+                (d < 0
+                  ? "Band overlap: " + magnitude + ". "
+                  : d === 0
+                    ? "Equal edge energies. "
+                    : "") +
+                "Calculated from " +
+                pair +
+                ".";
+              return;
+            }
+            if (n === 2) {
+              const symbol =
+                d >= 0
+                  ? gapSymbol
+                  : edge(types[0] % 2 ? 0 : 1) +
+                    " − " +
+                    edge(types[0] % 2 ? 1 : 0);
+              const field = list.querySelector("[data-field=gap1]");
+              field.querySelector("label").innerHTML = symbol;
+              const marker = document.createElement("span");
+              marker.className = "gap-fit-marker";
+              marker.textContent = replayRunning ? "Fit…" : "";
+              field.querySelector("label").append(marker);
+              if (replayPreview) {
+                const current = document.createElement("span");
+                current.className = "gap-current";
+                current.textContent = "Current gap = " + replayGap.textContent;
+                field.querySelector("label").append(" · ", current);
+              }
+              field
+                .querySelector(".help")
+                .setAttribute("aria-label", "About " + strip(symbol));
+              field
+                .querySelector(".lock")
+                .setAttribute(
+                  "aria-label",
+                  (held.has(stateKey({ id: "gap1" }))
+                    ? "Unlock for fitting: "
+                    : "Hold during fit: ") + strip(symbol),
+                );
+              field
+                .querySelector("input[type=range]")
+                .setAttribute(
+                  "aria-label",
+                  "Adjust " + strip(symbol) + " within bounds",
+                );
+              if (d >= 0) return;
+            }
+            summary.hidden = false;
+            summary.innerHTML =
+              (d < 0 ? "Band overlap" : gapSymbol) +
+              " = " +
+              shown(Number(Math.abs(d).toPrecision(8))) +
+              " eV";
+          }
+          root
+            .querySelectorAll("[data-mode]")
+            .forEach((b, i) =>
+              b.setAttribute("aria-pressed", String(i === selectedMode)),
+            );
+          root
+            .querySelectorAll("thead th")
+            .forEach((th, i) =>
+              th.classList.toggle("sel", i === selectedMode + 1),
+            );
+          rows.forEach((r) => {
+            const key = stateKey(r),
+              state = r.states[selectedMode];
+            const gapAlias = n === 2 && mixed && r.id === "gap1";
+            const sign = gapAlias && types[0] % 2 === 1 ? -1 : 1;
+            if (gapAlias) {
+              r.symbol = gapSymbol;
+              r.meaning =
+                "Conduction minimum minus valence maximum, in eV. At contact the gap is zero. A negative entry describes band overlap. Desktop displays this energy divided by k_B in kelvin.";
+            }
+            const tr = document.createElement("tr");
+            const dualLabel = r.id === "scale" && mechanism !== "ion" && n > 1;
+            const ts = tau(mechanism === "dis" ? "dis" : "acPh", 0);
+            tr.innerHTML =
+              '<th scope="row">' +
+              (gapAlias
+                ? gapSymbol + " / signed edge separation"
+                : dualLabel
+                  ? ts + " / " + mass(0) + " (S + ρ)<br>" + ts + " (with Hall)"
+                  : r.symbol) +
+              "</th>";
+            r.states.forEach((st, i) => {
+              const td = document.createElement("td");
+              td.textContent = marks[st][0];
+              td.setAttribute("aria-label", marks[st][1]);
+              if (i === selectedMode) td.className = "sel";
+              tr.append(td);
+            });
+            body.append(tr);
+            if (state === "hidden") return;
+            const field = document.createElement("div");
+            field.className = "field";
+            field.dataset.field = r.id;
+            const forced = state === "manual",
+              locked = forced || held.has(key);
+            const reason = forced
+              ? r.id === "mass"
+                ? "Absolute mass is set manually until Hall data are included."
+                : "Relative contributions are set manually in S-only mode."
+              : "Unlock to allow fitting. Lock to hold the entered value during a fit.";
+            const unitText =
+              r.id === "scale" && !["ion"].includes(mechanism)
+                ? "scale: " + r.unit
+                : r.unit;
+            const captionId = "sb-tip-" + r.id;
+            field.innerHTML =
+              '<div class="field-head"><label for="sb-p-' +
+              r.id +
+              '">' +
+              r.symbol +
+              '</label><button type="button" class="help" aria-expanded="false" aria-controls="' +
+              captionId +
+              '" aria-label="About ' +
+              strip(r.symbol) +
+              '">' +
+              icon("info", "ⓘ") +
+              '</button><button type="button" class="lock"></button><input id="sb-p-' +
+              r.id +
+              '" type="text" inputmode="decimal" data-number><span class="unit">' +
+              unitText +
+              '</span></div><div id="' +
+              captionId +
+              '" class="field-caption" hidden>' +
+              r.meaning +
+              " Unit: " +
+              unitText +
+              ". " +
+              reason +
+              "</div>";
+            const help = field.querySelector(".help"),
+              caption = field.querySelector(".field-caption"),
+              lock = field.querySelector(".lock");
+            help.dataset.tooltip = caption.textContent;
+            help.onclick = () => {
+              caption.hidden = !caption.hidden;
+              help.setAttribute("aria-expanded", String(!caption.hidden));
+            };
+            lock.setAttribute("aria-disabled", String(forced));
+            lock.innerHTML =
+              icon(locked ? "lock" : "lock-open", locked ? "🔒" : "🔓") +
+              (locked ? " Held" : "");
+            const action = forced
+              ? "Fixed in this mode"
+              : held.has(key)
+                ? "Unlock for fitting"
+                : "Hold during fit";
+            lock.setAttribute("aria-label", action + ": " + strip(r.symbol));
+            lock.setAttribute("aria-pressed", String(locked));
+            lock.dataset.tooltip = forced
+              ? "Held by mode. " + reason
+              : held.has(key)
+                ? "Held by the researcher. Unlock to allow fitting."
+                : action;
+            lock.onclick = () => {
+              if (forced) {
+                caption.hidden = false;
+                help.setAttribute("aria-expanded", "true");
+                return;
+              }
+              if (held.has(key)) held.delete(key);
+              else held.add(key);
+              changed();
+              el('[data-field="' + r.id + '"] .lock').focus();
+            };
+            if (r.id === "mass") {
+              const output = document.createElement("div");
+              output.id = "sb-total-dos-mass";
+              output.dataset.testid = "derived-dos-mass";
+              output.className = "field-caption";
+              field.append(output);
+            }
+            const input = field.querySelector("input");
+            decimalInput(input);
+            input.required = r.id.startsWith("weight");
+            if (r.min !== undefined) input.min = r.min;
+            input.value = shown(
+              signedValue(values.get(key) ?? r.initial, sign),
+            );
+            input.placeholder = "Enter value";
+            const validateInput = () => {
+              const numeric = number(input.value);
+              input.setCustomValidity(
+                input.value !== "" &&
+                  (!Number.isFinite(numeric) ||
+                    (r.min !== undefined && numeric < r.min))
+                  ? r.id.startsWith("weight")
+                    ? "Enter a nonnegative relative channel strength."
+                    : "Enter a valid number within the allowed range."
+                  : input.value !== "" &&
+                      numeric === 0 &&
+                      [
+                        "mass",
+                        "massRatio1",
+                        "massRatio2",
+                        "scale",
+                        "ratio1",
+                        "ratio2",
+                        "amplitude0",
+                        "amplitude1",
+                        "amplitude2",
+                      ].includes(r.id)
+                    ? "Enter a positive value."
+                    : "",
+              );
+              values.set(key, signedValue(input.value, sign));
+            };
+            // Validate initial values without saving over a refused draft.
+            validateInput();
+            input.oninput = () => {
+              validateInput();
+              save();
+            };
+            if (r.id.startsWith("gap") || r.id === "ef")
+              input.addEventListener("input", updateGap);
+            const storedBounds = limits.get(key) ?? ["", ""];
+            const pair =
+              sign === 1
+                ? [...storedBounds]
+                : [
+                    signedValue(storedBounds[1], sign),
+                    signedValue(storedBounds[0], sign),
+                  ];
+            const slider = document.createElement("input");
+            slider.type = "range";
+            slider.step = "any";
+            slider.setAttribute(
+              "aria-label",
+              "Adjust " + strip(r.symbol) + " within bounds",
+            );
+            function syncSlider() {
+              slider.hidden =
+                pair.some((x) => x === "") ||
+                Number(pair[0]) >= Number(pair[1]) ||
+                !Number.isFinite(number(input.value)) ||
+                number(input.value) < number(pair[0]) ||
+                number(input.value) > number(pair[1]);
+              if (!slider.hidden) {
+                slider.min = pair[0];
+                slider.max = pair[1];
+                slider.value = canonical(input.value);
+              }
+            }
+            field.append(slider);
+            syncSlider();
+            slider.oninput = () => {
+              input.value = shown(slider.value);
+              input.oninput();
+              values.set(key, signedValue(input.value, sign));
+              if (r.id.startsWith("gap") || r.id === "ef") updateGap();
+            };
+            slider.onchange = save;
+            input.onchange = () => {
+              if (input.validity.valid) {
+                values.set(key, signedValue(input.value, sign));
+                syncSlider();
+                if (r.id.startsWith("gap") || r.id === "ef") updateGap();
+                save();
+              } else input.reportValidity();
+            };
+            if (editBounds) {
+              const box = document.createElement("div");
+              box.className = "limits";
+              ["Lower bound", "Upper bound"].forEach((name, j) => {
+                const label = document.createElement("label");
+                label.textContent = name;
+                const limit = document.createElement("input");
+                decimalInput(limit);
+                limit.value = shown(pair[j]);
+                limit.oninput = () =>
+                  limit.setCustomValidity(
+                    limit.value === "" || Number.isFinite(number(limit.value))
+                      ? ""
+                      : "Enter a valid number.",
+                  );
+                limit.onchange = () => {
+                  const next = [...pair];
+                  limit.oninput();
+                  if (!limit.checkValidity()) {
+                    limit.reportValidity();
+                    return;
+                  }
+                  next[j] = canonical(limit.value);
+                  if (
+                    next.every((x) => x !== "") &&
+                    Number(next[0]) >= Number(next[1])
+                  ) {
+                    limit.setCustomValidity(
+                      "The lower bound must be smaller than the upper bound.",
+                    );
+                    limit.reportValidity();
+                    return;
+                  }
+                  pair[j] = canonical(limit.value);
+                  limits.set(
+                    key,
+                    sign === 1
+                      ? [...pair]
+                      : [
+                          signedValue(pair[1], sign),
+                          signedValue(pair[0], sign),
+                        ],
+                  );
+                  syncSlider();
+                  save();
+                };
+                label.append(limit);
+                box.append(label);
+              });
+              field.append(box);
+            }
+            list.append(field);
+          });
+          refreshGap = updateGap;
+          updateGap();
+          replayControls();
+          updateDosMass();
+          el("#sb-bounds").setAttribute("aria-pressed", String(editBounds));
+          window.lucide?.createIcons({ attrs: { width: 16, height: 16 } });
+        }
+        function changed(viewOnly = false) {
+          if (replayRunning) stopReplay("Cancelled · model changed");
+          else if (el("#sb-replay-result").textContent) stopReplay("Ready");
+          render();
+          if (!viewOnly || !retainedIncompatibleDraft) save();
+        }
+        root.querySelectorAll("[data-page]").forEach(
+          (b) =>
+            (b.onclick = () => {
+              page = b.dataset.page;
+              changed(true);
+            }),
+        );
+        el("#sb-bounds").onclick = () => {
+          editBounds = !editBounds;
+          changed(true);
+        };
+        function changeBandCount(next) {
+          if (next === 3 && hasKane()) return;
+          const before = hasKane();
+          for (let i = next; i < n; i++) {
+            types[i] = 0;
+            for (const state of [values, limits, held])
+              for (const key of state.keys())
+                if (key.startsWith("band/" + bandIds[i] + "/"))
+                  state.delete(key);
+          }
+          bandIds.length = Math.min(next, n);
+          if (next > n) {
+            types[n] = 1;
+            bandIds.push(nextBandId++);
+          }
+          n = next;
+          if (before && !hasKane()) mechanism = lastParabolic;
+          changed();
+        }
+        add.onclick = () => {
+          if (n < 3 && !(n === 2 && hasKane())) {
+            changeBandCount(n + 1);
+            el('[data-band="' + (n - 1) + '"] [aria-pressed="true"]').focus();
+          }
+        };
+        remove.onclick = () => {
+          if (n > 1) {
+            changeBandCount(n - 1);
+            (n === 1 ? add : remove).focus();
+          }
+        };
+        scatter.onchange = () => {
+          const error = compatibilityError({
+            n,
+            types,
+            mechanism: scatter.value,
+          });
+          if (error) {
+            scatter.value = mechanism;
+            showCompatibilityError(error);
+            return;
+          }
+          showCompatibilityError();
+          lastParabolic = mechanism = scatter.value;
+          changed();
+        };
+        root.querySelectorAll("[data-mode]").forEach(
+          (b) =>
+            (b.onclick = () => {
+              selectedMode = +b.dataset.mode;
+              changed();
+            }),
+        );
+        function restore(snapshot) {
+          const error = compatibilityError(snapshot?.modelContent);
+          if (error) {
+            showCompatibilityError(error);
+            return error;
+          }
+          showCompatibilityError();
+          refreshGap = () => {};
+          stopReplay("Ready");
+          const s = snapshot?.modelContent;
+          const p = snapshot?.privateContent;
+          // Invalid or absent composition starts from the documented default.
+          n = 3;
+          types = [0, 1, 0];
+          mechanism = lastParabolic = "ac";
+          selectedMode = 2;
+          if (
+            s &&
+            [1, 2, 3].includes(s.n) &&
+            Array.isArray(s.types) &&
+            s.types.length === 3 &&
+            s.types.every((x) => [0, 1, 2, 3].includes(x)) &&
+            s.types.slice(0, s.n).filter((x) => x >= 2).length <= 1 &&
+            ["ac", "dis", "mix", "ion"].includes(s.mechanism) &&
+            [0, 1, 2].includes(s.selectedMode)
+          ) {
+            n = s.n;
+            types = [...s.types];
+            mechanism = s.mechanism;
+            selectedMode = s.selectedMode;
+            lastParabolic = ["ac", "dis", "mix", "ion"].includes(
+              s.lastParabolic,
+            )
+              ? s.lastParabolic
+              : mechanism;
+          }
+          const validIds =
+            [2, 3, 4].includes(p?.stateVersion) &&
+            Array.isArray(p.bandIds) &&
+            p.bandIds.length === n &&
+            p.bandIds.every((id) => Number.isSafeInteger(id) && id > 0) &&
+            new Set(p.bandIds).size === n;
+          bandIds = validIds
+            ? [...p.bandIds]
+            : Array.from({ length: n }, (_, i) => i + 1);
+          nextBandId = Math.max(...bandIds) + 1;
+          if (validIds && Number.isSafeInteger(p.nextBandId))
+            nextBandId = Math.max(nextBandId, p.nextBandId);
+          held.clear();
+          values.clear();
+          limits.clear();
+          legacyState = p?.legacyState;
+          editBounds = false;
+          page = "fit";
+          if (p) {
+            let source = p;
+            if (!validIds) {
+              // Old keys can collide after type changes. Choose one complete
+              // record, favouring the saved active context, including its hold.
+              legacyState = {
+                values: p.values,
+                limits: p.limits,
+                held: p.held,
+              };
+              const candidates = new Map();
+              const activeRows = new Set(form().map((row) => row.id));
+              const keys = new Set([
+                ...Object.keys(p.values ?? {}),
+                ...Object.keys(p.limits ?? {}),
+                ...(Array.isArray(p.held) ? p.held : []),
+              ]);
+              for (const oldKey of keys) {
+                if (typeof oldKey !== "string") continue;
+                let key,
+                  score = 0;
+                if (/^(ef|tMin|tMax|N[0-2])$/.test(oldKey)) {
+                  if (oldKey.startsWith("N") && +oldKey[1] >= n) continue;
+                  key = stateKey({ id: oldKey });
+                } else {
+                  const match = oldKey.match(
+                    /^(ef|mass|gap[12]|massRatio[12]|alpha[0-2]|amplitude[0-2]|scale|ratio[12]|mix[0-2])\/([0-3])-([0-3])(?:\/(ac|dis|mix|ion))?$/,
+                  );
+                  if (!match) continue;
+                  const [, id, first, own, scattering] = match;
+                  const index = Number(id.match(/[0-2]$/)?.[0] ?? 0);
+                  if (index >= n) continue;
+                  const oldTypes = [...types];
+                  oldTypes[0] = +first;
+                  oldTypes[index] = +own;
+                  key =
+                    id === "scale" && scattering === "mix"
+                      ? "band/" + bandIds[0] + "/scale/mix:S/m"
+                      : stateKey({ id }, oldTypes, scattering ?? "ac");
+                  score =
+                    Number(+first === types[0]) * 8 +
+                    Number(+own === types[index]) * 4 +
+                    Number(activeRows.has(id));
+                }
+                if (!candidates.has(key) || candidates.get(key).score < score)
+                  candidates.set(key, { oldKey, score });
+              }
+              source = { values: {}, limits: {}, held: [] };
+              for (const [key, { oldKey }] of candidates) {
+                source.values[key] = p.values?.[oldKey];
+                source.limits[key] = p.limits?.[oldKey];
+                if (Array.isArray(p.held) && p.held.includes(oldKey))
+                  source.held.push(key);
+              }
+            }
+            // Acoustic and mixed scattering share the same acoustic-limit
+            // coefficient. Migrate one complete value/bounds/hold record,
+            // preferring the saved active context and archiving conflicts.
+            source = {
+              values: { ...source.values },
+              limits: { ...source.limits },
+              held: Array.isArray(source.held) ? [...source.held] : [],
+            };
+            for (const id of bandIds) {
+              const acoustic = "band/" + id + "/scale/ac:S/m";
+              const mixed = "band/" + id + "/scale/mix:S/m";
+              const has = (key) =>
+                Object.hasOwn(source.values, key) ||
+                Object.hasOwn(source.limits, key) ||
+                source.held.includes(key);
+              if (!has(mixed)) continue;
+              const winner =
+                mechanism === "mix" || !has(acoustic) ? mixed : acoustic;
+              legacyState = {
+                ...legacyState,
+                acousticScaleRecords: {
+                  ...legacyState?.acousticScaleRecords,
+                  [id]: Object.fromEntries(
+                    [acoustic, mixed].filter(has).map((key) => [
+                      key,
+                      {
+                        value: source.values[key],
+                        limits: source.limits[key],
+                        held: source.held.includes(key),
+                      },
+                    ]),
+                  ),
+                },
+              };
+              const value = source.values[winner];
+              const bounds = source.limits[winner];
+              const locked = source.held.includes(winner);
+              delete source.values[acoustic];
+              delete source.values[mixed];
+              delete source.limits[acoustic];
+              delete source.limits[mixed];
+              source.held = source.held.filter(
+                (key) => key !== acoustic && key !== mixed,
+              );
+              if (value !== undefined) source.values[acoustic] = value;
+              if (bounds !== undefined) source.limits[acoustic] = bounds;
+              if (locked) source.held.push(acoustic);
+            }
+            const activeKey = (key) => {
+              if (["ef", "tMin", "tMax"].includes(key)) return true;
+              const match = key.match(/^band\/(\d+)\//);
+              if (!match || !bandIds.includes(+match[1])) return false;
+              const reference = key.match(/\/to\/(\d+)$/);
+              return !reference || +reference[1] === bandIds[0];
+            };
+            for (const key of Array.isArray(source.held) ? source.held : [])
+              if (typeof key === "string" && activeKey(key)) held.add(key);
+            for (const [key, value] of Object.entries(source.values ?? {}))
+              if (
+                activeKey(key) &&
+                (key.endsWith("/valleys") ||
+                  (typeof value === "string" &&
+                    (value === "" ||
+                      /^[+-]?(\d*([.,]\d*)?)([eE][+-]?\d*)?$/.test(value))))
+              ) {
+                if (key.endsWith("/valleys") && !integer(value)) {
+                  legacyState = {
+                    ...legacyState,
+                    invalidValleys: {
+                      ...legacyState?.invalidValleys,
+                      [key]: value,
+                    },
+                  };
+                  values.set(key, "");
+                } else values.set(key, canonical(value));
+              }
+            for (const [key, pair] of Object.entries(source.limits ?? {}))
+              if (
+                activeKey(key) &&
+                Array.isArray(pair) &&
+                pair.length === 2 &&
+                pair.every(
+                  (value) =>
+                    typeof value === "string" &&
+                    (value === "" || Number.isFinite(number(value))),
+                )
+              )
+                limits.set(key, pair.map(canonical));
+            // A saved editor must restore missing required counts as missing.
+            // Layout-only presets (without a values map) start fresh instead.
+            if (p.values && typeof p.values === "object") {
+              for (let i = 0; i < n; i++) {
+                const key = stateKey({ id: "N" + i });
+                if (!values.has(key)) values.set(key, "");
+              }
+            }
+            editBounds = p.editBounds === true;
+            page = p.page === "guide" ? "guide" : "fit";
+          }
+          render();
+        }
+        // Explicit fixture/import seam for this standalone prototype.
+        window.fitGuide = {
+          restore(state) {
+            const error = restore(state);
+            if (error) return error;
+            save();
+          },
+          snapshot,
+          storageKey,
+        };
+        let saved;
+        try {
+          saved = JSON.parse(localStorage.getItem(storageKey));
+        } catch {
+          // Missing, malformed or inaccessible storage starts a fresh editor.
+        }
+        const error = restore(saved);
+        if (error) {
+          restore();
+          retainedIncompatibleDraft = true;
+          showCompatibilityError(error);
+        }
+      })();
+    </script>
+  </body>
+</html>

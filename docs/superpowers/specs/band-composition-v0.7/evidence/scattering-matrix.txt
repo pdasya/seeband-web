@@ -1,0 +1,7 @@
+Chromium Fit/Guide: 576 distinct ordered requests; 198 accepted, 378 explicitly rejected.
+Bands     Accepted    Invalid scattering    Unsupported composition
+1         30         18         0
+2         72         72         0
+3         96         0         288
+90 incompatible_scattering refusals at modelContent.mechanism; 288 unsupported_composition refusals at modelContent.types, before scattering validation. All refusals show a visible reason and preserve editor and stored draft; forced scattering changes blocked.
+Both UI edit directions blocked unsupported composition, including forced clicks. Invalid scattering and unsupported-composition drafts survived reload and navigation until a deliberate edit.

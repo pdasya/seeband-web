@@ -32,3 +32,6 @@ deploy/compose.yaml.new
 .DS_Store
 test-results/
 playwright-report/
+
+# Generated review figures
+/docs/superpowers/specs/figures/*.png

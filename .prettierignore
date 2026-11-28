@@ -14,3 +14,4 @@ packages/api-client/openapi.json
 packages/api-client/src/schema.d.ts
 apps/web/public/licenses/
 apps/web/.claude/skills/
+docs/superpowers/specs/band-composition-v0.7/evidence/mixed_reference.json

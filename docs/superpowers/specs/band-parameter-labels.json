@@ -1,0 +1,543 @@
+{
+  "version": "0.7",
+  "interface": {
+    "language": "en",
+    "band_diagram_axis": {
+      "label_en": "k",
+      "unit": "1",
+      "definition": "(k_phys - k_edge) / k_ref along the plotted direction",
+      "reference_per_m": 10000000000,
+      "show_numeric_ticks": false,
+      "scope": "One fixed display scale for every band and temperature. Transport uses physical wavevectors."
+    },
+    "numeric_display": {
+      "decimal_separator": ",",
+      "grouping": false,
+      "example_ev": "0,09 eV",
+      "persistence": "JSON numbers and canonical numeric strings use a decimal point.",
+      "valley_count": "ASCII decimal digits forming a positive safe integer. Reject fractional input in full. Restore an invalid or missing count as unset and require explicit correction."
+    },
+    "three_band_gap": {
+      "design_status": "accepted",
+      "panel": "Parameters",
+      "position": "above fit inputs",
+      "label_en": "Band gap · E_g",
+      "derived": true,
+      "fit_eligible": false,
+      "unit": "eV"
+    },
+    "fit": "Model settings and Parameters for the current fit mode. Each visible field has a physical symbol, unit, help control and fit lock.",
+    "guide": "Parameters by fit mode. Show the model-defined eligibility matrix only here. User holds belong to Fit and do not change the reference matrix.",
+    "navigation": "Switching between Fit and Guide preserves all settings, entered values, bounds and holds.",
+    "eligibility_legend_en": {
+      "fit": "Eligible to fit",
+      "manual": "Set manually in this mode",
+      "hidden": "Hidden"
+    }
+  },
+  "identifiability": {
+    "contract": "band_composition_v1",
+    "scope": "Proposed strings.ts keys and core diagnostic IDs for the new composition contract.",
+    "parameters_caution": {
+      "key": "fit.diagnostics.multibandSeebeckCaution",
+      "text": "Seebeck data alone can leave several band parameters undetermined. Use independent measurements or hold parameters you know."
+    },
+    "status": {
+      "id": "parameter_nonidentifiability",
+      "key": "status.parameterNonidentifiability",
+      "label": "Parameters not uniquely determined"
+    },
+    "issues": [
+      {
+        "id": "band_composition_fermi_in_gap",
+        "message_key": "known_issue.band_composition_fermi_in_gap",
+        "text": "With these band edges, every E_F inside the gap gives the same curves."
+      },
+      {
+        "id": "band_composition_flat_profile",
+        "message_key": "known_issue.band_composition_flat_profile",
+        "text": "Several values of a free parameter reproduce the data equally well within the tested range."
+      },
+      {
+        "id": "band_composition_near_empty_band",
+        "message_key": "known_issue.band_composition_near_empty_band",
+        "text": "This band has very few carriers across the fitted temperature range. Check how strongly its parameters affect the measured curves."
+      },
+      {
+        "id": "band_composition_hall_compensation",
+        "message_key": "known_issue.band_composition_hall_compensation",
+        "text": "Electron and hole Hall contributions cancel within the resolution of these measurements. The Hall signal gives little information about the absolute mass scale here."
+      }
+    ]
+  },
+  "scope": "proposed UI labels and fit eligibility; internal model identifiers and numerical results unchanged",
+  "numbering": "i is the stable band row number (1–3); all offsets, mass ratios and relative transport weights reference Band 1; c/v follows CB/VB without renumbering",
+  "mass_reporting": {
+    "new_primary": "Single-valley DOS mass",
+    "all_valleys_label": "DOS mass (all equivalent valleys)",
+    "all_valleys_definition": "m_DOS,i = N_i^(2/3) m_b,i",
+    "parameters": "Show the derived Band 1 value alongside its single-valley field when N_1 differs from one. It has no separate bounds or lock.",
+    "p17_inverse": "m_b,1 = m_1(P17) / N_1^(2/3)",
+    "earlier_runs": "Preserve the saved DOS mass, units and valley count. Label the single-valley conversion as derived. Missing source metadata leaves the conversion unavailable."
+  },
+  "fields": [
+    {
+      "key": "fermi",
+      "legacy_or_tdd": "fermi_energy",
+      "label_en": "E_F",
+      "display_unit": "eV",
+      "tooltip_en": "Fermi energy at 0 K, referenced to the edge of Band 1. One value for the whole sample. The chemical potential at finite temperature is μ(T).",
+      "definition": "E_F with E_edge,1 = 0"
+    },
+    {
+      "key": "edge",
+      "legacy_or_tdd": "band_offset_k; E_i − E_1",
+      "label_en": "E_{c/v,i} − E_{c/v,1}",
+      "display_by_configuration": {
+        "two_bands_one_CB_one_VB": "Show E_g for E_c−E_v >= 0, and the explicit E_c−E_v for negative values. The editable coordinate is always E_c−E_v. If Band 1 is CB, negate the stored offset and swap and negate bound endpoints for display. Reuse the same hold and parameter ID.",
+        "three_bands_mixed": "Edit both signed offsets relative to Band 1. Always show a Band gap · E_g summary at the top of Parameters. Display min(E_c)−max(E_v) when nonnegative, including zero. On overlap display Closed and the positive overlap magnitude. Identify every CB minimum and VB maximum involved, including ties. An incomplete offset shows a dash. The derived summary has no fit lock.",
+        "all_CB_or_all_VB": "Edit offsets between edges of the same type. With three bands show Undetermined in the gap summary and identify the missing band type. A single band has no edge offset or gap field."
+      },
+      "display_unit": "eV",
+      "tooltip_en": "Edge of Band {i} minus the edge of Band 1; use c for each CB edge and v for each VB edge independently. Positive means higher on the electron energy axis.",
+      "definition": "E_i - E_1"
+    },
+    {
+      "key": "mass",
+      "legacy_or_tdd": "m1; band_mass (legacy signed)",
+      "label_en": "Single-valley DOS mass · m_b,1",
+      "display_unit": "mₑ",
+      "tooltip_en": "Positive single-valley DOS mass at the Band 1 edge, in free-electron masses. A P17 DOS mass converts as m_b,1 = m_1(P17) / N_1^(2/3), using the saved valley count. Decode a raw legacy E coefficient by its original convention first.",
+      "definition": "m_b,1"
+    },
+    {
+      "key": "mass_ratio",
+      "legacy_or_tdd": "mass_ratio; M_i",
+      "label_en": "m_b,i/m_b,1",
+      "display_unit": "1",
+      "tooltip_en": "Ratio of positive single-valley band-edge masses. Valley counts are entered separately.",
+      "definition": "m_b,i / m_b,1"
+    },
+    {
+      "key": "kane",
+      "legacy_or_tdd": "α_i",
+      "label_en": "αᵢ",
+      "display_unit": "eV⁻¹",
+      "tooltip_en": "Kane nonparabolicity of this band. Zero gives the parabolic limit.",
+      "definition": "alpha_i",
+      "applicability": {
+        "maximum_band_count": 2,
+        "maximum_kane_band_count": 1
+      }
+    },
+    {
+      "key": "amp",
+      "legacy_or_tdd": "A",
+      "label_en": "τ_acPh,1",
+      "display_unit": "S/m",
+      "tooltip_en": "Desktop acoustic scale label τ_acPh,1 (legacy A). This is the normalized conductivity coefficient multiplying F₀, with units S/m, not a raw relaxation time in seconds. In all-parabolic models with multiple bands, S + ρ displays τ_acPh,1/m_b,1; Hall displays τ_acPh,1. These labels refer to the same stored normalized coefficient.",
+      "definition": "acPh: sigma_1=A*F0; acPhDis: A is the acoustic-limit scale",
+      "applicability": {
+        "all_parabolic_scattering": ["acPh", "acPhDis"],
+        "kane_present": false
+      },
+      "label_by_context": {
+        "single_band": "τ_acPh,1",
+        "multiple_bands_S+rho": "τ_acPh,1/m_b,1",
+        "multiple_bands_S+rho+R_H": "τ_acPh,1"
+      }
+    },
+    {
+      "key": "alloy_amp",
+      "legacy_or_tdd": "F",
+      "label_en": "τ_dis,1",
+      "display_unit": "S/(m·K)",
+      "tooltip_en": "Desktop disorder scale label τ_dis,1 (legacy F). This normalized coefficient multiplies T in kelvin and F₀; its units are S/(m·K), not seconds. In all-parabolic models with multiple bands, S + ρ displays τ_dis,1/m_b,1; Hall displays τ_dis,1. These labels refer to the same stored normalized coefficient.",
+      "definition": "sigma_1=F*T*F0",
+      "applicability": {
+        "all_parabolic_scattering": ["dis"],
+        "kane_present": false
+      },
+      "label_by_context": {
+        "single_band": "τ_dis,1",
+        "multiple_bands_S+rho": "τ_dis,1/m_b,1",
+        "multiple_bands_S+rho+R_H": "τ_dis,1"
+      }
+    },
+    {
+      "key": "relative",
+      "legacy_or_tdd": "B / G; b_i",
+      "label_en": "τ_x,i/τ_x,1",
+      "display_unit": "1",
+      "tooltip_en": "Relative transport weight referenced to Band 1: x = acPh for acPh and acPh + dis (legacy B), x = dis for pure dis (legacy G). The full conductivity ratio also depends on masses, valley counts and filling; this is not the ratio of measured band conductivities.",
+      "definition": "prefactor_i/prefactor_1=(N_i/N_1)*(m_b,1/m_b,i)*b_i",
+      "applicability": {
+        "all_parabolic_scattering": ["acPh", "dis", "acPhDis"],
+        "band_indices": [2, 3],
+        "kane_present": false
+      },
+      "label_by_scattering": {
+        "acPh": "τ_acPh,i/τ_acPh,1",
+        "acPhDis": "τ_acPh,i/τ_acPh,1",
+        "dis": "τ_dis,i/τ_dis,1"
+      }
+    },
+    {
+      "key": "kane_amp",
+      "legacy_or_tdd": "C_l/E_def² (§12)",
+      "label_en": "(C_l/E_def²)ᵢ",
+      "display_unit": "Pa/eV²",
+      "tooltip_en": "Elastic modulus divided by squared acoustic deformation potential for the Kane band in the Lin–Liu model. Only acPh is offered when a Kane band is present. Absolute normalization remains a proposed extension requiring verification.",
+      "definition": "C_l/E_def^2",
+      "applicability": {
+        "band_type": "Kane",
+        "scattering": ["acPh"],
+        "maximum_band_count": 2,
+        "maximum_kane_band_count": 1
+      }
+    },
+    {
+      "key": "valleys",
+      "legacy_or_tdd": "N_i",
+      "label_en": "Valley degeneracy · Band {i}",
+      "display_unit": "1",
+      "tooltip_en": "Positive integer number of equivalent valleys in this band. Spin is counted separately. An invalid imported count leaves this input empty and blocks replay until the researcher supplies an integer.",
+      "definition": "N_i"
+    },
+    {
+      "key": "temp_low",
+      "legacy_or_tdd": "min_temperature_k",
+      "label_en": "Minimum fit temperature",
+      "display_unit": "K",
+      "tooltip_en": "Lowest temperature included in the fit.",
+      "definition": "T_min"
+    },
+    {
+      "key": "temp_high",
+      "legacy_or_tdd": "max_temperature_k",
+      "label_en": "Maximum fit temperature",
+      "display_unit": "K",
+      "tooltip_en": "Highest temperature included in the fit.",
+      "definition": "T_max"
+    },
+    {
+      "key": "mixed_parabolic_acoustic_amp",
+      "legacy_or_tdd": "candidate for one Kane + one parabolic only",
+      "label_en": "σ₀,ᵢ^(ph)",
+      "display_unit": "S/m",
+      "tooltip_en": "Acoustic conductivity scale for this parabolic band in a composition containing Kane. Only acPh is offered. No extra relative-weight field describes the same band pair. Absolute normalization remains a proposed extension requiring verification.",
+      "definition": "sigma_i=A_i*F0(eta_i)",
+      "applicability": {
+        "band_type": "parabolic",
+        "kane_present": true,
+        "scattering": ["acPh"],
+        "maximum_band_count": 2,
+        "maximum_kane_band_count": 1
+      }
+    },
+    {
+      "key": "mixed_ratio",
+      "legacy_or_tdd": "C (Band 1); D (Band 2); no desktop letter for Band 3",
+      "label_en": "τ_acPh,i/τ_dis,i",
+      "display_unit": "1",
+      "tooltip_en": "Acoustic-to-disorder relaxation-time ratio at 300 K for Band {i}. Legacy C for Band 1 and D for Band 2. The corresponding crossover temperature is 300 K times this ratio. Pure dis uses its own scale and relative weight.",
+      "definition": "r_i=tau_ph,i(T0)/tau_dis,i(T0); T0=300 K; crossover_temperature_k=T0*r_i",
+      "applicability": {
+        "all_parabolic_scattering": ["acPhDis"],
+        "band_indices": [1, 2, 3],
+        "kane_present": false
+      }
+    },
+    {
+      "key": "ionized_amp",
+      "legacy_or_tdd": "A (web ionized power-law model)",
+      "label_en": "τ_ii,1",
+      "display_unit": "S/m",
+      "tooltip_en": "Conductivity scale of Band 1 for the web ionized-impurity power-law model (legacy A). Multiplies (T/300 K)³ F₂; this is a normalized conductivity coefficient in S/m, not a relaxation time in seconds. The τ label preserves the empirical law and introduces no microscopic assumption.",
+      "definition": "sigma_1=sigma_0,1^(ii)*(T/T0)^3*F2; T0=300 K",
+      "applicability": {
+        "all_parabolic_scattering": ["ionized"],
+        "kane_present": false
+      }
+    },
+    {
+      "key": "ionized_relative",
+      "legacy_or_tdd": "B / b_i (web ionized power-law model)",
+      "label_en": "τ_ii,i/τ_ii,1",
+      "display_unit": "1",
+      "tooltip_en": "Normalized empirical ionized-impurity transport weight τ_ii,i/τ_ii,1 for Band {i} referenced to Band 1 (legacy B), not a ratio of microscopic relaxation times. Conductivity ratios also depend on masses, valley counts and filling.",
+      "definition": "prefactor_i/prefactor_1=(N_i/N_1)*(m_b,1/m_b,i)*b_i^(ii)",
+      "applicability": {
+        "all_parabolic_scattering": ["ionized"],
+        "band_indices": [2, 3],
+        "kane_present": false
+      }
+    },
+    {
+      "key": "relative_acoustic_prefactor",
+      "label_en": "σ₀,ᵢ/σ₀,₁",
+      "display_unit": "1",
+      "definition": "Ratio of acoustic conductivity prefactors in S/m; g_i=F0 for a parabola and J0 for Kane.",
+      "tooltip_en": "Conductivity prefactor of this band relative to Band 1. The common scale cancels from Seebeck.",
+      "applicability": {
+        "kane_present": true,
+        "band_index_greater_than": 1,
+        "fit_mode": "S",
+        "maximum_band_count": 2,
+        "maximum_kane_band_count": 1
+      }
+    }
+  ],
+  "model_families": [
+    {
+      "label": "SPB",
+      "parabolic": 1,
+      "kane": 0
+    },
+    {
+      "label": "SKB",
+      "parabolic": 0,
+      "kane": 1
+    },
+    {
+      "label": "DPB",
+      "parabolic": 2,
+      "kane": 0
+    },
+    {
+      "label": "1 SKB + 1 SPB",
+      "parabolic": 1,
+      "kane": 1
+    },
+    {
+      "label": "3 SPB",
+      "parabolic": 3,
+      "kane": 0
+    }
+  ],
+  "fit_modes": [["S"], ["S", "rho"], ["S", "rho", "R_H"]],
+  "parabolic_scattering": ["acPh", "dis", "ionized", "acPhDis"],
+  "kane_scattering": ["acPh"],
+  "reference_temperature_K": 300,
+  "spb_mode_fields": {
+    "S": {
+      "acPh": {
+        "eligible_to_fit": ["fermi"],
+        "mode_forced_manual": ["mass"]
+      },
+      "dis": {
+        "eligible_to_fit": ["fermi"],
+        "mode_forced_manual": ["mass"]
+      },
+      "ionized": {
+        "eligible_to_fit": ["fermi"],
+        "mode_forced_manual": ["mass"]
+      },
+      "acPhDis": {
+        "eligible_to_fit": ["fermi"],
+        "mode_forced_manual": ["mass"]
+      }
+    },
+    "S+rho": {
+      "acPh": {
+        "eligible_to_fit": ["fermi", "amp"],
+        "mode_forced_manual": ["mass"]
+      },
+      "dis": {
+        "eligible_to_fit": ["fermi", "alloy_amp"],
+        "mode_forced_manual": ["mass"]
+      },
+      "ionized": {
+        "eligible_to_fit": ["fermi", "ionized_amp"],
+        "mode_forced_manual": ["mass"]
+      },
+      "acPhDis": {
+        "eligible_to_fit": ["fermi", "amp", "mixed_ratio"],
+        "mode_forced_manual": ["mass"]
+      }
+    },
+    "S+rho+R_H": {
+      "acPh": {
+        "eligible_to_fit": ["fermi", "amp", "mass"],
+        "mode_forced_manual": []
+      },
+      "dis": {
+        "eligible_to_fit": ["fermi", "alloy_amp", "mass"],
+        "mode_forced_manual": []
+      },
+      "ionized": {
+        "eligible_to_fit": ["fermi", "ionized_amp", "mass"],
+        "mode_forced_manual": []
+      },
+      "acPhDis": {
+        "eligible_to_fit": ["fermi", "amp", "mixed_ratio", "mass"],
+        "mode_forced_manual": []
+      }
+    }
+  },
+  "observables": {
+    "seebeck": ["S", "V/K"],
+    "resistivity": ["ρ", "Ω·m"],
+    "conductivity": ["σ", "S/m"],
+    "hall_coefficient": ["R_H", "m³/C"],
+    "chemical_potential": ["μ(T)", "eV"],
+    "electron_density": ["n", "m⁻³"],
+    "hole_density": ["p", "m⁻³"],
+    "valley_degeneracy": ["N_i", "1"],
+    "lorenz_number": ["L", "W·Ω/K²"],
+    "electronic_thermal_conductivity": ["κ_e", "W/(m·K)"]
+  },
+  "alternate_coordinates": [
+    {
+      "key": "mixed_amp",
+      "legacy_or_tdd": "P_i (§14)",
+      "label_en": "Conductivity prefactor at 300 K · Band {i}",
+      "display_unit": "S/m",
+      "tooltip_en": "Band conductivity divided by its Fermi integral at 300 K.",
+      "definition": "P_i=sigma_i(T0)/F0(eta_i(T0))",
+      "editable": false,
+      "role": "alternate coordinate for documentation/export; not an editable form field"
+    },
+    {
+      "key": "mixed_fraction",
+      "legacy_or_tdd": "f_i (§14); derived from C or D",
+      "label_en": "Acoustic scattering fraction at 300 K · Band {i}",
+      "display_unit": "1",
+      "tooltip_en": "Acoustic rate divided by the total scattering rate at 300 K. Zero is pure alloy disorder and one is pure acoustic scattering.",
+      "definition": "f_i=rate_ac(T0)/(rate_ac(T0)+rate_dis(T0))",
+      "editable": false,
+      "role": "alternate coordinate for documentation/export; not an editable form field"
+    }
+  ],
+  "label_rules": {
+    "visible_fields": "Use physics symbols. Legacy desktop letters A–G belong in tooltips only, never visible labels. Internal legacy identifiers remain available as metadata.",
+    "fermi_reference": "Visible label E_F; the 0 K and Band 1 edge reference belong in its tooltip.",
+    "desktop_scale": "For x = acPh or dis, SPB uses τ_x,1. Multiple all-parabolic bands use τ_x,1/m_b,1 in S+rho and τ_x,1 in S+rho+R_H. Labels do not change the normalized stored coefficient or its units.",
+    "scale_units": {
+      "acPh": "S/m",
+      "acPhDis": "S/m (acoustic-limit scale)",
+      "dis": "S/(m·K)",
+      "ionized": "S/m"
+    },
+    "ionized_scale": "Ionized uses τ_ii,1 in every visible mode and τ_ii,i/τ_ii,1 for the existing empirical relative weight. Keep the S/m coefficient, (T/300 K)^3 F2 law and original limits; these symbols add no microscopic assumption.",
+    "scale_warning": "The desktop τ labels denote normalized transport coefficients, not raw seconds. Do not infer a new mass conversion from a label change.",
+    "kane": "One Kane band at most in a one- or two-band composition, acoustic scattering only. Three-band compositions are all-parabolic. S-only uses one manual sigma_0,2/sigma_0,1 for a Kane + parabolic pair. Resistivity modes use one dimensional amplitude per band."
+  },
+  "fit_eligibility_rules": {
+    "mode_order": ["S", "S+rho", "S+rho+R_H"],
+    "states": {
+      "fit": "Visible and eligible to fit unless held by the researcher.",
+      "manual": "Visible and editable; excluded from fitting by this mode.",
+      "hidden": "Not shown and not fitted in this mode."
+    },
+    "common": {
+      "fermi": ["fit", "fit", "fit"],
+      "edge_i_for_i_gt_1": ["fit", "fit", "fit"],
+      "mass_ratio_i_for_i_gt_1": ["fit", "fit", "fit"],
+      "kane_alpha_if_present": ["fit", "fit", "fit"],
+      "mass_1": ["manual", "manual", "fit"]
+    },
+    "all_parabolic": {
+      "absolute_scale": ["hidden", "fit", "fit"],
+      "absolute_scale_key_by_scattering": {
+        "acPh": "amp",
+        "dis": "alloy_amp",
+        "ionized": "ionized_amp",
+        "acPhDis": "amp"
+      },
+      "relative_weight_for_each_i_gt_1": {
+        "acPh": ["hidden", "fit", "fit"],
+        "dis": ["hidden", "fit", "fit"],
+        "ionized": ["hidden", "fit", "fit"],
+        "acPhDis": ["manual", "fit", "fit"]
+      },
+      "relative_weight_key_by_scattering": {
+        "acPh": "relative",
+        "dis": "relative",
+        "ionized": "ionized_relative",
+        "acPhDis": "relative"
+      },
+      "mixed_ratio_for_each_band": {
+        "single_band": ["hidden", "fit", "fit"],
+        "multiple_bands": ["manual", "fit", "fit"]
+      },
+      "pure_mechanism_S_relative_weights": "Assumed unity; hidden, not fitted.",
+      "mixed_mechanism_S": "For multiple bands, manually entered relative weights and per-band 300 K mechanism ratios affect S. For one parabolic band these rows remain hidden."
+    },
+    "kane_present": {
+      "scattering": ["acPh"],
+      "per_band_absolute_prefactor": {
+        "single_band": ["hidden", "fit", "fit"],
+        "multiple_bands": ["hidden", "fit", "fit"]
+      },
+      "prefactor_key_by_band_type": {
+        "Kane": "kane_amp",
+        "parabolic": "mixed_parabolic_acoustic_amp"
+      },
+      "relative_prefactor_i_gt_1": ["manual", "hidden", "hidden"],
+      "maximum_band_count": 2
+    },
+    "model_settings": {
+      "valleys": "Manual positive integers; not fit variables.",
+      "temp_low": "Manual fit-range setting; not a fit variable.",
+      "temp_high": "Manual fit-range setting; not a fit variable."
+    },
+    "researcher_holds": {
+      "scope": "One persisted hold per parameter identity and applicable model/scattering context, shared across fit modes; do not key a hold by mode.",
+      "effect": "A held parameter remains editable but is excluded from fitting wherever it is eligible.",
+      "mode_switch": "Preserve values and holds across mode switches, including hidden/manual states; restore the hold when returning to a fit-eligible state.",
+      "mode_forced_manual": "Mode-forced manual state is independent of researcher holds: the value stays editable and cannot be enabled for fitting in that mode. Do not overwrite a saved hold when entering a manual state.",
+      "context": "Keep independent values/holds for different band-type compositions and mechanism-specific scales/relative weights; do not silently transfer an acoustic or disorder scale to ionized impurities."
+    }
+  },
+  "alternate_coordinate_policy": {
+    "editable_fields": ["amp", "relative", "mixed_ratio"],
+    "applies_to": "all-parabolic acPhDis only; relative exists only for bands i > 1",
+    "P_i": "P_i is the effective conductivity prefactor at 300 K, not the editable acoustic-limit scale. It includes the mixed-mechanism reduction and the band mass/valley weight.",
+    "f_i": "f_i is the acoustic fraction of the total scattering rate at 300 K; it is an alternate coordinate to the editable relaxation-time ratio r_i = τ_acPh,i/τ_dis,i.",
+    "mapping": "For positive rates at T0 = 300 K, f_i = 1/(1+r_i). P_i = acoustic_limit_prefactor_i/(1+r_i). Pure-mechanism endpoints are limits; do not divide by a zero Fermi integral when deriving coordinates.",
+    "storage": "Do not fit P_i/f_i alongside the corresponding editable scales/ratios; they describe the same degrees of freedom."
+  },
+  "composition_scope": {
+    "supported": "One to three parabolic bands, one Kane band, or one Kane plus one parabolic band. CB/VB orientation and band order do not change support.",
+    "kane_band_limit": 1,
+    "three_band_rule": "Three-band compositions support parabolic bands only.",
+    "validation_precedence": "Reject three-band Kane requests as unsupported_composition at modelContent.types before checking scattering. Supported Kane compositions require acPh; other scattering returns incompatible_scattering at modelContent.mechanism.",
+    "ui_edits": "Disable Add band for a two-band Kane composition and disable every Kane choice for three parabolic bands. Reject forced edits without changing the editor or saved draft.",
+    "restore": "Reject unsupported restore or saved-draft reload without replacing the saved draft; preserve it until a deliberate valid edit.",
+    "supported_examples": [
+      {
+        "bands": ["VB Kane"],
+        "scattering": "acPh"
+      },
+      {
+        "bands": ["CB Parabolic", "VB Kane"],
+        "scattering": "acPh"
+      },
+      {
+        "bands": ["CB Parabolic", "VB Parabolic", "CB Parabolic"],
+        "scattering": "acPhDis"
+      }
+    ],
+    "rejected_examples": [
+      {
+        "bands": ["VB Kane", "CB Parabolic", "VB Parabolic"],
+        "scattering": "acPh",
+        "code": "unsupported_composition",
+        "path": "modelContent.types"
+      },
+      {
+        "bands": ["CB Parabolic", "VB Parabolic", "CB Kane"],
+        "scattering": "ionized",
+        "code": "unsupported_composition",
+        "path": "modelContent.types"
+      },
+      {
+        "bands": ["VB Kane", "CB Parabolic"],
+        "scattering": "dis",
+        "code": "incompatible_scattering",
+        "path": "modelContent.mechanism"
+      }
+    ]
+  }
+}

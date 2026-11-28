@@ -1,0 +1,180 @@
+# Reviewing the SeeBand Web band-composition design v0.7
+
+Start with the [point-by-point responses to both PR reviews](REVIEW-RESPONSES.md). Read the [technical design document](../2026-11-21-band-composition-design.md) for the formulas and proposed changes to P18. The [evidence index](evidence.json) lists commands, conditions, units, tolerances and the SHA-256 digests of saved outputs. To try the [interactive Fit and Guide prototype](fit-guide.html), select **Download raw file** on GitHub and open the downloaded HTML in a browser.
+
+## Download the review package
+
+[Download the review ZIP](https://github.com/pdasya/seeband-web/releases/download/review-pr272-v0.7-kane-scope/seeband-pr272-review-responses-v0.7.zip). Extract it and open `README.md` for the illustrated English TDD, interactive Fit/Guide, field dictionary and recorded results. The included images and prototype open offline. The README identifies the source commit. Links to implementation files on GitHub use that revision.
+
+For comments, use the Markdown in PR #272. The six current figures are rendered from the checked-in source and published alongside the ZIP. To build a package from a clean checkout with the dependencies below, choose a destination outside the checkout:
+
+```sh
+uv run --frozen python docs/superpowers/specs/band-composition-v0.7/build_review_bundle.py --output ../seeband-band-composition-v0.7-review.zip
+```
+
+## Q3 experimental comparison with p-PbSe
+
+One Kane L pocket and one parabolic Σ pocket are evaluated against digitized Seebeck and Hall markers at three Na concentrations. The best joint constant per specimen misses the observed Hall downturn in both tested structures. The figure compares it with a reconstruction using the weight reported by Chasapis et al. The review ZIP includes the digitized observations, conditional predictions, residuals and replay scripts.
+
+![Measured and calculated p-PbSe thermopower and Hall curves](evidence/chasapis/curves.png)
+
+[Method, assumptions and replay](evidence/chasapis/METHOD.md) · [Numerical results](evidence/chasapis/results.txt) · [Pointwise residuals](evidence/chasapis/curves.csv).
+
+### Evidence still needed for Q3
+
+The PbSe comparison tests **one constant relative prefactor per specimen** with independently prescribed structure. The test suite replays 112 observations under two structural assumptions. The single-band Lin–Liu tables, parabolic limit and multiplicity checks cover the Kane channel; the scale-invariance check covers the change of coordinates in the mixed pair. [PbSe method](evidence/chasapis/METHOD.md) · [Single-band results](evidence/verify_skb_core.txt) · [Mixed prefactor check](evidence/verify_kane_weights.py).
+
+| Open claim                                                                                                                    | Evidence that would let a reviewer decide                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ----------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The mixed pair gives the correct absolute conductivity in SI.                                                                 | At fixed material inputs, compare each partial conductivity and their sum against an independent dimensional transport integral for both channels. Record units, the Kane-to-parabolic limit, valley multiplicities, and the band permutation. For an experimental check, use measured resistivity or conductivity of the same compositions and temperatures together with S and Hall. Chasapis Fig. 4(b) is a candidate. Document which dimensional amplitudes were supplied independently and which were fitted.                 |
+| The data constrain nonparabolicity α and a single-valley mass separately from filling, edge spacing and transport amplitudes. | State the measured inputs, valley counts, mass convention, independently known band information and researcher-selected bounds. Profile α and the mass in turn, reoptimizing other free parameters. Compare S, S + ρ and S + ρ + Hall on matched observations. Report residuals, flat or bound-limited directions and which extra measurement supplies sensitivity. Confidence intervals require an experimental error model. An independent direct gap or a band-edge mass measurement can constrain a parameter held in the fit. |
+
+The scale ambiguity follows directly from the mixing equations. Multiplying both partial conductivities by the same positive constant leaves their fractions unchanged. Those fractions enter S linearly and weak-field Hall quadratically. Both curves therefore survive this rescaling while resistivity changes by its inverse. Measured ρ supplies the missing common scale; a single ρ value alone cannot separate the two channel amplitudes. The current PbSe calculation holds α and the DOS masses at prescribed structures, so its residuals do not establish their individual precision. [TDD §9, PbSe benchmark](../2026-11-21-band-composition-design.md#q3--one-kane-and-one-parabolic-pocket-in-p-pbse).
+
+## Automated numerical checks
+
+The core pytest suite runs the six Python design scripts in `scripts/`, including the SKB run with core constants and the mixed-scattering comparison with the legacy core. It also runs the valley-input and Kane-weight examples in this evidence directory. A failure propagates to `pnpm check` locally and to **Python tests (core)** on a pull request. To run just these cases from the repository root:
+
+```sh
+uv run --frozen pytest -q packages/seeband_core/tests/test_band_design_evidence.py
+```
+
+Ten cases exercise the numerical assertions and tolerances inside the design references. An additional Q3 test checks the PbSe limits, reruns the profile search and compares all 224 rows of measured and predicted curves with the saved pointwise results. Arithmetic comparisons use their per-observable tolerances. The SHA-256 values in the [manifest](evidence.json) identify the archived transcripts. Strict mypy covers the production core and API as configured in `pyproject.toml`. The reference scripts have runtime regression coverage. Calculations tied to a separate P18 checkout still use the revision-specific replay instructions below.
+
+### Sensitivity checks for item 15
+
+Each of the following changes was made separately in a disposable copy of the source. Run the pytest command above with `-k` to select a case, or copy the exact node ID from the [evidence index](evidence.json) and quote it on the command line. The unmodified scripts pass all ten cases.
+
+| Pytest case                | Temporary change                                                                                         | Observed failure                                                                                                                                      |
+| -------------------------- | -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `spb`                      | In `momentum()`, negate the radial Seebeck coefficient `k1 / (q * temperature_k * k0)`.                  | The computed Seebeck sign disagreed with the specified carrier sign.                                                                                  |
+| `skb-core`                 | In `kane()`, double the K4 drift mobility.                                                               | The conductivity at the parabolic limit differed from the independent SPB reference by about 100%. The relative tolerance was $10^{-8}$.              |
+| `mixed`                    | In the direct integral in `channel()`, double the disorder rate in the sum of rates.                     | At the crossover temperature the mixed conductivity failed the half-acoustic-conductivity check. The absolute tolerance on this ratio was $10^{-12}$. |
+| `skb-core`, `mixed-legacy` | Skip the call to `core_checks()` or `legacy()` while still returning success from the respective script. | In both cases pytest detected that the selected verification had never reported its result.                                                           |
+
+These experiments exercised the reference scripts only. The scientific source, constants and tolerances are identical to the preceding revision.
+
+## Replaying the checks from this branch
+
+Start with Git, uv, Node.js 24.18 or newer and pnpm 12.16.1. The example uses a new directory. In an existing checkout of the PR, start at the dependency installation commands.
+
+```sh
+git clone --single-branch --branch codex/band-composition-tdd-v07 https://github.com/pdasya/seeband-web.git seeband-review
+cd seeband-review
+git rev-parse HEAD
+uv sync --frozen
+pnpm install --frozen-lockfile
+pnpm --filter @seeband/web exec playwright install chromium
+```
+
+On a minimal Linux machine, use `playwright install --with-deps chromium` in the last command to install the required OS libraries as well. The following commands run all current-branch evidence from the repository root. They read the versioned inputs and report results to the terminal.
+
+```sh
+uv run --frozen pytest -q packages/seeband_core/tests/test_band_design_evidence.py
+node docs/superpowers/specs/band-composition-v0.7/evidence/verify_fit_guide.mjs --browser
+node docs/superpowers/specs/band-composition-v0.7/evidence/verify_hold_migration.mjs
+node docs/superpowers/specs/band-composition-v0.7/evidence/verify_scattering_matrix.mjs
+```
+
+The [manifest](evidence.json) gives individual commands, units, tolerances and the software versions used for the clean replay. The JavaScript checks resolve dependencies through this checkout's web package. The browser command uses the Chromium revision installed by its locked Playwright version. The separate P18 replay command appears below.
+
+**Clean checkout result.** The item 16 replay passed all 13 then-current rows on macOS arm64 and all five P18 checks. Item 17 moved the separate Model checks into the canonical Fit/Guide verifier. Item 18 added the scattering matrix. Q3-PBSE brings the manifest to 14 runnable current-branch rows. The separately planned production E2E row has no replay command.
+
+### Scattering eligibility in the editor
+
+The [Chromium check](evidence/verify_scattering_matrix.mjs) drives the same standalone Fit/Guide HTML that reviewers open. It enumerates band polarities, Kane positions, mechanisms and fit modes independently of the field dictionary. On the item 17 revision, restoring a single VB Kane band with disorder in S mode applied acoustic scattering without an error. The new check fails on that revision.
+
+The [saved summary](evidence/scattering-matrix.txt) gives the counts by band count. The review ZIP includes the 576 observations in `evidence/scattering-cases.jsonl` beside the saved summary. To regenerate them, run the command below after installing the locked web dependencies and Chromium. It prints one JSON object per case, including the ordered bands, mode, mechanism and observed outcome. The same assertions run in the web test suite and GitHub CI.
+
+```sh
+node docs/superpowers/specs/band-composition-v0.7/evidence/verify_scattering_matrix.mjs --cases > scattering-cases.jsonl
+```
+
+To inspect the composition limit, select acPh in a mixed pair and examine Add band. Restore three parabolic bands and examine the Kane choices. Changing the mixed pair to DPB permits adding a third band. Removing Band 3 from the parabolic model permits selecting Kane. For a scattering check, enter dis with an all-parabolic composition. The Kane controls are disabled. Start with a Kane band and acoustic scattering and the scattering selector is disabled. Restoring an incompatible draft displays the reason and preserves the current state. HTTP rejection, calculated curves and fitted outputs for the proposed production model remain separate acceptance criteria.
+
+### Comparing a MIX replay
+
+Run `uv run --frozen python scripts/verify_mixed_scattering_design.py` to print numerical results. The existing direct-integral, analytical and pure-limit checks run first. The script then checks the four transport quantities in each of 72 original input configurations and one exactly compensated configuration against the [stored reference](evidence/mixed_reference.json). The reference records the band inputs, temperature, mode and constants. It was captured from the direct integral for regression testing.
+
+For each quantity the allowed difference is `atol + rtol × abs(reference)`, with `rtol = 1e-9`. The absolute floors are in the units below. At exact compensation the floor supplies the whole tolerance for the signed quantity.
+
+| Quantity             | Unit   | Absolute tolerance |
+| -------------------- | ------ | -----------------: |
+| Resistivity ρ        | Ω·m    |              1e-15 |
+| Seebeck S            | V/K    |              1e-13 |
+| Hall coefficient R_H | m³/C   |              1e-18 |
+| Lorenz number L      | W·Ω/K² |              1e-17 |
+
+A failure reports the case, quantity and inputs. To exercise the failure paths, run `uv run --frozen pytest -q packages/seeband_core/tests/test_mixed_reference_replay.py`. Use the reported numerical differences to compare machines. The SHA-256 digests identify the saved files. The P18 legacy transcript keeps its own provenance.
+
+**Item 14.** Open the standalone Fit prototype. On a first visit it shows VB/CB/VB. Select acoustic phonons, set the acoustic scale to 12345, edit its bounds and select **Held**. Switch to acoustic phonons + alloy disorder and back. All three settings follow the shared coefficient. Remove Band 3, select acPh, change either band to Kane and select S. The mixed pair asks for one relative conductivity prefactor. The single Kane model needs none. In a mode with resistivity, each band regains its own dimensional amplitude. Use Tab and Enter on a mode-set lock to read why it is held. Reload the page to reopen the browser draft when local storage is available. The offline replay demonstrates cancellation on composition edits. Real API cancellation, estimator registration and import of a complete v3 file are application acceptance cases.
+
+The [migration result](evidence/hold-migration.txt) covers per-mode hold decisions, including an untouched active mode and conflicting inactive modes. The [Kane weight result](evidence/kane-weights.txt) compares dimensional and relative thermopower at prescribed filling and includes a nonconducting additional channel. The [current figures](../2026-11-21-band-composition-design.md#12-what-changes-inside-model-and-parameters) show the same default and mixed compositions as the interactive example.
+
+To inspect item 13, enter `0.09` or `0,09` as an edge offset. The field and derived gap both display `0,09`. Repeat with the opposite edge ordering to check the overlap magnitude. Try typing and pasting `1.1` and `1,1` into a valley count. Neither is a valid count, and neither becomes 11. On the band diagram only the energy axis carries numbers.
+
+To inspect item 12, choose DPB, switch between acoustic, disorder and ionized scattering, and compare the absolute field and the Band 2 ratio in Parameters with the Guide. Close a user lock and compare its **Held** caption with the mode-set mass lock in S + ρ. Set a band’s valley count to 2, then try pasting 1,5. Confirm the fractional value cannot enter the model. The numeric diagram check uses $k=0,1$ for a physical displacement of 1 inverse nanometre. The same scale applies to Kane and parabolic bands. Regenerate the current illustrations with `node docs/superpowers/specs/figures/render-reviewed-figures.mjs --output-dir ../seeband-review-figures`. [Conventions and field mapping](../../../../apps/site/src/pages/conventions.mdx#reading-the-proposed-band-composition-labels)
+
+To inspect item 11, choose three parabolic bands in the order VB, CB, VB. Enter 0,10 and 0,04 eV for the two offsets, leave them unlocked and open **Offline fit example**. Select **Start fit example** and advance the three accepted snapshots. Watch the **Band gap** row itself: **Fit…** sits beside the live value. Then select **Return final vector**. The returned gap is 0,075 eV, with CB₂ and VB₁ defining it. The last accepted snapshot gave 0,06 eV with CB₂ and VB₃. Cancel or simulate failure during a new replay to return to the entered values. This deterministic example runs entirely in the browser. The documentation site’s formula-rendering change is proposed in [PR #279](https://github.com/pdasya/seeband-web/pull/279).
+
+To inspect item 10, enter a **Single-valley DOS mass** of 0,209 in Band 1 and set its valley count to 6. **DOS mass (all equivalent valleys)** rounds to 0,690 in units of the free electron mass, matching the p-type bismuth telluride entry in [Jacquot et al., Table I](https://doi.org/10.1007/s11664-009-1059-x). Set the count to 1 to hide the duplicate. Open **Preview · Results and Earlier runs mass labels** for the separate P17 example. The original reported mass of 2 with a saved count of 8 gives a single-valley mass of 0,5. Both previews illustrate the reporting contract. Historical import is specified in [§15.5](../2026-11-21-band-composition-design.md#155-model-results-and-export).
+
+To inspect item 9, select **S** with two or three bands. Parameters shows the persistent caution. With three bands, expand **Example result for a flat profile** below the fields to see the proposed Result status, **Parameters not uniquely determined**. To test the live in-gap cue separately, set the bands to VB, CB, VB, enter offsets of 0,02 and −0,12 eV, and move $E_F$ from 0,01 to 0,03 eV. The in-gap explanation disappears outside the gap while the general caution stays visible. The worked example uses its own synthetic inputs. [Diagnostic criteria in §6.2](../2026-11-21-band-composition-design.md#62-when-a-fit-leaves-a-parameter-undetermined)
+
+To inspect item 8 interactively, start with an acoustic DPB (VB Band 1, CB Band 2). In **Parameters**, enter 0,17 eV for the offset, set bounds of −0,4 and 0,5 eV, and close its lock. Change Band 2 to Kane. The same value, bounds and hold should remain visible. With Band 2 back on Parabolic, change Band 1 to CB and Band 2 to VB. The displayed conduction-minus-valence value becomes −0,17 eV with bounds −0,5 and 0,4 eV, and the lock stays closed. The earlier revision reset the offset to 0,09 eV on the first Kane toggle, cleared both limits and released the hold. [Design contract, §15.4](../2026-11-21-band-composition-design.md#154-lock-manual-value-and-state-persistence) · [Before the fix](https://github.com/pdasya/seeband-web/blob/4e4526c6821d6bf7a06630962b3a7d1bea038acc/docs/superpowers/specs/band-composition-v0.7/fit-guide.html).
+
+**P18 archive.** The [original P18 revision](https://github.com/pdasya/seeband-web/commit/8e4f98d78c3868c65f5e22b4e359061aca3f7ece) is now reachable from the [separate P18 branch](https://github.com/pdasya/seeband-web/tree/codex/p18-hall-quadrature). Three rows retain the original outputs:
+
+- **P18-BASE** recorded 113 passing tests. The three test files are absent from this branch.
+- **DPB-HALL** exceeded the proposed tolerance. The strict audit reproduces the failure on the original P18 revision. DPB-HALL-FIX records the result with corrected quadrature.
+- **MIX-P18** preserves the historical `--legacy` output. The branch replay of the same comparison (MIX-LEGACY) uses the version of the core in this PR. The last digits of the S and Hall errors differ. Both logs are linked below.
+
+Use the SHA-256 digest to check a saved file's integrity. The manifest's `replay_status` identifies runs reproduced from this branch. Archive entries retain their historical command. E2E is planned.
+
+## Replaying the P18 Hall comparison
+
+From the same review checkout run:
+
+```sh
+uv run --frozen python docs/superpowers/specs/band-composition-v0.7/evidence/replay_p18.py
+```
+
+The driver prepares an isolated temporary checkout, fetches the public P18 branch if needed and selects the full commits recorded in the manifest. It uses the frozen review environment and checks that Python imports the selected P18 core. The original revision must reproduce its 113-test baseline, the historical mixed-scattering comparison and the specific CB+CB/dis Hall failure at 800 K. The corrected revision must pass the same Hall audit and its quadrature regressions. Use `--only DPB-HALL-FIX` to replay just the corrected result. An unrelated crash on the old revision fails the replay.
+
+For λ = 0 (acPh and dis), the Hall integrand contains √x at the band edge. The substitution x = t² gives √x dx = 2t² dt. The kernel retains the linear energy grid when the integration window lies entirely above the edge. The moment test compares with ½ F₋½(η) in the unnormalized Fermi-integral convention at a relative tolerance of 10⁻¹⁰, including depleted and degenerate bands. At η = −40, −6, −2, 0, 3, 10 and 60, the maximum relative moment error fell from 1.174 × 10⁻⁶ to 3.908 × 10⁻¹⁴ against a 60-digit polylogarithm reference.
+
+The end-to-end audit covers 27 configuration/scattering/mode combinations at 100, 300 and 800 K. Of its 81 evaluated points, 27 use the fit mode that returns Hall. The Hall error is scaled by the sum of absolute channel Hall contributions, including near compensation.
+
+## Using Fit and Guide
+
+The [prototype](fit-guide.html) lets you build a model with one to three bands and inspect the fields for each fit mode. Guide shows the comparison across modes. With three bands, the Band gap row identifies the edges that determine the gap. TDD §15.1 gives examples where the lowest conduction band changes, edges coincide, or the bands overlap. Prototype input values are illustrative.
+
+FitPage has two areas. On the left, Data sits alongside four ChartGrid slots. On the right, FitPanel is followed by Parameters, Model and Result. In Model, each band has a VB/CB selection. One- and two-band configurations can contain one Kane band. Three-band configurations use parabolic dispersion throughout. This composition determines the model name. Fit mode, a shared scattering mechanism, valley degeneracies and the temperature range stay in Model. The researcher enters parameter values, holds and fit bounds in Parameters.
+
+For example, set Band 1 to VB Parabolic, Band 2 to CB Parabolic and Band 3 to VB Parabolic. The label reads **3 SPB**. Remove Band 3 to obtain **DPB**, then change Band 2 to Kane for **1 SKB + 1 SPB**. Model now offers only acPh, and Parameters gains the Band 2 nonparabolicity field. The planned E2E check covers preserving bounds and recalculating curves through these transitions.
+
+The [Parameters and Model field dictionary](../band-parameter-labels.json) lists labels, units, definitions, tooltips and the SPB matrix for every fit mode and scattering mechanism. TDD §15 covers all five model families.
+
+## Results and open checks
+
+| ID           | Scope                                                                                                  | Result                                                                                                                                                                                                                                          | Evidence                                                            |
+| ------------ | ------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| P18-BASE     | P18 archive · domains, transport and explicit DPB fitting                                              | 113 tests passed in the historical checkout.                                                                                                                                                                                                    | [pytest log](evidence/p18-baseline.txt)                             |
+| CHARGE       | Shared μ(T), densities and band permutations                                                           | Maximum normalized residual 1.303 × 10⁻¹³.                                                                                                                                                                                                      | [Output](evidence/verify_band_composition_design.txt)               |
+| SPB          | Integrals and analytical formulas                                                                      | 36 cases. Maximum Hall error 1.017 × 10⁻¹⁰.                                                                                                                                                                                                     | [Output](evidence/verify_spb_design_coefficients.txt)               |
+| DPB-HALL     | P18 archive · core vs. independent formulas                                                            | 27 combinations and 81 temperature points. The Hall error of 1.172 × 10⁻⁶ at CB+CB / dis / 800 K exceeds the proposed 10⁻⁶ tolerance.                                                                                                           | [Inputs and values](evidence/explicit_curves_spb_result.txt)        |
+| DPB-HALL-FIX | Published P18 · corrected endpoint quadrature                                                          | Maximum scaled Hall error 5.0771 × 10⁻¹¹, down from 1.1716 × 10⁻⁶ for CB+CB / dis / 800 K.                                                                                                                                                      | [Corrected run](evidence/dpb_hall_p18_fixed.txt)                    |
+| SKB          | Acoustic SKB against Tables 1 and 2 of Lin and Liu                                                     | Calculated m_D/mₑ values of 0.952275 and 0.0387615, compared with the published 0.9523 and 0.03877.                                                                                                                                             | [Output](evidence/verify_skb_design_reference.txt)                  |
+| SKB-CORE     | All 11 Lin–Liu SKBcal masses with core constants, absolute transport, parabolic limit and valley count | Maximum table error 0.02188%. The 108 synthetic cases cover both charge signs and N = 1, 2, 6. The maximum discrepancy at the exact SPB limit is 1.867 × 10⁻¹¹.                                                                                 | [Per-row results and limits](evidence/verify_skb_core.txt)          |
+| S-PROFILE    | Synthetic three-band acoustic S-only                                                                   | Five in-gap energies give identical Seebeck values at three temperatures. Outside-gap probes change the curve at the same nuisance parameters.                                                                                                  | [Numerical results](evidence/three_band_s_profile.txt)              |
+| MASS-SCALE   | Two- and three-band parabolic mass identifiability                                                     | 54 common-scale checks. Nearly coincident edges admit 39/39 longitudinal points along a prescribed path. Separated edges admit 3/39 after re-solving the charge balance.                                                                        | [Inputs, gates and results](evidence/mass_identifiability.txt)      |
+| MIX          | acPh + dis for parabolic bands                                                                         | 72 cases, both pure-scattering limits and three independent crossover temperatures.                                                                                                                                                             | [Output](evidence/mixed_reference.txt)                              |
+| MIX-LEGACY   | Comparison with this PR's math_module at shared μ and integral values                                  | 100, 300 and 800 K. Maximum Hall error 4.495 × 10⁻⁷ for a tolerance of 3 × 10⁻⁵.                                                                                                                                                                | [Branch output](evidence/mixed_legacy_pr.txt)                       |
+| MIX-P18      | P18 archive · historical run with --legacy                                                             | The comparison passed in the historical checkout.                                                                                                                                                                                               | [Archived output](evidence/verify_mixed_scattering_design.txt)      |
+| UI-SCATTER   | Canonical editor in Chromium                                                                           | 576 distinct requests, 198 accepted, 90 refused for scattering and 288 refused for composition. Checks include the visible reason and preservation of the editor and stored draft.                                                              | [Output](evidence/scattering-matrix.txt)                            |
+| UI-FIT-GUIDE | Packaged v0.7 prototype                                                                                | 198 configurations. Checks cover retained settings, the S-only caution, signed in-gap cues and the flat-profile example, both DOS mass conventions, historical conversion and the live gap across fit events, including keyboard use at 320 px. | [Output](evidence/fit-guide-v0.7.txt)                               |
+| E2E          | New band builder → Parameters → calculate → fit → session                                              | Pending implementation. The full end-to-end matrix of 198 allowed configurations has yet to run.                                                                                                                                                | [Criteria in §1.4 and §8](../2026-11-21-band-composition-design.md) |
+
+## Giving feedback
+
+Include the check ID or section, the claim under review, the inputs, and the expected and observed behavior. Link to the file or primary source. For a proposed feature, specify an acceptance criterion. Agreement between independent calculations supports a formula at the points tested. Interpreting a particular sample still depends on the researcher's physical assumptions.

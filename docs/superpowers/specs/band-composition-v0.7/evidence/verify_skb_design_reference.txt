@@ -1,0 +1,6 @@
+Table 1 VB: eta=-1.983784064, r_H=1.360087058, m_DOS/m_e=0.95227533
+Grid change=2.169e-10; tail change=8.969e-12
+Published 0.9523; relative mass difference=2.590e-05
+Table 2 CB: eta=4.776817018, r_H=1.142237768, m_DOS/m_e=0.03876149
+Grid change=8.573e-12; tail change=7.105e-15
+Published 0.03877; relative mass difference=2.195e-04

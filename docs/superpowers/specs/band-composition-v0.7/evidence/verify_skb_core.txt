@@ -1,0 +1,45 @@
+CORE CONSTANTS from seeband_core.math_module
+kB=1.380648520000e-23; e=1.602176634000e-19; hbar=1.054571817646e-34; me=9.109383700000e-31
+Table 1 VB T=350 K gap=0.43 eV S=0.0003423 V/K nH=3.646e+24 m^-3: eta=-1.983785501, r_H=1.360086994, m_DOS/m_e=0.95227656
+Grid change=2.169e-10; tail change=8.976e-12
+PASS fixed core-output anchor (1e-9 relative tolerance)
+Published 0.9523; relative mass difference=2.461e-05
+Table 1 VB T=400 K gap=0.43 eV S=0.0003544 V/K nH=4.327e+24 m^-3: eta=-2.145954948, r_H=1.394846090, m_DOS/m_e=1.03121476
+Grid change=2.314e-10; tail change=9.565e-12
+Published 1.031; relative mass difference=2.083e-04
+Table 1 VB T=425 K gap=0.43 eV S=0.0003673 V/K nH=4.894e+24 m^-3: eta=-2.309853109, r_H=1.413351132, m_DOS/m_e=1.16890042
+Grid change=2.417e-10; tail change=9.974e-12
+Published 1.169; relative mass difference=8.518e-05
+Table 1 VB T=525 K gap=0.43 eV S=0.0003957 V/K nH=1.471e+25 m^-3: eta=-2.678008832, r_H=1.487252628, m_DOS/m_e=2.48402145
+Grid change=2.717e-10; tail change=1.124e-11
+Published 2.484; relative mass difference=8.634e-06
+Table 1 VB T=550 K gap=0.43 eV S=0.0003707 V/K nH=2.228e+25 m^-3: eta=-2.383307383, r_H=1.503618912, m_DOS/m_e=2.57303259
+Grid change=2.672e-10; tail change=1.104e-11
+Published 2.573; relative mass difference=1.267e-05
+Table 1 VB T=600 K gap=0.43 eV S=0.000366 V/K nH=3.396e+25 m^-3: eta=-2.338896211, r_H=1.541009231, m_DOS/m_e=3.02307149
+Grid change=2.755e-10; tail change=1.138e-11
+Published 3.023; relative mass difference=2.365e-05
+Table 2 CB T=300 K gap=0.39 eV S=-4.775e-05 V/K nH=2.26e+24 m^-3: eta=4.776815944, r_H=1.142237740, m_DOS/m_e=0.03876152
+Grid change=8.640e-12; tail change=2.327e-13
+PASS fixed core-output anchor (1e-9 relative tolerance)
+Published 0.03877; relative mass difference=2.188e-04
+Table 2 CB T=400 K gap=0.39 eV S=-7.177e-05 V/K nH=2.252e+24 m^-3: eta=3.080853522, r_H=1.243265434, m_DOS/m_e=0.04487845
+Grid change=2.544e-11; tail change=9.326e-13
+Published 0.04488; relative mass difference=3.462e-05
+Table 2 CB T=500 K gap=0.39 eV S=-8.659e-05 V/K nH=2.24e+24 m^-3: eta=2.369027753, r_H=1.337279083, m_DOS/m_e=0.04479965
+Grid change=3.932e-11; tail change=1.559e-12
+Published 0.0448; relative mass difference=7.833e-06
+Table 2 CB T=600 K gap=0.39 eV S=-0.0001038 V/K nH=2.252e+24 m^-3: eta=1.753189289, r_H=1.441148850, m_DOS/m_e=0.04727417
+Grid change=5.604e-11; tail change=2.245e-12
+Published 0.04728; relative mass difference=1.234e-04
+Table 2 CB T=700 K gap=0.39 eV S=-0.0001086 V/K nH=2.417e+24 m^-3: eta=1.558241739, r_H=1.531441875, m_DOS/m_e=0.04559334
+Grid change=6.340e-11; tail change=2.545e-12
+Published 0.0456; relative mass difference=1.460e-04
+PASS 108 K1 velocity-DOS vs K2–K4 cases; max relative errors [sigma,S,L,RH,C]=['3.109e-15', '6.286e-13', '3.078e-13', '5.107e-15', '8.105e-15']
+Independent grid 1600->3200: max relative change=8.734e-11; separate tail 55->70 kBT: max relative change=3.609e-12
+PASS 36 epsilon=0 comparisons with independent P1–P3 acoustic FD expressions; max relative errors [sigma,S,L,RH,C]=['6.227e-12', '4.142e-12', '1.867e-11', '1.245e-11', '3.664e-15']
+PASS epsilon=1e-4,1e-6,1e-8 approach monotonic; final max error=1.861e-07
+PASS signed CB/VB S and RH; N=1,2,6 at fixed single-valley mass and eta: sigma,C scale N; RH scales 1/N; S,L,rH invariant (epsilon=0,.08,.4).
+Synthetic example T=300K eta=0 CB mb=.7me N=6 epsilon=.08: 133197.433 -0.0001960904564 1.472530786e-08 -9.132374673e-08 9.203678834e+25
+Units [S/m,V/K,V^2/K^2,m^3/C,m^-3]; Cl=1e11 Pa; Edef=10 eV.
+Limits: selected isotropic acoustic fixtures; no Kane production or fit validation.

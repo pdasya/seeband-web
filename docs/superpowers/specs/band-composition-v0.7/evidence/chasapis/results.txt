@@ -1,0 +1,36 @@
+
+x=0.01 paper  w2 joint=0.48836 S-only=0.27062 Hall-only=0.69833
+  S    N=13 T=300.0..900.0 K RMSE=14.514 nRMSE=11.79% max_abs=19.357 at 450.0 K
+  S    Fig7d overlap N=13 RMSE constant=14.514 published f0(T)=10.853
+  Hall N=24 T=11.7..822.5 K RMSE=0.0055923 nRMSE=12.01% max_abs=0.019195 at 822.5 K
+  Hall maximum on measured grid: observed 622.7 K (0.06261), constant 822.5 K (0.075065); last observed/predicted 0.05587/0.075065
+  Hall Fig7d overlap N=11 RMSE constant=0.0078637 published f0(T)=0.0088291
+
+x=0.01 fixed  w2 joint=1.0104 S-only=1.0003 Hall-only=1.0662
+  S    N=13 T=300.0..900.0 K RMSE=22.873 nRMSE=18.59% max_abs=37.756 at 900.0 K
+  Hall N=24 T=11.7..822.5 K RMSE=0.0039894 nRMSE=8.57% max_abs=0.010922 at 822.5 K
+  Hall maximum on measured grid: observed 622.7 K (0.06261), constant 822.5 K (0.066792); last observed/predicted 0.05587/0.066792
+
+x=0.02 paper  w2 joint=0.3573 S-only=0.34851 Hall-only=0.36396
+  S    N=13 T=300.0..900.0 K RMSE=16.7 nRMSE=16.21% max_abs=29.361 at 900.0 K
+  S    Fig7d overlap N=13 RMSE constant=16.7 published f0(T)=2.8028
+  Hall N=24 T=9.8..826.2 K RMSE=0.0025279 nRMSE=12.89% max_abs=0.0065214 at 826.2 K
+  Hall maximum on measured grid: observed 673.8 K (0.0266), constant 826.2 K (0.029401); last observed/predicted 0.02288/0.029401
+  Hall Fig7d overlap N=11 RMSE constant=0.0032712 published f0(T)=0.00093354
+
+x=0.02 fixed  w2 joint=0.56551 S-only=0.66345 Hall-only=0.33543
+  S    N=13 T=300.0..900.0 K RMSE=31.049 nRMSE=30.13% max_abs=59.893 at 900.0 K
+  Hall N=24 T=9.8..826.2 K RMSE=0.0033737 nRMSE=17.20% max_abs=0.0068246 at 573.0 K
+  Hall maximum on measured grid: observed 673.8 K (0.0266), constant 826.2 K (0.025178); last observed/predicted 0.02288/0.025178
+
+x=0.03 paper  w2 joint=0.46081 S-only=0.50399 Hall-only=0.4328
+  S    N=13 T=300.0..900.0 K RMSE=20.816 nRMSE=21.07% max_abs=43.301 at 900.0 K
+  S    Fig7d overlap N=13 RMSE constant=20.816 published f0(T)=9.8189
+  Hall N=25 T=11.7..848.3 K RMSE=0.0029769 nRMSE=25.82% max_abs=0.0078164 at 848.3 K
+  Hall maximum on measured grid: observed 622.7 K (0.01896), constant 848.3 K (0.014836); last observed/predicted 0.00702/0.014836
+  Hall Fig7d overlap N=12 RMSE constant=0.0042336 published f0(T)=0.0023356
+
+x=0.03 fixed  w2 joint=0.70802 S-only=0.77006 Hall-only=0.41628
+  S    N=13 T=300.0..900.0 K RMSE=28.579 nRMSE=28.93% max_abs=56.134 at 900.0 K
+  Hall N=25 T=11.7..848.3 K RMSE=0.0033094 nRMSE=28.70% max_abs=0.0082427 at 622.7 K
+  Hall maximum on measured grid: observed 622.7 K (0.01896), constant 848.3 K (0.012762); last observed/predicted 0.00702/0.012762

@@ -1,0 +1,11 @@
+SYNTHETIC acPh+dis; NumPy 2.5.4; SciPy 1.18.1
+VBVBCB T=100 mu=112.114608024K rho=2.651587416e-06ohm*m S=+5.133335608e-05V/K RH=+2.906003607e-08m^3/C
+VBVBCB T=300 mu=193.526141150K rho=2.827442216e-06ohm*m S=+8.423211281e-05V/K RH=+1.557642997e-08m^3/C
+VBVBCB T=800 mu=459.063644400K rho=2.564069654e-06ohm*m S=+7.919314746e-05V/K RH=+4.472354449e-09m^3/C
+c=120K: sigma_mix/sigma_ac at T=100/300/800K=[0.45454545454545453, 0.7142857142857143, 0.8695652173913043]
+c=550K: sigma_mix/sigma_ac at T=100/300/800K=[0.15384615384615388, 0.3529411764705882, 0.5925925925925927]
+c=1500K: sigma_mix/sigma_ac at T=100/300/800K=[0.0625, 0.16666666666666666, 0.3478260869565218]
+PASS 72 temperature/configuration/mode cases: Matthiessen vs formula [rho,S,RH,L] max errors=[7.771561172376096e-16, 7.0439854014450854e-15, 1.0254210451710377e-15, 1.4432899320127035e-14]; pure-limit errors=[1.4625514577204513e-08, 4.805256679020322e-09, 9.31678333577541e-09, 2.5546733617431983e-09]
+Independent crossovers c=(120,550,1500)K; at T=c_i sigma_i/sigma_ac_i=0.5; rho>0; Hall/Seebeck scaled by absolute channel sums near compensation.
+Retained P18 legacy comparison PASS [rho,S,RH] errors=[np.float64(2.220446049250313e-16), np.float64(1.944976325428256e-07), np.float64(4.494895181074401e-07)]; shared input mu/FD integrals, no legacy root/fit validation; inherited constants differ.
+Limits: synthetic power laws and scalar weak-field RTA; prediction projections only, not fitted parameters, API support, Kane scattering or human physics confirmation.

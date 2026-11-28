@@ -285,6 +285,24 @@ from the sample. By default B is bounded to 0.9–1.1 and G to 0.5–2, both
 editable, so band 2's weight comes mostly from r; a value at its bound is marked
 so and is not determined by the data. The DPB band conductivities add up to σ.
 
+### Reading the proposed band-composition labels
+
+The band-composition design uses the mechanism name on each parameter. To compare the proposal with a saved calculation, read the field labels as follows.
+
+| Proposed parameter                                                     | Coefficient in the equations above              | Unit      |
+| ---------------------------------------------------------------------- | ----------------------------------------------- | --------- |
+| $\tau_{\mathrm{acPh},1}$                                               | $A$ for acoustic scattering                     | S/m       |
+| $\tau_{\mathrm{acPh},i}/\tau_{\mathrm{acPh},1}$                        | $B_i$, the relative acoustic weight             | 1         |
+| $\tau_{\mathrm{dis},1}$                                                | $F$ for alloy disorder                          | S/(m·K)   |
+| $\tau_{\mathrm{dis},i}/\tau_{\mathrm{dis},1}$                          | $G_i$, the relative disorder weight             | 1         |
+| $\tau_{\mathrm{ii},1}$ and $\tau_{\mathrm{ii},i}/\tau_{\mathrm{ii},1}$ | $A$ and $B_i$ of the ionized-impurity power law | S/m and 1 |
+
+For the proposed acoustic-plus-disorder option, the absolute scale is acoustic. The extra row $\tau_{\mathrm{acPh},i}/\tau_{\mathrm{dis},i}$ gives the dimensionless ratio $\Theta_i/(300\,\mathrm{K})$ at 300 K. The desktop uses C and D for these two rows in DPB. Unlike an interband weight, this ratio compares mechanisms within one band.
+
+The absolute parabolic amplitudes use conductivity normalization. Microscopic relaxation times in transport integrals carry seconds. In multiband acoustic or disorder fits to $S+\rho$, the absolute field also shows the reference mass in its denominator, following the desktop convention. Its stored coefficient and units stay the same.
+
+On the proposed band diagram the horizontal axis is labeled **k**. It is dimensionless and has no numeric ticks. The vertical energy axis carries its usual scale. Divide the physical displacement from the band extremum by $10\,\mathrm{nm}^{-1}$ using the same scale for every band. On-screen fields and readouts use a decimal comma, for example **0,09 eV**. Machine-readable values use a decimal point. Each band has a positive integer valley count excluding spin. A fractional count cannot be entered or activated from a saved model. A closed lock reads **Held**. The tooltip explains whether that follows from the fit mode or a researcher’s choice. [Band-composition design under review](https://github.com/pdasya/seeband-web/pull/272)
+
 ## Hall coefficient
 
 With $K = 3\pi^2\hbar^3 / \bigl(e\,(2k_B m_e)^{3/2}\bigr)$, one band gives

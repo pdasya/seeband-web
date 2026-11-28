@@ -1,0 +1,6 @@
+Synthetic three-band S-only, acPh, VB/CB/VB, edges 0, 0.02, -0.12 eV.
+Single-valley masses [1, 1.4, 0.8] m_e. All valley counts and b weights are 1.
+T [K] = [100.0, 300.0, 800.0]; S [uV/K] = 90.00638, 73.35137, 98.67239
+Five E_F points from 0 to 0.02 eV: max |delta S|=0.000e+00 V/K; max loss=0.000e+00.
+Controls at -0.01 and 0.03 eV: max |delta S| [uV/K] = 62.98315, 216.80619
+PASS: the interval endpoints are band edges. Statistical uncertainty was not estimated.
