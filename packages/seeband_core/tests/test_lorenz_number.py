@@ -139,6 +139,54 @@ def test_two_bands_give_the_effective_l_and_each_band_s(scattering: str) -> None
         assert np.all((band / UNIT > low - 1e-9) & (band / UNIT < high + 1e-9))
 
 
+@pytest.mark.parametrize("scattering", ["acPh", "dis", "acPhDis", "ionized"])
+@pytest.mark.parametrize(
+    ("band_gap", "fermi_energy", "m_eff"),
+    [
+        (gap, ef, m)
+        for gap in (300.0, 1500.0, 5000.0)
+        for ef in (-400.0, 100.0, 1200.0)
+        for m in (1.7, -0.6)
+        # Two valence bands with E_F above both hold no carriers, so μ(T) has no root.
+        if not (m < 0 and ef > gap)
+    ],
+)
+def test_l_from_moments_stays_kappa_over_sigma_t_across_bands(
+    scattering: str, band_gap: float, fermi_energy: float, m_eff: float
+) -> None:
+    """L comes from the moments, κ_e from its own curve: the two must agree everywhere.
+
+    The grid spans a narrow and a wide gap, E_F in band 1, in the gap and beyond band 2, and a
+    conduction or a second valence band, so a later change to κ_e or σ alone fails here.
+    """
+
+    def curve(kind):
+        return _curve(
+            "dpb",
+            "dpb_s_rho",
+            scattering,
+            kind,
+            band_gap=band_gap,
+            fermi_energy=fermi_energy,
+            m_eff=m_eff,
+            B=2.3,
+            G=0.4,
+            C=0.1,
+            D=5.0,
+            n2=3,
+            low=50.0,
+            high=1000.0,
+        )
+
+    lorenz = curve("lorenz_number")
+    sigma = curve("electrical_conductivity").curves["electrical_conductivity_s_per_m"]
+    thermal = curve("thermal_conductivity").curves["thermal_conductivity_w_per_m_k"]
+    effective = np.asarray(lorenz.curves[LORENZ_CURVE])
+    np.testing.assert_allclose(
+        effective * np.asarray(sigma) * lorenz.temperature_k, thermal, rtol=1e-11
+    )
+
+
 @pytest.mark.parametrize(
     ("model_id", "scattering"),
     [("spb", "acPh"), ("dpb", "acPh"), ("dpb", "dis"), ("dpb", "ionized")],
