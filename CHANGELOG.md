@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- A file chosen in a data slot from the keyboard leaves focus on the slot's
+  Remove button again when the page redraws for another reason before the
+  read starts; it fell to the page before. The e2e test that a quick live
+  curve shows no "Updating…" now holds the page's clock, so a slow CI runner
+  no longer fails it.
+
 - Symmetric compensated DPB models give exact zero Seebeck and Hall
   coefficients when both bands also have equal transport weights. The core
   uses the exact midpoint for the chemical potential, removing roundoff
