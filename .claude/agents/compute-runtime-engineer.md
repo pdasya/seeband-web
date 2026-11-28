@@ -2,6 +2,8 @@
 name: compute-runtime-engineer
 description: Reviews SeeBand queues, processes, cancellation, timeouts, resource limits and deployment on one VM. Use when asked to review runtime behaviour or operations.
 tools: Read, Grep, Glob, Bash
+skills:
+  - architecture
 ---
 
 # Review SeeBand queues processes and operations

@@ -65,10 +65,14 @@ Repository skills are read directly from `.claude/skills/*/SKILL.md` or
 need a plugin. The physics profile is `.claude/agents/physics-reviewer.md`, whose
 Claude model metadata does not select the Codex model.
 
-User skills and plugin skills are local prerequisites, not dependencies installed
-by cloning this repository. Install `condensed-matter-theory` in the user's Codex
-skills directory (on the setup machine, `~/.codex/skills/condensed-matter-theory/`,
-including its `references/`). Enable the Matt Pocock Skills, Ponytail and
+`condensed-matter-theory` and `scientific-computing` are repository skills. Their
+files live in `.claude/skills/`, and `.agents/skills/` links to them so Codex
+discovers the same copy; edit them in `.claude/skills/`. A user copy in
+`~/.codex/skills/condensed-matter-theory/` is no longer needed. If both are
+installed, Codex may list the name twice; remove the user copy or keep it identical.
+
+Plugin skills are local prerequisites, not dependencies installed by cloning this
+repository. Enable the Matt Pocock Skills, Ponytail and
 Superpowers plugins for roles using their skills. Resolve their exact skill names
 and `SKILL.md` paths from the current session catalog; keep machine-specific home
 paths and versioned plugin-cache paths out of role files.
