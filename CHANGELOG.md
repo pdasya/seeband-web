@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- P15 (#106): a fit that starts with no finite chemical potential names the
+  domain in its message, as calculations already do: an SPB Fermi energy
+  outside the band, or a Fermi energy at or above the higher edge of two
+  valence bands. A zero start `m_eff` in the verified DPB fit now reports a
+  start outside its carrier branch instead of an internal error. No
+  calculated value or fit result changes.
+
 - A file chosen in a data slot from the keyboard leaves focus on the slot's
   Remove button again when the page redraws for another reason before the
   read starts; it fell to the page before. The e2e test that a quick live

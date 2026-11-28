@@ -176,6 +176,8 @@ Historical legacy timing before P19 for each fit of the 3 desktop examples, in a
 
 A `failed` fit's `message` is English text with no code, so a client cannot translate it by code.
 
+A start with no finite chemical potential (P15, #106) gets a fixed `message` that names the same domain as the calculation detail codes: a zero band mass, an SPB Fermi energy outside the band selected by the mass sign, or a Fermi energy at or above the higher edge of two valence bands. Optimizer trials in these domains are rejected rather than reported. A zero start mass in the verified fit selects no carrier branch and fails with `The start values do not fit the bounds.`, as in the legacy fit.
+
 ## Reading data
 
 `POST /api/parse` reads measured data from the text of a file or table, and optionally interpolates it. [`input-data.md`](../../packages/seeband_core/docs/input-data.md) lists the format and every code, and [`interpolation.md`](../../packages/seeband_core/docs/interpolation.md) the interpolation.

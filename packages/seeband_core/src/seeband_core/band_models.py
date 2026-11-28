@@ -258,10 +258,28 @@ class _CallbackError(Exception):
         self.original = original
 
 
+_NO_ROOT_FAILURE = "The fit encountered band parameters with no finite chemical potential."
+# Optimizer trials in a no-root domain are rejected, so one reaching here is a stage start,
+# normally the supplied start values. Each text names the analytic domain it violates.
+_NO_ROOT_FAILURES = {
+    "chemical_potential_zero_mass": (
+        "The fit started from a zero band mass, which has no finite chemical potential."
+    ),
+    "chemical_potential_spb_fermi_energy": (
+        "The fit started from a Fermi energy outside the band selected by the mass sign, "
+        "which has no finite chemical potential."
+    ),
+    "chemical_potential_dpb_fermi_energy": (
+        "The fit started from a Fermi energy at or above the higher edge of two valence bands, "
+        "which has no finite chemical potential."
+    ),
+}
+
+
 def _failure_message(error: Exception) -> str:
     """Return fixed text for a failed fit, because solver messages are not written for users."""
     if isinstance(error, _CORE_MATH.NoFiniteChemicalPotentialError):
-        return "The fit encountered band parameters with no finite chemical potential."
+        return _NO_ROOT_FAILURES.get(error.code or "", _NO_ROOT_FAILURE)
     if isinstance(error, ChemicalPotentialError):
         return "The chemical-potential balance could not be verified during the fit."
     text = str(error)
