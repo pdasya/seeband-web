@@ -4,7 +4,8 @@
 
 - P39 (#292): show the absolute model Lorenz number on a 10⁻⁸ W·Ω/K² scale and
   export the total and per-band values directly in W·Ω/K². SPB and DPB now
-  return L directly from the model moments.
+  return L directly from the model moments, and κ_e = LσT from the same L, so
+  the two cannot drift apart.
 
 - A file chosen in a data slot from the keyboard leaves focus on the slot's
   Remove button again when the page redraws for another reason before the

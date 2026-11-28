@@ -524,11 +524,6 @@ EXPECTED_CURVE_CALLS: dict[tuple[str, str], tuple[str, list[Any], list[str]]] = 
         [11.5, 3.5, SPB_RES, S],
         ["electrical_conductivity_s_per_m"],
     ),
-    ("spb_s_rho", "thermal_conductivity"): (
-        "spb_thermCond_calc",
-        [11.5, 3.5, SPB_RES, S],
-        ["thermal_conductivity_w_per_m_k"],
-    ),
     ("spb_s_rho_rh", "measured"): (
         "spb_see_res_hall_calc",
         [11.5, 3.5, SPB_RES, S],
@@ -543,11 +538,6 @@ EXPECTED_CURVE_CALLS: dict[tuple[str, str], tuple[str, list[Any], list[str]]] = 
         "spb_elecCond_calc",
         [11.5, 3.5, SPB_RES, S],
         ["electrical_conductivity_s_per_m"],
-    ),
-    ("spb_s_rho_rh", "thermal_conductivity"): (
-        "spb_thermCond_calc",
-        [11.5, 3.5, SPB_RES, S],
-        ["thermal_conductivity_w_per_m_k"],
     ),
     ("dpb_s", "measured"): ("dpb_see_calc", [BANDS, RATIO], ["seebeck_v_per_k"]),
     ("dpb_s", "seebeck_by_band"): (
@@ -601,11 +591,6 @@ for _mode, _hall in (("dpb_s_rho", False), ("dpb_s_rho_rh", True)):
             "dpb_ind_elecCond_calc",
             [BANDS, DPB_RES, RATIO, S],
             ["electrical_conductivity_band_1_s_per_m", "electrical_conductivity_band_2_s_per_m"],
-        ),
-        (_mode, "thermal_conductivity"): (
-            "dpb_thermCond_calc",
-            [BANDS, DPB_RES, RATIO, S],
-            ["thermal_conductivity_w_per_m_k"],
         ),
         (_mode, "carrier_concentration_by_band"): (
             "dpb_ind_carCon_calc_m1" if _hall else "dpb_ind_carCon_calc",
@@ -730,9 +715,13 @@ def with_scattering(values: list[Any], scattering: str | None) -> list[Any]:
     return [scattering if value is S else value for value in values]
 
 
+_FROM_MOMENTS = frozenset({"lorenz_number", "thermal_conductivity"})
+
+
 def test_the_expected_tables_cover_every_mode_and_kind() -> None:
-    # L comes from normalized model moments; `test_lorenz_number.py` checks it.
-    assert {(mode, kind) for _, mode, _, kind in curve_cases() if kind != "lorenz_number"} == set(
+    # L comes from normalized model moments, and κ_e = LσT from the same L;
+    # `test_lorenz_number.py` checks both.
+    assert {(mode, kind) for _, mode, _, kind in curve_cases() if kind not in _FROM_MOMENTS} == set(
         EXPECTED_CURVE_CALLS
     )
     assert {mode for _, mode, _ in combinations()} == set(EXPECTED_FIT_CALLS)
@@ -740,7 +729,7 @@ def test_the_expected_tables_cover_every_mode_and_kind() -> None:
 
 @pytest.mark.parametrize(
     ("model_id", "fit_mode_id", "scattering", "kind"),
-    [case for case in curve_cases() if case[2] != "ionized" and case[3] != "lorenz_number"],
+    [case for case in curve_cases() if case[2] != "ionized" and case[3] not in _FROM_MOMENTS],
 )
 def test_curves_call_the_core_as_written_here(
     monkeypatch: pytest.MonkeyPatch,

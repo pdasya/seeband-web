@@ -644,6 +644,8 @@ class _BandModel:
             return CurveResult(temperatures, curves, issues)
         if request.kind == "lorenz_number":
             return self._lorenz_number(request, fit_mode, scattering)
+        if request.kind == "thermal_conductivity" and scattering != "ionized":
+            return self._thermal_conductivity(request, fit_mode, scattering)
         if scattering == "ionized" and request.kind != "carrier_concentration_by_band":
             from seeband_core.transport import ionized_transport
 
@@ -699,6 +701,42 @@ class _BandModel:
             dict(zip(names, curves, strict=True)),
             active_issue_ids(
                 fit_mode, scattering, request.parameters, ratio, request.kind, request.extrapolated
+            ),
+        )
+
+    def _thermal_conductivity(
+        self, request: CurveRequest, fit_mode: FitMode, scattering: str | None
+    ) -> CurveResult:
+        """κ_e = LσT in W/(m K), with L from the same moments as the Lorenz curve.
+
+        One source for L keeps κ_e/(σT) equal to the Lorenz curve by construction. L does not
+        depend on the conductivity amplitude, so it is formed at unit amplitude; σ carries the
+        amplitude, and a zero amplitude gives κ_e = 0. Ionized impurities form κ_e the same way
+        in `transport.ionized_transport`.
+        """
+        unit = dict(request.parameters) | {_amplitude_name(scattering): 1.0}
+        lorenz = self._lorenz_number(
+            dataclasses.replace(request, kind="lorenz_number", parameters=unit),
+            fit_mode,
+            scattering,
+        )
+        sigma = self.calculate(dataclasses.replace(request, kind="electrical_conductivity"))
+        temperature_k = lorenz.temperature_k
+        thermal = (
+            np.asarray(lorenz.curves[LORENZ_CURVE])
+            * np.asarray(sigma.curves["electrical_conductivity_s_per_m"])
+            * temperature_k
+        )
+        return CurveResult(
+            temperature_k,
+            {"thermal_conductivity_w_per_m_k": thermal},
+            active_issue_ids(
+                fit_mode,
+                scattering,
+                request.parameters,
+                _mode_degeneracy_ratio(request, fit_mode),
+                request.kind,
+                request.extrapolated,
             ),
         )
 
@@ -868,7 +906,6 @@ class SpbModel(_BandModel):
             return _CORE.spb_see_calc, band
         function = {
             "electrical_conductivity": _CORE.spb_elecCond_calc,
-            "thermal_conductivity": _CORE.spb_thermCond_calc,
             "measured": (
                 _CORE.spb_see_res_calc
                 if fit_mode.id == "spb_s_rho"
@@ -1022,7 +1059,6 @@ class DpbModel(_BandModel):
             "seebeck_by_band": _CORE.dpb_ind_see_calc,
             "electrical_conductivity": _CORE.dpb_elecCond_calc,
             "electrical_conductivity_by_band": _CORE.dpb_ind_elecCond_calc,
-            "thermal_conductivity": _CORE.dpb_thermCond_calc,
         }[str(kind)]
         return function, [bands, scattering_values, degeneracy, scattering]
 
